@@ -23,6 +23,9 @@ export const ConfigSchema = z.object({
   WEB_URL: url,
   /** Staff admin app (E17); allowed by CORS when set. */
   ADMIN_URL: url.optional(),
+  /** Requests per minute per client IP (checked before sign-in) and per signed-in user. 0 disables. */
+  RATE_LIMIT_IP_PER_MIN: z.coerce.number().int().min(0).default(1200),
+  RATE_LIMIT_USER_PER_MIN: z.coerce.number().int().min(0).default(600),
   /** Largest JSON body accepted (bytes). Webhooks and imports have their own limits. */
   MAX_BODY_BYTES: z.coerce.number().int().min(1024).max(50 * 1024 * 1024).default(1024 * 1024),
 

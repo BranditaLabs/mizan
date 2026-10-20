@@ -19,7 +19,7 @@ The REST API serves the web dashboard, the ops app and merchants' own integratio
 | Concurrency | Mutable resources return `ETag`; `PATCH` accepts `If-Match` → 412 on conflict |
 | Errors | RFC 9457 `application/problem+json` (below) |
 | Language | `Accept-Language: ar` or `en` → localized `title` / `detail` in errors |
-| Rate limits | Per API key and per user: `RateLimit-Policy` / `RateLimit` headers; 429 with `Retry-After` |
+| Rate limits | Per API key and per user: `RateLimit-Policy` / `RateLimit` headers; 429 with `Retry-After`. ✅ (H-3) per IP 1200/min (checked before the token, so bad-token floods cost nothing) and per user 600/min, per API instance; `RateLimit: limit=600, remaining=599, reset=1`; `rate_limited` problem |
 | Versioning | Path `/v1`. Additive changes only within v1. Breaking changes → `/v2` with 6 months overlap |
 
 ### Error format

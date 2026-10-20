@@ -1,8 +1,10 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
+import type { Response } from "express";
 import { Reflector } from "@nestjs/core";
 import { MFA_REQUIRED_ROLES, type MemberRole } from "@mizan/shared";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { ProblemError } from "../http/problem.js";
+import { RateLimiter } from "../http/rate-limit.js";
 import { AuthService } from "./auth.service.js";
 import type { AuthedRequest } from "./auth.types.js";
 import { IS_PUBLIC, NO_TENANT, ROLES } from "./decorators.js";
@@ -19,6 +21,7 @@ const BEARER = /^Bearer ([A-Za-z0-9\-_.]+)$/;
  *    Unknown tenant, no membership, invited or disabled all answer the same 403, so tenant ids cannot be probed.
  * 3. Owners and admins need a second factor when AUTH_REQUIRE_MFA (default on in production).
  * 4. @Roles(...) narrows further.
+ * Rate limits: per IP before the token is checked, per user after (RateLimiter).
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -27,6 +30,7 @@ export class AuthGuard implements CanActivate {
     @Inject(TOKEN_VERIFIER) private readonly verifier: TokenVerifier,
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(RateLimiter) private readonly limits: RateLimiter,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -34,10 +38,14 @@ export class AuthGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets)) return true;
 
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
+    const res = ctx.switchToHttp().getResponse<Response>();
+    // Cheap per-IP check first: floods of bad tokens are refused before any verification work.
+    this.limits.checkIp(req.ip, res);
     const token = BEARER.exec(req.headers.authorization ?? "")?.[1];
     if (!token) throw new ProblemError(401, "unauthorized", "send a Firebase ID token as Authorization: Bearer <token>");
 
     const identity = await this.verifier.verify(token);
+    this.limits.checkUser(identity.uid, res);
     const user = await this.auth.resolveUser(identity);
     req.auth = { identity, user, ...(req.ip ? { ip: req.ip } : {}) };
 

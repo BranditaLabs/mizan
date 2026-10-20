@@ -3,6 +3,7 @@ import { APP_GUARD } from "@nestjs/core";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { AuthGuard } from "./auth.guard.js";
 import { AuthService } from "./auth.service.js";
+import { RateLimiter } from "../http/rate-limit.js";
 import { DisabledTokenVerifier, FirebaseTokenVerifier, TOKEN_VERIFIER, type TokenVerifier } from "./token-verifier.js";
 
 @Global()
@@ -14,6 +15,7 @@ export class AuthModule {
       module: AuthModule,
       providers: [
         AuthService,
+        RateLimiter,
         verifier
           ? { provide: TOKEN_VERIFIER, useValue: verifier }
           : {
