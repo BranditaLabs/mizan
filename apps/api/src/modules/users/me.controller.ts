@@ -1,17 +1,12 @@
 import { Controller, Get, Inject } from "@nestjs/common";
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { ApiTags } from "@nestjs/swagger";
+import { ApiJson } from "../../platform/http/api-schema.js";
+import { MeSchema, type MeResponse } from "./me.dto.js";
 import { Auth, NoTenant } from "../../platform/auth/decorators.js";
-import { AuthService, type MembershipView } from "../../platform/auth/auth.service.js";
-import type { MyInvitationView } from "../members/members.dto.js";
+import { AuthService } from "../../platform/auth/auth.service.js";
 import { MembersService } from "../members/members.service.js";
-import type { AuthContext, AuthUser } from "../../platform/auth/auth.types.js";
+import type { AuthContext } from "../../platform/auth/auth.types.js";
 
-export interface MeResponse {
-  user: AuthUser & { emailVerified: boolean; mfa: boolean };
-  memberships: MembershipView[];
-  /** Pending invitations addressed to my verified email or phone. */
-  invitations: MyInvitationView[];
-}
 
 /** GET /v1/me — who am I, and which stores can I open (tenant switcher). */
 @ApiTags("platform")
@@ -24,7 +19,7 @@ export class MeController {
 
   @Get()
   @NoTenant()
-  @ApiOkResponse({ description: "The signed-in user and their store memberships." })
+  @ApiJson(200, "Me", MeSchema, "The signed-in user, their stores and invitations waiting for them")
   async me(@Auth() auth: AuthContext): Promise<MeResponse> {
     return {
       user: { ...auth.user, emailVerified: auth.identity.emailVerified, mfa: Boolean(auth.identity.secondFactor) },

@@ -207,3 +207,10 @@ Verify → dedupe → enqueue → 200 (thin webhook, fat fetch). Unknown connect
 ## 3. OpenAPI
 
 Generate the OpenAPI 3.1 document from NestJS decorators (`@nestjs/swagger`) and zod schemas in `packages/shared`. Publish at `/v1/openapi.json`; the web app generates its typed client from it.
+
+**✅ E4-4 — the contract:**
+
+- Every route declares its schemas with the decorators in `apps/api/src/platform/http/api-schema.ts`: `@ApiJsonBody(name, schema)` (the same zod schema `ZodPipe` validates), `@ApiJson(status, name, schema, description)` (response types are `z.infer` of that schema, so the handler cannot return another shape), `@ApiQueryZod(schema)`, `@ApiNoContent`, `@ApiProblems(...statuses)`. Every operation also gets a `default` problem response (`application/problem+json`, `ProblemDetails`).
+- `apps/api/openapi.json` is committed. After changing a route or schema: `npm run openapi -w @mizan/api` (rewrites it) then `npm run gen:api -w @mizan/web` (rewrites `apps/web/src/lib/api/schema.d.ts`). Tests fail when either file is stale.
+- `apps/api/test/openapi.e2e.test.ts` walks the platform routes and validates every real response against the schema documented for its status (problems against `ProblemDetails`), and checks that every operation has a typed success response and the request body it validates.
+- Web side: `openapi-fetch` client (`apps/web/src/lib/api/client.ts`) adds the Firebase token, `Accept-Language`, `X-Tenant-Id` and an `Idempotency-Key` on POST; `ok()` turns problems into `ApiError(status, code, title)`. TanStack Query retries only network, 5xx, 429 and `token_expired` (after a forced token refresh), at most twice; failed actions toast the problem `title`, which the API already localises (Egyptian Arabic / English).

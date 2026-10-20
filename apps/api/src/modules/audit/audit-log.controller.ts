@@ -1,5 +1,6 @@
 import { Controller, Get, Inject, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { ApiJson, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { z } from "zod";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
@@ -13,16 +14,18 @@ const QuerySchema = z.object({
   action: z.string().regex(/^[a-z_]+\.[a-z_]*$/).optional(),
 });
 
-export interface AuditLogEntryView {
-  id: string;
-  action: string;
-  actor: { type: string; id: string | null; displayName: string | null };
-  entity: { type: string; id: string } | null;
-  before: unknown;
-  after: unknown;
-  ip: string | null;
-  createdAt: string;
-}
+export const AuditLogEntrySchema = z.object({
+  id: z.string().describe("Increasing id; use as cursor"),
+  action: z.string().describe('For example "member.removed"'),
+  actor: z.object({ type: z.string(), id: z.string().nullable(), displayName: z.string().nullable() }),
+  entity: z.object({ type: z.string(), id: z.string() }).nullable(),
+  before: z.unknown(),
+  after: z.unknown(),
+  ip: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+});
+export type AuditLogEntryView = z.infer<typeof AuditLogEntrySchema>;
+const AuditLogPageSchema = z.object({ data: z.array(AuditLogEntrySchema), nextCursor: z.string().nullable() });
 
 /** GET /v1/audit-log — who did what in this store, newest first (owner, admin). */
 @ApiTags("platform")
@@ -32,6 +35,8 @@ export class AuditLogController {
 
   @Get()
   @Roles("owner", "admin")
+  @ApiQueryZod(QuerySchema)
+  @ApiJson(200, "AuditLogPage", AuditLogPageSchema, "Newest first; pass nextCursor as cursor for the next page")
   async list(@Auth() auth: AuthContext, @Query(new ZodPipe(QuerySchema)) q: z.infer<typeof QuerySchema>) {
     const rows = await this.db.tenant(auth.tenant!.id, (trx) => {
       let query = trx.selectFrom("audit_log as a").leftJoin("users as u", "u.id", "a.actor_id")

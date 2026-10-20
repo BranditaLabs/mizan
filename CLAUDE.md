@@ -34,7 +34,7 @@ packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`miz
 packages/design-system/ ✅ BUILT — Brandita identity (ink, paper, one red point): tokens for CSS/Tailwind/TS/Flutter, Geist + Alexandria + Plex Arabic fonts, 124 icons, wordmark, app icons (70 tests: contrast, brand fidelity)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
 apps/api/          🚧 FOUNDATIONS (E1) — NestJS 12: config, redacting logger, problem+json, OpenAPI, tenant DB, Firebase auth + roles, signup, team, domain events + worker, audit log, KMS secrets; modules M1–M22 next
-apps/web/          🚧 FOUNDATION (E4-1…E4-3) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules; Firebase sign-in (email + SMS second step, phone OTP), store gate and switcher; UI kit in src/components/ui (gallery at /ar/ui, /en/ui); screens next
+apps/web/          🚧 FOUNDATION (E4-1…E4-3) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules; Firebase sign-in (email + SMS second step, phone OTP), store gate and switcher; UI kit in src/components/ui (gallery at /ar/ui, /en/ui); typed API client + TanStack Query (src/lib/api); screens next
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
@@ -51,6 +51,7 @@ npm run typecheck
 npm run build                # shared → dist, api → dist (CI runs it before tests)
 npm run dev -w @mizan/api    # API on :8080 with reload (cp apps/api/.env.example apps/api/.env first); in-memory PGlite DB
 npm run codegen -w @mizan/db # after adding a migration: regenerate packages/db/src/schema.ts
+npm run openapi -w @mizan/api && npm run gen:api -w @mizan/web  # after changing an API route or schema: openapi.json + web client types
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
 npm run dev -w @mizan/web    # dashboard on :3000 (/ar, /en); sign-in needs Firebase config or the emulator (apps/web/.env.example)
 npm run build:api && npm run build:e2e -w @mizan/web && npm run e2e -w @mizan/web   # e2e: Auth emulator (Java 21) + API + web
@@ -105,7 +106,7 @@ Pin exact versions in `package.json` when creating each app.
 - Code typechecks; tests added and passing; chaos suite still green when engine code changed.
 - Arabic and English strings present; RTL checked for UI.
 - No secrets, no PII in logs.
-- Docs updated when behaviour, schema or API changed (`docs/04`, `docs/05`, module doc). Schema changes = new migration + test in `packages/db`.
+- Docs updated when behaviour, schema or API changed (`docs/04`, `docs/05`, module doc). Schema changes = new migration + test in `packages/db`. API changes = zod schemas on the route (`@ApiJson…`), regenerated `openapi.json` and web types.
 - Backlog item ticked in `docs/10-backlog.md`.
 
 ## Facts to confirm before production (do not hard-code assumptions)

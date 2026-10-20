@@ -1,9 +1,10 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { onIdTokenChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
 import { useLocale } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { api, ApiError, type Me, type Membership } from "./api";
+import { apiClient, ApiError, ok, type ApiClient, type Me, type Membership } from "./api/client";
 import { authConfigured, firebaseAuth } from "./firebase";
 
 /**
@@ -13,8 +14,8 @@ import { authConfigured, firebaseAuth } from "./firebase";
  *   signed-in: me (GET /v1/me) → store chosen (remembered per user) → store checked with the API
  *   (GET /v1/tenant), which is where an owner without two-step verification learns it (mfa_required).
  *
- * Results are kept with the key they answer (user, store, attempt), so a stale answer is never
- * shown for another person or store, and nothing has to be reset when they change.
+ * Both reads are TanStack queries keyed by person (and store), so another person or store never
+ * sees a stale answer; sign-out clears the cache. `api` is the typed client for the current store.
  */
 export type StoreCheck = "idle" | "checking" | "ok" | "mfa_required" | "unavailable";
 
@@ -23,10 +24,12 @@ export interface Session {
   user: User | null;
   me: Me | null;
   meError: ApiError | null;
-  /** Active memberships only: the stores this user can open. */
+  /** Active memberships in open stores (trial or active): the stores this user can open. */
   stores: Membership[];
   store: Membership | null;
   storeCheck: StoreCheck;
+  /** Typed API client for this person, language and store. */
+  api: ApiClient;
   selectStore(tenantId: string): void;
   refreshMe(): Promise<Me | null>;
   /** After "unavailable": load /me and check the store again. */
@@ -39,6 +42,7 @@ export interface Session {
 
 const Ctx = createContext<Session | null>(null);
 const storeKey = (uid: string) => `mizan-store:${uid}`;
+const OPEN_STORE = new Set<Membership["tenantStatus"]>(["trial", "active"]);
 
 function remembered(uid: string): string | null {
   try {
@@ -55,25 +59,17 @@ function remember(uid: string, tenantId: string) {
   }
 }
 
-type Keyed<T> = { key: string; value: T };
-type MeResult = Keyed<{ me: Me | null; error: ApiError | null }>;
-
-async function loadMe(user: User, locale: string): Promise<MeResult> {
-  try {
-    return { key: user.uid, value: { me: await api<Me>(user, "/me", { locale }), error: null } };
-  } catch (e) {
-    return { key: user.uid, value: { me: null, error: e instanceof ApiError ? e : new ApiError(0, "unknown", "") } };
-  }
-}
+export const queryKeys = {
+  me: (uid: string) => ["me", uid] as const,
+  tenant: (uid: string, tenantId: string) => ["tenant", uid, tenantId] as const,
+};
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const locale = useLocale();
+  const queryClient = useQueryClient();
   // undefined until Firebase reports; null when signed out (or sign-in is not configured).
   const [user, setUser] = useState<User | null | undefined>(authConfigured ? undefined : null);
-  const [meState, setMeState] = useState<MeResult | null>(null);
-  const [chosen, setChosen] = useState<Keyed<string> | null>(null);
-  const [check, setCheck] = useState<Keyed<StoreCheck> | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  const [chosen, setChosen] = useState<{ uid: string; tenantId: string } | null>(null);
 
   useEffect(() => {
     const auth = firebaseAuth();
@@ -81,70 +77,63 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const uid = user?.uid ?? "";
-  const refreshMe = useCallback(async () => {
-    if (!user) return null;
-    const result = await loadMe(user, locale);
-    setMeState(result);
-    return result.value.me;
-  }, [user, locale]);
+  const base = useMemo(() => apiClient({ user: user ?? null, locale }), [user, locale]);
+  const meQuery = useQuery({
+    queryKey: queryKeys.me(uid),
+    queryFn: () => ok(base.GET("/v1/me")),
+    enabled: Boolean(user),
+    meta: { toast: false },
+  });
 
-  // Load /me when the person changes (sign-in, sign-out, another account).
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    void loadMe(user, locale).then((r) => !cancelled && setMeState(r));
-    return () => {
-      cancelled = true;
-    };
-  }, [uid]); // eslint-disable-line react-hooks/exhaustive-deps -- reload only when the person changes
-
-  const mine = meState?.key === uid ? meState.value : null;
-  const me = mine?.me ?? null;
-  const stores = useMemo(() => (me?.memberships ?? []).filter((m) => m.status === "active" && m.tenantStatus === "active"), [me]);
-  const chosenId = chosen?.key === uid ? chosen.value : uid ? remembered(uid) : null;
+  const me = meQuery.data ?? null;
+  const stores = useMemo(() => (me?.memberships ?? []).filter((m) => m.status === "active" && OPEN_STORE.has(m.tenantStatus)), [me]);
+  const chosenId = chosen?.uid === uid ? chosen.tenantId : uid ? remembered(uid) : null;
   const store = stores.find((s) => s.tenantId === chosenId) ?? stores[0] ?? null;
 
-  // Check the store with the API whenever it (or the person, or a retry) changes.
-  const checkKey = user && store ? `${uid}:${store.tenantId}:${attempt}` : "";
-  useEffect(() => {
-    if (!user || !store || !checkKey) return;
-    let cancelled = false;
-    api(user, "/tenant", { locale, tenantId: store.tenantId }).then(
-      () => !cancelled && setCheck({ key: checkKey, value: "ok" }),
-      (e) => !cancelled && setCheck({ key: checkKey, value: e instanceof ApiError && e.code === "mfa_required" ? "mfa_required" : "unavailable" }),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [checkKey, locale]); // eslint-disable-line react-hooks/exhaustive-deps -- checkKey names the user and store
-  const storeCheck: StoreCheck = !checkKey ? "idle" : check?.key === checkKey ? check.value : "checking";
+  const tenantQuery = useQuery({
+    queryKey: queryKeys.tenant(uid, store?.tenantId ?? ""),
+    queryFn: () => ok(base.GET("/v1/tenant", { headers: { "X-Tenant-Id": store!.tenantId } })),
+    enabled: Boolean(user && store),
+    meta: { toast: false },
+  });
+  const storeCheck: StoreCheck = !user || !store ? "idle"
+    : tenantQuery.isSuccess ? "ok"
+    : tenantQuery.isError ? (tenantQuery.error instanceof ApiError && tenantQuery.error.code === "mfa_required" ? "mfa_required" : "unavailable")
+    : "checking";
+
+  const api = useMemo(() => apiClient({ user: user ?? null, locale, tenantId: store?.tenantId ?? null }), [user, locale, store?.tenantId]);
 
   const selectStore = useCallback((tenantId: string) => {
     if (!uid) return;
     remember(uid, tenantId);
-    setChosen({ key: uid, value: tenantId });
+    setChosen({ uid, tenantId });
   }, [uid]);
 
+  const refetchMe = meQuery.refetch;
+  const refetchTenant = tenantQuery.refetch;
+  const refreshMe = useCallback(async () => (await refetchMe()).data ?? null, [refetchMe]);
   const retry = useCallback(() => {
-    setAttempt((n) => n + 1);
-    void refreshMe();
-  }, [refreshMe]);
+    void refetchMe();
+    void refetchTenant();
+  }, [refetchMe, refetchTenant]);
 
   const signOutTarget = useRef<string | null>(null);
   const signOut = useCallback(async (to = "/sign-in") => {
     const auth = firebaseAuth();
     signOutTarget.current = to;
     if (auth) await firebaseSignOut(auth);
-  }, []);
+    queryClient.clear(); // nothing of this person stays in memory
+  }, [queryClient]);
   const takeSignOutTarget = useCallback(() => {
     const to = signOutTarget.current;
     signOutTarget.current = null;
     return to;
   }, []);
 
+  const meError = meQuery.error instanceof ApiError ? meQuery.error : meQuery.error ? new ApiError(0, "unknown", "") : null;
   const value: Session = {
     status: user === undefined ? "loading" : user ? "signed-in" : "signed-out",
-    user: user ?? null, me, meError: mine?.error ?? null, stores, store, storeCheck, selectStore, refreshMe, retry, signOut, takeSignOutTarget,
+    user: user ?? null, me, meError, stores, store, storeCheck, api, selectStore, refreshMe, retry, signOut, takeSignOutTarget,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -153,4 +142,9 @@ export function useSession(): Session {
   const s = useContext(Ctx);
   if (!s) throw new Error("useSession outside SessionProvider");
   return s;
+}
+
+/** The typed API client for the current person and store (screens use it in queryFn / mutationFn). */
+export function useApi(): ApiClient {
+  return useSession().api;
 }

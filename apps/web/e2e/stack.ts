@@ -86,7 +86,7 @@ export async function mizan<T>(token: string, method: string, path: string, body
   if (tenantId) headers["X-Tenant-Id"] = tenantId;
   if (method === "POST") headers["Idempotency-Key"] = crypto.randomUUID();
   const res = await fetch(`${API}/v1${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  const json = (await res.json()) as T;
+  const json = (res.status === 204 ? undefined : await res.json()) as T;
   if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${JSON.stringify(json)}`);
   return json;
 }
@@ -95,14 +95,15 @@ export async function mizan<T>(token: string, method: string, path: string, body
 export async function storeWithInvites(name: string, invites: Array<{ phone: string; role: string }>) {
   const owner = await ownerWithTwoStep(newEmail("owner"), newPhone().e164);
   const store = await mizan<{ id: string }>(owner, "POST", "/tenants", { name, country: "EG" });
-  for (const i of invites) await mizan(owner, "POST", "/members/invite", { phone: i.phone, role: i.role }, store.id);
-  return store.id;
+  const invitations: string[] = [];
+  for (const i of invites) invitations.push((await mizan<{ id: string }>(owner, "POST", "/members/invite", { phone: i.phone, role: i.role }, store.id)).id);
+  return { storeId: store.id, owner, invitations };
 }
 
 /** A phone account that is a member of these stores (invited, then accepted). */
 export async function agentIn(phone: { e164: string }, ...storeNames: string[]): Promise<void> {
   const ids = [];
-  for (const name of storeNames) ids.push(await storeWithInvites(name, [{ phone: phone.e164, role: "agent" }]));
+  for (const name of storeNames) ids.push((await storeWithInvites(name, [{ phone: phone.e164, role: "agent" }])).storeId);
   const token = await phoneUser(phone.e164);
   const me = await mizan<{ invitations: Array<{ id: string }> }>(token, "GET", "/me");
   for (const inv of me.invitations) await mizan(token, "POST", `/invitations/${inv.id}/accept`);

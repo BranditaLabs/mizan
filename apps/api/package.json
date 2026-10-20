@@ -12,7 +12,8 @@
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "openapi": "UPDATE_OPENAPI=1 vitest run test/openapi.e2e.test.ts"
   },
   "dependencies": {
     "@mizan/db": "0.1.0",

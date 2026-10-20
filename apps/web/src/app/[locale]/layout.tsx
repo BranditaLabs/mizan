@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { dirOf, routing } from "@/i18n/routing";
 import { ToastProvider } from "@/components/ui/Toast";
+import { QueryProvider } from "@/lib/api/query";
 import { SessionProvider } from "@/lib/session";
 import { parseTheme, THEME_COOKIE, themeAttribute } from "@/lib/theme";
 import "../globals.css";
@@ -28,9 +29,11 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider>
-          <SessionProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </SessionProvider>
+          <ToastProvider>
+            <QueryProvider>
+              <SessionProvider>{children}</SessionProvider>
+            </QueryProvider>
+          </ToastProvider>
         </NextIntlClientProvider>
       </body>
     </html>

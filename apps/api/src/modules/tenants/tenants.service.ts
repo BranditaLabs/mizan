@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { setActingUser } from "@mizan/db";
-import { COUNTRY_DEFAULTS, type CountryCode } from "@mizan/shared";
+import { COUNTRY_DEFAULTS, type CountryCode, type MemberRole } from "@mizan/shared";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { AuditService } from "../../platform/audit/audit.service.js";
@@ -35,7 +35,8 @@ type TenantRow = {
   plan: string; status: string; settings: unknown; created_at: Date;
 };
 
-const toView = (t: TenantRow, role: string): TenantView => ({
+// plan and status are TEXT with CHECK constraints (migration 0001): the casts name what the database guarantees.
+const toView = (t: TenantRow, role: MemberRole): TenantView => ({
   id: t.id,
   name: t.name,
   slug: t.slug,
@@ -43,8 +44,8 @@ const toView = (t: TenantRow, role: string): TenantView => ({
   baseCurrency: t.base_currency,
   timezone: t.timezone,
   locale: t.locale,
-  plan: t.plan,
-  status: t.status,
+  plan: t.plan as TenantView["plan"],
+  status: t.status as TenantView["status"],
   settings: (t.settings ?? {}) as Record<string, unknown>,
   createdAt: t.created_at.toISOString(),
   role,
@@ -114,7 +115,7 @@ export class TenantsService {
     throw new ProblemError(409, "slug_taken", "could not find a free store address; choose one");
   }
 
-  async get(tenantId: string, role: string): Promise<TenantView> {
+  async get(tenantId: string, role: MemberRole): Promise<TenantView> {
     const tenant = await this.db.tenant(tenantId, (trx) => trx.selectFrom("tenants").selectAll().where("id", "=", tenantId).executeTakeFirstOrThrow());
     return toView(tenant, role);
   }

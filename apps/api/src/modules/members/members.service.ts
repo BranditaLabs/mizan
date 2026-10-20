@@ -9,7 +9,7 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { AuthService } from "../../platform/auth/auth.service.js";
 import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
-import type { InvitationView, InviteBody, MemberView, MyInvitationView, UpdateMemberBody } from "./members.dto.js";
+import type { InvitationStatus, InvitationView, InviteBody, MemberStatus, MemberView, MyInvitationView, UpdateMemberBody } from "./members.dto.js";
 
 export const INVITATION_TTL_DAYS = 7;
 
@@ -47,7 +47,7 @@ export class MembersService {
       return {
         members: members.map((m) => ({
           userId: m.user_id, displayName: m.display_name, email: m.email, phone: m.phone_e164,
-          role: m.role, status: m.status, joinedAt: m.created_at.toISOString(),
+          role: m.role as MemberRole, status: m.status as MemberStatus, joinedAt: m.created_at.toISOString(),
         })),
         invitations: invitations.map((i) => this.toInvitation(i)),
       };
@@ -120,7 +120,7 @@ export class MembersService {
         .where("i.status", "=", "pending").where("i.expires_at", ">", new Date()).where("t.status", "in", ["trial", "active"])
         .orderBy("i.created_at").execute();
     });
-    return rows.map((r) => ({ id: r.id, tenantId: r.tenant_id, tenantName: r.name, role: r.role, expiresAt: r.expires_at.toISOString() }));
+    return rows.map((r) => ({ id: r.id, tenantId: r.tenant_id, tenantName: r.name, role: r.role as MemberRole, expiresAt: r.expires_at.toISOString() }));
   }
 
   /**
@@ -227,12 +227,13 @@ export class MembersService {
     const m = await trx.selectFrom("memberships as m").innerJoin("users as u", "u.id", "m.user_id")
       .select(["m.user_id", "m.role", "m.status", "m.created_at", "u.display_name", "u.email", "u.phone_e164"])
       .where("m.user_id", "=", userId).executeTakeFirstOrThrow();
-    return { userId: m.user_id, displayName: m.display_name, email: m.email, phone: m.phone_e164, role: m.role, status: m.status, joinedAt: m.created_at.toISOString() };
+    return { userId: m.user_id, displayName: m.display_name, email: m.email, phone: m.phone_e164, role: m.role as MemberRole, status: m.status as MemberStatus, joinedAt: m.created_at.toISOString() };
   }
 
   private toInvitation(i: { id: string; email: string | null; phone_e164: string | null; role: string; status: string; expires_at: Date; created_at: Date }): InvitationView {
     return {
-      id: i.id, email: i.email, phone: i.phone_e164, role: i.role, status: i.status,
+      // TEXT columns with CHECK constraints (migration 0005): the casts name what the database guarantees.
+      id: i.id, email: i.email, phone: i.phone_e164, role: i.role as MemberRole, status: i.status as InvitationStatus,
       expiresAt: i.expires_at.toISOString(), createdAt: i.created_at.toISOString(), acceptUrl: this.acceptUrl(i.id),
     };
   }

@@ -1,24 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { setActingUser } from "@mizan/db";
 import { isMemberRole, type MemberRole, type MembershipStatus } from "@mizan/shared";
+import type { MembershipView } from "./membership.schema.js";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { TtlCache } from "../cache.js";
 import { Database } from "../db/database.js";
 import type { AuthUser } from "./auth.types.js";
 import type { VerifiedIdentity } from "./token-verifier.js";
 
-export interface MembershipView {
-  tenantId: string;
-  tenantName: string;
-  tenantSlug: string;
-  tenantStatus: string;
-  country: string;
-  baseCurrency: string;
-  locale: string;
-  timezone: string;
-  role: MemberRole;
-  status: MembershipStatus;
-}
+export type { MembershipView } from "./membership.schema.js";
 
 type UserRow = { id: string; firebase_uid: string; email: string | null; phone_e164: string | null; display_name: string | null; language: string };
 
@@ -31,7 +21,8 @@ const toUser = (r: UserRow): AuthUser => ({
   language: r.language === "en" ? "en" : "ar",
 });
 
-type MembershipCheck = Pick<MembershipView, "role" | "status" | "tenantStatus">;
+/** What the guard needs; tenantStatus includes "deleted" (the guard refuses it). */
+type MembershipCheck = Pick<MembershipView, "role" | "status"> & { tenantStatus: string };
 
 /** Identity fields that, when they change in the token, must reach the users table. */
 const profileOf = (i: VerifiedIdentity) => `${i.email ?? ""}|${i.phone ?? ""}|${i.name ?? ""}`;
@@ -129,7 +120,7 @@ export class AuthService {
       tenantId: r.tenant_id,
       tenantName: r.name,
       tenantSlug: r.slug,
-      tenantStatus: r.tenant_status,
+      tenantStatus: r.tenant_status as MembershipView["tenantStatus"], // CHECK constraint; deleted are filtered out above
       country: r.country,
       baseCurrency: r.base_currency,
       locale: r.locale,

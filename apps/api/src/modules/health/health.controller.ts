@@ -1,18 +1,17 @@
 import { Controller, Get, Inject } from "@nestjs/common";
-import { ApiOkResponse, ApiServiceUnavailableResponse, ApiTags } from "@nestjs/swagger";
+import { ApiTags } from "@nestjs/swagger";
+import { z } from "zod";
 import { Public } from "../../platform/auth/decorators.js";
 import { Database } from "../../platform/db/database.js";
+import { ApiJson, ApiProblems } from "../../platform/http/api-schema.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { APP_VERSION } from "../../version.js";
 
 const startedAt = Date.now();
 
-export interface HealthResponse {
-  status: "ok";
-  version: string;
-  uptimeS: number;
-  time: string;
-}
+const HealthSchema = z.object({ status: z.literal("ok"), version: z.string(), uptimeS: z.number().int(), time: z.iso.datetime() });
+export type HealthResponse = z.infer<typeof HealthSchema>;
+const ReadySchema = z.object({ status: z.literal("ready") });
 
 /** Probes for Cloud Run and the load balancer. Served outside /v1. */
 @ApiTags("platform")
@@ -23,7 +22,7 @@ export class HealthController {
 
   /** Liveness: the process is up. Never touches dependencies, so a slow DB does not restart instances. */
   @Get()
-  @ApiOkResponse({ description: "The process is up." })
+  @ApiJson(200, "Health", HealthSchema, "The process is up")
   live(): HealthResponse {
     return {
       status: "ok",
@@ -35,14 +34,14 @@ export class HealthController {
 
   /** Readiness: the database answers. Traffic is routed only to ready instances. */
   @Get("ready")
-  @ApiOkResponse({ description: "Ready to serve traffic." })
-  @ApiServiceUnavailableResponse({ description: "A dependency is down." })
+  @ApiJson(200, "Ready", ReadySchema, "Ready to serve traffic")
+  @ApiProblems(503)
   async ready(): Promise<{ status: "ready" }> {
     try {
       await this.db.ping();
     } catch {
       throw new ProblemError(503, "service_unavailable", "database unreachable");
     }
-    return { status: "ready" };
+    return { status: "ready" as const };
   }
 }

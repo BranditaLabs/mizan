@@ -21,7 +21,20 @@ npm run build:api && npm run build:e2e -w @mizan/web && npm run e2e -w @mizan/we
 
 - Owners and admins: email + password, then an SMS code (Firebase phone second factor). Turning it on needs a verified email; after enrolling, the person signs in again so the token carries the second factor.
 - Agents and warehouse staff: phone number + SMS code (Egyptian numbers typed locally; `+966…`, `+971…` with the country code).
-- `src/lib/session.tsx`: Firebase user, `/me`, the chosen store (localStorage `mizan-store:<uid>`), the store check. `src/lib/api.ts`: fresh ID token, `X-Tenant-Id`, `Accept-Language`, `Idempotency-Key`, problem+json → `ApiError`.
+- `src/lib/session.tsx`: Firebase user, `/me` and the store check as queries, the chosen store (localStorage `mizan-store:<uid>`), `useApi()` (the typed client for the current store).
+
+## Calling the API (E4-4)
+
+```ts
+const api = useApi();                                                    // person + language + store
+const team = useQuery({ queryKey: ["team", store.tenantId], queryFn: () => ok(api.GET("/v1/members")) });
+const [key] = useState(() => crypto.randomUUID());                       // stable across retries
+const invite = useMutation({ mutationFn: (body: Schemas["Invite"]) => ok(api.POST("/v1/members/invite", { body, headers: idempotency(key) })) });
+```
+
+- Types come from `apps/api/openapi.json` (`npm run gen:api`, file `src/lib/api/schema.d.ts`, never edited by hand; a test fails when it is stale).
+- Errors: `ApiError` with the problem `code` (switch on it) and `title` (already in the user's language). Failed mutations toast the title; queries show errors in place; `meta: { toast: false }` when the screen shows the error itself.
+- Retries: network, 5xx, 429, `token_expired` only (twice, with backoff). POSTs are safe to retry because of the idempotency key.
 - Sign-out goes to sign-in; an ended session goes to sign-in and back (`?next=`, in-app paths only).
 
 ## Layout

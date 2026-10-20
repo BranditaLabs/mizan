@@ -1,4 +1,4 @@
-import { COUNTRY_CODES } from "@mizan/shared";
+import { COUNTRY_CODES, MEMBER_ROLES } from "@mizan/shared";
 import { z } from "zod";
 
 export const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
@@ -13,18 +13,22 @@ export const CreateTenantSchema = z.strictObject({
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantSchema>;
 
-export interface TenantView {
-  id: string;
-  name: string;
-  slug: string;
-  country: string;
-  baseCurrency: string;
-  timezone: string;
-  locale: string;
-  plan: string;
-  status: string;
-  settings: Record<string, unknown>;
-  createdAt: string;
+export const TENANT_STATUSES = ["trial", "active", "suspended", "deleted"] as const;
+export const TENANT_PLANS = ["free", "growth", "scale", "enterprise"] as const;
+
+export const TenantViewSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  slug: z.string(),
+  country: z.string().describe("ISO 3166-1 alpha-2"),
+  baseCurrency: z.string().describe("ISO 4217"),
+  timezone: z.string(),
+  locale: z.string(),
+  plan: z.enum(TENANT_PLANS),
+  status: z.enum(TENANT_STATUSES),
+  settings: z.record(z.string(), z.unknown()),
+  createdAt: z.iso.datetime(),
   /** The caller's role in this store. */
-  role: string;
-}
+  role: z.enum(MEMBER_ROLES).describe("The caller's role in this store"),
+});
+export type TenantView = z.infer<typeof TenantViewSchema>;

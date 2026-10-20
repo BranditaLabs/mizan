@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { agentIn, confirmEmail, newEmail, newPhone, PASSWORD, signInWithPhone, smsCode, smsCount, storeWithInvites } from "./stack";
+import { agentIn, confirmEmail, mizan, newEmail, newPhone, PASSWORD, signInWithPhone, smsCode, smsCount, storeWithInvites } from "./stack";
 
 /**
  * E4-2 journeys on the Firebase Auth emulator and the real API (AUTH_REQUIRE_MFA=true, as in
@@ -120,4 +120,20 @@ test("sign-in never redirects to another site", async ({ page }) => {
   await page.goto("/en/sign-in?next=//evil.example/x");
   await signInWithPhone(page, phone, "en");
   await expect(page).toHaveURL(/localhost:3100\/en$/);
+});
+
+test("a failed action shows the API's own words: joining a revoked invitation (Arabic)", async ({ page }) => {
+  const phone = newPhone();
+  const { owner, storeId, invitations } = await storeWithInvites("متجر الدلتا", [{ phone: phone.e164, role: "agent" }]);
+  await page.goto("/ar/sign-in");
+  await signInWithPhone(page, phone, "ar");
+  await expect(page).toHaveURL(/\/ar\/welcome$/);
+  await expect(page.getByText("متجر الدلتا")).toBeVisible();
+
+  // The owner takes the invitation back while the agent is looking at it.
+  await mizan(owner, "DELETE", `/invitations/${invitations[0]}`, undefined, storeId);
+  await page.getByRole("button", { name: "انضم" }).click();
+  // The API's title, in Egyptian Arabic, in a toast; the list refreshes and the invitation is gone.
+  await expect(page.locator(".mz-toast")).toContainText("الدعوة مش موجودة أو انتهت");
+  await expect(page.getByText("متجر الدلتا")).toBeHidden();
 });

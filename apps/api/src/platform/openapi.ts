@@ -1,9 +1,10 @@
 import type { INestApplication } from "@nestjs/common";
 import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from "@nestjs/swagger";
 import { MoneySchema } from "@mizan/shared";
-import { z } from "zod";
+import type { z } from "zod";
 import { APP_VERSION } from "../version.js";
-import { ProblemDetailsSchema } from "./http/problem.js";
+import { registeredSchemas, toJsonSchema } from "./http/api-schema.js";
+import { PROBLEM_CONTENT_TYPE, ProblemDetailsSchema } from "./http/problem.js";
 
 /** Shared zod schemas published as reusable OpenAPI components. Modules add theirs here. */
 const COMPONENT_SCHEMAS: Record<string, z.ZodType> = {
@@ -27,10 +28,19 @@ export function buildOpenApi(app: INestApplication): OpenAPIObject {
   const doc = SwaggerModule.createDocument(app, config);
   doc.components ??= {};
   doc.components.schemas ??= {};
-  for (const [name, schema] of Object.entries(COMPONENT_SCHEMAS)) {
-    const { $schema: _ignored, ...json } = z.toJSONSchema(schema, { target: "openapi-3.0" }) as Record<string, unknown>;
-    doc.components.schemas[name] = json;
+  for (const [name, schema] of Object.entries(COMPONENT_SCHEMAS)) doc.components.schemas[name] = toJsonSchema(schema, "output");
+  Object.assign(doc.components.schemas, registeredSchemas());
+
+  // Every error is a problem (docs/05 §1): a `default` response types it for the generated client.
+  const problem = { description: "Problem (RFC 9457) with a stable `code`", content: { [PROBLEM_CONTENT_TYPE]: { schema: { $ref: "#/components/schemas/ProblemDetails" } } } };
+  for (const [path, item] of Object.entries(doc.paths)) {
+    for (const op of Object.values(item) as Array<{ responses?: Record<string, unknown>; security?: unknown[] }>) {
+      if (!op || typeof op !== "object" || !("responses" in op)) continue;
+      op.responses = { ...op.responses, default: problem };
+      if (!path.startsWith("/v1/")) op.security = []; // probes are public
+    }
   }
+  doc.components.schemas = Object.fromEntries(Object.entries(doc.components.schemas).sort(([a], [b]) => a.localeCompare(b)));
   return doc;
 }
 

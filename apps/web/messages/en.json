@@ -54,7 +54,7 @@
     "agent": "Confirmation agent",
     "warehouse": "Warehouse",
     "finance": "Finance",
-    "viewer": "Viewer"
+    "media_buyer": "Media buyer"
   },
   "countries": {
     "EG": "Egypt",
@@ -375,5 +375,9 @@
       "risk": "Risk checked",
       "created": "Order placed on Shopify"
     }
+  },
+  "problems": {
+    "network": "No connection to the server. Check the internet and try again.",
+    "generic": "Something went wrong and we couldn't finish. Try again."
   }
 }

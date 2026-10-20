@@ -1,6 +1,7 @@
 "use client";
 
 import { COUNTRY_CODES } from "@mizan/shared";
+import { useMutation } from "@tanstack/react-query";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useId, useState, type FormEvent } from "react";
 import { Bdi } from "@/components/Bdi";
@@ -8,10 +9,8 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { useRouter } from "@/i18n/navigation";
-import { api, ApiError, type MyInvitation } from "@/lib/api";
+import { ApiError, idempotency, ok, type MyInvitation, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-
-interface CreatedTenant { id: string }
 
 /**
  * After sign-in without a store: join a store you were invited to (the API matches the invitation
@@ -25,18 +24,13 @@ export function Welcome() {
   const format = useFormatter();
   const locale = useLocale();
   const router = useRouter();
-  const { user, me, refreshMe, selectStore, signOut } = useSession();
+  const { user, me, api, refreshMe, selectStore, signOut } = useSession();
   const countryId = useId();
 
   const [name, setName] = useState("");
-  const [country, setCountry] = useState<string>("EG");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<"tenantLimit" | "generic" | null>(null);
-  // One key per attempt: a retried click after a timeout never creates two stores.
+  const [country, setCountry] = useState<Schemas["CreateTenant"]["country"]>("EG");
+  // One key per attempt: a retried create (network, 5xx) never makes two stores.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
-
-  if (!user || !me) return null;
-  const who = me.user.email ?? me.user.phone ?? "";
 
   async function open(tenantId: string) {
     await refreshMe();
@@ -44,33 +38,27 @@ export function Welcome() {
     router.replace("/");
   }
 
-  const accept = async (inv: MyInvitation) => {
-    setBusy(inv.id);
-    setError(null);
-    try {
-      const r = await api<{ tenantId: string }>(user, `/invitations/${inv.id}/accept`, { method: "POST", locale });
-      await open(r.tenantId);
-    } catch {
-      setError("generic");
-      await refreshMe();
-    } finally {
-      setBusy(null);
-    }
-  };
+  const accept = useMutation({
+    mutationFn: (inv: MyInvitation) => ok(api.POST("/v1/invitations/{id}/accept", { params: { path: { id: inv.id } } })),
+    onSuccess: (r) => open(r.tenantId),
+    onError: () => void refreshMe(), // gone or expired: the list updates
+  });
+  const create = useMutation({
+    mutationFn: () => ok(api.POST("/v1/tenants", { body: { name: name.trim(), country, language: locale === "en" ? "en" : "ar" }, headers: idempotency(idempotencyKey) })),
+    onSuccess: (tenant) => open(tenant.id),
+    // A refused create (4xx) is final for this key; the next try is a new attempt.
+    onError: (err) => { if (err instanceof ApiError && err.status >= 400 && err.status < 500) setIdempotencyKey(crypto.randomUUID()); },
+    meta: { toast: false }, // shown in the form
+  });
+  const busy = accept.isPending ? accept.variables?.id ?? null : create.isPending ? "create" : null;
+  const createError = create.error instanceof ApiError && create.error.code === "tenant_limit_reached" ? "tenantLimit" : create.error ? "generic" : null;
 
-  const create = async (e: FormEvent) => {
+  if (!user || !me) return null;
+  const who = me.user.email ?? me.user.phone ?? "";
+
+  const onCreate = (e: FormEvent) => {
     e.preventDefault();
-    setBusy("create");
-    setError(null);
-    try {
-      const tenant = await api<CreatedTenant>(user, "/tenants", { method: "POST", locale, idempotencyKey, body: { name: name.trim(), country, language: locale } });
-      await open(tenant.id);
-    } catch (err) {
-      setError(err instanceof ApiError && err.code === "tenant_limit_reached" ? "tenantLimit" : "generic");
-      if (err instanceof ApiError && err.status >= 400 && err.status < 500) setIdempotencyKey(crypto.randomUUID());
-    } finally {
-      setBusy(null);
-    }
+    create.mutate();
   };
 
   return (
@@ -94,7 +82,7 @@ export function Welcome() {
                     {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium" }) })}
                   </p>
                 </div>
-                <Button variant="secondary" busy={busy === inv.id} disabled={busy !== null} onClick={() => void accept(inv)}>{t("invitations.accept")}</Button>
+                <Button variant="secondary" busy={busy === inv.id} disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>
               </li>
             ))}
           </ul>
@@ -103,18 +91,18 @@ export function Welcome() {
 
       <section className="rounded-lg border border-line bg-surface p-5" aria-labelledby="create">
         <h2 id="create" className="text-heading-sm">{t("create.title")}</h2>
-        <form onSubmit={create} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={onCreate} className="mt-4 flex flex-col gap-4">
           <Field label={t("create.name")} required minLength={2} maxLength={80} name="store" autoComplete="organization"
             value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor={countryId} className="text-label text-text">{t("create.country")}</label>
-            <select id={countryId} value={country} onChange={(e) => setCountry(e.target.value)} aria-describedby={`${countryId}-hint`}
+            <select id={countryId} value={country} onChange={(e) => setCountry(e.target.value as typeof country)} aria-describedby={`${countryId}-hint`}
               className="h-9 rounded-sm border border-line-strong bg-surface px-3 text-body text-text hover:border-text-3 focus-visible:border-focus focus-visible:ring-1 focus-visible:ring-focus">
               {COUNTRY_CODES.map((c) => <option key={c} value={c}>{tc(c)}</option>)}
             </select>
             <p id={`${countryId}-hint`} className="text-caption text-text-3">{t("create.countryHint")}</p>
           </div>
-          {error ? <Alert tone="danger">{t(`errors.${error}`)}</Alert> : null}
+          {createError ? <Alert tone="danger">{t(`errors.${createError}`)}</Alert> : null}
           <Button type="submit" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2}>{t("create.submit")}</Button>
         </form>
       </section>
