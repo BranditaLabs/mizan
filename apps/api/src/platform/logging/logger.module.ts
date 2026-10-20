@@ -37,7 +37,7 @@ export function pinoOptions(config: AppConfig): LoggerOptions {
     serializers: {
       err: (err: unknown) => redactDeep(err),
     },
-    ...(config.NODE_ENV === "development"
+    ...((config.LOG_FORMAT ?? (config.NODE_ENV === "development" ? "pretty" : "json")) === "pretty"
       ? { transport: { target: "pino-pretty", options: { singleLine: true, messageKey: "message" } } }
       : {}),
   };

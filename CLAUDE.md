@@ -51,6 +51,7 @@ npm run build                # shared → dist, api → dist (CI runs it before 
 npm run dev -w @mizan/api    # API on :8080 with reload (cp apps/api/.env.example apps/api/.env first); in-memory PGlite DB
 npm run codegen -w @mizan/db # after adding a migration: regenerate packages/db/src/schema.ts
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
+docker compose up --build   # prod-like stack: Postgres 16, migrations, API :8080, worker :8081 (deploy/compose/smoke.sh checks it)
 npm test -w @mizan/engine   # one package (or -w @mizan/db, -w @mizan/shared)
 ```
 

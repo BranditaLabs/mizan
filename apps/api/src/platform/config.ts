@@ -18,6 +18,8 @@ export const ConfigSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number({ error: "must be a number" }).int().min(1).max(65535).default(8080),
   LOG_LEVEL: z.enum(LOG_LEVELS, { error: `must be one of ${LOG_LEVELS.join(", ")}` }).default("info"),
+  /** Unset = pretty in development (needs the pino-pretty dev dependency), JSON elsewhere. The image always logs JSON. */
+  LOG_FORMAT: z.enum(["json", "pretty"], { error: "must be json or pretty" }).optional(),
 
   PUBLIC_URL: url,
   WEB_URL: url,

@@ -40,6 +40,29 @@ jobs:
       # Engine (incl. chaos suite), db (PGlite + real Postgres), shared and api tests
       - run: npm test
 
+  image:
+    name: Production image smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: mizan-api:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start stack (Postgres, migrations, API, worker)
+        run: docker compose -p mizan up -d --no-build
+      - name: Smoke test
+        run: deploy/compose/smoke.sh mizan
+      - name: Stop stack
+        if: always()
+        run: docker compose -p mizan down -v
+
   secrets-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest

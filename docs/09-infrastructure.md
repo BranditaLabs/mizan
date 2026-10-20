@@ -27,6 +27,26 @@ Each env is a separate Google Cloud project (`mizan-staging`, `mizan-prod`) in t
 
 Infrastructure as code: Terraform in `infra/` (create in backlog E1).
 
+### Container image (✅ H-10)
+
+One image for API, worker and migrations (`Dockerfile` at the repo root, ADR-0003):
+
+| Stage | Base | Does |
+| --- | --- | --- |
+| `build` | `node:22.22.0-bookworm-slim` | `npm ci` + `npm run build` for every workspace |
+| `prod-deps` | same | `npm ci --omit=dev -w @mizan/api` (the API's runtime dependencies and the workspace packages it links) |
+| `runtime` | `gcr.io/distroless/nodejs22-debian12:nonroot` | `dist/` + migrations + production `node_modules`; no shell, no npm; uid 65532; code owned by root (read-only to the process) |
+
+| Run | Command (node is the entrypoint) |
+| --- | --- |
+| API (Cloud Run `api`) | default: `apps/api/dist/main.js` |
+| Worker (Cloud Run `worker`) | `apps/api/dist/worker.js`, listens on `PORT` for `/health` and `/metrics` |
+| Migrations (Cloud Run job, before deploy) | `packages/db/dist/cli.js migrate` with `DATABASE_URL_MIGRATOR` |
+
+The image sets `NODE_ENV=production` and `LOG_FORMAT=json`. Keep the Node version of both bases in step (Renovate groups them). Behind a TLS-intercepting proxy, build with `--secret id=ca,src=<ca.crt>`; registries that rate-limit Docker Hub can be swapped with `--build-arg NODE_IMAGE=mirror.gcr.io/library/node:22.22.0-bookworm-slim`.
+
+**Prod-like local stack:** `docker compose up --build` runs PostgreSQL 16 (roles from `deploy/compose/initdb.sql`: the API logs in as `mizan_api`, member of `mizan_app` and `mizan_worker`, never the owner), the migration job, the API on :8080 and the worker on :8081, read-only root filesystem, all capabilities dropped. `deploy/compose/smoke.sh` checks readiness, nonroot user, auth on `/v1` and `/metrics`, metrics on both processes, JSON logs and a clean SIGTERM exit; CI runs it on every PR (job `image`).
+
 ## 3. Configuration
 
 All config through environment variables, validated at startup with zod (`apps/api/src/platform/config.ts`, ✅ built in E1-3). An invalid environment exits with code 1 and one line per bad variable (names and reasons, never values). `apps/api/.env.example` lists what the API reads today; the root `.env.example` is for the standalone engine only. Groups (target):
@@ -40,7 +60,7 @@ SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
 PAYMOB_* (platform-level config only; merchant keys live in the secrets table)
 BOSTA_BASE_URL, BOSTA_TRACKING_URL_TEMPLATE, WORKER_IN_PROCESS (dev only)
 META_APP_ID, META_APP_SECRET, WHATSAPP_VERIFY_TOKEN
-SENTRY_DSN, LOG_LEVEL
+SENTRY_DSN, LOG_LEVEL, LOG_FORMAT
 ```
 
 Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table, never in env.
@@ -51,7 +71,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 
 | Workflow | Trigger | Steps |
 | --- | --- | --- |
-| `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → tests for all workspaces (engine incl. chaos suite, db schema + RLS). Job `secrets-scan`: gitleaks over full history. Lint and build steps are added as apps land. |
+| `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `secrets-scan`: gitleaks over full history. |
 | `deploy-staging.yml` | Merge to `main` | build images → push to Artifact Registry → run migrations (migrator role) → deploy Cloud Run → smoke test |
 | `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
@@ -61,7 +81,7 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 **Branch protection for `main`** (set by a repo admin in GitHub → Settings → Branches, or as a ruleset):
 
 - Require a pull request before merging, 1 approval, dismiss stale approvals on new commits.
-- Required status checks: `Typecheck and test`, `Secret scan (gitleaks)`; require branches to be up to date.
+- Required status checks: `Typecheck and test`, `Production image smoke test`, `Secret scan (gitleaks)`; require branches to be up to date.
 - Allow squash merge only; block force pushes and deletion.
 
 **Dependency updates:** Renovate (`renovate.json`) — weekly (Monday before 09:00 Cairo), pins exact versions, groups non-major dev deps and GitHub Actions, pins action digests, tracks the gitleaks version in `ci.yml`. Requires the Renovate GitHub App installed on the repo.

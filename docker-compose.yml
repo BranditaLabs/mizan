@@ -1,0 +1,68 @@
+# Prod-like local stack: PostgreSQL 16, migrations, API and worker from the production image.
+#   docker compose up --build        then  curl localhost:8080/health/ready
+# Passwords and keys here are local placeholders, never used outside this stack.
+x-app: &app
+  image: mizan-api:local
+  environment: &env
+    NODE_ENV: development          # production also demands Firebase and Cloud KMS
+    LOG_FORMAT: json
+    LOG_LEVEL: info
+    PUBLIC_URL: http://localhost:8080
+    WEB_URL: http://localhost:3000
+    DATABASE_URL: postgres://mizan_api:mizan_api@db:5432/mizan
+    DATABASE_POOL_MAX: "20"
+    WORKER_IN_PROCESS: "false"
+    SECRETS_DEV_KEY: ${SECRETS_DEV_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+    METRICS_TOKEN: ${METRICS_TOKEN:-local-metrics-token-change-me}
+  read_only: true
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  restart: unless-stopped
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+
+services:
+  db:
+    image: ${POSTGRES_IMAGE:-postgres:16.10-bookworm}
+    environment:
+      POSTGRES_DB: mizan
+      POSTGRES_PASSWORD: postgres
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=256MB"]
+    volumes:
+      - ./deploy/compose/initdb.sql:/docker-entrypoint-initdb.d/00-roles.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    ports: ["${DB_PORT:-5432}:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "mizan"]
+      interval: 2s
+      retries: 30
+
+  migrate:
+    image: mizan-api:local
+    build:
+      context: .
+      args: { NODE_IMAGE: "${NODE_IMAGE:-node:22.22.0-bookworm-slim}" }
+    command: ["packages/db/dist/cli.js", "migrate"]
+    environment:
+      DATABASE_URL_MIGRATOR: postgres://postgres:postgres@db:5432/mizan
+    depends_on:
+      db: { condition: service_healthy }
+
+  api:
+    <<: *app
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:8080/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 5s
+      retries: 20
+
+  worker:
+    <<: *app
+    command: ["apps/api/dist/worker.js"]
+    environment:
+      <<: *env
+      PORT: "8081"
+    ports: ["8081:8081"]
+
+volumes:
+  pgdata:

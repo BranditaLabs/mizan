@@ -10,6 +10,12 @@ import { EngineRegistry } from "../../integrations/engine-registry.js";
  * (/v1/members/:userId), never raw paths; nothing is labelled per tenant.
  * Queue gauges are computed at scrape time (one cheap indexed query each).
  */
+interface QueueSnapshot {
+  jobs: (readonly [string, number])[];
+  oldestDueS: number;
+  events: { pending: number; dead: number; oldestS: number };
+}
+
 @Injectable()
 export class MetricsService {
   readonly registry = new Registry();
@@ -41,36 +47,8 @@ export class MetricsService {
   ) {
     collectDefaultMetrics({ register: this.registry, prefix: "mizan_" });
     const self = this;
-    new Gauge({
-      name: "mizan_outbox_jobs", help: "Engine outbox jobs by status (pending, running, dead)", labelNames: ["status"] as const, registers: [this.registry],
-      async collect() {
-        const rows = await self.worker(sql<{ status: string; n: string }>`
-          SELECT status, count(*)::text AS n FROM mz_outbox WHERE status <> 'done' GROUP BY status`);
-        this.reset();
-        for (const r of rows) this.set({ status: r.status }, Number(r.n));
-      },
-    });
-    new Gauge({
-      name: "mizan_outbox_oldest_due_seconds", help: "Age of the oldest due engine job (0 when none)", registers: [this.registry],
-      async collect() {
-        const [r] = await self.worker(sql<{ due: string | null }>`
-          SELECT min(next_attempt_at)::text AS due FROM mz_outbox WHERE status IN ('pending','running') AND next_attempt_at <= ${Date.now()}`);
-        this.set(r?.due ? Math.max(0, (Date.now() - Number(r.due)) / 1000) : 0);
-      },
-    });
-    new Gauge({
-      name: "mizan_domain_events", help: "Domain events not yet dispatched, and dead", labelNames: ["state"] as const, registers: [this.registry],
-      async collect() {
-        const [r] = await self.worker(sql<{ pending: string; dead: string; oldest: Date | null }>`
-          SELECT count(*) FILTER (WHERE dispatched_at IS NULL AND dead_at IS NULL)::text AS pending,
-                 count(*) FILTER (WHERE dead_at IS NOT NULL)::text AS dead,
-                 min(occurred_at) FILTER (WHERE dispatched_at IS NULL AND dead_at IS NULL) AS oldest
-          FROM domain_events WHERE dispatched_at IS NULL`);
-        this.set({ state: "pending" }, Number(r?.pending ?? 0));
-        this.set({ state: "dead" }, Number(r?.dead ?? 0));
-        this.set({ state: "oldest_pending_seconds" }, r?.oldest ? (Date.now() - new Date(r.oldest).getTime()) / 1000 : 0);
-      },
-    });
+    // Sampled first: prom-client runs every collect() at once, and the queue queries below
+    // would otherwise show up as clients waiting for a connection.
     new Gauge({
       name: "mizan_db_pool_connections", help: "Database pool connections", labelNames: ["state"] as const, registers: [this.registry],
       collect() {
@@ -79,6 +57,30 @@ export class MetricsService {
         this.set({ state: "total" }, s.total);
         this.set({ state: "idle" }, s.idle);
         this.set({ state: "waiting" }, s.waiting);
+      },
+    });
+    new Gauge({
+      name: "mizan_outbox_jobs", help: "Engine outbox jobs by status (pending, running, dead)", labelNames: ["status"] as const, registers: [this.registry],
+      async collect() {
+        const q = await self.queues();
+        // Always all three, so an alert never sits on an absent series.
+        const counts = new Map(q.jobs);
+        for (const status of ["pending", "running", "dead"]) this.set({ status }, counts.get(status) ?? 0);
+      },
+    });
+    new Gauge({
+      name: "mizan_outbox_oldest_due_seconds", help: "Age of the oldest due engine job (0 when none)", registers: [this.registry],
+      async collect() {
+        this.set((await self.queues()).oldestDueS);
+      },
+    });
+    new Gauge({
+      name: "mizan_domain_events", help: "Domain events not yet dispatched, and dead", labelNames: ["state"] as const, registers: [this.registry],
+      async collect() {
+        const q = await self.queues();
+        this.set({ state: "pending" }, q.events.pending);
+        this.set({ state: "dead" }, q.events.dead);
+        this.set({ state: "oldest_pending_seconds" }, q.events.oldestS);
       },
     });
     new Gauge({
@@ -95,7 +97,32 @@ export class MetricsService {
     });
   }
 
-  private async worker<R>(q: ReturnType<typeof sql<R>>): Promise<R[]> {
-    return (await asWorker(this.db.kysely, (trx) => q.execute(trx))).rows;
+  private inFlight?: Promise<QueueSnapshot>;
+
+  /** One worker transaction (one connection) per scrape: the queue gauges collect together and share it. */
+  private queues(): Promise<QueueSnapshot> {
+    if (this.inFlight) return this.inFlight;
+    const now = Date.now();
+    const value = asWorker(this.db.kysely, async (trx) => {
+      const jobs = await sql<{ status: string; n: string }>`
+        SELECT status, count(*)::text AS n FROM mz_outbox WHERE status <> 'done' GROUP BY status`.execute(trx);
+      const [due] = (await sql<{ due: string | null }>`
+        SELECT min(next_attempt_at)::text AS due FROM mz_outbox WHERE status IN ('pending','running') AND next_attempt_at <= ${now}`.execute(trx)).rows;
+      const [ev] = (await sql<{ pending: string; dead: string; oldest: Date | null }>`
+        SELECT count(*) FILTER (WHERE dead_at IS NULL)::text AS pending,
+               count(*) FILTER (WHERE dead_at IS NOT NULL)::text AS dead,
+               min(occurred_at) FILTER (WHERE dead_at IS NULL) AS oldest
+        FROM domain_events WHERE dispatched_at IS NULL`.execute(trx)).rows;
+      return {
+        jobs: jobs.rows.map((r) => [r.status, Number(r.n)] as const),
+        oldestDueS: due?.due ? Math.max(0, (now - Number(due.due)) / 1000) : 0,
+        events: { pending: Number(ev?.pending ?? 0), dead: Number(ev?.dead ?? 0), oldestS: ev?.oldest ? (now - new Date(ev.oldest).getTime()) / 1000 : 0 },
+      };
+    });
+    this.inFlight = value;
+    const clear = () => { this.inFlight = undefined; };
+    value.then(clear, clear);
+    return value;
   }
+
 }

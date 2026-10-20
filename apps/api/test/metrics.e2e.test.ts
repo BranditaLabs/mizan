@@ -42,6 +42,7 @@ describe("GET /metrics", () => {
   });
 
   it("reports engine queue and event dispatch state", async () => {
+    expect(await scrape()).toMatch(/mizan_outbox_jobs\{status="dead"\} 0/); // present while empty
     const db = app.get(Database);
     await db.kysely.insertInto("tenants").values({ id: T, name: "Q", slug: "q" }).execute();
     const job = (status: string, i: number) => ({
