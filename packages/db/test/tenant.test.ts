@@ -2,7 +2,7 @@ import { sql } from "kysely";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPglite, createPgliteDb, pgliteMigrationClient } from "../src/clients.js";
 import { migrate } from "../src/migrate.js";
-import { InvalidTenantError, setActingUser, withoutTenant, withTenant } from "../src/tenant.js";
+import { asWorker, InvalidTenantError, setActingUser, withoutTenant, withTenant } from "../src/tenant.js";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const B = "bbbbbbbb-0000-4000-8000-000000000002";
@@ -108,5 +108,16 @@ describe("audit_log (migration 0007)", () => {
     await expect(withTenant(db, A, (trx) => trx.updateTable("audit_log").set({ action: "nothing.happened" }).execute())).rejects.toThrow(/permission denied/);
     await expect(withTenant(db, A, (trx) => trx.deleteFrom("audit_log").execute())).rejects.toThrow(/permission denied/);
     await expect(withTenant(db, A, (trx) => trx.insertInto("audit_log").values({ tenant_id: B, actor_type: "user", action: "forged" }).execute())).rejects.toThrow(/row-level security/);
+  });
+});
+
+describe("connection routing (migration 0010)", () => {
+  it("the worker role reads only routing columns of connections, across tenants", async () => {
+    await withTenant(db, A, (trx) => trx.insertInto("connections").values({ tenant_id: A, kind: "store", provider: "shopify", external_account: "a.myshopify.com", secret_ref: "s1", config: JSON.stringify({ k: 1 }) }).execute());
+    const rows = await asWorker(db, (trx) => trx.selectFrom("connections").select(["id", "tenant_id", "provider", "status"]).execute());
+    expect(rows.map((r) => r.tenant_id)).toContain(A);
+    await expect(asWorker(db, (trx) => trx.selectFrom("connections").select(["secret_ref"]).execute())).rejects.toThrow(/permission denied/);
+    await expect(asWorker(db, (trx) => trx.selectFrom("connections").select(["config"]).execute())).rejects.toThrow(/permission denied/);
+    await expect(asWorker(db, (trx) => trx.updateTable("connections").set({ status: "active" }).execute())).rejects.toThrow(/permission denied/);
   });
 });

@@ -13,7 +13,7 @@ export async function createApp(config: AppConfig, options: AppOptions = {}): Pr
   const app = await NestFactory.create<NestExpressApplication>(AppModule.forRoot(config, options), { bufferLogs: true, rawBody: true, bodyParser: false });
   hardenHttp(app, config);
   app.useLogger(app.get(Logger));
-  app.setGlobalPrefix("v1", { exclude: [{ path: "health", method: RequestMethod.GET }, { path: "health/ready", method: RequestMethod.GET }] });
+  app.setGlobalPrefix("v1", { exclude: [{ path: "health", method: RequestMethod.GET }, { path: "health/ready", method: RequestMethod.GET }, { path: "webhooks/*path", method: RequestMethod.POST }] });
   mountOpenApi(app);
   return app;
 }

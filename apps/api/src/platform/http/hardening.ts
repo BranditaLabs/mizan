@@ -2,6 +2,7 @@ import type { Server } from "node:http";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import compression from "compression";
 import helmet from "helmet";
+import { raw } from "express";
 import type { NextFunction, Request, Response } from "express";
 import type { AppConfig } from "../config.js";
 import { PROBLEM_CONTENT_TYPE, problemType } from "./problem.js";
@@ -45,6 +46,8 @@ export function hardenHttp(app: NestExpressApplication, config: AppConfig): void
   });
 
   app.use(compression({ threshold: 1024 }));
+  // Webhooks: exact bytes for signature checks, own size cap; registered first so the JSON parser skips them.
+  app.use("/webhooks", raw({ type: () => true, limit: config.WEBHOOK_MAX_BODY_BYTES }));
   app.useBodyParser("json", { limit: config.MAX_BODY_BYTES });
   app.useBodyParser("urlencoded", { limit: config.MAX_BODY_BYTES, extended: false });
 

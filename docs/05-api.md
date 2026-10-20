@@ -184,6 +184,17 @@ Merchants subscribe to Mizan events (`order.confirmed`, `shipment.delivered` …
 | POST | `/admin/integrations/jobs/{id}/replay` | Replay a dead-lettered job after a fix; `job_not_found` otherwise |
 | POST | `/admin/integrations/cities/resolve` | `{ text, cityId, jobId? }`: teach a city alias (kept on the Bosta connection), replay the stuck job |
 
+### Provider webhooks (✅ H-5)
+
+Outside `/v1`, not in OpenAPI, no user auth: each provider's own verification.
+
+| Method | Path | Verification |
+| --- | --- | --- |
+| POST | `/webhooks/shopify/{connectionId}` | Shopify HMAC (`SHOPIFY_API_SECRET`) over the raw body |
+| POST | `/webhooks/bosta/{connectionId}?token=…` | Per-connection token (Bosta webhooks are unsigned) |
+
+Verify → dedupe → enqueue → 200 (thin webhook, fat fetch). Unknown connection → 404; disconnected → 200 `{ ignored }` so the provider stops retrying. Bodies up to `WEBHOOK_MAX_BODY_BYTES` (5 MiB).
+
 ## 3. OpenAPI
 
 Generate the OpenAPI 3.1 document from NestJS decorators (`@nestjs/swagger`) and zod schemas in `packages/shared`. Publish at `/v1/openapi.json`; the web app generates its typed client from it.
