@@ -120,3 +120,25 @@ export async function signInWithPhone(page: Page, phone: { national: string; e16
   await page.getByLabel(L.code, { exact: true }).fill(await smsCode({ phone: phone.e164 }, seen));
   await page.getByRole("button", { name: L.verify, exact: true }).click();
 }
+
+/** An owner (two-step on) with a store, ready to sign in through the UI. */
+export async function ownerWithStore(name: string) {
+  const email = newEmail("owner");
+  const phone = newPhone();
+  const token = await ownerWithTwoStep(email, phone.e164);
+  const store = await mizan<{ id: string }>(token, "POST", "/tenants", { name, country: "EG" });
+  return { email, phone, token, storeId: store.id };
+}
+
+/** Sign in through the UI with email, password and the SMS second step. */
+export async function signInOwner(page: Page, owner: { email: string; phone: { e164: string } }, locale: "ar" | "en" = "en") {
+  const L = locale === "ar"
+    ? { email: "الإيميل", password: "كلمة السر", submit: "ادخل", code: "الكود", verify: "تأكيد ودخول" }
+    : { email: "Email", password: "Password", submit: "Sign in", code: "Code", verify: "Verify and sign in" };
+  await page.getByLabel(L.email, { exact: true }).fill(owner.email);
+  await page.getByLabel(L.password, { exact: true }).fill(PASSWORD);
+  const seen = await smsCount(owner.phone.e164);
+  await page.getByRole("button", { name: L.submit, exact: true }).click();
+  await page.getByLabel(L.code, { exact: true }).fill(await smsCode({ phone: owner.phone.e164 }, seen));
+  await page.getByRole("button", { name: L.verify }).click();
+}

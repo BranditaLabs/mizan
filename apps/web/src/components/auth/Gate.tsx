@@ -34,7 +34,8 @@ function useSignInRedirect(active: boolean) {
   const pathname = usePathname();
   const { takeSignOutTarget } = useSession();
   useEffect(() => {
-    if (active) router.replace(takeSignOutTarget() ?? `/sign-in?next=${encodeURIComponent(pathname)}`);
+    // Keep the query (the Shopify callback's one-time install token must survive a sign-in).
+    if (active) router.replace(takeSignOutTarget() ?? `/sign-in?next=${encodeURIComponent(pathname + window.location.search)}`);
   }, [active, pathname, router, takeSignOutTarget]);
 }
 

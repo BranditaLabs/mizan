@@ -38,3 +38,11 @@ export function formatRelative(date: Date | string, locale: string, now = Date.n
   if (abs < 86_400) return rtf.format(Math.round(s / 3600), "hour");
   return rtf.format(Math.round(s / 86_400), "day");
 }
+
+/** "14 minutes" / "3.5 hours" / "2 days" (time-to-first-value, durations people read). */
+export function formatDuration(seconds: number, locale: string, digits: Digits = "latn"): string {
+  const [value, unit] = seconds < 3600 ? [Math.max(1, Math.round(seconds / 60)), "minute"] as const
+    : seconds < 86_400 ? [Math.round((seconds / 3600) * 10) / 10, "hour"] as const
+    : [Math.round((seconds / 86_400) * 10) / 10, "day"] as const;
+  return new Intl.NumberFormat(tag(locale), { style: "unit", unit, unitDisplay: "long", numberingSystem: digits, maximumFractionDigits: 1 }).format(value);
+}

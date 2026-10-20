@@ -379,5 +379,99 @@
   "problems": {
     "network": "No connection to the server. Check the internet and try again.",
     "generic": "Something went wrong and we couldn't finish. Try again."
+  },
+  "onboarding": {
+    "title": "Set up your store",
+    "subtitle": "Four steps to see your orders and your real profit in Mizan.",
+    "progress": "{done} of {total} done",
+    "stepsLabel": "Setup steps",
+    "ready": {
+      "title": "Your store is ready.",
+      "body": "Orders arrive on their own from now on.",
+      "cta": "Go to home"
+    },
+    "status": {
+      "todo": "To do",
+      "done": "Done",
+      "checking": "Checking",
+      "needs_attention": "Needs attention",
+      "skipped": "Skipped",
+      "waiting": "Waiting",
+      "locked": "After the store"
+    },
+    "store": {
+      "title": "Connect your Shopify store",
+      "body": "Mizan imports the last 60 days of orders and all your products, then receives every new order by itself.",
+      "field": "Store address",
+      "hint": "Write it as it appears in Shopify, like <n>nile-abayas.myshopify.com</n>.",
+      "submit": "Connect Shopify",
+      "connected": "Connected to <n>{shop}</n>.",
+      "importing": "Importing: {orders} orders and {products} products so far…",
+      "imported": "Imported {orders} orders and {products} products.",
+      "invalid": "That address doesn't look like a Shopify store. It ends with .myshopify.com."
+    },
+    "courier": {
+      "title": "Connect your courier",
+      "body": "With Bosta connected, you ship confirmed orders in one click and their status updates by itself.",
+      "field": "Bosta API key",
+      "hint": "In Bosta: Settings → API integration → create a key, then paste it here.",
+      "submit": "Connect Bosta",
+      "checking": "Checking the key with Bosta…",
+      "done": "Bosta is connected.",
+      "replace": "Replace the key",
+      "refused": "Bosta refused this key. Copy it again from Bosta's dashboard and paste it here.",
+      "noPermission": "This key can't create or read deliveries. Create a key with full access in Bosta.",
+      "skip": "Skip: I use another courier",
+      "skipped": "Skipped. You can connect Bosta any time.",
+      "undoSkip": "Connect Bosta now",
+      "needsStore": "Connect your store first."
+    },
+    "costs": {
+      "title": "Enter your product costs",
+      "body": "The cost of each product is what turns sales into real profit. Enter what one piece costs you.",
+      "count": "{missing} of {total} products have no cost yet.",
+      "none": "Your products show here after the store import.",
+      "allSet": "Every product has a cost.",
+      "cost": "Cost",
+      "price": "Price",
+      "save": "Save costs",
+      "saved": "{count, plural, one {Cost saved for # product} other {Costs saved for # products}}",
+      "invalid": "Write the cost as a number, like 250 or 250.50.",
+      "skip": "Skip for now",
+      "skipped": "Skipped. Profit uses a cost of zero until you enter it.",
+      "undoSkip": "Enter costs now",
+      "more": "Show more products"
+    },
+    "firstOrder": {
+      "title": "Your first order",
+      "waiting": "Waiting for your first order",
+      "waitingBody": "As soon as an order reaches Mizan it shows here. New Shopify orders arrive within a minute.",
+      "done": "Your first order arrived",
+      "order": "Order <n>{number}</n> · <m>{total}</m>",
+      "ttfv": "From signing up to your first order: {duration}."
+    },
+    "card": {
+      "title": "Finish setting up Mizan",
+      "body": "{done} of {total} steps done. Next: {next}.",
+      "cta": "Continue setup",
+      "hide": "Hide"
+    },
+    "connect": {
+      "title": "Connecting your Shopify store",
+      "working": "Finishing the connection…",
+      "done": "Shopify store connected",
+      "back": "Back to setup",
+      "errors": {
+        "install_cancelled": "The connection was cancelled in Shopify. Try again when you're ready.",
+        "invalid_signature": "Shopify's answer couldn't be verified. Start again from Mizan.",
+        "invalid_state": "This link expired. Start the connection again from Mizan.",
+        "invalid_shop": "That isn't a Shopify store address.",
+        "scopes_missing": "Mizan didn't get all the permissions it needs. Approve every permission in Shopify.",
+        "shopify_unavailable": "Shopify isn't answering right now. Try again in a few minutes.",
+        "shopify_not_configured": "Shopify isn't set up on this server yet.",
+        "install_failed": "The connection didn't finish. Try again.",
+        "missing": "This page needs a link from Shopify. Start the connection from Mizan."
+      }
+    }
   }
 }

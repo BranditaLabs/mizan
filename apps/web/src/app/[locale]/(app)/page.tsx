@@ -1,6 +1,9 @@
 import { Icon } from "@mizan/design-system/icons/react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Bdi } from "@/components/Bdi";
+import { buttonClass } from "@/components/ui/Button";
+import { Link } from "@/i18n/navigation";
+import { SetupCard } from "@/components/onboarding/SetupCard";
 import { StoreName } from "@/components/StoreName";
 import { formatMoney } from "@/lib/format";
 
@@ -14,6 +17,7 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
       <StoreName className="text-overline uppercase text-text-3" />
       <h1 className="mt-1 font-display text-heading-lg">{t("title")}</h1>
       <p className="mt-1.5 max-w-[62ch] text-body text-text-2">{t("subtitle")}</p>
+      <SetupCard />
 
       {/* Empty state (components.md §6): icon, one-line title, one sentence, one action. */}
       <section className="mt-6 rounded-lg border border-line bg-surface p-6" aria-labelledby="empty-title">
@@ -28,10 +32,10 @@ export default async function Home({ params }: { params: Promise<{ locale: strin
             money: (chunks) => <Bdi>{chunks}</Bdi>,
           })}
         </p>
-        <span className="mt-4 inline-flex h-9 items-center gap-2 rounded-sm bg-primary px-3.5 text-label text-on-primary" aria-disabled="true">
+        <Link href="/onboarding" className={buttonClass("primary", "md", "mt-4")}>
           {t("empty.cta")}
           <Icon name="forward" size={16} />
-        </span>
+        </Link>
       </section>
     </div>
   );
