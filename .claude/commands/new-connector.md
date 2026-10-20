@@ -1,5 +1,5 @@
 ---
-description: Build a new storefront or courier connector in packages/engine, with a fake server and chaos tests
+description: Build a new storefront, marketplace, courier, gateway or messaging connector in packages/engine, with a fake server and chaos tests
 argument-hint: <provider name> (e.g. easyorders, jt-express)
 ---
 
@@ -12,7 +12,9 @@ Before writing code:
 Then, in this order:
 1. `client` — every call through `send()` (`src/resilience/http.ts`) with its own `CircuitBreaker` and `AdaptiveBucket`; classify body-level errors in `inspect` into the `ErrorKind` taxonomy.
 2. `mapper` — provider ↔ canonical model via `Resolver` candidate paths only. Required fields use `{ required: true }`. Never read a payload field directly.
-3. Couriers: a label table for `StatusMapper`; **leave numeric codes empty** unless confirmed by the provider's docs.
+3. Couriers: a label table for `StatusMapper`; **leave numeric codes empty** unless confirmed by the provider's docs. The COD amount always comes from `cashToCollect(order)`, never from the order total.
+   Storefronts and marketplaces: fill `paymentMode`, `paymentStatus`, `gateways`, `received`, `outstanding`, `refunded` on the canonical order; add detection tests for every payment method the platform supports.
+   Gateways and BNPL: map transactions to ledger lines (`sale`, `capture`, `refund`, `chargeback`) keyed by the provider's transaction id; read payout reports for M8.
 4. Writes safe to repeat: provider idempotency key if it exists, otherwise look up before create (see `bosta/connector.ts` `createShipmentOnce`).
 5. Webhooks: verify signature (or per-connection token if unsigned); thin webhook, fat fetch.
 6. `test/fakes/$ARGUMENTS.ts` — fake server reproducing real quirks: throttling, 5xx, hangs, dropped responses, duplicated/out-of-order webhooks, at least one alternative payload shape.

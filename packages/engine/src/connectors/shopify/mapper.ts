@@ -1,4 +1,5 @@
-import type { CanonicalOrder, CanonicalProduct, Money, PaymentMode } from "../../core/model.js";
+import type { CanonicalOrder, CanonicalProduct, Money, PaymentMode, PaymentStatus } from "../../core/model.js";
+import { toMinor } from "../../core/payments.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
 
@@ -8,12 +9,58 @@ import { Resolver } from "../../adapt/resolve.js";
  * instead of broken orders.
  */
 
-const COD_PATTERNS = [/cash on delivery/i, /\bcod\b/i, /الدفع عند الاستلام/, /كاش/];
+/**
+ * Payment method detection from gateway names. Shopify reports manual methods
+ * by the name the merchant typed, so patterns cover English and Arabic.
+ * Merchants can extend any list through connector options.
+ */
+export const PAYMENT_PATTERNS = {
+  cod: [/cash on delivery/i, /\bcod\b/i, /الدفع عند الاستلام/, /كاش/, /cash/i],
+  bnpl: [/tabby/i, /tamara/i, /\bvalu\b/i, /sympl/i, /souhoola/i, /aman/i, /postpay/i, /cashew/i, /contact ?pay/i, /تقسيط/],
+  bank: [/bank (deposit|transfer)/i, /instapay/i, /wire/i, /money order/i, /تحويل بنكي/, /إنستاباي|انستاباي/],
+};
 
 export interface MapCtx {
   drift: DriftSink;
   now: () => number;
+  /** Extra COD gateway patterns (kept for backward compatibility). */
   codPatterns?: RegExp[];
+  paymentPatterns?: Partial<Record<keyof typeof PAYMENT_PATTERNS, RegExp[]>>;
+}
+
+const STATUS: Record<string, PaymentStatus> = {
+  PENDING: "unpaid", AUTHORIZED: "authorized", PARTIALLY_PAID: "partially_paid", PAID: "paid",
+  PARTIALLY_REFUNDED: "partially_refunded", REFUNDED: "refunded", VOIDED: "voided", EXPIRED: "failed",
+};
+
+export function detectPayment(gateways: string[], financial: string | undefined, received: Money | undefined, ctx: Pick<MapCtx, "codPatterns" | "paymentPatterns">): { mode: PaymentMode; status: PaymentStatus } {
+  const f = (financial ?? "").toUpperCase();
+  const status: PaymentStatus = STATUS[f] ?? "unknown";
+  const pat = {
+    cod: [...PAYMENT_PATTERNS.cod, ...(ctx.codPatterns ?? []), ...(ctx.paymentPatterns?.cod ?? [])],
+    bnpl: [...PAYMENT_PATTERNS.bnpl, ...(ctx.paymentPatterns?.bnpl ?? [])],
+    bank: [...PAYMENT_PATTERNS.bank, ...(ctx.paymentPatterns?.bank ?? [])],
+  };
+  const is = (list: RegExp[]) => gateways.some((g) => list.some((p) => p.test(String(g))));
+  const hasCod = is(pat.cod);
+  const hasBnpl = is(pat.bnpl);
+  const hasBank = !hasBnpl && is(pat.bank);
+  const hasOnline = gateways.some((g) => ![...pat.cod, ...pat.bnpl, ...pat.bank].some((p) => p.test(String(g))) && !/^manual$/i.test(String(g)));
+  const receivedSome = received ? safeMinor(received) > 0n : f === "PARTIALLY_PAID";
+
+  let mode: PaymentMode;
+  if (hasCod && (receivedSome || hasOnline) && f !== "PAID") mode = "partial"; // deposit online + balance on delivery
+  else if (hasCod) mode = "cod";
+  else if (hasBnpl) mode = "bnpl";
+  else if (hasBank) mode = "bank_transfer";
+  else if (hasOnline || ["PAID", "AUTHORIZED", "PARTIALLY_REFUNDED", "REFUNDED"].includes(f)) mode = "prepaid";
+  else if (f === "PARTIALLY_PAID") mode = "partial";
+  else mode = "unknown"; // never guess: an unknown method could mean cash is owed
+  return { mode, status };
+}
+
+function safeMinor(m: Money): bigint {
+  try { return toMinor(m); } catch { return 0n; }
 }
 
 function money(r: Resolver, field: string, paths: string[], fallbackCurrency: string): Money | undefined {
@@ -29,13 +76,12 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
   const total = money(r, "total", ["totalPriceSet", "currentTotalPriceSet"], currency);
   if (!total) r.any("total", ["totalPriceSet.shopMoney.amount"], { required: true });
 
-  const gateways = r.arr<string>("paymentGatewayNames", ["paymentGatewayNames", "paymentGateways"]);
+  const gateways = r.arr<string>("paymentGatewayNames", ["paymentGatewayNames", "paymentGateways"]).map(String);
   const financial = r.str("financialStatus", ["displayFinancialStatus", "financialStatus"]);
-  const patterns = ctx.codPatterns ?? COD_PATTERNS;
-  let paymentMode: PaymentMode = "unknown";
-  if (gateways.some((g) => patterns.some((p) => p.test(String(g))))) paymentMode = "cod";
-  else if (financial && /^(PAID|PARTIALLY_PAID)$/i.test(financial)) paymentMode = "prepaid";
-  else if (financial && /^PENDING$/i.test(financial)) paymentMode = "cod";
+  const received = money(r, "received", ["totalReceivedSet"], currency);
+  const outstanding = money(r, "outstanding", ["totalOutstandingSet"], currency);
+  const refunded = money(r, "refunded", ["totalRefundedSet"], currency);
+  const { mode: paymentMode, status: paymentStatus } = detectPayment(gateways, financial, received, ctx);
 
   const first = r.str("customer.firstName", ["shippingAddress.firstName", "customer.firstName"]);
   const last = r.str("customer.lastName", ["shippingAddress.lastName", "customer.lastName"]);
@@ -76,7 +122,12 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
     subtotal: money(r, "subtotal", ["subtotalPriceSet"], currency),
     shipping: money(r, "shipping", ["totalShippingPriceSet"], currency),
     paymentMode,
+    paymentStatus,
     financialStatus: financial,
+    gateways,
+    received,
+    outstanding,
+    refunded,
     cancelled: Boolean(r.any("cancelledAt", ["cancelledAt", "cancelled_at"])),
     customer: {
       name: fullName || "Customer",

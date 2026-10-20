@@ -15,13 +15,19 @@ How Mizan gets access to each outside system, what the engine already supports, 
 
 | Connector | Status | Location |
 | --- | --- | --- |
-| Shopify (Admin GraphQL 2026-10) | ✅ Built and tested (orders, products, inventory CAS, fulfil, mark paid, tags, webhooks) | `packages/engine/src/connectors/shopify` |
-| Bosta (v2) | ✅ Built and tested (duplicate-safe create, search, track, cancel, cities, learning status map) | `packages/engine/src/connectors/bosta` |
+| Shopify (Admin GraphQL 2026-10) | ✅ Built and tested (orders with payment mode/status and received, outstanding, refunded amounts; products; inventory CAS; fulfil; mark paid; tags; webhooks) | `packages/engine/src/connectors/shopify` |
+| Bosta (v2) | ✅ Built and tested (duplicate-safe create collecting only what is owed, search, track, cancel, cities, learning status map) | `packages/engine/src/connectors/bosta` |
+| Payment rules for every courier | ✅ Built and tested (`cashToCollect`, exact money, hold unpaid orders) | `packages/engine/src/core/payments.ts` |
 | Shopify OAuth install + GDPR webhooks | ⏳ Backlog E3 | `apps/api/modules/connections` |
 | EasyOrders, WooCommerce, LightFunnels | ⏳ MVP backlog | use `/new-connector` |
 | J&T, Mylerz | ⏳ MVP / V2 | — |
 | WhatsApp Cloud API | ⏳ MVP backlog | — |
+| Paymob (links, refunds, transactions) | ⏳ MVP backlog | — |
 | Meta / TikTok / Snap ads + CAPI | ⏳ V2 | — |
+| Kashier, Fawry, Moyasar, Tap, HyperPay, Checkout.com, Stripe | ⏳ V2 (per market) | — |
+| Noon, Amazon, Jumia | ⏳ V2 | — |
+| Instagram / Messenger, email inbox | ⏳ V2 | — |
+| Zoho Books, Odoo, Daftra | ⏳ V2 | — |
 | Salla, Zid, SMSA, SPL, Aymakan, Tabby, Tamara, ZATCA | ⏳ V2 | — |
 
 ## 3. Storefronts
@@ -90,18 +96,52 @@ Scopes: `read_orders` (+ `read_all_orders` for > 60 days), `read_products`, `wri
 | Snap Marketing + Conversions API | Spend + events | CAPI: org admin generates token in Ads Manager; Marketing API: OAuth | Org admin |
 | Google Ads API | Spend, offline conversions | Since 10 Sep 2026 access tied to a Google Cloud project; brand verification for Basic access | Cloud project, verification |
 
-## 7. Payments (prepaid nudge)
+## 7. Payments, BNPL and banks
 
-Payments always go to the **merchant's own** PSP account; Mizan never holds money (avoids a payment licence — confirm with counsel).
+Full payment model: `docs/12-payments.md`. Payments always go to the **merchant's own** gateway, BNPL or bank account; Mizan never holds money and never sees card data (confirm licensing with counsel per country).
 
 | Provider | Markets | Use | Phase |
 | --- | --- | --- | --- |
-| Paymob | EG, KSA, UAE, OM | Payment links, cards, wallets, Apple Pay | MVP |
-| Tabby | UAE, KSA | BNPL nudge for risky COD | V2 |
-| Tamara | KSA, UAE | BNPL nudge (direct or via gateway) | V2 |
-| InstaPay | EG | Open question: no public merchant API confirmed | V2 |
+| Paymob | EG, KSA, UAE, OM | Checkout payments, payment links, refunds, wallets, Apple Pay | MVP |
+| Kashier, Fawry, Geidea | EG | Payments, reference payments (Fawry), links | V2 |
+| Moyasar, HyperPay, Tap | KSA (Tap also GCC) | mada, Apple Pay, STC Pay, cards | V2 |
+| Checkout.com, Stripe | UAE, KSA (Checkout.com) | Cards, Apple Pay | V2 |
+| Tabby, Tamara | UAE, KSA | BNPL at checkout and as a payment link | V2 |
+| valU, Sympl, Souhoola | EG | BNPL | V2 |
+| InstaPay | EG | Open question: no public merchant API confirmed; match via bank statements (M8) | V2 |
 
-## 8. Tax compliance (per merchant)
+For each provider confirm: authentication model, webhook signing, payment-link API, refunds API, transaction and payout reports (API or file), sandbox.
+
+## 8. Marketplaces (V2)
+
+| Marketplace | Markets | Access | Notes |
+| --- | --- | --- | --- |
+| Noon | KSA, UAE, EG | Seller partner / API access through Noon seller support `[CONFIRM]` | Listings, stock, orders, payouts |
+| Amazon (SP-API) | EG, KSA, UAE | Developer registration in Seller Central; app authorization by each seller | Listings, inventory, orders, FBA stock, settlement reports |
+| Jumia | EG, Maghreb | Seller Center API `[CONFIRM]` | Listings, stock, orders |
+
+Marketplace orders enter M1 with `channel = 'marketplace'`; marketplace-fulfilled stock is a separate warehouse; payouts are reconciled in M8.
+
+## 9. Messaging channels (M2, M9, M17)
+
+| Channel | Access | Phase |
+| --- | --- | --- |
+| WhatsApp Cloud API | Tech Provider + Embedded Signup v4 (section 5) | MVP |
+| Instagram and Messenger | Meta app with messaging permissions, App Review | V2 |
+| Email | Inbound forwarding address per tenant + outbound with SPF/DKIM | V2 |
+| Web chat | Mizan widget on the storefront | V2 |
+| SMS / voice | Local provider with sender IDs (EG, KSA) | MVP (fallback) |
+
+## 10. Accounting tools (M19)
+
+| Tool | Use | Phase |
+| --- | --- | --- |
+| Zoho Books | Journal entries, invoices, payments | V2 |
+| Odoo | Journal entries via API | V2 |
+| Daftra | Popular in Egypt and KSA; journal sync | V2 |
+| CSV / Excel | Universal fallback | MVP |
+
+## 11. Tax compliance (per merchant)
 
 **KSA — ZATCA Fatoora Phase 2:** merchant generates OTP in Fatoora portal (60 min) → Mizan generates key pair + CSR → compliance CSID + compliance checks → production CSID (1 year) → B2B invoices cleared in real time; B2C reported within 24 h.
 
@@ -109,7 +149,7 @@ Payments always go to the **merchant's own** PSP account; Mizan never holds mone
 
 Ships after the MVP. Hire a local tax adviser per country before building.
 
-## 9. Infrastructure services
+## 12. Infrastructure services
 
 | Service | Use | Route | Phase |
 | --- | --- | --- | --- |
@@ -121,18 +161,19 @@ Ships after the MVP. Hire a local tax adviser per country before building.
 | FX rates | Daily rates | Self-serve or central bank | MVP |
 | Transactional email | Alerts, reports | Self-serve (SPF, DKIM) | MVP |
 
-## 10. Access playbook — apply in this order
+## 13. Access playbook — apply in this order
 
 | When | What |
 | --- | --- |
 | **Now** | Meta business verification · WhatsApp Tech Provider · Shopify protected data L2 · Salla partner verification · Meta partner contact for CAPI |
-| Discovery | Bosta and J&T API access · Paymob merchant + keys · SMS/voice vendor · EasyOrders and LightFunnels apps |
+| Discovery | Bosta and J&T API access · Paymob merchant + keys · SMS/voice vendor · EasyOrders and LightFunnels apps · shortlist of second gateway (Kashier, Fawry or Moyasar) |
 | Before pilot | WhatsApp templates approved · Shopify app review · production keys in Secret Manager |
-| Before KSA | Salla and Zid apps reviewed · SMSA, SPL, Aymakan · Tabby, Tamara · ZATCA onboarding |
+| Before KSA | Salla and Zid apps reviewed · SMSA, SPL, Aymakan · Moyasar / HyperPay / Tap · Tabby, Tamara · ZATCA onboarding |
+| V2 | Noon and Amazon developer access · Instagram/Messenger App Review · accounting tool partner accounts |
 
 **Prepare before applying:** commercial registration and tax card (Egypt); Saudi CR + VAT before KSA; verified Meta business portfolio; public website + privacy policy + terms on Mizan's domain; data protection document (encryption, retention, access logs, incident response); one technical owner per platform account.
 
-## 11. Sources (checked October 2026)
+## 14. Sources (checked October 2026)
 
 - Shopify · protected customer data — shopify.dev/docs/apps/launch/protected-customer-data
 - WooCommerce · REST API authentication — developer.woocommerce.com/docs/apis/rest-api/authentication
@@ -150,5 +191,7 @@ Ships after the MVP. Hire a local tax adviser per country before building.
 - TikTok · Events API — ads.tiktok.com/help/article/getting-started-events-api
 - Snap · Conversions API — developers.snap.com/api/marketing-api/Conversions-API/GetStarted
 - Paymob · developer overview — developers.paymob.com/paymob-docs/developers/intention-apis/overview
+- Shopify · Order object (totalReceivedSet, totalOutstandingSet, totalRefundedSet; OrderDisplayFinancialStatus) — shopify.dev/docs/api/admin-graphql/2026-10/objects/Order
+- Moyasar — moyasar.com/en
 - Tabby · API reference — docs.tabby.ai/api-reference/overview
 - ZATCA Phase 2 onboarding (vendor guide, secondary) — wafeq.com/en-sa/tax-and-reporting/zatca-phase-2-integration

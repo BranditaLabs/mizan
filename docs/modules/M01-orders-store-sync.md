@@ -57,6 +57,18 @@ Actions: Import CSV, New order
 
 _Sample data. Full visual in `design/prototype.html`._
 
+## Payment methods and channels
+
+Orders arrive with any payment method and from any channel. M1 normalizes both:
+
+| Field | Values |
+| --- | --- |
+| `payment_mode` | `cod`, `prepaid`, `partial` (deposit + COD balance), `bnpl`, `bank_transfer`, `unknown` |
+| `payment_status` | `unpaid`, `authorized`, `paid`, `partially_paid`, `refunded`, `partially_refunded`, `failed`, `voided` |
+| `channel` | Own store (Shopify, WooCommerce, EasyOrders, LightFunnels, Salla, Zid, YouCan), marketplace (M18), social and chat orders, manual, POS (M22) |
+
+Downstream modules branch on these: M2 picks confirmation (COD) or fraud screening (prepaid); M15 tracks the money; M5 applies the right fees.
+
 ## Rules — Status model and duplicate rules
 
 | Status | Entered when | Next |

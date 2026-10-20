@@ -5,11 +5,11 @@
 
 ## Context
 
-Fourteen modules, a team of two backend engineers, and frequent cross-module workflows.
+Twenty-two modules, a small backend team, and frequent cross-module workflows.
 
 ## Decision
 
-One NestJS application with one module per product module (M1–M14) plus platform modules. One image, two entry points (API, worker). Modules communicate through service interfaces and domain events, not shared tables.
+One NestJS application with one module per product module (M1–M22) plus platform modules. One image, two entry points (API, worker). Modules communicate through service interfaces and domain events, not shared tables.
 
 ## Consequences
 

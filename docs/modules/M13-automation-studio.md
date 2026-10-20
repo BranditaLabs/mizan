@@ -3,7 +3,7 @@
 > **Phase:** MVP core · V2 builder · **Depends on:** Every module, M14 Scripts, Event bus  
 > **Estimate:** 5 sprints — Engine (2) in MVP with recipes only; visual canvas (3) in V2. 2 backend + 1 frontend.
 
-_If it happens in Mizan, you can automate what happens next — without a developer._
+_The backbone of Mizan: anything that happens in any module can trigger what happens next, without a developer._
 
 ## Purpose
 
@@ -90,6 +90,10 @@ Each recipe installs as a draft the merchant can edit. Thresholds are starting p
   ]
 }
 ```
+
+## Scope across the whole OS
+
+Automation Studio is not a confirmation tool: every module emits events and exposes actions. The full catalogue and recipe library across orders, payments, inventory, purchasing, service, finance and marketing is in **`docs/13-automation-platform.md`**.
 
 ## Rules — How a run executes
 

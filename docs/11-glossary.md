@@ -5,7 +5,28 @@ Use these terms in code, UI copy and docs. Arabic column = Egyptian merchant usa
 | Term | العربي | Meaning |
 | --- | --- | --- |
 | COD (cash on delivery) | الدفع عند الاستلام · كاش | Customer pays the courier on delivery |
-| Prepaid | مدفوع مقدماً | Paid online before shipping |
+| Prepaid | مدفوع مقدماً | Paid online before shipping (card, wallet, Apple Pay) |
+| Deposit + COD balance | عربون والباقي عند الاستلام | Part paid online, the rest collected by the courier |
+| BNPL | اشتري دلوقتي وادفع بعدين · تقسيط | Tabby, Tamara, valU: provider pays the merchant, customer pays in instalments |
+| Bank transfer | تحويل بنكي · إنستاباي | Customer transfers before shipping |
+| Payment gateway | بوابة الدفع | Paymob, Kashier, Moyasar, Tap … |
+| Payment link | لينك دفع | Link the customer pays from (full, deposit or balance) |
+| Payment ledger | سجل المدفوعات | All money movements on an order |
+| Outstanding / balance | المتبقي | What the customer still owes |
+| Capture | تحصيل | Taking money from an authorized card payment |
+| Refund | استرداد · رد فلوس | Money returned to the customer |
+| Store credit | رصيد في المتجر | Credit the customer can spend later |
+| Chargeback / dispute | اعتراض على عملية دفع | Customer's bank reverses a card payment |
+| Payout | تحويل المستحقات | Gateway, BNPL or marketplace pays the merchant |
+| Marketplace | ماركت بليس | Noon, Amazon, Jumia |
+| Channel | قناة بيع | Store, marketplace, social, POS |
+| Purchase order (PO) | أمر شراء | Order to a supplier |
+| Landed cost | التكلفة الواصلة | Unit cost including freight, customs and fees |
+| Reorder point | حد إعادة الطلب | Stock level that triggers a reorder |
+| Inbox | صندوق الرسايل | All customer conversations in one queue |
+| SLA | وقت الرد المطلوب | Maximum time to first reply or resolution |
+| POS | نقطة بيع · كاشير | In-store selling (V3) |
+| E-invoice / e-receipt | فاتورة / إيصال إلكتروني | ZATCA (KSA) and ETA (Egypt) tax documents |
 | Order | أوردر · طلب | A customer purchase from a store |
 | Confirmation | تأكيد الأوردر | Checking with the customer that the order is real before shipping |
 | Confirmation agent | موظف التأكيد · الكول سنتر | Person who calls or messages customers |
@@ -24,10 +45,10 @@ Use these terms in code, UI copy and docs. Arabic column = Egyptian merchant usa
 | Open-box delivery | المعاينة | Customer inspects before paying; may refuse part |
 | Partial delivery | تسليم جزئي | Customer keeps some items, returns others |
 | Inspection | فحص المرتجع | Restock, damaged or write-off decision |
-| Settlement | التسوية · تحويل الكاش | Courier transfers collected COD cash minus fees |
+| Settlement | التسوية | Any payout matched to orders: courier cash, gateway, BNPL, bank or marketplace |
 | Cash in transit | كاش عند شركة الشحن | Collected by courier, not yet settled |
 | COGS | تكلفة البضاعة | Cost of the goods sold |
-| Net profit per order | صافي الربح للأوردر | Revenue minus all costs for that order |
+| Net profit per order | صافي الربح للأوردر | Revenue minus all costs for that order (incl. payment and channel fees, refunds, chargebacks) |
 | Delivered rate | نسبة التسليم | Delivered ÷ shipped |
 | Delivered ROAS | العائد على الإعلانات من الأوردرات المستلمة | Delivered revenue ÷ ad spend |
 | CAPI | Conversions API | Server-side events sent to ad platforms |

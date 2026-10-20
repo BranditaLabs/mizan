@@ -37,6 +37,7 @@ FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only)
 KMS_KEY_NAME
 PUBLIC_URL, WEB_URL
 SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
+PAYMOB_* (platform-level config only; merchant keys live in the secrets table)
 BOSTA_BASE_URL, BOSTA_TRACKING_URL_TEMPLATE
 META_APP_ID, META_APP_SECRET, WHATSAPP_VERIFY_TOKEN
 SENTRY_DSN, LOG_LEVEL
@@ -70,6 +71,11 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 | Webhook ack p95 | > 1 s |
 | Order sync lag (store placed → Mizan created) | p95 > 2 min |
 | Shipment status freshness | Active shipments not updated in 24 h |
+| Orders awaiting payment | Bank-transfer or unpaid prepaid orders older than the tenant's deadline |
+| Payment webhooks | Gateway webhook failures or signature rejections > 0 in 15 min |
+| Refunds pending | Refund sent but not confirmed after 72 h |
+| Payout gaps | Expected vs paid difference above threshold per source |
+| Automation errors | Error rate > 20% for any automation (auto-paused) |
 
 `engine.health()` feeds `/v1/admin/integrations/health` and a Monitoring dashboard.
 

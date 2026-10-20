@@ -1,13 +1,13 @@
-# M2 — Smart confirmation · تأكيد الأوردرات الذكي
+# M2 — Order verification and confirmation · التحقق من الأوردرات وتأكيدها
 
 > **Phase:** MVP · **Depends on:** M1 Orders, M14 Scripts, M11 Risk network, M13 Automations  
 > **Estimate:** 3 sprints — 2 backend + 1 frontend. WhatsApp Business API approval runs in parallel.
 
-_Confirm real orders the cheapest safe way — automatically when you can, with a human when you must._
+_Every order is checked the cheapest safe way: COD orders are confirmed, prepaid orders are screened for fraud._
 
 ## Purpose
 
-Every order gets a risk score from 0 to 100. The score picks the confirmation route: auto-confirm trusted customers, a WhatsApp bot for most, a human agent for risky ones, and a hold for the suspicious. Agents spend their time only where it matters.
+Verification scores every order 0–100 and picks how to check it. Cash-on-delivery orders are confirmed by auto-rules, a WhatsApp bot or an agent before they ship. Prepaid orders (card, wallet, BNPL, bank transfer) skip confirmation but go through fraud and chargeback screening, address verification and, for high-value or mismatched orders, a manual review. The goal is the same for every payment method: ship only orders that will be delivered and kept.
 
 ## Users
 
@@ -56,6 +56,18 @@ Actions: Pause bot, Start calling
 | #LF-781 | Tarek F. | 61 | No reply to bot | Agent | 0 / 3 |
 
 _Sample data. Full visual in `design/prototype.html`._
+
+## Verification by payment method
+
+| Payment method | Check | Typical route |
+| --- | --- | --- |
+| Cash on delivery | Confirmation (real order? right address? right items?) | Auto / WhatsApp bot / agent / hold |
+| Deposit + COD balance | Deposit paid › light confirmation of the balance | Auto or bot |
+| Card, wallet, Apple Pay | Fraud screening: velocity, mismatched names and addresses, high value, risky BIN or country, past chargebacks | Auto-approve or manual review |
+| BNPL (Tabby, Tamara, valU) | Provider carries credit risk; check address and stock only | Auto |
+| Bank transfer / InstaPay | Hold until payment is matched (M15); remind customer | Hold › auto when paid |
+
+The risk score is one model with method-specific signals. Reasons are always shown.
 
 ## Rules — Default score factors and routes
 

@@ -57,6 +57,19 @@ Actions: Export, Set costs
 
 _Sample data. Full visual in `design/prototype.html`._
 
+## Profit by payment method
+
+| Method | Revenue recognized | Method-specific costs |
+| --- | --- | --- |
+| COD | On delivery | Courier COD fee, RTO legs on refusal |
+| Card / wallet | On capture | Gateway fee (% + fixed), FX fee, chargebacks + dispute fees |
+| BNPL | On capture | BNPL merchant fee (usually higher %), refunds |
+| Bank transfer | On match | Bank fee, if any |
+| Marketplace | On marketplace confirmation | Commission, fulfilment fees, ad fees (M18) |
+| POS | On sale | Card terminal fee (M22) |
+
+Refunds reverse revenue; restocked items reverse COGS; chargebacks add the disputed amount and fees as costs until won. Estimated fees are replaced by actual fees from payouts (M8).
+
 ## Rules — How each line of the P&L is calculated
 
 | Line | Formula | Source |
