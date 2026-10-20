@@ -133,6 +133,17 @@ Full catalogue with actions: `docs/13-automation-platform.md`.
 
 Event envelope: `{ id, type, tenantId, occurredAt, actor, entity: { type, id }, data, version }`. Consumers must be idempotent (event `id`).
 
+**Implementation (✅ E1-8, `apps/api/src/platform/events/`):**
+
+| Step | How |
+| --- | --- |
+| Write | `EventsService.emit(trx, …)` inserts into `domain_events` in the caller's tenant transaction: the event exists iff the change committed. Data = ids and facts, never personal data. Catalogue: `@mizan/shared` `DOMAIN_EVENT_TYPES` |
+| Claim | `EventDispatcher` (worker; in-process only in dev with PGlite) leases due events as `mizan_worker` with `FOR UPDATE SKIP LOCKED` (60 s lease, batch 50) |
+| Deliver | Per `@EventConsumer({ name, events })`, in the event's tenant transaction: insert `event_deliveries (consumer, event_id)` then run the handler. Both commit together, so each consumer sees each event **exactly once**, even if the worker dies after a consumer commits |
+| Finish | All consumers ok → `dispatched_at`. A failure → full-jitter backoff (≤ 1 h), scrubbed `last_error`; only consumers without a delivery mark re-run. Dead after 10 attempts (`dead_at`) |
+
+Ordering is by `occurred_at` within a batch, not guaranteed across retries: consumers must tolerate out-of-order events (use entity versions or re-read the entity).
+
 ## 6. Engine integration
 
 `packages/engine` today is a standalone service (`src/server.ts`) with its own small schema (`mz_inbound_events`, `mz_outbox`, `mz_records`). To embed it in `apps/api`:

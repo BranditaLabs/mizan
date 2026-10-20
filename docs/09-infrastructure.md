@@ -45,6 +45,8 @@ SENTRY_DSN, LOG_LEVEL
 
 Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table, never in env.
 
+**Database roles:** migrations run as the schema owner (`DATABASE_URL_MIGRATOR`, `mizan-db migrate`). The API and worker log in as a separate user that is a member of `mizan_app` (tenant data under RLS) and `mizan_worker` (event dispatch across tenants on `domain_events` only), and is neither owner nor `BYPASSRLS`: `CREATE ROLE mizan_api LOGIN … IN ROLE mizan_app, mizan_worker` (Terraform, E1-11).
+
 ## 4. CI/CD (GitHub Actions)
 
 | Workflow | Trigger | Steps |

@@ -57,6 +57,25 @@ describe("loadConfig", () => {
 const main = fileURLToPath(new URL("../dist/main.js", import.meta.url));
 
 describe.skipIf(!existsSync(main))("process start (built)", () => {
+  it("the worker starts, dispatches, and stops cleanly on SIGTERM", async () => {
+    const { spawn } = await import("node:child_process");
+    const worker = fileURLToPath(new URL("../dist/worker.js", import.meta.url));
+    const child = spawn(process.execPath, [worker], {
+      env: { PATH: process.env.PATH, NODE_ENV: "test", PUBLIC_URL: "http://localhost", WEB_URL: "http://localhost:3000" },
+    });
+    let out = "";
+    child.stdout.on("data", (d) => { out += String(d); });
+    await new Promise<void>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(`worker did not start: ${out}`)), 15_000);
+      child.stdout.on("data", () => { if (out.includes("dispatching domain events")) { clearTimeout(t); resolve(); } });
+    });
+    child.kill("SIGTERM");
+    // Nest runs the shutdown hooks (dispatcher stops, DB closes), then re-raises the signal.
+    const [code, signal] = await new Promise<[number | null, string | null]>((resolve) => child.on("exit", (c, s) => resolve([c, s])));
+    expect(code === 0 || signal === "SIGTERM").toBe(true);
+    expect(out).toContain("event dispatcher stopped");
+  });
+
   it("exits 1 with a readable message on an invalid environment", () => {
     const run = spawnSync(process.execPath, [main], { env: { PATH: process.env.PATH, PORT: "abc" }, encoding: "utf8", timeout: 15_000 });
     expect(run.status).toBe(1);

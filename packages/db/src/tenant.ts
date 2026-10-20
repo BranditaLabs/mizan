@@ -3,6 +3,8 @@ import type { DB } from "./schema.js";
 
 /** The role every tenant transaction runs as (created in migration 0003). */
 export const APP_ROLE = "mizan_app";
+/** The event dispatcher's role: domain_events across tenants, nothing else (migration 0006). */
+export const WORKER_ROLE = "mizan_worker";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,4 +58,12 @@ export async function setActingUser(
   await sql`SELECT set_config('app.user_id', ${userId}, true),
                    set_config('app.user_email', ${contact.email?.toLowerCase() ?? ""}, true),
                    set_config('app.user_phone', ${contact.phone ?? ""}, true)`.execute(trx);
+}
+
+/** Run `fn` as the dispatcher role (cross-tenant access to domain_events only). */
+export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
+  return db.transaction().execute(async (trx) => {
+    await sql`SET LOCAL ROLE ${sql.raw(WORKER_ROLE)}`.execute(trx);
+    return fn(trx);
+  });
 }

@@ -33,6 +33,10 @@ export const ConfigSchema = z.object({
   // Owners/admins must use a second factor. Unset = on in production, off elsewhere.
   AUTH_REQUIRE_MFA: z.stringbool({ error: "must be true or false" }).optional(),
 
+  // Run the domain event dispatcher inside the API process. Unset = on only in development
+  // with PGlite (one process, no separate worker); production runs `node dist/worker.js`.
+  EVENTS_DISPATCH_IN_PROCESS: z.stringbool({ error: "must be true or false" }).optional(),
+
   // Secrets (E1-10)
   KMS_KEY_NAME: optionalString,
 

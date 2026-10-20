@@ -1,19 +1,32 @@
 import "reflect-metadata";
-import { pino } from "pino";
 import { ConfigError, loadConfig } from "./platform/config.js";
-import { pinoOptions } from "./platform/logging/logger.module.js";
 
 /**
- * Worker entry point (same image as the API, ADR-0003).
- * The outbox dispatcher and cron handlers arrive with backlog E1-8.
+ * Worker entry point (same image as the API, ADR-0003): delivers domain events
+ * to consumers. Cron handlers and engine jobs join it in E2.
+ * Stops cleanly on SIGTERM (Cloud Run): the current batch finishes, leases are released by expiry.
  */
-try {
-  const config = loadConfig(process.env);
-  pino(pinoOptions(config)).warn("worker has no job handlers yet (backlog E1-8); exiting");
-} catch (err) {
-  if (err instanceof ConfigError) {
-    process.stderr.write(`${err.message}\n`);
-    process.exit(1);
+async function main(): Promise<void> {
+  let config;
+  try {
+    config = loadConfig(process.env);
+  } catch (err) {
+    if (err instanceof ConfigError) {
+      process.stderr.write(`${err.message}\n`);
+      process.exit(1);
+    }
+    throw err;
   }
-  throw err;
+  const { NestFactory } = await import("@nestjs/core");
+  const { Logger } = await import("nestjs-pino");
+  const { AppModule } = await import("./app.module.js");
+  const { EventDispatcher } = await import("./platform/events/dispatcher.js");
+
+  // The API process must not also dispatch when a worker runs.
+  const app = await NestFactory.createApplicationContext(AppModule.forRoot({ ...config, EVENTS_DISPATCH_IN_PROCESS: false }), { bufferLogs: true });
+  app.useLogger(app.get(Logger));
+  app.enableShutdownHooks();
+  app.get(EventDispatcher).start();
 }
+
+void main();

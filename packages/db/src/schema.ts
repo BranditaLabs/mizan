@@ -198,6 +198,18 @@ export interface DomainEvents {
   version: Generated<number>;
   occurred_at: Generated<Timestamp>;
   dispatched_at: Timestamp | null;
+  attempts: Generated<number>;
+  next_attempt_at: Generated<Timestamp>;
+  locked_until: Timestamp | null;
+  last_error: string | null;
+  dead_at: Timestamp | null;
+}
+
+export interface EventDeliveries {
+  consumer: string;
+  event_id: string;
+  tenant_id: string;
+  delivered_at: Generated<Timestamp>;
 }
 
 export interface Expenses {
@@ -810,6 +822,7 @@ export interface DB {
   customers: Customers;
   disputes: Disputes;
   domain_events: DomainEvents;
+  event_deliveries: EventDeliveries;
   expenses: Expenses;
   external_variants: ExternalVariants;
   fx_rates: FxRates;

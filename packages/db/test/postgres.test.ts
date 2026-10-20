@@ -6,7 +6,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPgDb, pgMigrationClient } from "../src/clients.js";
 import { loadMigrations, migrate } from "../src/migrate.js";
-import { withTenant } from "../src/tenant.js";
+import { asWorker, withTenant } from "../src/tenant.js";
 
 /**
  * Same guarantees as tenant.test.ts, on a real PostgreSQL server with the
@@ -63,7 +63,7 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
 
   it("a non-owner login role, through withTenant, cannot cross tenants", async () => {
     // What infrastructure does in Cloud SQL: a login user that is a member of mizan_app.
-    await admin.query(`CREATE ROLE ${loginRole} LOGIN PASSWORD '${password}' IN ROLE mizan_app`);
+    await admin.query(`CREATE ROLE ${loginRole} LOGIN PASSWORD '${password}' IN ROLE mizan_app, mizan_worker`);
     const owner = createPgDb(migratorUrl);
     await owner.insertInto("tenants").values([{ id: A, name: "A", slug: "a" }, { id: B, name: "B", slug: "b" }]).execute();
     await owner.destroy();
@@ -89,6 +89,15 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
         .rejects.toThrow(/row-level security/);
       // Outside withTenant the login role sees no tenant rows at all.
       expect(await db.selectFrom("orders").selectAll().execute()).toEqual([]);
+
+      // The dispatcher role reads domain_events across tenants, and nothing else.
+      for (const t of [A, B]) {
+        await withTenant(db, t, (trx) => trx.insertInto("domain_events").values({ tenant_id: t, type: "order.created", entity_type: "order", entity_id: t }).execute());
+      }
+      const events = await asWorker(db, (trx) => trx.selectFrom("domain_events").select("tenant_id").execute());
+      expect(events.map((e) => e.tenant_id).sort()).toEqual([A, B]);
+      await expect(asWorker(db, (trx) => trx.selectFrom("orders").selectAll().execute())).rejects.toThrow(/permission denied/);
+      await expect(asWorker(db, (trx) => trx.deleteFrom("domain_events").execute())).rejects.toThrow(/permission denied/);
     } finally {
       await db.destroy();
     }

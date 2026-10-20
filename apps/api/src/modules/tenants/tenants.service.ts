@@ -3,6 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { setActingUser } from "@mizan/db";
 import { COUNTRY_DEFAULTS, type CountryCode } from "@mizan/shared";
 import { Database } from "../../platform/db/database.js";
+import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import type { CreateTenantBody, TenantView } from "./tenants.dto.js";
 
@@ -50,7 +51,10 @@ const toView = (t: TenantRow, role: string): TenantView => ({
 
 @Injectable()
 export class TenantsService {
-  constructor(@Inject(Database) private readonly db: Database) {}
+  constructor(
+    @Inject(Database) private readonly db: Database,
+    @Inject(EventsService) private readonly events: EventsService,
+  ) {}
 
   /**
    * Signup: the store, its owner membership and a default warehouse, in one
@@ -90,6 +94,10 @@ export class TenantsService {
           }).returningAll().executeTakeFirstOrThrow();
           await trx.insertInto("memberships").values({ tenant_id: id, user_id: userId, role: "owner", status: "active" }).execute();
           await trx.insertInto("warehouses").values({ tenant_id: id, name: DEFAULT_WAREHOUSE[body.language], is_default: true }).execute();
+          await this.events.emit(trx, {
+            type: "tenant.created", tenantId: id, entity: { type: "tenant", id },
+            actor: { type: "user", id: userId }, data: { country, plan: tenant.plan },
+          });
           return toView(tenant, "owner");
         });
       } catch (err) {
