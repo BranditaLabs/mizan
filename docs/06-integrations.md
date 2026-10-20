@@ -18,7 +18,8 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | Shopify (Admin GraphQL 2026-10) | ✅ Built and tested (orders with payment mode/status and received, outstanding, refunded amounts; products; inventory CAS; fulfil; mark paid; tags; webhooks) | `packages/engine/src/connectors/shopify` |
 | Bosta (v2) | ✅ Built and tested (duplicate-safe create collecting only what is owed, search, track, cancel, cities, learning status map) | `packages/engine/src/connectors/bosta` |
 | Payment rules for every courier | ✅ Built and tested (`cashToCollect`, exact money, hold unpaid orders) | `packages/engine/src/core/payments.ts` |
-| Shopify OAuth install + GDPR webhooks | ⏳ Backlog E3 | `apps/api/modules/connections` |
+| Shopify OAuth install | ✅ E3-1: install / App Store entry / callback / claim, token exchange through `send()` (`exchangeShopifyCode`), fake OAuth in `FakeShopify` | `apps/api/src/modules/connections/shopify`, `packages/engine/src/connectors/shopify/oauth.ts` |
+| Shopify webhook registration, GDPR webhooks, uninstall, backfill | ⏳ Backlog E3-2 … E3-5 | `apps/api/src/modules/connections` |
 | EasyOrders, WooCommerce, LightFunnels | ⏳ MVP backlog | use `/new-connector` |
 | J&T, Mylerz | ⏳ MVP / V2 | — |
 | WhatsApp Cloud API | ⏳ MVP backlog | — |

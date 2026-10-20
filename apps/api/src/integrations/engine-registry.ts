@@ -8,7 +8,8 @@ import { ConnectionResolver, type ResolvedConnections } from "./connection-resol
 import { OrderProjector } from "../modules/orders/order-projector.js";
 
 /** Builds the engine runtime for a tenant (tests inject fake providers here). */
-export type RuntimeFactory = (tenantId: string, connections: ResolvedConnections) => Runtime;
+/** Runtime for a tenant's engine; also called without connections for one-off provider calls (OAuth code exchange). */
+export type RuntimeFactory = (tenantId: string, connections?: ResolvedConnections) => Runtime;
 export const ENGINE_RUNTIME = Symbol("ENGINE_RUNTIME");
 
 /** Listener for engine events (order.ingested, shipment.status …); E2-3 maps them to domain events. */

@@ -671,6 +671,21 @@ export interface Shipments {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ShopifyInstalls {
+  id: Generated<string>;
+  shop: string;
+  scopes: string;
+  ciphertext: Buffer;
+  wrapped_key: Buffer;
+  key_version: string;
+  claim_hash: Buffer;
+  bound_tenant: string | null;
+  bound_user: string | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+  claimed_at: Timestamp | null;
+}
+
 export interface StockLevels {
   tenant_id: string;
   warehouse_id: string;
@@ -868,6 +883,7 @@ export interface DB {
   settlements: Settlements;
   shipment_events: ShipmentEvents;
   shipments: Shipments;
+  shopify_installs: ShopifyInstalls;
   stock_levels: StockLevels;
   stock_movements: StockMovements;
   store_credit_ledger: StoreCreditLedger;

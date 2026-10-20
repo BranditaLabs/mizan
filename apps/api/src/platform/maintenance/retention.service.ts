@@ -9,6 +9,7 @@ export interface RetentionResult {
   webhookKeys: number;
   dispatchedEvents: number;
   idempotencyKeys: number;
+  shopifyInstalls: number;
 }
 
 const DAY = 86_400_000;
@@ -22,6 +23,7 @@ const DAY = 86_400_000;
  *   mz_inbound_events  webhook dedupe keys older than RETENTION_WEBHOOK_KEYS_DAYS (14; providers retry ≤ 48 h)
  *   domain_events      dispatched events older than RETENTION_EVENTS_DAYS (30; delivery marks cascade)
  *   idempotency_keys   expired keys
+ *   shopify_installs   claimed or expired pending installs (their sealed token is useless after that)
  */
 @Injectable()
 export class RetentionService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -79,6 +81,8 @@ export class RetentionService implements OnApplicationBootstrap, OnApplicationSh
         SELECT id FROM domain_events WHERE dispatched_at < ${new Date(now - c.RETENTION_EVENTS_DAYS * DAY)} LIMIT ${n})`),
       idempotencyKeys: await prune((n) => sql`DELETE FROM idempotency_keys WHERE (actor_id, key) IN (
         SELECT actor_id, key FROM idempotency_keys WHERE expires_at < ${new Date(now)} LIMIT ${n})`),
+      shopifyInstalls: await prune((n) => sql`DELETE FROM shopify_installs WHERE id IN (
+        SELECT id FROM shopify_installs WHERE claimed_at IS NOT NULL OR expires_at < ${new Date(now)} LIMIT ${n})`),
     };
     if (Object.values(result).some((v) => v > 0)) this.logger.log(result, "retention pruned rows");
     return result;

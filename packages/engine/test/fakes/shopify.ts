@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { signShopifyQuery } from "../../src/connectors/shopify/oauth.js";
 import { signShopify } from "../../src/connectors/shopify/webhooks.js";
 import { hang, json, type FakeClock } from "./clock.js";
 
@@ -22,8 +24,12 @@ interface Order {
 }
 
 export class FakeShopify {
-  readonly host = "fake-store.myshopify.com";
+  readonly clientId = "fake-client-id";
   readonly secret = "shpss_test_secret";
+  /** OAuth codes issued by authorize(); each works once (Shopify: "already used"). */
+  private codes = new Map<string, { scopes: string[]; used: boolean }>();
+  /** Access tokens issued by the OAuth exchange. */
+  readonly tokens: string[] = [];
   products = new Map<string, Product>();
   orders = new Map<string, Order>();
   inventory = new Map<string, number>();
@@ -40,7 +46,7 @@ export class FakeShopify {
   private idempotency = new Map<string, unknown>();
   private seq = 1000;
 
-  constructor(private readonly clock: FakeClock, private readonly random: () => number = Math.random) {
+  constructor(private readonly clock: FakeClock, private readonly random: () => number = Math.random, readonly host = "fake-store.myshopify.com") {
     this.bucket.last = clock.now();
   }
 
@@ -146,7 +152,47 @@ export class FakeShopify {
     return { cost: { requestedQueryCost: this.costPerCall, actualQueryCost: this.costPerCall, throttleStatus: { maximumAvailable: this.bucket.max, currentlyAvailable: Math.floor(this.bucket.available), restoreRate: this.bucket.restore } }, ...extra };
   }
 
+  /**
+   * The merchant approves the app on Shopify's authorize page: returns the signed callback
+   * query Shopify redirects the browser to. Like Shopify, the granted `scope` omits
+   * `read_x` when `write_x` is granted (write implies read).
+   */
+  authorize(state: string, scopes: string[], at = this.clock.now()): Record<string, string> {
+    const code = randomBytes(16).toString("hex");
+    this.codes.set(code, { scopes, used: false });
+    const q: Record<string, string> = { code, host: Buffer.from(`admin.shopify.com/store/${this.host.split(".")[0]}`).toString("base64url"), shop: this.host, state, timestamp: String(Math.floor(at / 1000)) };
+    return { ...q, hmac: signShopifyQuery(q, this.secret) };
+  }
+
+  /** An App Store launch / install link to the app URL, signed by Shopify. */
+  launch(at = this.clock.now()): Record<string, string> {
+    const q: Record<string, string> = { shop: this.host, timestamp: String(Math.floor(at / 1000)) };
+    return { ...q, hmac: signShopifyQuery(q, this.secret) };
+  }
+
+  private oauth(init: RequestInit): Response | Promise<Response> {
+    const fi = this.faults.findIndex((f) => f.op === "oauthAccessToken");
+    const fault = fi >= 0 ? this.faults.splice(fi, 1)[0]!.fault : undefined;
+    if (fault === "500") return json(502, { errors: "Bad gateway" });
+    if (fault === "timeout") return hang(init);
+    if (fault === "network") throw new TypeError("fetch failed: ECONNRESET");
+    const body = JSON.parse(String(init.body)) as { client_id?: string; client_secret?: string; code?: string };
+    if (body.client_id !== this.clientId || body.client_secret !== this.secret) {
+      return json(400, { error: "invalid_client", error_description: "Client credentials are invalid" });
+    }
+    const grant = body.code ? this.codes.get(body.code) : undefined;
+    if (!grant || grant.used) {
+      return json(400, { error: "invalid_request", error_description: "The authorization code was not found or was already used" });
+    }
+    grant.used = true;
+    const token = `shpat_${randomBytes(16).toString("hex")}`;
+    this.tokens.push(token);
+    const granted = grant.scopes.filter((s) => !(s.startsWith("read_") && grant.scopes.includes(`write_${s.slice(5)}`)));
+    return json(200, { access_token: token, scope: granted.join(",") });
+  }
+
   handler = async (url: URL, init: RequestInit): Promise<Response> => {
+    if (url.pathname === "/admin/oauth/access_token") return this.oauth(init);
     const { query, variables, operationName } = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown>; operationName: string };
     const op = operationName;
     const headers = { "X-Shopify-API-Version": this.servedVersion };

@@ -140,3 +140,19 @@ describe("worker deletes (migration 0012)", () => {
     expect(left.map((r) => r.status)).toEqual(["dead", "pending"]);
   });
 });
+
+describe("pending Shopify installs (migration 0013)", () => {
+  it("only the worker role reaches installs; it sees shop domains but never credentials", async () => {
+    const install = { shop: "nile.myshopify.com", scopes: "read_orders", ciphertext: Buffer.from("x"), wrapped_key: Buffer.from("k"), key_version: "v1",
+      claim_hash: Buffer.alloc(32, 1), expires_at: new Date(Date.now() + 60_000) };
+    await asWorker(db, (trx) => trx.insertInto("shopify_installs").values(install).execute());
+    await expect(withTenant(db, A, (trx) => trx.selectFrom("shopify_installs").select("shop").execute())).rejects.toThrow(/permission denied/);
+    await expect(withoutTenant(db, (trx) => trx.selectFrom("shopify_installs").select("shop").execute())).rejects.toThrow(/permission denied/);
+    expect(await asWorker(db, (trx) => trx.selectFrom("shopify_installs").select("shop").execute())).toEqual([{ shop: "nile.myshopify.com" }]);
+
+    await withTenant(db, A, (trx) => trx.insertInto("connections").values({ tenant_id: A, kind: "store", provider: "shopify", external_account: "nile.myshopify.com" }).execute());
+    const owner = await asWorker(db, (trx) => trx.selectFrom("connections").select(["tenant_id", "external_account"]).where("external_account", "=", "nile.myshopify.com").execute());
+    expect(owner).toEqual([{ tenant_id: A, external_account: "nile.myshopify.com" }]);
+    await expect(asWorker(db, (trx) => trx.selectFrom("connections").select(["secret_ref"]).execute())).rejects.toThrow(/permission denied/);
+  });
+});

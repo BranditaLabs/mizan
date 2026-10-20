@@ -72,7 +72,7 @@ erDiagram
 
 | Module | Tables |
 | --- | --- |
-| Platform | `tenants`, `users`, `memberships`, `api_keys`, `connections`, `secrets`, `domain_events`, `audit_log`, `privacy_requests` |
+| Platform | `tenants`, `users`, `memberships`, `api_keys`, `connections`, `secrets`, `domain_events`, `audit_log`, `privacy_requests`, `shopify_installs` (pending OAuth installs before they are claimed into a store: no tenant yet, worker role only, token sealed; 0013) |
 | Engine | `mz_inbound_events`, `mz_outbox`, `mz_records` (same as `packages/engine/src/sync/sql-store.ts`, plus `tenant_id`) |
 | M1 Orders | `orders` (incl. `channel`, `payment_mode`, `payment_status`, `paid_minor`, `refunded_minor`, `balance_minor`), `order_lines`, `order_events`, `customers`, `external_variants` |
 | M2 Confirmation | `confirmations`, `orders.risk_score`, `orders.confirm_route` |

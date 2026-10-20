@@ -73,7 +73,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E3 · Shopify app
 
-- [ ] **E3-1** `M` OAuth install flow (`/connections/shopify/install` + callback): HMAC + `state` verification, token exchange, store `secrets`, create `connections` row. *Accept:* install on a dev store creates an active connection.
+- [x] **E3-1** `M` OAuth install flow (`/connections/shopify/install` + callback): HMAC + `state` verification, token exchange, store `secrets`, create `connections` row. *Accept:* install on a dev store creates an active connection. *Done:* install (in-app, bound to user + store) and App Store `entry` (OAuth first, as Shopify requires) → signed 10-min `state` → `callback` verifies `hmac`/state/shop, exchanges the code via engine `send()`, checks scopes, seals the token as a pending install (migration 0013 `shopify_installs`, worker role only, 1 h) → `claim` by a signed-in owner/admin creates or reconnects the connection (secret, audit, `connection.connected`); login-CSRF, forged/stale callbacks, replay, store taken elsewhere, second store and expiry tested against `FakeShopify` OAuth. Real dev-store check needs the Partner app (D-3).
 - [ ] **E3-2** `S` Register webhooks on install (orders/create, orders/updated, orders/cancelled, products/update, app/uninstalled) via GraphQL `webhookSubscriptionCreate`, API version 2026-10.
 - [ ] **E3-3** `M` **Mandatory compliance webhooks** `customers/data_request`, `customers/redact`, `shop/redact` → `privacy_requests` + jobs that export / anonymize / delete. *Accept:* tests for each topic with valid and invalid HMAC; redact removes PII but keeps order totals.
 - [ ] **E3-4** `S` `app/uninstalled` → connection `disconnected`, secret deleted, jobs stopped.

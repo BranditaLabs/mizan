@@ -61,8 +61,10 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/connections` | All connections and health (circuit, last sync, drift count) |
-| GET | `/connections/shopify/install?shop=…` | Start Shopify OAuth |
-| GET | `/connections/shopify/callback` | OAuth callback (HMAC + state verified) |
+| GET | `/connections/shopify/install?shop=…` | ✅ Owner/admin: `{ authorizeUrl }` for the browser. `422 invalid_shop` unless `*.myshopify.com`; `503 shopify_not_configured` |
+| GET | `/connections/shopify/entry` | ✅ Public, the app URL in the Partner Dashboard (App Store install, launch from Shopify admin): Shopify `hmac` verified → 302 to Shopify's authorize page |
+| GET | `/connections/shopify/callback` | ✅ Public, the redirect URL: `hmac`, signed `state` (10 min, bound to the shop) verified, code exchanged, token kept sealed as a pending install → 302 to `WEB_URL/integrations/shopify/connect?install=…&shop=…`, or `?error=` `invalid_signature` · `invalid_shop` · `invalid_state` · `install_cancelled` · `shopify_unavailable` · `install_failed` · `scopes_missing` |
+| POST | `/connections/shopify/claim` | ✅ Owner/admin: `{ install }` → `{ connection, reconnected }`. Errors: `install_not_found` (404, unknown or used), `install_expired` (410, 1 h), `install_not_yours` (403, started by another user or store), `shop_connected_elsewhere` (409), `store_limit_reached` (409, one Shopify store per account until E2-7) |
 | POST | `/connections/{provider}` | Key-based connect (Bosta, EasyOrders, WooCommerce keys) |
 | POST | `/connections/{id}/test` | Live credential check |
 | DELETE | `/connections/{id}` | Disconnect, revoke webhooks, delete secret |

@@ -80,11 +80,32 @@ export class SecretsService {
     return stale.length;
   }
 
+  /**
+   * Seal a value that belongs to no tenant yet (a pending Shopify install), with the same
+   * envelope encryption. `label` is the AAD: the blob only opens under the same label.
+   */
+  async sealDetached(label: string, value: string): Promise<{ ciphertext: Buffer; wrapped_key: Buffer; key_version: string }> {
+    return this.sealWith(Buffer.from(`mizan-detached:${label}`), value);
+  }
+
+  async openDetached(label: string, row: { ciphertext: Buffer; wrapped_key: Buffer; key_version: string }): Promise<SecretValue> {
+    const dataKey = await this.keys.unwrap(row.wrapped_key, row.key_version);
+    try {
+      return new SecretValue(open(dataKey, row.ciphertext, Buffer.from(`mizan-detached:${label}`)).toString("utf8"));
+    } finally {
+      dataKey.fill(0);
+    }
+  }
+
   private async sealValue(tenantId: string, id: string, value: string) {
+    return this.sealWith(aad(tenantId, id), value);
+  }
+
+  private async sealWith(additional: Buffer, value: string) {
     if (!value) throw new ProblemError(422, "validation_failed", "secret value is empty");
     const dataKey = randomBytes(32);
     try {
-      const ciphertext = seal(dataKey, Buffer.from(value, "utf8"), aad(tenantId, id));
+      const ciphertext = seal(dataKey, Buffer.from(value, "utf8"), additional);
       const { wrapped, keyVersion } = await this.keys.wrap(dataKey);
       return { ciphertext, wrapped_key: wrapped, key_version: keyVersion };
     } finally {

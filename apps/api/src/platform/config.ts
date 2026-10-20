@@ -11,6 +11,12 @@ import { z } from "zod";
 
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
 
+/** docs/06 §3. `read_all_orders` (orders older than 60 days) needs Shopify's approval first. */
+export const SHOPIFY_DEFAULT_SCOPES = [
+  "read_orders", "read_products", "write_products", "read_inventory", "write_inventory",
+  "read_merchant_managed_fulfillment_orders", "write_merchant_managed_fulfillment_orders", "read_customers",
+].join(",");
+
 const url = z.url({ protocol: /^https?$/, error: "must be an http(s) URL" });
 const optionalString = z.string().trim().min(1).optional();
 
@@ -61,8 +67,12 @@ export const ConfigSchema = z.object({
   // in development with PGlite (one process, no separate worker); production runs `node dist/worker.js`.
   WORKER_IN_PROCESS: z.stringbool({ error: "must be true or false" }).optional(),
 
-  // Integrations (engine). The Shopify app's client secret verifies webhook HMACs (E3).
+  // Integrations (engine). Shopify app credentials (Partner Dashboard → app → Client credentials):
+  // the client id starts OAuth; the client secret signs OAuth callbacks and webhooks (E3).
+  SHOPIFY_API_KEY: optionalString,
   SHOPIFY_API_SECRET: optionalString,
+  /** Access scopes requested on install (docs/06 §3). Comma-separated. */
+  SHOPIFY_SCOPES: z.string().regex(/^[a-z_]+(,[a-z_]+)*$/, "must be comma-separated scope names").default(SHOPIFY_DEFAULT_SCOPES),
   BOSTA_BASE_URL: url.optional(),
   BOSTA_TRACKING_URL_TEMPLATE: z.string().includes("{tn}", { error: "must contain {tn}" }).optional(),
 

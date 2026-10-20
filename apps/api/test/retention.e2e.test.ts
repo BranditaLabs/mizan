@@ -48,13 +48,18 @@ beforeAll(async () => {
     { actor_id: user, key: "expired", request_hash: "h", status: "done", expires_at: new Date(NOW - 1000) },
     { actor_id: user, key: "valid", request_hash: "h", status: "done", expires_at: new Date(NOW + 3600_000) },
   ]).execute();
+  const install = (claimed: boolean, expiresIn: number, i: number) => ({
+    shop: "s.myshopify.com", scopes: "read_orders", ciphertext: Buffer.from("c"), wrapped_key: Buffer.from("k"), key_version: "v",
+    claim_hash: Buffer.alloc(32, i), expires_at: new Date(NOW + expiresIn), claimed_at: claimed ? new Date(NOW - 1000) : null,
+  });
+  await k.insertInto("shopify_installs").values([install(true, 3600_000, 1), install(false, -1000, 2), install(false, 3600_000, 3)]).execute();
 });
 afterAll(() => app.close());
 
 describe("RetentionService", () => {
   it("prunes finished and expired rows across tenants, in batches, and never live or dead work", async () => {
     const result = await app.get(RetentionService).runOnce(NOW, 1, 50); // batch of 1: proves the loop
-    expect(result).toEqual({ doneJobs: 3, webhookKeys: 2, dispatchedEvents: 1, idempotencyKeys: 1 });
+    expect(result).toEqual({ doneJobs: 3, webhookKeys: 2, dispatchedEvents: 1, idempotencyKeys: 1, shopifyInstalls: 2 });
 
     const jobs = await db.kysely.selectFrom("mz_outbox").select(["status", "updated_at"]).orderBy("status").execute();
     expect(jobs.map((j) => j.status)).toEqual(["dead", "done", "pending", "running"]);
@@ -64,6 +69,6 @@ describe("RetentionService", () => {
     expect(await db.kysely.selectFrom("event_deliveries").selectAll().execute()).toEqual([]); // cascaded
     expect((await db.kysely.selectFrom("idempotency_keys").select("key").execute()).map((r) => r.key)).toEqual(["valid"]);
 
-    expect(await app.get(RetentionService).runOnce(NOW)).toEqual({ doneJobs: 0, webhookKeys: 0, dispatchedEvents: 0, idempotencyKeys: 0 });
+    expect(await app.get(RetentionService).runOnce(NOW)).toEqual({ doneJobs: 0, webhookKeys: 0, dispatchedEvents: 0, idempotencyKeys: 0, shopifyInstalls: 0 });
   });
 });

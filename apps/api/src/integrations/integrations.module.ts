@@ -23,7 +23,7 @@ export class IntegrationsModule {
         { provide: ENGINE_RUNTIME, useValue: runtime },
         { provide: ENGINE_EVENT_SINK, useValue: sink },
       ],
-      exports: [ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter],
+      exports: [ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
     };
   }
 }

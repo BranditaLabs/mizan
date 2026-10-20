@@ -9,3 +9,5 @@ export { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlo
 export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bosta/connector.js";
 export type { ShopifyLearned } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";
+export { send, type RequestSpec, type HttpResponse } from "./resilience/http.js";
+export { exchangeShopifyCode, missingScopes, normalizeShop, shopifyAuthorizeUrl, signShopifyQuery, verifyShopifyQuery, type ShopifyGrant } from "./connectors/shopify/oauth.js";

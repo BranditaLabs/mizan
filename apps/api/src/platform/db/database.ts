@@ -1,11 +1,13 @@
 import { sql, type Kysely, type Transaction } from "kysely";
-import { withoutTenant, withTenant, type DB } from "@mizan/db";
+import { asWorker, withoutTenant, withTenant, type DB } from "@mizan/db";
 
 /**
  * The API's handle on PostgreSQL. Inject it; never build Kysely instances in modules.
  *
  * - `tenant(id, fn)`: the normal path. Every module query runs here, under RLS.
  * - `platform(fn)`: app role without a tenant, for tenants/users/memberships lookups.
+ * - `worker(fn)`: the worker role, across tenants, only where migrations grant it (event
+ *   dispatch, engine jobs, webhook routing, retention, pending Shopify installs).
  * - `kysely`: the raw owner connection, for migrations and signup bootstrap only (E1-6).
  */
 export class Database {
@@ -17,6 +19,10 @@ export class Database {
 
   platform<T>(fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
     return withoutTenant(this.kysely, fn);
+  }
+
+  worker<T>(fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
+    return asWorker(this.kysely, fn);
   }
 
   async ping(): Promise<void> {
