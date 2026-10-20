@@ -34,7 +34,7 @@ packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`miz
 packages/design-system/ ✅ BUILT — Brandita identity (ink, paper, one red point): tokens for CSS/Tailwind/TS/Flutter, Geist + Alexandria + Plex Arabic fonts, 124 icons, wordmark, app icons (70 tests: contrast, brand fidelity)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
 apps/api/          🚧 FOUNDATIONS (E1) — NestJS 12: config, redacting logger, problem+json, OpenAPI, tenant DB, Firebase auth + roles, signup, team, domain events + worker, audit log, KMS secrets; modules M1–M22 next
-apps/web/          🚧 FOUNDATION (E4-1, E4-2) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules; Firebase sign-in (email + SMS second step, phone OTP), store gate and switcher; screens next
+apps/web/          🚧 FOUNDATION (E4-1…E4-3) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules; Firebase sign-in (email + SMS second step, phone OTP), store gate and switcher; UI kit in src/components/ui (gallery at /ar/ui, /en/ui); screens next
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below

@@ -82,13 +82,29 @@ test("English from the browser language, and the switch remembers the choice", a
   expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check("14px Geist"); })).toBe(true);
   expect(await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Geist"?/);
   await page.screenshot({ path: "test-results/home-en.png", fullPage: true });
-  await page.getByRole("button", { name: "Dark" }).click();
-  // Pressed segments are ink-on-paper inverted in dark (--mz-primary #F7F3F8); wait out the colour transition.
-  await expect(page.getByRole("button", { name: "Dark" })).toHaveCSS("background-color", "rgb(247, 243, 248)");
+  await page.getByRole("radio", { name: "Dark" }).click();
+  await expect(page.getByRole("radio", { name: "Dark" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator("body")).toHaveCSS("background-color", DARK_BG); // wait out the colour transition
   await page.screenshot({ path: "test-results/home-en-dark.png", fullPage: true });
-  await page.getByRole("button", { name: "System" }).click();
 
-  await page.getByRole("button", { name: "عربي" }).click();
+  // ⌘K / Ctrl+K: the command palette runs the same theme choice the switch shows.
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "Search or jump to" });
+  await expect(palette).toBeVisible();
+  await palette.getByRole("combobox").fill("light");
+  await expect(palette.getByRole("option")).toHaveText(["Light theme"]);
+  await page.keyboard.press("Enter");
+  await expect(palette).toBeHidden();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Search or jump to…" }).click();
+  await expect(palette).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(palette).toBeHidden();
+  await expect(page.getByRole("button", { name: "Search or jump to…" })).toBeFocused();
+  await page.getByRole("radio", { name: "System" }).click();
+
+  await page.getByRole("radio", { name: "عربي" }).click();
   await expect(page).toHaveURL(/\/ar$/);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await page.goto("/");
@@ -100,7 +116,7 @@ test("English from the browser language, and the switch remembers the choice", a
 test("theme: chosen theme applies at once and is server-rendered on the next visit", async ({ page, request }) => {
   await page.goto("/en/sign-in");
   expect(await bodyBg(page)).toBe(LIGHT_BG);
-  await page.getByRole("button", { name: "Dark" }).click();
+  await page.getByRole("radio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await bodyBg(page)).toBe(DARK_BG);
 
@@ -109,7 +125,7 @@ test("theme: chosen theme applies at once and is server-rendered on the next vis
   await page.reload();
   expect(await bodyBg(page)).toBe(DARK_BG);
 
-  await page.getByRole("button", { name: "System" }).click();
+  await page.getByRole("radio", { name: "System" }).click();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /.+/);
 });
 
@@ -118,7 +134,7 @@ test("system dark mode is followed when no theme was chosen", async ({ browser }
   const page = await context.newPage();
   await page.goto("/ar/sign-in");
   expect(await bodyBg(page)).toBe(DARK_BG);
-  await page.getByRole("button", { name: "فاتح" }).click();
+  await page.getByRole("radio", { name: "فاتح" }).click();
   expect(await bodyBg(page)).toBe(LIGHT_BG);
   await context.close();
 });

@@ -64,7 +64,7 @@
 .mz-switch { appearance: none; width: 34px; height: 20px; border-radius: 999px; background: var(--mz-line-strong); position: relative; cursor: pointer; transition: background-color var(--mz-duration-base) var(--mz-ease-standard); margin: 0; }
 .mz-switch::after { content: ""; position: absolute; inset-block-start: 2px; inset-inline-start: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform var(--mz-duration-base) var(--mz-ease-enter); }
 .mz-switch:checked { background: var(--mz-primary); }
-.mz-switch:checked::after { transform: translateX(14px); }
+.mz-switch:checked::after { transform: translateX(14px); background: var(--mz-on-primary); } /* the knob stays visible on the paper track in dark */
 [dir="rtl"] .mz-switch:checked::after { transform: translateX(-14px); }
 
 .mz-segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-sm); }

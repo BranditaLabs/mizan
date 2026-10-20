@@ -158,5 +158,222 @@
     "loading": "Loading…",
     "unavailable": "We can't reach your store right now.",
     "retry": "Try again"
+  },
+  "ui": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "dismiss": "Dismiss",
+    "phone": {
+      "reveal": "Show number"
+    },
+    "table": {
+      "bulk": "Actions on selected rows",
+      "selected": "{count} selected",
+      "clear": "Clear selection",
+      "selectAll": "Select all rows",
+      "selectRow": "Select {row}",
+      "count": "{count, plural, one {# row} other {# rows}}"
+    },
+    "palette": {
+      "label": "Search or jump to",
+      "placeholder": "Type a page or an action…",
+      "results": "Results",
+      "empty": "Nothing matches. Try another word.",
+      "open": "Search or jump to…",
+      "groups": {
+        "navigate": "Go to",
+        "stores": "Stores",
+        "preferences": "Preferences",
+        "account": "Account"
+      },
+      "commands": {
+        "home": "Home",
+        "store": "Switch to {store}",
+        "theme": {
+          "light": "Light theme",
+          "dark": "Dark theme",
+          "system": "Theme: follow the device"
+        },
+        "language": {
+          "ar": "Arabic (عربي)",
+          "en": "English"
+        },
+        "signOut": "Sign out"
+      }
+    }
+  },
+  "payments": {
+    "method": {
+      "cod": "Cash on delivery",
+      "card": "Card",
+      "wallet": "Wallet",
+      "deposit": "Deposit",
+      "bnpl": "Pay later",
+      "bank_transfer": "Bank transfer"
+    }
+  },
+  "gallery": {
+    "eyebrow": "Design system",
+    "title": "UI kit",
+    "subtitle": "Every component of the dashboard, from the design system's recipes, in the current language and theme. Sample data only.",
+    "buttons": {
+      "title": "Buttons",
+      "body": "One primary (ink) action per screen. Red only for the one commercial moment. Destructive actions ask first.",
+      "primary": "Confirm order",
+      "secondary": "Print label",
+      "ghost": "Skip",
+      "brand": "Upgrade plan",
+      "danger": "Cancel order",
+      "refresh": "Refresh",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Next step",
+      "busy": "Save",
+      "disabled": "Not available"
+    },
+    "fields": {
+      "title": "Fields",
+      "body": "Label above, hint below; the error replaces the hint and says how to fix it.",
+      "name": "Store name",
+      "nameHint": "Customers see it in messages.",
+      "nameValue": "Nile Threads",
+      "phone": "Customer phone",
+      "phoneError": "This number is too short. Egyptian mobiles have 11 digits.",
+      "city": "City",
+      "cityPlaceholder": "Type to search",
+      "cityEmpty": "No city matches. Check the spelling.",
+      "cityHint": "Couriers deliver by city.",
+      "courier": "Courier",
+      "couriers": {
+        "bosta": "Bosta",
+        "aramex": "Aramex",
+        "mylerz": "Mylerz"
+      },
+      "note": "Note for the courier",
+      "notePlaceholder": "Call before arriving",
+      "search": "Search orders",
+      "checkbox": "Send a WhatsApp confirmation",
+      "density": "Row density",
+      "comfortable": "Comfortable",
+      "compact": "Compact",
+      "autoConfirm": "Confirm low-risk orders automatically",
+      "autoConfirmHint": "Orders with a risk under 40 skip the call.",
+      "notify": "Tell me about refused deliveries"
+    },
+    "statusSection": {
+      "title": "Status and payment",
+      "body": "Badges always carry words; colour is never the only signal. Payment methods are tags with their icon.",
+      "tag": "Shopify"
+    },
+    "status": {
+      "new": "New",
+      "pending": "Waiting to confirm",
+      "confirmed": "Confirmed",
+      "shipped": "In transit",
+      "delivered": "Delivered",
+      "refused": "Refused",
+      "paid": "Paid"
+    },
+    "risk": {
+      "label": "Risk {score} of 100",
+      "reasons": "Two refused orders on this number in 60 days; address without a landmark."
+    },
+    "kpis": {
+      "title": "Summary tiles",
+      "body": "The hero tile is the number the screen exists for. Green and red follow meaning: a falling return rate is good news.",
+      "netProfit": "Net profit, last 7 days",
+      "vsLastWeek": "vs last week",
+      "trend": "Trend over 14 days",
+      "margin": "Margin",
+      "rto": "Return rate",
+      "cashWithCouriers": "Cash with couriers"
+    },
+    "table": {
+      "title": "Table",
+      "body": "Sticky header, sortable columns, row selection with bulk actions. Numbers at the end, ids left to right.",
+      "order": "Order",
+      "customer": "Customer",
+      "payment": "Payment",
+      "total": "Total",
+      "risk": "Risk",
+      "status": "Status",
+      "age": "Age",
+      "label": "Sample orders",
+      "rowLabel": "order {id}",
+      "ship": "{count, plural, one {Ship # order} other {Ship # orders}}"
+    },
+    "tabs": {
+      "label": "Order views",
+      "all": "All",
+      "confirm": "To confirm",
+      "ship": "Ready to ship",
+      "transit": "In transit"
+    },
+    "empty": {
+      "title": "No orders here",
+      "body": "Orders that need this step will show here as they arrive.",
+      "returnsTitle": "No returns yet",
+      "returnsBody": "When a courier brings a parcel back, it shows here for checking and restocking.",
+      "returnsAction": "Set up return reasons"
+    },
+    "toast": {
+      "shipped": "{count, plural, one {# order shipped with Bosta} other {# orders shipped with Bosta}}",
+      "undo": "Undo",
+      "undone": "Shipping undone",
+      "tagged": "Tag added",
+      "exported": "Export started",
+      "saved": "Settings saved",
+      "cancelled": "Order #{id} cancelled"
+    },
+    "menu": {
+      "label": "More actions",
+      "tag": "Add a tag",
+      "export": "Export to Excel",
+      "cancel": "Cancel orders"
+    },
+    "panel": {
+      "title": "Side panel",
+      "body": "Key facts as a label-value list and the history, newest first. Opens as a drawer on any screen.",
+      "order": "Order #{id}",
+      "open": "Open as drawer",
+      "people": "Customers",
+      "close": "Close",
+      "confirm": "Confirm order",
+      "customer": "Customer",
+      "phone": "Phone",
+      "area": "Area",
+      "payment": "Payment",
+      "total": "Total",
+      "risk": "Risk",
+      "history": "History"
+    },
+    "feedback": {
+      "title": "Feedback",
+      "body": "Alerts explain and suggest the next step. Toasts confirm what just happened. Loading shows the shape of the content.",
+      "infoLead": "Bosta is slow today.",
+      "info": "Pickups may arrive after 4 pm.",
+      "successLead": "Store connected.",
+      "success": "We imported 412 orders from the last 60 days.",
+      "warningLead": "3 orders are waiting for a deposit.",
+      "warning": "Send the link again or call the customer.",
+      "dangerLead": "Bosta rejected 2 shipments.",
+      "danger": "The city is missing. Pick a city and send again.",
+      "showToast": "Save settings",
+      "cancelOrder": "Cancel an order…",
+      "loading": "Loading orders",
+      "progress": "Shipping labels",
+      "progressBody": "{done} of {total} labels ready"
+    },
+    "dialog": {
+      "title": "Cancel order #{id}?",
+      "body": "Bosta will be asked to stop the delivery, and the customer gets a WhatsApp message.",
+      "confirm": "Cancel order"
+    },
+    "timeline": {
+      "call": "Customer confirmed on a call",
+      "callDetail": "By Heba, 1 min 40 s",
+      "risk": "Risk checked",
+      "created": "Order placed on Shopify"
+    }
   }
 }

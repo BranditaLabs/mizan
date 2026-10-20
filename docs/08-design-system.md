@@ -66,7 +66,7 @@ Defined in `packages/design-system/tokens/tokens.json`; never copy values into a
 
 ## 5. Components
 
-Recipes and rules: `packages/design-system/docs/components.md` (buttons, fields, status and payment badges, tables, KPI tiles, feedback, floating layers, copy). Build them in `apps/web/src/components/ui` (owned code, reproducing the recipes exactly): Button, IconButton, Input, Select, Combobox, Checkbox, Switch, Tabs, Table (sortable, selectable, sticky header), Pill/Badge (status, risk), Card, StatCard (number + delta + sparkline), Drawer, Dialog, Toast, EmptyState, Skeleton, Timeline, MoneyText, PhoneText (masked, `<bdi>`), DateText, Avatar, CommandPalette.
+Recipes and rules: `packages/design-system/docs/components.md` (buttons, fields, status and payment badges, tables, KPI tiles, feedback, floating layers, copy). **✅ E4-3:** built in `apps/web/src/components/ui` as React wrappers over the package's `components.css` classes (imported in the components layer, so the reference page and the app cannot drift); see them all at `/ar/ui` and `/en/ui`. Dialogs and drawers use the native modal `<dialog>`; keyboard movement in tabs, segmented controls and menus follows the screen in right-to-left. The list from the plan: Button, IconButton, Input, Select, Combobox, Checkbox, Switch, Tabs, Table (sortable, selectable, sticky header), Pill/Badge (status, risk), Card, StatCard (number + delta + sparkline), Drawer, Dialog, Toast, EmptyState, Skeleton, Timeline, MoneyText, PhoneText (masked, `<bdi>`), DateText, Avatar, CommandPalette.
 
 ## 6. Accessibility
 

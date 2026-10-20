@@ -5,7 +5,8 @@ import en from "../messages/en.json";
 type Tree = { [k: string]: string | Tree };
 const flatten = (t: Tree, prefix = ""): Record<string, string> =>
   Object.fromEntries(Object.entries(t).flatMap(([k, v]) => (typeof v === "string" ? [[prefix + k, v]] : Object.entries(flatten(v, `${prefix}${k}.`)))));
-const args = (s: string) => [...s.matchAll(/\{(\w+)/g)].map((m) => m[1]).sort();
+// ICU arguments ({store}, {count, plural, …}), not plural branches ("one {# order}", "other {Orders}").
+const args = (s: string) => [...new Set([...s.matchAll(/(?<!(?:zero|one|two|few|many|other|=\d+)\s*)\{(\w+)\s*[,}]/g)].map((m) => m[1]))].sort();
 const tags = (s: string) => [...s.matchAll(/<(\w+)>/g)].map((m) => m[1]).sort();
 
 describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
@@ -23,6 +24,15 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
       expect(A[k]!.trim(), k).not.toBe("");
       expect(E[k]!.trim(), k).not.toBe("");
     }
+  });
+
+  it("reads ICU arguments, not plural branches", () => {
+    expect(args("{count, plural, one {Ship # order} other {Orders}}")).toEqual(["count"]);
+    expect(args("Order #{id} for {store}")).toEqual(["id", "store"]);
+  });
+
+  it("Arabic copy uses Western digits (docs/08 §3: Eastern digits are a store setting, applied when formatting)", () => {
+    for (const [k, v] of Object.entries(A)) expect(/[٠-٩]/.test(v), `${k}: ${v}`).toBe(false);
   });
 
   it("Arabic copy is actually Arabic (no untranslated English left behind)", () => {

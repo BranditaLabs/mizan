@@ -9,9 +9,9 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
 import { Bdi } from "@/components/Bdi";
-import { SegmentButton, Segmented } from "@/components/Segmented";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { Segmented } from "@/components/ui/Choice";
 import { Field } from "@/components/ui/Field";
 import { useRouter } from "@/i18n/navigation";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
@@ -143,11 +143,9 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
             <h1 className="font-display text-heading-md">{creating ? t("createTitle") : t("title")}</h1>
             <p className="mt-1.5 text-body-sm text-text-2">{t("subtitle")}</p>
             <div className="mt-5">
-              <Segmented label={t("tabs.label")}>
-                {(["email", "phone"] as const).map((m) => (
-                  <SegmentButton key={m} pressed={method === m} onClick={() => { setMethod(m); setError(null); }}>{t(`tabs.${m}`)}</SegmentButton>
-                ))}
-              </Segmented>
+              <Segmented label={t("tabs.label")} value={method}
+                options={(["email", "phone"] as const).map((m) => ({ value: m, label: t(`tabs.${m}`) }))}
+                onChange={(m) => { setMethod(m); setError(null); }} />
             </div>
             {method === "email" ? (
               <form onSubmit={onEmail} className="mt-5 flex flex-col gap-4" noValidate>

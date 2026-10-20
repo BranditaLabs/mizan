@@ -112,7 +112,7 @@ export async function agentIn(phone: { e164: string }, ...storeNames: string[]):
 /** Sign in through the UI with a phone number and the texted code (Arabic or English labels). */
 export async function signInWithPhone(page: Page, phone: { national: string; e164: string }, locale: "ar" | "en" = "ar") {
   const L = locale === "ar" ? { tab: "رقم الموبايل", send: "ابعت الكود", code: "الكود", verify: "تأكيد" } : { tab: "Phone number", send: "Send code", code: "Code", verify: "Verify" };
-  await page.getByRole("button", { name: L.tab, exact: true }).click();
+  await page.getByRole("radio", { name: L.tab, exact: true }).click();
   await page.getByLabel(L.tab, { exact: true }).fill(phone.national);
   const seen = await smsCount(phone.e164);
   await page.getByRole("button", { name: L.send }).click();

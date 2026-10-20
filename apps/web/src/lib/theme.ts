@@ -15,3 +15,25 @@ export function applyTheme(theme: Theme, doc: Document = document): void {
   else delete doc.documentElement.dataset.theme;
   doc.cookie = `${THEME_COOKIE}=${theme}; path=/; max-age=31536000; samesite=lax`;
 }
+
+/* ── Browser: one theme choice shared by the switch and the command palette ── */
+const listeners = new Set<() => void>();
+let chosen: Theme | null = null;
+
+function fromCookie(): Theme {
+  const m = /(?:^|;\s*)mizan-theme=([^;]+)/.exec(document.cookie);
+  return parseTheme(m?.[1]);
+}
+
+export function subscribeTheme(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+export const currentTheme = (): Theme => chosen ?? fromCookie();
+
+/** Apply, remember and tell every subscriber (ThemeSwitch, the palette). */
+export function chooseTheme(theme: Theme): void {
+  chosen = theme;
+  applyTheme(theme);
+  listeners.forEach((l) => l());
+}

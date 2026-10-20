@@ -77,12 +77,12 @@ test("agent in Arabic: phone number and code, joins the store they were invited 
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("ادخل على ميزان");
   // A number that is not an Egyptian mobile never reaches Firebase.
-  await page.getByRole("button", { name: "رقم الموبايل", exact: true }).click();
+  await page.getByRole("radio", { name: "رقم الموبايل", exact: true }).click();
   await page.getByLabel("رقم الموبايل", { exact: true }).fill("0123");
   await page.getByRole("button", { name: "ابعت الكود" }).click();
   await expect(page.locator("main").getByRole("alert")).toContainText("رقم الموبايل مش صحيح");
-  await page.getByRole("button", { name: "الإيميل", exact: true }).click();
-  await expect(page.getByRole("button", { name: "الإيميل", exact: true })).toHaveCSS("background-color", "rgb(11, 11, 11)");
+  await page.getByRole("radio", { name: "الإيميل", exact: true }).click();
+  await expect(page.getByRole("radio", { name: "الإيميل", exact: true })).toHaveAttribute("aria-checked", "true");
   await page.screenshot({ path: "test-results/sign-in-ar.png", fullPage: true });
 
   await signInWithPhone(page, phone, "ar");

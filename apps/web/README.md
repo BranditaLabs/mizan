@@ -38,6 +38,7 @@ npm run build:api && npm run build:e2e -w @mizan/web && npm run e2e -w @mizan/we
 | `src/lib/theme.ts` | Theme choice (`light` / `dark` / `system`), cookie `mizan-theme`, rendered by the server (no flash) |
 | `src/app/[locale]/(app)/` | Store pages behind `StoreGate`, inside `Shell` |
 | `src/app/[locale]/{sign-in,welcome,security/two-step}/` | Pages outside a store (`AuthFrame`) |
+| `src/components/ui/` | UI kit (E4-3) over the design system's `mz-*` classes: buttons, fields, combobox, choice controls, tabs, badges, KPI tiles, data table, dialog/drawer/menu/tooltip/toast, command palette, money/phone/date. Gallery: `/ar/ui`, `/en/ui` (sample data, no sign-in) |
 | `src/components/` | `Shell` (ink rail with wordmark, store switcher and icons; header with user menu), `AuthFrame`, `auth/*` (sign-in, two-step, welcome, gates), `ui/*` (Button, Field, Alert), `Bdi`, `Segmented`, language and theme switches |
 | `e2e/` | `env.mjs` (the e2e stack), `stack.ts` (emulator codes and links, seeded people and stores), `auth.spec.ts`, `smoke.spec.ts`, `firebase.json` (emulator) |
 | `eslint-rules/no-physical-direction.js` | Blocks `ml-*`, `pr-*`, `left-*`, `text-right`, `border-l`, `rounded-tr` … with the logical fix in the message |

@@ -1,21 +1,74 @@
-import { useId, type InputHTMLAttributes, type ReactNode } from "react";
+import { Icon } from "@mizan/design-system/icons/react";
+import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { cx } from "./logic";
 
 /**
- * Field (components.md §3): label above, hint below, the error replaces the hint and is announced.
- * `ltr` for phones, emails, codes and amounts: typed and shown left to right in Arabic too.
+ * Fields (components.md §3): label above, hint below; the error replaces the hint, with an icon,
+ * and marks the control invalid. `ltr` for phones, emails, codes and amounts (typed and shown left
+ * to right in Arabic too, tabular digits).
  */
-export function Field({ label, hint, error, ltr = false, className = "", ...input }:
-  InputHTMLAttributes<HTMLInputElement> & { label: string; hint?: ReactNode; error?: string | null; ltr?: boolean }) {
+type Common = { label: string; hint?: ReactNode; error?: string | null; className?: string };
+
+function useFieldIds(hint: ReactNode, error: string | null | undefined) {
   const id = useId();
   const note = `${id}-note`;
+  return { id, note, describedBy: error || hint ? note : undefined };
+}
+
+function Note({ id, hint, error }: { id: string; hint?: ReactNode; error?: string | null }) {
+  if (error) {
+    return (
+      <p id={id} role="alert" className="mz-error-text">
+        <Icon name="error" size={14} />
+        {error}
+      </p>
+    );
+  }
+  return hint ? <p id={id} className="mz-hint">{hint}</p> : null;
+}
+
+export function Field({ label, hint, error, ltr = false, className, ...input }: InputHTMLAttributes<HTMLInputElement> & Common & { ltr?: boolean }) {
+  const { id, note, describedBy } = useFieldIds(hint, error);
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={id} className="text-label text-text">{label}</label>
-      <input id={id} dir={ltr ? "ltr" : undefined} aria-invalid={error ? true : undefined} aria-describedby={error || hint ? note : undefined}
-        className={`h-9 rounded-sm border border-line-strong bg-surface px-3 text-body text-text placeholder:text-text-3 hover:border-text-3 focus-visible:border-focus focus-visible:ring-1 focus-visible:ring-focus ${ltr ? "mz-num text-start" : ""}`}
-        {...input} />
-      {error ? <p id={note} role="alert" className="text-caption text-danger-text">{error}</p>
-        : hint ? <p id={note} className="text-caption text-text-3">{hint}</p> : null}
+    <div className={cx("mz-field", className)}>
+      <label htmlFor={id} className="mz-label">{label}</label>
+      <input id={id} dir={ltr ? "ltr" : undefined} aria-invalid={error ? true : undefined} aria-describedby={describedBy}
+        className={cx("mz-input", ltr && "mz-num text-start")} {...input} />
+      <Note id={note} hint={hint} error={error} />
+    </div>
+  );
+}
+
+export function TextArea({ label, hint, error, className, ...input }: TextareaHTMLAttributes<HTMLTextAreaElement> & Common) {
+  const { id, note, describedBy } = useFieldIds(hint, error);
+  return (
+    <div className={cx("mz-field", className)}>
+      <label htmlFor={id} className="mz-label">{label}</label>
+      <textarea id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy} className="mz-textarea" {...input} />
+      <Note id={note} hint={hint} error={error} />
+    </div>
+  );
+}
+
+/** Native select (keyboard, screen readers and mobile pickers for free). */
+export function Select({ label, hint, error, className, children, ...select }: SelectHTMLAttributes<HTMLSelectElement> & Common) {
+  const { id, note, describedBy } = useFieldIds(hint, error);
+  return (
+    <div className={cx("mz-field", className)}>
+      <label htmlFor={id} className="mz-label">{label}</label>
+      <select id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy} className="mz-select" {...select}>{children}</select>
+      <Note id={note} hint={hint} error={error} />
+    </div>
+  );
+}
+
+/** Search box with the search icon and an optional shortcut hint (⌘K). The label is for screen readers. */
+export function SearchInput({ label, shortcut, className, ...input }: InputHTMLAttributes<HTMLInputElement> & { label: string; shortcut?: string }) {
+  return (
+    <div className={cx("mz-input-wrap", className)}>
+      <Icon name="search" size={16} />
+      <input type="search" aria-label={label} className="mz-input" {...input} />
+      {shortcut ? <kbd className="mz-kbd" dir="ltr">{shortcut}</kbd> : null}
     </div>
   );
 }
