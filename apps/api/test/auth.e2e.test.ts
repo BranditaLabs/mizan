@@ -148,6 +148,7 @@ describe("GET /v1/me", () => {
       user: { id: rows[0]!.id, firebaseUid: "fb-newcomer", email: "new@example.com", phone: "+201001234821", displayName: "Mona",
         language: "ar", emailVerified: true, mfa: false },
       memberships: [],
+      invitations: [],
     });
   });
 

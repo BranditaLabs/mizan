@@ -233,6 +233,20 @@ export interface FxRates {
   source: string;
 }
 
+export interface Invitations {
+  id: Generated<string>;
+  tenant_id: string;
+  email: string | null;
+  phone_e164: string | null;
+  role: string;
+  status: Generated<string>;
+  invited_by: string | null;
+  accepted_by: string | null;
+  expires_at: Timestamp;
+  created_at: Generated<Timestamp>;
+  accepted_at: Timestamp | null;
+}
+
 export interface LandedCosts {
   id: Generated<string>;
   tenant_id: string;
@@ -799,6 +813,7 @@ export interface DB {
   expenses: Expenses;
   external_variants: ExternalVariants;
   fx_rates: FxRates;
+  invitations: Invitations;
   landed_costs: LandedCosts;
   listings: Listings;
   memberships: Memberships;

@@ -2,6 +2,7 @@ import { Module, type DynamicModule, type Type } from "@nestjs/common";
 import type { DestinationStream } from "pino";
 import { AuthModule } from "./platform/auth/auth.module.js";
 import type { TokenVerifier } from "./platform/auth/token-verifier.js";
+import { MembersModule } from "./modules/members/members.module.js";
 import { TenantsModule } from "./modules/tenants/tenants.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
 import { APP_FILTER } from "@nestjs/core";
@@ -26,7 +27,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
     };
   }

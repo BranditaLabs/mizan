@@ -28,6 +28,11 @@ const PROBLEM_TITLES = {
   insufficient_role: { en: "Your role cannot do this", ar: "صلاحيتك متسمحش بالإجراء ده" },
   slug_taken: { en: "Store address taken", ar: "عنوان المتجر ده مستخدم" },
   tenant_limit_reached: { en: "Store limit reached", ar: "وصلت للحد الأقصى من المتاجر" },
+  already_member: { en: "Already a member", ar: "الشخص ده عضو بالفعل" },
+  invitation_not_found: { en: "Invitation not found", ar: "الدعوة مش موجودة أو انتهت" },
+  member_not_found: { en: "Member not found", ar: "العضو مش موجود" },
+  cannot_change_self: { en: "You cannot change your own access", ar: "مينفعش تغيّر صلاحيتك بنفسك" },
+  last_owner: { en: "A store needs an owner", ar: "المتجر لازم يكون له صاحب واحد على الأقل" },
   internal_error: { en: "Something went wrong", ar: "حصلت مشكلة عندنا" },
   service_unavailable: { en: "Service unavailable", ar: "الخدمة مش متاحة دلوقتي" },
 } as const satisfies Record<string, Record<Locale, string>>;

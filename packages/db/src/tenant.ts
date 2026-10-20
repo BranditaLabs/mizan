@@ -42,10 +42,18 @@ export async function withoutTenant<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>
 }
 
 /**
- * Mark the signed-in user inside a transaction (enables the member_self_read
- * policy, migration 0004). LOCAL: ends with the transaction.
+ * Mark the signed-in user inside a transaction. LOCAL: ends with the transaction.
+ * Enables the self-read policies: member_self_read (0004) by user id, and
+ * invitee_read (0005) by email/phone. Pass `email` only when the identity
+ * provider verified it; phones come from OTP sign-in.
  */
-export async function setActingUser(trx: Transaction<DB>, userId: string): Promise<void> {
+export async function setActingUser(
+  trx: Transaction<DB>,
+  userId: string,
+  contact: { email?: string; phone?: string } = {},
+): Promise<void> {
   if (!UUID.test(userId)) throw new Error("user id must be a UUID");
-  await sql`SELECT set_config('app.user_id', ${userId}, true)`.execute(trx);
+  await sql`SELECT set_config('app.user_id', ${userId}, true),
+                   set_config('app.user_email', ${contact.email?.toLowerCase() ?? ""}, true),
+                   set_config('app.user_phone', ${contact.phone ?? ""}, true)`.execute(trx);
 }
