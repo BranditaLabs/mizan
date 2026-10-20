@@ -1,0 +1,435 @@
+import { createHash } from "node:crypto";
+import { IntegrationError } from "../core/errors.js";
+import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "../core/model.js";
+import { TERMINAL_STATUSES } from "../core/model.js";
+import type { Runtime } from "../core/runtime.js";
+import { DriftMonitor } from "../adapt/drift.js";
+import { ShapeWatch } from "../adapt/shape.js";
+import { shouldApplyStatus } from "../adapt/status.js";
+import { BostaConnector, type BostaConfig } from "../connectors/bosta/connector.js";
+import { ShopifyConnector } from "../connectors/shopify/connector.js";
+import type { ShopifyCredentials } from "../connectors/shopify/client.js";
+import { gidFromWebhook } from "../connectors/shopify/mapper.js";
+import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
+import type { OutboxJob, Store } from "../sync/store.js";
+import { DEFAULT_WORKER, OutboxWorker, type JobOutcome, type WorkerOptions } from "../sync/worker.js";
+
+export type Owner = "mizan" | "shopify";
+
+export interface EngineOptions {
+  shopify: ShopifyCredentials;
+  bosta: BostaConfig;
+  /** Shopify location Mizan manages stock for. */
+  locationId?: string;
+  /** Which system wins when a field differs. Mizan-owned fields edited in Shopify are restored; Shopify-owned ones are accepted. */
+  ownership?: { price: Owner; compareAtPrice: Owner; inventory: Owner };
+  /** Ship automatically when an order carries this tag (set by Mizan's confirmation module). */
+  autoShipTag?: string | null;
+  markCodPaidOnDelivery?: boolean;
+  tagOnReturn?: string;
+  trackingCompany?: string;
+  /** Overlap when polling, to cover clock skew and late writes. */
+  pollOverlapMs?: number;
+  /** Writes younger than this are "in flight"; differing reads in this window are not treated as conflicts. */
+  echoWindowMs?: number;
+  worker?: Partial<WorkerOptions>;
+}
+
+export interface WebhookResult {
+  status: number;
+  body: Record<string, unknown>;
+}
+
+interface OrderRecord {
+  order: CanonicalOrder;
+  trackingNumber?: string;
+  fulfilled?: boolean;
+  paidMarked?: boolean;
+}
+
+interface ShipmentRecord {
+  shipment: CanonicalShipment;
+  orderId: string;
+  statusAt: number;
+}
+
+interface ProductState {
+  productId: string;
+  desired: {
+    variants: Record<string, { price?: string; compareAtPrice?: string | null }>;
+    inventory: Record<string, number>; // `${inventoryItemId}|${locationId}` → available
+  };
+  lastWriteAt?: number;
+  snapshot?: CanonicalProduct;
+}
+
+type Listener = (event: string, data: Record<string, unknown>) => void;
+
+const iso = (v: string | number | undefined) => (v === undefined ? undefined : new Date(v).toISOString());
+const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 16);
+
+/**
+ * The Mizan integration engine.
+ *
+ *   webhooks ─▶ verify ─▶ dedupe ─▶ outbox job ─▶ worker ─▶ connector ─▶ provider
+ *   polling  ─▶ reconcile ─────────▶ outbox job ┘
+ *
+ * Webhooks are acknowledged in milliseconds; all real work runs as outbox
+ * jobs with retries, backoff, idempotency keys and a dead-letter queue.
+ * Polling re-reads recent changes on a schedule, so a missed webhook delays
+ * an update by one poll interval instead of losing it.
+ */
+export class MizanEngine {
+  readonly drift = new DriftMonitor();
+  readonly shapes = new ShapeWatch();
+  readonly shopify: ShopifyConnector;
+  readonly bosta: BostaConnector;
+  readonly worker: OutboxWorker;
+  private readonly listeners: Listener[] = [];
+  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId">> & Pick<EngineOptions, "locationId">;
+
+  constructor(private readonly store: Store, private readonly rt: Runtime, options: EngineOptions) {
+    this.opts = {
+      ownership: { price: "mizan", compareAtPrice: "mizan", inventory: "mizan" },
+      autoShipTag: "mizan-confirmed",
+      markCodPaidOnDelivery: true,
+      tagOnReturn: "mizan-returned",
+      trackingCompany: "Bosta",
+      pollOverlapMs: 10 * 60_000,
+      echoWindowMs: 2 * 60_000,
+      ...options,
+    };
+    this.shopify = new ShopifyConnector(options.shopify, rt, this.drift, this.shapes);
+    this.bosta = new BostaConnector(options.bosta, rt, this.drift, this.shapes);
+    this.worker = new OutboxWorker(store, rt, this.handlers(), { ...DEFAULT_WORKER, ...options.worker });
+    this.worker.onOutcome((o) => this.onOutcome(o));
+    this.drift.onNew((e) => this.emit("drift", { ...e }));
+  }
+
+  on(listener: Listener) {
+    this.listeners.push(listener);
+  }
+
+  private emit(event: string, data: Record<string, unknown>) {
+    this.rt.logger.log(event === "job.dead" || event === "drift" ? "warn" : "info", event, data);
+    for (const l of this.listeners) l(event, data);
+  }
+
+  private now() {
+    return this.rt.clock.now();
+  }
+
+  async init() {
+    const learned = await this.store.get<ReturnType<BostaConnector["exportLearned"]>>("learned", "bosta");
+    if (learned) this.bosta.loadLearned(learned);
+  }
+
+  private async saveLearned() {
+    await this.store.put("learned", "bosta", this.bosta.exportLearned(), this.now());
+  }
+
+  private enqueue(kind: string, payload: unknown, idempotencyKey: string, runAt?: number) {
+    return this.store.enqueue({ kind, connection: kind.split(".")[0], payload, idempotencyKey, runAt }, this.now());
+  }
+
+  // ═════════════ inbound: webhooks ═════════════
+
+  async handleShopifyWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    const hmac = headers["X-Shopify-Hmac-SHA256"] ?? headers["x-shopify-hmac-sha256"];
+    if (!verifyShopifyHmac(rawBody, hmac, this.opts_shopifySecret())) return { status: 401, body: { error: "invalid signature" } };
+    const meta = readShopifyHeaders(headers);
+    const dedupeKey = `shopify:${meta.eventId ?? meta.webhookId ?? hash(rawBody)}`;
+    if (!(await this.store.markInbound(dedupeKey, this.now()))) return { status: 200, body: { duplicate: true } };
+
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return { status: 200, body: { ignored: "unparseable body" } }; // never make Shopify retry a body we can't read
+    }
+    const version = iso((payload.updated_at as string) ?? undefined) ?? meta.eventId ?? hash(rawBody);
+    if (meta.topic.startsWith("orders/")) {
+      const id = gidFromWebhook("Order", payload);
+      if (id) await this.enqueue("shopify.ingestOrder", { orderId: id }, `shopify:order:${id}:${version}`);
+    } else if (meta.topic.startsWith("products/") && meta.topic !== "products/delete") {
+      const id = gidFromWebhook("Product", payload);
+      if (id) await this.enqueue("shopify.ingestProduct", { productId: id }, `shopify:product:${id}:${version}`);
+    } else if (meta.topic === "app/uninstalled") {
+      this.emit("connection.uninstalled", { shop: meta.shop });
+    }
+    return { status: 200, body: { accepted: true } };
+  }
+
+  private opts_shopifySecret() {
+    return this.shopify.creds.clientSecret;
+  }
+
+  async handleBostaWebhook(query: Record<string, string | undefined>, headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    const token = query.token ?? headers["x-mizan-token"] ?? headers["authorization"];
+    if (!this.bosta.verifyWebhook(token)) return { status: 401, body: { error: "invalid token" } };
+    let hint: ReturnType<BostaConnector["parseWebhook"]>;
+    try {
+      hint = this.bosta.parseWebhook(JSON.parse(rawBody));
+    } catch {
+      return { status: 200, body: { ignored: "unrecognised payload; recorded as drift" } };
+    }
+    const key = `bosta:${hint.trackingNumber}:${hint.code ?? hint.label ?? ""}:${hint.at ?? hash(rawBody)}`;
+    if (!(await this.store.markInbound(key, this.now()))) return { status: 200, body: { duplicate: true } };
+    await this.enqueue("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, key);
+    return { status: 200, body: { accepted: true } };
+  }
+
+  // ═════════════ commands ═════════════
+
+  /** Ship an order with Bosta (normally called by the confirmation module). */
+  async shipOrder(orderId: string) {
+    return this.enqueue("bosta.createShipment", { orderId }, `ship:${orderId}`);
+  }
+
+  /**
+   * Change product data from Mizan (price, compare-at price, stock).
+   * The new values become Mizan's desired state and are pushed to Shopify.
+   * Identical desired states collapse into one job.
+   */
+  async updateProduct(patch: ProductPatch) {
+    const state = (await this.store.get<ProductState>("product-state", patch.productExternalId)) ?? { productId: patch.productExternalId, desired: { variants: {}, inventory: {} } };
+    for (const v of patch.variants ?? []) {
+      const cur = state.desired.variants[v.externalId] ?? {};
+      if (v.price) cur.price = v.price.amount;
+      if (v.compareAtPrice !== undefined) cur.compareAtPrice = v.compareAtPrice ? v.compareAtPrice.amount : null;
+      state.desired.variants[v.externalId] = cur;
+    }
+    for (const inv of patch.inventory ?? []) state.desired.inventory[`${inv.inventoryItemId}|${inv.locationId}`] = inv.available;
+    await this.store.put("product-state", patch.productExternalId, state, this.now());
+    return this.enqueue("shopify.pushProduct", { patch }, `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}`);
+  }
+
+  /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
+  async scheduleReconcile(intervalMs = 5 * 60_000) {
+    const slot = Math.floor(this.now() / intervalMs);
+    await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+    await this.enqueue("bosta.pollActive", {}, `poll:bosta:${slot}`);
+  }
+
+  /** Ops fixed an address the engine could not match: remember it and retry the stuck job. */
+  async resolveCity(addressText: string, bostaCityId: string, jobId?: string) {
+    this.bosta.learnCityAlias(addressText, bostaCityId);
+    await this.saveLearned();
+    if (jobId) return this.store.replay(jobId, this.now());
+    return true;
+  }
+
+  replay(jobId: string) {
+    return this.store.replay(jobId, this.now());
+  }
+
+  /** Run due jobs until none are left (tests, CLI). Production calls `worker.tick()` on an interval. */
+  async drain(maxTicks = 500) {
+    let total = 0;
+    for (let i = 0; i < maxTicks; i++) {
+      const n = await this.worker.tick();
+      total += n;
+      if (n === 0) break;
+    }
+    return total;
+  }
+
+  async health() {
+    const [pending, dead] = await Promise.all([this.store.jobs({ status: "pending" }), this.store.jobs({ status: "dead" })]);
+    return {
+      shopify: this.shopify.health(),
+      bosta: this.bosta.health(),
+      outbox: { pending: pending.length, dead: dead.length },
+      deadLetters: dead.slice(-20).map((j) => ({ id: j.id, kind: j.kind, attempts: j.attempts, error: j.lastError })),
+      drift: this.drift.report().slice(0, 20),
+    };
+  }
+
+  // ═════════════ job handlers ═════════════
+
+  private handlers(): Record<string, (job: OutboxJob<any>) => Promise<void>> {
+    return {
+      "shopify.ingestOrder": (j) => this.ingestOrder(j.payload.orderId),
+      "shopify.ingestProduct": (j) => this.ingestProduct(j.payload.productId),
+      "shopify.pollOrders": () => this.pollOrders(),
+      "bosta.pollActive": () => this.pollActiveShipments(),
+      "bosta.createShipment": (j) => this.createShipment(j.payload.orderId, j.attempts),
+      "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber),
+      "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber),
+      "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
+      "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
+      "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
+    };
+  }
+
+  private async ingestOrder(orderId: string) {
+    const order = await this.shopify.getOrder(orderId);
+    const prev = await this.store.get<OrderRecord>("order", orderId);
+    const rec: OrderRecord = { ...prev, order: { ...order, raw: undefined } };
+    await this.store.put("order", orderId, rec, this.now());
+    this.emit("order.ingested", { orderId, number: order.number, paymentMode: order.paymentMode, updatedAt: order.updatedAt });
+
+    if (order.cancelled && rec.trackingNumber) {
+      this.emit("order.cancelled_after_shipping", { orderId, trackingNumber: rec.trackingNumber }); // ops decides whether to terminate the delivery
+      return;
+    }
+    if (this.opts.autoShipTag && order.tags.includes(this.opts.autoShipTag) && !order.cancelled && !rec.trackingNumber) {
+      await this.shipOrder(orderId);
+    }
+  }
+
+  private async createShipment(orderId: string, attempt: number) {
+    const rec = await this.store.get<OrderRecord>("order", orderId);
+    const order = rec?.order ?? (await this.shopify.getOrder(orderId));
+    if (rec?.trackingNumber) return; // already shipped
+    if (order.cancelled) throw new IntegrationError({ kind: "validation", connector: "engine", message: `order ${order.number} is cancelled` });
+
+    const { shipment, adopted } = await this.bosta.createShipmentOnce(order, orderId, attempt > 1);
+    await this.saveLearned();
+    await this.store.put<OrderRecord>("order", orderId, { ...(rec ?? { order }), trackingNumber: shipment.trackingNumber }, this.now());
+    await this.store.put<ShipmentRecord>("shipment", shipment.trackingNumber, { shipment: { ...shipment, raw: undefined }, orderId, statusAt: Date.parse(shipment.updatedAt) || this.now() }, this.now());
+    this.emit("shipment.created", { orderId, trackingNumber: shipment.trackingNumber, adopted, cod: shipment.cod.amount });
+    await this.enqueue("shopify.fulfill", { orderId, trackingNumber: shipment.trackingNumber }, `fulfill:${orderId}:${shipment.trackingNumber}`);
+  }
+
+  private async fulfill(orderId: string, trackingNumber: string) {
+    const result = await this.shopify.fulfillWithTracking(orderId, {
+      company: this.opts.trackingCompany, number: trackingNumber, url: this.bosta.trackingUrl(trackingNumber),
+    });
+    const rec = await this.store.get<OrderRecord>("order", orderId);
+    if (rec) await this.store.put<OrderRecord>("order", orderId, { ...rec, fulfilled: true }, this.now());
+    this.emit("order.fulfilled", { orderId, trackingNumber, result });
+  }
+
+  private async ingestShipmentStatus(trackingNumber: string) {
+    const rec = await this.store.get<ShipmentRecord>("shipment", trackingNumber);
+    const fresh = await this.bosta.getShipment(trackingNumber); // fat fetch: never trust the webhook body alone
+    await this.saveLearned();
+    const freshAt = Date.parse(fresh.updatedAt) || this.now();
+    const orderId = rec?.orderId ?? fresh.orderRef;
+    if (!orderId) {
+      this.emit("shipment.orphan", { trackingNumber }); // created outside Mizan
+      return;
+    }
+    const current = rec?.shipment.status;
+    if (fresh.status === "unknown") {
+      this.emit("shipment.needs_review", { trackingNumber, orderId, rawStatus: fresh.rawStatus });
+    }
+    if (!shouldApplyStatus(current, fresh.status, rec?.statusAt, freshAt)) {
+      if (current !== fresh.status) this.emit("shipment.status_ignored", { trackingNumber, current, received: fresh.status });
+      return;
+    }
+    await this.store.put<ShipmentRecord>("shipment", trackingNumber, { shipment: { ...fresh, raw: undefined }, orderId, statusAt: freshAt }, this.now());
+    this.emit("shipment.status", { trackingNumber, orderId, from: current, to: fresh.status, raw: fresh.rawStatus });
+    await this.afterStatusChange(orderId, fresh.status, trackingNumber);
+  }
+
+  private async afterStatusChange(orderId: string, status: ShipmentStatus, trackingNumber: string) {
+    const rec = await this.store.get<OrderRecord>("order", orderId);
+    if (status === "delivered" && this.opts.markCodPaidOnDelivery && rec?.order.paymentMode === "cod") {
+      await this.enqueue("shopify.markPaid", { orderId }, `paid:${orderId}`);
+    }
+    if (status === "returned" && this.opts.tagOnReturn) {
+      await this.enqueue("shopify.addTags", { id: orderId, tags: [this.opts.tagOnReturn] }, `tag:${orderId}:${this.opts.tagOnReturn}:${trackingNumber}`);
+    }
+  }
+
+  private async markPaid(orderId: string) {
+    const result = await this.shopify.markPaid(orderId);
+    const rec = await this.store.get<OrderRecord>("order", orderId);
+    if (rec) await this.store.put<OrderRecord>("order", orderId, { ...rec, paidMarked: true }, this.now());
+    this.emit("order.paid", { orderId, result });
+  }
+
+  private async pushProduct(patch: ProductPatch, opKey: string) {
+    const state = await this.store.get<ProductState>("product-state", patch.productExternalId);
+    // Always push the latest desired values, not the (possibly stale) patch that queued this job.
+    const latest: ProductPatch = { ...patch };
+    if (state) {
+      latest.variants = patch.variants?.map((v) => {
+        const d = state.desired.variants[v.externalId];
+        return d ? { externalId: v.externalId, ...(d.price !== undefined ? { price: { amount: d.price, currency: "" } } : {}), ...(d.compareAtPrice !== undefined ? { compareAtPrice: d.compareAtPrice === null ? null : { amount: d.compareAtPrice, currency: "" } } : {}) } : v;
+      });
+      latest.inventory = patch.inventory?.map((i) => ({ ...i, available: state.desired.inventory[`${i.inventoryItemId}|${i.locationId}`] ?? i.available }));
+    }
+    await this.shopify.applyProductPatch(latest, hash(opKey));
+    if (state) await this.store.put<ProductState>("product-state", patch.productExternalId, { ...state, lastWriteAt: this.now() }, this.now());
+    this.emit("product.pushed", { productId: patch.productExternalId, variants: latest.variants?.length ?? 0, inventory: latest.inventory?.length ?? 0 });
+  }
+
+  /**
+   * A product changed in Shopify (webhook or poll). Shopify-owned fields
+   * (title, description, tags, status) are taken as-is. Mizan-owned fields
+   * (price, compare-at price) are compared with Mizan's desired values:
+   *   equal              → in sync (this is also how our own echo is ignored)
+   *   differ, write just made → our write is still propagating: ignore
+   *   differ, owner Mizan    → someone edited it in Shopify admin: restore
+   *   differ, owner Shopify  → accept Shopify's value into Mizan
+   */
+  private async ingestProduct(productId: string) {
+    const product = await this.shopify.getProduct(productId);
+    const state = (await this.store.get<ProductState>("product-state", productId)) ?? { productId, desired: { variants: {}, inventory: {} } };
+    const inFlight = state.lastWriteAt !== undefined && this.now() - state.lastWriteAt < this.opts.echoWindowMs;
+    const restore: NonNullable<ProductPatch["variants"]> = [];
+
+    for (const v of product.variants) {
+      const want = state.desired.variants[v.externalId];
+      if (!want) continue;
+      const priceDiff = want.price !== undefined && Number(want.price) !== Number(v.price.amount);
+      const capHave = v.compareAtPrice ? v.compareAtPrice.amount : null;
+      const capDiff = want.compareAtPrice !== undefined && (want.compareAtPrice === null ? capHave !== null : Number(want.compareAtPrice) !== Number(capHave));
+      if (!priceDiff && !capDiff) continue;
+      if (inFlight) continue;
+      const fix: { externalId: string; price?: { amount: string; currency: string }; compareAtPrice?: { amount: string; currency: string } | null } = { externalId: v.externalId };
+      if (priceDiff) {
+        if (this.opts.ownership.price === "mizan") fix.price = { amount: want.price!, currency: "" };
+        else want.price = v.price.amount;
+      }
+      if (capDiff) {
+        if (this.opts.ownership.compareAtPrice === "mizan") fix.compareAtPrice = want.compareAtPrice ? { amount: want.compareAtPrice, currency: "" } : null;
+        else want.compareAtPrice = capHave;
+      }
+      if (fix.price || fix.compareAtPrice !== undefined) restore.push(fix);
+      this.emit("product.conflict", { productId, variantId: v.externalId, shopifyPrice: v.price.amount, mizanPrice: want.price, action: fix.price || fix.compareAtPrice !== undefined ? "restore_mizan_value" : "accepted_shopify_value" });
+    }
+
+    await this.store.put<ProductState>("product-state", productId, { ...state, snapshot: { ...product, raw: undefined } }, this.now());
+    this.emit("product.ingested", { productId, title: product.title, status: product.status });
+    if (restore.length) {
+      await this.enqueue("shopify.pushProduct", { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
+    }
+  }
+
+  private async pollOrders() {
+    const cursor = (await this.store.get<{ since: string }>("cursor", "shopify.orders"))?.since ?? new Date(this.now() - 24 * 3600_000).toISOString();
+    const since = new Date(Date.parse(cursor) - this.opts.pollOverlapMs).toISOString();
+    let maxSeen = cursor;
+    for await (const page of this.shopify.ordersUpdatedSince(since)) {
+      for (const o of page) {
+        const known = await this.store.get<OrderRecord>("order", o.externalId);
+        if (!known || Date.parse(known.order.updatedAt) < Date.parse(o.updatedAt)) {
+          // Same key format as the webhook path, so a webhook and a poll for one version run once.
+          await this.enqueue("shopify.ingestOrder", { orderId: o.externalId }, `shopify:order:${o.externalId}:${iso(o.updatedAt)}`);
+        }
+        if (Date.parse(o.updatedAt) > Date.parse(maxSeen)) maxSeen = o.updatedAt;
+      }
+    }
+    await this.store.put("cursor", "shopify.orders", { since: maxSeen }, this.now());
+  }
+
+  private async pollActiveShipments() {
+    const slot = Math.floor(this.now() / 60_000);
+    for (const { key, value } of await this.store.list<ShipmentRecord>("shipment")) {
+      if (TERMINAL_STATUSES.has(value.shipment.status)) continue;
+      await this.enqueue("bosta.ingestStatus", { trackingNumber: key }, `bosta:poll:${key}:${slot}`);
+    }
+  }
+
+  private onOutcome(o: JobOutcome) {
+    if (o.type === "dead") {
+      const kind = o.error instanceof IntegrationError ? o.error.kind : "permanent";
+      this.emit("job.dead", { jobId: o.job.id, job: o.job.kind, errorKind: kind, error: o.error.message, payload: o.job.payload as Record<string, unknown> });
+      if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
+    }
+  }
+}

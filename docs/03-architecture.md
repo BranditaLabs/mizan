@@ -1,0 +1,151 @@
+# 03 — Architecture
+
+## 1. System context
+
+```mermaid
+flowchart TB
+  subgraph Clients
+    W[Web dashboard<br/>Next.js · AR/EN · RTL]
+    O[Ops app<br/>Flutter · offline-first]
+    P[Public API clients<br/>REST + webhooks]
+  end
+  subgraph Mizan["Mizan platform (Google Cloud, Middle East region)"]
+    API[apps/api<br/>NestJS modular monolith]
+    WK[Workers<br/>outbox + schedulers]
+    ENG[packages/engine<br/>connectors · resilience · adaptation]
+    DB[(PostgreSQL<br/>RLS per tenant)]
+    OBJ[(Object storage<br/>labels · exports · files)]
+  end
+  subgraph External
+    ST[Storefronts<br/>Shopify · EasyOrders · Woo · Salla · Zid]
+    CR[Couriers<br/>Bosta · J&T · Aramex · SMSA]
+    WA[WhatsApp Cloud API]
+    AD[Ad platforms<br/>Meta · TikTok · Snap · Google]
+    PAY[Payments<br/>Paymob · Tabby · Tamara]
+    FB[Firebase<br/>Auth · FCM]
+  end
+  W & O & P --> API
+  API --> DB
+  WK --> DB
+  WK --> ENG
+  API --> ENG
+  ENG <--> ST & CR & WA & AD & PAY
+  ST & CR & WA -. webhooks .-> API
+  W & O -. sign-in .-> FB
+  API -. verify ID token .-> FB
+  API --> OBJ
+```
+
+## 2. Deployables
+
+| Unit | Code | Runs | Scales by |
+| --- | --- | --- | --- |
+| API | `apps/api` (`main.ts`) | Cloud Run service, ≥ 2 instances | Requests |
+| Worker | `apps/api` (`worker.ts`, same image, different entry) | Cloud Run service, always-on, ≥ 1 | Outbox backlog |
+| Scheduler | Cloud Scheduler → `POST /internal/cron/*` on the worker | — | — |
+| Web | `apps/web` | Cloud Run (or Vercel if preferred; keep ME data residency for APIs) | Requests |
+| Ops app | `apps/ops` | Play Store / App Store; internal testing tracks first | — |
+| Database | Cloud SQL for PostgreSQL 16+, HA, PITR | ME region | Vertical first, read replica for reports |
+
+One image, two entry points, keeps the modular monolith simple: the API never runs long jobs; the worker never serves user traffic.
+
+## 3. Modular monolith layout (`apps/api`)
+
+```
+apps/api/src/
+  main.ts                 HTTP entry
+  worker.ts               outbox worker + cron handlers
+  platform/               cross-cutting
+    auth/                 Firebase ID token guard, API keys, roles
+    tenancy/              tenant resolution, RLS session (SET app.tenant_id)
+    db/                   Kysely/Drizzle client, migrations runner, transactions
+    events/               domain event bus (in-process) + outbox writer
+    i18n/                 server-side messages (AR/EN)
+    audit/                append-only audit log
+    secrets/              encrypt/decrypt credentials (Cloud KMS envelope)
+    http/                 error filter, problem+json, pagination, idempotency-key middleware
+  modules/
+    tenants/  users/  billing/
+    connections/          store + courier + WhatsApp + ad account connections (OAuth, keys)
+    orders/       (M1)    confirmation/ (M2)   shipping/ (M3)   warehouse/ (M4)
+    profit/       (M5)    returns/      (M6)   attribution/ (M7) cash/ (M8)
+    crm/          (M9)    agents/       (M10)  risk/ (M11)       routing/ analyst/ (M12)
+    automations/  (M13)   scripts/      (M14)
+  integrations/           thin glue: engine → modules (event handlers, job handlers)
+```
+
+**Module rules**
+
+- A module owns its tables. Other modules read through its service interface or subscribe to its events; no cross-module SQL joins in write paths. Reporting (M5, dashboards) may read across modules through SQL views.
+- Modules talk through **domain events** (`order.confirmed`, `shipment.delivered` …). Events are written to the outbox in the same transaction as the state change, so nothing is lost.
+- All external I/O goes through `packages/engine` connectors.
+
+## 4. Event flow
+
+```mermaid
+sequenceDiagram
+  participant S as Shopify
+  participant A as API (webhook)
+  participant DB as Postgres (outbox)
+  participant W as Worker
+  participant E as Engine connector
+  participant B as Bosta
+  S->>A: orders/create (HMAC)
+  A->>A: verify HMAC, dedupe by event id
+  A->>DB: insert inbound event + job shopify.ingestOrder
+  A-->>S: 200 (< 200 ms)
+  W->>DB: claim job (SKIP LOCKED, lease)
+  W->>E: getOrder(gid) — fat fetch
+  E->>S: GraphQL (cost-aware)
+  W->>DB: upsert order (canonical) + event order.created
+  Note over W,DB: M2 scores, routes; agent/bot confirms
+  W->>DB: event order.confirmed → job bosta.createShipment
+  W->>E: createShipmentOnce (search by reference first)
+  E->>B: POST deliveries
+  W->>DB: shipment + job shopify.fulfill
+```
+
+## 5. Domain events (initial catalogue)
+
+| Event | Producer | Main consumers |
+| --- | --- | --- |
+| `order.created` / `order.updated` / `order.cancelled` | M1 | M2, M5, M13 |
+| `order.duplicate_found` | M1 | M13, UI |
+| `order.scored` | M2 | M2 router, M13 |
+| `order.confirmed` / `order.confirmation_failed` | M2 | M3, M4 (reserve), M5, M7 (CAPI), M10 |
+| `shipment.created` / `shipment.status_changed` / `shipment.delivered` / `shipment.returned` | M3 | M1, M5, M6, M7, M8, M10, M11 |
+| `stock.reserved` / `stock.low` / `stock.adjusted` | M4 | M13, store sync |
+| `return.inspected` | M6 | M4, M5 |
+| `settlement.matched` / `settlement.gap_found` | M8 | M5, M13 |
+| `pnl.recomputed` | M5 | dashboards |
+
+Event envelope: `{ id, type, tenantId, occurredAt, actor, entity: { type, id }, data, version }`. Consumers must be idempotent (event `id`).
+
+## 6. Engine integration
+
+`packages/engine` today is a standalone service (`src/server.ts`) with its own small schema (`mz_inbound_events`, `mz_outbox`, `mz_records`). To embed it in `apps/api`:
+
+1. Keep the engine as a library; the API imports `MizanEngine` and registers its job handlers in the worker.
+2. Add `tenant_id` and `connection_id` to the engine's job and record tables (one engine instance per process, connections resolved per job from the `connections` table and decrypted secrets).
+3. Move canonical types to `packages/shared`; engine and API import them from there.
+4. Replace `engine.on(...)` listeners with handlers that write domain events (section 5).
+5. The engine's `/ops/*` endpoints become admin API routes under `/v1/admin/integrations/*`.
+
+See backlog epic **E2** in `docs/10-backlog.md`.
+
+## 7. Multi-tenancy
+
+- `tenants` table; every business table has `tenant_id uuid not null`.
+- Postgres RLS: `USING (tenant_id = current_setting('app.tenant_id')::uuid)`. The API sets `SET LOCAL app.tenant_id` at the start of each transaction from the authenticated membership.
+- The application DB role is **not** the table owner and has no `BYPASSRLS`. Migrations run with a separate owner role.
+- Workers set the tenant from the job's `tenant_id` before touching data.
+- Cross-tenant access only for: platform admin (audited), the risk network service (hashed data, separate schema), billing.
+
+## 8. Data residency
+
+- Primary region: Google Cloud `me-central1` (Doha) or `me-central2` (Dammam). Decide in ADR-0009 after checking service availability (Cloud SQL, Cloud Run, KMS) and latency from Cairo.
+- KSA merchants: add a KSA-hosted deployment (Dammam) when PDPL or customer contracts require it. The schema is region-agnostic; `tenants.region` routes the tenant.
+
+## 9. Key technical decisions
+
+See `docs/adr/`. Summary: TypeScript monorepo; NestJS modular monolith; Next.js web; Flutter ops app; PostgreSQL + RLS; Postgres outbox (no Redis for MVP); canonical model; label-first courier status mapping; field ownership for product sync; Middle East hosting; Firebase Auth.

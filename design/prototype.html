@@ -1,0 +1,869 @@
+<title>Mizan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: an operations console — fixed ink rail, porcelain workspace, one brass accent for "the scale" (what was kept). */
+:root{
+  --bg:#F1F2F4; --surface:#FFFFFF; --surface-2:#F7F8FA; --sunk:#ECEEF1;
+  --ink:#12151B; --ink-2:#4B5261; --ink-3:#848B99; --line:#E2E5EA; --line-2:#D3D7DE;
+  --accent:#9C7320; --accent-ink:#7A5912; --accent-soft:#F4ECDA; --on-accent:#FFFFFF;
+  --rail:#0E1116; --rail-2:#171B22; --rail-ink:#C9CDD5; --rail-dim:#6F7684; --rail-line:#232833;
+  --good:#11795A; --good-soft:#E3F3EC; --warn:#A35F00; --warn-soft:#FBF0DD; --bad:#BE3328; --bad-soft:#FBE7E5; --info:#2F5FB3; --info-soft:#E6EDF9;
+  --shadow:0 1px 2px rgba(16,20,28,.05),0 8px 24px -12px rgba(16,20,28,.12);
+  --f-display:"Bricolage Grotesque","IBM Plex Sans Arabic",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","IBM Plex Sans Arabic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",monospace;
+  --r:10px; --r-sm:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B0D11; --surface:#13161C; --surface-2:#181C23; --sunk:#0F1217;
+  --ink:#ECEEF2; --ink-2:#A8AEBA; --ink-3:#6E7583; --line:#232731; --line-2:#2E3440;
+  --accent:#D6A94C; --accent-ink:#E6BE6A; --accent-soft:#2A2314; --on-accent:#1A1406;
+  --rail:#08090C; --rail-2:#12151B; --rail-ink:#C9CDD5; --rail-dim:#666D7B; --rail-line:#1D212A;
+  --good:#3DBD8C; --good-soft:#12261F; --warn:#E3A43B; --warn-soft:#2A2010; --bad:#F06B5F; --bad-soft:#2C1513; --info:#7EA4EE; --info-soft:#151F33;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B0D11; --surface:#13161C; --surface-2:#181C23; --sunk:#0F1217;
+  --ink:#ECEEF2; --ink-2:#A8AEBA; --ink-3:#6E7583; --line:#232731; --line-2:#2E3440;
+  --accent:#D6A94C; --accent-ink:#E6BE6A; --accent-soft:#2A2314; --on-accent:#1A1406;
+  --rail:#08090C; --rail-2:#12151B; --rail-ink:#C9CDD5; --rail-dim:#666D7B; --rail-line:#1D212A;
+  --good:#3DBD8C; --good-soft:#12261F; --warn:#E3A43B; --warn-soft:#2A2010; --bad:#F06B5F; --bad-soft:#2C1513; --info:#7EA4EE; --info-soft:#151F33;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+:lang(ar) body,html[lang="ar"] body{font-size:14.5px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* shell */
+.app{display:grid;grid-template-columns:248px minmax(0,1fr);height:100%}
+.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;padding:18px 12px;
+  padding-inline-start:max(12px,env(safe-area-inset-left,0px));overflow-y:auto;min-height:0}
+html[dir="rtl"] .rail{padding-inline-start:12px;padding-inline-end:max(12px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px}
+.brand .mark{width:30px;height:30px;flex:none}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:-.03em;color:#fff}
+html[lang="ar"] .brand b{font-family:"IBM Plex Sans Arabic",var(--f-display);letter-spacing:0}
+.brand small{display:block;font-size:10.5px;color:var(--rail-dim);letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+html[lang="ar"] .brand small{letter-spacing:0;text-transform:none}
+.store{margin:0 4px 16px;padding:10px 12px;border:1px solid var(--rail-line);border-radius:var(--r);background:var(--rail-2);display:flex;align-items:center;gap:10px;font-size:13px}
+.store .av{width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#C99A3E,#7A5912);display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px}
+.store span{display:block;color:#fff;font-weight:600}.store em{font-style:normal;color:var(--rail-dim);font-size:11.5px}
+.navlabel{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--rail-dim);padding:14px 12px 6px}
+html[lang="ar"] .navlabel{letter-spacing:0;font-size:11.5px}
+.nav a{display:flex;align-items:center;gap:11px;padding:8px 12px;margin:1px 0;border-radius:8px;color:var(--rail-ink);text-decoration:none;font-size:13.5px;position:relative}
+.nav a svg{width:17px;height:17px;flex:none;opacity:.8}
+.nav a:hover{background:var(--rail-2);color:#fff}
+.nav a.on{background:var(--rail-2);color:#fff;font-weight:600}
+.nav a.on::before{content:"";position:absolute;inset-inline-start:-12px;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent)}
+.nav a .ct{margin-inline-start:auto;font-family:var(--f-mono);font-size:11px;color:var(--rail-dim);background:var(--rail-line);padding:1px 7px;border-radius:20px}
+.nav a .ct.hot{background:color-mix(in srgb,var(--accent) 22%,transparent);color:var(--accent-ink)}
+.rail .foot{margin-top:auto;padding:14px 10px 4px;border-top:1px solid var(--rail-line);font-size:11.5px;color:var(--rail-dim);line-height:1.5}
+.rail .foot b{color:var(--rail-ink);font-weight:600}
+
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;height:62px;
+  padding-inline:max(24px,env(safe-area-inset-left,0px)) max(24px,env(safe-area-inset-right,0px));
+  background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.iconbtn.menu-btn{display:none}
+.search{flex:1;max-width:460px;display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink-3);font-size:13px;cursor:text}
+.search svg{width:16px;height:16px}
+.search kbd{margin-inline-start:auto;font-family:var(--f-mono);font-size:11px;border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;color:var(--ink-3)}
+.top .sp{flex:1}
+.demo{font-size:11.5px;font-weight:600;color:var(--accent-ink);background:var(--accent-soft);padding:5px 10px;border-radius:20px;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:5px 11px;border-radius:6px;font-size:12.5px;font-weight:600;color:var(--ink-2)}
+.seg button.on{background:var(--ink);color:var(--bg)}
+.iconbtn{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);border-radius:9px;color:var(--ink-2)}
+.iconbtn svg{width:17px;height:17px}
+.me{width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:600;font-size:13px}
+
+.view{flex:1;overflow-y:auto;min-height:0}
+.wrap{max-width:1360px;margin:0 auto;padding-block:28px 56px;
+  padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+.vh{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+.vh h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.035em;line-height:1.1;text-wrap:balance}
+html[lang="ar"] .vh h1{font-family:"IBM Plex Sans Arabic",var(--f-display);letter-spacing:-.01em;font-size:28px}
+.vh p{margin:6px 0 0;color:var(--ink-2);max-width:62ch}
+.vh .acts{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--line-2);background:var(--surface);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;transition:transform .12s,background .15s}
+.btn:hover{background:var(--surface-2)}
+.btn:active{transform:translateY(1px)}
+.btn svg{width:15px;height:15px}
+.btn.pri{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn.pri:hover{background:color-mix(in srgb,var(--ink) 88%,var(--accent))}
+.btn.acc{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.bad{color:var(--bad)}
+.btn.sm{height:30px;padding:0 10px;font-size:12px}
+
+/* surfaces */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:10px;padding:16px 18px 0}
+.card-h h3{margin:0;font-size:14px;font-weight:600;letter-spacing:-.005em}
+.card-h .sub{color:var(--ink-3);font-size:12.5px}
+.card-h .r{margin-inline-start:auto;display:flex;gap:6px;align-items:center}
+.card-b{padding:16px 18px 18px}
+.grid{display:grid;gap:16px}
+.g-12{grid-template-columns:repeat(12,minmax(0,1fr))}
+.s-8{grid-column:span 8}.s-4{grid-column:span 4}.s-6{grid-column:span 6}.s-12{grid-column:span 12}.s-7{grid-column:span 7}.s-5{grid-column:span 5}.s-3{grid-column:span 3}.s-9{grid-column:span 9}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+html[lang="ar"] .eyebrow{letter-spacing:0;font-size:12px}
+
+/* pills */
+.pill{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.9}
+.p-good{background:var(--good-soft);color:var(--good)}.p-warn{background:var(--warn-soft);color:var(--warn)}.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-n{background:var(--sunk);color:var(--ink-2)}.p-info{background:var(--info-soft);color:var(--info)}.p-acc{background:var(--accent-soft);color:var(--accent-ink)}
+.p-ink{background:var(--ink);color:var(--bg)}
+.score{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:12.5px}
+.score i{display:block;width:44px;height:5px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.score i b{display:block;height:100%;border-radius:3px}
+
+/* tables */
+.tw{overflow-x:auto}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th{text-align:start;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+html[lang="ar"] .t th{letter-spacing:0;font-size:12px}
+.t td{padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+.t tr:last-child td{border-bottom:0}
+.t tbody tr{cursor:pointer;transition:background .12s}
+.t tbody tr:hover{background:var(--surface-2)}
+.t tbody tr.sel{background:var(--accent-soft)}
+.t .end{text-align:end}
+.cust b{display:block;font-weight:600}.cust span{color:var(--ink-3);font-size:12px}
+.mut{color:var(--ink-3)}
+
+/* chips/tabs */
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:500;color:var(--ink-2);display:inline-flex;align-items:center;gap:8px}
+.chip .c{font-family:var(--f-mono);font-size:11px;color:var(--ink-3)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.chip.on .c{color:color-mix(in srgb,var(--bg) 70%,transparent)}
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.field{display:flex;align-items:center;gap:8px;height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);min-width:0}
+.field input{border:0;background:transparent;outline:0;width:200px;max-width:100%;font-size:13px}
+.field svg{width:15px;height:15px;color:var(--ink-3)}
+
+/* overview: the scale */
+.hero{padding:26px 26px 22px;position:relative;overflow:hidden}
+.hero .k{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap}
+.hero .big{font-family:var(--f-display);font-weight:700;font-size:64px;letter-spacing:-.05em;line-height:.95}
+html[lang="ar"] .hero .big{letter-spacing:-.03em}
+.hero .big small{font-size:22px;letter-spacing:-.02em;color:var(--ink-3);font-weight:600;margin-inline-start:8px}
+.hero .delta{display:flex;flex-direction:column;gap:4px;padding-bottom:8px}
+.hero .lede{font-size:15px;color:var(--ink-2);max-width:58ch;margin:14px 0 0}
+.hero .lede b{color:var(--ink)}
+.beam{margin-top:26px}
+.beam .bar{display:flex;height:46px;border-radius:8px;overflow:hidden;gap:2px;background:var(--line)}
+.beam .seg{border:0;padding:0;border-radius:0;display:block;height:100%;transition:filter .2s,flex-basis .6s cubic-bezier(.23,1,.32,1)}
+.beam .seg:hover{filter:brightness(1.08)}
+.beam .seg.kept{background:repeating-linear-gradient(135deg,var(--accent) 0 8px,color-mix(in srgb,var(--accent) 86%,#fff) 8px 16px)}
+.legend{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin-top:14px}
+.legend div{font-size:12px;color:var(--ink-2);border-top:2px solid var(--c);padding-top:8px;min-width:0}
+.legend div b{display:block;font-family:var(--f-mono);font-size:15px;color:var(--ink);font-weight:500;margin-top:2px}
+.legend div em{font-style:normal;color:var(--ink-3);font-family:var(--f-mono);font-size:11.5px}
+.fulcrum{position:absolute;inset-inline-end:26px;top:26px;width:120px;opacity:.9}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.kpi{padding:16px 18px}
+.kpi .l{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+.kpi .v{font-family:var(--f-display);font-size:28px;font-weight:600;letter-spacing:-.035em;margin-top:6px;line-height:1.1}
+.kpi .d{font-size:12px;margin-top:4px;color:var(--ink-3)}
+.up{color:var(--good)}.down{color:var(--bad)}
+.spark{display:block;width:100%;height:36px;margin-top:10px}
+
+.att{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--line);align-items:flex-start}
+.att:first-child{border-top:0;padding-top:2px}
+.att .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none}
+.att .ic svg{width:17px;height:17px}
+.att b{display:block;font-weight:600;font-size:13.5px}
+.att p{margin:2px 0 0;color:var(--ink-2);font-size:12.5px}
+.att .go{margin-inline-start:auto;align-self:center}
+
+.routes{display:flex;flex-direction:column;gap:14px}
+.route .rl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.route .rl b{font-family:var(--f-mono);font-weight:500}
+.route .tr{height:8px;border-radius:5px;background:var(--sunk);overflow:hidden}
+.route .tr i{display:block;height:100%;border-radius:5px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,12,16,.35);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;inset-inline-end:0;width:min(460px,100%);background:var(--surface);border-inline-start:1px solid var(--line);z-index:50;
+  transform:translateX(100%);transition:transform .32s cubic-bezier(.32,.72,0,1);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-inline-end:env(safe-area-inset-right,0px)}
+html[dir="rtl"] .drawer{transform:translateX(-100%)}
+.drawer.on{transform:none!important}
+.dh{display:flex;align-items:flex-start;gap:12px;padding:20px 22px;border-bottom:1px solid var(--line)}
+.dh h2{margin:0;font-family:var(--f-display);font-size:22px;letter-spacing:-.03em}
+.db{padding:18px 22px;overflow-y:auto;flex:1}
+.kv{display:grid;grid-template-columns:130px minmax(0,1fr);gap:0;font-size:13px}
+.kv span{padding:9px 0;color:var(--ink-3);border-bottom:1px solid var(--line)}
+.kv b{padding:9px 0;font-weight:500;border-bottom:1px solid var(--line);min-width:0}
+.why{margin-top:16px;padding:14px;border-radius:var(--r);background:var(--surface-2);border:1px solid var(--line)}
+.why li{margin:4px 0;font-size:13px}
+.why ul{margin:6px 0 0;padding-inline-start:18px}
+.tl{margin-top:18px;border-inline-start:2px solid var(--line);padding-inline-start:16px}
+.tl div{position:relative;padding:5px 0;font-size:12.5px;color:var(--ink-2)}
+.tl div::before{content:"";position:absolute;inset-inline-start:-21px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--line-2)}
+.tl div.h::before{background:var(--accent)}
+.tl div em{font-style:normal;color:var(--ink-3);font-family:var(--f-mono);font-size:11px;margin-inline-start:6px}
+.df{display:flex;gap:8px;padding:16px 22px;border-top:1px solid var(--line);flex-wrap:wrap}
+
+/* confirmation call */
+.callgrid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px}
+.qitem{display:flex;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.qitem:first-child{border-top:0}
+.qitem.on{background:var(--accent-soft)}
+.qitem .cust{flex:1;min-width:0}
+.callcard{padding:22px}
+.callhead{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.avatar{width:52px;height:52px;border-radius:50%;background:var(--sunk);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:19px}
+.callhead h2{margin:0;font-family:var(--f-display);font-size:24px;letter-spacing:-.03em}
+.callhead .ph{font-family:var(--f-mono);color:var(--ink-2);font-size:13px;direction:ltr;unicode-bidi:isolate}
+.timer{margin-inline-start:auto;font-family:var(--f-mono);font-size:22px;display:flex;align-items:center;gap:10px}
+.timer i{width:9px;height:9px;border-radius:50%;background:var(--bad);animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.reasons{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 4px}
+.scriptbox{margin-top:16px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.scriptbox .sl{display:grid;grid-template-columns:110px minmax(0,1fr);border-top:1px solid var(--line)}
+.scriptbox .sl:first-child{border-top:0}
+.scriptbox .sl span{padding:12px 14px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);background:var(--surface-2)}
+html[lang="ar"] .scriptbox .sl span{letter-spacing:0;font-size:12px}
+.scriptbox .sl p{margin:0;padding:12px 16px;font-family:"IBM Plex Sans Arabic",var(--f-body);font-size:16px;line-height:1.7;direction:rtl;text-align:right}
+.scriptbox .sl.now{box-shadow:inset 3px 0 0 var(--accent)}
+html[dir="rtl"] .scriptbox .sl.now{box-shadow:inset -3px 0 0 var(--accent)}
+.outcomes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:18px}
+.outcomes .btn{justify-content:center;height:44px}
+
+/* automation canvas */
+.builder{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:620px}
+.cv-wrap{overflow:auto;border-inline-end:1px solid var(--line);background-color:var(--surface-2);
+  background-image:radial-gradient(color-mix(in srgb,var(--ink-3) 35%,transparent) 1px,transparent 1px);background-size:20px 20px}
+.cv{position:relative;width:820px;height:600px;margin:0 auto;direction:ltr}
+.cv svg{position:absolute;inset:0}
+.nd{position:absolute;width:240px;background:var(--surface);border:1.5px solid var(--line-2);border-radius:10px;box-shadow:var(--shadow);cursor:pointer;
+  transition:border-color .2s,box-shadow .2s,transform .2s;text-align:start}
+.nd:hover{transform:translateY(-1px)}
+.nd .nh{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+html[lang="ar"] .nd .nh{letter-spacing:0;font-size:11.5px}
+.nd .nh i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+.nd .nb{padding:10px 12px 12px}
+.nd .nb b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+.nd .nb span{display:block;font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);margin-top:3px}
+.nd.sel{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.nd.lit{border-color:var(--good);box-shadow:0 0 0 4px color-mix(in srgb,var(--good) 20%,transparent)}
+.nd.dim{opacity:.45}
+.elab{position:absolute;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--ink-3);background:var(--surface-2);padding:0 4px}
+html[lang="ar"] .elab{letter-spacing:0;font-size:11.5px}
+.insp{padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.insp h4{margin:0;font-size:15px}
+.ffield{display:flex;flex-direction:column;gap:5px}
+.ffield label{font-size:11.5px;color:var(--ink-3);font-weight:600}
+.ffield .in{height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);display:flex;align-items:center;padding:0 10px;font-family:var(--f-mono);font-size:12.5px;justify-content:space-between}
+.runlog{font-size:12.5px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);padding:10px 12px;line-height:1.7}
+.recipes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.recipe{padding:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);text-align:start;display:flex;flex-direction:column;gap:8px}
+.recipe:hover{border-color:var(--line-2)}
+.recipe b{font-size:14px}
+.recipe p{margin:0;font-size:12.5px;color:var(--ink-2)}
+.recipe .w{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
+html[lang="ar"] .recipe .w{letter-spacing:0}
+
+/* scripts */
+.sgrid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px}
+.blk{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:14px 16px;transition:border-color .15s,box-shadow .15s;cursor:pointer;text-align:start;width:100%}
+.blk+.blk{margin-top:10px}
+.blk.on{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 14%,transparent)}
+.blk .bh{display:flex;align-items:center;gap:10px;font-size:11.5px;font-weight:600;color:var(--ink-3)}
+.blk .bh .n{width:22px;height:22px;border-radius:6px;background:var(--sunk);display:grid;place-items:center;font-family:var(--f-mono);color:var(--ink-2)}
+.blk .bh .tag{margin-inline-start:auto}
+.blk .ar{margin-top:8px;font-family:"IBM Plex Sans Arabic",var(--f-body);font-size:17px;line-height:1.75;direction:rtl;text-align:right;color:var(--ink)}
+.var{unicode-bidi:isolate;direction:ltr;display:inline-block;font-family:var(--f-mono);font-size:12.5px;padding:0 6px;border-radius:5px;background:var(--accent-soft);color:var(--accent-ink);line-height:1.7}
+.phone{border-radius:34px;border:9px solid var(--ink);background:#E9E2D6;overflow:hidden;display:flex;flex-direction:column;height:600px;max-width:340px;margin:0 auto;width:100%}
+:root[data-theme="dark"] .phone{background:#0E1714}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .phone{background:#0E1714}}
+.phone .pb{background:#0E5E4F;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:600}
+.phone .pb i{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.2);display:grid;place-items:center;font-style:normal;font-size:12px}
+.phone .chat{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;direction:rtl}
+.bub{max-width:84%;padding:8px 11px;border-radius:10px;font-family:"IBM Plex Sans Arabic",var(--f-body);font-size:14px;line-height:1.6;background:#fff;color:#111;align-self:flex-start;box-shadow:0 1px 1px rgba(0,0,0,.08);animation:pop .25s cubic-bezier(.23,1,.32,1)}
+.bub.me{align-self:flex-end;background:#D7F6C7}
+:root[data-theme="dark"] .bub{background:#1F2C33;color:#E9EDEF}:root[data-theme="dark"] .bub.me{background:#005C4B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bub{background:#1F2C33;color:#E9EDEF}:root:not([data-theme="light"]) .bub.me{background:#005C4B}}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}}
+.qr{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start}
+.qr button{border:0;background:#fff;color:#0E5E4F;border-radius:18px;padding:6px 12px;font-family:"IBM Plex Sans Arabic",var(--f-body);font-size:13px;font-weight:600}
+:root[data-theme="dark"] .qr button{background:#1F2C33;color:#53BDA5}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .qr button{background:#1F2C33;color:#53BDA5}}
+.note{font-size:12.5px;color:var(--ink-2);padding:10px 12px;border-radius:8px;background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 25%,transparent)}
+
+/* profit waterfall */
+.wf{display:flex;flex-direction:column;gap:6px}
+.wfr{display:grid;grid-template-columns:120px minmax(0,1fr) 90px;align-items:center;gap:12px;font-size:12.5px}
+.wfr .tr{position:relative;height:22px;background:var(--sunk);border-radius:4px}
+.wfr .tr i{position:absolute;top:0;bottom:0;border-radius:4px}
+.wfr b{font-family:var(--f-mono);font-weight:500;text-align:end}
+
+/* heat */
+.heat td.h{font-family:var(--f-mono);text-align:center}
+.heat td.h span{display:inline-block;min-width:58px;padding:5px 8px;border-radius:6px}
+
+.bars{display:flex;flex-direction:column;gap:12px}
+.hb{display:grid;grid-template-columns:110px minmax(0,1fr) 92px;gap:12px;align-items:center;font-size:13px}
+.hb .tr{height:12px;background:var(--sunk);border-radius:6px;overflow:hidden}
+.hb .tr i{display:block;height:100%;border-radius:6px}
+.hb b{font-family:var(--f-mono);font-weight:500;text-align:end}
+
+/* palette + toast */
+.pal{position:fixed;inset:0;z-index:60;display:none;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;background:rgba(10,12,16,.4)}
+.pal.on{display:flex}
+.pal .box{width:min(560px,100%);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 30px 80px -20px rgba(0,0,0,.45);overflow:hidden}
+.pal input{width:100%;border:0;border-bottom:1px solid var(--line);padding:16px 18px;font-size:15px;background:transparent;outline:0}
+.pal .res{max-height:340px;overflow-y:auto;padding:6px}
+.pal .res button{display:flex;width:100%;gap:10px;align-items:center;border:0;background:transparent;padding:10px 12px;border-radius:8px;text-align:start;font-size:13.5px}
+.pal .res button:hover,.pal .res button.on{background:var(--surface-2)}
+.pal .res button span{margin-inline-start:auto;color:var(--ink-3);font-size:12px}
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));inset-inline-start:50%;transform:translate(-50%,20px);opacity:0;z-index:70;
+  background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:10px;font-size:13px;font-weight:500;display:flex;gap:10px;align-items:center;transition:opacity .2s,transform .3s cubic-bezier(.23,1,.32,1);pointer-events:none;max-width:calc(100% - 32px)}
+html[dir="rtl"] .toast{transform:translate(50%,20px)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+html[dir="rtl"] .toast.on{transform:translate(50%,0)}
+.toast i{width:8px;height:8px;border-radius:50%;background:var(--good)}
+
+.fade{animation:fade .35s cubic-bezier(.23,1,.32,1)}
+@keyframes fade{from{opacity:.0;transform:translateY(4px)}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* responsive */
+@media (max-width:1180px){.legend{grid-template-columns:repeat(4,minmax(0,1fr))}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .s-8,.s-4,.s-7,.s-5,.s-6,.s-3,.s-9{grid-column:span 12}.recipes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:960px){
+  .app{grid-template-columns:1fr}
+  .rail{position:fixed;top:0;bottom:0;inset-inline-start:0;width:270px;z-index:45;transform:translateX(-100%);transition:transform .3s cubic-bezier(.32,.72,0,1);padding-top:calc(18px + env(safe-area-inset-top,0px))}
+  html[dir="rtl"] .rail{transform:translateX(100%)}
+  .rail.on{transform:none!important}
+  .iconbtn.menu-btn{display:grid}
+  .demo{display:none}
+  .builder,.sgrid,.callgrid{grid-template-columns:1fr}
+  .cv-wrap{border-inline-end:0;border-bottom:1px solid var(--line)}
+  .fulcrum{display:none}
+}
+@media (max-width:640px){
+  .top{gap:8px;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+  .wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+  .search kbd,.search .st{display:none}
+  .search{max-width:none}
+  .hero{padding:20px}.hero .big{font-size:46px}
+  .legend{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpis{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi .v{font-size:23px}
+  .vh h1{font-size:25px}
+  .outcomes{grid-template-columns:1fr 1fr}
+  .recipes{grid-template-columns:1fr}
+  .wfr{grid-template-columns:90px minmax(0,1fr) 76px}
+  .hb{grid-template-columns:80px minmax(0,1fr) 80px}
+  .me{display:none}
+}
+</style>
+
+<div class="app">
+  <aside class="rail" id="rail" aria-label="Main navigation"></aside>
+  <div class="main">
+    <header class="top">
+      <button class="iconbtn menu-btn" id="menuBtn" aria-label="Menu"></button>
+      <button class="search" id="searchBtn" type="button"></button>
+      <span class="sp"></span>
+      <span class="demo" id="demoTag"></span>
+      <div class="seg" role="group" aria-label="Language"><button id="lEn" type="button">EN</button><button id="lAr" type="button">ع</button></div>
+      <button class="iconbtn" id="themeBtn" type="button" aria-label="Theme"></button>
+      <span class="me" aria-hidden="true">AH</span>
+    </header>
+    <main class="view" id="view"></main>
+  </div>
+</div>
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-label="Details"></aside>
+<div class="pal" id="pal"><div class="box"><input id="palIn" autocomplete="off"><div class="res" id="palRes"></div></div></div>
+<div class="toast" id="toast"><i></i><span id="toastT"></span></div>
+
+<script>
+/* ---------------- icons ---------------- */
+const I = {
+  home:'<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/>',
+  orders:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+  phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/>',
+  truck:'<path d="M3 6h11v10H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  scale:'<path d="M12 4v16M6 20h12M5 8h14M5 8l-3 6a3 3 0 0 0 6 0zM19 8l-3 6a3 3 0 0 0 6 0z"/>',
+  cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 10v4M18 10v4"/>',
+  target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  flow:'<rect x="3" y="3" width="7" height="5" rx="1"/><rect x="14" y="16" width="7" height="5" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><path d="M10 5.5h4M17.5 8v8"/>',
+  chat:'<path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
+  menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M20 15A8 8 0 1 1 9 4a7 7 0 0 0 11 11z"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>',
+  alert:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
+  box:'<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
+  play:'<path d="M7 4l13 8-13 8z"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  zap:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>'
+};
+const ic = (n, s='') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" ${s}>${I[n]}</svg>`;
+
+/* ---------------- i18n ---------------- */
+const T = {
+ en:{brandSub:'Operating system', store:'Serum Beauty', storeSub:'Egypt · 3 stores', nav_main:'Operate', nav_money:'Money', nav_build:'Build',
+  overview:'Overview', orders:'Orders', confirm:'Confirmation', shipping:'Shipping', profit:'Profit', cash:'Cash', attribution:'Ads to cash', automations:'Automations', scripts:'Scripts',
+  search:'Search orders, customers, pages', demo:'Demo data', footA:'Powered by', footB:'Brandita',
+  ov_title:'Good evening, Ahmed', ov_sub:'Here is what your stores really kept over the last 30 days.',
+  kept:'Net profit · last 30 days', ofEvery:'Of every', kept2:'in revenue, you kept', vsPrev:'vs previous 30 days',
+  where:'Where every pound went', revenue:'Revenue', cogs:'Product cost', ship:'Shipping & COD', ads:'Ads', rto:'Refusals (RTO)', team:'Confirmation team', fees:'Packaging & fees', keptL:'Kept',
+  k_orders:'Orders', k_deliv:'Delivered rate', k_rto:'RTO cost', k_cash:'Cash with couriers',
+  attn:'Needs attention', routes:'How orders got confirmed', auto:'Auto-confirmed', bot:'WhatsApp bot', agent:'Agent call', hold:'Held for review', trend:'Net profit per day',
+  a1t:'11 parcels stuck for 48 hours', a1p:'J&T · Alexandria hub. Customers have not been told.', a2t:'EGP 41k cash overdue', a2p:'Bosta EGP 26k and J&T EGP 15k held over 10 days.',
+  a3t:'TikTok · creators is losing money', a3p:'68% of its orders never delivered. EGP −41 per order.', a4t:'3 best-sellers running low', a4p:'Air fryer XL has 3 units available.',
+  open:'Open', view:'View',
+  or_title:'Orders', or_sub:'Every order from every store, scored and routed the moment it arrives.', import:'Import', newOrder:'New order', filter:'Filter by customer or order',
+  all:'All', new:'New', pending:'Pending', confirmed:'Confirmed', packed:'Packed', shipped:'Shipped', delivered:'Delivered', refused:'Refused', duplicate:'Duplicate', held:'Held',
+  c_order:'Order', c_cust:'Customer', c_store:'Store', c_total:'Total', c_risk:'Risk', c_status:'Status', c_route:'Route', c_age:'Age',
+  d_items:'Items', d_addr:'Address', d_pay:'Payment', d_cod:'Cash on delivery', d_route:'Route', d_source:'Ad source', d_profit:'Est. profit', why:'Why this score', tl:'Activity',
+  confirmBtn:'Confirm', assign:'Assign', cancel:'Cancel', merge:'Merge duplicate',
+  cf_title:'Confirmation', cf_sub:'Your queue, ordered by risk. The script is ready before the customer picks up.', queue:'My queue', calling:'On call', script:'Script · Egyptian',
+  o_conf:'Confirmed', o_na:'No answer', o_resched:'Call later', o_cancel:'Didn\'t order',
+  sh_title:'Shipping', sh_sub:'Delivery rate by courier and zone, from your own last 60 days.', zone:'Zone', best:'Best pick', cour:'Couriers', dr:'Delivered', rtoR:'RTO', days:'Days to deliver', remit:'Days to pay cash',
+  pr_title:'Profit', pr_sub:'A full P&L for every order, recalculated on every event.', byOrder:'By order', net:'Net', breakdown:'Order P&L',
+  ca_title:'Cash', ca_sub:'Every pound couriers collected, matched to its order, or flagged.', upload:'Upload settlement', inTransit:'Cash with couriers', expected:'Expected', paid:'Paid', diff:'Difference', matched:'Matched', short:'Short-paid', missing:'Missing', overdue:'Overdue', claim:'Open claim',
+  at_title:'Ads to cash', at_sub:'Campaigns judged by delivered cash, with delivered sales sent back to the ad platforms.', camp:'Campaign', spend:'Spend', dROAS:'Delivered ROAS', cpd:'Cost / delivered', eventsSent:'Delivered events sent',
+  au_title:'Automations', au_sub:'When something happens in Mizan, decide what happens next. No code.', test:'Test with an order', publish:'Publish', draft:'Draft v4', recipes:'Start from a recipe', inspector:'Inspector', runs:'Runs · 30 days',
+  sc_title:'Scripts', sc_sub:'What agents say and what the bot sends, written once in every dialect and judged on delivery.', save:'Save version', preview:'WhatsApp preview', branches:'When the customer answers', dialectNote:'Dialect copy is a draft. A native speaker from each market reviews it before it goes live.',
+  toast_conf:'Order confirmed · next in queue', toast_pub:'Published v4 · live for new orders', toast_save:'Saved as version 4', toast_claim:'Claim opened with courier', toast_run:'Test finished · took the No path · nothing was sent',
+  palPh:'Jump to a page or order…', pages:'Page', ord:'Order', reset:'Reset'
+ },
+ ar:{brandSub:'نظام التشغيل', store:'سيرم بيوتي', storeSub:'مصر · 3 متاجر', nav_main:'التشغيل', nav_money:'الفلوس', nav_build:'البناء',
+  overview:'نظرة عامة', orders:'الأوردرات', confirm:'التأكيد', shipping:'الشحن', profit:'الربح', cash:'الكاش', attribution:'من الإعلان للكاش', automations:'الأتمتة', scripts:'السكريبتات',
+  search:'ابحث عن أوردر أو عميل أو صفحة', demo:'بيانات تجريبية', footA:'بدعم من', footB:'براندتا',
+  ov_title:'مساء الخير يا أحمد', ov_sub:'ده اللي متاجرك كسبته فعلا في آخر 30 يوم.',
+  kept:'صافي الربح · آخر 30 يوم', ofEvery:'من كل', kept2:'مبيعات، فضل معاك', vsPrev:'مقارنة بالـ 30 يوم اللي قبلها',
+  where:'كل جنيه راح فين', revenue:'المبيعات', cogs:'تكلفة المنتج', ship:'الشحن والتحصيل', ads:'الإعلانات', rto:'المرتجعات', team:'فريق التأكيد', fees:'التغليف والرسوم', keptL:'الربح',
+  k_orders:'الأوردرات', k_deliv:'نسبة التسليم', k_rto:'تكلفة المرتجع', k_cash:'كاش عند شركات الشحن',
+  attn:'محتاج انتباهك', routes:'الأوردرات اتأكدت إزاي', auto:'تأكيد تلقائي', bot:'بوت واتساب', agent:'مكالمة', hold:'مراجعة يدوية', trend:'صافي الربح اليومي',
+  a1t:'11 شحنة واقفة من 48 ساعة', a1p:'جي آند تي · مخزن إسكندرية. العملاء لسه ما اتبلغوش.', a2t:'كاش متأخر 41 ألف ج.م', a2p:'بوسطة 26 ألف وجي آند تي 15 ألف متأخرين أكتر من 10 أيام.',
+  a3t:'حملة تيك توك · الكريتورز بتخسر', a3p:'68% من أوردراتها ما اتسلمتش. خسارة 41 ج.م في الأوردر.', a4t:'3 منتجات من الأكثر مبيعا قربت تخلص', a4p:'القلاية الهوائية XL فاضل منها 3 قطع.',
+  open:'افتح', view:'عرض',
+  or_title:'الأوردرات', or_sub:'كل أوردر من كل متجر، بيتقيم ويتوجه أول ما يوصل.', import:'استيراد', newOrder:'أوردر جديد', filter:'دور باسم العميل أو رقم الأوردر',
+  all:'الكل', new:'جديد', pending:'بانتظار التأكيد', confirmed:'مؤكد', packed:'تم التغليف', shipped:'تم الشحن', delivered:'تم التسليم', refused:'مرفوض', duplicate:'مكرر', held:'موقوف',
+  c_order:'الأوردر', c_cust:'العميل', c_store:'المتجر', c_total:'الإجمالي', c_risk:'الخطورة', c_status:'الحالة', c_route:'طريقة التأكيد', c_age:'من',
+  d_items:'المنتجات', d_addr:'العنوان', d_pay:'الدفع', d_cod:'الدفع عند الاستلام', d_route:'طريقة التأكيد', d_source:'مصدر الإعلان', d_profit:'الربح المتوقع', why:'ليه التقييم ده', tl:'النشاط',
+  confirmBtn:'تأكيد', assign:'تعيين', cancel:'إلغاء', merge:'دمج المكرر',
+  cf_title:'التأكيد', cf_sub:'الطابور بتاعك مترتب حسب الخطورة. السكريبت جاهز قبل ما العميل يرد.', queue:'الطابور', calling:'في مكالمة', script:'السكريبت · مصري',
+  o_conf:'اتأكد', o_na:'ما ردش', o_resched:'كلمني بعدين', o_cancel:'ما طلبش',
+  sh_title:'الشحن', sh_sub:'نسبة التسليم لكل شركة شحن في كل منطقة، من آخر 60 يوم عندك.', zone:'المنطقة', best:'الأفضل', cour:'شركات الشحن', dr:'التسليم', rtoR:'المرتجع', days:'أيام التوصيل', remit:'أيام تحويل الكاش',
+  pr_title:'الربح', pr_sub:'حساب أرباح وخسائر كامل لكل أوردر، بيتحدث مع كل حدث.', byOrder:'حسب الأوردر', net:'الصافي', breakdown:'أرباح الأوردر',
+  ca_title:'الكاش', ca_sub:'كل جنيه حصلته شركات الشحن، متطابق مع الأوردر بتاعه أو متعلم عليه.', upload:'رفع كشف تسوية', inTransit:'كاش عند شركات الشحن', expected:'المتوقع', paid:'المدفوع', diff:'الفرق', matched:'متطابق', short:'ناقص', missing:'مفقود', overdue:'متأخر', claim:'فتح مطالبة',
+  at_title:'من الإعلان للكاش', at_sub:'الحملات بتتقيم بالكاش اللي اتسلم فعلا، والمبيعات المسلمة بتترجع لمنصات الإعلان.', camp:'الحملة', spend:'الصرف', dROAS:'العائد على المسلم', cpd:'تكلفة الأوردر المسلم', eventsSent:'أحداث تسليم اتبعتت',
+  au_title:'الأتمتة', au_sub:'لما حاجة تحصل في ميزان، حدد إيه اللي يحصل بعدها. من غير كود.', test:'جرب على أوردر', publish:'نشر', draft:'مسودة 4', recipes:'ابدأ من وصفة جاهزة', inspector:'التفاصيل', runs:'التشغيلات · 30 يوم',
+  sc_title:'السكريبتات', sc_sub:'كلام الموظف ورسايل البوت، مكتوبة مرة واحدة بكل لهجة، وبتتقيم بالتسليم.', save:'حفظ نسخة', preview:'معاينة واتساب', branches:'لما العميل يرد', dialectNote:'نصوص اللهجات مسودة. لازم يراجعها متحدث أصلي من كل سوق قبل التشغيل.',
+  toast_conf:'الأوردر اتأكد · التالي في الطابور', toast_pub:'تم نشر النسخة 4 · شغالة على الأوردرات الجديدة', toast_save:'اتحفظت النسخة 4', toast_claim:'اتفتحت مطالبة مع شركة الشحن', toast_run:'التجربة خلصت · مشيت في مسار لا · ما اتبعتش أي رسالة',
+  palPh:'روح لصفحة أو أوردر…', pages:'صفحة', ord:'أوردر', reset:'إعادة'
+ }
+};
+
+/* ---------------- state ---------------- */
+const store = { get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}} };
+const S = { lang: store.get('mz-lang') || 'en', view:'overview', filter:'all', q:'', qi:0, node:'c2', dialect:'eg', blk:2, pOrder:'EO-48101', chat:null };
+const t = k => (T[S.lang][k] ?? T.en[k] ?? k);
+const L = o => (o && typeof o === 'object') ? (o[S.lang] ?? o.en) : o;
+const nf = n => Number(n).toLocaleString('en-US');
+const money = (n, c='EGP') => { const ar = {EGP:'ج.م', SAR:'ر.س'}; const s = nf(n); return S.lang==='ar' ? `${s} ${ar[c]}` : `${c} ${s}`; };
+const compact = (n, c='EGP') => { const ar = {EGP:'ج.م'}; let v, u;
+  if (Math.abs(n) >= 1e6){ v=(n/1e6).toFixed(2); u=S.lang==='ar'?' مليون':'M'; } else if (Math.abs(n)>=1e3){ v=Math.round(n/1e3); u=S.lang==='ar'?' ألف':'k'; } else { v=n; u=''; }
+  return S.lang==='ar' ? `${v}${u} ${ar[c]||c}` : `${c} ${v}${u}`; };
+
+/* ---------------- demo data (illustrative) ---------------- */
+const ORDERS = [
+ {id:'EO-48213', n:{en:'Mona Adel',ar:'منى عادل'}, city:{en:'Nasr City, Cairo',ar:'مدينة نصر، القاهرة'}, ph:'010•• ••• 4821', store:'EasyOrders', total:1150, c:'EGP', risk:54, st:'pending', route:'bot', age:{en:'6 min',ar:'6 دقايق'}, items:{en:'2 × Vitamin C serum 30 ml',ar:'2 × سيرم فيتامين سي 30 مل'}, src:'Meta · spring_sale', why:{en:['Address has no landmark or pin','Order value 1.6× store average','First order from this number'],ar:['العنوان من غير علامة مميزة أو لوكيشن','قيمة الأوردر 1.6 ضعف متوسط المتجر','أول أوردر من الرقم ده']}, dup:true},
+ {id:'SH-10992', n:{en:'Karim Hassan',ar:'كريم حسن'}, city:{en:'Dokki, Giza',ar:'الدقي، الجيزة'}, ph:'012•• ••• 7730', store:'Shopify', total:640, c:'EGP', risk:18, st:'confirmed', route:'auto', age:{en:'18 min',ar:'18 دقيقة'}, items:{en:'1 × Night cream 50 ml',ar:'1 × كريم ليلي 50 مل'}, src:'Organic', why:{en:['4 past orders, all delivered','Verified pin on file'],ar:['4 أوردرات قبل كده كلها اتسلمت','لوكيشن متأكد منه']}},
+ {id:'WC-3381', n:{en:'Sara Mostafa',ar:'سارة مصطفى'}, city:{en:'Heliopolis, Cairo',ar:'مصر الجديدة، القاهرة'}, ph:'011•• ••• 0912', store:'WooCommerce', total:2300, c:'EGP', risk:78, st:'pending', route:'agent', age:{en:'22 min',ar:'22 دقيقة'}, items:{en:'1 × Air fryer XL',ar:'1 × قلاية هوائية XL'}, src:'TikTok · creators', why:{en:['New number, no history','Order value 3× store average','Bot got no reply in 2 hours'],ar:['رقم جديد من غير تاريخ','قيمة الأوردر 3 أضعاف متوسط المتجر','البوت ما جالوش رد في ساعتين']}},
+ {id:'EO-48209', n:{en:'Mona Adel',ar:'منى عادل'}, city:{en:'Nasr City, Cairo',ar:'مدينة نصر، القاهرة'}, ph:'010•• ••• 4821', store:'EasyOrders', total:1150, c:'EGP', risk:64, st:'duplicate', route:'hold', age:{en:'41 min',ar:'41 دقيقة'}, items:{en:'2 × Vitamin C serum 30 ml',ar:'2 × سيرم فيتامين سي 30 مل'}, src:'Meta · spring_sale', why:{en:['Same phone and product as #EO-48213 within 48 h'],ar:['نفس الرقم ونفس المنتج زي #EO-48213 خلال 48 ساعة']}},
+ {id:'SH-10999', n:{en:'Omar Tarek',ar:'عمر طارق'}, city:{en:'Smouha, Alexandria',ar:'سموحة، إسكندرية'}, ph:'015•• ••• 2287', store:'Shopify', total:1890, c:'EGP', risk:91, st:'held', route:'hold', age:{en:'1 h',ar:'ساعة'}, items:{en:'1 × Hair dryer pro',ar:'1 × سشوار برو'}, src:'TikTok · creators', why:{en:['Refused at 3 other stores in 90 days (network)','Refused 1 order here'],ar:['رفض أوردرات في 3 متاجر تانية خلال 90 يوم','رفض أوردر قبل كده هنا']}},
+ {id:'LF-772', n:{en:'Youssef Kamal',ar:'يوسف كمال'}, city:{en:'Maadi, Cairo',ar:'المعادي، القاهرة'}, ph:'015•• ••• 3301', store:'LightFunnels', total:890, c:'EGP', risk:22, st:'shipped', route:'auto', age:{en:'3 h',ar:'3 ساعات'}, items:{en:'1 × Hair oil 100 ml',ar:'1 × زيت شعر 100 مل'}, src:'Meta · retargeting', why:{en:['2 past deliveries'],ar:['اتسلمله أوردرين قبل كده']}},
+ {id:'SL-5520', n:{en:'Abdullah Rashid',ar:'عبدالله راشد'}, city:{en:'Al Olaya, Riyadh',ar:'العليا، الرياض'}, ph:'05•• ••• 4417', store:'Salla', total:349, c:'SAR', risk:24, st:'confirmed', route:'bot', age:{en:'4 h',ar:'4 ساعات'}, items:{en:'1 × Vitamin C serum 30 ml',ar:'1 × سيرم فيتامين سي 30 مل'}, src:'Snap · KSA launch', why:{en:['Confirmed by WhatsApp in 4 minutes'],ar:['اتأكد على واتساب في 4 دقايق']}},
+ {id:'EO-48101', n:{en:'Laila Hamed',ar:'ليلى حامد'}, city:{en:'Assiut',ar:'أسيوط'}, ph:'010•• ••• 1190', store:'EasyOrders', total:980, c:'EGP', risk:58, st:'refused', route:'bot', age:{en:'1 d',ar:'يوم'}, items:{en:'1 × Sunscreen SPF 50',ar:'1 × صن سكرين SPF 50'}, src:'TikTok · creators', why:{en:['Open-box at the door, changed mind'],ar:['فتح الشحنة على الباب وغير رأيه']}},
+ {id:'SH-10985', n:{en:'Nour Emad',ar:'نور عماد'}, city:{en:'Zamalek, Cairo',ar:'الزمالك، القاهرة'}, ph:'010•• ••• 6650', store:'Shopify', total:1720, c:'EGP', risk:9, st:'delivered', route:'auto', age:{en:'1 d',ar:'يوم'}, items:{en:'2 × Night cream, 1 × serum',ar:'2 × كريم ليلي، 1 × سيرم'}, src:'Meta · spring_sale', why:{en:['VIP · 7 of 7 delivered'],ar:['عميل VIP · اتسلمله 7 من 7']}},
+ {id:'WC-3376', n:{en:'Hana Samir',ar:'هنا سمير'}, city:{en:'Mansoura',ar:'المنصورة'}, ph:'012•• ••• 5520', store:'WooCommerce', total:2300, c:'EGP', risk:31, st:'delivered', route:'bot', age:{en:'2 d',ar:'يومين'}, items:{en:'1 × Air fryer XL',ar:'1 × قلاية هوائية XL'}, src:'Meta · lookalike', why:{en:['Shared a verified pin'],ar:['بعت لوكيشن متأكد منه']}},
+ {id:'EO-48230', n:{en:'Tarek Fathy',ar:'طارق فتحي'}, city:{en:'Tanta',ar:'طنطا'}, ph:'011•• ••• 8812', store:'EasyOrders', total:760, c:'EGP', risk:61, st:'new', route:'agent', age:{en:'2 min',ar:'دقيقتين'}, items:{en:'1 × Tote bag, black',ar:'1 × شنطة توت سودا'}, src:'TikTok · creators', why:{en:['No reply to bot','City outside usual zones'],ar:['ما ردش على البوت','المدينة برة المناطق المعتادة']}},
+ {id:'SL-5531', n:{en:'Faisal Qahtani',ar:'فيصل القحطاني'}, city:{en:'Jeddah',ar:'جدة'}, ph:'05•• ••• 9031', store:'Salla', total:520, c:'SAR', risk:12, st:'packed', route:'auto', age:{en:'5 h',ar:'5 ساعات'}, items:{en:'2 × Hair oil 100 ml',ar:'2 × زيت شعر 100 مل'}, src:'Snap · KSA launch', why:{en:['Repeat customer'],ar:['عميل متكرر']}}
+];
+const ST = {new:'p-info', pending:'p-warn', confirmed:'p-good', packed:'p-acc', shipped:'p-n', delivered:'p-good', refused:'p-bad', duplicate:'p-bad', held:'p-bad'};
+const RC = s => s>=86?'var(--bad)':s>=61?'var(--bad)':s>=26?'var(--warn)':'var(--good)';
+
+/* deterministic series for charts */
+const seq = (n, f) => Array.from({length:n}, (_, i) => f(i));
+const PROFIT = seq(30, i => Math.round(5200 + 2600*Math.sin(i/3.1) + 1600*Math.sin(i/1.3+1) + i*55));
+
+/* ---------------- shell ---------------- */
+const NAV = [
+  {g:'nav_main', items:[['overview','home'],['orders','orders',1284],['confirm','phone',38,true],['shipping','truck']]},
+  {g:'nav_money', items:[['profit','scale'],['cash','cash'],['attribution','target']]},
+  {g:'nav_build', items:[['automations','flow'],['scripts','chat']]}
+];
+function renderShell(){
+  const h = document.documentElement; h.lang = S.lang; h.dir = S.lang==='ar' ? 'rtl' : 'ltr';
+  document.getElementById('rail').innerHTML = `
+    <div class="brand"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="#1B1F27"/><path d="M6 13h20" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M16 13l-4 9h8z" fill="#D6A94C"/><circle cx="6" cy="13" r="2" fill="#fff"/><circle cx="26" cy="13" r="2" fill="#fff"/></svg>
+      <div><b>${S.lang==='ar'?'ميزان':'Mizan'}</b><small>${t('brandSub')}</small></div></div>
+    <div class="store"><span class="av">S</span><div><span>${t('store')}</span><em>${t('storeSub')}</em></div></div>
+    <nav class="nav">${NAV.map(g=>`<div class="navlabel">${t(g.g)}</div>`+g.items.map(([k,i,c,hot])=>`<a href="#${k}" data-v="${k}" class="${S.view===k?'on':''}">${ic(i)}<span>${t(k)}</span>${c?`<span class="ct ${hot?'hot':''}">${nf(c)}</span>`:''}</a>`).join('')).join('')}</nav>
+    <div class="foot">${t('footA')} <b>${t('footB')}</b><br>v1.0 · ${t('demo')}</div>`;
+  document.getElementById('menuBtn').innerHTML = ic('menu');
+  document.getElementById('searchBtn').innerHTML = `${ic('search')}<span class="st">${t('search')}</span><kbd>⌘K</kbd>`;
+  document.getElementById('demoTag').textContent = t('demo');
+  document.getElementById('lEn').className = S.lang==='en'?'on':''; document.getElementById('lAr').className = S.lang==='ar'?'on':'';
+  document.getElementById('palIn').placeholder = t('palPh');
+  document.getElementById('themeBtn').innerHTML = ic(isDark()?'sun':'moon');
+  document.title = S.lang==='ar' ? 'ميزان' : 'Mizan';
+}
+function isDark(){ const a = document.documentElement.dataset.theme; return a ? a==='dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
+
+/* ---------------- charts ---------------- */
+function areaChart(data, w=640, h=200, color='var(--accent)'){
+  const max = Math.max(...data)*1.12, min = 0, pad = {l:44, r:14, t:14, b:26};
+  const X = i => pad.l + i*(w-pad.l-pad.r)/(data.length-1), Y = v => pad.t + (h-pad.t-pad.b)*(1-(v-min)/(max-min));
+  const pts = data.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  const ticks = [0, 4000, 8000, 12000].filter(v=>v<=max);
+  const last = data.length-1;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" style="display:block;direction:ltr" role="img" aria-label="${t('trend')}">
+    <defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${color}" stop-opacity=".28"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${ticks.map(v=>`<line x1="${pad.l}" x2="${w-pad.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-dasharray="${v?'3 4':''}"/><text x="${pad.l-8}" y="${Y(v)+4}" text-anchor="end" font-size="10.5" fill="var(--ink-3)" font-family="IBM Plex Mono">${v?Math.round(v/1000)+'k':'0'}</text>`).join('')}
+    <polygon points="${X(0)},${Y(0)} ${pts} ${X(last)},${Y(0)}" fill="url(#ag)"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${X(last)}" cy="${Y(data[last])}" r="4.5" fill="${color}" stroke="var(--surface)" stroke-width="2"/>
+    <text x="${X(last)-8}" y="${Y(data[last])-12}" text-anchor="end" font-size="11.5" fill="var(--ink)" font-family="IBM Plex Mono">${nf(data[last])}</text>
+    ${[0,7,14,21,29].map(i=>`<text x="${X(i)}" y="${h-6}" text-anchor="middle" font-size="10.5" fill="var(--ink-3)" font-family="IBM Plex Mono">${S.lang==='ar'?'':'Oct '}${(i%31)+1}${S.lang==='ar'?' أكتوبر':''}</text>`).join('')}
+  </svg>`;
+}
+function spark(data, color){ const w=200,h=36,max=Math.max(...data),min=Math.min(...data);
+  const X=i=>i*w/(data.length-1), Y=v=>4+(h-8)*(1-(v-min)/((max-min)||1));
+  const p=data.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="direction:ltr" aria-hidden="true"><polyline points="${p}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/><circle cx="${X(data.length-1)}" cy="${Y(data[data.length-1])}" r="2.6" fill="${color}"/></svg>`; }
+
+/* ---------------- views ---------------- */
+const V = {};
+const head = (title, sub, acts='') => `<div class="vh"><div><h1>${title}</h1><p>${sub}</p></div>${acts?`<div class="acts">${acts}</div>`:''}</div>`;
+
+V.overview = () => {
+  const rev = 1420000;
+  const parts = [['cogs',.41,'#59606E'],['ship',.12,'#7E8796'],['ads',.21,'#A4ACBA'],['rto',.043,'var(--bad)'],['team',.023,'#C2C8D2'],['fees',.045,'#D5D9E0'],['keptL',.149,'var(--accent)']];
+  const order = S.lang==='ar' ? parts : parts;
+  return `<div class="wrap fade">
+   ${head(t('ov_title'), t('ov_sub'), `<button class="btn" data-go="profit">${ic('scale')}${t('profit')}</button><button class="btn pri" data-go="orders">${ic('orders')}${t('orders')}</button>`)}
+   <section class="card hero">
+     <svg class="fulcrum" viewBox="0 0 120 60" aria-hidden="true"><line x1="6" y1="14" x2="114" y2="14" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"/><circle cx="6" cy="14" r="4" fill="var(--ink)"/><circle cx="114" cy="14" r="4" fill="var(--ink)"/><path d="M60 17l-12 26h24z" fill="var(--accent)"/></svg>
+     <div class="eyebrow">${t('kept')}</div>
+     <div class="k"><div class="big num">${S.lang==='ar'?'212,400':'212,400'}<small>${S.lang==='ar'?'ج.م':'EGP'}</small></div>
+       <div class="delta"><span class="pill p-good">+8.2%</span><span class="mut" style="font-size:12px">${t('vsPrev')}</span></div></div>
+     <p class="lede">${t('ofEvery')} <b class="num">${S.lang==='ar'?'100 ج.م':'EGP 100'}</b> ${t('kept2')} <b class="num">${S.lang==='ar'?'14.90 ج.م':'EGP 14.90'}</b>.</p>
+     <div class="beam"><div class="eyebrow" style="margin-bottom:10px">${t('where')} · ${t('revenue')} ${compact(rev)}</div>
+       <div class="bar" role="img" aria-label="${t('where')}">${order.map(([k,p,c])=>`<span class="seg ${k==='keptL'?'kept':''}" title="${t(k)} · ${(p*100).toFixed(1)}%" style="flex:${p} 1 0;background:${k==='keptL'?'':c}"></span>`).join('')}</div>
+       <div class="legend">${order.map(([k,p,c])=>`<div style="--c:${c}">${t(k)}<b>${compact(Math.round(rev*p))}</b><em>${(p*100).toFixed(1)}%</em></div>`).join('')}</div>
+     </div>
+   </section>
+   <div class="kpis" style="margin-top:16px">
+     ${[['k_orders','1,812','+6%','up',seq(14,i=>50+Math.sin(i)*8+i*1.5),'var(--ink-2)'],['k_deliv','86.1%','+2.4 pts','up',seq(14,i=>80+i*.4+Math.sin(i*1.4)),'var(--good)'],['k_rto',compact(61000),'+38%','down',seq(14,i=>2+i*.25+Math.cos(i)*.6),'var(--bad)'],['k_cash',compact(184000),compact(41000)+' '+t('overdue').toLowerCase(),'down',seq(14,i=>180-i*2+Math.sin(i)*9),'var(--warn)']]
+      .map(([k,v,d,dir,s,c])=>`<div class="card kpi"><div class="l">${t(k)}</div><div class="v num">${v}</div><div class="d"><span class="${dir}">${d}</span></div>${spark(s,c)}</div>`).join('')}
+   </div>
+   <div class="grid g-12" style="margin-top:16px">
+     <section class="card s-8"><div class="card-h"><h3>${t('trend')}</h3><span class="sub">· ${S.lang==='ar'?'ج.م':'EGP'}</span></div><div class="card-b">${areaChart(PROFIT)}</div></section>
+     <section class="card s-4"><div class="card-h"><h3>${t('routes')}</h3></div><div class="card-b"><div class="routes">
+       ${[['auto',31,'var(--good)'],['bot',46,'var(--info)'],['agent',19,'var(--accent)'],['hold',4,'var(--bad)']].map(([k,v,c])=>`<div class="route"><div class="rl"><span>${t(k)}</span><b>${v}%</b></div><div class="tr"><i style="width:${v}%;background:${c}"></i></div></div>`).join('')}
+       <p class="mut" style="font-size:12px;margin:2px 0 0">${S.lang==='ar'?'التأكيد التلقائي والبوت وفروا حوالي 1,400 مكالمة الشهر ده.':'Auto and bot confirmations saved about 1,400 calls this month.'}</p>
+     </div></div></section>
+     <section class="card s-12"><div class="card-h"><h3>${t('attn')}</h3><span class="pill p-bad" style="margin-inline-start:4px">4</span></div><div class="card-b" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));column-gap:28px">
+       ${[['a1','truck','var(--bad)','var(--bad-soft)','shipping'],['a2','cash','var(--warn)','var(--warn-soft)','cash'],['a3','target','var(--bad)','var(--bad-soft)','attribution'],['a4','box','var(--warn)','var(--warn-soft)','orders']].map(([k,i,c,b,go])=>`<div class="att"><span class="ic" style="color:${c};background:${b}">${ic(i)}</span><div><b>${t(k+'t')}</b><p>${t(k+'p')}</p></div><button class="btn sm go" data-go="${go}">${t('open')}</button></div>`).join('')}
+     </div></section>
+   </div></div>`;
+};
+
+V.orders = () => {
+  const counts = s => s==='all'?ORDERS.length:ORDERS.filter(o=>o.st===s).length;
+  const list = ORDERS.filter(o => (S.filter==='all'||o.st===S.filter) && (!S.q || (o.id+L(o.n)+o.n.en).toLowerCase().includes(S.q.toLowerCase())));
+  return `<div class="wrap fade">${head(t('or_title'), t('or_sub'), `<button class="btn">${t('import')}</button><button class="btn pri">${ic('plus')}${t('newOrder')}</button>`)}
+   <section class="card">
+    <div class="toolbar"><div class="chips">${['all','new','pending','confirmed','shipped','delivered','refused','duplicate'].map(s=>`<button class="chip ${S.filter===s?'on':''}" data-f="${s}">${t(s)}<span class="c">${counts(s)}</span></button>`).join('')}</div>
+      <label class="field" style="margin-inline-start:auto">${ic('search')}<input id="oq" value="${S.q}" placeholder="${t('filter')}" aria-label="${t('filter')}"></label></div>
+    <div class="tw"><table class="t"><thead><tr><th>${t('c_order')}</th><th>${t('c_cust')}</th><th>${t('c_store')}</th><th class="end">${t('c_total')}</th><th>${t('c_risk')}</th><th>${t('c_route')}</th><th>${t('c_status')}</th><th class="end">${t('c_age')}</th></tr></thead>
+    <tbody>${list.map(o=>`<tr data-o="${o.id}"><td class="mono"><bdi>#${o.id}</bdi></td><td class="cust"><b>${L(o.n)}</b><span>${L(o.city)}</span></td><td>${o.store}</td><td class="end num">${money(o.total,o.c)}</td>
+      <td><span class="score"><i><b style="width:${o.risk}%;background:${RC(o.risk)}"></b></i>${o.risk}</span></td><td>${t(o.route)}</td><td><span class="pill ${ST[o.st]}">${t(o.st)}</span></td><td class="end mut">${L(o.age)}</td></tr>`).join('') || `<tr><td colspan="8" class="mut" style="padding:28px;text-align:center">—</td></tr>`}</tbody></table></div>
+   </section></div>`;
+};
+
+function openOrder(id){
+  const o = ORDERS.find(x=>x.id===id); if(!o) return;
+  const est = Math.round(o.total*0.21);
+  document.getElementById('drawer').innerHTML = `
+   <div class="dh"><div style="flex:1;min-width:0"><div class="eyebrow">${o.store} · ${L(o.age)}</div><h2 class="mono"><bdi>#${o.id}</bdi></h2><div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><span class="pill ${ST[o.st]}">${t(o.st)}</span><span class="pill p-n">${t(o.route)}</span></div></div><button class="iconbtn" data-close aria-label="Close">${ic('x')}</button></div>
+   <div class="db">
+     <div class="kv"><span>${t('c_cust')}</span><b>${L(o.n)}</b><span>&nbsp;</span><b class="mono" style="direction:ltr;unicode-bidi:isolate;text-align:start">${o.ph}</b><span>${t('d_addr')}</span><b>${L(o.city)}</b><span>${t('d_items')}</span><b>${L(o.items)}</b><span>${t('c_total')}</span><b class="num">${money(o.total,o.c)}</b><span>${t('d_pay')}</span><b>${t('d_cod')}</b><span>${t('d_source')}</span><b>${o.src}</b><span>${t('d_profit')}</span><b class="num" style="color:var(--good)">${money(est,o.c)}</b></div>
+     <div class="why"><div style="display:flex;align-items:center;gap:10px"><b style="font-size:13px">${t('why')}</b><span class="score" style="margin-inline-start:auto"><i><b style="width:${o.risk}%;background:${RC(o.risk)}"></b></i>${o.risk}/100</span></div><ul>${L(o.why).map(w=>`<li>${w}</li>`).join('')}</ul></div>
+     <div class="eyebrow" style="margin-top:20px">${t('tl')}</div>
+     <div class="tl">${(S.lang==='ar'?[['اتقيم '+o.risk+' · التوجيه: '+t(o.route),'14:02'],['اتسحب من '+o.store,'14:01'],['العميل طلب من الموقع','14:01']]:[['Scored '+o.risk+' · routed to '+t(o.route),'14:02'],['Synced from '+o.store,'14:01'],['Customer placed the order','14:01']]).map((x,i)=>`<div class="${i?'':'h'}">${x[0]}<em>${x[1]}</em></div>`).join('')}</div>
+   </div>
+   <div class="df">${o.dup?`<button class="btn acc" data-toast="toast_save">${t('merge')}</button>`:''}<button class="btn pri" data-toast="toast_conf">${ic('check')}${t('confirmBtn')}</button><button class="btn">${t('assign')}</button><button class="btn ghost bad">${t('cancel')}</button></div>`;
+  document.getElementById('drawer').classList.add('on'); document.getElementById('scrim').classList.add('on');
+}
+function closeDrawer(){ document.getElementById('drawer').classList.remove('on'); document.getElementById('scrim').classList.remove('on'); }
+
+const QUEUE = ['WC-3381','EO-48230','EO-48213','SH-10999'];
+V.confirm = () => {
+  const o = ORDERS.find(x=>x.id===QUEUE[S.qi % QUEUE.length]);
+  const fn = L(o.n).split(' ')[0];
+  const lines = [['greet',`أهلا يا ${o.n.ar.split(' ')[0]}، معاك أحمد من سيرم بيوتي.`],['verify',`حضرتك طلبت ${o.items.ar.replace(/^\d+ × /,'')} بإجمالي ${nf(o.total)} جنيه، والدفع عند الاستلام. الطلب مظبوط كده؟`],['addr',`العنوان عندنا ${o.city.ar}. ممكن تبعتلي اللوكيشن عشان المندوب يوصلك أسرع؟`],['close','تمام، الطلب هيوصلك خلال يومين، وهنبعتلك رقم الشحنة على واتساب.']];
+  const lab = {greet:{en:'Greeting',ar:'الترحيب'},verify:{en:'Verify',ar:'تأكيد الطلب'},addr:{en:'Address',ar:'العنوان'},close:{en:'Close',ar:'الختام'}};
+  return `<div class="wrap fade">${head(t('cf_title'), t('cf_sub'), `<span class="pill p-good">${S.lang==='ar'?'الطابور: 38':'38 in queue'}</span>`)}
+   <div class="callgrid">
+    <section class="card"><div class="card-h"><h3>${t('queue')}</h3><span class="sub">· ${S.lang==='ar'?'حسب الخطورة':'by risk'}</span></div><div style="margin-top:12px">
+     ${QUEUE.map((id,i)=>{const q=ORDERS.find(x=>x.id===id);return `<div class="qitem ${i===S.qi%QUEUE.length?'on':''}" data-q="${i}"><span class="score"><i><b style="width:${q.risk}%;background:${RC(q.risk)}"></b></i>${q.risk}</span><div class="cust"><b>${L(q.n)}</b><span class="mono"><bdi>#${q.id}</bdi> · ${money(q.total,q.c)}</span></div></div>`}).join('')}
+    </div></section>
+    <section class="card callcard">
+      <div class="callhead"><span class="avatar">${fn[0]}</span><div><div class="eyebrow">${t('calling')}</div><h2>${L(o.n)}</h2><span class="ph">${o.ph}</span></div><div class="timer"><i></i><span id="clock">00:00</span></div></div>
+      <div class="reasons">${L(o.why).map(w=>`<span class="pill p-warn">${w}</span>`).join('')}</div>
+      <div class="kv" style="margin-top:14px"><span>${t('d_items')}</span><b>${L(o.items)}</b><span>${t('c_total')}</span><b class="num">${money(o.total,o.c)}</b><span>${t('d_addr')}</span><b>${L(o.city)}</b></div>
+      <div class="eyebrow" style="margin-top:20px">${t('script')}</div>
+      <div class="scriptbox">${lines.map(([k,txt],i)=>`<div class="sl ${i===1?'now':''}"><span>${L(lab[k])}</span><p>${txt}</p></div>`).join('')}</div>
+      <div class="outcomes"><button class="btn pri" data-out="c">${ic('check')}${t('o_conf')}</button><button class="btn" data-out="n">${t('o_na')}</button><button class="btn" data-out="r">${t('o_resched')}</button><button class="btn bad" data-out="x">${t('o_cancel')}</button></div>
+    </section></div></div>`;
+};
+
+V.shipping = () => {
+  const Z = [[{en:'Cairo',ar:'القاهرة'},91,88,86],[{en:'Giza',ar:'الجيزة'},89,87,85],[{en:'Alexandria',ar:'إسكندرية'},84,89,85],[{en:'Delta',ar:'الدلتا'},87,86,null],[{en:'Upper Egypt',ar:'الصعيد'},72,70,81],[{en:'Canal cities',ar:'مدن القناة'},85,83,82]];
+  const C = ['Bosta','J&T','Aramex'];
+  const cell = v => { if(v==null) return `<td class="h"><span class="mut">—</span></td>`; const bg = v>=88?'var(--good-soft)':v>=82?'var(--surface-2)':'var(--bad-soft)'; const fg = v>=88?'var(--good)':v>=82?'var(--ink)':'var(--bad)'; return `<td class="h"><span style="background:${bg};color:${fg}">${v}%</span></td>`; };
+  return `<div class="wrap fade">${head(t('sh_title'), t('sh_sub'), `<button class="btn pri">${ic('truck')}${S.lang==='ar'?'احجز المحدد':'Book selected'}</button>`)}
+   <div class="grid g-12">
+    <section class="card s-7"><div class="card-h"><h3>${t('dr')} · ${t('zone')}</h3></div><div class="tw" style="margin-top:12px"><table class="t heat"><thead><tr><th>${t('zone')}</th>${C.map(c=>`<th style="text-align:center">${c}</th>`).join('')}<th>${t('best')}</th></tr></thead><tbody>
+      ${Z.map(z=>{const vals=z.slice(1);const bi=vals.indexOf(Math.max(...vals.filter(v=>v!=null)));return `<tr><td><b>${L(z[0])}</b></td>${vals.map(cell).join('')}<td><span class="pill p-acc">${C[bi]}</span></td></tr>`}).join('')}
+    </tbody></table></div></section>
+    <section class="card s-5"><div class="card-h"><h3>${t('cour')}</h3><span class="sub">· 60 ${S.lang==='ar'?'يوم':'days'}</span></div><div class="card-b">
+      ${[['Bosta',88,9.8,2.1,6],['J&T',86,11.4,2.4,9],['Aramex',85,10.2,2.9,7]].map(([n,d,r,dd,rm])=>`<div style="padding:14px 0;border-top:1px solid var(--line)"><div style="display:flex;justify-content:space-between;align-items:center"><b>${n}</b><span class="pill ${d>=88?'p-good':'p-n'}">${t('dr')} ${d}%</span></div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px;font-size:12px" class="mut"><div>${t('rtoR')}<div class="num" style="color:var(--ink);font-size:15px">${r}%</div></div><div>${t('days')}<div class="num" style="color:var(--ink);font-size:15px">${dd}</div></div><div>${t('remit')}<div class="num" style="color:var(--ink);font-size:15px">${rm}</div></div></div></div>`).join('')}
+    </div></section></div></div>`;
+};
+
+const PNL = {
+ 'EO-48101':{lines:[['revenue',0],['cogs',0],['ship',-130],['team',-10],['fees',-20],['ads',-160]], net:-320, note:{en:'Refused at the door. Product restocked; both shipping legs and the ad cost are lost.',ar:'اترفض على الباب. المنتج رجع المخزن، لكن الشحن رايح جاي وتكلفة الإعلان راحوا.'}},
+ 'SH-10985':{lines:[['revenue',1720],['cogs',-690],['ship',-95],['team',0],['fees',-20],['ads',-210]], net:705, note:{en:'VIP order. Auto-confirmed, so no confirmation cost.',ar:'أوردر عميل VIP. اتأكد تلقائي فمفيش تكلفة تأكيد.'}},
+ 'WC-3376':{lines:[['revenue',2300],['cogs',-1450],['ship',-110],['team',-10],['fees',-20],['ads',-260]], net:450, note:{en:'High product cost leaves a thin margin.',ar:'تكلفة المنتج العالية سابت هامش ربح قليل.'}},
+ 'LF-772':{lines:[['revenue',890],['cogs',-310],['ship',-80],['team',0],['fees',-20],['ads',-140]], net:340, note:{en:'Retargeting order, cheap to acquire.',ar:'أوردر من إعادة الاستهداف، تكلفته قليلة.'}}
+};
+V.profit = () => {
+  const ids = Object.keys(PNL); const p = PNL[S.pOrder];
+  const rev = Math.max(...ids.map(i=>PNL[i].lines[0][1]),1);
+  let run = 0;
+  const rows = p.lines.map(([k,v])=>{ const start = run; run += v; return {k,v,start,end:run}; });
+  const scale = x => (x/rev)*100;
+  return `<div class="wrap fade">${head(t('pr_title'), t('pr_sub'), `<button class="btn">${S.lang==='ar'?'تصدير':'Export'}</button>`)}
+   <div class="kpis">${[[t('revenue'),compact(1420000)],[t('net'),compact(212400)],[S.lang==='ar'?'هامش الربح':'Margin','14.9%'],[t('rto'),compact(61000)]].map(([l,v],i)=>`<div class="card kpi"><div class="l">${l}</div><div class="v num" style="${i===1?'color:var(--accent-ink)':''}">${v}</div></div>`).join('')}</div>
+   <div class="grid g-12" style="margin-top:16px">
+    <section class="card s-6"><div class="card-h"><h3>${t('byOrder')}</h3></div><div class="tw" style="margin-top:12px"><table class="t"><thead><tr><th>${t('c_order')}</th><th class="end">${t('revenue')}</th><th class="end">${t('net')}</th><th>${t('c_status')}</th></tr></thead><tbody>
+     ${ids.map(id=>{const o=ORDERS.find(x=>x.id===id);const q=PNL[id];return `<tr data-p="${id}" class="${S.pOrder===id?'sel':''}"><td class="mono"><bdi>#${id}</bdi></td><td class="end num">${money(o.total)}</td><td class="end num" style="color:${q.net<0?'var(--bad)':'var(--good)'}">${q.net>0?'+':''}${nf(q.net)}</td><td><span class="pill ${ST[o.st]}">${t(o.st)}</span></td></tr>`}).join('')}
+    </tbody></table></div></section>
+    <section class="card s-6"><div class="card-h"><h3>${t('breakdown')} · <span class="mono"><bdi>#${S.pOrder}</bdi></span></h3></div><div class="card-b"><div class="wf" style="direction:ltr">
+     ${rows.map(r=>{const a=Math.min(r.start,r.end),b=Math.max(r.start,r.end);const left=scale(Math.max(a,0)),w=Math.max(scale(b-a),r.v?0.6:0);const neg=r.end<0&&r.v<0&&r.start<=0;return `<div class="wfr" dir="${S.lang==='ar'?'rtl':'ltr'}"><span>${t(r.k)}</span><div class="tr" style="direction:ltr">${r.k==='revenue'?`<i style="left:0;width:${scale(r.v)}%;background:var(--ink-2)"></i>`:(b<=0||neg)?`<i style="left:0;width:${Math.min(scale(Math.abs(r.v)),100)}%;background:var(--bad);opacity:.75"></i>`:`<i style="left:${left}%;width:${w}%;background:var(--bad);opacity:.55"></i>`}</div><b style="color:${r.v<0?'var(--bad)':'var(--ink)'}">${r.v>0?'+':''}${nf(r.v)}</b></div>`}).join('')}
+     <div class="wfr" dir="${S.lang==='ar'?'rtl':'ltr'}" style="margin-top:6px;padding-top:10px;border-top:1px solid var(--line)"><span><b style="font-family:var(--f-body);text-align:start">${t('net')}</b></span><div class="tr" style="direction:ltr"><i style="left:0;width:${Math.min(scale(Math.abs(p.net)),100)}%;background:${p.net<0?'var(--bad)':'var(--accent)'}"></i></div><b style="color:${p.net<0?'var(--bad)':'var(--good)'}">${p.net>0?'+':''}${nf(p.net)}</b></div>
+    </div><p class="mut" style="margin:14px 0 0;font-size:12.5px">${L(p.note)}</p></div></section>
+   </div></div>`;
+};
+
+V.cash = () => {
+  const R = [['BOS-77118802','Bosta',1150,1150,'matched'],['JT-EG4409871','J&T',980,915,'short'],['BOS-77118790','Bosta',640,0,'missing'],['ARX-90011100','Aramex',2300,2300,'matched'],['JT-EG4409850','J&T',720,0,'overdue'],['BOS-77118811','Bosta',890,890,'matched']];
+  const P = {matched:'p-good', short:'p-warn', missing:'p-bad', overdue:'p-bad'};
+  return `<div class="wrap fade">${head(t('ca_title'), t('ca_sub'), `<button class="btn pri">${ic('plus')}${t('upload')}</button>`)}
+   <div class="grid g-12">
+    <section class="card s-4"><div class="card-h"><h3>${t('inTransit')}</h3></div><div class="card-b"><div class="big num" style="font-family:var(--f-display);font-size:38px;font-weight:700;letter-spacing:-.04em">${compact(184000)}</div>
+      <div class="bars" style="margin-top:18px">${[['Bosta',98000,26000],['J&T',61000,15000],['Aramex',25000,0]].map(([n,v,o])=>`<div class="hb"><span>${n}</span><div class="tr" style="direction:ltr"><i style="width:${v/98000*100}%;background:linear-gradient(90deg,var(--ink-2) ${(1-o/v)*100}%,var(--bad) ${(1-o/v)*100}%)"></i></div><b>${compact(v)}</b></div>`).join('')}</div>
+      <p class="mut" style="font-size:12px;margin:14px 0 0">${S.lang==='ar'?'الجزء الأحمر متأخر أكتر من 10 أيام.':'Red share is overdue by more than 10 days.'}</p></div></section>
+    <section class="card s-8"><div class="card-h"><h3>${S.lang==='ar'?'كشف بوسطة S-1042 وجي آند تي S-0877':'Settlements S-1042 · S-0877'}</h3></div><div class="tw" style="margin-top:12px"><table class="t"><thead><tr><th>${S.lang==='ar'?'رقم الشحنة':'Tracking'}</th><th>${S.lang==='ar'?'الشركة':'Courier'}</th><th class="end">${t('expected')}</th><th class="end">${t('paid')}</th><th class="end">${t('diff')}</th><th>${t('c_status')}</th><th></th></tr></thead><tbody>
+      ${R.map(([tr,c,e,p,s])=>`<tr><td class="mono">${tr}</td><td>${c}</td><td class="end num">${nf(e)}</td><td class="end num">${p?nf(p):'—'}</td><td class="end num" style="color:${e-p?'var(--bad)':'var(--ink-3)'}">${e-p?'−'+nf(e-p):'—'}</td><td><span class="pill ${P[s]}">${t(s)}</span></td><td class="end">${s!=='matched'?`<button class="btn sm" data-toast="toast_claim">${t('claim')}</button>`:''}</td></tr>`).join('')}
+    </tbody></table></div></section></div></div>`;
+};
+
+V.attribution = () => {
+  const C = [[{en:'Spring serum · broad',ar:'سيرم الربيع · واسع'},'Meta',22000,410,301,4.6],[{en:'Retargeting 30 days',ar:'إعادة استهداف 30 يوم'},'Meta',9000,160,141,5.2],[{en:'Snap · KSA launch',ar:'سناب · إطلاق السعودية'},'Snap',14600,88,70,3.3],[{en:'Air fryer · lookalike',ar:'القلاية · جمهور مشابه'},'Meta',18000,190,92,2.1],[{en:'TikTok · creators',ar:'تيك توك · الكريتورز'},'TikTok',15000,380,121,1.4]];
+  const mx = 5.2;
+  return `<div class="wrap fade">${head(t('at_title'), t('at_sub'), `<button class="btn">${S.lang==='ar'?'ربط منصة':'Connect platform'}</button>`)}
+   <div class="kpis">${[[t('spend'),compact(78600)],[t('dROAS'),'3.1×'],[t('cpd'),money(108)],[t('eventsSent'),'4,812']].map(([l,v])=>`<div class="card kpi"><div class="l">${l}</div><div class="v num">${v}</div></div>`).join('')}</div>
+   <section class="card" style="margin-top:16px"><div class="tw"><table class="t"><thead><tr><th>${t('camp')}</th><th>${S.lang==='ar'?'المنصة':'Platform'}</th><th class="end">${t('spend')}</th><th class="end">${t('orders')}</th><th class="end">${t('delivered')}</th><th style="min-width:220px">${t('dROAS')}</th></tr></thead><tbody>
+    ${C.map(([n,p,s,o,d,r])=>`<tr><td><b>${L(n)}</b>${r<2?` <span class="pill p-bad" style="margin-inline-start:6px">${S.lang==='ar'?'بيخسر':'Losing money'}</span>`:''}</td><td>${p}</td><td class="end num">${money(s)}</td><td class="end num">${o}</td><td class="end num">${d} <span class="mut">(${Math.round(d/o*100)}%)</span></td>
+      <td><div style="display:flex;align-items:center;gap:10px;direction:ltr"><div style="flex:1;height:8px;border-radius:4px;background:var(--sunk);overflow:hidden"><i style="display:block;height:100%;width:${r/mx*100}%;background:${r<2?'var(--bad)':r<3?'var(--warn)':'var(--good)'}"></i></div><b class="num" style="width:40px;text-align:end">${r}×</b></div></td></tr>`).join('')}
+   </tbody></table></div></section>
+   <p class="mut" style="font-size:12.5px;margin-top:12px">${S.lang==='ar'?'العائد هنا محسوب على الأوردرات اللي اتسلمت فعلا، مش على المشتريات اللي المنصة سجلتها.':'ROAS here counts only delivered orders, not the purchases the platform recorded.'}</p></div>`;
+};
+
+/* automations */
+const NODES = {
+ t:{x:16,y:20,k:'trigger',c:'var(--ink)',ti:{en:'Order is scored',ar:'الأوردر اتقيم'},su:'confirmation.scored'},
+ c1:{x:16,y:150,k:'if',c:'var(--warn)',ti:{en:'Score ≥ 61 and total ≥ EGP 1,500',ar:'الخطورة 61 أو أكتر والإجمالي 1,500 ج.م أو أكتر'},su:'risk_score, order.total'},
+ d:{x:290,y:150,k:'then',c:'var(--ink-3)',ti:{en:'Default route',ar:'التوجيه العادي'},su:'confirmation.route'},
+ a1:{x:16,y:285,k:'then',c:'var(--info)',ti:{en:'Send prepaid link, 5% off',ar:'ابعت لينك دفع مسبق بخصم 5%'},su:'payment.send_link · Paymob'},
+ w:{x:16,y:420,k:'wait',c:'var(--ink-3)',ti:{en:'6 hours, or until paid',ar:'6 ساعات أو لحد ما يدفع'},su:'wait.until payment.received'},
+ c2:{x:290,y:420,k:'if',c:'var(--warn)',ti:{en:'Payment received?',ar:'الدفع وصل؟'},su:'order.payment_status = paid'},
+ y:{x:564,y:340,k:'then',c:'var(--good)',ti:{en:'Mark prepaid, auto-confirm',ar:'سجله مدفوع وأكده تلقائي'},su:'order.set_status · confirmed'},
+ n:{x:564,y:500,k:'then',c:'var(--accent)',ti:{en:'Agent call · High-value script',ar:'مكالمة · سكريبت الأوردرات الكبيرة'},su:'confirmation.to_agent'}
+};
+const KL = {trigger:{en:'When',ar:'لما'},if:{en:'If',ar:'لو'},then:{en:'Then',ar:'ساعتها'},wait:{en:'Wait',ar:'استنى'}};
+const EDGES = [['t','c1','b'],['c1','d','r','no'],['c1','a1','b','yes'],['a1','w','b'],['w','c2','r'],['c2','y','r','yes'],['c2','n','r','no']];
+const NW = 240, NH = 84, CW = 820;
+function edgePath(a, b, kind){
+  const A = NODES[a], B = NODES[b];
+  if (kind==='b') return `M${A.x+NW/2} ${A.y+NH} V${B.y-4}`;
+  const sx = A.x+NW, sy = A.y+NH/2, ex = B.x-4, ey = B.y+NH/2;
+  if (sy===ey) return `M${sx} ${sy} H${ex}`;
+  const mx = sx + 20; return `M${sx} ${sy} H${mx} V${ey} H${ex}`;
+}
+V.automations = () => {
+  const rtl = S.lang==='ar';
+  const nx = n => rtl ? CW - n.x - NW : n.x;
+  const nd = (id,n) => `<button class="nd ${S.node===id?'sel':''}" data-n="${id}" style="left:${nx(n)}px;top:${n.y}px;--c:${n.c}" dir="${rtl?'rtl':'ltr'}"><div class="nh"><i></i>${L(KL[n.k])}</div><div class="nb"><b>${L(n.ti)}</b><span>${n.su}</span></div></button>`;
+  const labs = [['c1','d','no',262,170],['c1','a1','yes',142,258],['c2','y','yes',536,392],['c2','n','no',536,532]];
+  const sel = NODES[S.node];
+  return `<div class="wrap fade">${head(t('au_title'), t('au_sub'), `<span class="pill p-warn">${t('draft')}</span><button class="btn" id="runTest">${ic('play')}${t('test')}</button><button class="btn pri" data-toast="toast_pub">${t('publish')}</button>`)}
+   <section class="card" style="overflow:hidden"><div class="builder">
+    <div class="cv-wrap"><div class="cv" id="cv">
+      <svg width="${CW}" height="600" viewBox="0 0 ${CW} 600" aria-hidden="true"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--ink-3)"/></marker></defs>
+       <g ${rtl?`transform="translate(${CW},0) scale(-1,1)"`:''} fill="none" stroke="var(--ink-3)" stroke-width="1.6">${EDGES.map(e=>`<path d="${edgePath(e[0],e[1],e[2])}" marker-end="url(#ah)"/>`).join('')}</g></svg>
+      ${Object.entries(NODES).map(([id,n])=>nd(id,n)).join('')}
+      ${labs.map(([a,b,w,x,y])=>`<span class="elab" style="left:${rtl?CW-x-30:x}px;top:${y}px">${w==='yes'?(rtl?'أيوه':'YES'):(rtl?'لأ':'NO')}</span>`).join('')}
+    </div></div>
+    <div class="insp"><div class="eyebrow">${t('inspector')}</div><h4>${L(sel.ti)}</h4>
+      <div class="ffield"><label>${S.lang==='ar'?'النوع':'Step type'}</label><div class="in">${L(KL[sel.k])}<span class="mut">${sel.k}</span></div></div>
+      <div class="ffield"><label>${S.lang==='ar'?'الإعداد':'Configuration'}</label><div class="in" style="direction:ltr">${sel.su}</div></div>
+      ${S.node==='c2'?`<div class="ffield"><label>${S.lang==='ar'?'مسار أيوه / لأ':'Yes / No paths'}</label><div class="in">${L(NODES.y.ti)}</div><div class="in">${L(NODES.n.ti)}</div></div>`:''}
+      <div class="runlog" id="runlog"><b>${t('runs')}</b><br>${S.lang==='ar'?'1,204 تشغيل · 38% دفعوا مقدما · 0 أخطاء':'1,204 runs · 38% paid upfront · 0 errors'}</div>
+    </div></div></section>
+   <h3 style="margin:28px 0 12px;font-size:15px">${t('recipes')}</h3>
+   <div class="recipes">${[
+     [{en:'Stuck parcel',ar:'شحنة واقفة'},{en:'No courier update for 48 hours',ar:'مفيش تحديث من شركة الشحن 48 ساعة'},{en:'Open courier ticket, WhatsApp the customer, alert ops',ar:'افتح تذكرة مع الشركة، ابعت للعميل على واتساب، نبه فريق التشغيل'}],
+     [{en:'Refuser guard',ar:'حماية من الرفض'},{en:'Customer refused 2 or more times',ar:'العميل رفض مرتين أو أكتر'},{en:'Require prepaid, exclude from ad audiences',ar:'اطلب دفع مسبق واستبعده من جمهور الإعلانات'}],
+     [{en:'Cash chase',ar:'متابعة الكاش'},{en:'Courier cash overdue 10 days',ar:'كاش متأخر عند شركة الشحن 10 أيام'},{en:'Open a claim, email the courier, notify finance',ar:'افتح مطالبة، ابعت إيميل للشركة، بلغ الحسابات'}]
+   ].map(([n,w,th])=>`<button class="recipe" data-toast="toast_save"><b>${L(n)}</b><span class="w">${S.lang==='ar'?'لما':'When'}</span><p>${L(w)}</p><span class="w">${S.lang==='ar'?'ساعتها':'Then'}</span><p>${L(th)}</p></button>`).join('')}</div></div>`;
+};
+function runTest(){
+  const path = ['t','c1','a1','w','c2','n'];
+  document.querySelectorAll('.nd').forEach(n=>n.classList.add('dim'));
+  path.forEach((id,i)=>setTimeout(()=>{ const el=document.querySelector(`.nd[data-n="${id}"]`); if(el){el.classList.remove('dim');el.classList.add('lit');} if(i===path.length-1){ toast(t('toast_run')); setTimeout(()=>document.querySelectorAll('.nd').forEach(n=>n.classList.remove('dim','lit')),2200);} }, 380*i));
+}
+
+/* scripts */
+const DIA = {
+ eg:{name:{en:'Egyptian',ar:'مصري'}, v:{first_name:'منى',agent:'أحمد',store:'سيرم بيوتي',items:'2 سيرم فيتامين سي',total:'1,150 جنيه',address:'مدينة نصر',upsell:'كريم الليل',discount:'15%',eta:'يومين'},
+  b:['أهلا يا {first_name}، معاك {agent} من {store}.','حضرتك طلبت {items} بإجمالي {total}، والدفع عند الاستلام. الطلب مظبوط كده؟','العنوان عندنا {address}. ممكن تبعتلي اللوكيشن عشان المندوب يوصلك أسرع؟','على فكرة، {upsell} بيتطلب كتير مع طلبك. تحب نضيفه بخصم {discount}؟','تمام، الطلب هيوصلك خلال {eta}، وهنبعتلك رقم الشحنة على واتساب.'], r:['أيوه مظبوط','عايز أعدل','ما طلبتش']},
+ gulf:{name:{en:'Gulf',ar:'خليجي'}, v:{first_name:'فيصل',agent:'سارة',store:'سيرم بيوتي',items:'2 سيرم فيتامين سي',total:'349 ريال',address:'حي العليا',upsell:'كريم الليل',discount:'15%',eta:'يومين'},
+  b:['هلا {first_name}، معك {agent} من {store}.','طلبت {items} بإجمالي {total}، والدفع عند الاستلام. الطلب صحيح كذا؟','العنوان عندنا {address}. تقدر ترسل لي اللوكيشن عشان المندوب يوصلك أسرع؟','ترى {upsell} ينطلب كثير مع طلبك. تبي نضيفه بخصم {discount}؟','تمام، طلبك بيوصلك خلال {eta}، وبنرسل لك رقم الشحنة على الواتساب.'], r:['إيه صحيح','أبي أعدل','ما طلبت']},
+ lev:{name:{en:'Levantine',ar:'شامي'}, v:{first_name:'رنا',agent:'سارة',store:'سيرم بيوتي',items:'2 سيرم فيتامين سي',total:'38 دينار',address:'عبدون',upsell:'كريم الليل',discount:'15%',eta:'يومين'},
+  b:['مرحبا {first_name}، معك {agent} من {store}.','طلبتي {items} بمجموع {total}، والدفع عند الاستلام. الطلب مزبوط هيك؟','العنوان عنا {address}. فيكي تبعتيلي اللوكيشن ليوصلك المندوب أسرع؟','على فكرة، {upsell} كتير بينطلب مع طلبك. بتحبي نضيفه بخصم {discount}؟','تمام، الطلب رح يوصلك خلال {eta}، ورح نبعتلك رقم الشحنة عالواتساب.'], r:['إي مزبوط','بدي غير','ما طلبت']},
+ ma:{name:{en:'Darija',ar:'دارجة'}, v:{first_name:'سلمى',agent:'يوسف',store:'سيرم بيوتي',items:'2 سيروم فيتامين سي',total:'420 درهم',address:'المعاريف',upsell:'كريم الليل',discount:'15%',eta:'يومين'},
+  b:['السلام {first_name}، معاك {agent} من {store}.','طلبتي {items} بمجموع {total}، والخلاص عند التوصيل. الطلب ديالك صحيح هكا؟','العنوان عندنا {address}. واش تقدري تصيفطي لينا اللوكيشن باش يوصلك الليفرور دغيا؟','على فكرة، {upsell} كيتطلب بزاف مع هاد الطلب. بغيتي نزيدوه بتخفيض {discount}؟','مزيان، الطلب غادي يوصلك فـ {eta}، وغادي نصيفطو ليك رقم الشحنة فالواتساب.'], r:['آه صحيح','بغيت نبدل','ما طلبتش']}
+};
+const BL = [{en:'Greeting',ar:'الترحيب'},{en:'Verify order',ar:'تأكيد الطلب'},{en:'Address and pin',ar:'العنوان واللوكيشن'},{en:'Upsell · optional',ar:'منتج إضافي · اختياري'},{en:'Close',ar:'الختام'}];
+const BT = [null,{en:'Branch · 3 answers',ar:'تفرع · 3 ردود'},{en:'Asks for pin',ar:'يطلب لوكيشن'},{en:'Only if in stock',ar:'لو متوفر بس'},{en:'Outcome · confirmed',ar:'النتيجة · مؤكد'}];
+const varize = s => s.replace(/\{(\w+)\}/g, (_, v) => `<span class="var">{${v}}</span>`);
+const fill = (s, d) => s.replace(/\{(\w+)\}/g, (_, v) => d.v[v] ?? v);
+V.scripts = () => {
+  const d = DIA[S.dialect];
+  if (!S.chat) S.chat = [{me:false, tx:fill(d.b[0],d)},{me:false, tx:fill(d.b[1],d)}];
+  return `<div class="wrap fade">${head(t('sc_title'), t('sc_sub'), `<span class="pill p-good">${S.lang==='ar'?'شغال · تجربة A/B 50%':'Live · A/B 50%'}</span><button class="btn pri" data-toast="toast_save">${t('save')}</button>`)}
+   <div class="chips" style="margin-bottom:14px">${Object.entries(DIA).map(([k,x])=>`<button class="chip ${S.dialect===k?'on':''}" data-d="${k}">${L(x.name)}</button>`).join('')}</div>
+   <div class="sgrid">
+    <div>
+      ${d.b.map((b,i)=>`<button class="blk ${S.blk===i+1?'on':''}" data-b="${i+1}"><div class="bh"><span class="n">${i+1}</span>${L(BL[i])}${BT[i]?`<span class="tag pill ${i===4?'p-good':i===1?'p-acc':'p-n'}">${L(BT[i])}</span>`:''}</div><div class="ar">${varize(b)}</div></button>`).join('')}
+      <div class="card" style="margin-top:14px;padding:16px 18px"><b style="font-size:13px">${t('branches')} · ${L(BL[1])}</b>
+        <div class="kv" style="margin-top:8px"><span class="ar" style="font-family:'IBM Plex Sans Arabic'">${d.r[0]}</span><b>${S.lang==='ar'?'كمل للعنوان':'Go to address'}</b><span style="font-family:'IBM Plex Sans Arabic'">${d.r[1]}</span><b>${S.lang==='ar'?'عدل المنتجات وأكد تاني':'Edit items, verify again'}</b><span style="font-family:'IBM Plex Sans Arabic'">${d.r[2]}</span><b>${S.lang==='ar'?'إلغاء · أوردر وهمي':'Cancel · fake order'}</b><span>${S.lang==='ar'?'ما ردش':'No reply'}</span><b>${S.lang==='ar'?'إعادة بعد ساعتين':'Retry in 2 hours'}</b></div>
+        <div style="display:flex;gap:16px;margin-top:14px;flex-wrap:wrap;font-size:12.5px"><span><span class="mut">v3 ·</span> <b class="num">87%</b> <span class="mut">${t('delivered')}</span></span><span><span class="mut">v2 ·</span> <b class="num">81%</b> <span class="mut">${t('delivered')}</span></span></div></div>
+      <p class="note" style="margin-top:12px">${t('dialectNote')}</p>
+    </div>
+    <div><div class="eyebrow" style="margin-bottom:10px">${t('preview')} · ${L(d.name)}</div>
+     <div class="phone"><div class="pb"><i>SB</i><div>${S.lang==='ar'?'سيرم بيوتي':'Serum Beauty'}<div style="font-size:11px;font-weight:400;opacity:.75">WhatsApp Business</div></div></div>
+       <div class="chat" id="chat">${S.chat.map(m=>`<div class="bub ${m.me?'me':''}">${m.tx}</div>`).join('')}
+         ${S.chat.length===2?`<div class="qr">${d.r.map((r,i)=>`<button data-r="${i}">${r}</button>`).join('')}</div>`:''}</div></div>
+     <div style="text-align:center;margin-top:10px"><button class="btn sm ghost" id="resetChat">${t('reset')}</button></div>
+    </div></div></div>`;
+};
+function reply(i){
+  const d = DIA[S.dialect];
+  S.chat.push({me:true, tx:d.r[i]});
+  if (i===0) S.chat.push({me:false, tx:fill(d.b[2],d)});
+  else if (i===1) S.chat.push({me:false, tx: S.dialect==='gulf'?'أكيد، وش تبي تغير؟':S.dialect==='lev'?'أكيد، شو بدك تغيري؟':S.dialect==='ma'?'واخا، شنو بغيتي تبدلي؟':'أكيد، تحب تغير إيه؟'});
+  else S.chat.push({me:false, tx: S.dialect==='gulf'?'آسفين على الإزعاج، ألغينا الطلب.':S.dialect==='lev'?'آسفين عالإزعاج، لغينا الطلب.':S.dialect==='ma'?'سمح لينا على الإزعاج، لغينا الطلب.':'آسفين على الإزعاج، لغينا الطلب.'});
+  render();
+}
+
+/* ---------------- render + events ---------------- */
+let clockT = null;
+function render(){
+  renderShell();
+  const v = document.getElementById('view');
+  v.innerHTML = (V[S.view]||V.overview)();
+  if (S.view==='confirm'){ let s=0; clearInterval(clockT); clockT=setInterval(()=>{s++;const el=document.getElementById('clock'); if(!el){clearInterval(clockT);return;} el.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`},1000); }
+  const oq = document.getElementById('oq'); if (oq){ oq.oninput = e => { S.q = e.target.value; const pos=e.target.selectionStart; render(); const n=document.getElementById('oq'); n.focus(); n.setSelectionRange(pos,pos); }; }
+  const rt = document.getElementById('runTest'); if (rt) rt.onclick = runTest;
+  const rc = document.getElementById('resetChat'); if (rc) rc.onclick = () => { S.chat=null; render(); };
+  const ch = document.getElementById('chat'); if (ch) ch.scrollTop = ch.scrollHeight;
+}
+function go(view){ S.view = view; S.chat = null; closeDrawer(); document.getElementById('rail').classList.remove('on'); document.getElementById('view').scrollTop = 0; render(); }
+let tt=null; function toast(msg){ const el=document.getElementById('toast'); document.getElementById('toastT').textContent=msg; el.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),2600); }
+
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-v]'); if (a){ e.preventDefault(); go(a.dataset.v); return; }
+  const g = e.target.closest('[data-go]'); if (g){ go(g.dataset.go); return; }
+  const f = e.target.closest('[data-f]'); if (f){ S.filter = f.dataset.f; render(); return; }
+  const o = e.target.closest('tr[data-o]'); if (o){ openOrder(o.dataset.o); return; }
+  const p = e.target.closest('tr[data-p]'); if (p){ S.pOrder = p.dataset.p; render(); return; }
+  const q = e.target.closest('[data-q]'); if (q){ S.qi = +q.dataset.q; render(); return; }
+  const out = e.target.closest('[data-out]'); if (out){ const m={c:'toast_conf',n:'toast_conf',r:'toast_conf',x:'toast_conf'}; toast(out.dataset.out==='c'?t('toast_conf'):(S.lang==='ar'?'اتسجلت النتيجة · التالي في الطابور':'Outcome logged · next in queue')); S.qi=(S.qi+1)%QUEUE.length; render(); return; }
+  const n = e.target.closest('[data-n]'); if (n){ S.node = n.dataset.n; render(); return; }
+  const d = e.target.closest('[data-d]'); if (d){ S.dialect = d.dataset.d; S.chat = null; render(); return; }
+  const b = e.target.closest('[data-b]'); if (b){ S.blk = +b.dataset.b; render(); return; }
+  const r = e.target.closest('[data-r]'); if (r){ reply(+r.dataset.r); return; }
+  const ts = e.target.closest('[data-toast]'); if (ts){ toast(t(ts.dataset.toast)); if (ts.closest('.drawer')) closeDrawer(); return; }
+  if (e.target.closest('[data-close]') || e.target.id==='scrim'){ closeDrawer(); document.getElementById('rail').classList.remove('on'); return; }
+});
+document.getElementById('lEn').onclick = () => { S.lang='en'; store.set('mz-lang','en'); S.chat=null; render(); };
+document.getElementById('lAr').onclick = () => { S.lang='ar'; store.set('mz-lang','ar'); S.chat=null; render(); };
+document.getElementById('themeBtn').onclick = () => { const d = isDark(); document.documentElement.dataset.theme = d ? 'light' : 'dark'; store.set('mz-theme', d?'light':'dark'); render(); };
+document.getElementById('menuBtn').onclick = () => { document.getElementById('rail').classList.add('on'); document.getElementById('scrim').classList.add('on'); };
+const th = store.get('mz-theme'); if (th) document.documentElement.dataset.theme = th;
+
+/* command palette */
+const pal = document.getElementById('pal'), palIn = document.getElementById('palIn'), palRes = document.getElementById('palRes');
+function palItems(){ const q = palIn.value.toLowerCase();
+  const pages = NAV.flatMap(g=>g.items.map(([k,i])=>({k:'v',id:k,label:t(k),icon:i,type:t('pages')})));
+  const ords = ORDERS.map(o=>({k:'o',id:o.id,label:`<bdi>#${o.id}</bdi> · ${L(o.n)}`,icon:'orders',type:t('ord')}));
+  return [...pages,...ords].filter(x=>!q || x.label.toLowerCase().includes(q)).slice(0,9); }
+function palRender(){ palRes.innerHTML = palItems().map((x,i)=>`<button data-pk="${x.k}" data-pid="${x.id}" class="${i?'':'on'}">${ic(x.icon,'width="16" height="16"')}${x.label}<span>${x.type}</span></button>`).join(''); }
+function palOpen(){ pal.classList.add('on'); palIn.value=''; palRender(); setTimeout(()=>palIn.focus(),10); }
+function palClose(){ pal.classList.remove('on'); }
+document.getElementById('searchBtn').onclick = palOpen;
+palIn.oninput = palRender;
+palIn.onkeydown = e => { if (e.key==='Enter'){ const f = palRes.querySelector('button'); if (f) f.click(); } if (e.key==='Escape') palClose(); };
+palRes.onclick = e => { const b = e.target.closest('button'); if(!b) return; palClose(); if (b.dataset.pk==='v') go(b.dataset.pid); else { go('orders'); openOrder(b.dataset.pid); } };
+pal.onclick = e => { if (e.target===pal) palClose(); };
+document.addEventListener('keydown', e => { if ((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); palOpen(); } if (e.key==='Escape'){ palClose(); closeDrawer(); } });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => renderShell());
+
+const startView = (location.hash||'').slice(1); if (V[startView]) S.view = startView;
+render();
+</script>
