@@ -26,6 +26,8 @@ const PROBLEM_TITLES = {
   tenant_inactive: { en: "Store is not active", ar: "المتجر ده مش متفعّل" },
   mfa_required: { en: "Two-step verification required", ar: "لازم تفعّل التحقق بخطوتين" },
   insufficient_role: { en: "Your role cannot do this", ar: "صلاحيتك متسمحش بالإجراء ده" },
+  slug_taken: { en: "Store address taken", ar: "عنوان المتجر ده مستخدم" },
+  tenant_limit_reached: { en: "Store limit reached", ar: "وصلت للحد الأقصى من المتاجر" },
   internal_error: { en: "Something went wrong", ar: "حصلت مشكلة عندنا" },
   service_unavailable: { en: "Service unavailable", ar: "الخدمة مش متاحة دلوقتي" },
 } as const satisfies Record<string, Record<Locale, string>>;

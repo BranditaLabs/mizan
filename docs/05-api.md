@@ -47,8 +47,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/me` | ✅ Current user (created on first sign-in; profile follows Firebase) and memberships across stores with role, status, country, currency, locale, timezone. No `X-Tenant-Id` |
-| POST | `/tenants` | Create tenant (signup) — creator becomes owner |
-| GET / PATCH | `/tenant` | Tenant settings (currency, timezone, locale) |
+| POST | `/tenants` | ✅ Create tenant (signup) — creator becomes owner. Body `{ name, country, slug?, language? }`; country defaults (currency, timezone, locale, week start, phone country) from `@mizan/shared` `COUNTRY_DEFAULTS`; default warehouse; slug derived and de-duplicated. Errors: `slug_taken` (409), `tenant_limit_reached` (422, 10 owned stores), `validation_failed` |
+| GET / PATCH | `/tenant` | Tenant settings (currency, timezone, locale). ✅ GET; PATCH next |
 | GET / POST | `/members` · `/members/invite` | Team; invite by email or phone |
 | PATCH / DELETE | `/members/{userId}` | Role change, remove |
 | GET / POST / DELETE | `/api-keys` | Manage API keys (owner/admin) |

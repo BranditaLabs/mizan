@@ -22,7 +22,7 @@ npm run build -w @mizan/api && node apps/api/dist/main.js
 | `src/platform/db/` | `Database` (inject it): `tenant(id, fn)` under RLS, `platform(fn)`, `ping()`. Postgres pool in prod; in-memory PGlite (migrated at boot) when `DATABASE_URL` is unset |
 | `src/platform/auth/` | `AuthGuard` (global): Firebase ID token → user (created on first sign-in) → `X-Tenant-Id` active membership → MFA for owner/admin → `@Roles`. Decorators: `@Public()`, `@NoTenant()`, `@Roles(...)`, `@Auth()` |
 | `src/platform/openapi.ts` | OpenAPI 3.1 from decorators + zod component schemas, served at `/v1/openapi.json` |
-| `src/modules/` | Product modules (M1–M22). Today: `health` (`/health`, `/health/ready`), `users` (`GET /v1/me`) |
+| `src/modules/` | Product modules (M1–M22). Today: `health` (`/health`, `/health/ready`), `users` (`GET /v1/me`), `tenants` (`POST /v1/tenants` signup, `GET /v1/tenant`) |
 
 ## Rules
 

@@ -18,7 +18,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ `apps/api` skeleton: config, redacting logger, problem+json, health, OpenAPI (E1-3).
 - ✅ DB layer: Kysely, migration runner, `withTenant`, real-Postgres CI (E1-4).
 - ✅ Auth: Firebase token guard, tenant membership, roles, MFA, `/me` (E1-5).
-- ⏭️ **Next:** E1-6 (tenants + signup).
+- ✅ Signup: `POST /v1/tenants` with country defaults (E1-6).
+- ⏭️ **Next:** E1-7 (members and invites).
 
 ---
 
@@ -43,7 +44,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [x] **E1-3** `M` `apps/api` skeleton: NestJS (latest stable), config validation (zod), structured logger with PII redaction, problem+json error filter, health endpoint, OpenAPI at `/v1/openapi.json`. *Accept:* `npm run dev -w @mizan/api` serves `/health`; invalid env fails fast with a clear message. *Done:* `apps/api` on NestJS 12 (ESM): `platform/config.ts`, pino logger with two-layer PII redaction, problem+json filter (AR/EN titles), `ZodPipe`, `/health`, `/v1/openapi.json` (3.1, zod components), worker stub; 35 tests.
 - [x] **E1-4** `M` DB layer: Kysely (or Drizzle — pick, write ADR-0012) + migration runner over `packages/db/migrations`; separate migrator and app roles; transaction helper that sets `app.tenant_id`. *Accept:* integration test proves a request for tenant A cannot read tenant B. *Done:* ADR-0012 (Kysely); `@mizan/db` runner (checksums, advisory lock, `mizan-db migrate`), `0003_app_role`, codegen'd `schema.ts`, PGlite dialect, `withTenant`/`withoutTenant`; API `Database` + `/health/ready`; isolation proven on PGlite and real PostgreSQL 16 (CI service).
 - [x] **E1-5** `M` Auth: Firebase ID token guard, `X-Tenant-Id` membership check, role decorator `@Roles(...)`; `/me`. *Accept:* tests with mocked Firebase verifier for each role. *Done:* `FirebaseTokenVerifier` (jose, Google JWKS; tested with locally signed tokens), global `AuthGuard` (`@Public`, `@NoTenant`, `@Roles`, `@Auth`), MFA for owner/admin, user upsert on first sign-in, `GET /v1/me`; migration 0004 `member_self_read`; role matrix tests for all 7 roles.
-- [ ] **E1-6** `S` Tenants + signup: `POST /tenants`, owner membership, default warehouse, default settings by country. *Accept:* creating an EG tenant sets EGP, Africa/Cairo, ar-EG.
+- [x] **E1-6** `S` Tenants + signup: `POST /tenants`, owner membership, default warehouse, default settings by country. *Accept:* creating an EG tenant sets EGP, Africa/Cairo, ar-EG. *Done:* `POST /v1/tenants` + `GET /v1/tenant`; `COUNTRY_DEFAULTS` for EG, SA, AE, KW, QA, BH, OM, JO, MA in `@mizan/shared`; one RLS-scoped transaction creates tenant, owner membership and default warehouse; slug derivation with collision retry and reserved words; 10 owned stores per account.
 - [ ] **E1-7** `M` Members and invites (email/phone), role change, disable. *Accept:* invited agent can sign in and sees only agent routes.
 - [ ] **E1-8** `M` Domain events + outbox writer in the same transaction; dispatcher in `worker.ts`; idempotent consumers by event id. *Accept:* a crash between commit and dispatch still delivers the event once.
 - [ ] **E1-9** `S` Audit log service; log sensitive actions (`connection.*`, `member.*`, `customer.pii_viewed`, exports).
