@@ -118,7 +118,9 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
       const events = await asWorker(db, (trx) => trx.selectFrom("domain_events").select("tenant_id").execute());
       expect(events.map((e) => e.tenant_id).sort()).toEqual([A, B]);
       await expect(asWorker(db, (trx) => trx.selectFrom("orders").selectAll().execute())).rejects.toThrow(/permission denied/);
-      await expect(asWorker(db, (trx) => trx.deleteFrom("domain_events").execute())).rejects.toThrow(/permission denied/);
+      // Retention may delete only finished rows: these events are not dispatched yet (0012).
+      const deleted = await asWorker(db, (trx) => trx.deleteFrom("domain_events").executeTakeFirst());
+      expect(deleted.numDeletedRows).toBe(0n);
     } finally {
       await db.destroy();
     }

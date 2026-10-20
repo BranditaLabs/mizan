@@ -121,3 +121,22 @@ describe("connection routing (migration 0010)", () => {
     await expect(asWorker(db, (trx) => trx.updateTable("connections").set({ status: "active" }).execute())).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("worker deletes (migration 0012)", () => {
+  it("the worker can delete only dispatched events and done jobs, never live work", async () => {
+    const ids = { live: crypto.randomUUID(), done: crypto.randomUUID() };
+    await withTenant(db, A, (trx) => trx.insertInto("domain_events").values([
+      { id: ids.live, tenant_id: A, type: "order.created", entity_type: "order", entity_id: A },
+      { id: ids.done, tenant_id: A, type: "order.created", entity_type: "order", entity_id: A, dispatched_at: new Date() },
+    ]).execute());
+    const job = (key: string, status: string) => ({ id: crypto.randomUUID(), tenant_id: A, kind: "k", connection: "shopify", payload: "{}", idempotency_key: key, status, next_attempt_at: 1, created_at: 1, updated_at: 1 });
+    await withTenant(db, A, (trx) => trx.insertInto("mz_outbox").values([job("w-pending", "pending"), job("w-dead", "dead"), job("w-done", "done")]).execute());
+
+    const ev = await asWorker(db, (trx) => trx.deleteFrom("domain_events").where("id", "in", [ids.live, ids.done]).executeTakeFirst());
+    expect(ev.numDeletedRows).toBe(1n);
+    const jobs = await asWorker(db, (trx) => trx.deleteFrom("mz_outbox").where("idempotency_key", "like", "w-%").executeTakeFirst());
+    expect(jobs.numDeletedRows).toBe(1n);
+    const left = await withTenant(db, A, (trx) => trx.selectFrom("mz_outbox").select("status").where("idempotency_key", "like", "w-%").orderBy("status").execute());
+    expect(left.map((r) => r.status)).toEqual(["dead", "pending"]);
+  });
+});
