@@ -48,11 +48,18 @@ export class EngineJobRunner implements OnApplicationBootstrap, OnApplicationShu
     await this.stop();
   }
 
-  /** Tenants with jobs due now (pending, or running with an expired lease). */
+  /**
+   * Tenants with jobs due now (pending, or running with an expired lease), oldest first.
+   * Tenants skipped for now (store not connected) or already ticking are left out in SQL:
+   * otherwise their old jobs would fill every slot of the LIMIT and starve active stores.
+   */
   async dueTenants(now = Date.now(), limit: number = ENGINE_RUN.tenantsPerCycle): Promise<string[]> {
+    for (const [t, until] of this.skipUntil) if (until <= now) this.skipUntil.delete(t);
+    const exclude = [...this.skipUntil.keys(), ...this.inFlight.keys()];
     const rows = await asWorker(this.db.kysely, (trx) => sql<{ tenant_id: string }>`
       SELECT tenant_id FROM mz_outbox
       WHERE next_attempt_at <= ${now} AND (status = 'pending' OR (status = 'running' AND locked_until < ${now}))
+        AND NOT (tenant_id = ANY(${exclude}::uuid[]))
       GROUP BY tenant_id ORDER BY min(next_attempt_at) LIMIT ${limit}`.execute(trx));
     return rows.rows.map((r) => r.tenant_id);
   }

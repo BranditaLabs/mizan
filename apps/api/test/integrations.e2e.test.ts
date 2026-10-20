@@ -193,4 +193,25 @@ describe("EngineJobRunner scheduling", () => {
     expect(r.isTicking(A)).toBe(false);
     await db.kysely.deleteFrom("mz_outbox").where("idempotency_key", "like", "stuck-test:%").execute();
   });
+
+  it("stores waiting for a connection never fill the cycle: active stores still get picked", async () => {
+    const stub = {
+      get: async (t: string) => {
+        if (t === NONE) throw new NotConnectedError("no Shopify store is connected");
+        return { engine: { worker: { tick: async () => 0 } } };
+      },
+    } as unknown as EngineRegistry;
+    const r = new EngineJobRunner(db, stub, { NODE_ENV: "test" } as AppConfig);
+    const job = (t: string, at: number) => ({
+      id: crypto.randomUUID(), tenant_id: t, kind: "shopify.pollOrders", connection: "shopify", payload: "{}",
+      idempotency_key: `starve-test:${t}`, status: "pending", next_attempt_at: at, created_at: 1, updated_at: 1,
+    });
+    await db.tenant(NONE, (trx) => trx.insertInto("mz_outbox").values(job(NONE, 1)).execute()); // oldest job, no store
+    await db.tenant(A, (trx) => trx.insertInto("mz_outbox").values(job(A, 5)).execute());
+    expect(await r.dueTenants(10, 1)).toEqual([NONE]);
+    await r.cycle(10);
+    await r.idle();
+    expect(await r.dueTenants(10, 1)).toEqual([A]); // NONE is skipped in the query, not in the slot
+    await db.kysely.deleteFrom("mz_outbox").where("idempotency_key", "like", "starve-test:%").execute();
+  });
 });

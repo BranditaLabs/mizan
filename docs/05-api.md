@@ -199,7 +199,7 @@ Outside `/v1`, not in OpenAPI, no user auth: each provider's own verification.
 
 | Method | Path | Verification |
 | --- | --- | --- |
-| POST | `/webhooks/shopify/{connectionId}` | Shopify HMAC (`SHOPIFY_API_SECRET`) over the raw body |
+| POST | `/webhooks/shopify/{connectionId}` | Shopify HMAC (`SHOPIFY_API_SECRET`) over the raw body. ✅ `app/uninstalled` (E3-4): connection → `disconnected` (`status_reason: app_uninstalled`), credential deleted, its queued jobs dropped, `connection.disconnected` emitted, audited; orders and history stay; a reinstall reconnects the same connection |
 | POST | `/webhooks/bosta/{connectionId}?token=…` | Per-connection token (Bosta webhooks are unsigned) |
 
 Verify → dedupe → enqueue → 200 (thin webhook, fat fetch). Unknown connection → 404; disconnected → 200 `{ ignored }` so the provider stops retrying. Bodies up to `WEBHOOK_MAX_BODY_BYTES` (5 MiB).

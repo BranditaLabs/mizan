@@ -3,6 +3,7 @@ import { ApiExcludeController } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { Public } from "../platform/auth/decorators.js";
 import { PrivacyService } from "../modules/privacy/privacy.service.js";
+import { ConnectionLifecycle } from "./connection-lifecycle.js";
 import { EngineRegistry } from "./engine-registry.js";
 import { WebhookRouter } from "./webhook-router.js";
 
@@ -24,6 +25,7 @@ export class WebhooksController {
     @Inject(WebhookRouter) private readonly router: WebhookRouter,
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
     @Inject(PrivacyService) private readonly privacy: PrivacyService,
+    @Inject(ConnectionLifecycle) private readonly lifecycle: ConnectionLifecycle,
   ) {}
 
   /** Shopify compliance webhooks (one URL for the app, set in its configuration). Declared before the per-connection route. */
@@ -41,7 +43,12 @@ export class WebhooksController {
     if (!route || route.provider !== "shopify") return res.status(404).json({ error: "unknown connection" });
     if (route.status === "disconnected") return res.status(200).json({ ignored: "disconnected" });
     const { engine } = await this.registry.get(route.tenantId);
-    const result = await engine.handleShopifyWebhook(headersOf(req), rawBody(req));
+    const headers = headersOf(req);
+    const result = await engine.handleShopifyWebhook(headers, rawBody(req));
+    // Verified and new (not a redelivery): an uninstall ends the connection now (E3-4).
+    if (result.status === 200 && result.body.accepted && (headers["x-shopify-topic"] ?? "").toLowerCase() === "app/uninstalled") {
+      await this.lifecycle.providerRevoked(route.tenantId, connectionId, "app_uninstalled");
+    }
     return res.status(result.status).json(result.body);
   }
 

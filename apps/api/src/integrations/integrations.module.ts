@@ -1,4 +1,5 @@
 import { Global, Logger, Module, type DynamicModule } from "@nestjs/common";
+import { ConnectionLifecycle } from "./connection-lifecycle.js";
 import { ConnectionResolver } from "./connection-resolver.js";
 import { ENGINE_EVENT_SINK, ENGINE_RUNTIME, EngineRegistry, defaultRuntimeFactory, type EngineEventSink, type RuntimeFactory } from "./engine-registry.js";
 import { EngineJobRunner } from "./engine-runner.js";
@@ -22,10 +23,11 @@ export class IntegrationsModule {
         EngineRegistry,
         EngineJobRunner,
         ShopifyWebhooksConsumer,
+        ConnectionLifecycle,
         { provide: ENGINE_RUNTIME, useValue: runtime },
         { provide: ENGINE_EVENT_SINK, useValue: sink },
       ],
-      exports: [ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
+      exports: [ConnectionLifecycle, ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
     };
   }
 }

@@ -30,6 +30,8 @@ export class FakeShopify {
   private codes = new Map<string, { scopes: string[]; used: boolean }>();
   /** Access tokens issued by the OAuth exchange. */
   readonly tokens: string[] = [];
+  /** Tokens revoked by uninstall(); requests with them get Shopify's 401. */
+  readonly revoked = new Set<string>();
   /** This app's webhook subscriptions on the shop. */
   webhooks = new Map<string, { topic: string; uri: string }>();
   products = new Map<string, Product>();
@@ -166,6 +168,24 @@ export class FakeShopify {
     return { ...q, hmac: signShopifyQuery(q, this.secret) };
   }
 
+  /**
+   * The merchant uninstalls the app: Shopify revokes the app's tokens, drops its webhook
+   * subscriptions, and sends app/uninstalled. Returns that webhook.
+   */
+  uninstall() {
+    for (const t of this.tokens) this.revoked.add(t);
+    this.revoked.add("shpat_test");
+    this.webhooks.clear();
+    const body = JSON.stringify({ id: 954889, name: "Fake Store", domain: this.host, myshopify_domain: this.host });
+    return {
+      body,
+      headers: {
+        "X-Shopify-Topic": "app/uninstalled", "X-Shopify-Shop-Domain": this.host, "X-Shopify-Event-Id": `evt-${++this.seq}`,
+        "X-Shopify-Webhook-Id": `wh-${this.seq}`, "X-Shopify-API-Version": this.servedVersion, "X-Shopify-Hmac-SHA256": signShopify(body, this.secret),
+      } as Record<string, string>,
+    };
+  }
+
   /** A compliance webhook as Shopify sends it to the app's single compliance URL. */
   complianceWebhook(topic: "customers/data_request" | "customers/redact" | "shop/redact", payload: Record<string, unknown>, eventId = `evt-${++this.seq}`) {
     const body = JSON.stringify({ shop_id: 954889, shop_domain: this.host, ...payload });
@@ -207,6 +227,8 @@ export class FakeShopify {
 
   handler = async (url: URL, init: RequestInit): Promise<Response> => {
     if (url.pathname === "/admin/oauth/access_token") return this.oauth(init);
+    const token = new Headers(init.headers).get("X-Shopify-Access-Token");
+    if (token && this.revoked.has(token)) return json(401, { errors: "[API] Invalid API key or access token (unrecognized login or wrong password)" });
     const { query, variables, operationName } = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown>; operationName: string };
     const op = operationName;
     const headers = { "X-Shopify-API-Version": this.servedVersion };
