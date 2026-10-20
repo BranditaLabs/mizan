@@ -1,5 +1,7 @@
 node_modules
 dist
+# The design system ships its generated tokens (its tests check they match tokens/tokens.json)
+!packages/design-system/dist
 .env
 .env.*
 !.env.example
