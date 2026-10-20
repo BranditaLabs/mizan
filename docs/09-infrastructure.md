@@ -91,6 +91,10 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 
 `engine.health()` feeds `/v1/admin/integrations/health` and a Monitoring dashboard.
 
+## 5a. Table hygiene (✅ H-7)
+
+The worker prunes high-churn tables every 10 minutes in batches (5,000 rows × up to 20 batches per table per run): finished engine jobs after `RETENTION_JOBS_DAYS` (7), webhook dedupe keys after `RETENTION_WEBHOOK_KEYS_DAYS` (14; providers retry for ≤ 48 h), dispatched domain events after `RETENTION_EVENTS_DAYS` (30), expired idempotency keys. Pending, running and dead work is never pruned. At 10× scale (10M orders/month ≈ 50M engine jobs/month) the outbox holds about a week of done jobs (~12M rows), indexed for the due queries only.
+
 ## 6. Backups and recovery
 
 - Cloud SQL automated backups daily, 30-day retention; PITR 7 days.

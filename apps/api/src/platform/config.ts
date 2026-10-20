@@ -29,6 +29,10 @@ export const ConfigSchema = z.object({
   /** Auth hot-path caches (H-6). A member disabled on another instance loses access within the membership TTL. */
   AUTH_USER_CACHE_MS: z.coerce.number().int().min(0).max(600_000).default(60_000),
   AUTH_MEMBERSHIP_CACHE_MS: z.coerce.number().int().min(0).max(60_000).default(10_000),
+  /** Retention of high-churn tables (H-7), in days. */
+  RETENTION_JOBS_DAYS: z.coerce.number().int().min(1).max(365).default(7),
+  RETENTION_WEBHOOK_KEYS_DAYS: z.coerce.number().int().min(3).max(365).default(14),
+  RETENTION_EVENTS_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
   /** Largest provider webhook body accepted (bytes). */
   WEBHOOK_MAX_BODY_BYTES: z.coerce.number().int().min(1024).max(50 * 1024 * 1024).default(5 * 1024 * 1024),
   /** Largest JSON body accepted (bytes). Webhooks and imports have their own limits. */

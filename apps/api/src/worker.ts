@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   const { AppModule } = await import("./app.module.js");
   const { EventDispatcher } = await import("./platform/events/dispatcher.js");
   const { EngineJobRunner } = await import("./integrations/engine-runner.js");
+  const { RetentionService } = await import("./platform/maintenance/retention.service.js");
   const { exitOnSignals } = await import("./platform/shutdown.js");
   const { Logger: NestLogger } = await import("@nestjs/common");
 
@@ -31,6 +32,7 @@ async function main(): Promise<void> {
   exitOnSignals(app, (m) => new NestLogger("Process").log(m));
   app.get(EventDispatcher).start();
   app.get(EngineJobRunner).start();
+  app.get(RetentionService).start();
 }
 
 void main();

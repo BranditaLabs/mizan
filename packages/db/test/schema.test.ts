@@ -86,4 +86,13 @@ describe("schema", () => {
         -- every table with tenant_id, engine tables included (0008)`);
     expect(r.rows.map((x) => x.relname)).toEqual([]);
   });
+
+  it("has an index for every hot query (H-7)", async () => {
+    const r = await db.query<{ indexname: string }>(`SELECT indexname FROM pg_indexes WHERE schemaname = 'public'`);
+    const have = new Set(r.rows.map((x) => x.indexname));
+    for (const ix of [
+      "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
+      "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
+    ]) expect(have, ix).toContain(ix);
+  });
 });
