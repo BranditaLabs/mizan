@@ -48,12 +48,22 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 
 | Workflow | Trigger | Steps |
 | --- | --- | --- |
-| `ci.yml` | PR, push | install → typecheck → lint → unit tests → engine chaos suite → db schema tests → build |
+| `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → tests for all workspaces (engine incl. chaos suite, db schema + RLS). Job `secrets-scan`: gitleaks over full history. Lint and build steps are added as apps land. |
 | `deploy-staging.yml` | Merge to `main` | build images → push to Artifact Registry → run migrations (migrator role) → deploy Cloud Run → smoke test |
 | `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
 
 Branching: trunk-based, short-lived feature branches, PR review required, squash merge. Conventional commits.
+
+**Branch protection for `main`** (set by a repo admin in GitHub → Settings → Branches, or as a ruleset):
+
+- Require a pull request before merging, 1 approval, dismiss stale approvals on new commits.
+- Required status checks: `Typecheck and test`, `Secret scan (gitleaks)`; require branches to be up to date.
+- Allow squash merge only; block force pushes and deletion.
+
+**Dependency updates:** Renovate (`renovate.json`) — weekly (Monday before 09:00 Cairo), pins exact versions, groups non-major dev deps and GitHub Actions, pins action digests, tracks the gitleaks version in `ci.yml`. Requires the Renovate GitHub App installed on the repo.
+
+**Secret scanning:** gitleaks with default rules (`.gitleaks.toml`); only `packages/*/test/fakes/` is allowlisted (dummy provider credentials). A finding fails CI — rotate the secret first, then rewrite or allowlist.
 
 ## 5. Observability
 

@@ -36,6 +36,7 @@ apps/ops/          ⏳ planned — Flutter app for warehouse staff and confirmat
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
 .claude/commands/  slash commands for recurring work
+.github/workflows/ ci.yml — typecheck + tests + gitleaks on every PR (renovate.json for deps)
 ```
 
 ## Commands

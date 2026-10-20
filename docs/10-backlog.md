@@ -12,7 +12,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ `packages/db`: core schema migration with RLS, 5 tests.
 - ✅ Docs: business model, product, architecture, data model, API, integrations, security, design, infra, module specs, ADRs.
 - ✅ `design/prototype.html`: approved UI direction.
-- ⏭️ **Next:** E1-1 (git + CI), then E1-2 (`packages/shared`).
+- ✅ CI: typecheck + tests + gitleaks on every PR (E1-1).
+- ⏭️ **Next:** E1-2 (`packages/shared`).
 
 ---
 
@@ -32,7 +33,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E1 · Foundations
 
-- [ ] **E1-1** `S` Init git, GitHub repo, branch protection; `ci.yml` (install, typecheck, test all workspaces); Renovate; gitleaks. *Accept:* PR shows green checks running engine + db tests.
+- [x] **E1-1** `S` Init git, GitHub repo, branch protection; `ci.yml` (install, typecheck, test all workspaces); Renovate; gitleaks. *Accept:* PR shows green checks running engine + db tests. *Done:* `.github/workflows/ci.yml`, `renovate.json`, `.gitleaks.toml`; branch protection rules listed in `docs/09` §4 (applied by a repo admin).
 - [ ] **E1-2** `M` `packages/shared`: move canonical types from engine (`core/model.ts`), add zod schemas, `Money` helpers (`toMinor`, `fromMinor`, currency decimals table incl. 3-decimal currencies), phone normalization (EG, KSA, UAE). Engine imports from shared. *Accept:* engine tests still pass; money helpers 100% covered.
 - [ ] **E1-3** `M` `apps/api` skeleton: NestJS (latest stable), config validation (zod), structured logger with PII redaction, problem+json error filter, health endpoint, OpenAPI at `/v1/openapi.json`. *Accept:* `npm run dev -w @mizan/api` serves `/health`; invalid env fails fast with a clear message.
 - [ ] **E1-4** `M` DB layer: Kysely (or Drizzle — pick, write ADR-0011) + migration runner over `packages/db/migrations`; separate migrator and app roles; transaction helper that sets `app.tenant_id`. *Accept:* integration test proves a request for tenant A cannot read tenant B.
