@@ -4,6 +4,7 @@ import { ConfigError, loadConfig } from "./platform/config.js";
 /**
  * Worker entry point (same image as the API, ADR-0003): delivers domain events
  * to consumers. Cron handlers and engine jobs join it in E2.
+ * Listens on PORT for /health and /metrics only.
  * Stops cleanly on SIGTERM (Cloud Run): the current batch finishes, leases are released by expiry.
  */
 async function main(): Promise<void> {
@@ -25,10 +26,14 @@ async function main(): Promise<void> {
   const { RetentionService } = await import("./platform/maintenance/retention.service.js");
   const { exitOnSignals } = await import("./platform/shutdown.js");
   const { Logger: NestLogger } = await import("@nestjs/common");
+  const { MetricsService } = await import("./platform/metrics/metrics.service.js");
+  const { startWorkerServer } = await import("./platform/metrics/worker-server.js");
 
   // The API process must not also dispatch when a worker runs.
   const app = await NestFactory.createApplicationContext(AppModule.forRoot({ ...config, WORKER_IN_PROCESS: false }), { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  const server = await startWorkerServer(config.PORT, app.get(MetricsService), config.METRICS_TOKEN);
+  for (const signal of ["SIGTERM", "SIGINT"] as const) process.once(signal, () => server.close());
   exitOnSignals(app, (m) => new NestLogger("Process").log(m));
   app.get(EventDispatcher).start();
   app.get(EngineJobRunner).start();

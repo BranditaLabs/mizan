@@ -75,6 +75,11 @@ export class EngineRegistry {
     this.cache.delete(tenantId);
   }
 
+  /** Engines built on this instance (metrics). */
+  all(): TenantEngine[] {
+    return [...this.cache.values()];
+  }
+
   cached(tenantId: string): TenantEngine | undefined {
     return this.cache.get(tenantId);
   }

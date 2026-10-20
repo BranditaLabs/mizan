@@ -91,6 +91,40 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 
 `engine.health()` feeds `/v1/admin/integrations/health` and a Monitoring dashboard.
 
+### Prometheus metrics (✅ H-9)
+
+Each API instance serves `GET /metrics` (Prometheus text format, outside `/v1`); the worker listens on `PORT` for `GET /health` and `GET /metrics` only (engine jobs, and so provider circuits, live there). It is internal: it answers 404 unless `METRICS_TOKEN` is set, then requires `Authorization: Bearer <METRICS_TOKEN>` (compared in constant time). Cloud Run sends it to Managed Service for Prometheus via the sidecar collector. Labels never carry tenant ids, user ids, phones or raw paths: HTTP routes are labelled by template (`/v1/members/:userId`), requests that match no route are `unmatched`, `status` is the class (`2xx`…`5xx`, exact code only on `mizan_webhooks_total`), and webhook providers outside the known set are `other`.
+
+| Metric | Type | Labels |
+| --- | --- | --- |
+| `mizan_http_request_duration_seconds` | histogram | `method`, `route`, `status` |
+| `mizan_webhooks_total` | counter | `provider`, `status` |
+| `mizan_rate_limited_total` | counter | `policy` (`ip`, `user`) |
+| `mizan_idempotent_replays_total` | counter | — |
+| `mizan_outbox_jobs` | gauge (at scrape) | `status` (`pending`, `running`, `dead`) |
+| `mizan_outbox_oldest_due_seconds` | gauge (at scrape) | — |
+| `mizan_domain_events` | gauge (at scrape) | `state` (`pending`, `dead`, `oldest_pending_seconds`) |
+| `mizan_db_pool_connections` | gauge (at scrape) | `state` (`total`, `idle`, `waiting`) |
+| `mizan_engine_circuits_open` | gauge (at scrape) | `provider` |
+| `mizan_process_*`, `mizan_nodejs_*` | default | — |
+
+Alert rules (PromQL, in Cloud Monitoring):
+
+| Alert | Expression | For | Severity |
+| --- | --- | --- | --- |
+| API p95 latency | `histogram_quantile(0.95, sum by (le) (rate(mizan_http_request_duration_seconds_bucket{route!~"/webhooks.*"}[5m]))) > 0.3` | 10 m | page |
+| Webhook ack p95 | `histogram_quantile(0.95, sum by (le) (rate(mizan_http_request_duration_seconds_bucket{route=~"/webhooks.*"}[5m]))) > 0.2` | 10 m | page |
+| 5xx rate | `sum(rate(mizan_http_request_duration_seconds_count{status="5xx"}[5m])) / sum(rate(mizan_http_request_duration_seconds_count[5m])) > 0.01` | 5 m | page |
+| Webhook rejections | `sum by (provider) (increase(mizan_webhooks_total{status="401"}[15m])) > 0` | — | ticket |
+| Outbox lag | `max(mizan_outbox_oldest_due_seconds) > 600` | 5 m | page |
+| Dead letters | `max(mizan_outbox_jobs{status="dead"}) - max(mizan_outbox_jobs{status="dead"} offset 1h) > 20` | — | page |
+| Event dispatch lag | `max(mizan_domain_events{state="oldest_pending_seconds"}) > 120` or `max(mizan_domain_events{state="dead"}) > 0` | 10 m | ticket |
+| DB pool saturated | `max(mizan_db_pool_connections{state="waiting"}) > 0` | 5 m | ticket |
+| Circuit open | `max by (provider) (mizan_engine_circuits_open) > 0` | 5 m | ticket |
+| Rate limiting spike | `sum(rate(mizan_rate_limited_total{policy="ip"}[5m])) > 10` | 10 m | ticket (possible abuse) |
+
+Queue gauges are global counts read at scrape time (one cheap query each, under the worker role), so every instance reports the same value: aggregate them with `max`, not `sum`.
+
 ## 5a. Table hygiene (✅ H-7)
 
 The worker prunes high-churn tables every 10 minutes in batches (5,000 rows × up to 20 batches per table per run): finished engine jobs after `RETENTION_JOBS_DAYS` (7), webhook dedupe keys after `RETENTION_WEBHOOK_KEYS_DAYS` (14; providers retry for ≤ 48 h), dispatched domain events after `RETENTION_EVENTS_DAYS` (30), expired idempotency keys. Pending, running and dead work is never pruned. At 10× scale (10M orders/month ≈ 50M engine jobs/month) the outbox holds about a week of done jobs (~12M rows), indexed for the due queries only.

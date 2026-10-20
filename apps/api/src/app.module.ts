@@ -15,6 +15,7 @@ import { DatabaseModule } from "./platform/db/database.module.js";
 import { EventsModule } from "./platform/events/events.module.js";
 import { AuditModule } from "./platform/audit/audit.module.js";
 import { MaintenanceModule } from "./platform/maintenance/maintenance.module.js";
+import { MetricsModule } from "./platform/metrics/metrics.module.js";
 import { SecretsModule } from "./platform/secrets/secrets.module.js";
 import type { KeyWrapper } from "./platform/secrets/key-wrapper.js";
 import { IntegrationsModule } from "./integrations/integrations.module.js";
@@ -42,7 +43,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
     };
   }

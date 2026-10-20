@@ -35,6 +35,14 @@ export interface PgDbOptions {
   slowQueryMs?: number;
 }
 
+const pools = new WeakMap<Kysely<DB>, pg.Pool>();
+
+/** Pool counters for metrics (undefined for PGlite). */
+export function poolStats(db: Kysely<DB>): { total: number; idle: number; waiting: number } | undefined {
+  const pool = pools.get(db);
+  return pool ? { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount } : undefined;
+}
+
 export function createPgDb(connectionString: string, options: PgDbOptions = {}): Kysely<DB> {
   const types = { getTypeParser: (oid: number, format?: "text" | "binary") => (oid === INT8 ? parseInt8 : pg.types.getTypeParser(oid, format)) };
   const pool = new pg.Pool({
@@ -51,7 +59,7 @@ export function createPgDb(connectionString: string, options: PgDbOptions = {}):
   });
   pool.on("error", (err) => options.onIdleError?.(err));
   const slowMs = options.slowQueryMs ?? 500;
-  return new Kysely<DB>({
+  const db = new Kysely<DB>({
     dialect: new PostgresDialect({ pool }),
     ...(options.onSlowQuery
       ? {
@@ -61,6 +69,8 @@ export function createPgDb(connectionString: string, options: PgDbOptions = {}):
         }
       : {}),
   });
+  pools.set(db, pool);
+  return db;
 }
 
 /** In-process PGlite database (tests, local development). `dataDir` omitted = in memory. */

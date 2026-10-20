@@ -23,6 +23,8 @@ export const ConfigSchema = z.object({
   WEB_URL: url,
   /** Staff admin app (E17); allowed by CORS when set. */
   ADMIN_URL: url.optional(),
+  /** Bearer token for GET /metrics (Prometheus / Cloud Monitoring scraper). Unset = endpoint disabled. */
+  METRICS_TOKEN: z.string().min(24, "must be at least 24 characters").optional(),
   /** Requests per minute per client IP (checked before sign-in) and per signed-in user. 0 disables. */
   RATE_LIMIT_IP_PER_MIN: z.coerce.number().int().min(0).default(1200),
   RATE_LIMIT_USER_PER_MIN: z.coerce.number().int().min(0).default(600),
