@@ -6,5 +6,6 @@ export { OutboxWorker, DEFAULT_WORKER, type JobOutcome, type WorkerOptions } fro
 export { defaultRuntime, systemClock, silentLogger, type Clock, type FetchFn, type Logger, type LogLevel, type Runtime } from "./core/runtime.js";
 export { IntegrationError, isIntegrationError, type ErrorKind } from "./core/errors.js";
 export { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "./core/payments.js";
-export type { BostaConfig } from "./connectors/bosta/connector.js";
+export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bosta/connector.js";
+export type { ShopifyLearned } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";

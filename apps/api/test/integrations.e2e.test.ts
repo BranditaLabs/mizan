@@ -142,6 +142,25 @@ describe("two tenants, two Shopify stores", () => {
   });
 });
 
+describe("learned data (E2-4)", () => {
+  it("is kept on the connection: survives a new engine, and stays with its own tenant", async () => {
+    const learnedOf = async (tenantId: string, provider: string) => {
+      const row = await db.tenant(tenantId, (trx) => trx.selectFrom("connections").select("learned").where("provider", "=", provider).executeTakeFirstOrThrow());
+      return (typeof row.learned === "string" ? JSON.parse(row.learned) : row.learned) as { cities?: Record<string, string>; codes?: Record<string, unknown> };
+    };
+    // B shipped a parcel in the flow above: the status codes it learned are on B's Bosta connection.
+    expect(Object.keys((await learnedOf(B, "bosta")).codes ?? {}).length).toBeGreaterThan(0);
+
+    await (await registry.get(A)).engine.resolveCity("Kafr Atlantis", "c-giza");
+    expect((await learnedOf(A, "bosta")).cities).toMatchObject({ "kafr atlantis": "c-giza" });
+    expect((await learnedOf(B, "bosta")).cities ?? {}).not.toHaveProperty("kafr atlantis");
+
+    registry.invalidate(A);
+    const rebuilt = await registry.get(A);
+    expect(rebuilt.engine.bosta.exportLearned().cities).toMatchObject({ "kafr atlantis": "c-giza" });
+  });
+});
+
 describe("EngineJobRunner scheduling", () => {
   it("never waits for a stuck tenant: other tenants keep getting ticks", async () => {
     let releaseA!: () => void;

@@ -102,10 +102,21 @@ export class EngineRegistry {
         ...(this.config.BOSTA_TRACKING_URL_TEMPLATE ? { trackingUrlTemplate: this.config.BOSTA_TRACKING_URL_TEMPLATE } : {}),
         ...(typeof bostaConfig.cityField === "string" ? { cityField: bostaConfig.cityField as "city" | "cityCode" | "cityId" } : {}),
       },
+      learned: {
+        shopify: c.shopify.learned,
+        ...(c.bosta ? { bosta: c.bosta.learned } : {}),
+      },
       hooks: {
         // Every order the engine ingests lands in Mizan's orders table before the job completes.
         onOrder: async (order) => {
           await this.orders.project(tenantId, c.shopify.connectionId, order);
+        },
+        // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
+        onLearned: async (provider, state) => {
+          const connectionId = provider === "shopify" ? c.shopify.connectionId : c.bosta?.connectionId;
+          if (!connectionId) return;
+          await this.db.tenant(tenantId, (trx) => trx.updateTable("connections")
+            .set({ learned: JSON.stringify(state), updated_at: new Date() }).where("id", "=", connectionId).execute());
         },
       },
     };

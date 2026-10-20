@@ -24,6 +24,11 @@ export interface Tracking {
  *   - fulfillments are checked for the tracking number before creating
  *   - marking paid is skipped when the order is already paid
  */
+export interface ShopifyLearned {
+  variants: Record<string, number>;
+  inventoryCompareField: "changeFromQuantity" | "compareQuantity";
+}
+
 export class ShopifyConnector {
   readonly id = "shopify";
   readonly gql: ShopifyGraphql;
@@ -32,6 +37,18 @@ export class ShopifyConnector {
 
   constructor(readonly creds: ShopifyCredentials, private readonly rt: Runtime, private readonly drift: DriftSink, shapes: ShapeWatch, private readonly opts: { codPatterns?: RegExp[] } = {}) {
     this.gql = new ShopifyGraphql(creds, rt, drift, shapes);
+  }
+
+  /** What this connector learned about the shop's API (query variants, inventory compare field). */
+  exportLearned(): ShopifyLearned {
+    return { variants: this.gql.exportVariants(), inventoryCompareField: this.inventoryCompareField };
+  }
+
+  loadLearned(state: Partial<ShopifyLearned> | undefined) {
+    this.gql.loadVariants(state?.variants);
+    if (state?.inventoryCompareField === "compareQuantity" || state?.inventoryCompareField === "changeFromQuantity") {
+      this.inventoryCompareField = state.inventoryCompareField;
+    }
   }
 
   private ctx() {

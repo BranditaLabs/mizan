@@ -26,7 +26,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Engine tables tenant-scoped under RLS (E2-1).
 - ✅ Engine per tenant from connections + KMS secrets; isolated circuits/buckets; platform job runner (E2-2).
 - ✅ Store orders land in `orders`/`order_lines`/`customers`, PII encrypted, events emitted (E2-3).
-- ⏭️ **Next:** E2-4 (learned data → `connections.learned`); E1-11 waits for GCP project details.
+- ✅ Engine learning (status codes, city aliases, query variants) kept per connection (E2-4).
+- ⏭️ **Next:** E2-5 (admin integration routes); E1-11 waits for GCP project details.
 
 ---
 
@@ -64,7 +65,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [x] **E2-2** `M` Connection resolver: worker loads connection + decrypted secret per job; per-connection circuit and rate bucket. *Accept:* two tenants with two Shopify stores sync independently; one store's 429s do not slow the other. *Done:* `@mizan/engine` is a library (+ `@mizan/engine/testing` fakes); `ConnectionResolver` (connections + decrypted JSON credentials), `EngineRegistry` (one engine per tenant → own circuits and rate buckets, 10-min TTL, `invalidate`), `EngineJobRunner` (due tenants as `mizan_worker`, one tick per tenant in flight, never waits for a slow tenant) in `worker.js`; `WORKER_IN_PROCESS` replaces `EVENTS_DISPATCH_IN_PROCESS`.
 - [ ] **E2-7** `M` Several stores per tenant: scope the engine store per store connection (records, cursors, jobs) and route jobs by `connection_id`, so one tenant can run two Shopify stores (plan limit "stores"). Today the resolver refuses a second Shopify connection with `store_not_connected`.
 - [x] **E2-3** `M` Map engine events to domain events (`order.ingested` → `order.created` …) and persist canonical orders into `orders`, `order_lines`, `customers` (with phone hash). *Accept:* replaying the same webhook 3× creates one order. *Done:* engine `hooks.onOrder` (awaited in the ingest job; platform failures retry as `transient`), `OrderProjector` (upsert by connection + external id, line sync, customer by phone hash, `order_events` timeline, `order.created/updated/cancelled` in the same transaction), `PiiCipher` for personal data. Shipment events → domain events land with the shipments table in E7-1.
-- [ ] **E2-4** `S` Persist engine-learned data (status codes, city aliases, query variants) into `connections.learned`.
+- [x] **E2-4** `S` Persist engine-learned data (status codes, city aliases, query variants) into `connections.learned`. *Done:* Shopify connector exports/loads query variants and the inventory compare field; engine `learned` option + `hooks.onLearned` (only on change, checked after every job); the platform keeps each provider's state on its own connection and feeds it to rebuilt engines.
 - [ ] **E2-5** `S` Admin integration routes: health, dead letters, replay, resolve city (port from engine `server.ts` `/ops/*`).
 - [ ] **E2-6** `S` Persist engine payment fields (`paymentMode`, `paymentStatus`, `received`, `outstanding`, `refunded`) into `orders` and `payments`; map `order.awaiting_payment` and `order.payment_changed` to domain events.
 

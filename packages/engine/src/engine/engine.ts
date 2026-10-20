@@ -7,8 +7,8 @@ import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
 import { ShapeWatch } from "../adapt/shape.js";
 import { shouldApplyStatus } from "../adapt/status.js";
-import { BostaConnector, type BostaConfig } from "../connectors/bosta/connector.js";
-import { ShopifyConnector } from "../connectors/shopify/connector.js";
+import { BostaConnector, type BostaConfig, type BostaLearned } from "../connectors/bosta/connector.js";
+import { ShopifyConnector, type ShopifyLearned } from "../connectors/shopify/connector.js";
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
@@ -34,6 +34,8 @@ export interface EngineOptions {
   /** Writes younger than this are "in flight"; differing reads in this window are not treated as conflicts. */
   echoWindowMs?: number;
   worker?: Partial<WorkerOptions>;
+  /** What the connectors learned before (the platform keeps it in connections.learned). Wins over the store copy. */
+  learned?: { shopify?: Partial<ShopifyLearned>; bosta?: Partial<BostaLearned> };
   /**
    * Awaited inside the job, so a failing hook fails (and retries) the job:
    * nothing is acknowledged before the platform has stored it.
@@ -41,6 +43,8 @@ export interface EngineOptions {
   hooks?: {
     /** A fresh canonical order (fat fetch) and the engine's previous copy. Must be idempotent. */
     onOrder?: (order: CanonicalOrder, previous: CanonicalOrder | undefined) => Promise<void>;
+    /** A connector learned something new (status code, city alias, query variant). Called only on change. */
+    onLearned?: (provider: "shopify" | "bosta", state: ShopifyLearned | BostaLearned) => Promise<void>;
   };
 }
 
@@ -95,7 +99,9 @@ export class MizanEngine {
   readonly bosta: BostaConnector;
   readonly worker: OutboxWorker;
   private readonly listeners: Listener[] = [];
-  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId" | "hooks">> & Pick<EngineOptions, "locationId" | "hooks">;
+  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId" | "hooks" | "learned">> & Pick<EngineOptions, "locationId" | "hooks" | "learned">;
+  /** Last learned state persisted per provider (JSON), to persist only changes. */
+  private readonly learnedSaved: Record<"shopify" | "bosta", string> = { shopify: "", bosta: "" };
 
   constructor(private readonly store: Store, private readonly rt: Runtime, options: EngineOptions) {
     this.opts = {
@@ -129,12 +135,24 @@ export class MizanEngine {
   }
 
   async init() {
-    const learned = await this.store.get<ReturnType<BostaConnector["exportLearned"]>>("learned", "bosta");
-    if (learned) this.bosta.loadLearned(learned);
+    const bosta = this.opts.learned?.bosta ?? (await this.store.get<BostaLearned>("learned", "bosta"));
+    const shopify = this.opts.learned?.shopify ?? (await this.store.get<ShopifyLearned>("learned", "shopify"));
+    if (bosta) this.bosta.loadLearned(bosta);
+    if (shopify) this.shopify.loadLearned(shopify);
+    this.learnedSaved.bosta = JSON.stringify(this.bosta.exportLearned());
+    this.learnedSaved.shopify = JSON.stringify(this.shopify.exportLearned());
   }
 
+  /** Persist learned state that changed: in the engine store, and through hooks.onLearned. */
   private async saveLearned() {
-    await this.store.put("learned", "bosta", this.bosta.exportLearned(), this.now());
+    for (const provider of ["bosta", "shopify"] as const) {
+      const state = provider === "bosta" ? this.bosta.exportLearned() : this.shopify.exportLearned();
+      const json = JSON.stringify(state);
+      if (json === this.learnedSaved[provider]) continue;
+      await this.store.put("learned", provider, state, this.now());
+      await this.runHook(() => this.opts.hooks?.onLearned?.(provider, state));
+      this.learnedSaved[provider] = json;
+    }
   }
 
   private enqueue(kind: string, payload: unknown, idempotencyKey: string, runAt?: number) {
@@ -270,6 +288,17 @@ export class MizanEngine {
   // ═════════════ job handlers ═════════════
 
   private handlers(): Record<string, (job: OutboxJob<any>) => Promise<void>> {
+    const handlers = this.jobHandlers();
+    return Object.fromEntries(Object.entries(handlers).map(([kind, run]) => [kind, async (job: OutboxJob<any>) => {
+      try {
+        await run(job);
+      } finally {
+        await this.saveLearned().catch((e) => this.rt.logger.log("warn", "could not persist learned state", { error: e instanceof Error ? e.message : String(e) }));
+      }
+    }]));
+  }
+
+  private jobHandlers(): Record<string, (job: OutboxJob<any>) => Promise<void>> {
     return {
       "shopify.ingestOrder": (j) => this.ingestOrder(j.payload.orderId),
       "shopify.ingestProduct": (j) => this.ingestProduct(j.payload.productId),

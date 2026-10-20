@@ -49,6 +49,15 @@ export class ShopifyGraphql {
   private readonly variantInUse = new Map<string, number>();
   private versionWarned = false;
 
+  /** Query variants switched to after schema rejections (operation name → variant index). */
+  exportVariants(): Record<string, number> {
+    return Object.fromEntries(this.variantInUse);
+  }
+
+  loadVariants(state: Record<string, number> | undefined) {
+    for (const [op, i] of Object.entries(state ?? {})) if (Number.isInteger(i) && i >= 0) this.variantInUse.set(op, i);
+  }
+
   constructor(
     private readonly creds: ShopifyCredentials,
     private readonly rt: Runtime,

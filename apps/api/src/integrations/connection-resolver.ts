@@ -13,9 +13,11 @@ export const ProviderSecretSchemas = {
 
 export interface ResolvedConnections {
   tenantId: string;
-  shopify: { connectionId: string; shop: string; accessToken: SecretValue };
-  bosta?: { connectionId: string; apiKey: SecretValue; webhookToken: SecretValue; config: Record<string, unknown> };
+  shopify: { connectionId: string; shop: string; accessToken: SecretValue; learned: Record<string, unknown> };
+  bosta?: { connectionId: string; apiKey: SecretValue; webhookToken: SecretValue; config: Record<string, unknown>; learned: Record<string, unknown> };
 }
+
+const json = (v: unknown): Record<string, unknown> => (typeof v === "string" ? JSON.parse(v) : (v ?? {})) as Record<string, unknown>;
 
 /** The tenant has no usable store connection: its engine jobs wait until one is connected. */
 export class NotConnectedError extends ProblemError {
@@ -41,7 +43,7 @@ export class ConnectionResolver {
   async resolve(tenantId: string): Promise<ResolvedConnections> {
     return this.db.tenant(tenantId, async (trx) => {
       const rows = await trx.selectFrom("connections")
-        .select(["id", "provider", "external_account", "secret_ref", "config", "status"])
+        .select(["id", "provider", "external_account", "secret_ref", "config", "status", "learned"])
         .where("provider", "in", ["shopify", "bosta"]).where("status", "!=", "disconnected")
         .orderBy("created_at").execute();
       const shopify = rows.filter((r) => r.provider === "shopify");
@@ -67,7 +69,7 @@ export class ConnectionResolver {
       const s = await read("shopify", store.secret_ref);
       const resolved: ResolvedConnections = {
         tenantId,
-        shopify: { connectionId: store.id, shop: store.external_account, accessToken: new SecretValue(s.accessToken) },
+        shopify: { connectionId: store.id, shop: store.external_account, accessToken: new SecretValue(s.accessToken), learned: json(store.learned) },
       };
       if (bosta?.secret_ref) {
         const b = await read("bosta", bosta.secret_ref);
@@ -75,7 +77,8 @@ export class ConnectionResolver {
           connectionId: bosta.id,
           apiKey: new SecretValue(b.apiKey),
           webhookToken: new SecretValue(b.webhookToken),
-          config: (bosta.config ?? {}) as Record<string, unknown>,
+          config: json(bosta.config),
+          learned: json(bosta.learned),
         };
       }
       return resolved;
