@@ -104,7 +104,8 @@ Rules live in `src/core/payments.ts` (`cashToCollect`), shared by every courier 
 
 ```
 src/
-  core/        canonical model, payment rules (cashToCollect, exact money), error taxonomy, injected runtime
+  core/        payment rules (cashToCollect), error taxonomy, injected runtime
+               (canonical model and exact money helpers come from @mizan/shared)
   resilience/  http (send), circuit breaker, adaptive token bucket, backoff
   adapt/       tolerant resolver, drift monitor, shape watch, status mapper + ordering guard
   sync/        outbox store (memory + PostgreSQL), worker

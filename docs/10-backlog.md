@@ -14,7 +14,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Designed module library v2 (22 modules, PDF) — built outside this repo from the same content.
 - ✅ `design/prototype.html`: approved UI direction.
 - ✅ CI: typecheck + tests + gitleaks on every PR (E1-1).
-- ⏭️ **Next:** E1-2 (`packages/shared`).
+- ✅ `packages/shared`: canonical types, zod schemas, money, phones (E1-2).
+- ⏭️ **Next:** E1-3 (`apps/api` skeleton).
 
 ---
 
@@ -35,7 +36,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 ### E1 · Foundations
 
 - [x] **E1-1** `S` Init git, GitHub repo, branch protection; `ci.yml` (install, typecheck, test all workspaces); Renovate; gitleaks. *Accept:* PR shows green checks running engine + db tests. *Done:* `.github/workflows/ci.yml`, `renovate.json`, `.gitleaks.toml`; branch protection rules listed in `docs/09` §4 (applied by a repo admin).
-- [ ] **E1-2** `M` `packages/shared`: move canonical types from engine (`core/model.ts`), add zod schemas, `Money` helpers (`toMinor`, `fromMinor`, currency decimals table incl. 3-decimal currencies), phone normalization (EG, KSA, UAE). Engine imports from shared. *Accept:* engine tests still pass; money helpers 100% covered.
+- [x] **E1-2** `M` `packages/shared`: move canonical types from engine (`core/model.ts`), add zod schemas, `Money` helpers (`toMinor`, `fromMinor`, currency decimals table incl. 3-decimal currencies), phone normalization (EG, KSA, UAE). Engine imports from shared. *Accept:* engine tests still pass; money helpers 100% covered. *Done:* `@mizan/shared` (model, money, phone, schemas), 122 tests, coverage gate on `money.ts` in `vitest.config.ts`; 30-seed chaos sweep green.
 - [ ] **E1-3** `M` `apps/api` skeleton: NestJS (latest stable), config validation (zod), structured logger with PII redaction, problem+json error filter, health endpoint, OpenAPI at `/v1/openapi.json`. *Accept:* `npm run dev -w @mizan/api` serves `/health`; invalid env fails fast with a clear message.
 - [ ] **E1-4** `M` DB layer: Kysely (or Drizzle — pick, write ADR-0012) + migration runner over `packages/db/migrations`; separate migrator and app roles; transaction helper that sets `app.tenant_id`. *Accept:* integration test proves a request for tenant A cannot read tenant B.
 - [ ] **E1-5** `M` Auth: Firebase ID token guard, `X-Tenant-Id` membership check, role decorator `@Roles(...)`; `/me`. *Accept:* tests with mocked Firebase verifier for each role.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { CanonicalOrder } from "../src/core/model.js";
-import { cashToCollect, fromMinor, ShipBlockedError, toMinor } from "../src/core/payments.js";
+import type { CanonicalOrder } from "@mizan/shared";
+import { fromMinor, toMinor } from "@mizan/shared";
+import { cashToCollect, ShipBlockedError } from "../src/core/payments.js";
 import { detectPayment } from "../src/connectors/shopify/mapper.js";
 import { settle, setup } from "./fakes/setup.js";
 

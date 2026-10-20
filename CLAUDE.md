@@ -31,7 +31,7 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 ```
 packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
 packages/db/       ✅ BUILT — PostgreSQL schema (0001_core, 0002_commerce_os) with RLS on every tenant table (8 tests)
-packages/shared/   ⏳ planned — canonical types, zod schemas, money + phone helpers (backlog E1-2)
+packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
 apps/api/          ⏳ planned — NestJS modular monolith (REST API, auth, tenants, modules M1–M22)
 apps/web/          ⏳ planned — Next.js dashboard, Arabic + English, RTL; visual reference: design/prototype.html
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
@@ -48,7 +48,7 @@ npm install                 # once, at the repo root (npm workspaces)
 npm test                    # all packages
 npm run typecheck
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
-npm test -w @mizan/engine   # one package (or -w @mizan/db)
+npm test -w @mizan/engine   # one package (or -w @mizan/db, -w @mizan/shared)
 ```
 
 Node 22+. TypeScript strict everywhere. Tests use vitest.
@@ -74,7 +74,7 @@ Pin exact versions in `package.json` when creating each app.
 
 ## Non-negotiable rules
 
-1. **Canonical model only.** Business code never touches provider payloads. Connectors map Shopify/Bosta/etc. to the canonical types (`packages/engine/src/core/model.ts`, moving to `packages/shared`) and back.
+1. **Canonical model only.** Business code never touches provider payloads. Connectors map Shopify/Bosta/etc. to the canonical types (`packages/shared/src/model.ts`, imported as `@mizan/shared`) and back.
 2. **Never read external fields directly.** Use `Resolver` with ranked candidate paths (`packages/engine/src/adapt/resolve.ts`). Required fields fail with a `schema_drift` error naming the paths tried.
 3. **Every outbound write is an outbox job** with an idempotency key. No direct calls to providers from request handlers. Webhook handlers verify → dedupe → enqueue → return 200 fast.
 4. **All provider HTTP goes through `send()`** (`packages/engine/src/resilience/http.ts`) with a circuit breaker and a rate-limit bucket per connection. Classify errors into the `ErrorKind` taxonomy; never throw raw HTTP errors.

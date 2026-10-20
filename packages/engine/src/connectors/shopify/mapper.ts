@@ -1,5 +1,5 @@
-import type { CanonicalOrder, CanonicalProduct, Money, PaymentMode, PaymentStatus } from "../../core/model.js";
-import { toMinor } from "../../core/payments.js";
+import type { CanonicalOrder, CanonicalProduct, Money, PaymentMode, PaymentStatus } from "@mizan/shared";
+import { toMinor } from "@mizan/shared";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
 

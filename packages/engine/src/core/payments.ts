@@ -1,5 +1,5 @@
 import { IntegrationError } from "./errors.js";
-import type { CanonicalOrder, Money, PaymentMode } from "./model.js";
+import { fromMinor, toMinor, type CanonicalOrder, type Money, type PaymentMode } from "@mizan/shared";
 
 /**
  * Payment rules shared by every courier connector.
@@ -10,29 +10,6 @@ import type { CanonicalOrder, Money, PaymentMode } from "./model.js";
  * When the engine cannot tell, it refuses to guess: shipping an order with the
  * wrong cash amount loses money silently.
  */
-
-const DECIMALS: Record<string, number> = { KWD: 3, BHD: 3, OMR: 3, JOD: 3, IQD: 3, TND: 3, LYD: 3, JPY: 0 };
-export const currencyDecimals = (currency: string) => DECIMALS[currency.toUpperCase()] ?? 2;
-
-/** "1150.5" → 115050 (EGP). Exact: string arithmetic, no floats. */
-export function toMinor(m: Money): bigint {
-  const d = currencyDecimals(m.currency || "EGP");
-  const s = m.amount.trim().replace(/,/g, "");
-  const neg = s.startsWith("-");
-  const [int, frac = ""] = s.replace(/^[-+]/, "").split(".");
-  if (!/^\d*$/.test(int) || !/^\d*$/.test(frac)) throw new Error(`not a decimal amount: "${m.amount}"`);
-  const padded = (frac + "0".repeat(d)).slice(0, d);
-  const v = BigInt((int || "0") + padded);
-  return neg ? -v : v;
-}
-
-export function fromMinor(v: bigint, currency: string): Money {
-  const d = currencyDecimals(currency);
-  const neg = v < 0n;
-  const abs = (neg ? -v : v).toString().padStart(d + 1, "0");
-  const amount = d ? `${abs.slice(0, -d)}.${abs.slice(-d)}` : abs;
-  return { amount: neg ? `-${amount}` : amount, currency };
-}
 
 export type ShipBlockReason = "awaiting_payment" | "payment_failed" | "payment_mode_unknown" | "refunded";
 

@@ -49,12 +49,15 @@ export interface FulfillmentGroup {
  * - bnpl: Tabby, Tamara, valU and similar (provider pays the merchant)
  * - bank_transfer: bank deposit, InstaPay, manual transfer (paid before shipping)
  */
-export type PaymentMode = "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "unknown";
+export const PAYMENT_MODES = ["cod", "prepaid", "partial", "bnpl", "bank_transfer", "unknown"] as const;
+export type PaymentMode = (typeof PAYMENT_MODES)[number];
 
 /** Where the money stands, independent of the platform's own enum. */
-export type PaymentStatus =
-  | "unpaid" | "authorized" | "partially_paid" | "paid"
-  | "partially_refunded" | "refunded" | "voided" | "failed" | "unknown";
+export const PAYMENT_STATUSES = [
+  "unpaid", "authorized", "partially_paid", "paid",
+  "partially_refunded", "refunded", "voided", "failed", "unknown",
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export interface CanonicalOrder {
   connector: ConnectorId;
@@ -97,11 +100,14 @@ export interface CanonicalVariant {
   available?: number;
 }
 
+export const PRODUCT_STATUSES = ["active", "draft", "archived", "unknown"] as const;
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
 export interface CanonicalProduct {
   connector: ConnectorId;
   externalId: string;
   title: string;
-  status: "active" | "draft" | "archived" | "unknown";
+  status: ProductStatus;
   vendor?: string;
   productType?: string;
   tags: string[];

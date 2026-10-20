@@ -12,7 +12,8 @@ Mizan runs the whole operation in one product: orders from stores, marketplaces 
 | `packages/db` — PostgreSQL schema for the full OS with row-level security | ✅ Built · 8 tests |
 | `docs/` — business model, product (22 modules), payments, automations, architecture, data, API, integrations, security, design, infra, backlog | ✅ Written |
 | `design/prototype.html` — UI direction (AR/EN, light/dark) | ✅ Approved |
-| `apps/api`, `apps/web`, `apps/ops`, `packages/shared` | ⏳ Next — see `docs/10-backlog.md` |
+| `packages/shared` — canonical types, zod schemas, exact money, EG/KSA/UAE phones | ✅ Built · 122 tests, 100% coverage |
+| `apps/api`, `apps/web`, `apps/ops` | ⏳ Next — see `docs/10-backlog.md` |
 
 ## Start
 

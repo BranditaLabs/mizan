@@ -1,0 +1,24 @@
+{
+  "name": "@mizan/shared",
+  "version": "0.1.0",
+  "description": "Mizan canonical types, zod schemas, money and phone helpers.",
+  "type": "module",
+  "private": true,
+  "license": "UNLICENSED",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@vitest/coverage-v8": "2.1.9",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

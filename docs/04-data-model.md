@@ -16,7 +16,7 @@ The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`
 | Soft delete | Only where the business needs history (`tenants.status = 'deleted'`); otherwise real deletes for privacy requests |
 | Migrations | Forward-only, numbered `NNNN_name.sql`; never edit an applied migration |
 
-Canonical (engine) money is a decimal **string** (`"1150.00"`). Convert at the boundary: `toMinor("1150.00", "EGP") = 115000`. Write that helper once in `packages/shared` with tests for 0, 2 and 3 decimal currencies.
+Canonical (engine) money is a decimal **string** (`"1150.00"`). Convert at the boundary: `toMinor("1150.00", "EGP") = 115000`. The helpers live in `packages/shared/src/money.ts` (`toMinor`, `fromMinor`, `currencyDecimals`, `addMoney` …), tested for 0, 2, 3 and 4 decimal currencies. They never round: an amount with more decimals than its currency allows is rejected.
 
 ## 2. Entity map
 

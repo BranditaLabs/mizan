@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { cashToCollect } from "../../core/payments.js";
 import { IntegrationError } from "../../core/errors.js";
-import type { CanonicalOrder, CanonicalShipment, ShipmentStatus } from "../../core/model.js";
-import { TERMINAL_STATUSES } from "../../core/model.js";
+import type { CanonicalOrder, CanonicalShipment, ShipmentStatus } from "@mizan/shared";
+import { normalizePhone, TERMINAL_STATUSES, toAsciiDigits } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
@@ -327,8 +327,8 @@ function readState(r: Resolver): { code?: string | number; label?: string } {
 /** Egyptian mobile numbers → 01XXXXXXXXX (Bosta's local format). Non-Egyptian numbers are passed through. */
 export function normalizeEgPhone(p: string | undefined): string | undefined {
   if (!p) return undefined;
-  const digits = p.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/[^\d+]/g, "");
-  const m = digits.match(/^(?:\+?20|0020)?0?(1[0125]\d{8})$/);
-  if (m) return `0${m[1]}`;
+  const eg = normalizePhone(p, "EG");
+  if (eg?.country === "EG") return eg.national;
+  const digits = toAsciiDigits(p).replace(/[^\d+]/g, "");
   return digits.length >= 8 ? digits : undefined;
 }

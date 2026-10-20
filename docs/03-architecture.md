@@ -139,7 +139,7 @@ Event envelope: `{ id, type, tenantId, occurredAt, actor, entity: { type, id }, 
 
 1. Keep the engine as a library; the API imports `MizanEngine` and registers its job handlers in the worker.
 2. Add `tenant_id` and `connection_id` to the engine's job and record tables (one engine instance per process, connections resolved per job from the `connections` table and decrypted secrets).
-3. Move canonical types to `packages/shared`; engine and API import them from there.
+3. ✅ Canonical types live in `packages/shared` (`@mizan/shared`); engine and API import them from there.
 4. Replace `engine.on(...)` listeners with handlers that write domain events (section 5).
 5. The engine's `/ops/*` endpoints become admin API routes under `/v1/admin/integrations/*`.
 

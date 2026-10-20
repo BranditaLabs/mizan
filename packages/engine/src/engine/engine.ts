@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { cashToCollect, deliveryCompletesPayment, ShipBlockedError } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
-import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "../core/model.js";
-import { TERMINAL_STATUSES } from "../core/model.js";
+import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "@mizan/shared";
+import { TERMINAL_STATUSES } from "@mizan/shared";
 import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
 import { ShapeWatch } from "../adapt/shape.js";

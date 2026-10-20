@@ -1,5 +1,5 @@
 import { IntegrationError } from "../../core/errors.js";
-import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "../../core/model.js";
+import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
