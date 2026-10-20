@@ -15,7 +15,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ `design/prototype.html`: approved UI direction.
 - ✅ CI: typecheck + tests + gitleaks on every PR (E1-1).
 - ✅ `packages/shared`: canonical types, zod schemas, money, phones (E1-2).
-- ⏭️ **Next:** E1-3 (`apps/api` skeleton).
+- ✅ `apps/api` skeleton: config, redacting logger, problem+json, health, OpenAPI (E1-3).
+- ⏭️ **Next:** E1-4 (DB layer).
 
 ---
 
@@ -37,7 +38,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 - [x] **E1-1** `S` Init git, GitHub repo, branch protection; `ci.yml` (install, typecheck, test all workspaces); Renovate; gitleaks. *Accept:* PR shows green checks running engine + db tests. *Done:* `.github/workflows/ci.yml`, `renovate.json`, `.gitleaks.toml`; branch protection rules listed in `docs/09` §4 (applied by a repo admin).
 - [x] **E1-2** `M` `packages/shared`: move canonical types from engine (`core/model.ts`), add zod schemas, `Money` helpers (`toMinor`, `fromMinor`, currency decimals table incl. 3-decimal currencies), phone normalization (EG, KSA, UAE). Engine imports from shared. *Accept:* engine tests still pass; money helpers 100% covered. *Done:* `@mizan/shared` (model, money, phone, schemas), 122 tests, coverage gate on `money.ts` in `vitest.config.ts`; 30-seed chaos sweep green.
-- [ ] **E1-3** `M` `apps/api` skeleton: NestJS (latest stable), config validation (zod), structured logger with PII redaction, problem+json error filter, health endpoint, OpenAPI at `/v1/openapi.json`. *Accept:* `npm run dev -w @mizan/api` serves `/health`; invalid env fails fast with a clear message.
+- [x] **E1-3** `M` `apps/api` skeleton: NestJS (latest stable), config validation (zod), structured logger with PII redaction, problem+json error filter, health endpoint, OpenAPI at `/v1/openapi.json`. *Accept:* `npm run dev -w @mizan/api` serves `/health`; invalid env fails fast with a clear message. *Done:* `apps/api` on NestJS 12 (ESM): `platform/config.ts`, pino logger with two-layer PII redaction, problem+json filter (AR/EN titles), `ZodPipe`, `/health`, `/v1/openapi.json` (3.1, zod components), worker stub; 35 tests.
 - [ ] **E1-4** `M` DB layer: Kysely (or Drizzle — pick, write ADR-0012) + migration runner over `packages/db/migrations`; separate migrator and app roles; transaction helper that sets `app.tenant_id`. *Accept:* integration test proves a request for tenant A cannot read tenant B.
 - [ ] **E1-5** `M` Auth: Firebase ID token guard, `X-Tenant-Id` membership check, role decorator `@Roles(...)`; `/me`. *Accept:* tests with mocked Firebase verifier for each role.
 - [ ] **E1-6** `S` Tenants + signup: `POST /tenants`, owner membership, default warehouse, default settings by country. *Accept:* creating an EG tenant sets EGP, Africa/Cairo, ar-EG.

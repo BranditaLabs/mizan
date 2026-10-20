@@ -25,7 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      # Engine (incl. chaos suite) and db schema/RLS tests
+      - run: npm run build
+      # Engine (incl. chaos suite), db schema/RLS, shared and api tests
       - run: npm test
 
   secrets-scan:

@@ -2,11 +2,13 @@
   "name": "mizan",
   "private": true,
   "version": "0.1.0",
-  "description": "Mizan — MENA e-commerce operating system, powered by Brandita",
+  "description": "Mizan \u2014 MENA e-commerce operating system, powered by Brandita",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
+    "build": "npm run build --workspaces --if-present",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "demo": "npm run demo -w @mizan/engine"

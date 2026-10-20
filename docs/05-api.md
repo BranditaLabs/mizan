@@ -24,6 +24,8 @@ The REST API serves the web dashboard, the ops app and merchants' own integratio
 
 ### Error format
 
+✅ Implemented in `apps/api/src/platform/http/problem.filter.ts` (E1-3). Codes emitted today: `bad_request`, `unauthorized`, `forbidden`, `not_found`, `method_not_allowed`, `conflict`, `precondition_failed`, `payload_too_large`, `validation_failed` (zod, with `errors[]`), `rate_limited`, `internal_error` (generic; details only in redacted logs), `service_unavailable`, plus any module code thrown with `ProblemError`. `title` is Arabic by default, English with `Accept-Language: en`. Every response carries `X-Request-Id`.
+
 ```json
 {
   "type": "https://docs.mizan.app/errors/validation",

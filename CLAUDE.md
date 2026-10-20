@@ -32,7 +32,7 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
 packages/db/       ✅ BUILT — PostgreSQL schema (0001_core, 0002_commerce_os) with RLS on every tenant table (8 tests)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
-apps/api/          ⏳ planned — NestJS modular monolith (REST API, auth, tenants, modules M1–M22)
+apps/api/          🚧 SKELETON — NestJS 12 modular monolith: config, redacting logger, problem+json, /health, /v1/openapi.json (E1-3); modules M1–M22 next
 apps/web/          ⏳ planned — Next.js dashboard, Arabic + English, RTL; visual reference: design/prototype.html
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)
@@ -47,6 +47,8 @@ docs/              everything below
 npm install                 # once, at the repo root (npm workspaces)
 npm test                    # all packages
 npm run typecheck
+npm run build                # shared → dist, api → dist (CI runs it before tests)
+npm run dev -w @mizan/api    # API on :8080 with reload (cp apps/api/.env.example apps/api/.env first)
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
 npm test -w @mizan/engine   # one package (or -w @mizan/db, -w @mizan/shared)
 ```
