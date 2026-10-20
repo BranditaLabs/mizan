@@ -6,6 +6,7 @@ import { APP_CONFIG, type AppConfig } from "../../platform/config.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
+import { AuthService } from "../../platform/auth/auth.service.js";
 import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import type { InvitationView, InviteBody, MemberView, MyInvitationView, UpdateMemberBody } from "./members.dto.js";
@@ -29,6 +30,7 @@ export class MembersService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(AuthService) private readonly auth: AuthService,
   ) {}
 
   private acceptUrl(id: string) {
@@ -154,7 +156,7 @@ export class MembersService {
         after: { role: row.role, invitationId: invite.id },
       });
       return { tenantId: invite.tenant_id, role: row.role };
-    });
+    }).finally(() => this.auth.invalidateMembership(invite.tenant_id, auth.user.id));
   }
 
   /** Change role and/or status. Guards: not yourself, owners only by owners, never the last active owner. */
@@ -181,7 +183,7 @@ export class MembersService {
         before: { role: target.role, status: target.status }, after: { role: nextRole, status: nextStatus },
       });
       return this.memberView(trx, userId);
-    });
+    }).finally(() => this.auth.invalidateMembership(tenant.id, userId));
   }
 
   async remove(auth: AuthContext, userId: string): Promise<void> {
@@ -194,6 +196,7 @@ export class MembersService {
         if (target.status === "active") await this.assertAnotherOwner(trx, userId);
       }
       await trx.deleteFrom("memberships").where("user_id", "=", userId).execute();
+      this.auth.invalidateMembership(tenant.id, userId);
       await this.events.emit(trx, {
         type: "member.removed", tenantId: tenant.id, entity: { type: "member", id: userId },
         actor: { type: "user", id: auth.user.id }, data: { role: target.role },

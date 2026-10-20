@@ -26,6 +26,9 @@ export const ConfigSchema = z.object({
   /** Requests per minute per client IP (checked before sign-in) and per signed-in user. 0 disables. */
   RATE_LIMIT_IP_PER_MIN: z.coerce.number().int().min(0).default(1200),
   RATE_LIMIT_USER_PER_MIN: z.coerce.number().int().min(0).default(600),
+  /** Auth hot-path caches (H-6). A member disabled on another instance loses access within the membership TTL. */
+  AUTH_USER_CACHE_MS: z.coerce.number().int().min(0).max(600_000).default(60_000),
+  AUTH_MEMBERSHIP_CACHE_MS: z.coerce.number().int().min(0).max(60_000).default(10_000),
   /** Largest provider webhook body accepted (bytes). */
   WEBHOOK_MAX_BODY_BYTES: z.coerce.number().int().min(1024).max(50 * 1024 * 1024).default(5 * 1024 * 1024),
   /** Largest JSON body accepted (bytes). Webhooks and imports have their own limits. */

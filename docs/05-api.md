@@ -7,7 +7,7 @@ The REST API serves the web dashboard, the ops app and merchants' own integratio
 | Topic | Rule |
 | --- | --- |
 | Format | JSON, `camelCase` fields; UTF-8 |
-| Auth (users) | `Authorization: Bearer <Firebase ID token>` + `X-Tenant-Id: <uuid>` (must match an active membership). ✅ `AuthGuard` (E1-5): every route is protected unless `@Public()`; `@NoTenant()` routes skip the header; `@Roles(...)` narrows. Codes: `unauthorized`, `token_invalid`, `token_expired`, `tenant_header_required`, `invalid_tenant_id`, `not_a_member` (same answer for unknown store, invited, disabled), `tenant_inactive`, `mfa_required`, `insufficient_role` |
+| Auth (users) | `Authorization: Bearer <Firebase ID token>` + `X-Tenant-Id: <uuid>` (must match an active membership). ✅ `AuthGuard` (E1-5): every route is protected unless `@Public()`; `@NoTenant()` routes skip the header; `@Roles(...)` narrows. Auth lookups are cached (H-6): a membership change made on another API instance applies within 10 s, on the same instance at once. Codes: `unauthorized`, `token_invalid`, `token_expired`, `tenant_header_required`, `invalid_tenant_id`, `not_a_member` (same answer for unknown store, invited, disabled), `tenant_inactive`, `mfa_required`, `insufficient_role` |
 | Auth (integrations) | `Authorization: Bearer mz_live_…` API key; tenant comes from the key; scopes checked per route |
 | Money | `{ "amount": "1150.00", "currency": "EGP" }` (decimal string) |
 | Dates | ISO 8601 UTC (`2026-10-20T14:03:00Z`) |
