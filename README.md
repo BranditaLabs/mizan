@@ -1,17 +1,19 @@
 # Mizan · ميزان
 
-**The operating system that shows every COD store its real profit, on every order.** Powered by Brandita.
+**The complete commerce operating system for MENA brands — every channel, every payment method, real profit on every order.** Powered by Brandita.
 
-Mizan runs the work between checkout and cash for MENA e-commerce brands: order sync, risk-scored confirmation in every dialect, shipping, warehouse, returns, cash reconciliation, and a profit engine that charges every refused parcel to the order that caused it.
+Mizan runs the whole operation in one product: orders from stores, marketplaces and shops; payments by COD, card, wallet, deposit, BNPL or bank transfer; verification, shipping, warehouse, purchasing, returns, customer service, reconciliation, finance and reports — all connected by Automation Studio, with a profit engine that counts every fee, refund and returned parcel against the order that caused it.
 
 ## Status
 
 | Part | State |
 | --- | --- |
-| `packages/engine` — self-healing Shopify + Bosta connectors | ✅ Built · 57 tests incl. chaos at 50% failure |
-| `packages/db` — PostgreSQL schema with row-level security | ✅ Built · 5 tests |
+| `packages/engine` — self-healing Shopify + Bosta connectors, every payment method | ✅ Built · 85 tests incl. chaos at 50% failure with mixed payments |
+| `packages/db` — PostgreSQL schema for the full OS with row-level security | ✅ Built · 8 tests |
+| `docs/` — business model, product (22 modules), payments, automations, architecture, data, API, integrations, security, design, infra, backlog | ✅ Written |
 | `design/prototype.html` — UI direction (AR/EN, light/dark) | ✅ Approved |
-| `apps/api`, `apps/web`, `apps/ops`, `packages/shared` | ⏳ Next — see `docs/10-backlog.md` |
+| `packages/shared` — canonical types, zod schemas, exact money, EG/KSA/UAE phones | ✅ Built · 122 tests, 100% coverage |
+| `apps/api`, `apps/web`, `apps/ops` | ⏳ Next — see `docs/10-backlog.md` |
 
 ## Start
 

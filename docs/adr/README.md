@@ -14,4 +14,5 @@ Record every significant technical decision here. Copy `template.md`, number it,
 | [0008](0008-field-ownership-for-product-sync.md) | Field ownership for product sync | Accepted |
 | [0009](0009-host-in-a-google-cloud-middle-east-region.md) | Host in a Google Cloud Middle East region | Accepted |
 | [0010](0010-firebase-authentication-for-users.md) | Firebase Authentication for users | Accepted |
-| 0011 | ORM / query builder (Kysely or Drizzle) | To decide in backlog E1-4 |
+| [0011](0011-collect-only-what-is-owed-never-guess-payment.md) | Collect only what is owed; never guess the payment method | Accepted |
+| 0012 | ORM / query builder (Kysely or Drizzle) | To decide in backlog E1-4 |

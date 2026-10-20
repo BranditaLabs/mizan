@@ -17,7 +17,7 @@ export interface GqlOperation {
 
 const MONEY = `shopMoney { amount currencyCode }`;
 
-const ORDER_CORE = `
+const ORDER_BASE = `
   id name createdAt updatedAt cancelledAt displayFinancialStatus paymentGatewayNames tags currencyCode
   email phone
   totalPriceSet { ${MONEY} }
@@ -29,19 +29,29 @@ const ORDER_CORE = `
   fulfillments(first: 10) { id status trackingInfo { company number url } }
 `;
 
+/** What was received, what is still owed, what was refunded: the basis for COD amounts and payment status. */
+const ORDER_MONEY = `
+  totalReceivedSet { ${MONEY} }
+  totalOutstandingSet { ${MONEY} }
+  totalRefundedSet { ${MONEY} }
+`;
+const ORDER_CORE = `${ORDER_BASE} ${ORDER_MONEY}`;
+
 const ORDER_V0 = `${ORDER_CORE} customer { displayName firstName lastName defaultEmailAddress { emailAddress } defaultPhoneNumber { phoneNumber } }`;
 const ORDER_V1 = `${ORDER_CORE} customer { displayName firstName lastName email phone }`;
+/** Last resort for shops on versions without the money fields: the mapper derives amounts from status. */
+const ORDER_V2 = `${ORDER_BASE} customer { displayName firstName lastName email phone }`;
 
 export const ORDER_BY_ID: GqlOperation = {
   name: "MizanOrder",
   cost: 40,
-  variants: [ORDER_V0, ORDER_V1].map((f) => `query MizanOrder($id: ID!) { order(id: $id) { ${f} } }`),
+  variants: [ORDER_V0, ORDER_V1, ORDER_V2].map((f) => `query MizanOrder($id: ID!) { order(id: $id) { ${f} } }`),
 };
 
 export const ORDERS_UPDATED: GqlOperation = {
   name: "MizanOrders",
   cost: 250,
-  variants: [ORDER_V0, ORDER_V1].map(
+  variants: [ORDER_V0, ORDER_V1, ORDER_V2].map(
     (f) => `query MizanOrders($first: Int!, $after: String, $query: String) {
       orders(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
         pageInfo { hasNextPage endCursor }

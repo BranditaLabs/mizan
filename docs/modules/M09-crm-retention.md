@@ -1,9 +1,9 @@
-# M9 — CRM and retention · إدارة العملاء والاحتفاظ بهم
+# M9 — CRM, loyalty and marketing automation · العملاء والولاء والتسويق الآلي
 
 > **Phase:** V2 · **Depends on:** M1 Orders, M2 Confirmation, M13 Automations, M14 Scripts  
 > **Estimate:** 3 sprints — 1 backend + 1 frontend. Shares the WhatsApp layer with M2 and M14.
 
-_Turn one delivered order into the next three — over WhatsApp, with consent._
+_One profile per customer across every store and channel, with segments, loyalty and campaigns that run themselves._
 
 ## Purpose
 
@@ -56,6 +56,13 @@ Actions: New segment, New campaign
 | Mona A. · Cairo | 1 | 0 | — | 6 min | New |
 
 _Sample data. Full visual in `design/prototype.html`._
+
+## Loyalty and marketing
+
+- **Loyalty:** Points per delivered or paid order, tiers, store credit wallet (redeemed at checkout through the storefront app, or at POS).
+- **Campaigns:** WhatsApp, SMS and email with opt-in; abandoned checkout, post-delivery review request, replenishment reminders, win-back.
+- **Segments:** RFM, LTV, payment preference (pays online vs COD), refusal history, channel.
+- All campaigns are Automation Studio flows (M13), so they can branch on any data in Mizan.
 
 ## Rules — Default segments
 

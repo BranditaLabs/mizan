@@ -62,7 +62,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/connections/{id}/test` | Live credential check |
 | DELETE | `/connections/{id}` | Disconnect, revoke webhooks, delete secret |
 
-### Orders (M1) and confirmation (M2)
+### Orders (M1) and verification (M2)
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -119,6 +119,40 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/scripts/{id}/preview` | Render with a real order |
 | POST | `/scripts/{id}/publish` | Version + submit WhatsApp templates if needed |
 
+### Payments (M15)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/orders/{id}/payments` | Payment ledger |
+| POST | `/orders/{id}/payment-links` | `{ purpose: full\|deposit\|balance\|convert_cod, amount?, discountPct? }` |
+| POST | `/orders/{id}/refunds` | `{ amount, destination, reason }` (approval rules apply) |
+| GET | `/payments` · `/disputes` | Lists and filters |
+| POST | `/disputes/{id}/evidence` | Submit evidence pack |
+
+### Reconciliation (M8), purchasing (M16), inbox (M17)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/settlements` | Upload a payout file or trigger an API import (`source_type`) |
+| GET | `/settlements/{id}` · `/reconciliation/gaps` | Lines and open gaps |
+| GET / POST | `/suppliers` · `/purchase-orders` | Suppliers and POs |
+| POST | `/purchase-orders/{id}/receipts` | Receive (ops app, exactly once) |
+| GET | `/reorder-suggestions` | Reorder list |
+| GET · POST | `/conversations` · `/conversations/{id}/messages` | Inbox queue and replies |
+
+### Channels (M18), finance (M19), reports (M20), developers (M21), POS (M22)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET / PATCH | `/listings` | Listings, errors, buffers, channel prices |
+| GET | `/finance/pnl` · `/finance/vat` | Business P&L, VAT report |
+| GET / POST | `/expenses` | Expenses |
+| POST | `/finance/periods/{id}/close` | Close a month |
+| POST · GET | `/reports/query` · `/metrics` | Run reports on the semantic layer |
+| GET / POST | `/webhook-subscriptions` · `/webhook-deliveries` | Webhooks out |
+| POST | `/pos/sales` · `/pos/returns` · `/pos/shifts` | POS (V3) |
+| GET | `/catalog` | Automation triggers, conditions and actions |
+
 ### Webhooks in (public, no user auth)
 
 | Path | Verification |
@@ -127,6 +161,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | `POST /webhooks/shopify/gdpr` | Same HMAC; topics `customers/data_request`, `customers/redact`, `shop/redact` |
 | `POST /webhooks/bosta/{connectionId}?token=…` | Per-connection secret token (Bosta does not sign) |
 | `POST /webhooks/whatsapp` | `X-Hub-Signature-256` with app secret; GET verify challenge |
+| `POST /webhooks/payments/{provider}/{connectionId}` | Provider signature (e.g. Paymob HMAC, Stripe signature); re-read the transaction from the provider before acting |
+| `POST /webhooks/marketplaces/{provider}/{connectionId}` | Provider signature or notification verification |
 
 ### Webhooks out (merchant integrations, V2)
 

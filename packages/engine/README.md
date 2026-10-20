@@ -1,10 +1,10 @@
 # Mizan integration engine
 
-Self-healing connectors between Mizan, **Shopify** and **Bosta**. Orders flow in, shipments go out, tracking and cash status come back, and product prices and stock stay in sync, even when the providers throttle, time out, drop responses, send duplicates out of order, or change their payloads.
+Self-healing connectors between Mizan, **Shopify** and **Bosta**. Orders paid by any method flow in (cash on delivery, card, wallet, deposit + COD, BNPL, bank transfer), shipments go out collecting exactly what each customer still owes, tracking and payment status come back, and product prices and stock stay in sync, even when the providers throttle, time out, drop responses, send duplicates out of order, or change their payloads.
 
 ```
 npm install
-npm test          # 57 tests, including end-to-end chaos runs at 10%, 25% and 50% failure rates
+npm test          # 85 tests, including end-to-end chaos runs at 10%, 25% and 50% failure rates
 npm run demo      # narrated run against misbehaving fake Shopify and Bosta servers, no credentials needed
 npm run typecheck
 ```
@@ -16,10 +16,12 @@ npm run typecheck
 | Flow | Trigger | Result |
 | --- | --- | --- |
 | Order intake | Shopify `orders/*` webhook, or the 5-minute poll | Canonical order saved in Mizan |
-| Ship | Order tagged `mizan-confirmed` (set by the confirmation module) or `POST /ops/orders/ship` | One Bosta delivery, COD amount from the order |
+| Ship | Order tagged `mizan-confirmed` (set by the verification module) or `POST /ops/orders/ship` | One Bosta delivery that collects exactly what the customer still owes (see *Payments*) |
+| Hold for payment | Bank transfer or other unpaid prepaid order | Not shipped; `order.awaiting_payment`; ships automatically once paid |
 | Fulfil | Delivery created | Shopify fulfillment with Bosta tracking number and link; customer notified |
 | Track | Bosta webhook, or the 5-minute poll of active deliveries | Mizan shipment status updated |
-| Settle | Delivered (COD) | Shopify order marked paid |
+| Settle | Delivered (COD or deposit balance) | Shopify order marked paid |
+| Payment changes | Paid, refunded, partially refunded in Shopify | `order.payment_changed` with received, outstanding and refunded amounts |
 | Return | Returned to business | Shopify order tagged `mizan-returned` |
 | Price and stock | `engine.updateProduct(...)` from Mizan | Shopify variant prices and inventory updated |
 | Admin edits | Shopify `products/update` | Mizan-owned fields restored, Shopify-owned fields accepted |
@@ -71,14 +73,29 @@ Mizan's own writes echo back with identical values and are ignored, so there is 
 
 **12. Reconciliation.** Polls of recent orders (with an overlap window) and of active deliveries run every five minutes and use the same idempotency keys as the webhook path. A missed webhook delays an update by one poll; it is never lost.
 
-**13. Addresses that resolve themselves.** Free-typed cities ("Nasr City", "6th of October", "المنصورة", "Al Iskandariyah") are matched to Bosta's cities by normalized Arabic and English names, built-in Egyptian aliases, and containment. If none match, the job stops with the three closest suggestions. Ops picks the city once (`POST /ops/cities/resolve`), the job replays, and every later order from that place resolves on its own.
+**13. Every payment method, never a guessed cash amount.** Mizan is not COD-only. The Shopify adapter reads what was received, what is still owed and what was refunded (`totalReceivedSet`, `totalOutstandingSet`, `totalRefundedSet`), and detects the method from gateway names in English and Arabic:
+
+| Method | Detected from | Courier collects | Marked paid on delivery |
+| --- | --- | --- | --- |
+| Cash on delivery | COD gateway ("Cash on Delivery", "الدفع عند الاستلام") | Amount outstanding (else total) | Yes |
+| Card, wallet, Apple Pay | Online gateway, status paid or authorized | 0 | No |
+| Deposit + COD balance | COD gateway plus an online payment | Balance only | Yes |
+| BNPL | Tabby, Tamara, valU, Sympl, Souhoola … | 0 | No |
+| Bank transfer | "Bank deposit", "InstaPay", "تحويل بنكي" … | 0, and only after payment | No |
+| Unknown | Anything else | **Does not ship** | — |
+
+Rules live in `src/core/payments.ts` (`cashToCollect`), shared by every courier connector, with exact decimal arithmetic (3-decimal currencies included). An order that must not ship yet (`awaiting_payment`, `payment_failed`, `payment_mode_unknown`, `refunded`) is held when it arrives through the auto-ship tag, and dead-lettered with that reason if someone forces it. Shops on older API versions without the money fields fall back to a third query variant, and amounts are derived from the order status.
+
+**14. No lost updates within the same second.** Shopify's `updated_at` has one-second precision. Webhook jobs are keyed by Shopify's event id, and the reconciliation poll compares a fingerprint of the fields the engine acts on (payment status, outstanding, refunded, tags, cancellation), so an order paid in the same second it was created is never skipped.
+
+**15. Addresses that resolve themselves.** Free-typed cities ("Nasr City", "6th of October", "المنصورة", "Al Iskandariyah") are matched to Bosta's cities by normalized Arabic and English names, built-in Egyptian aliases, and containment. If none match, the job stops with the three closest suggestions. Ops picks the city once (`POST /ops/cities/resolve`), the job replays, and every later order from that place resolves on its own.
 
 ### What the tests prove
 
-- 57 tests cover the resilience layer, field resolution, shape watching, status ordering, city and phone normalization, both connectors, and the PostgreSQL store (on PGlite, including a restart mid-flow).
-- End-to-end chaos runs ship 25 orders with **10%, 25% and 50% of all provider calls failing** (5xx, hangs, dropped connections, throttling, 429s), plus lost, duplicated and out-of-order webhooks.
-- Required result in every run: one delivery per order, one fulfillment per order with the right tracking number, every shipment delivered, every COD order marked paid exactly once, prices and stock in sync, and an empty dead-letter queue.
-- A sweep of 30 random seeds at 50% failure passes the same checks.
+- 85 tests cover the resilience layer, field resolution, shape watching, status ordering, city and phone normalization, payment detection and cash rules for every method, both connectors, and the PostgreSQL store (on PGlite, including a restart mid-flow).
+- End-to-end chaos runs ship 25 orders paid by **COD, card, deposit + COD, BNPL and bank transfer**, with **10%, 25% and 50% of all provider calls failing** (5xx, hangs, dropped connections, throttling, 429s), plus lost, duplicated and out-of-order webhooks.
+- Required result in every run: one delivery per order collecting exactly what that customer owes, unpaid bank transfers held until paid, one fulfillment per order with the right tracking number, every shipment delivered, every cash order marked paid exactly once and no other order marked paid, prices and stock in sync, and an empty dead-letter queue.
+- A sweep of 30 random seeds at 50% failure passes the same checks (`CHAOS_SEED=n npx vitest run test/e2e.chaos.test.ts`).
 - The chaos runs found one real bug: a circuit breaker could stay stuck half-open when its trial request was answered with a 429. It is fixed, and a regression test is included.
 
 ---
@@ -87,7 +104,8 @@ Mizan's own writes echo back with identical values and are ignored, so there is 
 
 ```
 src/
-  core/        canonical model, error taxonomy, injected runtime (clock, fetch, logger)
+  core/        payment rules (cashToCollect), error taxonomy, injected runtime
+               (canonical model and exact money helpers come from @mizan/shared)
   resilience/  http (send), circuit breaker, adaptive token bucket, backoff
   adapt/       tolerant resolver, drift monitor, shape watch, status mapper + ordering guard
   sync/        outbox store (memory + PostgreSQL), worker
@@ -149,7 +167,7 @@ The schema migrates itself on start. Run two or more instances behind a load bal
 - **Dead letters** are jobs that need a person: an unrecognised city, a cancelled order, a revoked token, a missing scope, a field that disappeared. Fix the cause, then `POST /ops/jobs/:id/replay`.
 - **Drift report:** the adapter backlog. Fallbacks keep working, but each entry is a provider change worth absorbing into the adapter before the fallback runs out.
 - **Events** (`engine.on(...)`) feed Mizan's activity log and alerts:
-  - `order.ingested`, `shipment.created`, `order.fulfilled`, `shipment.status`, `order.paid`
+  - `order.ingested`, `order.payment_changed`, `order.awaiting_payment`, `shipment.created`, `order.fulfilled`, `shipment.status`, `order.paid`
   - `product.pushed`, `product.conflict`
   - `shipment.needs_review`, `job.dead`, `connection.needs_attention`, `drift`
 
@@ -159,6 +177,7 @@ The schema migrates itself on start. Run two or more instances behind a load bal
 
 1. Write a connector class that calls `send()` with its own circuit and bucket, and classifies body-level errors in `inspect`.
 2. Map to and from the canonical model with `Resolver` candidate paths. Never read a payload field directly.
-3. For couriers, give `StatusMapper` a label table, and keep numeric codes empty until confirmed from the provider.
+3. For couriers, give `StatusMapper` a label table, and keep numeric codes empty until confirmed from the provider. Take the COD amount from `cashToCollect(order)`, never from the order total.
+   For storefronts, fill `paymentMode`, `paymentStatus`, `received`, `outstanding` and `refunded` on the canonical order.
 4. Make every write safe to repeat: use an idempotency key where the provider supports one, and look up before creating where it does not.
 5. Add a fake server with the provider's real quirks and failure modes, and run the chaos suite against it.

@@ -1,4 +1,4 @@
-# M10 — Agent performance and commissions · أداء الموظفين والعمولات
+# M10 — Team performance and commissions · أداء الفريق والعمولات
 
 > **Phase:** V2 · **Depends on:** M2 Confirmation, M3 Shipping, M5 Profit  
 > **Estimate:** 1.5 sprints — 1 backend + 1 frontend; reads mostly from M2 and M3 data.

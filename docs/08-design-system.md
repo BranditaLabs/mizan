@@ -5,11 +5,12 @@ Visual reference: **`design/prototype.html`** (open in a browser; toggle AR/EN a
 ## 1. Principles
 
 1. **Profit first.** Every screen answers "is this making money?" — the profit number is the first thing on the home screen.
-2. **Arabic is not a translation.** Design in Arabic first, check English second. Egyptian Arabic for merchant UI copy ("أكد الأوردر", not formal MSA).
-3. **Queues, not reports.** Ops screens show what needs action next, sorted by urgency.
-4. **Mobile-first for ops.** Agents and warehouse staff work on phones; owners check profit on phones.
-5. **One primary action per screen.** Clear CTA; secondary actions in menus.
-6. **Calm and premium.** Neutral ink, one gold accent, generous spacing; colour only for status.
+2. **One system, one navigation.** All 22 modules live in one rail (Home, Orders, Confirmation, Payments, Shipping, Warehouse, Purchasing, Returns, Inbox, Customers, Channels, POS, Profit, Finance, Attribution, Reports, Automations, Settings); modules a plan does not include show an upgrade state, never a dead link.
+3. **Arabic is not a translation.** Design in Arabic first, check English second. Egyptian Arabic for merchant UI copy ("أكد الأوردر", not formal MSA).
+4. **Queues, not reports.** Ops screens show what needs action next, sorted by urgency.
+5. **Mobile-first for ops.** Agents and warehouse staff work on phones; owners check profit on phones.
+6. **One primary action per screen.** Clear CTA; secondary actions in menus.
+7. **Calm and premium.** Neutral ink, one gold accent, generous spacing; colour only for status.
 
 ## 2. Tokens
 
@@ -79,7 +80,14 @@ Expose tokens as CSS variables in `globals.css` and map them in `tailwind.config
 | Warehouse (ops app) | Pick list, scan screen (big feedback: green ✓ / red ✗ + vibration), offline banner |
 | Automation Studio | Recipe gallery; When → If → Then builder (V2 canvas) |
 | Script Builder | Blocks list, live WhatsApp preview with real order data, dialect switch, A/B setup |
-| Settings | Connections with health, team and roles, cost rules, billing |
+| Payments | Ledger per order, payment links, refunds, disputes, payment mix |
+| Reconciliation | Expected vs paid by source (courier, gateway, BNPL, marketplace, bank), gaps, claims |
+| Purchasing | Reorder suggestions, POs, receiving, landed cost |
+| Inbox | Conversation list with SLA, thread with the order panel, saved replies, AI drafts |
+| Channels | Listings per marketplace, errors, buffers, payouts |
+| Finance | Business P&L, expenses, VAT, period close, exports |
+| Reports | Built-in dashboards, report builder, schedules |
+| Settings | Connections with health, team and roles, cost rules, developer keys and webhooks, billing |
 
 ## 5. Components
 

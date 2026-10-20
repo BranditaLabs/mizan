@@ -1,4 +1,4 @@
-import type { ShipmentStatus } from "../core/model.js";
+import type { ShipmentStatus } from "@mizan/shared";
 import type { DriftSink } from "./drift.js";
 
 /**

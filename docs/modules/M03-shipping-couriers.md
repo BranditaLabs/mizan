@@ -57,6 +57,19 @@ Actions: Print manifest, Book selected
 
 _Sample data. Full visual in `design/prototype.html`._
 
+## Shipments for every payment method
+
+The amount the courier collects comes from the payment ledger (M15), not from the order total.
+
+| Payment method | Courier collects | Notes |
+| --- | --- | --- |
+| Cash on delivery | Order total | Open-box (المعاينة) and partial delivery reduce the amount collected |
+| Deposit + COD balance | Balance due only | Deposit already captured by the gateway |
+| Card, wallet, Apple Pay | Nothing | Shipment booked with COD = 0 |
+| BNPL (Tabby, Tamara, valU) | Nothing | Provider pays the merchant |
+| Bank transfer | Nothing | Shipped only after the transfer is matched |
+| Customer pays online after booking | Updated to 0 | COD amount changed with the courier, or shipment re-booked |
+
 ## Rules — Courier status mapping (example)
 
 | Mizan status | Example courier codes | Then |

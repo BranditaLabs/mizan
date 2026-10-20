@@ -17,11 +17,12 @@ flowchart TB
     OBJ[(Object storage<br/>labels · exports · files)]
   end
   subgraph External
-    ST[Storefronts<br/>Shopify · EasyOrders · Woo · Salla · Zid]
+    ST[Storefronts & marketplaces<br/>Shopify · EasyOrders · Woo · Salla · Zid · Noon · Amazon]
     CR[Couriers<br/>Bosta · J&T · Aramex · SMSA]
-    WA[WhatsApp Cloud API]
+    WA[Messaging<br/>WhatsApp · Instagram · email]
     AD[Ad platforms<br/>Meta · TikTok · Snap · Google]
-    PAY[Payments<br/>Paymob · Tabby · Tamara]
+    PAY[Payments<br/>gateways · BNPL · banks]
+    ACC[Accounting & tax<br/>Zoho · Odoo · ZATCA · ETA]
     FB[Firebase<br/>Auth · FCM]
   end
   W & O & P --> API
@@ -29,8 +30,8 @@ flowchart TB
   WK --> DB
   WK --> ENG
   API --> ENG
-  ENG <--> ST & CR & WA & AD & PAY
-  ST & CR & WA -. webhooks .-> API
+  ENG <--> ST & CR & WA & AD & PAY & ACC
+  ST & CR & WA & PAY -. webhooks .-> API
   W & O -. sign-in .-> FB
   API -. verify ID token .-> FB
   API --> OBJ
@@ -44,7 +45,7 @@ flowchart TB
 | Worker | `apps/api` (`worker.ts`, same image, different entry) | Cloud Run service, always-on, ≥ 1 | Outbox backlog |
 | Scheduler | Cloud Scheduler → `POST /internal/cron/*` on the worker | — | — |
 | Web | `apps/web` | Cloud Run (or Vercel if preferred; keep ME data residency for APIs) | Requests |
-| Ops app | `apps/ops` | Play Store / App Store; internal testing tracks first | — |
+| Ops app (warehouse, agents, POS in V3) | `apps/ops` | Play Store / App Store; internal testing tracks first | — |
 | Database | Cloud SQL for PostgreSQL 16+, HA, PITR | ME region | Vertical first, read replica for reports |
 
 One image, two entry points, keeps the modular monolith simple: the API never runs long jobs; the worker never serves user traffic.
@@ -67,10 +68,12 @@ apps/api/src/
   modules/
     tenants/  users/  billing/
     connections/          store + courier + WhatsApp + ad account connections (OAuth, keys)
-    orders/       (M1)    confirmation/ (M2)   shipping/ (M3)   warehouse/ (M4)
-    profit/       (M5)    returns/      (M6)   attribution/ (M7) cash/ (M8)
-    crm/          (M9)    agents/       (M10)  risk/ (M11)       routing/ analyst/ (M12)
-    automations/  (M13)   scripts/      (M14)
+    orders/       (M1)    verification/ (M2)   shipping/ (M3)    warehouse/ (M4)
+    profit/       (M5)    returns/      (M6)   attribution/ (M7) reconciliation/ (M8)
+    crm/          (M9)    team/         (M10)  risk/ (M11)       routing/ analyst/ (M12)
+    automations/  (M13)   scripts/      (M14)  payments/ (M15)   purchasing/ (M16)
+    inbox/        (M17)   channels/     (M18)  finance/ (M19)    reports/ (M20)
+    developers/   (M21)   pos/          (M22)
   integrations/           thin glue: engine → modules (event handlers, job handlers)
 ```
 
@@ -118,6 +121,15 @@ sequenceDiagram
 | `return.inspected` | M6 | M4, M5 |
 | `settlement.matched` / `settlement.gap_found` | M8 | M5, M13 |
 | `pnl.recomputed` | M5 | dashboards |
+| `payment.received` / `payment.failed` / `refund.completed` / `dispute.opened` | M15 | M2, M3, M5, M8, M13 |
+| `order.awaiting_payment` / `order.payment_changed` | M15 / engine | M2, M13, M17 |
+| `po.received` / `stock.reorder_suggested` | M16 | M4, M5, M13 |
+| `conversation.created` / `conversation.sla_breached` | M17 | M13 |
+| `channel.order_received` / `listing.error` / `channel.payout_received` | M18 | M1, M8, M13 |
+| `period.closed` / `einvoice.rejected` | M19 | M13 |
+| `metric.threshold_crossed` | M20 | M13 |
+
+Full catalogue with actions: `docs/13-automation-platform.md`.
 
 Event envelope: `{ id, type, tenantId, occurredAt, actor, entity: { type, id }, data, version }`. Consumers must be idempotent (event `id`).
 
@@ -127,7 +139,7 @@ Event envelope: `{ id, type, tenantId, occurredAt, actor, entity: { type, id }, 
 
 1. Keep the engine as a library; the API imports `MizanEngine` and registers its job handlers in the worker.
 2. Add `tenant_id` and `connection_id` to the engine's job and record tables (one engine instance per process, connections resolved per job from the `connections` table and decrypted secrets).
-3. Move canonical types to `packages/shared`; engine and API import them from there.
+3. ✅ Canonical types live in `packages/shared` (`@mizan/shared`); engine and API import them from there.
 4. Replace `engine.on(...)` listeners with handlers that write domain events (section 5).
 5. The engine's `/ops/*` endpoints become admin API routes under `/v1/admin/integrations/*`.
 

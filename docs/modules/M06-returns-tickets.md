@@ -57,6 +57,18 @@ Actions: New ticket
 
 _Sample data. Full visual in `design/prototype.html`._
 
+## Refunds and exchanges by payment method
+
+Every return or exchange settles money through M15. The ticket stays open until the refund is confirmed back by the provider.
+
+| Paid with | Refund goes | Exchange price difference |
+| --- | --- | --- |
+| Card, wallet, Apple Pay | Back to the original method through the gateway | Payment link, or partial refund |
+| BNPL | Through the BNPL provider (instalments adjusted) | New BNPL checkout or link |
+| Bank transfer / InstaPay | Bank transfer back, or store credit | Link or transfer |
+| Cash on delivery (delivered) | Store credit, wallet or bank transfer | Collected by courier on the exchange leg |
+| Refused at the door (COD) | No refund: nothing was paid | — |
+
 ## Rules — Inspection outcomes and their effect
 
 | Outcome | Stock | Money | Profit (M5) |

@@ -1,0 +1,11 @@
+# gitleaks config — default rules plus a narrow allowlist.
+# Fake provider servers in tests use dummy credentials by design; real secrets
+# never live in the repo (CLAUDE.md rule 10).
+title = "mizan gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dummy credentials in fake provider servers"
+paths = ['''^packages/[^/]+/test/fakes/''']

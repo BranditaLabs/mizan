@@ -37,6 +37,7 @@ FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only)
 KMS_KEY_NAME
 PUBLIC_URL, WEB_URL
 SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
+PAYMOB_* (platform-level config only; merchant keys live in the secrets table)
 BOSTA_BASE_URL, BOSTA_TRACKING_URL_TEMPLATE
 META_APP_ID, META_APP_SECRET, WHATSAPP_VERIFY_TOKEN
 SENTRY_DSN, LOG_LEVEL
@@ -48,12 +49,22 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 
 | Workflow | Trigger | Steps |
 | --- | --- | --- |
-| `ci.yml` | PR, push | install → typecheck → lint → unit tests → engine chaos suite → db schema tests → build |
+| `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → tests for all workspaces (engine incl. chaos suite, db schema + RLS). Job `secrets-scan`: gitleaks over full history. Lint and build steps are added as apps land. |
 | `deploy-staging.yml` | Merge to `main` | build images → push to Artifact Registry → run migrations (migrator role) → deploy Cloud Run → smoke test |
 | `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
 
 Branching: trunk-based, short-lived feature branches, PR review required, squash merge. Conventional commits.
+
+**Branch protection for `main`** (set by a repo admin in GitHub → Settings → Branches, or as a ruleset):
+
+- Require a pull request before merging, 1 approval, dismiss stale approvals on new commits.
+- Required status checks: `Typecheck and test`, `Secret scan (gitleaks)`; require branches to be up to date.
+- Allow squash merge only; block force pushes and deletion.
+
+**Dependency updates:** Renovate (`renovate.json`) — weekly (Monday before 09:00 Cairo), pins exact versions, groups non-major dev deps and GitHub Actions, pins action digests, tracks the gitleaks version in `ci.yml`. Requires the Renovate GitHub App installed on the repo.
+
+**Secret scanning:** gitleaks with default rules (`.gitleaks.toml`); only `packages/*/test/fakes/` is allowlisted (dummy provider credentials). A finding fails CI — rotate the secret first, then rewrite or allowlist.
 
 ## 5. Observability
 
@@ -70,6 +81,11 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 | Webhook ack p95 | > 1 s |
 | Order sync lag (store placed → Mizan created) | p95 > 2 min |
 | Shipment status freshness | Active shipments not updated in 24 h |
+| Orders awaiting payment | Bank-transfer or unpaid prepaid orders older than the tenant's deadline |
+| Payment webhooks | Gateway webhook failures or signature rejections > 0 in 15 min |
+| Refunds pending | Refund sent but not confirmed after 72 h |
+| Payout gaps | Expected vs paid difference above threshold per source |
+| Automation errors | Error rate > 20% for any automation (auto-paused) |
 
 `engine.health()` feeds `/v1/admin/integrations/health` and a Monitoring dashboard.
 

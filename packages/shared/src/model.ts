@@ -41,7 +41,23 @@ export interface FulfillmentGroup {
   lineIds: string[];
 }
 
-export type PaymentMode = "cod" | "prepaid" | "unknown";
+/**
+ * How the customer pays. Mizan is not COD-only: every method is first class.
+ * - cod: cash collected by the courier
+ * - prepaid: card, wallet, Apple Pay, gateway checkout
+ * - partial: deposit paid online, balance collected on delivery
+ * - bnpl: Tabby, Tamara, valU and similar (provider pays the merchant)
+ * - bank_transfer: bank deposit, InstaPay, manual transfer (paid before shipping)
+ */
+export const PAYMENT_MODES = ["cod", "prepaid", "partial", "bnpl", "bank_transfer", "unknown"] as const;
+export type PaymentMode = (typeof PAYMENT_MODES)[number];
+
+/** Where the money stands, independent of the platform's own enum. */
+export const PAYMENT_STATUSES = [
+  "unpaid", "authorized", "partially_paid", "paid",
+  "partially_refunded", "refunded", "voided", "failed", "unknown",
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
 export interface CanonicalOrder {
   connector: ConnectorId;
@@ -54,7 +70,16 @@ export interface CanonicalOrder {
   subtotal?: Money;
   shipping?: Money;
   paymentMode: PaymentMode;
+  paymentStatus: PaymentStatus;
+  /** Raw platform financial status, kept for audit. */
   financialStatus?: string;
+  /** Payment gateways / methods named on the order. */
+  gateways: string[];
+  /** Amount received from the customer so far (before refunds). */
+  received?: Money;
+  /** Amount still owed by the customer; for COD this is what the courier collects. */
+  outstanding?: Money;
+  refunded?: Money;
   cancelled: boolean;
   customer: { name: string; phone?: string; email?: string };
   shippingAddress?: Address;
@@ -75,11 +100,14 @@ export interface CanonicalVariant {
   available?: number;
 }
 
+export const PRODUCT_STATUSES = ["active", "draft", "archived", "unknown"] as const;
+export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
+
 export interface CanonicalProduct {
   connector: ConnectorId;
   externalId: string;
   title: string;
-  status: "active" | "draft" | "archived" | "unknown";
+  status: ProductStatus;
   vendor?: string;
   productType?: string;
   tags: string[];
