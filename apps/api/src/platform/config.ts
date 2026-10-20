@@ -28,8 +28,10 @@ export const ConfigSchema = z.object({
   DATABASE_URL_MIGRATOR: optionalString,
   DATABASE_POOL_MAX: z.coerce.number({ error: "must be a number" }).int().min(1).max(100).default(10),
 
-  // Auth (E1-5)
+  // Auth. Without a project id (local dev) every protected route answers 401 auth_not_configured.
   FIREBASE_PROJECT_ID: optionalString,
+  // Owners/admins must use a second factor. Unset = on in production, off elsewhere.
+  AUTH_REQUIRE_MFA: z.stringbool({ error: "must be true or false" }).optional(),
 
   // Secrets (E1-10)
   KMS_KEY_NAME: optionalString,
@@ -41,6 +43,9 @@ export const ConfigSchema = z.object({
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === "production" && !env.DATABASE_URL?.startsWith("postgres")) {
     ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "a postgres:// URL is required in production" });
+  }
+  if (env.NODE_ENV === "production" && !env.FIREBASE_PROJECT_ID) {
+    ctx.addIssue({ code: "custom", path: ["FIREBASE_PROJECT_ID"], message: "is required in production" });
   }
 });
 

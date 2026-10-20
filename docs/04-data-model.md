@@ -22,7 +22,7 @@ The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`
 | --- | --- | --- |
 | Query builder | Kysely, typed by `packages/db/src/schema.ts` | Generated: run `npm run codegen -w @mizan/db` after every migration (a test fails if stale) |
 | Tenant scope | `withTenant(db, tenantId, fn)` / `Database.tenant()` in the API | Transaction with `SET LOCAL ROLE mizan_app` + `set_config('app.tenant_id', …, true)`; RLS filters every query |
-| Platform scope | `withoutTenant` / `Database.platform()` | App role, no tenant: tenant tables return nothing; for tenants/users/memberships lookups |
+| Platform scope | `withoutTenant` / `Database.platform()` | App role, no tenant: tenant tables return nothing; for tenants/users lookups. With `setActingUser(trx, userId)` the `member_self_read` policy (0004) shows that user's own memberships in every tenant (read-only) |
 | Owner access | `Database.kysely` | Migrations and signup bootstrap only |
 | Migrations | `mizan-db migrate` (`DATABASE_URL_MIGRATOR`) | One transaction per file, checksums, advisory lock; PGlite dev/test databases migrate at boot |
 | BIGINT | Parsed to JS `bigint` (pg and PGlite) | Never `number`: KWD amounts in fils pass 2^53 sooner than you think |

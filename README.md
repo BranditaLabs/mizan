@@ -13,7 +13,7 @@ Mizan runs the whole operation in one product: orders from stores, marketplaces 
 | `docs/` — business model, product (22 modules), payments, automations, architecture, data, API, integrations, security, design, infra, backlog | ✅ Written |
 | `design/prototype.html` — UI direction (AR/EN, light/dark) | ✅ Approved |
 | `packages/shared` — canonical types, zod schemas, exact money, EG/KSA/UAE phones | ✅ Built · 122 tests, 100% coverage |
-| `apps/api` — NestJS API: config, redacting logger, problem+json, health, OpenAPI, tenant-scoped DB | 🚧 Foundations · 39 tests |
+| `apps/api` — NestJS API: config, redacting logger, problem+json, OpenAPI, tenant-scoped DB, Firebase auth + roles | 🚧 Foundations · 67 tests |
 | `apps/web`, `apps/ops` | ⏳ Next — see `docs/10-backlog.md` |
 
 ## Start

@@ -2,7 +2,7 @@ import { sql } from "kysely";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPglite, createPgliteDb, pgliteMigrationClient } from "../src/clients.js";
 import { migrate } from "../src/migrate.js";
-import { InvalidTenantError, withoutTenant, withTenant } from "../src/tenant.js";
+import { InvalidTenantError, setActingUser, withoutTenant, withTenant } from "../src/tenant.js";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
 const B = "bbbbbbbb-0000-4000-8000-000000000002";
@@ -69,5 +69,30 @@ describe("withoutTenant", () => {
   it("the app role cannot touch the migration ledger", async () => {
     await expect(withoutTenant(db, (trx) => trx.selectFrom("schema_migrations").selectAll().execute()))
       .rejects.toThrow(/permission denied/);
+  });
+});
+
+describe("member_self_read (migration 0004)", () => {
+  it("a user sees their own memberships in every tenant, and nobody else's", async () => {
+    const [sara, omar] = await db.insertInto("users").values([{ firebase_uid: "fb-sara" }, { firebase_uid: "fb-omar" }]).returning("id").execute();
+    await db.insertInto("memberships").values([
+      { tenant_id: A, user_id: sara!.id, role: "owner" },
+      { tenant_id: B, user_id: sara!.id, role: "agent" },
+      { tenant_id: A, user_id: omar!.id, role: "warehouse" },
+    ]).execute();
+
+    const mine = await withoutTenant(db, async (trx) => {
+      await setActingUser(trx, sara!.id);
+      return trx.selectFrom("memberships").select(["tenant_id", "role"]).orderBy("role").execute();
+    });
+    expect(mine).toEqual([{ tenant_id: B, role: "agent" }, { tenant_id: A, role: "owner" }]);
+
+    // Without app.user_id: nothing. Writes still need the tenant context.
+    expect(await withoutTenant(db, (trx) => trx.selectFrom("memberships").selectAll().execute())).toEqual([]);
+    await expect(withoutTenant(db, async (trx) => {
+      await setActingUser(trx, sara!.id);
+      await trx.insertInto("memberships").values({ tenant_id: B, user_id: omar!.id, role: "owner" }).execute();
+    })).rejects.toThrow(/row-level security/);
+    await expect(withoutTenant(db, (trx) => setActingUser(trx, "nope"))).rejects.toThrow(/UUID/);
   });
 });

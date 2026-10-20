@@ -7,9 +7,11 @@ import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
+import { Public } from "../src/platform/auth/decorators.js";
 import { ProblemError } from "../src/platform/http/problem.js";
 import { ZodPipe } from "../src/platform/http/zod.pipe.js";
 
+@Public()
 @Controller("test")
 class ProbeController {
   @Get("boom")

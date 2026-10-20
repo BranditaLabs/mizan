@@ -40,3 +40,12 @@ export async function withoutTenant<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>
     return fn(trx);
   });
 }
+
+/**
+ * Mark the signed-in user inside a transaction (enables the member_self_read
+ * policy, migration 0004). LOCAL: ends with the transaction.
+ */
+export async function setActingUser(trx: Transaction<DB>, userId: string): Promise<void> {
+  if (!UUID.test(userId)) throw new Error("user id must be a UUID");
+  await sql`SELECT set_config('app.user_id', ${userId}, true)`.execute(trx);
+}

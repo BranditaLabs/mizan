@@ -37,7 +37,10 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...valid, NODE_ENV: "production" })).toThrow(/DATABASE_URL: a postgres:\/\/ URL is required in production/);
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "pglite:./data" })).toThrow(/required in production/);
     expect(() => loadConfig({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL: must be a postgres:\/\/ URL or pglite:<dir>/);
-    expect(loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan" }).NODE_ENV).toBe("production");
+    expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan" })).toThrow(/FIREBASE_PROJECT_ID: is required in production/);
+    expect(loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod" }).NODE_ENV).toBe("production");
+    expect(loadConfig({ ...valid, AUTH_REQUIRE_MFA: "false" }).AUTH_REQUIRE_MFA).toBe(false);
+    expect(() => loadConfig({ ...valid, AUTH_REQUIRE_MFA: "maybe" })).toThrow(/AUTH_REQUIRE_MFA/);
   });
 
   it("never echoes a value, so secrets cannot leak into logs", () => {

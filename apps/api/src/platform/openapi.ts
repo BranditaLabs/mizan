@@ -18,7 +18,11 @@ export function buildOpenApi(app: INestApplication): OpenAPIObject {
     .setDescription("MENA e-commerce operating system. Conventions: docs/05-api.md.")
     .setVersion(APP_VERSION)
     .addBearerAuth({ type: "http", scheme: "bearer", description: "Firebase ID token or mz_live_ API key" })
-    .addGlobalParameters({ name: "Accept-Language", in: "header", required: false, schema: { type: "string", enum: ["ar", "en"] } })
+    .addSecurityRequirements("bearer")
+    .addGlobalParameters(
+      { name: "Accept-Language", in: "header", required: false, schema: { type: "string", enum: ["ar", "en"] } },
+      { name: "X-Tenant-Id", in: "header", required: false, description: "Store id; required on store routes", schema: { type: "string", format: "uuid" } },
+    )
     .build();
   const doc = SwaggerModule.createDocument(app, config);
   doc.components ??= {};

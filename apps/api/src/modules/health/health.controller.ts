@@ -1,5 +1,6 @@
 import { Controller, Get, Inject } from "@nestjs/common";
 import { ApiOkResponse, ApiServiceUnavailableResponse, ApiTags } from "@nestjs/swagger";
+import { Public } from "../../platform/auth/decorators.js";
 import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { APP_VERSION } from "../../version.js";
@@ -15,6 +16,7 @@ export interface HealthResponse {
 
 /** Probes for Cloud Run and the load balancer. Served outside /v1. */
 @ApiTags("platform")
+@Public()
 @Controller("health")
 export class HealthController {
   constructor(@Inject(Database) private readonly db: Database) {}

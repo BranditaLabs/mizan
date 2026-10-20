@@ -1,5 +1,8 @@
 import { Module, type DynamicModule, type Type } from "@nestjs/common";
 import type { DestinationStream } from "pino";
+import { AuthModule } from "./platform/auth/auth.module.js";
+import type { TokenVerifier } from "./platform/auth/token-verifier.js";
+import { UsersModule } from "./modules/users/users.module.js";
 import { APP_FILTER } from "@nestjs/core";
 import type { AppConfig } from "./platform/config.js";
 import { ConfigModule } from "./platform/config.module.js";
@@ -11,6 +14,8 @@ import { HealthModule } from "./modules/health/health.module.js";
 export interface AppOptions {
   /** Where logs go (default stdout). */
   logDestination?: DestinationStream;
+  /** Replaces the Firebase token verifier (tests). */
+  tokenVerifier?: TokenVerifier;
   /** Extra modules (tests). */
   modules?: Array<Type | DynamicModule>;
 }
@@ -20,7 +25,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), HealthModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
     };
   }

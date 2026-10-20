@@ -32,7 +32,7 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
 packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`mizan-db migrate`), generated Kysely types, withTenant (22 tests incl. real Postgres)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
-apps/api/          🚧 SKELETON — NestJS 12 modular monolith: config, redacting logger, problem+json, /health, /v1/openapi.json (E1-3); modules M1–M22 next
+apps/api/          🚧 FOUNDATIONS — NestJS 12: config, redacting logger, problem+json, OpenAPI, tenant-scoped DB, Firebase auth guard + roles, /v1/me; modules M1–M22 next
 apps/web/          ⏳ planned — Next.js dashboard, Arabic + English, RTL; visual reference: design/prototype.html
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)

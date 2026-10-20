@@ -11,7 +11,7 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | Tenant A reads tenant B's data | Postgres RLS (FORCE) on every table; app role without BYPASSRLS; tenant set per transaction; tests in `packages/db/test` |
 | Stolen provider tokens (Shopify, Bosta, Meta) | Envelope encryption (Cloud KMS) in `secrets`; decrypted only in worker memory; rotated on disconnect; never logged |
 | Forged webhooks | Shopify HMAC, Meta `X-Hub-Signature-256`, per-connection tokens for unsigned providers; **thin webhook, fat fetch** (re-read from API before acting) |
-| Account takeover (owner) | Firebase Auth; 2FA required for owner and admin; session revocation; login alerts |
+| Account takeover (owner) | Firebase Auth; 2FA required for owner and admin (✅ enforced by `AuthGuard` from the token's `sign_in_second_factor`, `AUTH_REQUIRE_MFA`, on by default in production); session revocation (ID tokens verified locally, 1 h lifetime; disabling a membership takes effect on the next request; refresh-token revocation check is a follow-up); login alerts |
 | Insider / support access | Platform admin access is just-in-time, audited (`audit_log`), and shown to the merchant |
 | PII leakage via logs / analytics | Structured logger with PII redaction (phones, names, addresses, tokens); analytics events carry IDs only |
 | Mass export | Export endpoints rate-limited, owner/finance only, audited |
