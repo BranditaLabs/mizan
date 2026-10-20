@@ -8,7 +8,8 @@ import { SecretsService } from "../secrets/secrets.service.js";
 /** Columns holding personal data; the name is part of each value's AAD. */
 export type PiiColumn =
   | "customers.name" | "customers.phone_e164" | "customers.email"
-  | "orders.ship_name" | "orders.ship_phone" | "orders.ship_line1" | "orders.ship_line2";
+  | "orders.ship_name" | "orders.ship_phone" | "orders.ship_line1" | "orders.ship_line2"
+  | "privacy_requests.result";
 
 const PREFIX = "pii:v1:";
 

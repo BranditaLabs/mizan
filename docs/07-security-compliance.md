@@ -57,6 +57,13 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 
 All three verified with the Shopify HMAC; acknowledged with 200 immediately; processed by a job; completion logged.
 
+✅ **Built (E3-3):** `POST /webhooks/shopify/gdpr` verifies the HMAC, parses through the engine (`parseComplianceWebhook`, `Resolver`), and records one `privacy_requests` row per store that ever held the shop (deduplicated by Shopify's event id, due in 30 days). The row keeps ids and a phone **hash** only, never the email or phone Shopify sent. The `privacy.shopify` consumer then, in the store's transaction:
+
+- **customers/redact:** personal data (`ship_name/phone/line1/line2`, coordinates) of the named orders and of every order from this shop of the customer matched by phone hash is cleared; the order keeps totals, payments, statuses and city/province/country; `orders.pii_redacted_at` stops the projector from writing it back. A customer known **only** through this shop loses name, phone, email, phone hash and WhatsApp opt-in; one also known from another channel keeps them (that data came from the store's other channel). Engine records (`mz_records`) of those orders are scrubbed the same way.
+- **shop/redact:** the same for every order of the shop and every Shopify-only customer. Financial facts stay with the merchant's account: they are the merchant's own business records; deleting the whole account is a separate request. `[CONFIRM with counsel]`
+- **customers/data_request:** the customer's data from this shop is compiled, encrypted with the store's PII key, and listed for owners/admins at `GET /v1/privacy-requests`; every download (`/export`) is audited. Notifying the merchant comes with M13 notifications.
+- Matching by email is not possible (emails are encrypted with random IVs): orders named by Shopify plus the phone hash cover the customer. Every step writes `privacy.request_received` / `privacy.request_completed` to the audit log and emits `privacy.requested` / `privacy.completed`.
+
 ## 4. Risk network (M11) privacy design
 
 - Shared data = salted phone hash + outcome (delivered / refused / fake) + date + region. **No tenant id, no name, no address, no order value.**

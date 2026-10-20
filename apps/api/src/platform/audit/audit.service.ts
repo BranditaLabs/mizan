@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = [
   "connection.connected", "connection.disconnected", "connection.secret_rotated",
   "integration.job_replayed", "integration.city_resolved",
   "customer.pii_viewed",
+  "privacy.request_received", "privacy.request_completed", "privacy.export_downloaded",
   "export.created",
   "secret.created", "secret.rotated", "secret.deleted",
 ] as const;

@@ -168,6 +168,7 @@ export interface Customers {
   whatsapp_opt_in: Generated<boolean>;
   opt_in_at: Timestamp | null;
   created_at: Generated<Timestamp>;
+  redacted_at: Timestamp | null;
 }
 
 export interface Disputes {
@@ -443,6 +444,7 @@ export interface Orders {
   refunded_minor: Generated<Int8>;
   balance_minor: GeneratedAlways<Int8 | null>;
   location_id: string | null;
+  pii_redacted_at: Timestamp | null;
 }
 
 export interface PaymentLinks {
@@ -504,6 +506,10 @@ export interface PrivacyRequests {
   due_at: Timestamp;
   completed_at: Timestamp | null;
   created_at: Generated<Timestamp>;
+  connection_id: string | null;
+  dedupe_key: string | null;
+  result: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Products {

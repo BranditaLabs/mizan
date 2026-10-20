@@ -56,6 +56,13 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | GET / POST / DELETE | `/api-keys` | Manage API keys (owner/admin) |
 | GET | `/audit-log` | ✅ Who did what in this store, newest first (owner/admin). `?limit≤200&cursor=&action=member.` (exact or prefix) |
 
+### Privacy (✅ E3-3)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/privacy-requests` | Owner/admin: requests for this store, newest first: `{ id, source, status, dueAt, completedAt, createdAt, hasExport }` |
+| GET | `/privacy-requests/{id}/export` | Owner/admin: the compiled data of a `customers/data_request` (decrypted JSON); audited `privacy.export_downloaded`; `409` when the request has no export |
+
 ### Connections
 
 | Method | Path | Purpose |
@@ -165,7 +172,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | Path | Verification |
 | --- | --- |
 | `POST /webhooks/shopify` | `X-Shopify-Hmac-SHA256` over raw body with app secret; dedupe `X-Shopify-Event-Id` |
-| `POST /webhooks/shopify/gdpr` | Same HMAC; topics `customers/data_request`, `customers/redact`, `shop/redact` |
+| `POST /webhooks/shopify/gdpr` | ✅ Same HMAC; topics `customers/data_request`, `customers/redact`, `shop/redact` → `{ accepted, recorded }` (one request per store that held the shop; redeliveries record nothing). Set as the app's compliance URL |
 | `POST /webhooks/bosta/{connectionId}?token=…` | Per-connection secret token (Bosta does not sign) |
 | `POST /webhooks/whatsapp` | `X-Hub-Signature-256` with app secret; GET verify challenge |
 | `POST /webhooks/payments/{provider}/{connectionId}` | Provider signature (e.g. Paymob HMAC, Stripe signature); re-read the transaction from the provider before acting |

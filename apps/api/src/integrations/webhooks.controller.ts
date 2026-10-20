@@ -2,6 +2,7 @@ import { Controller, HttpCode, Inject, Param, Post, Query, Req, Res } from "@nes
 import { ApiExcludeController } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { Public } from "../platform/auth/decorators.js";
+import { PrivacyService } from "../modules/privacy/privacy.service.js";
 import { EngineRegistry } from "./engine-registry.js";
 import { WebhookRouter } from "./webhook-router.js";
 
@@ -22,7 +23,16 @@ export class WebhooksController {
   constructor(
     @Inject(WebhookRouter) private readonly router: WebhookRouter,
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
+    @Inject(PrivacyService) private readonly privacy: PrivacyService,
   ) {}
+
+  /** Shopify compliance webhooks (one URL for the app, set in its configuration). Declared before the per-connection route. */
+  @Post("shopify/gdpr")
+  @HttpCode(200)
+  async shopifyCompliance(@Req() req: Request, @Res() res: Response) {
+    const result = await this.privacy.receiveShopify(headersOf(req), rawBody(req));
+    return res.status(result.status).json(result.body);
+  }
 
   @Post("shopify/:connectionId")
   @HttpCode(200)

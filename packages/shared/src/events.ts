@@ -8,6 +8,7 @@ export const DOMAIN_EVENT_TYPES = [
   "tenant.created",
   "member.invited", "member.joined", "member.updated", "member.removed",
   "connection.connected", "connection.disconnected",
+  "privacy.requested", "privacy.completed",
   // M1 Orders
   "order.created", "order.updated", "order.cancelled", "order.duplicate_found",
   // M2 Confirmation

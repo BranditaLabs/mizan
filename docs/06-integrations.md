@@ -20,7 +20,8 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | Payment rules for every courier | ✅ Built and tested (`cashToCollect`, exact money, hold unpaid orders) | `packages/engine/src/core/payments.ts` |
 | Shopify OAuth install | ✅ E3-1: install / App Store entry / callback / claim, token exchange through `send()` (`exchangeShopifyCode`), fake OAuth in `FakeShopify` | `apps/api/src/modules/connections/shopify`, `packages/engine/src/connectors/shopify/oauth.ts` |
 | Shopify webhook registration | ✅ E3-2: `connection.connected` → `shopify.syncWebhooks` engine job (converges subscriptions, safe to repeat) | `ShopifyConnector.syncWebhooks`, `apps/api/src/integrations/shopify-webhooks.consumer.ts` |
-| Shopify GDPR webhooks, uninstall, backfill | ⏳ Backlog E3-3 … E3-5 | `apps/api/src/modules/connections` |
+| Shopify compliance webhooks | ✅ E3-3: `/webhooks/shopify/gdpr` → `privacy_requests` → redact / compile (docs/07 §3) | `parseComplianceWebhook`, `apps/api/src/modules/privacy` |
+| Shopify uninstall, backfill | ⏳ Backlog E3-4, E3-5 | `apps/api/src/modules/connections` |
 | EasyOrders, WooCommerce, LightFunnels | ⏳ MVP backlog | use `/new-connector` |
 | J&T, Mylerz | ⏳ MVP / V2 | — |
 | WhatsApp Cloud API | ⏳ MVP backlog | — |

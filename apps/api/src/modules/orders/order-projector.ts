@@ -2,7 +2,8 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import { cashToCollect, type ShipBlockReason } from "@mizan/engine";
-import { normalizePhone, toMinor, type CanonicalOrder, type PhoneCountry } from "@mizan/shared";
+import { normalizePhone, toMinor, type CanonicalOrder } from "@mizan/shared";
+import { phoneCountryOf } from "../../platform/pii/phone-country.js";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { PiiCipher, type TenantPii } from "../../platform/pii/pii-cipher.js";
@@ -13,6 +14,9 @@ const CANCELLABLE = new Set(["new", "pending_confirmation", "confirmed"]);
 const PAYMENT_STATUSES = new Set(["unpaid", "authorized", "partially_paid", "paid", "partially_refunded", "refunded", "failed", "voided"]);
 
 /** Business fields compared to decide whether an update is worth an event. */
+/** Personal data columns of an order, as they are after redaction. */
+export const REDACTED_ORDER = { ship_name: null, ship_phone: null, ship_line1: null, ship_line2: null, ship_lat: null, ship_lng: null } as const;
+
 const TRACKED = ["status", "payment_mode", "payment_status", "total_minor", "paid_minor", "refunded_minor", "cod_minor", "tags"] as const;
 const PAYMENT_FIELDS = new Set<string>(["payment_status", "paid_minor", "refunded_minor"]);
 
@@ -58,17 +62,18 @@ export class OrderProjector {
   async project(tenantId: string, connectionId: string, order: CanonicalOrder): Promise<ProjectResult> {
     return this.db.tenant(tenantId, async (trx) => {
       const pii = await this.cipher.forTenant(trx, tenantId);
-      const tenant = await trx.selectFrom("tenants").select(["settings", "country"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
-      const settings = (typeof tenant.settings === "string" ? JSON.parse(tenant.settings) : tenant.settings ?? {}) as { phoneCountry?: PhoneCountry };
-      const phoneCountry: PhoneCountry = settings.phoneCountry ?? (["EG", "SA", "AE"].includes(tenant.country) ? (tenant.country as PhoneCountry) : "EG");
+      const phoneCountry = await phoneCountryOf(trx, tenantId);
+
+      const existing = await trx.selectFrom("orders").select(["id", "customer_id", "pii_redacted_at", ...TRACKED])
+        .where("connection_id", "=", connectionId).where("external_id", "=", order.externalId).forUpdate().executeTakeFirst();
+      // A redacted order (E3-3) keeps its business facts; its personal data never comes back.
+      const redacted = Boolean(existing?.pii_redacted_at);
 
       const rawPhone = order.shippingAddress?.phone ?? order.customer.phone;
-      const phone = normalizePhone(rawPhone, phoneCountry);
-      const customerId = phone ? await this.upsertCustomer(trx, tenantId, pii, order, phone.e164) : null;
+      const phone = redacted ? undefined : normalizePhone(rawPhone, phoneCountry);
+      const customerId = redacted ? existing!.customer_id : phone ? await this.upsertCustomer(trx, tenantId, pii, order, phone.e164) : null;
 
-      const values = this.orderValues(order, pii, phone?.e164 ?? rawPhone ?? null);
-      const existing = await trx.selectFrom("orders").select(["id", ...TRACKED])
-        .where("connection_id", "=", connectionId).where("external_id", "=", order.externalId).forUpdate().executeTakeFirst();
+      const values = { ...this.orderValues(order, pii, phone?.e164 ?? rawPhone ?? null), ...(redacted ? REDACTED_ORDER : {}) };
 
       if (!existing) {
         const row = await trx.insertInto("orders").values({
@@ -243,7 +248,7 @@ export class OrderProjector {
   }
 
   /** Ids and business facts only: no names, phones or addresses in events. */
-  private eventData(order: CanonicalOrder, status: string, v: ReturnType<OrderProjector["orderValues"]>) {
+  private eventData(order: CanonicalOrder, status: string, v: Pick<ReturnType<OrderProjector["orderValues"]>, "currency" | "total_minor" | "cod_minor" | "payment_mode" | "payment_status">) {
     return {
       number: order.number, status, source: order.connector, externalId: order.externalId,
       currency: v.currency, totalMinor: String(v.total_minor), codMinor: String(v.cod_minor),

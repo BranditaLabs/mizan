@@ -166,6 +166,18 @@ export class FakeShopify {
     return { ...q, hmac: signShopifyQuery(q, this.secret) };
   }
 
+  /** A compliance webhook as Shopify sends it to the app's single compliance URL. */
+  complianceWebhook(topic: "customers/data_request" | "customers/redact" | "shop/redact", payload: Record<string, unknown>, eventId = `evt-${++this.seq}`) {
+    const body = JSON.stringify({ shop_id: 954889, shop_domain: this.host, ...payload });
+    return {
+      body,
+      headers: {
+        "X-Shopify-Topic": topic, "X-Shopify-Shop-Domain": this.host, "X-Shopify-Event-Id": eventId, "X-Shopify-Webhook-Id": `wh-${this.seq}`,
+        "X-Shopify-API-Version": this.servedVersion, "X-Shopify-Hmac-SHA256": signShopify(body, this.secret),
+      } as Record<string, string>,
+    };
+  }
+
   /** An App Store launch / install link to the app URL, signed by Shopify. */
   launch(at = this.clock.now()): Record<string, string> {
     const q: Record<string, string> = { shop: this.host, timestamp: String(Math.floor(at / 1000)) };
