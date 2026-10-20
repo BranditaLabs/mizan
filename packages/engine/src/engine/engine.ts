@@ -47,8 +47,15 @@ export interface EngineOptions {
     onAwaitingPayment?: (order: CanonicalOrder, reason: ShipBlockReason) => Promise<void>;
     /** A connector learned something new (status code, city alias, query variant). Called only on change. */
     onLearned?: (provider: "shopify" | "bosta", state: ShopifyLearned | BostaLearned) => Promise<void>;
+    /** A product read from the store (webhook, refetch or backfill page), without `raw`. Must be idempotent. */
+    onProduct?: (product: CanonicalProduct) => Promise<void>;
+    /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
+    onAccessChecked?: (provider: "bosta", result: AccessCheck) => Promise<void>;
   };
 }
+
+/** The outcome of checking a courier key: a refusal is final (the merchant must fix the key), not retried. */
+export type AccessCheck = { ok: true } | { ok: false; reason: "auth" | "permission"; message: string };
 
 export interface WebhookResult {
   status: number;
@@ -272,6 +279,15 @@ export class MizanEngine {
   }
 
   /** The job registerShopifyWebhooks queues, for callers that enqueue inside their own transaction. */
+  /**
+   * Check a newly saved courier key with a harmless authenticated read (a delivery search for a
+   * reference that never exists). Runs as a job, never in a request: network trouble retries,
+   * a refused key ends the job and reports through hooks.onAccessChecked.
+   */
+  static bostaAccessCheckJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "bosta.checkAccess", connection: "bosta", payload: {}, idempotencyKey: `bosta:access:${runKey}` };
+  }
+
   static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
   }
@@ -400,7 +416,21 @@ export class MizanEngine {
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
       "shopify.backfill": (j) => this.backfillPage(j.payload),
+      "bosta.checkAccess": () => this.checkBostaAccess(),
     };
+  }
+
+  private async checkBostaAccess() {
+    let result: AccessCheck;
+    try {
+      await this.bosta.findByReference(`mizan-access-check-${this.now()}`);
+      result = { ok: true };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || (e.kind !== "auth" && e.kind !== "permission")) throw e; // retry the rest
+      result = { ok: false, reason: e.kind, message: e.message };
+    }
+    await this.runHook(() => this.opts.hooks?.onAccessChecked?.("bosta", result));
+    this.emit("bosta.access_checked", { ok: result.ok, ...(result.ok ? {} : { reason: result.reason }) });
   }
 
   private async syncShopifyWebhooks() {
@@ -572,6 +602,7 @@ export class MizanEngine {
     }
 
     await this.store.put<ProductState>("product-state", productId, { ...state, snapshot: { ...product, raw: undefined } }, this.now());
+    await this.runHook(() => this.opts.hooks?.onProduct?.({ ...product, raw: undefined }));
     this.emit("product.ingested", { productId, title: product.title, status: product.status });
     if (restore.length) {
       await this.enqueue("shopify.pushProduct", { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);

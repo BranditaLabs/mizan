@@ -37,6 +37,12 @@ export class MetricsService {
     name: "mizan_rate_limited_total", help: "Requests refused by a rate limit", labelNames: ["policy"] as const, registers: [this.registry],
   });
 
+  /** Signup → first order synced (E4-5): the onboarding's one number. Observed once per store. */
+  readonly timeToFirstValue = new Histogram({
+    name: "mizan_time_to_first_value_seconds", help: "Time from store signup to its first synced order",
+    buckets: [300, 900, 3600, 4 * 3600, 86_400, 3 * 86_400, 7 * 86_400, 30 * 86_400], registers: [this.registry],
+  });
+
   readonly idempotentReplays = new Counter({
     name: "mizan_idempotent_replays_total", help: "Responses replayed for a repeated Idempotency-Key", registers: [this.registry],
   });

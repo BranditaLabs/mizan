@@ -1,6 +1,7 @@
 import { Global, Logger, Module, type DynamicModule } from "@nestjs/common";
 import { ConnectionLifecycle } from "./connection-lifecycle.js";
 import { ConnectionResolver } from "./connection-resolver.js";
+import { CourierAccess } from "./courier-access.js";
 import { ENGINE_EVENT_SINK, ENGINE_RUNTIME, EngineRegistry, defaultRuntimeFactory, type EngineEventSink, type RuntimeFactory } from "./engine-registry.js";
 import { EngineJobRunner } from "./engine-runner.js";
 import { ShopifyConnectedConsumer } from "./shopify-connected.consumer.js";
@@ -24,6 +25,7 @@ export class IntegrationsModule {
         EngineJobRunner,
         ShopifyConnectedConsumer,
         ConnectionLifecycle,
+        CourierAccess,
         { provide: ENGINE_RUNTIME, useValue: runtime },
         { provide: ENGINE_EVENT_SINK, useValue: sink },
       ],

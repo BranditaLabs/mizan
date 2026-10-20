@@ -5,6 +5,8 @@ import { tenantQueryClient } from "@mizan/db";
 import { APP_CONFIG, type AppConfig } from "../platform/config.js";
 import { Database } from "../platform/db/database.js";
 import { ConnectionResolver, type ResolvedConnections } from "./connection-resolver.js";
+import { ProductProjector } from "../modules/catalog/product-projector.js";
+import { CourierAccess } from "./courier-access.js";
 import { OrderProjector } from "../modules/orders/order-projector.js";
 
 /** Builds the engine runtime for a tenant (tests inject fake providers here). */
@@ -59,6 +61,8 @@ export class EngineRegistry {
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
     @Inject(ENGINE_EVENT_SINK) private readonly sink: EngineEventSink,
     @Inject(OrderProjector) private readonly orders: OrderProjector,
+    @Inject(ProductProjector) private readonly products: ProductProjector,
+    @Inject(CourierAccess) private readonly courierAccess: CourierAccess,
   ) {}
 
   async get(tenantId: string): Promise<TenantEngine> {
@@ -117,6 +121,13 @@ export class EngineRegistry {
         // Every order the engine ingests lands in Mizan's orders table before the job completes.
         onOrder: async (order) => {
           await this.orders.project(tenantId, c.shopify.connectionId, order);
+        },
+        // Every product the engine reads lands in Mizan's catalogue (costs stay Mizan's).
+        onProduct: async (product) => {
+          await this.products.project(tenantId, c.shopify.connectionId, product);
+        },
+        onAccessChecked: async (provider, result) => {
+          if (c.bosta) await this.courierAccess.checked(tenantId, c.bosta.connectionId, provider, result);
         },
         onAwaitingPayment: async (order, reason) => {
           await this.orders.awaitingPayment(tenantId, c.shopify.connectionId, order, reason);

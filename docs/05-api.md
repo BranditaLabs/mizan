@@ -54,6 +54,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | DELETE | `/invitations/{id}` | ✅ Revoke a pending invitation (owner/admin) |
 | POST | `/invitations/{id}/accept` | ✅ Signed in, no `X-Tenant-Id`. Only when the caller's **verified** email or OTP phone matches; otherwise `invitation_not_found` (also for revoked/accepted/expired; 7-day TTL). `GET /me` lists `invitations` addressed to the caller |
 | GET / POST / DELETE | `/api-keys` | Manage API keys (owner/admin) |
+| GET / PATCH | `/onboarding` | ✅ Owner/admin (E4-5): steps `store` (with the history import's progress), `courier`, `costs`, `firstOrder`; `milestones` from product events; `timeToFirstValueS` (signup → first synced order); `complete`; `dismissed`. PATCH `{ skip?: { courier?, costs? }, dismissed? }` |
+| GET / PUT | `/products/variants/costs` | ✅ Owner/admin/ops/finance: variants with price and cost (`null` until entered), `?missingCost=true&limit&cursor`, counts; PUT `{ items: [{ variantId, cost: "250.50" }] }` (≤ 500, decimal strings, variant currency) → `{ updated, missingCost }`. Store syncs never overwrite a cost |
 | GET | `/audit-log` | ✅ Who did what in this store, newest first (owner/admin). `?limit≤200&cursor=&action=member.` (exact or prefix) |
 
 ### Privacy (✅ E3-3)
@@ -67,12 +69,13 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/connections` | All connections and health (circuit, last sync, drift count) |
+| GET | `/connections` | ✅ Owner/admin/ops manager: `{ data: [{ id, kind, provider, account, status, reason, verifiedAt, updatedAt }] }` (engine health stays in `/admin/integrations/health`) |
 | GET | `/connections/shopify/install?shop=…` | ✅ Owner/admin: `{ authorizeUrl }` for the browser. `422 invalid_shop` unless `*.myshopify.com`; `503 shopify_not_configured` |
 | GET | `/connections/shopify/entry` | ✅ Public, the app URL in the Partner Dashboard (App Store install, launch from Shopify admin): Shopify `hmac` verified → 302 to Shopify's authorize page |
 | GET | `/connections/shopify/callback` | ✅ Public, the redirect URL: `hmac`, signed `state` (10 min, bound to the shop) verified, code exchanged, token kept sealed as a pending install → 302 to `WEB_URL/integrations/shopify/connect?install=…&shop=…`, or `?error=` `invalid_signature` · `invalid_shop` · `invalid_state` · `install_cancelled` · `shopify_unavailable` · `install_failed` · `scopes_missing` |
 | POST | `/connections/shopify/claim` | ✅ Owner/admin: `{ install }` → `{ connection, reconnected }`. Errors: `install_not_found` (404, unknown or used), `install_expired` (410, 1 h), `install_not_yours` (403, started by another user or store), `shop_connected_elsewhere` (409), `store_limit_reached` (409, one Shopify store per account until E2-7) |
-| POST | `/connections/{provider}` | Key-based connect (Bosta, EasyOrders, WooCommerce keys) |
+| POST | `/connections/bosta` | ✅ Owner/admin: `{ apiKey }` → connection `pending`; the key is stored encrypted with a generated webhook token and checked in the background (engine job `bosta.checkAccess`, a harmless authenticated delivery search): `active` + `connection.connected`, or `needs_attention` (`key_refused`, `key_lacks_permission`) + `connection.needs_attention`. Posting again replaces the key. `409 store_not_connected` before the store |
+| POST | `/connections/{provider}` | Key-based connect for the next providers (EasyOrders, WooCommerce keys) |
 | POST | `/connections/{id}/test` | Live credential check |
 | DELETE | `/connections/{id}` | Disconnect, revoke webhooks, delete secret |
 

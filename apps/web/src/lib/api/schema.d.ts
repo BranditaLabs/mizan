@@ -1,6 +1,38 @@
 /* Generated from apps/api/openapi.json by `npm run gen:api -w @mizan/web`. Do not edit. */
 
 export interface paths {
+    "/v1/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OnboardingController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OnboardingController_update"];
+        trace?: never;
+    };
+    "/v1/products/variants/costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CatalogController_list"];
+        put: operations["CatalogController_set"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -177,6 +209,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConnectionsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/bosta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConnectionsController_saveBosta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/integrations/health": {
         parameters: {
             query?: never;
@@ -338,10 +402,52 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        BostaKey: {
+            /** @description From Bosta's dashboard (Settings → API integration); stored encrypted, never shown again */
+            apiKey: string;
+        };
         CityResolved: {
             /** @enum {boolean} */
             saved: true;
             replayed: boolean;
+        };
+        Connection: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "store" | "courier" | "whatsapp" | "ads" | "payment" | "tax";
+            provider: string;
+            account: string | null;
+            /** @enum {string} */
+            status: "pending" | "active" | "needs_attention" | "disconnected";
+            /** @description key_refused, key_lacks_permission, app_uninstalled … */
+            reason: string | null;
+            /** Format: date-time */
+            verifiedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Connections: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "store" | "courier" | "whatsapp" | "ads" | "payment" | "tax";
+                provider: string;
+                account: string | null;
+                /** @enum {string} */
+                status: "pending" | "active" | "needs_attention" | "disconnected";
+                /** @description key_refused, key_lacks_permission, app_uninstalled … */
+                reason: string | null;
+                /** Format: date-time */
+                verifiedAt: string | null;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+        };
+        CostsUpdated: {
+            updated: number;
+            missingCost: number;
         };
         CreateTenant: {
             name: string;
@@ -498,6 +604,66 @@ export interface components {
             amount: string;
             currency: string;
         };
+        Onboarding: {
+            steps: {
+                store: {
+                    /** @enum {string} */
+                    status: "todo" | "done";
+                    /** Format: uuid */
+                    connectionId: string | null;
+                    shop: string | null;
+                    import: {
+                        /** @enum {string} */
+                        status: "running" | "done";
+                        /** @enum {string} */
+                        phase: "orders" | "products" | "done";
+                        orders: number;
+                        products: number;
+                    } | null;
+                };
+                courier: {
+                    /** @enum {string} */
+                    status: "todo" | "checking" | "done" | "needs_attention" | "skipped";
+                    provider: string | null;
+                    /** @description key_refused, key_lacks_permission */
+                    reason: string | null;
+                };
+                costs: {
+                    /** @enum {string} */
+                    status: "todo" | "done" | "skipped";
+                    variants: number;
+                    missingCost: number;
+                };
+                firstOrder: {
+                    /** @enum {string} */
+                    status: "waiting" | "done";
+                    /** Format: uuid */
+                    orderId: string | null;
+                    number: string | null;
+                    total: {
+                        amount: string;
+                        currency: string;
+                    } | null;
+                    /** Format: date-time */
+                    at: string | null;
+                };
+            };
+            milestones: {
+                /** Format: date-time */
+                signup: string | null;
+                /** Format: date-time */
+                storeConnected: string | null;
+                /** Format: date-time */
+                courierConnected: string | null;
+                /** Format: date-time */
+                costsEntered: string | null;
+                /** Format: date-time */
+                firstOrderSynced: string | null;
+            };
+            timeToFirstValueS: number | null;
+            complete: boolean;
+            dismissed: boolean;
+        };
         /** @description The customer's data compiled for a data request (JSON) */
         PrivacyExport: unknown;
         PrivacyRequests: {
@@ -540,6 +706,13 @@ export interface components {
             text: string;
             cityId: string;
             jobId?: string;
+        };
+        SetCosts: {
+            items: {
+                /** Format: uuid */
+                variantId: string;
+                cost: string;
+            }[];
         };
         ShopifyClaim: {
             install: string;
@@ -631,6 +804,36 @@ export interface components {
             /** @enum {string} */
             status?: "active" | "disabled";
         };
+        UpdateOnboarding: {
+            skip?: {
+                courier?: boolean;
+                costs?: boolean;
+            };
+            dismissed?: boolean;
+        };
+        VariantCostPage: {
+            data: {
+                /** Format: uuid */
+                variantId: string;
+                productTitle: string;
+                variantTitle: string | null;
+                sku: string;
+                price: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description null until entered; 0 is a real cost */
+                cost: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
+            nextCursor: string | null;
+            counts: {
+                variants: number;
+                missingCost: number;
+            };
+        };
     };
     responses: never;
     parameters: never;
@@ -640,6 +843,159 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    OnboardingController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Setup steps, milestones and time-to-first-value */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Onboarding"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OnboardingController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOnboarding"];
+            };
+        };
+        responses: {
+            /** @description The setup after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Onboarding"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CatalogController_list: {
+        parameters: {
+            query?: {
+                missingCost?: "true" | "false";
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Variants with their price and cost, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VariantCostPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CatalogController_set: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCosts"];
+            };
+        };
+        responses: {
+            /** @description Saved; how many variants still have no cost */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostsUpdated"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     HealthController_live: {
         parameters: {
             query?: never;
@@ -1124,6 +1480,85 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConnectionsController_list: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Store, courier and other connections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connections"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConnectionsController_saveBosta: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BostaKey"];
+            };
+        };
+        responses: {
+            /** @description Saved; status pending until the key is checked */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

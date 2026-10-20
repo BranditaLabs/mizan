@@ -26,7 +26,7 @@ Stored in `automations` (JSON definition, versioned) with one `automation_runs` 
 | Service | `conversation.created`, `conversation.sla_breached`, `conversation.resolved`, `csat.received` | `conversation.assign`, `conversation.reply`, `conversation.tag` |
 | Money and finance | `settlement.gap_found`, `cash.overdue`, `channel.payout_received`, `period.closed`, `einvoice.rejected` | `notify.team`, `export.journal`, `einvoice.submit`, `expense.create` |
 | Growth | `customer.segment_entered`, `campaign.delivered`, `loyalty.tier_changed`, `metric.threshold_crossed` | `campaign.send`, `loyalty.add_points`, `audience.sync`, `report.send` |
-| Platform | `schedule.cron`, `webhook.received`, `automation.run_failed` | `webhook.call`, `automation.run`, `sheet.append_row` |
+| Platform | `schedule.cron`, `webhook.received`, `automation.run_failed`, `connection.connected`, `connection.disconnected`, `connection.needs_attention` (a courier key was refused, E4-5) | `webhook.call`, `automation.run`, `sheet.append_row` |
 
 Each module spec lists its own events and actions in section 05. The catalogue is served at `GET /v1/catalog` and must be generated from code (one registry), never hand-maintained in two places.
 

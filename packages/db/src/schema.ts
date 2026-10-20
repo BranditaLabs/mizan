@@ -512,6 +512,16 @@ export interface PrivacyRequests {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ProductEvents {
+  id: Generated<Int8>;
+  tenant_id: string;
+  name: string;
+  dedupe_key: string | null;
+  user_id: string | null;
+  data: Generated<Json>;
+  occurred_at: Generated<Timestamp>;
+}
+
 export interface Products {
   id: Generated<string>;
   tenant_id: string;
@@ -520,6 +530,8 @@ export interface Products {
   status: Generated<string>;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  connection_id: string | null;
+  external_id: string | null;
 }
 
 export interface PurchaseOrderLines {
@@ -810,6 +822,7 @@ export interface Variants {
   weight_grams: number | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  cogs_set_at: Timestamp | null;
 }
 
 export interface Warehouses {
@@ -877,6 +890,7 @@ export interface DB {
   payments: Payments;
   pos_shifts: PosShifts;
   privacy_requests: PrivacyRequests;
+  product_events: ProductEvents;
   products: Products;
   purchase_order_lines: PurchaseOrderLines;
   purchase_orders: PurchaseOrders;

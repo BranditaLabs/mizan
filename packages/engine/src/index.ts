@@ -1,5 +1,5 @@
 /** @mizan/engine — self-healing commerce and courier connectors (Shopify, Bosta). */
-export { MizanEngine, SHOPIFY_WEBHOOK_TOPICS, type BackfillProgress, type EngineOptions, type Owner, type WebhookResult } from "./engine/engine.js";
+export { MizanEngine, SHOPIFY_WEBHOOK_TOPICS, type AccessCheck, type BackfillProgress, type EngineOptions, type Owner, type WebhookResult } from "./engine/engine.js";
 export { SqlStore, STANDALONE_TENANT, type SqlClient, type StoreScope } from "./sync/sql-store.js";
 export { MemoryStore, type JobStatus, type NewJob, type OutboxJob, type Store } from "./sync/store.js";
 export { OutboxWorker, DEFAULT_WORKER, type JobOutcome, type WorkerOptions } from "./sync/worker.js";

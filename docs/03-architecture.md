@@ -129,7 +129,9 @@ sequenceDiagram
 | `period.closed` / `einvoice.rejected` | M19 | M13 |
 | `metric.threshold_crossed` | M20 | M13 |
 | `privacy.requested` / `privacy.completed` | Privacy (E3-3) | ✅ `privacy.shopify` (redact / compile), M13 (notify the owner) |
-| `connection.connected` / `connection.disconnected` | Connections (E3) | ✅ `integrations.shopify-connected` (queues webhook registration E3-2 and history import E3-5 as engine jobs), M13 |
+| `connection.connected` / `connection.disconnected` | Connections (E3; a courier emits `connected` once its key passed the check, E4-5) | ✅ `integrations.shopify-connected` (queues webhook registration E3-2 and history import E3-5 as engine jobs), ✅ `onboarding.product-events`, M13 |
+| `connection.needs_attention` | Connections (E4-5: courier key refused) | M13 (notify the owner) |
+| `tenant.created` / `order.created` | Tenants / M1 | ✅ `onboarding.product-events` (milestones `signup`, `first_order_synced`) |
 
 Full catalogue with actions: `docs/13-automation-platform.md`.
 

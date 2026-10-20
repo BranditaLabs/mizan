@@ -11,7 +11,8 @@ import { redactDeep } from "../logging/redact.js";
 export const AUDIT_ACTIONS = [
   "tenant.created",
   "member.invited", "member.invitation_revoked", "member.joined", "member.updated", "member.removed",
-  "connection.connected", "connection.disconnected", "connection.secret_rotated",
+  "connection.connected", "connection.disconnected", "connection.secret_rotated", "connection.key_saved", "connection.needs_attention",
+  "catalog.costs_updated", "onboarding.updated",
   "integration.job_replayed", "integration.city_resolved",
   "customer.pii_viewed",
   "privacy.request_received", "privacy.request_completed", "privacy.export_downloaded",

@@ -5,6 +5,8 @@ import type { TokenVerifier } from "./platform/auth/token-verifier.js";
 import { MembersModule } from "./modules/members/members.module.js";
 import { TenantsModule } from "./modules/tenants/tenants.module.js";
 import { OrdersModule } from "./modules/orders/orders.module.js";
+import { CatalogModule } from "./modules/catalog/catalog.module.js";
+import { OnboardingModule } from "./modules/onboarding/onboarding.module.js";
 import { ConnectionsModule } from "./modules/connections/connections.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
@@ -44,7 +46,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, OnboardingModule, CatalogModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
     };
   }
