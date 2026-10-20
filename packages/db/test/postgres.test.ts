@@ -42,6 +42,7 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
   });
 
   afterAll(async () => {
+    // Every pool used here was destroyed in its test; FORCE only ends stray sessions.
     await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
     await admin.query(`DROP ROLE IF EXISTS ${loginRole}`);
     await admin.end();
@@ -59,6 +60,26 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
     const again = await pgMigrationClient(migratorUrl);
     expect((await migrate(again)).applied).toEqual([]);
     await again.close();
+  });
+
+  it("survives the server killing idle pooled connections (failover, maintenance) without crashing", async () => {
+    const lost: Error[] = [];
+    const db = createPgDb(migratorUrl, { max: 3, onIdleError: (e) => lost.push(e) });
+    try {
+      // Fill the pool, then leave the connections idle.
+      await Promise.all([1, 2, 3].map(() => db.selectFrom("tenants").select("id").execute()));
+      const killed = await admin.query(
+        "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid() AND state = 'idle'", [dbName]);
+      expect(killed.rowCount).toBeGreaterThan(0);
+      // Each killed idle connection is reported (not thrown as an uncaught exception)…
+      for (let i = 0; i < 100 && lost.length < killed.rowCount!; i++) await new Promise((r) => setTimeout(r, 20));
+      expect(lost).toHaveLength(killed.rowCount!);
+      expect(lost[0]!.message).toMatch(/terminating connection/);
+      // …and dropped from the pool, which recovers with fresh connections.
+      expect(await db.selectFrom("tenants").select("id").execute()).toBeInstanceOf(Array);
+    } finally {
+      await db.destroy();
+    }
   });
 
   it("a non-owner login role, through withTenant, cannot cross tenants", async () => {

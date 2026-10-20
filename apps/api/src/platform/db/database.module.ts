@@ -11,7 +11,10 @@ import { Database } from "./database.js";
 export async function openDatabase(config: AppConfig, logger = new Logger("Database")): Promise<Database> {
   const url = config.DATABASE_URL;
   if (url?.startsWith("postgres")) {
-    return new Database(createPgDb(url, { max: config.DATABASE_POOL_MAX }));
+    return new Database(createPgDb(url, {
+      max: config.DATABASE_POOL_MAX,
+      onIdleError: (err) => logger.warn({ err }, "idle database connection lost; the pool replaces it"),
+    }));
   }
   const dir = url?.slice("pglite:".length) || undefined;
   const pglite = await createPglite(dir);

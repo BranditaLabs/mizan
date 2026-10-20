@@ -12,10 +12,16 @@ const parseInt8 = (v: string) => BigInt(v);
 /**
  * Kysely over node-postgres. BIGINT columns (money in minor units, counters)
  * come back as JS bigint, never as lossy numbers or strings.
+ *
+ * `onIdleError` sees errors on *idle* pooled connections (server restart,
+ * Cloud SQL failover or maintenance, idle timeout). The pool already drops
+ * the broken connection; without a listener node-postgres would re-throw the
+ * error as an uncaught exception and crash the process.
  */
-export function createPgDb(connectionString: string, options: { max?: number } = {}): Kysely<DB> {
+export function createPgDb(connectionString: string, options: { max?: number; onIdleError?: (err: Error) => void } = {}): Kysely<DB> {
   const types = { getTypeParser: (oid: number, format?: "text" | "binary") => (oid === INT8 ? parseInt8 : pg.types.getTypeParser(oid, format)) };
   const pool = new pg.Pool({ connectionString, max: options.max ?? 10, types: types as pg.CustomTypesConfig });
+  pool.on("error", (err) => options.onIdleError?.(err));
   return new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
 }
 
