@@ -65,13 +65,18 @@ export class ShopifyConnector {
 
   async *ordersUpdatedSince(sinceIso: string, pageSize = 50): AsyncGenerator<CanonicalOrder[]> {
     let after: string | null = null;
-    for (;;) {
-      const data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
-        await this.gql.run(Q.ORDERS_UPDATED, { first: pageSize, after, query: `updated_at:>='${sinceIso}'` }, { idempotent: true });
-      yield data.orders.nodes.map((n) => mapOrder(n, this.ctx()));
-      if (!data.orders.pageInfo.hasNextPage) return;
-      after = data.orders.pageInfo.endCursor;
-    }
+    do {
+      const page = await this.ordersPage(`updated_at:>='${sinceIso}'`, after, pageSize);
+      yield page.nodes;
+      after = page.next;
+    } while (after);
+  }
+
+  /** One page of orders matching a Shopify search query, oldest update first; `next` is null on the last page. */
+  async ordersPage(query: string | null, after: string | null, pageSize = 50): Promise<{ nodes: CanonicalOrder[]; next: string | null }> {
+    const data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
+      await this.gql.run(Q.ORDERS_UPDATED, { first: pageSize, after, query }, { idempotent: true });
+    return { nodes: data.orders.nodes.map((n) => mapOrder(n, this.ctx())), next: data.orders.pageInfo.hasNextPage ? data.orders.pageInfo.endCursor : null };
   }
 
   async getProduct(id: string): Promise<CanonicalProduct> {
@@ -82,13 +87,17 @@ export class ShopifyConnector {
 
   async *productsUpdatedSince(sinceIso: string, pageSize = 50): AsyncGenerator<CanonicalProduct[]> {
     let after: string | null = null;
-    for (;;) {
-      const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
-        await this.gql.run(Q.PRODUCTS_UPDATED, { first: pageSize, after, query: `updated_at:>='${sinceIso}'` }, { idempotent: true });
-      yield data.products.nodes.map((n) => mapProduct(n, this.ctx()));
-      if (!data.products.pageInfo.hasNextPage) return;
-      after = data.products.pageInfo.endCursor;
-    }
+    do {
+      const page = await this.productsPage(`updated_at:>='${sinceIso}'`, after, pageSize);
+      yield page.nodes;
+      after = page.next;
+    } while (after);
+  }
+
+  async productsPage(query: string | null, after: string | null, pageSize = 50): Promise<{ nodes: CanonicalProduct[]; next: string | null }> {
+    const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
+      await this.gql.run(Q.PRODUCTS_UPDATED, { first: pageSize, after, query }, { idempotent: true });
+    return { nodes: data.products.nodes.map((n) => mapProduct(n, this.ctx())), next: data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null };
   }
 
   async getAvailable(inventoryItemId: string, locationId: string): Promise<number> {

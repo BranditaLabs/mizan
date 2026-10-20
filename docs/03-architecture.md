@@ -129,7 +129,7 @@ sequenceDiagram
 | `period.closed` / `einvoice.rejected` | M19 | M13 |
 | `metric.threshold_crossed` | M20 | M13 |
 | `privacy.requested` / `privacy.completed` | Privacy (E3-3) | ✅ `privacy.shopify` (redact / compile), M13 (notify the owner) |
-| `connection.connected` / `connection.disconnected` | Connections (E3) | ✅ `integrations.shopify-webhooks` (registers the store's webhooks as an engine job, E3-2), M13 |
+| `connection.connected` / `connection.disconnected` | Connections (E3) | ✅ `integrations.shopify-connected` (queues webhook registration E3-2 and history import E3-5 as engine jobs), M13 |
 
 Full catalogue with actions: `docs/13-automation-platform.md`.
 

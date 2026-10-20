@@ -79,7 +79,7 @@ export class FakeShopify {
    * balance COD), "bnpl" (Tabby), "bank" (bank transfer, unpaid until paid()), "manual" (unrecognised method).
    * `cod: false` is kept as a shorthand for "card".
    */
-  addOrder(o: Partial<{ city: string; province: string; phone: string; cod: boolean; payment: "cod" | "card" | "deposit" | "bnpl" | "bank" | "manual"; tags: string[]; total: string; name: string }> = {}) {
+  addOrder(o: Partial<{ city: string; province: string; phone: string; cod: boolean; payment: "cod" | "card" | "deposit" | "bnpl" | "bank" | "manual"; tags: string[]; total: string; name: string; createdAt: string }> = {}) {
     const id = this.nextId("Order");
     const now = this.touch();
     const payment = o.payment ?? (o.cod === false ? "card" : "cod");
@@ -94,7 +94,7 @@ export class FakeShopify {
     };
     const pay = P[payment];
     const order: Order = {
-      id, name: o.name ?? `#${1000 + this.orders.size + 1}`, createdAt: now, updatedAt: now, cancelledAt: null,
+      id, name: o.name ?? `#${1000 + this.orders.size + 1}`, createdAt: o.createdAt ?? now, updatedAt: o.createdAt && o.createdAt > now ? o.createdAt : now, cancelledAt: null,
       displayFinancialStatus: pay.status,
       paymentGatewayNames: pay.gateways, received: pay.received, refunded: "0.00",
       tags: o.tags ?? [], currencyCode: "EGP", email: "mona@example.com", phone: null, total,
@@ -299,11 +299,20 @@ export class FakeShopify {
       }
       case "MizanOrders": {
         const since = String(v.query ?? "").match(/updated_at:>='([^']+)'/)?.[1];
-        const all = [...this.orders.values()].filter((o) => !since || o.updatedAt >= since).sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+        const created = String(v.query ?? "").match(/created_at:>='([^']+)'/)?.[1];
+        const all = [...this.orders.values()].filter((o) => (!since || o.updatedAt >= since) && (!created || o.createdAt >= created))
+          .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
         const start = v.after ? Number(v.after) : 0;
         const page = all.slice(start, start + v.first);
         const next = start + v.first < all.length;
         return { orders: { pageInfo: { hasNextPage: next, endCursor: next ? String(start + v.first) : null }, nodes: page.map((o) => this.gqlOrder(o)) } };
+      }
+      case "MizanProducts": {
+        const since = String(v.query ?? "").match(/updated_at:>='([^']+)'/)?.[1];
+        const all = [...this.products.values()].filter((p) => !since || p.updatedAt >= since).sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+        const start = v.after ? Number(v.after) : 0;
+        const next = start + v.first < all.length;
+        return { products: { pageInfo: { hasNextPage: next, endCursor: next ? String(start + v.first) : null }, nodes: all.slice(start, start + v.first).map((p) => this.gqlProduct(p)) } };
       }
       case "MizanProduct": {
         const p = this.products.get(v.id);

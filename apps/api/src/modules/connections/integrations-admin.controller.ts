@@ -57,6 +57,7 @@ export class IntegrationsAdminController {
         outbox: h.outbox,
         deadLetters: h.deadLetters.map((d) => ({ ...d, error: d.error ? scrubText(d.error) : null })),
         drift: h.drift,
+        backfill: await engine.backfillStatus(),
       };
     } catch (err) {
       if (err instanceof NotConnectedError) return { connected: false, reason: err.detail, connections: list };

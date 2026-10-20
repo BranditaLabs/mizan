@@ -41,6 +41,10 @@ async function installFlow(user: string, s: FakeShopify, scopes = SCOPES) {
   return web(cb.headers.location!);
 }
 
+// The shop already has history when the merchant connects it.
+for (let i = 0; i < 3; i++) shop.addOrder({ name: `#H${i}` });
+shop.addProduct({ title: "Vitamin C serum", price: "575.00", sku: "SER-30" });
+
 beforeAll(async () => {
   const config = loadConfig({
     NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000",
@@ -105,7 +109,7 @@ describe("Shopify install from inside Mizan", () => {
     expect((await app.get(ConnectionResolver).resolve(stores.sara!)).shopify.accessToken.reveal()).toBe(shop.tokens.at(-1));
   });
 
-  it("each connect registers the store's webhooks through the outbox (E3-2)", async () => {
+  it("each connect registers the store's webhooks and imports its history through the outbox (E3-2, E3-5)", async () => {
     const runner = app.get(EngineJobRunner);
     for (let i = 0; i < 5; i++) {
       await app.get(EventDispatcher).runOnce();
@@ -119,6 +123,12 @@ describe("Shopify install from inside Mizan", () => {
     expect(new Set(subs.map((w) => w.uri))).toEqual(new Set([`https://api.mizan.test/webhooks/shopify/${shopify.connectionId}`]));
     const jobs = await db.tenant(stores.sara!, (trx) => trx.selectFrom("mz_outbox").select(["kind", "status"]).where("kind", "=", "shopify.syncWebhooks").execute());
     expect(jobs).toEqual([{ kind: "shopify.syncWebhooks", status: "done" }, { kind: "shopify.syncWebhooks", status: "done" }]); // install + reinstall
+
+    // History: the orders already in the shop are now Mizan orders; progress is visible to the team.
+    const orders = await db.tenant(stores.sara!, (trx) => trx.selectFrom("orders").select("external_id").execute());
+    expect(orders.map((o) => o.external_id).sort()).toEqual([...shop.orders.keys()].sort());
+    const health = await http().get("/v1/admin/integrations/health").set(as("sara")).expect(200);
+    expect(health.body.backfill).toMatchObject({ status: "done", orders: shop.orders.size, products: shop.products.size });
   });
 
   it("only owners and admins can connect a store", async () => {

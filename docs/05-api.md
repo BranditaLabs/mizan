@@ -188,7 +188,7 @@ Merchants subscribe to Mizan events (`order.confirmed`, `shipment.delivered` …
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/admin/integrations/health` | Connections, engine circuits and rate budgets, outbox counts, last dead letters, drift report; `{ connected: false, reason }` without a store connection |
+| GET | `/admin/integrations/health` | Connections, engine circuits and rate budgets, outbox counts, last dead letters, drift report, ✅ `backfill` (E3-5: `{ status: running \| done, phase, orders, products, pages, startedAt, finishedAt }` of the latest history import, or null); `{ connected: false, reason }` without a store connection |
 | GET | `/admin/integrations/dead-letters` | Jobs needing a person (`?limit≤200`), newest first |
 | POST | `/admin/integrations/jobs/{id}/replay` | Replay a dead-lettered job after a fix; `job_not_found` otherwise |
 | POST | `/admin/integrations/cities/resolve` | `{ text, cityId, jobId? }`: teach a city alias (kept on the Bosta connection), replay the stuck job |

@@ -62,6 +62,28 @@ interface OrderRecord {
   paidMarked?: boolean;
 }
 
+interface BackfillPage {
+  runKey: string;
+  since: string;
+  /** When the run was queued: a run started after this supersedes it. */
+  queuedAt: number;
+  phase: "orders" | "products";
+  after: string | null;
+}
+
+export interface BackfillProgress {
+  runKey: string;
+  since: string;
+  queuedAt: number;
+  status: "running" | "done";
+  phase: "orders" | "products" | "done";
+  orders: number;
+  products: number;
+  pages: number;
+  startedAt: string;
+  finishedAt?: string;
+}
+
 interface ShipmentRecord {
   shipment: CanonicalShipment;
   orderId: string;
@@ -254,6 +276,52 @@ export class MizanEngine {
     return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
   }
 
+  /**
+   * Import the store's history on connect: orders created since `sinceMs` (Shopify serves 60 days
+   * without read_all_orders), then every product. One page per job, the cursor in the next job:
+   * resumable after a restart, paced by the cost limiter, interleaved with live webhooks.
+   */
+  static shopifyBackfillJob(runKey: string, sinceMs: number, queuedAt: number): NewJob<BackfillPage> {
+    return {
+      kind: "shopify.backfill", connection: "shopify", idempotencyKey: `shopify:backfill:${runKey}:orders:start`,
+      payload: { runKey, since: new Date(sinceMs).toISOString(), queuedAt, phase: "orders", after: null },
+    };
+  }
+
+  /** Progress of the latest backfill, or null before the first connect. */
+  async backfillStatus(): Promise<BackfillProgress | null> {
+    return (await this.store.get<BackfillProgress>("backfill", "shopify")) ?? null;
+  }
+
+  private async backfillPage(p: BackfillPage) {
+    const progress = await this.backfillStatus();
+    // Runs are ordered by (queuedAt, runKey). A newer run has started: this older chain stops here.
+    if (progress && progress.runKey !== p.runKey && (progress.queuedAt > p.queuedAt || (progress.queuedAt === p.queuedAt && progress.runKey > p.runKey))) return;
+    const state: BackfillProgress = progress?.runKey === p.runKey ? progress
+      : { runKey: p.runKey, since: p.since, queuedAt: p.queuedAt, status: "running", phase: "orders", orders: 0, products: 0, pages: 0, startedAt: new Date(this.now()).toISOString() };
+    let next: BackfillPage | null;
+    if (p.phase === "orders") {
+      const page = await this.shopify.ordersPage(`created_at:>='${p.since}'`, p.after);
+      for (const o of page.nodes) await this.ingestOrderData(o);
+      state.orders += page.nodes.length;
+      next = page.next ? { ...p, after: page.next } : { ...p, phase: "products", after: null };
+    } else {
+      const page = await this.shopify.productsPage(null, p.after);
+      for (const product of page.nodes) await this.ingestProductData(product);
+      state.products += page.nodes.length;
+      next = page.next ? { ...p, after: page.next } : null;
+    }
+    state.pages++;
+    state.phase = next?.phase ?? "done";
+    if (!next) {
+      state.status = "done";
+      state.finishedAt = new Date(this.now()).toISOString();
+    }
+    await this.store.put("backfill", "shopify", state, this.now());
+    this.emit(next ? "backfill.progress" : "backfill.completed", { runKey: p.runKey, phase: state.phase, orders: state.orders, products: state.products, pages: state.pages });
+    if (next) await this.enqueue("shopify.backfill", next, `shopify:backfill:${p.runKey}:${next.phase}:${next.after ?? "start"}`);
+  }
+
   /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
@@ -331,6 +399,7 @@ export class MizanEngine {
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
+      "shopify.backfill": (j) => this.backfillPage(j.payload),
     };
   }
 
@@ -342,7 +411,12 @@ export class MizanEngine {
   }
 
   private async ingestOrder(orderId: string) {
-    const order = await this.shopify.getOrder(orderId);
+    await this.ingestOrderData(await this.shopify.getOrder(orderId));
+  }
+
+  /** Record an order read from Shopify (single read or a page) and react to what changed. */
+  private async ingestOrderData(order: CanonicalOrder) {
+    const orderId = order.externalId;
     const prev = await this.store.get<OrderRecord>("order", orderId);
     const rec: OrderRecord = { ...prev, order: { ...order, raw: undefined } };
     await this.runHook(() => this.opts.hooks?.onOrder?.(rec.order, prev?.order));
@@ -467,7 +541,11 @@ export class MizanEngine {
    *   differ, owner Shopify  → accept Shopify's value into Mizan
    */
   private async ingestProduct(productId: string) {
-    const product = await this.shopify.getProduct(productId);
+    await this.ingestProductData(await this.shopify.getProduct(productId));
+  }
+
+  private async ingestProductData(product: CanonicalProduct) {
+    const productId = product.externalId;
     const state = (await this.store.get<ProductState>("product-state", productId)) ?? { productId, desired: { variants: {}, inventory: {} } };
     const inFlight = state.lastWriteAt !== undefined && this.now() - state.lastWriteAt < this.opts.echoWindowMs;
     const restore: NonNullable<ProductPatch["variants"]> = [];

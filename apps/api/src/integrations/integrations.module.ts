@@ -3,7 +3,7 @@ import { ConnectionLifecycle } from "./connection-lifecycle.js";
 import { ConnectionResolver } from "./connection-resolver.js";
 import { ENGINE_EVENT_SINK, ENGINE_RUNTIME, EngineRegistry, defaultRuntimeFactory, type EngineEventSink, type RuntimeFactory } from "./engine-registry.js";
 import { EngineJobRunner } from "./engine-runner.js";
-import { ShopifyWebhooksConsumer } from "./shopify-webhooks.consumer.js";
+import { ShopifyConnectedConsumer } from "./shopify-connected.consumer.js";
 import { WebhookRouter } from "./webhook-router.js";
 import { WebhooksController } from "./webhooks.controller.js";
 
@@ -22,7 +22,7 @@ export class IntegrationsModule {
         ConnectionResolver,
         EngineRegistry,
         EngineJobRunner,
-        ShopifyWebhooksConsumer,
+        ShopifyConnectedConsumer,
         ConnectionLifecycle,
         { provide: ENGINE_RUNTIME, useValue: runtime },
         { provide: ENGINE_EVENT_SINK, useValue: sink },
