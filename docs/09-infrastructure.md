@@ -34,7 +34,7 @@ All config through environment variables, validated at startup with zod (`apps/a
 ```
 DATABASE_URL (postgres:// · unset or pglite:<dir> in dev/test), DATABASE_URL_MIGRATOR, DATABASE_POOL_MAX
 FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only)
-KMS_KEY_NAME
+KMS_KEY_NAME (required in production; SECRETS_DEV_KEY = base64 32 bytes for local dev only)
 PUBLIC_URL, WEB_URL
 SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
 PAYMOB_* (platform-level config only; merchant keys live in the secrets table)

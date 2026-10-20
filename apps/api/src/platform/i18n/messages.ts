@@ -33,6 +33,7 @@ const PROBLEM_TITLES = {
   member_not_found: { en: "Member not found", ar: "العضو مش موجود" },
   cannot_change_self: { en: "You cannot change your own access", ar: "مينفعش تغيّر صلاحيتك بنفسك" },
   last_owner: { en: "A store needs an owner", ar: "المتجر لازم يكون له صاحب واحد على الأقل" },
+  secret_not_found: { en: "Credential not found", ar: "بيانات الربط مش موجودة" },
   internal_error: { en: "Something went wrong", ar: "حصلت مشكلة عندنا" },
   service_unavailable: { en: "Service unavailable", ar: "الخدمة مش متاحة دلوقتي" },
 } as const satisfies Record<string, Record<Locale, string>>;

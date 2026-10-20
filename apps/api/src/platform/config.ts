@@ -37,8 +37,10 @@ export const ConfigSchema = z.object({
   // with PGlite (one process, no separate worker); production runs `node dist/worker.js`.
   EVENTS_DISPATCH_IN_PROCESS: z.stringbool({ error: "must be true or false" }).optional(),
 
-  // Secrets (E1-10)
+  // Secrets: Cloud KMS key that wraps per-secret data keys (required in production).
   KMS_KEY_NAME: optionalString,
+  // Development only: base64 of 32 random bytes (openssl rand -base64 32). Unset = ephemeral key.
+  SECRETS_DEV_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
 
   // Shopify app (E3)
   SHOPIFY_API_VERSION: z.string().regex(/^\d{4}-\d{2}$/, "must look like 2026-10").default("2026-10"),
@@ -47,6 +49,12 @@ export const ConfigSchema = z.object({
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === "production" && !env.DATABASE_URL?.startsWith("postgres")) {
     ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "a postgres:// URL is required in production" });
+  }
+  if (env.NODE_ENV === "production" && !env.KMS_KEY_NAME) {
+    ctx.addIssue({ code: "custom", path: ["KMS_KEY_NAME"], message: "is required in production" });
+  }
+  if (env.NODE_ENV === "production" && env.SECRETS_DEV_KEY) {
+    ctx.addIssue({ code: "custom", path: ["SECRETS_DEV_KEY"], message: "must not be set in production (use KMS_KEY_NAME)" });
   }
   if (env.NODE_ENV === "production" && !env.FIREBASE_PROJECT_ID) {
     ctx.addIssue({ code: "custom", path: ["FIREBASE_PROJECT_ID"], message: "is required in production" });

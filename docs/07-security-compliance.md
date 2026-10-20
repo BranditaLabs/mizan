@@ -9,7 +9,7 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | Threat | Control |
 | --- | --- |
 | Tenant A reads tenant B's data | Postgres RLS (FORCE) on every table; app role without BYPASSRLS; tenant set per transaction; tests in `packages/db/test` |
-| Stolen provider tokens (Shopify, Bosta, Meta) | Envelope encryption (Cloud KMS) in `secrets`; decrypted only in worker memory; rotated on disconnect; never logged |
+| Stolen provider tokens (Shopify, Bosta, Meta) | Envelope encryption (Cloud KMS) in `secrets`; decrypted only in worker memory; rotated on disconnect; never logged. ✅ `SecretsService` (E1-10): per-secret AES-256-GCM data key, AAD binds ciphertext to tenant + row, data key wrapped by Cloud KMS (REST, metadata-server credentials); `SecretValue` prints `[secret]`; create/rotate/delete audited; `rewrapStale()` after KMS key rotation |
 | Forged webhooks | Shopify HMAC, Meta `X-Hub-Signature-256`, per-connection tokens for unsigned providers; **thin webhook, fat fetch** (re-read from API before acting) |
 | Account takeover (owner) | Firebase Auth; 2FA required for owner and admin (✅ enforced by `AuthGuard` from the token's `sign_in_second_factor`, `AUTH_REQUIRE_MFA`, on by default in production); session revocation (ID tokens verified locally, 1 h lifetime; disabling a membership takes effect on the next request; refresh-token revocation check is a follow-up); login alerts |
 | Insider / support access | Platform admin access is just-in-time, audited (`audit_log`), and shown to the merchant. ✅ `audit_log` (E1-9): tenant RLS, append-only for the app role (no UPDATE/DELETE), written in the same transaction as the change; before/after pass the PII redactor |

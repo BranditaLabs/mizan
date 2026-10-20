@@ -22,7 +22,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Team: invitations by email/phone, roles, disable, remove (E1-7).
 - ✅ Domain events: transactional outbox, exactly-once consumers, worker (E1-8).
 - ✅ Audit log: append-only, tenant-scoped, same-transaction (E1-9).
-- ⏭️ **Next:** E1-10 (secrets service).
+- ✅ Secrets: envelope encryption with Cloud KMS (E1-10).
+- ⏭️ **Next:** E1-11 (staging Terraform — needs GCP project details), then E2 (engine inside the platform).
 
 ---
 
@@ -51,7 +52,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [x] **E1-7** `M` Members and invites (email/phone), role change, disable. *Accept:* invited agent can sign in and sees only agent routes. *Done:* migration 0005 `invitations` (RLS + `invitee_read`), invite/revoke/accept, `GET /v1/members`, `PATCH`/`DELETE /v1/members/:userId` with lock-out guards; acceptance requires a verified email or OTP phone matching the invitation; `/me` lists pending invitations.
 - [x] **E1-8** `M` Domain events + outbox writer in the same transaction; dispatcher in `worker.ts`; idempotent consumers by event id. *Accept:* a crash between commit and dispatch still delivers the event once. *Done:* migration 0006 (dispatch columns, `event_deliveries`, `mizan_worker` role + policy), `EventsService.emit`, `@EventConsumer`, `EventDispatcher` (leases, SKIP LOCKED, per-consumer exactly-once, backoff, dead letters), `worker.js`; tenant and member changes emit events; crash tests at every step.
 - [x] **E1-9** `S` Audit log service; log sensitive actions (`connection.*`, `member.*`, `customer.pii_viewed`, exports). *Done:* migration 0007 (audit_log RLS — it was missing — and append-only for the app role), `AuditService.record(trx, …)` in the same transaction, `AUDIT_ACTIONS` catalogue, tenant and member actions with IP, `GET /v1/audit-log`. `connection.*`, `customer.pii_viewed` and exports are recorded when those modules land.
-- [ ] **E1-10** `M` Secrets service: envelope encryption with Cloud KMS (local: static dev key), `secrets` table, rotation. *Accept:* plaintext never in DB or logs (test greps logs).
+- [x] **E1-10** `M` Secrets service: envelope encryption with Cloud KMS (local: static dev key), `secrets` table, rotation. *Accept:* plaintext never in DB or logs (test greps logs). *Done:* `SecretsService` (create/read/rotate/delete/rewrapStale), `CloudKmsKeyWrapper` (REST + metadata token), `LocalKeyWrapper` for dev, `SecretValue`; KMS required and dev key refused in production; tests grep DB bytes and captured logs, prove AAD binding and tamper detection.
 - [ ] **E1-11** `M` `infra/` Terraform for staging (Cloud Run api/worker/web, Cloud SQL, Secret Manager, KMS, Storage, Scheduler); `deploy-staging.yml`.
 
 ### E2 · Engine inside the platform
