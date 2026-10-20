@@ -5,7 +5,8 @@
   "description": "Mizan \u2014 MENA e-commerce operating system, powered by Brandita",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "perf"
   ],
   "scripts": {
     "build": "npm run build -w @mizan/shared -w @mizan/db -w @mizan/engine -w @mizan/api",

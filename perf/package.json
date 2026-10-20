@@ -1,0 +1,18 @@
+{
+  "name": "@mizan/perf",
+  "version": "0.1.0",
+  "description": "Benchmarks and load tests (E16).",
+  "type": "module",
+  "private": true,
+  "license": "UNLICENSED",
+  "scripts": {
+    "bench:tenant-tx": "tsx --conditions=source tenant-tx.bench.ts"
+  },
+  "dependencies": {
+    "@mizan/db": "0.1.0",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
+}

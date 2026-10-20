@@ -26,8 +26,8 @@ export class InvalidTenantError extends Error {
 export async function withTenant<T>(db: Kysely<DB>, tenantId: string, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
   if (!UUID.test(tenantId)) throw new InvalidTenantError();
   return db.transaction().execute(async (trx) => {
-    await sql`SET LOCAL ROLE ${sql.raw(APP_ROLE)}`.execute(trx);
-    await sql`SELECT set_config('app.tenant_id', ${tenantId}, true)`.execute(trx);
+    // One round-trip: set_config('role', …, true) is SET LOCAL ROLE.
+    await sql`SELECT set_config('role', ${APP_ROLE}, true), set_config('app.tenant_id', ${tenantId}, true)`.execute(trx);
     return fn(trx);
   });
 }
@@ -38,7 +38,7 @@ export async function withTenant<T>(db: Kysely<DB>, tenantId: string, fn: (trx: 
  */
 export async function withoutTenant<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
   return db.transaction().execute(async (trx) => {
-    await sql`SET LOCAL ROLE ${sql.raw(APP_ROLE)}`.execute(trx);
+    await sql`SELECT set_config('role', ${APP_ROLE}, true)`.execute(trx);
     return fn(trx);
   });
 }
@@ -63,7 +63,7 @@ export async function setActingUser(
 /** Run `fn` as the dispatcher role (cross-tenant access to domain_events only). */
 export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
   return db.transaction().execute(async (trx) => {
-    await sql`SET LOCAL ROLE ${sql.raw(WORKER_ROLE)}`.execute(trx);
+    await sql`SELECT set_config('role', ${WORKER_ROLE}, true)`.execute(trx);
     return fn(trx);
   });
 }

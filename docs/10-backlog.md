@@ -29,7 +29,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Engine learning (status codes, city aliases, query variants) kept per connection (E2-4).
 - ✅ Integration ops routes: health, dead letters, replay, city fixes (E2-5).
 - ✅ Payment ledger and payment events from the engine (E2-6). **E2 done** except E2-7 (several stores per tenant).
-- ⏭️ **Next:** E3 (Shopify app: OAuth install, webhooks, compliance webhooks, uninstall, backfill); E1-11 waits for GCP project details.
+- ⏭️ **Next (decided):** E16 production hardening and scale (10× spec), then E17 admin (staff app + store admin), then E3 Shopify app; E1-11 waits for GCP project details.
 
 ---
 
@@ -163,6 +163,35 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [ ] **E12-1** `M` Plan limits (orders/month, stores, users) enforced with soft warnings + upgrade prompts.
 - [ ] **E12-2** `M` Paymob subscription billing for EGP; invoices.
 - [ ] **E12-3** `S` Usage metering (orders, messages) per tenant per month.
+
+### E16 · Production hardening and scale
+
+Target (decided Oct 2026): **10× the MVP spec** — 2,000 tenants, 10M orders/month, bursts of 500 webhooks/s during sale campaigns, API p95 < 300 ms, webhook ack p95 < 200 ms. Proven by load tests, not assumed.
+
+- [x] **H-1** `S` One round-trip tenant context: role + `app.tenant_id` (+ user) in a single `set_config` statement for every tenant/platform/worker transaction. *Accept:* measured fewer round-trips per request; all isolation tests green. *Done:* `withTenant`/`withoutTenant`/`asWorker` use one `set_config` statement; benchmark `perf/tenant-tx.bench.ts`, results in `docs/perf/README.md`.
+- [ ] **H-2** `M` HTTP hardening: security headers, CORS allowlist (`WEB_URL`, `ADMIN_URL`), body limits, compression, server timeouts and keep-alive tuned for Cloud Run behind the load balancer. *Accept:* tests for headers, CORS and limits.
+- [ ] **H-3** `M` Rate limiting per API key / user / IP with `RateLimit-Policy` / `RateLimit` / `Retry-After` (docs/05), per-instance token buckets; webhooks exempt but size-capped. *Accept:* 429 problem+json with headers; tenants isolated.
+- [ ] **H-4** `M` `Idempotency-Key` on side-effecting POSTs (24 h, same key + same body → same response; different body → 409). *Accept:* concurrent duplicate requests create one resource.
+- [ ] **H-5** `M` Webhook ingress fast path `/webhooks/shopify/:connectionId`, `/webhooks/bosta/:connectionId`: raw body, verify, dedupe, enqueue, 200; engine resolved from a cache. *Accept:* p95 < 200 ms at 500 webhooks/s in the load test.
+- [ ] **H-6** `S` Auth hot path cache: verified identity → user, and membership, cached briefly (bounded LRU) with local invalidation on member changes. *Accept:* authenticated request = 1 DB transaction or less on a warm cache; disabled member locked out within the TTL (documented).
+- [ ] **H-7** `M` Retention and table hygiene: prune done engine jobs, old webhook keys, dispatched domain events, consumed idempotency keys in batches; indexes for every hot query (EXPLAIN-checked). *Accept:* tables stay bounded under the 10× load model.
+- [ ] **H-8** `M` Database safety: statement and idle-in-transaction timeouts per role, pool sizing from a connection budget (instances × pool ≤ max_connections), slow-query logging. *Accept:* a runaway query is cancelled; documented budget in docs/09.
+- [ ] **H-9** `M` Metrics: Prometheus-format `/metrics` (internal): HTTP latency histograms, outbox lag and dead letters, event dispatch lag, DB pool, engine circuits; alert rules in docs/09. *Accept:* metrics scraped in tests.
+- [ ] **H-10** `M` Production image: multi-stage Dockerfile (non-root, slim), API and worker entry points, `docker-compose` for a prod-like local stack. *Accept:* image builds and passes a smoke test.
+- [ ] **H-11** `L` Load tests (autocannon harness in `perf/`) for webhook bursts, authenticated order reads, signup; results recorded in `docs/perf/`; nightly CI job. *Accept:* targets above met on the reference setup, regressions fail the job.
+
+### E17 · Admin
+
+Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separate app) and **store teams** (store admin inside `apps/web`, E4).
+
+- [ ] **A-1** `M` Staff identity: `platform_staff` (roles `super_admin`, `support`, `finance`, `engineer`), MFA required, `PlatformGuard` for `/v1/platform/*`, staff audit trail (`platform_audit`), separate `mizan_platform` DB role for cross-tenant reads. *Accept:* merchants get 403 on every platform route; every staff call audited.
+- [ ] **A-2** `M` Stores: list/search/filter (plan, status, country, created, usage), store detail (members, connections health, outbox, dead letters, usage), suspend / reactivate, change plan, notes. *Accept:* actions audited and visible to the store.
+- [ ] **A-3** `M` Support access: just-in-time, reason + expiry, read-only by default, write needs `super_admin`; shown in the store's audit log and banner. *Accept:* access ends at expiry; merchant sees it.
+- [ ] **A-4** `M` System health: cross-tenant outbox lag, dead letters (replay), event dispatch lag, circuits per provider, drift report, DB and worker stats. *Accept:* matches /metrics.
+- [ ] **A-5** `S` Users and staff management: search users, disable sign-in, manage staff and roles.
+- [ ] **A-6** `S` Feature flags per store and globally; announcements shown in apps/web.
+- [ ] **A-7** `L` `apps/admin`: Next.js + Tailwind, AR/EN + RTL, design tokens (docs/08), Google sign-in for staff, pages for A-2…A-6. *Accept:* staff can run the whole back office from it; lint blocks physical-direction classes.
+- [ ] **A-8** — store admin area (team, settings, integrations, audit) ships with **E4** in `apps/web`, on the APIs already built (E1-5…E1-9, E2-5).
 
 ### E13 · Launch readiness
 
