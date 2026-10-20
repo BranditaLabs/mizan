@@ -13,6 +13,8 @@ import { EventsModule } from "./platform/events/events.module.js";
 import { AuditModule } from "./platform/audit/audit.module.js";
 import { SecretsModule } from "./platform/secrets/secrets.module.js";
 import type { KeyWrapper } from "./platform/secrets/key-wrapper.js";
+import { IntegrationsModule } from "./integrations/integrations.module.js";
+import type { RuntimeFactory } from "./integrations/engine-registry.js";
 import { AuditLogModule } from "./modules/audit/audit-log.module.js";
 import { ProblemFilter } from "./platform/http/problem.filter.js";
 import { LoggingModule } from "./platform/logging/logger.module.js";
@@ -25,6 +27,8 @@ export interface AppOptions {
   tokenVerifier?: TokenVerifier;
   /** Replaces the KMS key wrapper (tests). */
   keyWrapper?: KeyWrapper;
+  /** Engine runtime per tenant (tests: fake providers). */
+  engineRuntime?: RuntimeFactory;
   /** Extra modules (tests). */
   modules?: Array<Type | DynamicModule>;
 }
@@ -34,7 +38,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, SecretsModule.forRoot(options.keyWrapper), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, SecretsModule.forRoot(options.keyWrapper), IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
     };
   }

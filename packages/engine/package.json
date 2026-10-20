@@ -5,7 +5,18 @@
   "type": "module",
   "private": true,
   "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "source": "./test/fakes/index.ts"
+    }
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "demo": "tsx --conditions=source examples/demo.ts"

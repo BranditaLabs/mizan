@@ -33,9 +33,14 @@ export const ConfigSchema = z.object({
   // Owners/admins must use a second factor. Unset = on in production, off elsewhere.
   AUTH_REQUIRE_MFA: z.stringbool({ error: "must be true or false" }).optional(),
 
-  // Run the domain event dispatcher inside the API process. Unset = on only in development
-  // with PGlite (one process, no separate worker); production runs `node dist/worker.js`.
-  EVENTS_DISPATCH_IN_PROCESS: z.stringbool({ error: "must be true or false" }).optional(),
+  // Run the background loops (domain events, engine jobs) inside the API process. Unset = on only
+  // in development with PGlite (one process, no separate worker); production runs `node dist/worker.js`.
+  WORKER_IN_PROCESS: z.stringbool({ error: "must be true or false" }).optional(),
+
+  // Integrations (engine). The Shopify app's client secret verifies webhook HMACs (E3).
+  SHOPIFY_API_SECRET: optionalString,
+  BOSTA_BASE_URL: url.optional(),
+  BOSTA_TRACKING_URL_TEMPLATE: z.string().includes("{tn}", { error: "must contain {tn}" }).optional(),
 
   // Secrets: Cloud KMS key that wraps per-secret data keys (required in production).
   KMS_KEY_NAME: optionalString,
@@ -62,6 +67,10 @@ export const ConfigSchema = z.object({
 });
 
 export type AppConfig = z.infer<typeof ConfigSchema>;
+
+/** Whether this process runs the background loops (see WORKER_IN_PROCESS). */
+export const runsWorkerInProcess = (c: AppConfig) =>
+  c.WORKER_IN_PROCESS ?? (c.NODE_ENV === "development" && !c.DATABASE_URL?.startsWith("postgres"));
 
 /** Injection token for the parsed config. */
 export const APP_CONFIG = Symbol("APP_CONFIG");

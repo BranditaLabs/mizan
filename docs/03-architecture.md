@@ -149,7 +149,7 @@ Ordering is by `occurred_at` within a batch, not guaranteed across retries: cons
 `packages/engine` today is a standalone service (`src/server.ts`) with its own small schema (`mz_inbound_events`, `mz_outbox`, `mz_records`). To embed it in `apps/api`:
 
 1. Keep the engine as a library; the API imports `MizanEngine` and registers its job handlers in the worker.
-2. ✅ (E2-1) Engine tables are tenant-scoped (migration 0008: per-tenant keys, `connection_id` on jobs, RLS). `SqlStore(client, { tenantId, connections })`; inside the platform the client is `tenantQueryClient(db, tenantId)` from `@mizan/db`, so every engine query runs under RLS. Next (E2-2): connections resolved per job from the `connections` table and decrypted secrets.
+2. ✅ (E2-1) Engine tables are tenant-scoped (migration 0008: per-tenant keys, `connection_id` on jobs, RLS). `SqlStore(client, { tenantId, connections })`; inside the platform the client is `tenantQueryClient(db, tenantId)` from `@mizan/db`, so every engine query runs under RLS. ✅ (E2-2) `apps/api/src/integrations/`: `ConnectionResolver` loads a tenant's Shopify/Bosta connections and decrypts their credentials (`secrets`, JSON `{ accessToken }` / `{ apiKey, webhookToken }`); `EngineRegistry` keeps one `MizanEngine` per tenant (own connectors → own circuit breakers and rate buckets); `EngineJobRunner` (in `worker.js`) finds tenants with due jobs as `mizan_worker` and ticks each tenant's engine without waiting for slow ones.
 3. ✅ Canonical types live in `packages/shared` (`@mizan/shared`); engine and API import them from there.
 4. Replace `engine.on(...)` listeners with handlers that write domain events (section 5).
 5. The engine's `/ops/*` endpoints become admin API routes under `/v1/admin/integrations/*`.

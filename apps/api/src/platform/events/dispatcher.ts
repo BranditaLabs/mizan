@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplica
 import { DiscoveryService } from "@nestjs/core";
 import { asWorker } from "@mizan/db";
 import { matchesEvent, type DomainEvent, type DomainEventType, type EventActor } from "@mizan/shared";
-import { APP_CONFIG, type AppConfig } from "../config.js";
+import { APP_CONFIG, runsWorkerInProcess, type AppConfig } from "../config.js";
 import { Database } from "../db/database.js";
 import { scrubText } from "../logging/redact.js";
 import { EVENT_CONSUMER, type EventConsumerOptions, type EventHandler } from "./consumer.js";
@@ -72,7 +72,7 @@ export class EventDispatcher implements OnApplicationBootstrap, OnApplicationShu
     const names = this.consumers.map((c) => c.name);
     const dup = names.find((n, i) => names.indexOf(n) !== i);
     if (dup) throw new Error(`two event consumers are named "${dup}"`);
-    if (this.config.EVENTS_DISPATCH_IN_PROCESS ?? (this.config.NODE_ENV === "development" && !this.config.DATABASE_URL?.startsWith("postgres"))) {
+    if (runsWorkerInProcess(this.config)) {
       this.start();
     }
   }

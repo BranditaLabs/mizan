@@ -1,0 +1,113 @@
+import { randomBytes } from "node:crypto";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { defaultRuntime, MizanEngine, SqlStore, type EngineOptions, type Runtime } from "@mizan/engine";
+import { tenantQueryClient } from "@mizan/db";
+import { APP_CONFIG, type AppConfig } from "../platform/config.js";
+import { Database } from "../platform/db/database.js";
+import { ConnectionResolver, type ResolvedConnections } from "./connection-resolver.js";
+
+/** Builds the engine runtime for a tenant (tests inject fake providers here). */
+export type RuntimeFactory = (tenantId: string, connections: ResolvedConnections) => Runtime;
+export const ENGINE_RUNTIME = Symbol("ENGINE_RUNTIME");
+
+/** Listener for engine events (order.ingested, shipment.status …); E2-3 maps them to domain events. */
+export type EngineEventSink = (tenantId: string, event: string, data: Record<string, unknown>) => void;
+export const ENGINE_EVENT_SINK = Symbol("ENGINE_EVENT_SINK");
+
+export interface TenantEngine {
+  tenantId: string;
+  engine: MizanEngine;
+  store: SqlStore;
+  connections: ResolvedConnections;
+  builtAt: number;
+}
+
+/** Engines are rebuilt after this long, so rotated credentials and changed connections are picked up. */
+export const ENGINE_TTL_MS = 10 * 60_000;
+
+/** Engine log lines go through Nest's logger (pino, PII-redacted). */
+export function engineLogger(tenantId: string): Runtime["logger"] {
+  const log = new Logger("Engine");
+  return {
+    log(level, msg, data) {
+      const entry = { tenantId, ...data };
+      if (level === "error") log.error(entry, msg);
+      else if (level === "warn") log.warn(entry, msg);
+      else if (level === "debug") log.debug(entry, msg);
+      else log.log(entry, msg);
+    },
+  };
+}
+
+/**
+ * One MizanEngine per tenant, built from that tenant's connections and decrypted
+ * credentials. Each engine owns its connectors, so circuit breakers and rate
+ * buckets are per connection: one store being throttled or down never slows another.
+ * Its SqlStore runs every query under the tenant's RLS context.
+ */
+@Injectable()
+export class EngineRegistry {
+  private readonly cache = new Map<string, TenantEngine>();
+  private readonly building = new Map<string, Promise<TenantEngine>>();
+
+  constructor(
+    @Inject(Database) private readonly db: Database,
+    @Inject(ConnectionResolver) private readonly resolver: ConnectionResolver,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
+    @Inject(ENGINE_EVENT_SINK) private readonly sink: EngineEventSink,
+  ) {}
+
+  async get(tenantId: string): Promise<TenantEngine> {
+    const hit = this.cache.get(tenantId);
+    if (hit && Date.now() - hit.builtAt < ENGINE_TTL_MS) return hit;
+    const pending = this.building.get(tenantId);
+    if (pending) return pending;
+    const build = this.build(tenantId).finally(() => this.building.delete(tenantId));
+    this.building.set(tenantId, build);
+    return build;
+  }
+
+  /** Drop a tenant's engine (connection added, removed or rotated). */
+  invalidate(tenantId: string): void {
+    this.cache.delete(tenantId);
+  }
+
+  cached(tenantId: string): TenantEngine | undefined {
+    return this.cache.get(tenantId);
+  }
+
+  private async build(tenantId: string): Promise<TenantEngine> {
+    const c = await this.resolver.resolve(tenantId);
+    const connections: Record<string, string> = { shopify: c.shopify.connectionId };
+    if (c.bosta) connections.bosta = c.bosta.connectionId;
+    const store = new SqlStore(tenantQueryClient(this.db.kysely, tenantId), { tenantId, connections });
+
+    const bostaConfig = c.bosta?.config ?? {};
+    const options: EngineOptions = {
+      shopify: {
+        shop: c.shopify.shop,
+        accessToken: c.shopify.accessToken.reveal(),
+        apiVersion: this.config.SHOPIFY_API_VERSION,
+        clientSecret: this.config.SHOPIFY_API_SECRET ?? "",
+      },
+      // Without a Bosta connection, courier jobs fail as `auth` and surface as connection.needs_attention.
+      bosta: {
+        apiKey: c.bosta?.apiKey.reveal() ?? "",
+        webhookSecret: c.bosta?.webhookToken.reveal() ?? randomBytes(24).toString("hex"),
+        ...(this.config.BOSTA_BASE_URL ? { baseUrl: this.config.BOSTA_BASE_URL } : {}),
+        ...(c.bosta ? { webhookUrl: new URL(`/webhooks/bosta/${c.bosta.connectionId}`, this.config.PUBLIC_URL).toString() } : {}),
+        ...(this.config.BOSTA_TRACKING_URL_TEMPLATE ? { trackingUrlTemplate: this.config.BOSTA_TRACKING_URL_TEMPLATE } : {}),
+        ...(typeof bostaConfig.cityField === "string" ? { cityField: bostaConfig.cityField as "city" | "cityCode" | "cityId" } : {}),
+      },
+    };
+    const engine = new MizanEngine(store, this.runtime(tenantId, c), options);
+    engine.on((event, data) => this.sink(tenantId, event, data));
+    await engine.init();
+    const entry: TenantEngine = { tenantId, engine, store, connections: c, builtAt: Date.now() };
+    this.cache.set(tenantId, entry);
+    return entry;
+  }
+}
+
+export const defaultRuntimeFactory: RuntimeFactory = (tenantId) => defaultRuntime({ logger: engineLogger(tenantId) });

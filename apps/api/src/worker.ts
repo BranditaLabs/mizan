@@ -21,14 +21,16 @@ async function main(): Promise<void> {
   const { Logger } = await import("nestjs-pino");
   const { AppModule } = await import("./app.module.js");
   const { EventDispatcher } = await import("./platform/events/dispatcher.js");
+  const { EngineJobRunner } = await import("./integrations/engine-runner.js");
   const { exitOnSignals } = await import("./platform/shutdown.js");
   const { Logger: NestLogger } = await import("@nestjs/common");
 
   // The API process must not also dispatch when a worker runs.
-  const app = await NestFactory.createApplicationContext(AppModule.forRoot({ ...config, EVENTS_DISPATCH_IN_PROCESS: false }), { bufferLogs: true });
+  const app = await NestFactory.createApplicationContext(AppModule.forRoot({ ...config, WORKER_IN_PROCESS: false }), { bufferLogs: true });
   app.useLogger(app.get(Logger));
   exitOnSignals(app, (m) => new NestLogger("Process").log(m));
   app.get(EventDispatcher).start();
+  app.get(EngineJobRunner).start();
 }
 
 void main();
