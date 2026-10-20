@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { sql } from "kysely";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPgDb, pgMigrationClient } from "../src/clients.js";
@@ -60,6 +61,25 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
     const again = await pgMigrationClient(migratorUrl);
     expect((await migrate(again)).applied).toEqual([]);
     await again.close();
+  });
+
+  it("cancels a runaway statement, logs slow ones without parameters, and fails fast when the pool is exhausted", async () => {
+    const slow: Array<{ sql: string; ms: number }> = [];
+    const db = createPgDb(migratorUrl, { max: 1, statementTimeoutMs: 300, slowQueryMs: 100, acquireTimeoutMs: 200, onSlowQuery: (s) => slow.push(s) });
+    try {
+      await expect(sql`SELECT pg_sleep(2)`.execute(db)).rejects.toThrow(/statement timeout/);
+      await sql`SELECT pg_sleep(0.15), ${"01001234821"}::text AS phone`.execute(db);
+      expect(slow.some((s) => s.sql.includes("pg_sleep(0.15)") && s.ms >= 100)).toBe(true);
+      expect(JSON.stringify(slow)).not.toContain("01001234821");
+      // The only connection is busy: a second caller gets an error quickly instead of waiting forever.
+      const busy = sql`SELECT pg_sleep(0.25)`.execute(db);
+      const t0 = Date.now();
+      await expect(sql`SELECT 1`.execute(db)).rejects.toThrow(/timeout/i);
+      expect(Date.now() - t0).toBeLessThan(1_000);
+      await busy;
+    } finally {
+      await db.destroy();
+    }
   });
 
   it("survives the server killing idle pooled connections (failover, maintenance) without crashing", async () => {

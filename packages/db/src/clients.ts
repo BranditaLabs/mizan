@@ -18,11 +18,49 @@ const parseInt8 = (v: string) => BigInt(v);
  * the broken connection; without a listener node-postgres would re-throw the
  * error as an uncaught exception and crash the process.
  */
-export function createPgDb(connectionString: string, options: { max?: number; onIdleError?: (err: Error) => void } = {}): Kysely<DB> {
+export interface PgDbOptions {
+  /** Pool size per process; keep instances × max within the server's connection budget (docs/09). */
+  max?: number;
+  /** Server-side cancel for any single statement (ms). Role settings do not apply after SET ROLE, so it is set per connection. */
+  statementTimeoutMs?: number;
+  /** Server closes a session left idle inside a transaction (ms): a leaked transaction cannot hold locks for long. */
+  idleInTransactionTimeoutMs?: number;
+  /** Fail fast when the pool is exhausted instead of queueing without bound (ms). */
+  acquireTimeoutMs?: number;
+  /** Shows up in pg_stat_activity. */
+  applicationName?: string;
+  onIdleError?: (err: Error) => void;
+  /** Called for statements slower than `slowQueryMs`, with the SQL text only (parameters can hold personal data). */
+  onSlowQuery?: (info: { sql: string; ms: number }) => void;
+  slowQueryMs?: number;
+}
+
+export function createPgDb(connectionString: string, options: PgDbOptions = {}): Kysely<DB> {
   const types = { getTypeParser: (oid: number, format?: "text" | "binary") => (oid === INT8 ? parseInt8 : pg.types.getTypeParser(oid, format)) };
-  const pool = new pg.Pool({ connectionString, max: options.max ?? 10, types: types as pg.CustomTypesConfig });
+  const pool = new pg.Pool({
+    connectionString,
+    max: options.max ?? 10,
+    types: types as pg.CustomTypesConfig,
+    statement_timeout: options.statementTimeoutMs ?? 15_000,
+    idle_in_transaction_session_timeout: options.idleInTransactionTimeoutMs ?? 30_000,
+    connectionTimeoutMillis: options.acquireTimeoutMs ?? 5_000,
+    idleTimeoutMillis: 30_000,
+    // Recycle connections so a failover or a re-balanced proxy is picked up.
+    maxLifetimeSeconds: 1_800,
+    application_name: options.applicationName ?? "mizan",
+  });
   pool.on("error", (err) => options.onIdleError?.(err));
-  return new Kysely<DB>({ dialect: new PostgresDialect({ pool }) });
+  const slowMs = options.slowQueryMs ?? 500;
+  return new Kysely<DB>({
+    dialect: new PostgresDialect({ pool }),
+    ...(options.onSlowQuery
+      ? {
+          log: (event) => {
+            if (event.queryDurationMillis >= slowMs) options.onSlowQuery!({ sql: event.query.sql.slice(0, 2_000), ms: Math.round(event.queryDurationMillis) });
+          },
+        }
+      : {}),
+  });
 }
 
 /** In-process PGlite database (tests, local development). `dataDir` omitted = in memory. */

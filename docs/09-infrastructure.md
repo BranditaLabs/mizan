@@ -95,6 +95,16 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 
 The worker prunes high-churn tables every 10 minutes in batches (5,000 rows × up to 20 batches per table per run): finished engine jobs after `RETENTION_JOBS_DAYS` (7), webhook dedupe keys after `RETENTION_WEBHOOK_KEYS_DAYS` (14; providers retry for ≤ 48 h), dispatched domain events after `RETENTION_EVENTS_DAYS` (30), expired idempotency keys. Pending, running and dead work is never pruned. At 10× scale (10M orders/month ≈ 50M engine jobs/month) the outbox holds about a week of done jobs (~12M rows), indexed for the due queries only.
 
+## 5b. Database connection budget (✅ H-8)
+
+Every process opens at most `DATABASE_POOL_MAX` connections (default 10). Keep
+
+    (API max instances × API pool) + (worker max instances × worker pool) + 20 (migrations, admin, monitoring) ≤ Cloud SQL max_connections
+
+Reference for the 10× target: Cloud SQL `db-custom-8-32768` (max_connections ≈ 800 by default; set it explicitly): API max 50 instances × 10 + worker max 10 × 10 + 20 = 620. Beyond that, put Cloud SQL Managed Connection Pooling (or PgBouncer in transaction mode) in front: our tenant context is transaction-local (`set_config(…, true)`), so transaction pooling is safe.
+
+Guards on every pooled connection: `statement_timeout` 15 s (worker may raise it via `DATABASE_STATEMENT_TIMEOUT_MS`), `idle_in_transaction_session_timeout` 30 s, pool acquire timeout 5 s (fail fast instead of queueing), connections recycled every 30 min, `application_name` = `mizan-api` / `mizan-worker`. Slow statements (≥ 500 ms) are logged with their SQL text only, never parameters.
+
 ## 6. Backups and recovery
 
 - Cloud SQL automated backups daily, 30-day retention; PITR 7 days.

@@ -43,6 +43,10 @@ export const ConfigSchema = z.object({
   DATABASE_URL: z.string().trim().regex(/^(postgres(ql)?:\/\/|pglite:)/, "must be a postgres:// URL or pglite:<dir>").optional(),
   DATABASE_URL_MIGRATOR: optionalString,
   DATABASE_POOL_MAX: z.coerce.number({ error: "must be a number" }).int().min(1).max(100).default(10),
+  /** Per-statement timeout (ms). The worker may raise it for batch work. */
+  DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(100).max(600_000).default(15_000),
+  /** Statements slower than this are logged (SQL text only). */
+  DATABASE_SLOW_QUERY_MS: z.coerce.number().int().min(1).max(600_000).default(500),
 
   // Auth. Without a project id (local dev) every protected route answers 401 auth_not_configured.
   FIREBASE_PROJECT_ID: optionalString,

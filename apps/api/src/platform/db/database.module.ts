@@ -13,7 +13,11 @@ export async function openDatabase(config: AppConfig, logger = new Logger("Datab
   if (url?.startsWith("postgres")) {
     return new Database(createPgDb(url, {
       max: config.DATABASE_POOL_MAX,
+      statementTimeoutMs: config.DATABASE_STATEMENT_TIMEOUT_MS,
+      slowQueryMs: config.DATABASE_SLOW_QUERY_MS,
+      applicationName: process.argv[1]?.endsWith("worker.js") ? "mizan-worker" : "mizan-api",
       onIdleError: (err) => logger.warn({ err }, "idle database connection lost; the pool replaces it"),
+      onSlowQuery: ({ sql, ms }) => logger.warn({ ms, sql }, "slow query"),
     }));
   }
   const dir = url?.slice("pglite:".length) || undefined;
