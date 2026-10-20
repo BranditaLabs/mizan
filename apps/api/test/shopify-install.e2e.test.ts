@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { Writable } from "node:stream";
 import type { INestApplication } from "@nestjs/common";
+import { SHOPIFY_WEBHOOK_TOPICS } from "@mizan/engine";
 import { FakeClock, FakeShopify, seeded, testRuntime } from "@mizan/engine/testing";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -8,6 +9,8 @@ import { createApp } from "../src/bootstrap.js";
 import { loadConfig, SHOPIFY_DEFAULT_SCOPES } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { ConnectionResolver } from "../src/integrations/connection-resolver.js";
+import { EngineJobRunner } from "../src/integrations/engine-runner.js";
+import { EventDispatcher } from "../src/platform/events/dispatcher.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
 const clock = new FakeClock();
@@ -100,6 +103,22 @@ describe("Shopify install from inside Mizan", () => {
     const res = await http().post("/v1/connections/shopify/claim").set(as("sara")).send({ install }).expect(201);
     expect(res.body).toMatchObject({ reconnected: true, connection: { id: before.shopify.connectionId } });
     expect((await app.get(ConnectionResolver).resolve(stores.sara!)).shopify.accessToken.reveal()).toBe(shop.tokens.at(-1));
+  });
+
+  it("each connect registers the store's webhooks through the outbox (E3-2)", async () => {
+    const runner = app.get(EngineJobRunner);
+    for (let i = 0; i < 5; i++) {
+      await app.get(EventDispatcher).runOnce();
+      await runner.cycle();
+      await runner.idle();
+      clock.advance(60_000);
+    }
+    const { shopify } = await app.get(ConnectionResolver).resolve(stores.sara!);
+    const subs = [...shop.webhooks.values()];
+    expect(subs.map((w) => w.topic).sort()).toEqual([...SHOPIFY_WEBHOOK_TOPICS].sort());
+    expect(new Set(subs.map((w) => w.uri))).toEqual(new Set([`https://api.mizan.test/webhooks/shopify/${shopify.connectionId}`]));
+    const jobs = await db.tenant(stores.sara!, (trx) => trx.selectFrom("mz_outbox").select(["kind", "status"]).where("kind", "=", "shopify.syncWebhooks").execute());
+    expect(jobs).toEqual([{ kind: "shopify.syncWebhooks", status: "done" }, { kind: "shopify.syncWebhooks", status: "done" }]); // install + reinstall
   });
 
   it("only owners and admins can connect a store", async () => {

@@ -168,3 +168,36 @@ export const TAGS_ADD: GqlOperation = {
     }`,
   ],
 };
+
+/**
+ * Webhook subscriptions of this app on this shop (the API only returns our own).
+ * `uri` replaced `endpoint { callbackUrl }` in 2025-04; variant 1 keeps the older shape.
+ */
+export const WEBHOOK_SUBSCRIPTIONS: GqlOperation = {
+  name: "MizanWebhookSubscriptions",
+  cost: 5,
+  variants: [
+    `query MizanWebhookSubscriptions($first: Int!) { webhookSubscriptions(first: $first) { nodes { id topic uri } } }`,
+    `query MizanWebhookSubscriptions($first: Int!) { webhookSubscriptions(first: $first) { nodes { id topic endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } } }`,
+  ],
+};
+
+export const WEBHOOK_CREATE: GqlOperation = {
+  name: "MizanWebhookCreate",
+  cost: 10,
+  variants: [
+    `mutation MizanWebhookCreate($topic: WebhookSubscriptionTopic!, $sub: WebhookSubscriptionInput!) {
+      webhookSubscriptionCreate(topic: $topic, webhookSubscription: $sub) { webhookSubscription { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const WEBHOOK_DELETE: GqlOperation = {
+  name: "MizanWebhookDelete",
+  cost: 10,
+  variants: [
+    `mutation MizanWebhookDelete($id: ID!) {
+      webhookSubscriptionDelete(id: $id) { deletedWebhookSubscriptionId userErrors { field message } }
+    }`,
+  ],
+};

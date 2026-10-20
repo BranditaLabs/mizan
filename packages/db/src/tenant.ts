@@ -68,6 +68,16 @@ export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => 
   });
 }
 
+/** A `query(text, params)` client on an open transaction (e.g. an event consumer's), so engine writes commit with it. */
+export function trxQueryClient(trx: Transaction<DB>) {
+  return {
+    async query<R = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<{ rows: R[] }> {
+      const res = await trx.executeQuery<R>(CompiledQuery.raw(text, params));
+      return { rows: [...res.rows] };
+    },
+  };
+}
+
 /**
  * A minimal `query(text, params)` client bound to one tenant: each call runs
  * in its own withTenant transaction (app role + app.tenant_id), so RLS

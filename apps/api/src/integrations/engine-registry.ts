@@ -98,6 +98,7 @@ export class EngineRegistry {
         accessToken: c.shopify.accessToken.reveal(),
         apiVersion: this.config.SHOPIFY_API_VERSION,
         clientSecret: this.config.SHOPIFY_API_SECRET ?? "",
+        webhookUrl: new URL(`/webhooks/shopify/${c.shopify.connectionId}`, this.config.PUBLIC_URL).toString(),
       },
       // Without a Bosta connection, courier jobs fail as `auth` and surface as connection.needs_attention.
       bosta: {

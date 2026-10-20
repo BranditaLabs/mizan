@@ -12,7 +12,7 @@ import { ShopifyConnector, type ShopifyLearned } from "../connectors/shopify/con
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
-import type { OutboxJob, Store } from "../sync/store.js";
+import type { NewJob, OutboxJob, Store } from "../sync/store.js";
 import { DEFAULT_WORKER, OutboxWorker, type JobOutcome, type WorkerOptions } from "../sync/worker.js";
 
 export type Owner = "mizan" | "shopify";
@@ -79,6 +79,9 @@ interface ProductState {
 }
 
 type Listener = (event: string, data: Record<string, unknown>) => void;
+
+/** Webhooks the engine handles (handleShopifyWebhook), as GraphQL WebhookSubscriptionTopic values. */
+export const SHOPIFY_WEBHOOK_TOPICS = ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "PRODUCTS_UPDATE", "APP_UNINSTALLED"] as const;
 
 const iso = (v: string | number | undefined) => (v === undefined ? undefined : new Date(v).toISOString());
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 16);
@@ -236,6 +239,21 @@ export class MizanEngine {
     return this.enqueue("shopify.pushProduct", { patch }, `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}`);
   }
 
+  /**
+   * Subscribe the store to the webhooks the engine handles (on connect and reconnect).
+   * `runKey` makes each connect its own job: an uninstall drops Shopify's subscriptions,
+   * so a reinstall must register again even if an earlier job already ran.
+   */
+  async registerShopifyWebhooks(runKey: string) {
+    const j = MizanEngine.shopifyWebhooksJob(runKey);
+    return this.enqueue(j.kind, j.payload, j.idempotencyKey);
+  }
+
+  /** The job registerShopifyWebhooks queues, for callers that enqueue inside their own transaction. */
+  static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
+  }
+
   /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
@@ -312,7 +330,15 @@ export class MizanEngine {
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
+      "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
     };
+  }
+
+  private async syncShopifyWebhooks() {
+    const uri = this.shopify.creds.webhookUrl;
+    if (!uri) throw new IntegrationError({ kind: "validation", connector: "shopify", message: "no webhook URL configured for this store" });
+    const r = await this.shopify.syncWebhooks(uri, SHOPIFY_WEBHOOK_TOPICS);
+    this.emit("shopify.webhooks_synced", { topics: [...SHOPIFY_WEBHOOK_TOPICS], created: r.created, deleted: r.deleted });
   }
 
   private async ingestOrder(orderId: string) {

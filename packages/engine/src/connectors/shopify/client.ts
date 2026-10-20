@@ -17,6 +17,8 @@ export interface ShopifyCredentials {
   clientSecret: string;
   /** Override for tests or a proxy. */
   baseUrl?: string;
+  /** Where Shopify delivers this store's webhooks (https; the platform's per-connection URL). */
+  webhookUrl?: string;
 }
 
 interface GqlBody {

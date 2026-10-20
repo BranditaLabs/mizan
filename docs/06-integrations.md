@@ -19,7 +19,8 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | Bosta (v2) | ✅ Built and tested (duplicate-safe create collecting only what is owed, search, track, cancel, cities, learning status map) | `packages/engine/src/connectors/bosta` |
 | Payment rules for every courier | ✅ Built and tested (`cashToCollect`, exact money, hold unpaid orders) | `packages/engine/src/core/payments.ts` |
 | Shopify OAuth install | ✅ E3-1: install / App Store entry / callback / claim, token exchange through `send()` (`exchangeShopifyCode`), fake OAuth in `FakeShopify` | `apps/api/src/modules/connections/shopify`, `packages/engine/src/connectors/shopify/oauth.ts` |
-| Shopify webhook registration, GDPR webhooks, uninstall, backfill | ⏳ Backlog E3-2 … E3-5 | `apps/api/src/modules/connections` |
+| Shopify webhook registration | ✅ E3-2: `connection.connected` → `shopify.syncWebhooks` engine job (converges subscriptions, safe to repeat) | `ShopifyConnector.syncWebhooks`, `apps/api/src/integrations/shopify-webhooks.consumer.ts` |
+| Shopify GDPR webhooks, uninstall, backfill | ⏳ Backlog E3-3 … E3-5 | `apps/api/src/modules/connections` |
 | EasyOrders, WooCommerce, LightFunnels | ⏳ MVP backlog | use `/new-connector` |
 | J&T, Mylerz | ⏳ MVP / V2 | — |
 | WhatsApp Cloud API | ⏳ MVP backlog | — |
@@ -50,6 +51,7 @@ How Mizan gets access to each outside system, what the engine already supports, 
 - Webhooks: HMAC header `X-Shopify-Hmac-SHA256` (base64 HMAC-SHA256 of the raw body with the app's client secret); respond within 5 s; Shopify retries 8 times over 4 hours; dedupe on `X-Shopify-Event-Id`.
 - `inventorySetQuantities` requires the `@idempotent(key:)` directive since 2026-04; the engine uses compare-and-set (`changeFromQuantity`).
 - `productUpdate` cannot update variants → `productVariantsBulkUpdate` for price and compare-at price.
+- Webhook subscriptions (✅ E3-2): on every connect the engine converges this app's subscriptions to `ORDERS_CREATE`, `ORDERS_UPDATED`, `ORDERS_CANCELLED`, `PRODUCTS_UPDATE`, `APP_UNINSTALLED` → `PUBLIC_URL/webhooks/shopify/{connectionId}` (job `shopify.syncWebhooks`: list, delete ours that point elsewhere, create the missing ones; duplicates refused by Shopify are fine). Uses `uri` on `WebhookSubscriptionInput` (2025-04+); reading falls back to `endpoint.callbackUrl`. **Confirm on a dev store** that 2026-10 accepts `uri` on create.
 - **App Store requirement:** mandatory compliance webhooks `customers/data_request`, `customers/redact`, `shop/redact` (backlog E3).
 
 Scopes: `read_orders` (+ `read_all_orders` for > 60 days), `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders`, `read_customers`.

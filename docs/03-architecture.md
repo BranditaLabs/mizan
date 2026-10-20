@@ -128,6 +128,7 @@ sequenceDiagram
 | `channel.order_received` / `listing.error` / `channel.payout_received` | M18 | M1, M8, M13 |
 | `period.closed` / `einvoice.rejected` | M19 | M13 |
 | `metric.threshold_crossed` | M20 | M13 |
+| `connection.connected` / `connection.disconnected` | Connections (E3) | ✅ `integrations.shopify-webhooks` (registers the store's webhooks as an engine job, E3-2), M13 |
 
 Full catalogue with actions: `docs/13-automation-platform.md`.
 

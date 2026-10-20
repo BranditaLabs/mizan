@@ -204,6 +204,38 @@ export class ShopifyConnector {
     assertNoUserErrors("tagsAdd", d.tagsAdd?.userErrors);
   }
 
+  // ───────────── webhooks ─────────────
+
+  /**
+   * Make this app's subscriptions on the shop exactly `topics` → `uri`: delete ours that point
+   * elsewhere (old URL, old connection) or at topics we no longer want, create the missing ones.
+   * Safe to repeat: Shopify refuses a second subscription for the same topic and address.
+   * Compliance topics (customers/redact …) are app configuration, not subscriptions.
+   */
+  async syncWebhooks(uri: string, topics: readonly string[]): Promise<{ created: string[]; deleted: number; kept: number }> {
+    const d = await this.gql.run<Record<string, unknown>>(Q.WEBHOOK_SUBSCRIPTIONS, { first: 100 }, { idempotent: true });
+    const nodes = (new Resolver(d, { connector: "shopify", entity: "webhook_subscriptions", ...this.ctx() }).any("nodes", ["webhookSubscriptions.nodes"]) ?? []) as unknown[];
+    const existing = nodes.map((n) => {
+      const r = new Resolver(n, { connector: "shopify", entity: "webhook_subscription", ...this.ctx() });
+      return { id: r.str("id", ["id"], { required: true })!, topic: r.str("topic", ["topic"], { required: true })!, uri: r.str("uri", ["uri", "endpoint.callbackUrl", "callbackUrl"]) };
+    });
+    let deleted = 0;
+    for (const e of existing.filter((x) => x.uri !== uri || !topics.includes(x.topic))) {
+      const res = await this.gql.run<{ webhookSubscriptionDelete: { userErrors: UserErrors } }>(Q.WEBHOOK_DELETE, { id: e.id }, { idempotent: true });
+      const errs = (res.webhookSubscriptionDelete?.userErrors ?? []).filter((x) => !/not.*found|does not exist/i.test(x.message));
+      assertNoUserErrors("webhookSubscriptionDelete", errs);
+      deleted++;
+    }
+    const created: string[] = [];
+    for (const topic of topics.filter((t) => !existing.some((x) => x.topic === t && x.uri === uri))) {
+      const res = await this.gql.run<{ webhookSubscriptionCreate: { userErrors: UserErrors } }>(Q.WEBHOOK_CREATE, { topic, sub: { uri, format: "JSON" } }, { idempotent: true });
+      const errs = (res.webhookSubscriptionCreate?.userErrors ?? []).filter((x) => !/already been taken|already exists/i.test(x.message));
+      assertNoUserErrors("webhookSubscriptionCreate", errs);
+      created.push(topic);
+    }
+    return { created, deleted, kept: existing.length - deleted };
+  }
+
   health() {
     return { circuit: this.gql.circuit.status, budget: this.gql.bucket.snapshot };
   }

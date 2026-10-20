@@ -30,6 +30,8 @@ export class FakeShopify {
   private codes = new Map<string, { scopes: string[]; used: boolean }>();
   /** Access tokens issued by the OAuth exchange. */
   readonly tokens: string[] = [];
+  /** This app's webhook subscriptions on the shop. */
+  webhooks = new Map<string, { topic: string; uri: string }>();
   products = new Map<string, Product>();
   orders = new Map<string, Order>();
   inventory = new Map<string, number>();
@@ -335,6 +337,24 @@ export class FakeShopify {
         o.received = o.total;
         o.updatedAt = this.touch();
         return { orderMarkAsPaid: { order: { id: o.id, displayFinancialStatus: "PAID" }, userErrors: [] } };
+      }
+      case "MizanWebhookSubscriptions": {
+        const nodes = [...this.webhooks].map(([id, w]) => ({ id, topic: w.topic, uri: w.uri, endpoint: { __typename: "WebhookHttpEndpoint", callbackUrl: w.uri } }));
+        return { webhookSubscriptions: { nodes } };
+      }
+      case "MizanWebhookCreate": {
+        const uri = String(v.sub?.uri ?? "");
+        if (!uri.startsWith("https://")) return { webhookSubscriptionCreate: { webhookSubscription: null, userErrors: [{ field: ["webhookSubscription", "callbackUrl"], message: "Address protocol http:// is not supported" }] } };
+        if ([...this.webhooks.values()].some((w) => w.topic === v.topic && w.uri === uri)) {
+          return { webhookSubscriptionCreate: { webhookSubscription: null, userErrors: [{ field: ["webhookSubscription", "callbackUrl"], message: "Address for this topic has already been taken" }] } };
+        }
+        const id = this.nextId("WebhookSubscription");
+        this.webhooks.set(id, { topic: v.topic, uri });
+        return { webhookSubscriptionCreate: { webhookSubscription: { id }, userErrors: [] } };
+      }
+      case "MizanWebhookDelete": {
+        if (!this.webhooks.delete(v.id)) return { webhookSubscriptionDelete: { deletedWebhookSubscriptionId: null, userErrors: [{ field: ["id"], message: "Webhook subscription does not exist" }] } };
+        return { webhookSubscriptionDelete: { deletedWebhookSubscriptionId: v.id, userErrors: [] } };
       }
       case "MizanTagsAdd": {
         const o = this.orders.get(v.id);
