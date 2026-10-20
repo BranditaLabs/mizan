@@ -72,6 +72,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 | Workflow | Trigger | Steps |
 | --- | --- | --- |
 | `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `secrets-scan`: gitleaks over full history. |
+| `nightly-load.yml` ✅ | Daily 03:17 Cairo, manual | Build, then `npm run load -w @mizan/perf` (2 API instances, 2,000 stores, Postgres service); fails on a missed latency/throughput gate or a lost webhook; table in the job summary, JSON as artifact |
 | `deploy-staging.yml` | Merge to `main` | build images → push to Artifact Registry → run migrations (migrator role) → deploy Cloud Run → smoke test |
 | `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
@@ -144,6 +145,10 @@ Alert rules (PromQL, in Cloud Monitoring):
 | Rate limiting spike | `sum(rate(mizan_rate_limited_total{policy="ip"}[5m])) > 10` | 10 m | ticket (possible abuse) |
 
 Queue gauges are global counts read at scrape time (one cheap query each, under the worker role), so every instance reports the same value: aggregate them with `max`, not `sum`.
+
+### Capacity planning (from H-11)
+
+Measured per API process (1 core, shared VM, `docs/perf/README.md`): ~450 webhooks/s or ~400 authenticated reads/s at saturation; latency targets hold with wide margin at half of that. Cloud Run settings that follow: **1 vCPU / 1 GiB, concurrency 80, min 2 instances, autoscale at 60 % CPU** — a 500 webhooks/s burst needs ~2 warm instances, 1,000 reads/s ~4–5. One Node process per instance (no in-process cluster): rate limits, caches and metrics stay per instance as designed. Until **H-13** measures it on Cloud Run, keep `max-instances` × `DATABASE_POOL_MAX` within the §5b budget.
 
 ## 5a. Table hygiene (✅ H-7)
 

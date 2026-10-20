@@ -2,11 +2,33 @@ import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Global, Module, type DynamicModule } from "@nestjs/common";
 import { LoggerModule as PinoLoggerModule } from "nestjs-pino";
-import type { DestinationStream, LoggerOptions } from "pino";
+import { destination as pinoDestination, type DestinationStream, type LoggerOptions } from "pino";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { PINO_REDACT_PATHS, REDACTED, redactDeep, scrubText, scrubUrl } from "./redact.js";
 
 const REQUEST_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/**
+ * Scrub every string of a log record, except the serialized fields: walking a raw
+ * IncomingMessage / ServerResponse on every request line was the API's largest CPU cost (H-11).
+ */
+export function redactLogRecord(obj: Record<string, unknown>): Record<string, unknown> {
+  // req, res and err have their own serializers, which keep only safe values (they run after formatters.log).
+  const { req, res, err, ...rest } = obj;
+  const out = redactDeep(rest) as Record<string, unknown>;
+  if (req !== undefined) out.req = req;
+  if (res !== undefined) out.res = res;
+  if (err !== undefined) out.err = err;
+  return out;
+}
+
+/**
+ * stdout through an async buffer: lines are written in 4 KiB batches or every 250 ms,
+ * instead of one write syscall per line. pino flushes it synchronously on exit.
+ */
+export function bufferedDestination(dest: number | string = 1): DestinationStream {
+  return pinoDestination({ dest, sync: false, minLength: 4096, periodicFlush: 250 } as Parameters<typeof pinoDestination>[0]);
+}
 
 export function requestIdFor(req: IncomingMessage, res: ServerResponse): string {
   const incoming = req.headers["x-request-id"];
@@ -26,7 +48,7 @@ export function pinoOptions(config: AppConfig): LoggerOptions {
       // Cloud Logging reads `severity`.
       level: (label) => ({ severity: label.toUpperCase(), level: label }),
       // Scrub every string in the merged log object (phones, emails, tokens in free text).
-      log: (obj) => redactDeep(obj) as Record<string, unknown>,
+      log: redactLogRecord,
     },
     hooks: {
       logMethod(args, method) {
@@ -72,7 +94,9 @@ export class LoggingModule {
               },
               autoLogging: { ignore: (req: IncomingMessage) => req.url === "/health" || req.url === "/health/ready" || req.url === "/metrics" },
             };
-            return { pinoHttp: destination ? [options, destination] : options };
+            const pretty = "transport" in options && options.transport;
+            const dest = destination ?? (pretty ? undefined : bufferedDestination());
+            return { pinoHttp: dest ? [options, dest] : options };
           },
         }),
       ],

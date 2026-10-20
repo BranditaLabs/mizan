@@ -65,3 +65,15 @@ describe("redactDeep", () => {
     expect(maskPhone("123")).toBe("•••");
   });
 });
+
+describe("redactLogRecord", () => {
+  it("scrubs every field but leaves req/res/err to their serializers, without walking them", async () => {
+    const { redactLogRecord } = await import("../src/platform/logging/logger.module.js");
+    const req = { get socket(): never { throw new Error("walked the raw request"); } };
+    const out = redactLogRecord({ message: "call 01001234821", phone: "+201001234821", nested: { email: "a@b.co" }, req, res: req });
+    expect(out.req).toBe(req);
+    expect(out.res).toBe(req);
+    expect(out).toMatchObject({ message: "call 010•••4821", phone: REDACTED });
+    expect(JSON.stringify(out.nested)).not.toContain("a@b.co");
+  });
+});

@@ -6,10 +6,12 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "bench:tenant-tx": "tsx --conditions=source tenant-tx.bench.ts"
+    "bench:tenant-tx": "tsx --conditions=source tenant-tx.bench.ts",
+    "load": "tsx --conditions=source load/run.ts"
   },
   "dependencies": {
     "@mizan/db": "0.1.0",
+    "autocannon": "8.0.0",
     "pg": "8.23.1"
   },
   "devDependencies": {

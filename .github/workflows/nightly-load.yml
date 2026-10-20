@@ -1,0 +1,48 @@
+name: Nightly load test
+
+on:
+  schedule:
+    - cron: "17 0 * * *" # 03:17 Cairo
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: Seconds per scenario
+        default: "30"
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    name: Load test (2 API instances, 2,000 stores)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      LOAD_DURATION: ${{ inputs.duration || '30' }}
+      LOAD_OUT: load-results.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Fails when a gate in perf/load/run.ts is missed (latency, throughput, errors, lost webhooks).
+      - name: Run scenarios
+        run: npm run -s load -w @mizan/perf | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-results
+          path: perf/load-results.json
+          if-no-files-found: ignore
