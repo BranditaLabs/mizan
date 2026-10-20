@@ -15,7 +15,7 @@ The REST API serves the web dashboard, the ops app and merchants' own integratio
 | Pagination | Cursor: `?limit=50&cursor=<opaque>` → `{ data: [...], nextCursor: "..." \| null }`. Max limit 200 |
 | Filtering | `?status=confirmed&status=shipped&placedFrom=…&placedTo=…&q=…` (repeat a key for OR) |
 | Sorting | `?sort=-placedAt` |
-| Idempotency | All `POST` that create or trigger side effects accept `Idempotency-Key` (stored 24 h; same key + same body → same response; same key + different body → 409) |
+| Idempotency | All `POST` that create or trigger side effects accept `Idempotency-Key` (stored 24 h; same key + same body → same response; same key + different body → 409). ✅ (H-4) per caller; replays carry `Idempotency-Replayed: true`; a request still running → 409 `idempotency_key_in_progress`; failed attempts are not stored, so they can be retried with the same key |
 | Concurrency | Mutable resources return `ETag`; `PATCH` accepts `If-Match` → 412 on conflict |
 | Errors | RFC 9457 `application/problem+json` (below) |
 | Language | `Accept-Language: ar` or `en` → localized `title` / `detail` in errors |

@@ -245,6 +245,18 @@ export interface FxRates {
   source: string;
 }
 
+export interface IdempotencyKeys {
+  actor_id: string;
+  key: string;
+  tenant_id: string | null;
+  request_hash: string;
+  status: string;
+  response_status: number | null;
+  response_body: Json | null;
+  created_at: Generated<Timestamp>;
+  expires_at: Timestamp;
+}
+
 export interface Invitations {
   id: Generated<string>;
   tenant_id: string;
@@ -827,6 +839,7 @@ export interface DB {
   expenses: Expenses;
   external_variants: ExternalVariants;
   fx_rates: FxRates;
+  idempotency_keys: IdempotencyKeys;
   invitations: Invitations;
   landed_costs: LandedCosts;
   listings: Listings;

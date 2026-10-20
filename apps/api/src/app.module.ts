@@ -7,7 +7,8 @@ import { TenantsModule } from "./modules/tenants/tenants.module.js";
 import { OrdersModule } from "./modules/orders/orders.module.js";
 import { ConnectionsModule } from "./modules/connections/connections.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
-import { APP_FILTER } from "@nestjs/core";
+import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
+import { IdempotencyInterceptor } from "./platform/http/idempotency.interceptor.js";
 import type { AppConfig } from "./platform/config.js";
 import { ConfigModule } from "./platform/config.module.js";
 import { DatabaseModule } from "./platform/db/database.module.js";
@@ -41,7 +42,7 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, ...(options.modules ?? [])],
-      providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
+      providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
     };
   }
 }

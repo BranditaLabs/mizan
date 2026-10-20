@@ -36,6 +36,9 @@ const PROBLEM_TITLES = {
   secret_not_found: { en: "Credential not found", ar: "بيانات الربط مش موجودة" },
   job_not_found: { en: "Job not found", ar: "المهمة مش موجودة" },
   store_not_connected: { en: "Store not connected", ar: "المتجر مش مربوط" },
+  invalid_idempotency_key: { en: "Invalid Idempotency-Key", ar: "مفتاح التكرار مش صحيح" },
+  idempotency_key_reused: { en: "Idempotency-Key already used", ar: "مفتاح التكرار ده اتستخدم لطلب تاني" },
+  idempotency_key_in_progress: { en: "Request still running", ar: "الطلب الأول لسه شغال، جرّب كمان شوية" },
   internal_error: { en: "Something went wrong", ar: "حصلت مشكلة عندنا" },
   service_unavailable: { en: "Service unavailable", ar: "الخدمة مش متاحة دلوقتي" },
 } as const satisfies Record<string, Record<Locale, string>>;
