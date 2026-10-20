@@ -70,3 +70,16 @@ describe("learned state", () => {
     expect(ctx.engine.shopify.exportLearned().variants).not.toHaveProperty("Bad");
   });
 });
+
+describe("hooks.onAwaitingPayment", () => {
+  it("fires (awaited) when a confirmed bank-transfer order cannot ship yet", async () => {
+    const waiting: string[] = [];
+    const ctx = setup({ hooks: { onAwaitingPayment: async (order, reason) => { waiting.push(`${order.number}:${reason}`); } } });
+    const o = ctx.shop.addOrder({ tags: ["mizan-confirmed"], payment: "bank" });
+    const wh = ctx.shop.webhook("orders/create", o);
+    await ctx.engine.handleShopifyWebhook(wh.headers, wh.body);
+    await settle(ctx.engine, ctx.store, ctx.clock);
+    expect(waiting).toEqual([`${o.name}:awaiting_payment`]);
+    expect(ctx.bosta.deliveries.size).toBe(0);
+  });
+});

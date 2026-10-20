@@ -39,6 +39,7 @@ Every order has payment lines in `payments` (`packages/db/migrations/0002_commer
 - `orders.paid_minor` = Σ succeeded money-in lines; `orders.refunded_minor` = Σ refunds; `orders.balance_minor` = what the customer still owes (generated column).
 - One line per gateway transaction (`UNIQUE (connection_id, external_ref, kind)`), so webhooks and polls never double-count.
 - Fees are estimated at capture (`fee_is_actual = false`) and replaced by actual fees from payouts (M8).
+- ✅ From store connections (E2-6): Shopify reports running totals, not transactions, so each change in received or refunded becomes one line for the difference with `external_ref = <order>:in:<new total>` / `<order>:refund:<new total>`. Gateway transactions (M15) will add lines with the gateway's own reference.
 
 ## 4. The cash rule (engine)
 

@@ -28,7 +28,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Store orders land in `orders`/`order_lines`/`customers`, PII encrypted, events emitted (E2-3).
 - ✅ Engine learning (status codes, city aliases, query variants) kept per connection (E2-4).
 - ✅ Integration ops routes: health, dead letters, replay, city fixes (E2-5).
-- ⏭️ **Next:** E2-6 (payment fields → `payments`, payment events); E1-11 waits for GCP project details.
+- ✅ Payment ledger and payment events from the engine (E2-6). **E2 done** except E2-7 (several stores per tenant).
+- ⏭️ **Next:** E3 (Shopify app: OAuth install, webhooks, compliance webhooks, uninstall, backfill); E1-11 waits for GCP project details.
 
 ---
 
@@ -68,7 +69,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [x] **E2-3** `M` Map engine events to domain events (`order.ingested` → `order.created` …) and persist canonical orders into `orders`, `order_lines`, `customers` (with phone hash). *Accept:* replaying the same webhook 3× creates one order. *Done:* engine `hooks.onOrder` (awaited in the ingest job; platform failures retry as `transient`), `OrderProjector` (upsert by connection + external id, line sync, customer by phone hash, `order_events` timeline, `order.created/updated/cancelled` in the same transaction), `PiiCipher` for personal data. Shipment events → domain events land with the shipments table in E7-1.
 - [x] **E2-4** `S` Persist engine-learned data (status codes, city aliases, query variants) into `connections.learned`. *Done:* Shopify connector exports/loads query variants and the inventory compare field; engine `learned` option + `hooks.onLearned` (only on change, checked after every job); the platform keeps each provider's state on its own connection and feeds it to rebuilt engines.
 - [x] **E2-5** `S` Admin integration routes: health, dead letters, replay, resolve city (port from engine `server.ts` `/ops/*`). *Done:* `/v1/admin/integrations/{health,dead-letters,jobs/:id/replay,cities/resolve}` for owner/admin/ops_manager, audited; tested on the real loop: unknown city → dead letter → alias taught → replay → shipped.
-- [ ] **E2-6** `S` Persist engine payment fields (`paymentMode`, `paymentStatus`, `received`, `outstanding`, `refunded`) into `orders` and `payments`; map `order.awaiting_payment` and `order.payment_changed` to domain events.
+- [x] **E2-6** `S` Persist engine payment fields (`paymentMode`, `paymentStatus`, `received`, `outstanding`, `refunded`) into `orders` and `payments`; map `order.awaiting_payment` and `order.payment_changed` to domain events. *Done:* orders carry mode/status/paid/refunded (E2-3); `payments` ledger from the store's running totals (one line per change, keyed by the new total, replay-safe; `paid_minor` = Σ money-in, `refunded_minor` = −Σ refunds), method from gateways (card / wallet / Apple Pay / BNPL / bank transfer / InstaPay / COD, deposit = online then cash); `order.payment_changed` from the DB diff; engine `hooks.onAwaitingPayment` → `order.awaiting_payment` once per reason.
 
 ### E3 · Shopify app
 

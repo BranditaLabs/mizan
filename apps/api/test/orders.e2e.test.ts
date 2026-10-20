@@ -12,7 +12,7 @@ import { PiiCipher } from "../src/platform/pii/pii-cipher.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { EngineRegistry } from "../src/integrations/engine-registry.js";
 import { EngineJobRunner } from "../src/integrations/engine-runner.js";
-import { OrderProjector } from "../src/modules/orders/order-projector.js";
+import { ledgerMethod, OrderProjector } from "../src/modules/orders/order-projector.js";
 
 const T = "aaaaaaaa-0000-4000-8000-000000000001";
 const U = "bbbbbbbb-0000-4000-8000-000000000002";
@@ -138,7 +138,7 @@ describe("OrderProjector", () => {
     expect(updated[0]!.data).toMatchObject({ number: "#9100", paymentStatus: "paid", codMinor: "0", changed: expect.arrayContaining(["payment_status"]) });
     expect(JSON.stringify(updated[0]!.data)).not.toMatch(/Mona|1001234821/);
     const timeline = (await rows("order_events")).filter((e) => e.order_id === orderId).map((e) => e.type);
-    expect(timeline).toEqual(["created", "updated"]);
+    expect(timeline).toEqual(["created", "payment_changed", "updated"]);
   });
 
   it("a store cancellation cancels a new order once; lines follow the store", async () => {
@@ -166,5 +166,89 @@ describe("OrderProjector", () => {
     expect(keys).toHaveLength(1);
     const settings = await sql<{ ref: string }>`SELECT settings->>'piiKeyRef' AS ref FROM tenants WHERE id = ${fresh}`.execute(db.kysely);
     expect(settings.rows[0]!.ref).toBe(keys[0]!.id);
+  });
+});
+
+describe("payments (E2-6)", () => {
+  const ledger = async (orderId: string) =>
+    (await db.tenant(T, (trx) => trx.selectFrom("payments").select(["kind", "method", "amount_minor", "status"]).where("order_id", "=", orderId).orderBy("created_at").orderBy("amount_minor", "desc").execute()));
+  const invariant = async (orderId: string) => {
+    const o = (await rows("orders")).find((x) => x.id === orderId)!;
+    const lines = await ledger(orderId);
+    const moneyIn = lines.filter((l) => l.kind !== "refund").reduce((a, l) => a + l.amount_minor, 0n);
+    const refunds = lines.filter((l) => l.kind === "refund").reduce((a, l) => a + l.amount_minor, 0n);
+    expect(moneyIn).toBe(o.paid_minor);
+    expect(-refunds).toBe(o.refunded_minor);
+  };
+  const egp = (amount: string) => ({ amount, currency: "EGP" });
+
+  it("a card order paid at checkout: one sale line", async () => {
+    const r = await projector.project(T, connectionId, order({
+      externalId: "gid://shopify/Order/P1", number: "#P1", paymentMode: "prepaid", paymentStatus: "paid", gateways: ["paymob"],
+      received: egp("1150.00"), outstanding: egp("0.00"),
+    }));
+    expect(await ledger(r.orderId)).toEqual([{ kind: "sale", method: "card", amount_minor: 115000n, status: "succeeded" }]);
+    await invariant(r.orderId);
+  });
+
+  it("COD collected on delivery: one cod_collection line and one payment_changed event, however often it is replayed", async () => {
+    const base = order({ externalId: "gid://shopify/Order/P2", number: "#P2" });
+    const { orderId } = await projector.project(T, connectionId, base);
+    expect(await ledger(orderId)).toEqual([]);
+    const paid = { ...base, paymentStatus: "paid" as const, received: egp("1150.00"), outstanding: egp("0.00") };
+    for (let i = 0; i < 3; i++) await projector.project(T, connectionId, paid);
+    expect(await ledger(orderId)).toEqual([{ kind: "cod_collection", method: "cod", amount_minor: 115000n, status: "succeeded" }]);
+    const changed = (await events("order.payment_changed")).filter((e) => e.entity_id === orderId);
+    expect(changed).toHaveLength(1);
+    expect(changed[0]!.data).toMatchObject({ number: "#P2", mode: "cod", from: "unpaid", to: "paid", paidMinor: "115000", refundedMinor: "0" });
+    await invariant(orderId);
+  });
+
+  it("deposit + COD balance, then a partial refund: card deposit, cash balance, refund line", async () => {
+    const base = order({
+      externalId: "gid://shopify/Order/P3", number: "#P3", paymentMode: "partial", paymentStatus: "partially_paid",
+      gateways: ["paymob", "Cash on Delivery (COD)"], received: egp("300.00"), outstanding: egp("850.00"),
+    });
+    const { orderId } = await projector.project(T, connectionId, base);
+    await projector.project(T, connectionId, { ...base, paymentStatus: "paid", received: egp("1150.00"), outstanding: egp("0.00") });
+    await projector.project(T, connectionId, { ...base, paymentStatus: "partially_refunded", received: egp("1150.00"), outstanding: egp("0.00"), refunded: egp("200.00") });
+    expect(await ledger(orderId)).toEqual([
+      { kind: "sale", method: "card", amount_minor: 30000n, status: "succeeded" },
+      { kind: "cod_collection", method: "cod", amount_minor: 85000n, status: "succeeded" },
+      { kind: "refund", method: "cod", amount_minor: -20000n, status: "succeeded" },
+    ]);
+    await invariant(orderId);
+    const o = (await rows("orders")).find((x) => x.id === orderId)!;
+    expect(o).toMatchObject({ payment_status: "partially_refunded", paid_minor: 115000n, refunded_minor: 20000n, balance_minor: 0n });
+    expect((await events("order.payment_changed")).filter((e) => e.entity_id === orderId)).toHaveLength(2);
+  });
+
+  it("maps gateways to ledger methods", () => {
+    const m = (paymentMode: CanonicalOrder["paymentMode"], gateways: string[], first = true) => ledgerMethod(order({ paymentMode, gateways }), first);
+    expect(m("prepaid", ["Apple Pay"])).toBe("apple_pay");
+    expect(m("prepaid", ["Vodafone Cash"])).toBe("wallet");
+    expect(m("prepaid", ["paymob"])).toBe("card");
+    expect(m("bnpl", ["Tabby"])).toBe("bnpl");
+    expect(m("bank_transfer", ["InstaPay"])).toBe("instapay");
+    expect(m("bank_transfer", ["Bank Deposit"])).toBe("bank_transfer");
+    expect(m("partial", ["paymob", "COD"], true)).toBe("card");
+    expect(m("partial", ["paymob", "COD"], false)).toBe("cod");
+  });
+
+  it("a confirmed bank transfer waiting for payment is flagged once (order.awaiting_payment), through the engine", async () => {
+    const o = shop.addOrder({ tags: ["mizan-confirmed"], payment: "bank" });
+    const { engine } = await app.get(EngineRegistry).get(T);
+    const runner = app.get(EngineJobRunner);
+    for (const topic of ["orders/create", "orders/updated", "orders/updated"]) {
+      const wh = shop.webhook(topic, o);
+      await engine.handleShopifyWebhook(wh.headers, wh.body);
+      for (let i = 0; i < 4; i++) { await runner.cycle(); await runner.idle(); clock.advance(60_000); }
+    }
+    const row = (await rows("orders")).find((x) => x.external_id === o.id)!;
+    expect(row).toMatchObject({ payment_mode: "bank_transfer", payment_status: "unpaid", cod_minor: 0n });
+    const waiting = (await events("order.awaiting_payment")).filter((e) => e.entity_id === row.id);
+    expect(waiting).toHaveLength(1);
+    expect(waiting[0]!.data).toMatchObject({ reason: "awaiting_payment", mode: "bank_transfer" });
+    expect(bosta.deliveries.size).toBe(0);
   });
 });

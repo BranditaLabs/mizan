@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
-import { cashToCollect } from "@mizan/engine";
+import { cashToCollect, type ShipBlockReason } from "@mizan/engine";
 import { normalizePhone, toMinor, type CanonicalOrder, type PhoneCountry } from "@mizan/shared";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
@@ -14,6 +14,22 @@ const PAYMENT_STATUSES = new Set(["unpaid", "authorized", "partially_paid", "pai
 
 /** Business fields compared to decide whether an update is worth an event. */
 const TRACKED = ["status", "payment_mode", "payment_status", "total_minor", "paid_minor", "refunded_minor", "cod_minor", "tags"] as const;
+const PAYMENT_FIELDS = new Set<string>(["payment_status", "paid_minor", "refunded_minor"]);
+
+type LedgerMethod = "cod" | "card" | "wallet" | "apple_pay" | "bnpl" | "bank_transfer" | "instapay";
+
+/** Ledger method for money received on an order (docs/12 §3). Deposits are paid online; the rest of a deposit order is cash. */
+export function ledgerMethod(order: CanonicalOrder, firstMoneyIn: boolean): LedgerMethod {
+  const gw = order.gateways.join(" ").toLowerCase();
+  switch (order.paymentMode) {
+    case "cod": return "cod";
+    case "partial": return firstMoneyIn ? onlineMethod(gw) : "cod";
+    case "bnpl": return "bnpl";
+    case "bank_transfer": return /instapay/.test(gw) ? "instapay" : "bank_transfer";
+    default: return onlineMethod(gw);
+  }
+}
+const onlineMethod = (gw: string): LedgerMethod => (/apple/.test(gw) ? "apple_pay" : /wallet|vodafone|meeza|fawry ?pay/.test(gw) ? "wallet" : "card");
 
 export interface ProjectResult {
   orderId: string;
@@ -60,6 +76,7 @@ export class OrderProjector {
           ...values, status: order.cancelled ? "cancelled" : "new", placed_at: order.createdAt,
         }).returning(["id", "status"]).executeTakeFirstOrThrow();
         await this.syncLines(trx, tenantId, row.id, order);
+        await this.syncLedger(trx, tenantId, row.id, connectionId, order, { paid: 0n, refunded: 0n }, { paid: values.paid_minor, refunded: values.refunded_minor });
         if (customerId) {
           await trx.updateTable("customers").set((eb) => ({ orders_count: eb("orders_count", "+", 1) })).where("id", "=", customerId).execute();
         }
@@ -79,6 +96,22 @@ export class OrderProjector {
         ...(status === "cancelled" && existing.status !== "cancelled" ? { cancelled_at: new Date() } : {}),
       }).where("id", "=", existing.id).execute();
       await this.syncLines(trx, tenantId, existing.id, order);
+      await this.syncLedger(trx, tenantId, existing.id, connectionId, order,
+        { paid: existing.paid_minor, refunded: existing.refunded_minor }, { paid: values.paid_minor, refunded: values.refunded_minor });
+
+      if (changed.some((c) => PAYMENT_FIELDS.has(c))) {
+        await trx.insertInto("order_events").values({
+          tenant_id: tenantId, order_id: existing.id, type: "payment_changed", actor_type: "system",
+          data: JSON.stringify({ from: existing.payment_status, to: values.payment_status }),
+        }).execute();
+        await this.events.emit(trx, {
+          type: "order.payment_changed", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" },
+          data: {
+            number: order.number, mode: values.payment_mode, from: existing.payment_status, to: values.payment_status,
+            paidMinor: String(values.paid_minor), refundedMinor: String(values.refunded_minor), currency: values.currency,
+          },
+        });
+      }
 
       if (changed.length) {
         await trx.insertInto("order_events").values({
@@ -92,6 +125,54 @@ export class OrderProjector {
       }
       return { orderId: existing.id, created: false, changed };
     });
+  }
+
+  /**
+   * A confirmed order is held because of its payment. Recorded once per
+   * reason until the payment changes (webhooks re-deliver the same state).
+   */
+  async awaitingPayment(tenantId: string, connectionId: string, order: CanonicalOrder, reason: ShipBlockReason): Promise<boolean> {
+    return this.db.tenant(tenantId, async (trx) => {
+      const row = await trx.selectFrom("orders").select(["id"]).where("connection_id", "=", connectionId).where("external_id", "=", order.externalId).forUpdate().executeTakeFirst();
+      if (!row) return false; // projected first by hooks.onOrder; nothing to flag otherwise
+      const last = await trx.selectFrom("order_events").select(["type", "data"]).where("order_id", "=", row.id)
+        .where("type", "in", ["awaiting_payment", "payment_changed"]).orderBy("created_at", "desc").orderBy("id", "desc").limit(1).executeTakeFirst();
+      const lastReason = last?.type === "awaiting_payment" ? (typeof last.data === "string" ? JSON.parse(last.data) : last.data)?.reason : undefined;
+      if (lastReason === reason) return false;
+      await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: row.id, type: "awaiting_payment", actor_type: "system", data: JSON.stringify({ reason }) }).execute();
+      await this.events.emit(trx, {
+        type: "order.awaiting_payment", tenantId, entity: { type: "order", id: row.id }, actor: { type: "engine" },
+        data: { number: order.number, reason, mode: order.paymentMode, status: order.paymentStatus },
+      });
+      return true;
+    });
+  }
+
+  /**
+   * Payment ledger (docs/12 §3) from the store's running totals: each change in
+   * received or refunded becomes one line for the difference, keyed by the new
+   * total, so replays never double-count. Keeps paid_minor = Σ money-in lines
+   * and refunded_minor = −Σ refund lines.
+   */
+  private async syncLedger(
+    trx: Transaction<DB>, tenantId: string, orderId: string, connectionId: string, order: CanonicalOrder,
+    before: { paid: bigint; refunded: bigint }, after: { paid: bigint; refunded: bigint },
+  ) {
+    const lines: Array<{ kind: "sale" | "cod_collection" | "refund" | "void"; method: LedgerMethod; amount: bigint; ref: string }> = [];
+    if (after.paid !== before.paid) {
+      const method = ledgerMethod(order, before.paid === 0n);
+      const kind = after.paid < before.paid ? "void" : method === "cod" ? "cod_collection" : "sale";
+      lines.push({ kind, method, amount: after.paid - before.paid, ref: `${order.externalId}:in:${after.paid}` });
+    }
+    if (after.refunded > before.refunded) {
+      lines.push({ kind: "refund", method: ledgerMethod(order, false), amount: -(after.refunded - before.refunded), ref: `${order.externalId}:refund:${after.refunded}` });
+    }
+    for (const l of lines) {
+      await trx.insertInto("payments").values({
+        tenant_id: tenantId, order_id: orderId, connection_id: connectionId, method: l.method, kind: l.kind, status: "succeeded",
+        amount_minor: l.amount, currency: order.currency, external_ref: l.ref, occurred_at: order.updatedAt,
+      }).onConflict((oc) => oc.columns(["connection_id", "external_ref", "kind"]).doNothing()).execute();
+    }
   }
 
   private orderValues(order: CanonicalOrder, pii: TenantPii, shipPhone: string | null) {

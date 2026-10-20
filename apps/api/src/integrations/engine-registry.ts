@@ -111,6 +111,9 @@ export class EngineRegistry {
         onOrder: async (order) => {
           await this.orders.project(tenantId, c.shopify.connectionId, order);
         },
+        onAwaitingPayment: async (order, reason) => {
+          await this.orders.awaitingPayment(tenantId, c.shopify.connectionId, order, reason);
+        },
         // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
         onLearned: async (provider, state) => {
           const connectionId = provider === "shopify" ? c.shopify.connectionId : c.bosta?.connectionId;

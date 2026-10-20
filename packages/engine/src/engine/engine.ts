@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { cashToCollect, deliveryCompletesPayment, ShipBlockedError } from "../core/payments.js";
+import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "@mizan/shared";
 import { TERMINAL_STATUSES } from "@mizan/shared";
@@ -43,6 +43,8 @@ export interface EngineOptions {
   hooks?: {
     /** A fresh canonical order (fat fetch) and the engine's previous copy. Must be idempotent. */
     onOrder?: (order: CanonicalOrder, previous: CanonicalOrder | undefined) => Promise<void>;
+    /** A confirmed order cannot ship yet because of its payment (unpaid transfer, failed or unknown method). */
+    onAwaitingPayment?: (order: CanonicalOrder, reason: ShipBlockReason) => Promise<void>;
     /** A connector learned something new (status code, city alias, query variant). Called only on change. */
     onLearned?: (provider: "shopify" | "bosta", state: ShopifyLearned | BostaLearned) => Promise<void>;
   };
@@ -339,6 +341,7 @@ export class MizanEngine {
         cashToCollect(order);
       } catch (e) {
         if (e instanceof ShipBlockedError) {
+          await this.runHook(() => this.opts.hooks?.onAwaitingPayment?.(rec.order, e.reason));
           this.emit("order.awaiting_payment", { orderId, number: order.number, reason: e.reason, mode: order.paymentMode, status: order.paymentStatus });
           return;
         }
