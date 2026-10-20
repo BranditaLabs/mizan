@@ -22,6 +22,8 @@ async function main(): Promise<void> {
   const app = await createApp(config);
   exitOnSignals(app, (m) => new Logger("Process").log(m));
   await app.listen(config.PORT, "0.0.0.0");
+  const { tuneServer } = await import("./platform/http/hardening.js");
+  tuneServer(app.getHttpServer());
 }
 
 void main();

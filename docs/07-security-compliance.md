@@ -20,6 +20,8 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | Fraudulent refunds | Role permissions, approval thresholds, refunds to original method by default, audit log, alerts on refund spikes |
 | Wrong cash on a shipment | Engine `cashToCollect` rule; unknown payment methods never ship; chaos-tested |
 
+**HTTP posture (✅ H-2):** security headers on every response (CSP `default-src 'none'`, `X-Frame-Options: DENY`, `nosniff`, `no-referrer`, HSTS with preload in production); CORS only for the web and admin apps, never with credentials (bearer tokens only); request bodies capped (`MAX_BODY_BYTES`); malformed or oversized bodies answer problem+json.
+
 ## 2. Personal data handling
 
 | Data | Where | Protection |

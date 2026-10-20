@@ -21,6 +21,10 @@ export const ConfigSchema = z.object({
 
   PUBLIC_URL: url,
   WEB_URL: url,
+  /** Staff admin app (E17); allowed by CORS when set. */
+  ADMIN_URL: url.optional(),
+  /** Largest JSON body accepted (bytes). Webhooks and imports have their own limits. */
+  MAX_BODY_BYTES: z.coerce.number().int().min(1024).max(50 * 1024 * 1024).default(1024 * 1024),
 
   // Database. postgres://… in staging/production. Unset in development/test = in-memory
   // PGlite with migrations applied at boot; "pglite:<dir>" keeps local data between runs.
