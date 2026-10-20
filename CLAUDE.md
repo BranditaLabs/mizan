@@ -34,7 +34,7 @@ packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`miz
 packages/design-system/ ✅ BUILT — Brandita identity (ink, paper, one red point): tokens for CSS/Tailwind/TS/Flutter, Geist + Alexandria + Plex Arabic fonts, 124 icons, wordmark, app icons (70 tests: contrast, brand fidelity)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
 apps/api/          🚧 FOUNDATIONS (E1) — NestJS 12: config, redacting logger, problem+json, OpenAPI, tenant DB, Firebase auth + roles, signup, team, domain events + worker, audit log, KMS secrets; modules M1–M22 next
-apps/web/          🚧 FOUNDATION (E4-1) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules for logical directions and translated strings; screens next
+apps/web/          🚧 FOUNDATION (E4-1, E4-2) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules; Firebase sign-in (email + SMS second step, phone OTP), store gate and switcher; screens next
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
@@ -52,7 +52,8 @@ npm run build                # shared → dist, api → dist (CI runs it before 
 npm run dev -w @mizan/api    # API on :8080 with reload (cp apps/api/.env.example apps/api/.env first); in-memory PGlite DB
 npm run codegen -w @mizan/db # after adding a migration: regenerate packages/db/src/schema.ts
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
-npm run dev -w @mizan/web    # dashboard on :3000 (/ar, /en); npm run e2e -w @mizan/web after a build
+npm run dev -w @mizan/web    # dashboard on :3000 (/ar, /en); sign-in needs Firebase config or the emulator (apps/web/.env.example)
+npm run build:api && npm run build:e2e -w @mizan/web && npm run e2e -w @mizan/web   # e2e: Auth emulator (Java 21) + API + web
 npm test -w @mizan/design-system  # tokens: WCAG contrast both themes, brand fidelity, generated files current (build after editing tokens.json)
 npm run lint                # ESLint (web: no physical directions, no literal UI strings)
 npm run load -w @mizan/perf # load test vs real API on Postgres (needs npm run build + TEST_DATABASE_URL); see docs/perf

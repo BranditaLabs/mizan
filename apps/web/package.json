@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
+    "build:e2e": "node e2e/build.mjs",
     "start": "next start --port 3000",
     "lint": "eslint --max-warnings 0 .",
     "typecheck": "tsc --noEmit",
@@ -17,6 +18,7 @@
   "dependencies": {
     "@mizan/design-system": "1.0.0",
     "@mizan/shared": "0.1.0",
+    "firebase": "13.0.0",
     "lucide-react": "1.60.0",
     "next": "16.4.2",
     "next-intl": "4.14.9",

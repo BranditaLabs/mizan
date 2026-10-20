@@ -42,19 +42,29 @@ jobs:
       - run: npm test
 
   web-e2e:
-    name: Web smoke test (RTL/LTR, themes)
+    name: Web end to end (sign-in, RTL/LTR, themes)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+      # Firebase Auth emulator (firebase-tools 15 needs Java 21)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.34.0
       - run: npm ci
       - run: npx playwright install --with-deps chromium
         working-directory: apps/web
-      - run: npm run build -w @mizan/shared && npm run build -w @mizan/web
+      # The real API (PGlite) and the web app built against the emulator stack (apps/web/e2e/env.mjs)
+      - run: npm run build:api && npm run build:e2e -w @mizan/web
       - run: npm run e2e -w @mizan/web
         env:
           CI: "true"

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { dirOf, routing } from "@/i18n/routing";
+import { SessionProvider } from "@/lib/session";
 import { parseTheme, THEME_COOKIE, themeAttribute } from "@/lib/theme";
 import "../globals.css";
 
@@ -25,7 +26,9 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <SessionProvider>{children}</SessionProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

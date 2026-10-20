@@ -1,7 +1,8 @@
-import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWK } from "jose";
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, UnsecuredJWT, type JWK } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 import { ProblemError } from "../src/platform/http/problem.js";
-import { DisabledTokenVerifier, FirebaseTokenVerifier } from "../src/platform/auth/token-verifier.js";
+import { DisabledTokenVerifier, EmulatorTokenVerifier, FirebaseTokenVerifier } from "../src/platform/auth/token-verifier.js";
+import { loadConfig } from "../src/platform/config.js";
 
 const PROJECT = "mizan-test";
 let sign: (claims?: Record<string, unknown>, opts?: { alg?: string; key?: CryptoKey; kid?: string; iss?: string; aud?: string; exp?: number; sub?: string }) => Promise<string>;
@@ -71,5 +72,36 @@ describe("FirebaseTokenVerifier", () => {
 describe("DisabledTokenVerifier", () => {
   it("answers 401 auth_not_configured", async () => {
     expect(await code(new DisabledTokenVerifier().verify())).toBe("401 auth_not_configured");
+  });
+});
+
+describe("EmulatorTokenVerifier (development and tests only)", () => {
+  const emu = new EmulatorTokenVerifier(PROJECT);
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = (claims: Record<string, unknown> = {}, o: { iss?: string; aud?: string; exp?: number } = {}) =>
+    new UnsecuredJWT({ auth_time: now - 60, email: "owner@test.mizan", email_verified: true, firebase: { sign_in_provider: "password", sign_in_second_factor: "phone" }, ...claims })
+      .setIssuer(o.iss ?? `https://securetoken.google.com/${PROJECT}`).setAudience(o.aud ?? PROJECT)
+      .setSubject("emu-user").setIssuedAt(now - 60).setExpirationTime(o.exp ?? now + 3600).encode();
+
+  it("accepts the emulator's unsigned tokens with the same claim checks", async () => {
+    expect(await emu.verify(unsigned())).toMatchObject({ uid: "emu-user", email: "owner@test.mizan", emailVerified: true, signInProvider: "password", secondFactor: "phone" });
+  });
+
+  it("still rejects another project, an expired token and a missing auth_time", async () => {
+    await expect(emu.verify(unsigned({}, { aud: "other" }))).rejects.toMatchObject({ code: "token_invalid" });
+    await expect(emu.verify(unsigned({}, { iss: "https://evil.example" }))).rejects.toMatchObject({ code: "token_invalid" });
+    await expect(emu.verify(unsigned({}, { exp: now - 3600 }))).rejects.toMatchObject({ code: "token_expired" });
+    await expect(emu.verify(unsigned({ auth_time: undefined }))).rejects.toMatchObject({ code: "token_invalid" });
+  });
+
+  it("the real verifier never accepts an unsigned token", async () => {
+    await expect(verifier.verify(unsigned())).rejects.toMatchObject({ code: "token_invalid" });
+  });
+
+  it("production refuses the emulator setting", () => {
+    expect(() => loadConfig({
+      NODE_ENV: "production", PUBLIC_URL: "https://api.mizan.app", WEB_URL: "https://app.mizan.app", DATABASE_URL: "postgres://x/y",
+      FIREBASE_PROJECT_ID: "mizan-prod", KMS_KEY_NAME: "k", FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
+    })).toThrow(/FIREBASE_AUTH_EMULATOR_HOST: must not be set in production/);
   });
 });

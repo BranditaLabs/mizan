@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { API, EMULATOR, WEB } from "./env.mjs";
+import { agentIn, newPhone, signInWithPhone } from "./stack";
 
 const bodyBg = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 // packages/design-system tokens: paper #FEF7FF (light) and ink #0B0B0B (dark).
@@ -6,23 +8,34 @@ const LIGHT_BG = "rgb(254, 247, 255)";
 const DARK_BG = "rgb(11, 11, 11)";
 const flip = (page: Page) => page.locator("main .mz-rtl-flip").first().evaluate((el) => getComputedStyle(el).transform);
 
+// The Auth emulator does not implement the reCAPTCHA Enterprise config probe (501); Firebase falls back. Emulator only.
+const EMULATOR_PROBE = `${EMULATOR}/identitytoolkit.googleapis.com/v2/recaptchaConfig`;
+const EMULATOR_PROBE_LOG = "Failed to load resource: the server responded with a status of 501 (Not Implemented)";
+
 function watch(page: Page) {
   const problems: string[] = [];
-  page.on("console", (m) => { if (m.type() === "error") problems.push(m.text()); });
+  page.on("console", (m) => { if (m.type() === "error" && m.text() !== EMULATOR_PROBE_LOG) problems.push(m.text()); });
+  page.on("response", (r) => { if (r.status() >= 400 && !r.url().startsWith(EMULATOR_PROBE)) problems.push(`${r.status()} ${r.request().method()} ${r.url()}`); });
   page.on("pageerror", (e) => problems.push(e.message));
-  page.on("request", (r) => { if (!r.url().startsWith("http://localhost:3100")) problems.push(`external request: ${r.url()}`); });
+  // Only this app, the API and the Auth emulator: no fonts, scripts or reCAPTCHA from elsewhere.
+  page.on("request", (r) => { if (![WEB, API, EMULATOR].some((o) => r.url().startsWith(o))) problems.push(`external request: ${r.url()}`); });
   return problems;
 }
 
 test("Arabic is the default: / → /ar, right-to-left, Arabic copy, isolated numbers", async ({ browser }) => {
+  const phone = newPhone();
+  await agentIn(phone, "متجر الاختبار");
   // A browser in a language we do not serve falls back to Arabic.
   const context = await browser.newContext({ locale: "de-DE", extraHTTPHeaders: { "Accept-Language": "de-DE,de;q=0.9" } });
   const page = await context.newPage();
   const problems = watch(page);
   await page.goto("/");
-  await expect(page).toHaveURL(/\/ar$/);
+  await expect(page).toHaveURL(/\/ar\/sign-in\?next=%2F$/);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
   await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+  await expect(page.locator("header img").first()).toHaveAttribute("alt", "ميزان");
+  await signInWithPhone(page, phone, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("أهلًا بيك في ميزان");
   const example = page.getByTestId("example");
   const orderId = example.locator("bdi").first();
@@ -52,10 +65,14 @@ test("Arabic is the default: / → /ar, right-to-left, Arabic copy, isolated num
 });
 
 test("English from the browser language, and the switch remembers the choice", async ({ browser }) => {
+  const phone = newPhone();
+  await agentIn(phone, "Test Store");
   const context = await browser.newContext({ locale: "en-US", extraHTTPHeaders: { "Accept-Language": "en-US,en;q=0.9" } });
   const page = await context.newPage();
   const problems = watch(page);
   await page.goto("/");
+  await expect(page).toHaveURL(/\/en\/sign-in\?next=%2F$/);
+  await signInWithPhone(page, phone, "en");
   await expect(page).toHaveURL(/\/en$/);
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   const rail = await page.locator("aside").boundingBox();
@@ -81,13 +98,13 @@ test("English from the browser language, and the switch remembers the choice", a
 });
 
 test("theme: chosen theme applies at once and is server-rendered on the next visit", async ({ page, request }) => {
-  await page.goto("/en");
+  await page.goto("/en/sign-in");
   expect(await bodyBg(page)).toBe(LIGHT_BG);
   await page.getByRole("button", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   expect(await bodyBg(page)).toBe(DARK_BG);
 
-  const html = await (await request.get("/en", { headers: { Cookie: "mizan-theme=dark" } })).text();
+  const html = await (await request.get("/en/sign-in", { headers: { Cookie: "mizan-theme=dark" } })).text();
   expect(html).toMatch(/<html[^>]*data-theme="dark"/);
   await page.reload();
   expect(await bodyBg(page)).toBe(DARK_BG);
@@ -99,7 +116,7 @@ test("theme: chosen theme applies at once and is server-rendered on the next vis
 test("system dark mode is followed when no theme was chosen", async ({ browser }) => {
   const context = await browser.newContext({ colorScheme: "dark" });
   const page = await context.newPage();
-  await page.goto("/ar");
+  await page.goto("/ar/sign-in");
   expect(await bodyBg(page)).toBe(DARK_BG);
   await page.getByRole("button", { name: "فاتح" }).click();
   expect(await bodyBg(page)).toBe(LIGHT_BG);
@@ -107,7 +124,7 @@ test("system dark mode is followed when no theme was chosen", async ({ browser }
 });
 
 test("security headers on every page", async ({ request }) => {
-  const res = await request.get("/ar");
+  const res = await request.get("/ar/sign-in");
   expect(res.headers()["content-security-policy"]).toContain("frame-ancestors 'none'");
   expect(res.headers()["x-content-type-options"]).toBe("nosniff");
   expect(res.headers()["x-powered-by"]).toBeUndefined();

@@ -60,6 +60,8 @@ export const ConfigSchema = z.object({
 
   // Auth. Without a project id (local dev) every protected route answers 401 auth_not_configured.
   FIREBASE_PROJECT_ID: optionalString,
+  /** host:port of the Firebase Auth emulator (development and tests): unsigned tokens are accepted. Refused in production. */
+  FIREBASE_AUTH_EMULATOR_HOST: z.string().regex(/^[\w.-]+:\d+$/, "must be host:port").optional(),
   // Owners/admins must use a second factor. Unset = on in production, off elsewhere.
   AUTH_REQUIRE_MFA: z.stringbool({ error: "must be true or false" }).optional(),
 
@@ -94,6 +96,9 @@ export const ConfigSchema = z.object({
   }
   if (env.NODE_ENV === "production" && env.SECRETS_DEV_KEY) {
     ctx.addIssue({ code: "custom", path: ["SECRETS_DEV_KEY"], message: "must not be set in production (use KMS_KEY_NAME)" });
+  }
+  if (env.NODE_ENV === "production" && env.FIREBASE_AUTH_EMULATOR_HOST) {
+    ctx.addIssue({ code: "custom", path: ["FIREBASE_AUTH_EMULATOR_HOST"], message: "must not be set in production (unsigned tokens)" });
   }
   if (env.NODE_ENV === "production" && !env.FIREBASE_PROJECT_ID) {
     ctx.addIssue({ code: "custom", path: ["FIREBASE_PROJECT_ID"], message: "is required in production" });

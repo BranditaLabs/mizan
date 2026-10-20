@@ -4,11 +4,25 @@ Next.js 16 (App Router) + Tailwind CSS 4, Arabic and English, right-to-left firs
 Look and feel: `@mizan/design-system` (`packages/design-system`: tokens, fonts, icons, wordmark, component recipes). Layout reference: `design/prototype.html`. Rules: `docs/08-design-system.md`.
 
 ```
-npm run dev -w @mizan/web      # http://localhost:3000 → /ar (needs `npm run build -w @mizan/shared` once)
+npm run dev -w @mizan/web      # http://localhost:3000 → /ar (needs `npm run build -w @mizan/shared` once; sign-in config: .env.example)
 npm run lint -w @mizan/web     # Next rules + Mizan bilingual rules
-npm test -w @mizan/web         # unit: lint rule, AR/EN message parity, formatting, tokens
-npm run build -w @mizan/web && npm run e2e -w @mizan/web   # Playwright smoke, both directions and themes
+npm test -w @mizan/web         # unit: lint rule, AR/EN message parity, formatting, design classes, redirect guard
+npm run build:api && npm run build:e2e -w @mizan/web && npm run e2e -w @mizan/web
+                               # Playwright: Firebase Auth emulator (Java 21) + real API (PGlite) + this build
 ```
+
+## Sign-in and the store gate (E4-2)
+
+```
+/sign-in → signed in → (app) gate → GET /v1/me → no store → /welcome (accept an invitation · create a store)
+                                  → GET /v1/tenant (X-Tenant-Id) → mfa_required → /security/two-step
+                                                                 → ok → the page
+```
+
+- Owners and admins: email + password, then an SMS code (Firebase phone second factor). Turning it on needs a verified email; after enrolling, the person signs in again so the token carries the second factor.
+- Agents and warehouse staff: phone number + SMS code (Egyptian numbers typed locally; `+966…`, `+971…` with the country code).
+- `src/lib/session.tsx`: Firebase user, `/me`, the chosen store (localStorage `mizan-store:<uid>`), the store check. `src/lib/api.ts`: fresh ID token, `X-Tenant-Id`, `Accept-Language`, `Idempotency-Key`, problem+json → `ApiError`.
+- Sign-out goes to sign-in; an ended session goes to sign-in and back (`?next=`, in-app paths only).
 
 ## Layout
 
@@ -22,7 +36,10 @@ npm run build -w @mizan/web && npm run e2e -w @mizan/web   # Playwright smoke, b
 | `messages/{ar,en}.json` | Every user-facing string, keyed by screen. Egyptian Arabic for merchant copy |
 | `src/lib/format.ts` | Money (decimal strings, never floats), numbers, dates (Cairo), relative time; Western or Eastern Arabic digits |
 | `src/lib/theme.ts` | Theme choice (`light` / `dark` / `system`), cookie `mizan-theme`, rendered by the server (no flash) |
-| `src/components/` | `Shell` (ink rail with wordmark and icons, header), `Bdi` (isolate numbers and codes), `Segmented`, language and theme switches; icons via `<Icon name=…>` from the design system |
+| `src/app/[locale]/(app)/` | Store pages behind `StoreGate`, inside `Shell` |
+| `src/app/[locale]/{sign-in,welcome,security/two-step}/` | Pages outside a store (`AuthFrame`) |
+| `src/components/` | `Shell` (ink rail with wordmark, store switcher and icons; header with user menu), `AuthFrame`, `auth/*` (sign-in, two-step, welcome, gates), `ui/*` (Button, Field, Alert), `Bdi`, `Segmented`, language and theme switches |
+| `e2e/` | `env.mjs` (the e2e stack), `stack.ts` (emulator codes and links, seeded people and stores), `auth.spec.ts`, `smoke.spec.ts`, `firebase.json` (emulator) |
 | `eslint-rules/no-physical-direction.js` | Blocks `ml-*`, `pr-*`, `left-*`, `text-right`, `border-l`, `rounded-tr` … with the logical fix in the message |
 
 ## Rules (lint-enforced)

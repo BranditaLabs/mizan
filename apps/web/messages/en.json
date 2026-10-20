@@ -29,10 +29,15 @@
       "light": "Light",
       "dark": "Dark",
       "system": "System"
-    }
+    },
+    "store": {
+      "label": "Store",
+      "switch": "Switch store",
+      "create": "New store"
+    },
+    "signOut": "Sign out"
   },
   "home": {
-    "eyebrow": "Getting started",
     "title": "Welcome to Mizan",
     "subtitle": "Connect your store to see your orders and your real profit in one place.",
     "empty": {
@@ -41,5 +46,117 @@
       "cta": "Connect your store"
     },
     "example": "Example: order <num>{number}</num> worth <money>{amount}</money>"
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "ops_manager": "Ops manager",
+    "agent": "Confirmation agent",
+    "warehouse": "Warehouse",
+    "finance": "Finance",
+    "viewer": "Viewer"
+  },
+  "countries": {
+    "EG": "Egypt",
+    "SA": "Saudi Arabia",
+    "AE": "United Arab Emirates",
+    "KW": "Kuwait",
+    "QA": "Qatar",
+    "BH": "Bahrain",
+    "OM": "Oman",
+    "JO": "Jordan",
+    "MA": "Morocco"
+  },
+  "auth": {
+    "title": "Sign in to Mizan",
+    "subtitle": "Store owners and admins sign in with email and a code on their phone. Confirmation and warehouse teams can use their phone number.",
+    "notConfigured": "Sign-in is not configured in this build.",
+    "tabs": {
+      "label": "Sign-in method",
+      "email": "Email",
+      "phone": "Phone number"
+    },
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "8 characters or more",
+    "signIn": "Sign in",
+    "createAccount": "Create an account",
+    "createTitle": "New account",
+    "createSubmit": "Create account",
+    "haveAccount": "Have an account? Sign in",
+    "forgot": "Forgot your password?",
+    "resetSent": "We sent a password reset link to <e>{email}</e>.",
+    "phone": "Phone number",
+    "phoneHint": "Example: <n>01001234821</n>",
+    "sendCode": "Send code",
+    "code": "Code",
+    "codeHint": "The code we texted to <n>{phone}</n>",
+    "verify": "Verify",
+    "changeNumber": "Change number",
+    "mfa": {
+      "title": "Second step",
+      "body": "We texted a code to the number ending in <n>{hint}</n>.",
+      "submit": "Verify and sign in"
+    },
+    "enrolled": "Two-step verification is on. Sign in again with your email and a code.",
+    "errors": {
+      "invalidCredential": "That email or password is not right.",
+      "emailInUse": "This email already has an account. Sign in with it.",
+      "weakPassword": "That password is too short. Use 8 characters or more.",
+      "invalidEmail": "That email address looks wrong.",
+      "invalidPhone": "That phone number is not valid. Write it like 01001234821.",
+      "invalidCode": "That code is wrong. Check the message and type it again.",
+      "codeExpired": "That code expired. Send a new one.",
+      "tooMany": "Too many attempts. Wait a little and try again.",
+      "network": "No connection. Check the internet and try again.",
+      "generic": "Something went wrong. Try again."
+    },
+    "redirecting": "Opening your store…"
+  },
+  "twoStep": {
+    "title": "Turn on two-step verification",
+    "body": "To protect your store, owners and admins sign in with email and a code sent to their phone.",
+    "verifyEmail": {
+      "title": "Confirm your email first",
+      "body": "We will send a confirmation link to <e>{email}</e>. Open it, then come back here.",
+      "send": "Send confirmation link",
+      "sent": "Link sent. Check your email.",
+      "done": "I confirmed my email",
+      "notYet": "Your email is not confirmed yet. Open the link in the message."
+    },
+    "phone": {
+      "title": "Phone number for codes",
+      "submit": "Send code",
+      "enable": "Turn on"
+    },
+    "phoneAccount": "This account signs in with a phone number. Store owners need an email account to turn on the second step.",
+    "recentLogin": "For your security, sign out, sign in again, then turn on the second step.",
+    "signOutAndBack": "Sign out and back in"
+  },
+  "welcome": {
+    "title": "Welcome",
+    "subtitle": "Open a store you were invited to, or create your own.",
+    "invitations": {
+      "title": "Invitations waiting for you",
+      "accept": "Join",
+      "expires": "Open until {date}"
+    },
+    "create": {
+      "title": "Create a store",
+      "name": "Store name",
+      "country": "Country",
+      "countryHint": "We set the currency, time zone and phone format from the country.",
+      "submit": "Create store"
+    },
+    "errors": {
+      "tenantLimit": "You have reached the store limit.",
+      "generic": "We couldn't create the store. Try again."
+    },
+    "signedInAs": "Signed in as <n>{who}</n>"
+  },
+  "gate": {
+    "loading": "Loading…",
+    "unavailable": "We can't reach your store right now.",
+    "retry": "Try again"
   }
 }

@@ -43,11 +43,15 @@ function allowed(cls: string): boolean {
   if (/#[0-9a-f]{3,8}\b|\[(#|rgb|hsl)/i.test(cls)) return false; // never raw colours
   const [, prefix, rest = ""] = /^-?(\w+)(?:-(.+))?$/.exec(cls)!;
   const name = rest.split("/")[0]!; // bg-bg/85 → bg
+  if (!rest && !["border", "divide", "outline", "ring", "rounded", "shadow"].includes(prefix!)) return true; // a word like "to", not a class
   switch (prefix) {
     case "bg": case "fill": case "stroke": case "from": case "to": case "via": case "accent": case "caret": case "decoration": case "placeholder":
       return COLORS.has(name) || BUILTIN_COLORS.has(name);
     case "text": return COLORS.has(name) || BUILTIN_COLORS.has(name) || TEXT.has(name) || TEXT_LAYOUT.has(name);
-    case "border": case "divide": case "outline": case "ring": return !rest || COLORS.has(name) || BUILTIN_COLORS.has(name) || BORDER_WIDTHS.test(rest) || ["solid", "dashed", "none"].includes(rest);
+    case "border": case "divide": case "outline": case "ring": {
+      const side = name.replace(/^[xysetblr]-/, ""); // border-t-transparent: a side's colour
+      return !rest || COLORS.has(side) || BUILTIN_COLORS.has(side) || BORDER_WIDTHS.test(rest) || ["solid", "dashed", "none"].includes(rest);
+    }
     case "rounded": return !rest || RADII.has(rest.replace(/^(s|e|t|b|ss|se|es|ee)-/, "")) || ["s", "e", "t", "b"].includes(rest);
     case "font": return FONTS.has(name) || FONT_WEIGHTS.has(name);
     case "shadow": return SHADOWS.has(name) || name === "none";
@@ -69,6 +73,6 @@ describe("design system classes in apps/web", () => {
   });
 
   it("the guard catches the names this app used before the design system", () => {
-    for (const old of ["text-ink-2", "bg-accent", "border-line-2", "rounded-card", "shadow-card", "bg-[#9C7320]", "font-body"]) expect(allowed(old), old).toBe(false);
+    for (const old of ["text-ink-2", "bg-accent", "border-line-2", "rounded-card", "shadow-card", "bg-[#9C7320]", "font-body", "border-t-ink"]) expect(allowed(old), old).toBe(false);
   });
 });

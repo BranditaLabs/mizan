@@ -53,7 +53,7 @@ All config through environment variables, validated at startup with zod (`apps/a
 
 ```
 DATABASE_URL (postgres:// · unset or pglite:<dir> in dev/test), DATABASE_URL_MIGRATOR, DATABASE_POOL_MAX
-FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only)
+FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only), FIREBASE_AUTH_EMULATOR_HOST (dev/e2e only; refused in production)
 KMS_KEY_NAME (required in production; SECRETS_DEV_KEY = base64 32 bytes for local dev only)
 PUBLIC_URL, WEB_URL
 SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
@@ -64,6 +64,8 @@ SENTRY_DSN, LOG_LEVEL, LOG_FORMAT
 ```
 
 Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table, never in env.
+
+**Web (`apps/web`, build time):** `NEXT_PUBLIC_API_URL` and the Firebase web config `NEXT_PUBLIC_FIREBASE_{API_KEY,AUTH_DOMAIN,PROJECT_ID}` (public by design; restrict the API key to the web origins in Google Cloud). `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL` only for local development and the `web-e2e` job. See `apps/web/.env.example`.
 
 **Database roles:** migrations run as the schema owner (`DATABASE_URL_MIGRATOR`, `mizan-db migrate`). The API and worker log in as a separate user that is a member of `mizan_app` (tenant data under RLS) and `mizan_worker` (event dispatch across tenants on `domain_events` only), and is neither owner nor `BYPASSRLS`: `CREATE ROLE mizan_api LOGIN … IN ROLE mizan_app, mizan_worker` (Terraform, E1-11).
 
