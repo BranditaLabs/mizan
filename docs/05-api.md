@@ -175,12 +175,14 @@ Merchants subscribe to Mizan events (`order.confirmed`, `shipment.delivered` …
 
 ### Admin / integration ops
 
+✅ E2-5 — store-scoped (`X-Tenant-Id`), roles owner / admin / ops_manager; replays and city fixes are audited (`integration.*`); error texts pass the PII scrubber.
+
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/admin/integrations/health` | Engine health per connection (from `engine.health()`) |
-| GET | `/admin/integrations/dead-letters` | Jobs needing a person |
-| POST | `/admin/integrations/jobs/{id}/replay` | Replay after a fix |
-| POST | `/admin/integrations/cities/resolve` | Teach a city alias, replay waiting jobs |
+| GET | `/admin/integrations/health` | Connections, engine circuits and rate budgets, outbox counts, last dead letters, drift report; `{ connected: false, reason }` without a store connection |
+| GET | `/admin/integrations/dead-letters` | Jobs needing a person (`?limit≤200`), newest first |
+| POST | `/admin/integrations/jobs/{id}/replay` | Replay a dead-lettered job after a fix; `job_not_found` otherwise |
+| POST | `/admin/integrations/cities/resolve` | `{ text, cityId, jobId? }`: teach a city alias (kept on the Bosta connection), replay the stuck job |
 
 ## 3. OpenAPI
 

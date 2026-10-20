@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = [
   "tenant.created",
   "member.invited", "member.invitation_revoked", "member.joined", "member.updated", "member.removed",
   "connection.connected", "connection.disconnected", "connection.secret_rotated",
+  "integration.job_replayed", "integration.city_resolved",
   "customer.pii_viewed",
   "export.created",
   "secret.created", "secret.rotated", "secret.deleted",
