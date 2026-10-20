@@ -19,7 +19,7 @@ FROM base AS build
 COPY . .
 RUN --mount=type=cache,target=/root/.npm --mount=type=secret,id=ca,required=false \
     if [ -f /run/secrets/ca ]; then export npm_config_cafile=/run/secrets/ca; fi; \
-    npm ci && npm run build
+    npm ci && npm run build:api
 # Every workspace manifest, so the next stage can install with the same lockfile.
 RUN mkdir /manifests && cp package.json package-lock.json /manifests/ \
  && find packages apps perf -name package.json -not -path "*/node_modules/*" -exec cp --parents {} /manifests \;

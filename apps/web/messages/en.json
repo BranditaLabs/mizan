@@ -1,0 +1,44 @@
+{
+  "meta": {
+    "title": "Mizan",
+    "description": "Mizan — the commerce operating system: orders, confirmation, shipping, warehouse and real profit in one place."
+  },
+  "shell": {
+    "brand": "Mizan",
+    "tagline": "Commerce operating system",
+    "skip": "Skip to content",
+    "navLabel": "Main menu",
+    "soon": "Soon",
+    "nav": {
+      "home": "Home",
+      "orders": "Orders",
+      "confirmation": "Confirmation",
+      "shipping": "Shipping",
+      "warehouse": "Warehouse",
+      "profit": "Profit",
+      "settings": "Settings"
+    },
+    "language": {
+      "label": "Language",
+      "ar": "عربي",
+      "en": "English"
+    },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    }
+  },
+  "home": {
+    "eyebrow": "Getting started",
+    "title": "Welcome to Mizan",
+    "subtitle": "Connect your store to see your orders and your real profit in one place.",
+    "empty": {
+      "title": "No orders yet",
+      "body": "Once you connect a Shopify store, we import the last {days} days of orders and all your products.",
+      "cta": "Connect your store"
+    },
+    "example": "Example: order <num>{number}</num> worth <money>{amount}</money>"
+  }
+}

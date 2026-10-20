@@ -89,6 +89,8 @@ Expose tokens as CSS variables in `globals.css` and map them in `tailwind.config
 | Reports | Built-in dashboards, report builder, schedules |
 | Settings | Connections with health, team and roles, cost rules, developer keys and webhooks, billing |
 
+**Implemented (✅ E4-1, `apps/web`):** tokens in `src/app/globals.css` (light, chosen dark, system dark — kept identical by a unit test) mapped to Tailwind 4 colours; fonts self-hosted with `next/font/local`; `<html lang dir data-theme>` per locale and theme cookie; lint rule `mizan/no-physical-direction` (physical class → its logical fix) and `react/jsx-no-literals`; AR/EN message parity test; `<Bdi code>` lays codes out left to right (`#1042`, not `1042#`, inside Arabic — checked by measuring glyph positions in the smoke test).
+
 ## 5. Components
 
 Build in `apps/web/src/components/ui` (shadcn/ui-style, owned code): Button, IconButton, Input, Select, Combobox, Checkbox, Switch, Tabs, Table (sortable, selectable, sticky header), Pill/Badge (status, risk), Card, StatCard (number + delta + sparkline), Drawer, Dialog, Toast, EmptyState, Skeleton, Timeline, MoneyText, PhoneText (masked, `<bdi>`), DateText, Avatar, CommandPalette.

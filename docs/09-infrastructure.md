@@ -16,7 +16,7 @@ Each env is a separate Google Cloud project (`mizan-staging`, `mizan-prod`) in t
 | --- | --- | --- |
 | API | Cloud Run (`api`) | Min 2 instances, concurrency 80, behind HTTPS load balancer + Cloud Armor |
 | Worker | Cloud Run (`worker`), CPU always allocated | Min 1; scale on outbox backlog metric |
-| Web | Cloud Run (`web`) | Next.js standalone output |
+| Web | Cloud Run (`web`) | Next.js standalone output (`NEXT_OUTPUT=standalone next build`, `apps/web`) |
 | Database | Cloud SQL PostgreSQL 16+, HA | PITR on; private IP; connection via Cloud SQL connector |
 | Secrets | Secret Manager (app secrets) + Cloud KMS (tenant data keys) | — |
 | Files | Cloud Storage (labels, exports, settlement uploads) | Signed URLs, lifecycle rules |
@@ -71,7 +71,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 
 | Workflow | Trigger | Steps |
 | --- | --- | --- |
-| `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `secrets-scan`: gitleaks over full history. |
+| `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Lint runs in `build-test`. Job `web-e2e`: Playwright smoke of the dashboard's production build (Arabic default, RTL/LTR, theme cookie, system dark, security headers, no external requests). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `secrets-scan`: gitleaks over full history. |
 | `nightly-load.yml` ✅ | Daily 03:17 Cairo, manual | Build, then `npm run load -w @mizan/perf` (2 API instances, 2,000 stores, Postgres service); fails on a missed latency/throughput gate or a lost webhook; table in the job summary, JSON as artifact |
 | `deploy-staging.yml` | Merge to `main` | build images → push to Artifact Registry → run migrations (migrator role) → deploy Cloud Run → smoke test |
 | `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
@@ -82,7 +82,7 @@ Branching: trunk-based, short-lived feature branches, PR review required, squash
 **Branch protection for `main`** (set by a repo admin in GitHub → Settings → Branches, or as a ruleset):
 
 - Require a pull request before merging, 1 approval, dismiss stale approvals on new commits.
-- Required status checks: `Typecheck and test`, `Production image smoke test`, `Secret scan (gitleaks)`; require branches to be up to date.
+- Required status checks: `Typecheck and test`, `Web smoke test (RTL/LTR, themes)`, `Production image smoke test`, `Secret scan (gitleaks)`; require branches to be up to date.
 - Allow squash merge only; block force pushes and deletion.
 
 **Dependency updates:** Renovate (`renovate.json`) — weekly (Monday before 09:00 Cairo), pins exact versions, groups non-major dev deps and GitHub Actions, pins action digests, tracks the gitleaks version in `ci.yml`. Requires the Renovate GitHub App installed on the repo.

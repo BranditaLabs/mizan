@@ -83,7 +83,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E4 · Web app foundation
 
-- [ ] **E4-1** `M` `apps/web`: Next.js (App Router, latest stable), Tailwind with tokens from `docs/08`, fonts via `next/font`, next-intl AR/EN, RTL switch, dark mode. *Accept:* lint rule blocks physical direction classes; Arabic default.
+- [x] **E4-1** `M` `apps/web`: Next.js (App Router, latest stable), Tailwind with tokens from `docs/08`, fonts via `next/font`, next-intl AR/EN, RTL switch, dark mode. *Accept:* lint rule blocks physical direction classes; Arabic default. *Done:* Next 16.4 + Tailwind 4.3 + next-intl 4.14 (pinned); tokens with light / dark / system themes (server-rendered from a cookie); fonts self-hosted (`next/font/local`, no Google fetch); `/` → `/ar` (cookie → Accept-Language → Arabic); prototype shell with language and theme switches; `mizan/no-physical-direction` + `react/jsx-no-literals` (a planted `ml-4` or literal string fails lint, tested); AR/EN parity, formatting and token tests; Playwright smoke in CI (`web-e2e`).
 - [ ] **E4-2** `M` Firebase sign-in (email + phone OTP), tenant switcher, protected layout with side rail (as prototype).
 - [ ] **E4-3** `M` UI kit from `docs/08` §5 with Storybook or a `/ui` gallery page in both directions.
 - [ ] **E4-4** `S` Typed API client generated from OpenAPI; TanStack Query; error toasts from problem+json codes.

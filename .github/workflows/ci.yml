@@ -36,9 +36,36 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm run build
       # Engine (incl. chaos suite), db (PGlite + real Postgres), shared and api tests
       - run: npm test
+
+  web-e2e:
+    name: Web smoke test (RTL/LTR, themes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run build -w @mizan/shared && npm run build -w @mizan/web
+      - run: npm run e2e -w @mizan/web
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-e2e
+          path: |
+            apps/web/test-results
+            apps/web/playwright-report
+          if-no-files-found: ignore
 
   image:
     name: Production image smoke test
