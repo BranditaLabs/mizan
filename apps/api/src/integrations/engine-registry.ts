@@ -5,6 +5,7 @@ import { tenantQueryClient } from "@mizan/db";
 import { APP_CONFIG, type AppConfig } from "../platform/config.js";
 import { Database } from "../platform/db/database.js";
 import { ConnectionResolver, type ResolvedConnections } from "./connection-resolver.js";
+import { OrderProjector } from "../modules/orders/order-projector.js";
 
 /** Builds the engine runtime for a tenant (tests inject fake providers here). */
 export type RuntimeFactory = (tenantId: string, connections: ResolvedConnections) => Runtime;
@@ -56,6 +57,7 @@ export class EngineRegistry {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
     @Inject(ENGINE_EVENT_SINK) private readonly sink: EngineEventSink,
+    @Inject(OrderProjector) private readonly orders: OrderProjector,
   ) {}
 
   async get(tenantId: string): Promise<TenantEngine> {
@@ -99,6 +101,12 @@ export class EngineRegistry {
         ...(c.bosta ? { webhookUrl: new URL(`/webhooks/bosta/${c.bosta.connectionId}`, this.config.PUBLIC_URL).toString() } : {}),
         ...(this.config.BOSTA_TRACKING_URL_TEMPLATE ? { trackingUrlTemplate: this.config.BOSTA_TRACKING_URL_TEMPLATE } : {}),
         ...(typeof bostaConfig.cityField === "string" ? { cityField: bostaConfig.cityField as "city" | "cityCode" | "cityId" } : {}),
+      },
+      hooks: {
+        // Every order the engine ingests lands in Mizan's orders table before the job completes.
+        onOrder: async (order) => {
+          await this.orders.project(tenantId, c.shopify.connectionId, order);
+        },
       },
     };
     const engine = new MizanEngine(store, this.runtime(tenantId, c), options);

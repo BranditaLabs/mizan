@@ -34,6 +34,14 @@ export interface EngineOptions {
   /** Writes younger than this are "in flight"; differing reads in this window are not treated as conflicts. */
   echoWindowMs?: number;
   worker?: Partial<WorkerOptions>;
+  /**
+   * Awaited inside the job, so a failing hook fails (and retries) the job:
+   * nothing is acknowledged before the platform has stored it.
+   */
+  hooks?: {
+    /** A fresh canonical order (fat fetch) and the engine's previous copy. Must be idempotent. */
+    onOrder?: (order: CanonicalOrder, previous: CanonicalOrder | undefined) => Promise<void>;
+  };
 }
 
 export interface WebhookResult {
@@ -87,7 +95,7 @@ export class MizanEngine {
   readonly bosta: BostaConnector;
   readonly worker: OutboxWorker;
   private readonly listeners: Listener[] = [];
-  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId">> & Pick<EngineOptions, "locationId">;
+  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId" | "hooks">> & Pick<EngineOptions, "locationId" | "hooks">;
 
   constructor(private readonly store: Store, private readonly rt: Runtime, options: EngineOptions) {
     this.opts = {
@@ -249,6 +257,16 @@ export class MizanEngine {
     };
   }
 
+  /** Platform-side failures (database, network) are retried with backoff, not dead-lettered at once. */
+  private async runHook(fn: () => Promise<void> | undefined) {
+    try {
+      await fn();
+    } catch (e) {
+      if (e instanceof IntegrationError) throw e;
+      throw new IntegrationError({ kind: "transient", connector: "platform", message: e instanceof Error ? e.message : String(e), cause: e });
+    }
+  }
+
   // ═════════════ job handlers ═════════════
 
   private handlers(): Record<string, (job: OutboxJob<any>) => Promise<void>> {
@@ -270,6 +288,7 @@ export class MizanEngine {
     const order = await this.shopify.getOrder(orderId);
     const prev = await this.store.get<OrderRecord>("order", orderId);
     const rec: OrderRecord = { ...prev, order: { ...order, raw: undefined } };
+    await this.runHook(() => this.opts.hooks?.onOrder?.(rec.order, prev?.order));
     await this.store.put("order", orderId, rec, this.now());
     this.emit("order.ingested", { orderId, number: order.number, paymentMode: order.paymentMode, paymentStatus: order.paymentStatus, updatedAt: order.updatedAt });
     const before = prev?.order;

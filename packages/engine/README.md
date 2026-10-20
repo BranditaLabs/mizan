@@ -100,6 +100,10 @@ Rules live in `src/core/payments.ts` (`cashToCollect`), shared by every courier 
 
 ---
 
+## Hooks (platform)
+
+`EngineOptions.hooks.onOrder(order, previous)` is awaited inside the ingest job, before the engine records the order or ships it. A failing hook fails the job (as `transient`, so it retries with backoff); the platform uses it to store every ingested order in its own tables.
+
 ## Project layout
 
 ```

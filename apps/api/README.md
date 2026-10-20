@@ -25,8 +25,9 @@ npm run build -w @mizan/api && node apps/api/dist/main.js
 | `src/platform/audit/` | `AuditService.record(trx, …)` — append-only trail in the same transaction; `AUDIT_ACTIONS`; read via `GET /v1/audit-log` |
 | `src/platform/secrets/` | `SecretsService` — provider credentials with envelope encryption (Cloud KMS / local dev key); values come back as `SecretValue` (prints `[secret]`; call `reveal()` at the point of use) |
 | `src/integrations/` | The engine inside the platform: `ConnectionResolver`, `EngineRegistry` (engine per tenant), `EngineJobRunner` (worker) |
+| `src/platform/pii/` | `PiiCipher.forTenant(trx, id)` → `encrypt/decrypt(value, column)`, `phoneHash(e164)`. Every name, phone, email and address line is stored encrypted |
 | `src/platform/openapi.ts` | OpenAPI 3.1 from decorators + zod component schemas, served at `/v1/openapi.json` |
-| `src/modules/` | Product modules (M1–M22). Today: `health` (`/health`, `/health/ready`), `users` (`GET /v1/me`), `tenants` (`POST /v1/tenants` signup, `GET /v1/tenant`), `members` (team, invitations, roles) |
+| `src/modules/` | Product modules (M1–M22). Today: `health` (`/health`, `/health/ready`), `users` (`GET /v1/me`), `tenants` (`POST /v1/tenants` signup, `GET /v1/tenant`), `members` (team, invitations, roles), `orders` (`OrderProjector`: engine → orders, lines, customers) |
 
 ## Rules
 

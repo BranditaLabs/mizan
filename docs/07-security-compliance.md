@@ -24,7 +24,7 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 
 | Data | Where | Protection |
 | --- | --- | --- |
-| Customer phone | `customers.phone_e164`, `orders.ship_phone` | Application-level encryption (AES-256-GCM, tenant data key); `phone_hash` = HMAC-SHA256 with a tenant pepper for lookups |
+| Customer phone | `customers.phone_e164`, `orders.ship_phone` | Application-level encryption (AES-256-GCM, tenant data key); `phone_hash` = HMAC-SHA256 with a tenant pepper for lookups. ✅ `apps/api/src/platform/pii/pii-cipher.ts`: one random key per tenant (KMS-wrapped in `secrets`), HKDF → encryption key + pepper; deleting the tenant key crypto-shreds all its PII |
 | Name, address, location pin | `orders.ship_*`, `customers.name` | Same as phone; masked in lists (`010•••4821`); full view logged as `customer.pii_viewed` |
 | Email | `customers.email`, `users.email` | Encrypted at rest (DB-level) |
 | Payment data | Never stored: no card numbers, CVV or bank credentials | PSP-hosted payment pages only; Mizan stores amounts, method, status and the gateway reference |

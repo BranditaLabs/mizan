@@ -12,7 +12,7 @@ The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`
 | Time | `TIMESTAMPTZ`, stored UTC; display in `tenants.timezone` |
 | External IDs | `TEXT`, unique per `connection_id` |
 | Status fields | `TEXT` + `CHECK` constraint (easy to extend in a migration; no Postgres enums) |
-| Personal data | `customers.phone_e164`, names, addresses: encrypted at application level in production (see `docs/07-security-compliance.md`); `phone_hash` for lookups |
+| Personal data | ✅ Encrypted at application level (`PiiCipher`, E2-3): `customers.name/phone_e164/email`, `orders.ship_name/ship_phone/ship_line1/ship_line2` hold `pii:v1:…` (AES-256-GCM, per-tenant key in `secrets` via `tenants.settings.piiKeyRef`, AAD = tenant + column). `phone_hash` = HMAC-SHA256(E.164, tenant pepper) for lookups. City, province, country stay in clear for routing and reports |
 | Soft delete | Only where the business needs history (`tenants.status = 'deleted'`); otherwise real deletes for privacy requests |
 | Migrations | Forward-only, numbered `NNNN_name.sql`; never edit an applied migration |
 
