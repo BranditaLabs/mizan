@@ -1,0 +1,35 @@
+/* Mizan base layer. Import after tokens.css and fonts.css. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  margin: 0; background: var(--mz-bg); color: var(--mz-text);
+  font-family: var(--mz-font-sans); font-size: 14px; line-height: 20px; font-weight: 400;
+}
+:lang(ar) body, body:lang(ar) { font-family: var(--mz-font-arabic-body); line-height: 23px; }
+h1, h2, h3, h4 { margin: 0; font-family: var(--mz-font-display); color: var(--mz-text); }
+p { margin: 0; }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+::selection { background: var(--mz-brand-soft); color: var(--mz-text); }
+
+/* Focus: monochrome ring, always visible for keyboard users */
+:focus { outline: none; }
+:focus-visible { outline: var(--mz-border-focus) solid var(--mz-focus); outline-offset: 2px; border-radius: var(--mz-radius-xs); }
+
+/* Numbers in data: tabular, and isolated LTR inside Arabic */
+.mz-num, td.mz-num, .mz-kpi { font-variant-numeric: tabular-nums; }
+/* In Arabic, numbers, IDs, codes, hex values and keyboard keys keep their left-to-right order */
+[dir="rtl"] .mz-num, [dir="rtl"] .mz-mono, [dir="rtl"] .mz-id, [dir="rtl"] .mz-ltr, [dir="rtl"] code, [dir="rtl"] kbd, [dir="rtl"] .mz-kbd, [dir="rtl"] .mz-text-mono { direction: ltr; unicode-bidi: isolate; }
+
+/* Directional icons mirror in RTL (Icon component adds .mz-rtl-flip; sprite users add it too) */
+[dir="rtl"] .mz-rtl-flip, [dir="rtl"] [data-rtl-flip="true"] { transform: scaleX(-1); }
+
+/* Icons from the sprite */
+.mz-icon { width: var(--mz-icon-md); height: var(--mz-icon-md); flex: none; stroke-width: var(--mz-icon-stroke); }
+
+/* Motion: only transform and opacity; gentler, not absent, when reduced */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+/* Screen-reader only */
+.mz-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

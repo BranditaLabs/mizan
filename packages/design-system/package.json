@@ -1,0 +1,48 @@
+{
+  "name": "@mizan/design-system",
+  "version": "1.0.0",
+  "description": "Mizan design system: Brandita palette, Geist + Alexandria type, tokens for web (CSS, Tailwind), TypeScript and Flutter, wordmark, icons and fonts.",
+  "type": "module",
+  "private": true,
+  "license": "UNLICENSED",
+  "exports": {
+    "./tokens.css": "./dist/tokens.css",
+    "./tailwind.css": "./dist/tailwind.css",
+    "./tailwind-preset": "./dist/tailwind-preset.cjs",
+    "./tokens": "./dist/tokens.ts",
+    "./fonts.css": "./css/fonts.css",
+    "./base.css": "./css/base.css",
+    "./components.css": "./css/components.css",
+    "./icons": "./icons/index.ts",
+    "./package.json": "./package.json",
+    "./icons/react": "./icons/react.tsx",
+    "./logo/*": "./logo/*",
+    "./fonts/*": "./fonts/*"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && node scripts/build-icons.mjs && node scripts/build-reference.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "lucide-static": "1.60.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "lucide-react": "1.60.0",
+    "react": "19.3.1",
+    "@types/react": "19.3.0"
+  },
+  "peerDependencies": {
+    "lucide-react": ">=1.0.0",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "lucide-react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  }
+}

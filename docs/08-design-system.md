@@ -1,6 +1,8 @@
 # 08 — Design system and UX
 
-Visual reference: **`design/prototype.html`** (open in a browser; toggle AR/EN and light/dark). Build the web app to match it. Tokens below are copied from the prototype.
+**Source of truth: `packages/design-system`** (`@mizan/design-system`, adopted Oct 2026). Brandita's identity — ink, paper and one red point — as tokens for the web (CSS variables, Tailwind 4), TypeScript and Flutter, plus fonts, 124 icons, the wordmark and app icons. Open `packages/design-system/reference/index.html` to see everything in light/dark and AR/EN; component recipes and UX rules are in `packages/design-system/docs/components.md`; the brand book is `Mizan-Design-System.pdf` there.
+
+`design/prototype.html` remains the reference for **screen layouts and flows** only; its brass-gold palette and Bricolage/Plex fonts are superseded.
 
 ## 1. Principles
 
@@ -10,59 +12,30 @@ Visual reference: **`design/prototype.html`** (open in a browser; toggle AR/EN a
 4. **Queues, not reports.** Ops screens show what needs action next, sorted by urgency.
 5. **Mobile-first for ops.** Agents and warehouse staff work on phones; owners check profit on phones.
 6. **One primary action per screen.** Clear CTA; secondary actions in menus.
-7. **Calm and premium.** Neutral ink, one gold accent, generous spacing; colour only for status.
+7. **Calm and premium.** Ink on paper, generous spacing, flat surfaces; colour only for status. **Red is a scalpel:** the logo's point, the active navigation indicator, the one number that matters, and errors. **Primary actions are ink, never red.**
 
-## 2. Tokens
+## 2. Tokens, type and shape
 
-### Colour — light
+Defined in `packages/design-system/tokens/tokens.json`; never copy values into apps. Change a token there, run `npm run build -w @mizan/design-system`, and its tests check WCAG AA contrast in both themes, brand fidelity and that generated files are current.
 
-| Token | Value | Use |
+| Topic | Rule | Where |
 | --- | --- | --- |
-| `--bg` | `#F1F2F4` | App background |
-| `--surface` | `#FFFFFF` | Cards, tables |
-| `--surface-2` | `#F7F8FA` | Hover, table header |
-| `--sunk` | `#ECEEF1` | Inputs, wells |
-| `--ink` | `#12151B` | Primary text |
-| `--ink-2` | `#4B5261` | Secondary text |
-| `--ink-3` | `#848B99` | Muted, placeholders |
-| `--line` / `--line-2` | `#E2E5EA` / `#D3D7DE` | Borders |
-| `--accent` | `#9C7320` | Brand gold, primary buttons |
-| `--accent-ink` | `#7A5912` | Accent text on light |
-| `--accent-soft` | `#F4ECDA` | Accent backgrounds |
-| `--rail` / `--rail-2` | `#0E1116` / `#171B22` | Side navigation |
-| `--good` / `--good-soft` | `#11795A` / `#E3F3EC` | Delivered, confirmed, profit |
-| `--warn` / `--warn-soft` | `#A35F00` / `#FBF0DD` | Pending, medium risk |
-| `--bad` / `--bad-soft` | `#BE3328` / `#FBE7E5` | Refused, high risk, loss |
-| `--info` / `--info-soft` | `#2F5FB3` / `#E6EDF9` | In transit, info |
+| Colour | Brand ink `#0B0B0B`, paper `#FEF7FF`, red `#DE0000` (red-hi `#E33232` on dark), lines `#EDEDED` / `#D9D9D9`. Components use semantic names only: `bg`, `surface(-hover/-sunk/-selected)`, `line(-strong)`, `text(-2/-3/-disabled)`, `primary` / `on-primary`, `brand(-soft/-text)`, `success/warning/danger/info(-soft/-text)`, `rail-*`, `viz-1…6` for charts | `dist/tokens.css` (`--mz-*`), `dist/tailwind.css` (`bg-surface`, `text-text-2` …) |
+| Themes | Light default; `<html data-theme="dark">`, or the system preference when no theme is chosen | `dist/tokens.css` |
+| Type | Geist (Latin UI and display), Alexandria (Arabic display, Arabic wordmark), IBM Plex Sans Arabic (Arabic body), Geist Mono (IDs, tracking numbers, SKUs). Scale: `display-*`, `heading-lg/md/sm`, `body(-lg/-sm)`, `label`, `caption`, `overline`, `kpi(-sm)`, `mono` | `css/fonts.css`, `dist/tailwind.css` |
+| Shape | Radius `xs 4 · sm 6 · md 8 · lg 12 · xl 16`. **Flat:** no shadows on cards, buttons or shapes; only menus, dialogs and toasts use `shadow-overlay` | tokens |
+| Motion | Only transform and opacity; `ease-enter` 200 ms in, `ease-exit` 150 ms out; gentler under reduced motion | `css/base.css` |
+| Icons | `<Icon name="cod" />` (meaningful names, 18 px, stroke 1.75); directional icons mirror in RTL automatically | `icons/react.tsx`, `icons/manifest.json` |
+| Logo | Type only, outlined; the dots of **i** and **ن** are red. Never live type, recolour, rotate or move the red point. `*-on-dark.svg` on ink surfaces | `logo/` |
 
-### Colour — dark
-
-`--bg #0B0D11` · `--surface #13161C` · `--surface-2 #181C23` · `--sunk #0F1217` · `--ink #ECEEF2` · `--ink-2 #A8AEBA` · `--ink-3 #6E7583` · `--line #232731` · `--line-2 #2E3440` · `--accent #D6A94C` · `--accent-ink #E6BE6A` · `--accent-soft #2A2314` · `--good #3DBD8C` · `--warn #E3A43B` · `--bad #F06B5F` · `--info #7EA4EE` (soft variants in the prototype).
-
-### Type
-
-| Token | Stack | Use |
-| --- | --- | --- |
-| `--f-display` | Bricolage Grotesque, IBM Plex Sans Arabic | Headings, big numbers |
-| `--f-body` | IBM Plex Sans, IBM Plex Sans Arabic | UI text |
-| `--f-mono` | IBM Plex Mono | Order IDs, tracking numbers, amounts in tables |
-
-Load fonts with `next/font` (self-hosted). Arabic text uses IBM Plex Sans Arabic for both display and body. Use tabular figures for numbers in tables.
-
-### Shape and depth
-
-`--r: 10px` (cards), `--r-sm: 6px` (inputs, pills). Shadow: `0 1px 2px rgba(16,20,28,.05), 0 8px 24px -12px rgba(16,20,28,.12)`.
-
-### Tailwind mapping
-
-Expose tokens as CSS variables in `globals.css` and map them in `tailwind.config` (`colors: { ink: 'var(--ink)', accent: 'var(--accent)', … }`). Dark mode with `class` strategy plus `prefers-color-scheme` default.
+**In `apps/web` (✅ E4-1b):** `globals.css` imports the package's `fonts.css`, `tokens.css`, `tailwind.css` and `base.css` (in the base layer); the shell uses its wordmark, icons and favicons; a unit test fails on any colour, type, radius, font or shadow class that is not a design system token (or a raw hex value).
 
 ## 3. RTL and bilingual rules
 
 - `<html lang="ar" dir="rtl">` / `lang="en" dir="ltr"`, switched per user preference (`users.language`).
 - Use logical properties only: `ms-*`, `me-*`, `ps-*`, `pe-*`, `start-*`, `end-*`, `text-start`. Lint rule: no `ml-`, `mr-`, `pl-`, `pr-`, `left-`, `right-` in components.
-- Icons that imply direction (arrows, chevrons, "back") flip in RTL; logos, checkmarks, media controls do not.
-- Wrap numbers, phones, order IDs, tracking numbers, SKUs and URLs in `<bdi>` (or `dir="ltr"` span) inside Arabic text.
+- Icons that imply direction (arrows, chevrons, "back") flip in RTL (`.mz-rtl-flip`, set by `<Icon>` from the manifest's `rtlFlip`); logos, checkmarks, media controls do not.
+- Wrap numbers, phones, order IDs, tracking numbers, SKUs and URLs in `<bdi>` inside Arabic text: in `apps/web`, `<Bdi code>` (Geist Mono, `dir="ltr"`, `mz-id`) for codes and `<Bdi>` (`mz-num`, tabular) for amounts; `base.css` isolates `.mz-num` / `.mz-id` / `.mz-mono` left to right in RTL.
 - Digits: Western digits (0–9) by default in both languages (merchants and couriers use them); allow Eastern Arabic digits as a tenant setting. Parsing must accept both (`٠١٠٠…` → `0100…`; engine already normalizes phones).
 - Currency: `EGP 1,150` in English; `١٬١٥٠ ج.م` or `1,150 ج.م` in Arabic per digit setting. Use `Intl.NumberFormat` with the tenant locale.
 - Dates: `Intl.DateTimeFormat`; relative times ("منذ 6 دقائق") in queues.
@@ -89,11 +62,11 @@ Expose tokens as CSS variables in `globals.css` and map them in `tailwind.config
 | Reports | Built-in dashboards, report builder, schedules |
 | Settings | Connections with health, team and roles, cost rules, developer keys and webhooks, billing |
 
-**Implemented (✅ E4-1, `apps/web`):** tokens in `src/app/globals.css` (light, chosen dark, system dark — kept identical by a unit test) mapped to Tailwind 4 colours; fonts self-hosted with `next/font/local`; `<html lang dir data-theme>` per locale and theme cookie; lint rule `mizan/no-physical-direction` (physical class → its logical fix) and `react/jsx-no-literals`; AR/EN message parity test; `<Bdi code>` lays codes out left to right (`#1042`, not `1042#`, inside Arabic — checked by measuring glyph positions in the smoke test).
+**Implemented (✅ E4-1, `apps/web`):** `<html lang dir data-theme>` per locale and theme cookie; lint rule `mizan/no-physical-direction` (physical class → its logical fix) and `react/jsx-no-literals`; AR/EN message parity test; `<Bdi code>` lays codes out left to right (`#1042`, not `1042#`, inside Arabic — checked by measuring glyph positions in the smoke test).
 
 ## 5. Components
 
-Build in `apps/web/src/components/ui` (shadcn/ui-style, owned code): Button, IconButton, Input, Select, Combobox, Checkbox, Switch, Tabs, Table (sortable, selectable, sticky header), Pill/Badge (status, risk), Card, StatCard (number + delta + sparkline), Drawer, Dialog, Toast, EmptyState, Skeleton, Timeline, MoneyText, PhoneText (masked, `<bdi>`), DateText, Avatar, CommandPalette.
+Recipes and rules: `packages/design-system/docs/components.md` (buttons, fields, status and payment badges, tables, KPI tiles, feedback, floating layers, copy). Build them in `apps/web/src/components/ui` (owned code, reproducing the recipes exactly): Button, IconButton, Input, Select, Combobox, Checkbox, Switch, Tabs, Table (sortable, selectable, sticky header), Pill/Badge (status, risk), Card, StatCard (number + delta + sparkline), Drawer, Dialog, Toast, EmptyState, Skeleton, Timeline, MoneyText, PhoneText (masked, `<bdi>`), DateText, Avatar, CommandPalette.
 
 ## 6. Accessibility
 
@@ -101,4 +74,4 @@ WCAG 2.2 AA contrast for text and status pills in both themes; status never by c
 
 ## 7. Ops app (Flutter)
 
-Same tokens (generate `lib/theme/tokens.dart` from the CSS variables). Material 3 with custom theme; `Directionality` from user language; `intl` + ARB files for strings. Offline-first: local SQLite (drift) queue of operations with `opId`; sync via `POST /v1/ops/sync`; conflict = server wins, user told.
+Same tokens: `packages/design-system/dist/mizan_tokens.dart` (`mizanLightTheme`, `mizanDarkTheme`, colours, type, spacing, radius, motion) and the TTF fonts in `packages/design-system/fonts/ttf` (pubspec in its README). Material 3 with custom theme; `Directionality` from user language; `intl` + ARB files for strings. Offline-first: local SQLite (drift) queue of operations with `opId`; sync via `POST /v1/ops/sync`; conflict = server wins, user told.

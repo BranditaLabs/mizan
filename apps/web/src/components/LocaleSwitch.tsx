@@ -1,9 +1,11 @@
 "use client";
 
+import { Icon } from "@mizan/design-system/icons/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing, type Locale } from "@/i18n/routing";
+import { SegmentButton, Segmented } from "./Segmented";
 
 /** عربي / English: same page in the other language; next-intl stores the choice in a cookie. */
 export function LocaleSwitch() {
@@ -13,14 +15,16 @@ export function LocaleSwitch() {
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
   return (
-    <div role="group" aria-label={t("label")} className="inline-flex gap-0.5 rounded-[9px] border border-line bg-surface p-[3px]">
-      {routing.locales.map((l: Locale) => (
-        <button key={l} type="button" lang={l} aria-pressed={l === locale} disabled={pending}
-          onClick={() => startTransition(() => router.replace(pathname, { locale: l }))}
-          className={`rounded-[6px] px-[11px] py-[5px] text-[12.5px] font-semibold ${l === locale ? "bg-ink text-bg" : "text-ink-2 hover:bg-surface-2"}`}>
-          {t(l)}
-        </button>
-      ))}
+    <div className="flex items-center gap-2">
+      <Icon name="language" size={16} className="text-text-3" />
+      <Segmented label={t("label")}>
+        {routing.locales.map((l: Locale) => (
+          <SegmentButton key={l} lang={l} pressed={l === locale} disabled={pending}
+            onClick={() => startTransition(() => router.replace(pathname, { locale: l }))}>
+            {t(l)}
+          </SegmentButton>
+        ))}
+      </Segmented>
     </div>
   );
 }

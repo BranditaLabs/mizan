@@ -20,7 +20,7 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 | Endpoint conventions and list | `docs/05-api.md` |
 | Provider access, quirks, what to apply for | `docs/06-integrations.md` |
 | Security, PII, Shopify GDPR webhooks, laws | `docs/07-security-compliance.md` |
-| Tokens, RTL, components | `docs/08-design-system.md` + `design/prototype.html` |
+| Tokens, RTL, components, logo, icons | `packages/design-system` (source of truth; `reference/index.html`, `docs/components.md`) + `docs/08-design-system.md`; `design/prototype.html` for layouts only |
 | Environments, CI/CD, monitoring, runbooks | `docs/09-infrastructure.md` |
 | **What to build next** | `docs/10-backlog.md` |
 | Terms (EN/AR) | `docs/11-glossary.md` |
@@ -31,9 +31,10 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 ```
 packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
 packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`mizan-db migrate`), generated Kysely types, withTenant (22 tests incl. real Postgres)
+packages/design-system/ ✅ BUILT — Brandita identity (ink, paper, one red point): tokens for CSS/Tailwind/TS/Flutter, Geist + Alexandria + Plex Arabic fonts, 124 icons, wordmark, app icons (70 tests: contrast, brand fidelity)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
 apps/api/          🚧 FOUNDATIONS (E1) — NestJS 12: config, redacting logger, problem+json, OpenAPI, tenant DB, Firebase auth + roles, signup, team, domain events + worker, audit log, KMS secrets; modules M1–M22 next
-apps/web/          🚧 FOUNDATION (E4-1) — Next.js 16 + Tailwind 4 dashboard: tokens, self-hosted fonts, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules for logical directions and translated strings; screens next
+apps/web/          🚧 FOUNDATION (E4-1) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules for logical directions and translated strings; screens next
 apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
@@ -52,6 +53,7 @@ npm run dev -w @mizan/api    # API on :8080 with reload (cp apps/api/.env.exampl
 npm run codegen -w @mizan/db # after adding a migration: regenerate packages/db/src/schema.ts
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
 npm run dev -w @mizan/web    # dashboard on :3000 (/ar, /en); npm run e2e -w @mizan/web after a build
+npm test -w @mizan/design-system  # tokens: WCAG contrast both themes, brand fidelity, generated files current (build after editing tokens.json)
 npm run lint                # ESLint (web: no physical directions, no literal UI strings)
 npm run load -w @mizan/perf # load test vs real API on Postgres (needs npm run build + TEST_DATABASE_URL); see docs/perf
 docker compose up --build   # prod-like stack: Postgres 16, migrations, API :8080, worker :8081 (deploy/compose/smoke.sh checks it)

@@ -1,8 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const bodyBg = (page: Page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-const LIGHT_BG = "rgb(241, 242, 244)"; // --bg #F1F2F4
-const DARK_BG = "rgb(11, 13, 17)"; // --bg #0B0D11
+// packages/design-system tokens: paper #FEF7FF (light) and ink #0B0B0B (dark).
+const LIGHT_BG = "rgb(254, 247, 255)";
+const DARK_BG = "rgb(11, 11, 11)";
+const flip = (page: Page) => page.locator("main .mz-rtl-flip").first().evaluate((el) => getComputedStyle(el).transform);
 
 function watch(page: Page) {
   const problems: string[] = [];
@@ -35,8 +37,12 @@ test("Arabic is the default: / → /ar, right-to-left, Arabic copy, isolated num
   }));
   expect(hashX).toBeLessThan(oneX!);
   await expect(example).toContainText("1,150.00");
-  // Direction icons mirror in Arabic.
-  expect(await page.locator("svg.rtl\\:-scale-x-100").evaluate((el) => getComputedStyle(el).scale)).toBe("-1 1");
+  // Direction icons mirror in Arabic (design system .mz-rtl-flip).
+  expect(await flip(page)).toBe("matrix(-1, 0, 0, 1, 0, 0)");
+  // Brand: the Arabic wordmark on the ink rail, fonts from the design system (self-hosted).
+  await expect(page.locator("aside img")).toHaveAttribute("src", "/brand/mizan-wordmark-ar-on-dark.svg");
+  await expect(page.locator("aside img")).toHaveAttribute("alt", "ميزان");
+  expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check("14px 'IBM Plex Sans Arabic'", "ميزان"); })).toBe(true);
   // The rail sits on the start side: the right in Arabic.
   const rail = await page.locator("aside").boundingBox();
   expect(rail!.x).toBeGreaterThan(page.viewportSize()!.width / 2);
@@ -54,8 +60,16 @@ test("English from the browser language, and the switch remembers the choice", a
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
   const rail = await page.locator("aside").boundingBox();
   expect(rail!.x).toBeLessThan(10); // start side: the left in English
-  expect(await page.locator("svg.rtl\\:-scale-x-100").evaluate((el) => getComputedStyle(el).scale)).toBe("none");
+  expect(await flip(page)).toBe("none");
+  await expect(page.locator("aside img")).toHaveAttribute("src", "/brand/mizan-wordmark-on-dark.svg");
+  expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check("14px Geist"); })).toBe(true);
+  expect(await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Geist"?/);
   await page.screenshot({ path: "test-results/home-en.png", fullPage: true });
+  await page.getByRole("button", { name: "Dark" }).click();
+  // Pressed segments are ink-on-paper inverted in dark (--mz-primary #F7F3F8); wait out the colour transition.
+  await expect(page.getByRole("button", { name: "Dark" })).toHaveCSS("background-color", "rgb(247, 243, 248)");
+  await page.screenshot({ path: "test-results/home-en-dark.png", fullPage: true });
+  await page.getByRole("button", { name: "System" }).click();
 
   await page.getByRole("button", { name: "عربي" }).click();
   await expect(page).toHaveURL(/\/ar$/);

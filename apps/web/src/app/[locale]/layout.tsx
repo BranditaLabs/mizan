@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { dirOf, routing } from "@/i18n/routing";
 import { parseTheme, THEME_COOKIE, themeAttribute } from "@/lib/theme";
-import { fontVariables } from "../fonts";
 import "../globals.css";
 
 type Props = { children: ReactNode; params: Promise<{ locale: string }> };
@@ -24,7 +23,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale);
   const theme = themeAttribute(parseTheme((await cookies()).get(THEME_COOKIE)?.value));
   return (
-    <html lang={locale} dir={dirOf(locale)} data-theme={theme} className={fontVariables} suppressHydrationWarning>
+    <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>

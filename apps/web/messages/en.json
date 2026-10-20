@@ -4,6 +4,7 @@
     "description": "Mizan — the commerce operating system: orders, confirmation, shipping, warehouse and real profit in one place."
   },
   "shell": {
+    "logoAlt": "mizan",
     "brand": "Mizan",
     "tagline": "Commerce operating system",
     "skip": "Skip to content",

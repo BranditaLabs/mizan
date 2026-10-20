@@ -11,6 +11,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: blob:",
+  "manifest-src 'self'",
   `connect-src 'self' ${api} https://*.googleapis.com https://*.firebaseapp.com`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
@@ -22,7 +23,7 @@ const config: NextConfig = {
   ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const } : {}),
   poweredByHeader: false,
   reactStrictMode: true,
-  transpilePackages: ["@mizan/shared"],
+  transpilePackages: ["@mizan/shared", "@mizan/design-system"],
   async headers() {
     return [{
       source: "/:path*",

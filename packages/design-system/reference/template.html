@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mizan Design System</title>
+<style>
+/*@@TOKENS@@*/
+/*@@FONTS@@*/
+/*@@BASE@@*/
+/*@@COMPONENTS@@*/
+
+/* ───── Reference page layout (not part of the product CSS) ───── */
+.ds-top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 20px; height: 56px; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); background: color-mix(in srgb, var(--mz-bg) 88%, transparent); backdrop-filter: saturate(150%) blur(10px); border-block-end: 1px solid var(--mz-line); }
+.ds-top .wm { height: 20px; display: block; }
+.ds-top nav { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.ds-top nav a { font: 500 13px/1 var(--mz-font-sans); color: var(--mz-text-2); text-decoration: none; padding: 8px 10px; border-radius: 6px; white-space: nowrap; }
+.ds-top nav a:hover { color: var(--mz-text); background: var(--mz-surface-hover); }
+.ds-top .end { margin-inline-start: auto; display: flex; gap: 8px; align-items: center; }
+.ds-wrap { max-width: 1240px; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
+.ds-hero { background: var(--mz-brand-ink); color: #fff; padding-block: 88px 72px; position: relative; overflow: hidden; }
+.ds-hero .ds-wrap { display: grid; gap: 28px; position: relative; }
+.ds-hero .kick { font: 600 11px/1 var(--mz-font-sans); letter-spacing: .16em; text-transform: uppercase; color: #8E8E94; }
+.ds-hero .big { height: clamp(72px, 13vw, 156px); width: auto; display: block; }
+.ds-hero h1 { font: 600 clamp(22px, 3vw, 32px)/1.2 var(--mz-font-display); letter-spacing: -.02em; color: #fff; max-width: 760px; text-wrap: balance; }
+.ds-hero h1 em { font-style: normal; color: var(--mz-brand-red-hi); }
+.ds-hero .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.ds-hero .meta span { font: 500 12px/1 var(--mz-font-sans); color: #D2D2D6; border: 1px solid #2A2B2D; padding: 8px 10px; border-radius: 999px; }
+.ds-hero .ar { position: absolute; inset-inline-end: max(16px, env(safe-area-inset-right, 0px)); bottom: -26px; height: clamp(90px, 16vw, 210px); opacity: .09; }
+.ds-sec { padding-block: 72px; border-block-end: 1px solid var(--mz-line); }
+.ds-sec > .ds-wrap { display: grid; gap: 28px; }
+.ds-h2 { display: grid; gap: 10px; max-width: 760px; }
+.ds-h2 .n { font: 600 11px/1 var(--mz-font-mono); color: var(--mz-brand); letter-spacing: .08em; }
+.ds-h2 h2 { font: 700 30px/36px var(--mz-font-display); letter-spacing: -.025em; text-wrap: balance; }
+:lang(ar) .ds-h2 h2 { letter-spacing: 0; line-height: 44px; }
+.ds-h2 p { color: var(--mz-text-2); font-size: 15px; line-height: 24px; max-width: 64ch; }
+.ds-h3 { font: 600 13px/1 var(--mz-font-sans); color: var(--mz-text); margin-block-end: 12px; }
+.ds-grid { display: grid; gap: 16px; }
+.ds-g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ds-g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ds-g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .ds-g3, .ds-g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .ds-g2, .ds-g3, .ds-g4 { grid-template-columns: minmax(0, 1fr); } .ds-top nav { display: none; } }
+
+/* Logo tiles */
+.ds-logo { border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); display: grid; grid-template-rows: 1fr auto; overflow: hidden; background: var(--mz-surface); }
+.ds-logo .art { min-height: 190px; display: grid; place-items: center; padding: 28px; background: var(--mz-brand-paper); }
+.ds-logo .art.ink { background: var(--mz-brand-ink); }
+.ds-logo .art img { max-height: 64px; max-width: 100%; width: auto; }
+.ds-logo .art img.tall { max-height: 96px; }
+.ds-logo .cap { display: flex; justify-content: space-between; gap: 10px; padding: 12px 14px; border-block-start: 1px solid var(--mz-line); font-size: 12.5px; color: var(--mz-text-2); }
+.ds-logo .cap code { font: 500 11.5px/1.4 var(--mz-font-mono); color: var(--mz-text-3); }
+.ds-rules { display: grid; gap: 0; }
+.ds-rules div { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding-block: 12px; border-block-start: 1px solid var(--mz-line); font-size: 14px; line-height: 21px; color: var(--mz-text-2); }
+.ds-rules b { color: var(--mz-text); font-weight: 600; }
+.ds-rules .x { color: var(--mz-danger-text); font: 600 13px/21px var(--mz-font-mono); }
+.ds-rules .ok { color: var(--mz-success-text); font: 600 13px/21px var(--mz-font-mono); }
+
+/* Colour */
+.ds-sw { border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); overflow: hidden; background: var(--mz-surface); }
+.ds-sw .chip { height: 96px; }
+.ds-sw .inf { padding: 12px 14px; display: grid; gap: 3px; }
+.ds-sw .inf b { font: 600 13px/18px var(--mz-font-sans); }
+.ds-sw .inf span { font: 500 12px/16px var(--mz-font-mono); color: var(--mz-text-3); }
+.ds-sw .inf i { font-style: normal; font-size: 12px; color: var(--mz-text-2); line-height: 17px; }
+.ds-tokens { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ds-tokens th { text-align: start; font: 500 12px/16px var(--mz-font-sans); color: var(--mz-text-3); padding: 8px 10px; border-block-end: 1px solid var(--mz-line); }
+.ds-tokens td { padding: 8px 10px; border-block-end: 1px solid var(--mz-line); vertical-align: middle; }
+.ds-tokens td code { font: 500 12px/1 var(--mz-font-mono); }
+.ds-dot { direction: ltr; unicode-bidi: isolate; display: inline-flex; align-items: center; gap: 8px; font: 500 12px/1 var(--mz-font-mono); color: var(--mz-text-2); }
+.ds-dot i { width: 22px; height: 22px; border-radius: 5px; border: 1px solid rgba(127,127,127,.25); display: inline-block; }
+.ds-viz { display: grid; grid-template-columns: repeat(6, 1fr); border-radius: var(--mz-radius-md); overflow: hidden; height: 64px; }
+.ds-viz div { display: flex; align-items: flex-end; padding: 8px; font: 600 11px/1 var(--mz-font-mono); color: #fff; }
+
+/* Type */
+.ds-spec { border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); padding: 28px; background: var(--mz-surface); display: grid; gap: 18px; min-width: 0; }
+.ds-spec .glyphs { font: 700 clamp(44px, 7vw, 88px)/1 var(--mz-font-display); letter-spacing: -.04em; }
+.ds-spec .glyphs-ar { font: 700 clamp(44px, 7vw, 80px)/1.25 "Alexandria", sans-serif; direction: rtl; text-align: start; }
+.ds-spec .set { font-size: 15px; color: var(--mz-text-2); line-height: 24px; }
+.ds-spec .row { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--mz-text-3); }
+.ds-scale { display: grid; }
+.ds-scale > div { display: grid; grid-template-columns: 150px minmax(0, 1fr) 180px; gap: 16px; align-items: baseline; padding-block: 14px; border-block-end: 1px solid var(--mz-line); }
+.ds-scale code { font: 500 12px/1 var(--mz-font-mono); color: var(--mz-text-3); }
+.ds-scale .s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 700px) { .ds-scale > div { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+
+/* Icons */
+.ds-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: 8px; }
+.ds-ic { border: 1px solid var(--mz-line); border-radius: var(--mz-radius-sm); background: var(--mz-surface); padding: 16px 8px 10px; display: grid; justify-items: center; gap: 10px; text-align: center; min-width: 0; }
+.ds-ic svg { width: 22px; height: 22px; color: var(--mz-text); }
+.ds-ic b { font: 500 11.5px/1.3 var(--mz-font-mono); color: var(--mz-text-2); word-break: break-word; }
+.ds-ic span { font-size: 11px; color: var(--mz-text-3); line-height: 1.3; }
+.ds-ic.flip b::after { content: " ⇄"; color: var(--mz-brand); }
+
+/* Component board */
+.ds-board { border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); background: var(--mz-surface); padding: 22px; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.ds-board .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ds-board > .lbl { font: 600 11px/1 var(--mz-font-sans); letter-spacing: .12em; text-transform: uppercase; color: var(--mz-text-3); }
+:lang(ar) .ds-board > .lbl { letter-spacing: 0; }
+
+/* App preview */
+.ds-frame { border: 1px solid var(--mz-line-strong); border-radius: 12px; overflow: hidden; background: var(--mz-bg); }
+.ds-frame .mz-app { min-height: 0; grid-template-columns: 220px minmax(0, 1fr); }
+.ds-frame .mz-rail { height: auto; position: static; }
+.ds-frame .mz-header { position: static; }
+.ds-shell { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.ds-panel { border-inline-start: 1px solid var(--mz-line); background: var(--mz-surface); padding: 18px; display: grid; gap: 14px; align-content: start; }
+@media (max-width: 1100px) { .ds-shell { grid-template-columns: minmax(0, 1fr); } .ds-panel { border-inline-start: 0; border-block-start: 1px solid var(--mz-line); } }
+@media (max-width: 760px) { .ds-frame .mz-app { grid-template-columns: minmax(0, 1fr); } .ds-frame .mz-rail { display: none; } }
+.ds-kpis { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 900px) { .ds-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ds-kpis > .mz-kpi--hero { grid-column: 1 / -1; } }
+.spark { display: block; width: 100%; height: 34px; }
+.ds-foot { padding-block: 48px 64px; color: var(--mz-text-3); font-size: 13px; }
+.ds-foot .ds-wrap { display: flex; flex-wrap: wrap; gap: 16px 32px; justify-content: space-between; align-items: center; }
+.ds-files { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0; border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); background: var(--mz-surface); overflow: hidden; }
+.ds-files div { padding: 14px 16px; border-block-end: 1px solid var(--mz-line); border-inline-end: 1px solid var(--mz-line); display: grid; gap: 4px; }
+.ds-files code { font: 500 12px/1.4 var(--mz-font-mono); color: var(--mz-text); }
+.ds-files span { font-size: 12.5px; color: var(--mz-text-2); line-height: 18px; }
+</style>
+</head>
+<body>
+<!--@@SPRITE@@-->
+
+<header class="ds-top">
+  <img class="wm" data-logo="wordmark" alt="mizan">
+  <nav aria-label="Sections">
+    <a href="#brand" data-ar="الهوية">Brand</a><a href="#color" data-ar="الألوان">Colour</a><a href="#type" data-ar="الخطوط">Type</a>
+    <a href="#icons" data-ar="الأيقونات">Icons</a><a href="#components" data-ar="المكونات">Components</a><a href="#app" data-ar="التطبيق">App</a><a href="#files" data-ar="الملفات">Files</a>
+  </nav>
+  <div class="end">
+    <div class="mz-segmented" role="group" aria-label="Theme">
+      <button type="button" id="th-light" aria-pressed="false" data-ar="فاتح">Light</button><button type="button" id="th-dark" aria-pressed="false" data-ar="داكن">Dark</button>
+    </div>
+    <button type="button" class="mz-btn mz-btn--secondary mz-btn--sm" id="lang"><svg class="mz-icon"><use href="#mz-language"/></svg><span>عربي</span></button>
+  </div>
+</header>
+
+<section class="ds-hero">
+  <img class="ar" data-logo="ar-mono-white" alt="">
+  <div class="ds-wrap">
+    <span class="kick" data-ar="نظام التصميم · بدعم من براندتا">Design system · powered by Brandita</span>
+    <img class="big" data-logo="on-dark" alt="mizan">
+    <h1 data-ar="حبر براندتا، ورقها، <em>ونقطة حمرا واحدة</em>. نظام واحد لكل شاشة في ميزان، عربي وإنجليزي، فاتح وداكن.">Brandita's ink, its paper and <em>one red point</em>. One system for every Mizan screen, in Arabic and English, light and dark.</h1>
+    <div class="meta"><span>Geist · Alexandria · IBM Plex Sans Arabic</span><span data-ar="@@ICONCOUNT@@ أيقونة">@@ICONCOUNT@@ icons</span><span>CSS · Tailwind · TypeScript · Flutter</span><span data-ar="تباين WCAG AA مُختبر">WCAG AA contrast, tested</span></div>
+  </div>
+</section>
+
+<!-- ───────── Brand ───────── -->
+<section class="ds-sec" id="brand"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">01</span><h2 data-ar="لوجو من الحروف بس، ونقطة واحدة حمرا">A type-only mark with one red point</h2>
+    <p data-ar="الكلمة مرسومة بخط Geist Bold والعربي بخط Alexandria Bold، ومحولة لمسارات. نقطة حرف i ونقطة النون باللون الأحمر: نفس قاعدة براندتا، أسود ونقطة حمرا.">The wordmark is set in Geist Bold, the Arabic in Alexandria Bold, both converted to outlines. The dot of the <i>i</i> and the dot of the <i>ن</i> turn Brandita red: the same rule as Brandita's own mark, black with a red dot.</p></div>
+  <div class="ds-grid ds-g3">
+    <figure class="ds-logo" style="margin:0"><div class="art"><img data-logo="wordmark" alt="mizan wordmark"></div><figcaption class="cap"><span data-ar="الكلمة الأساسية">Primary wordmark</span><code>mizan-wordmark.svg</code></figcaption></figure>
+    <figure class="ds-logo" style="margin:0"><div class="art ink"><img data-logo="on-dark" alt="mizan wordmark on dark"></div><figcaption class="cap"><span data-ar="على الداكن">On ink</span><code>…-on-dark.svg</code></figcaption></figure>
+    <figure class="ds-logo" style="margin:0"><div class="art"><img data-logo="ar" alt="ميزان"></div><figcaption class="cap"><span data-ar="الكلمة بالعربي">Arabic wordmark</span><code>mizan-wordmark-ar.svg</code></figcaption></figure>
+    <figure class="ds-logo" style="margin:0"><div class="art"><img class="tall" data-logo="endorsed" alt="mizan powered by Brandita"></div><figcaption class="cap"><span data-ar="مع توقيع براندتا">Endorsed lockup</span><code>mizan-endorsed.svg</code></figcaption></figure>
+    <figure class="ds-logo" style="margin:0"><div class="art ink"><img data-logo="bilingual-on-dark" alt="mizan ميزان"></div><figcaption class="cap"><span data-ar="ثنائي اللغة">Bilingual lockup</span><code>mizan-bilingual*.svg</code></figcaption></figure>
+    <figure class="ds-logo" style="margin:0"><div class="art" style="gap:18px;display:flex;align-items:flex-end;justify-content:center"><img data-logo="appicon" alt="" style="max-height:96px;height:96px"><img data-logo="appicon" alt="" style="height:48px"><img data-logo="favicon" alt="" style="height:32px"><img data-logo="favicon" alt="" style="height:16px"></div><figcaption class="cap"><span data-ar="أيقونة التطبيق والفافيكون">App icon and favicon</span><code>mizan-appicon.svg</code></figcaption></figure>
+  </div>
+  <div class="ds-grid ds-g2">
+    <div class="ds-rules">
+      <div><span class="ok">✓</span><span data-ar="<b>مساحة فاضية</b> حوالين اللوجو على الأقل بارتفاع حرف m من كل ناحية."><b>Clear space</b> of at least the height of the <i>m</i> on every side.</span></div>
+      <div><span class="ok">✓</span><span data-ar="<b>أصغر مقاس:</b> 72 بكسل عرض على الشاشة، و18 مم في الطباعة. تحت كده استخدم أيقونة m."><b>Minimum size:</b> 72 px wide on screen, 18 mm in print. Below that, use the <i>m.</i> monogram.</span></div>
+      <div><span class="ok">✓</span><span data-ar="<b>الألوان:</b> أسود ونقطة حمرا على الفاتح، أبيض ونقطة حمرا على الداكن، أو لون واحد عند الضرورة."><b>Colour:</b> ink with a red point on paper, white with a red point on ink, or one-colour when the medium demands it.</span></div>
+    </div>
+    <div class="ds-rules">
+      <div><span class="x">✕</span><span data-ar="ماتكتبش اللوجو بخط حي، ولا تغير ألوانه، ولا تحطله إطار أو ظل أو تدوير.">Never set the logo in live type, recolour it, outline it, rotate it or add a shadow.</span></div>
+      <div><span class="x">✕</span><span data-ar="ماتحركش النقطة الحمرا ولا تزود نقط حمرا تانية.">Never move the red point or add a second red element to the mark.</span></div>
+      <div><span class="x">✕</span><span data-ar="ماتحطش اللوجو على صورة أو خلفية مزدحمة من غير أرضية سادة.">Never place it on a busy image without a solid ink or paper ground.</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ───────── Colour ───────── -->
+<section class="ds-sec" id="color"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">02</span><h2 data-ar="ألوان براندتا، والأحمر للمعنى بس">Brandita's palette, with red kept for meaning</h2>
+    <p data-ar="الأزرار الأساسية بالحبر الأسود. الأحمر للنقطة، والمؤشر النشط، والرقم الأهم، والأخطاء. لو الصفحة فيها أحمر في أربع أماكن، يبقى تلاتة منهم غلط.">Primary actions are ink. Red marks the brand point, the active indicator, the one number that matters, and errors. If a screen shows red in four places, three of them are wrong.</p></div>
+  <div class="ds-grid ds-g4">@@BRANDSWATCHES@@</div>
+  <div class="mz-table-wrap"><table class="ds-tokens"><thead><tr><th data-ar="التوكن">Token</th><th data-ar="فاتح">Light</th><th data-ar="داكن">Dark</th><th data-ar="الاستخدام">Use</th></tr></thead><tbody>@@SEMANTIC@@</tbody></table></div>
+  <div><div class="ds-h3" data-ar="ألوان الرسوم البيانية · بترتيب ثابت ومختبر لعمى الألوان">Data colours · fixed order, tested for colour-vision deficiency</div><div class="ds-viz" id="viz"></div></div>
+</div></section>
+
+<!-- ───────── Type ───────── -->
+<section class="ds-sec" id="type"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">03</span><h2 data-ar="Geist للاتيني، Alexandria للعربي">Geist for Latin, Alexandria for Arabic</h2>
+    <p data-ar="Geist خط سويسري دقيق مناسب للأرقام والجداول. Alexandria هندسي بنفس روح Geist للعناوين العربي، وIBM Plex Sans Arabic للنصوص العربي الصغيرة. كلهم برخصة مفتوحة.">Geist is a precise Swiss-style grotesk with clear figures for dense data. Alexandria shares its geometry for Arabic headings, and IBM Plex Sans Arabic carries small Arabic text. All three are under the SIL Open Font License.</p></div>
+  <div class="ds-grid ds-g2">
+    <div class="ds-spec" dir="ltr"><div class="glyphs">Aa 0123</div><div class="set" style="font-family:var(--mz-font-display);font-size:22px;line-height:30px;color:var(--mz-text);letter-spacing:-.015em">Real profit on every order, after every fee, refund and return.</div><div class="row"><span>Geist · 400 500 600 700</span><span>Geist Mono · 400 500 600</span><span data-ar="أرقام جدولية">Tabular figures</span></div></div>
+    <div class="ds-spec"><div class="glyphs-ar">أب ٠١٢٣</div><div class="set" dir="rtl" style="font-family:'Alexandria';font-size:22px;line-height:36px;color:var(--mz-text);text-align:start">اعرف ربحك الحقيقي في كل أوردر، بعد كل رسوم ومرتجع.</div><div class="set" dir="rtl" style="font-family:var(--mz-font-arabic-body);font-size:15px;line-height:26px;text-align:start">أكّد الأوردر، اطبع البوليصة، وتابع الكاش لحد ما يوصل حسابك. نص التطبيق العربي بخط IBM Plex Sans Arabic.</div><div class="row"><span>Alexandria · 500–800</span><span>IBM Plex Sans Arabic · 400–700</span></div></div>
+  </div>
+  <div class="ds-scale" id="scale">@@SCALE@@</div>
+</div></section>
+
+<!-- ───────── Icons ───────── -->
+<section class="ds-sec" id="icons"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">04</span><h2 data-ar="@@ICONCOUNT@@ أيقونة بأسماء من التطبيق نفسه">@@ICONCOUNT@@ icons named after the product</h2>
+    <p data-ar="مبنية على Lucide بسُمك خط 1.75 على شبكة 24. الاسم بيوصف المعنى (cod، refund، verification) مش الشكل. الأيقونات اللي عليها ⇄ بتنعكس في العربي.">Built on Lucide, 1.75 stroke on a 24 grid. Names describe meaning (cod, refund, verification), not shape, so a glyph can change without touching the app. Icons marked ⇄ mirror in Arabic.</p></div>
+  <div class="mz-input-wrap" style="max-width:360px"><svg class="mz-icon"><use href="#mz-search"/></svg><input class="mz-input" id="icon-q" type="search" placeholder="Search icons" aria-label="Search icons" data-ar-placeholder="دور على أيقونة"></div>
+  <div class="ds-icons" id="icon-grid">@@ICONGRID@@</div>
+</div></section>
+
+<!-- ───────── Components ───────── -->
+<section class="ds-sec" id="components"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">05</span><h2 data-ar="مكونات مسطحة ودقيقة">Flat, precise components</h2>
+    <p data-ar="من غير ظلال على الكروت أو الأزرار، زي هوية براندتا. الظل للطبقات العائمة بس: القوائم والحوارات. كل حاجة بخصائص منطقية عشان العربي يشتغل لوحده.">No shadows on cards or buttons, as in Brandita's identity; only floating layers (menus, dialogs) cast one. Every rule uses logical properties, so Arabic layouts mirror with no extra code.</p></div>
+  <div class="ds-grid ds-g2">
+    <div class="ds-board"><span class="lbl" data-ar="الأزرار">Buttons</span>
+      <div class="row"><button class="mz-btn mz-btn--primary" type="button"><svg class="mz-icon"><use href="#mz-shipping"/></svg><span data-ar="اشحن 24 أوردر">Ship 24 orders</span></button><button class="mz-btn mz-btn--secondary" type="button"><svg class="mz-icon"><use href="#mz-export"/></svg><span data-ar="تصدير">Export</span></button><button class="mz-btn mz-btn--ghost" type="button" data-ar="إلغاء">Cancel</button></div>
+      <div class="row"><button class="mz-btn mz-btn--brand" type="button" data-ar="رقّي لخطة Scale">Upgrade to Scale</button><button class="mz-btn mz-btn--danger" type="button"><svg class="mz-icon"><use href="#mz-delete"/></svg><span data-ar="إلغاء الأوردر">Cancel order</span></button><button class="mz-btn mz-btn--secondary mz-btn--icon" type="button" aria-label="More"><svg class="mz-icon"><use href="#mz-more"/></svg></button><button class="mz-btn mz-btn--primary mz-btn--sm" type="button" data-ar="صغير">Small</button></div>
+    </div>
+    <div class="ds-board"><span class="lbl" data-ar="الحقول">Fields</span>
+      <div class="ds-grid ds-g2">
+        <label class="mz-field"><span class="mz-label" data-ar="رقم الموبايل">Customer phone</span><input class="mz-input mz-num" id="f-phone" value="010 0123 4821"><span class="mz-hint" data-ar="يتحول تلقائي لصيغة دولية">Normalized to E.164 automatically</span></label>
+        <label class="mz-field"><span class="mz-label" data-ar="المدينة">City</span><input class="mz-input" id="f-city" value="Kafr Atlantis" aria-invalid="true"><span class="mz-error-text"><svg class="mz-icon" style="width:14px;height:14px"><use href="#mz-error"/></svg><span data-ar="مش لاقيين المدينة عند بوسطة. اختار من الاقتراحات.">Bosta doesn't know this city. Pick a suggestion.</span></span></label>
+      </div>
+      <div class="row"><label class="mz-check"><input type="checkbox" id="f-c1" checked><span data-ar="ابعت رسالة تأكيد">Send confirmation message</span></label><label class="mz-check"><input type="checkbox" id="f-c2"><span data-ar="اطبع البوليصة">Print label</span></label><label class="mz-check" style="gap:10px"><input class="mz-switch" type="checkbox" id="f-s1" checked><span data-ar="الأتمتة شغالة">Automation on</span></label></div>
+    </div>
+    <div class="ds-board"><span class="lbl" data-ar="الحالات وطرق الدفع">Status and payment</span>
+      <div class="row"><span class="mz-badge mz-badge--success" data-ar="اتسلم">Delivered</span><span class="mz-badge mz-badge--info" data-ar="في الطريق">In transit</span><span class="mz-badge mz-badge--warning" data-ar="مستني الدفع">Awaiting payment</span><span class="mz-badge mz-badge--danger" data-ar="مرتجع">Refused</span><span class="mz-badge" data-ar="جديد">New</span><span class="mz-badge mz-badge--ink mz-badge--plain" data-ar="مدفوع">Paid</span></div>
+      <div class="row"><span class="mz-tag"><svg class="mz-icon" style="width:14px;height:14px;margin-inline-end:6px"><use href="#mz-cod"/></svg><span data-ar="عند الاستلام">COD</span></span><span class="mz-tag"><svg class="mz-icon" style="width:14px;height:14px;margin-inline-end:6px"><use href="#mz-card"/></svg><span data-ar="كارت">Card</span></span><span class="mz-tag"><svg class="mz-icon" style="width:14px;height:14px;margin-inline-end:6px"><use href="#mz-deposit"/></svg><span data-ar="عربون">Deposit</span></span><span class="mz-tag"><svg class="mz-icon" style="width:14px;height:14px;margin-inline-end:6px"><use href="#mz-bnpl"/></svg><span data-ar="تقسيط">BNPL</span></span><span class="mz-tag"><svg class="mz-icon" style="width:14px;height:14px;margin-inline-end:6px"><use href="#mz-bank-transfer"/></svg><span data-ar="تحويل">Transfer</span></span></div>
+      <div class="row"><span class="mz-risk"><span class="mz-risk__bar"><i style="width:18%"></i></span>18</span><span class="mz-risk mz-risk--med"><span class="mz-risk__bar"><i style="width:54%"></i></span>54</span><span class="mz-risk mz-risk--high"><span class="mz-risk__bar"><i style="width:81%"></i></span>81</span></div>
+    </div>
+    <div class="ds-board"><span class="lbl" data-ar="التنبيهات والتبويبات">Feedback and tabs</span>
+      <div class="mz-tabs" role="tablist"><button class="mz-tab" role="tab" aria-selected="true" type="button"><span data-ar="الكل">All</span><span class="count">1,284</span></button><button class="mz-tab" role="tab" aria-selected="false" type="button"><span data-ar="مستني التأكيد">Pending</span><span class="count">41</span></button><button class="mz-tab" role="tab" aria-selected="false" type="button"><span data-ar="مستني الدفع">Awaiting payment</span><span class="count">6</span></button></div>
+      <div class="mz-alert mz-alert--warning"><svg class="mz-icon"><use href="#mz-warning"/></svg><span data-ar="<b>6 تحويلات بنكية</b> لسه مادفعتش. هتتشحن أوتوماتيك أول ما الفلوس توصل."><b>6 bank transfers</b> are unpaid. They ship automatically once the money arrives.</span></div>
+      <div class="row"><div class="mz-toast"><svg class="mz-icon"><use href="#mz-success"/></svg><span data-ar="اتشحن 24 أوردر مع بوسطة">24 orders shipped with Bosta</span></div><span class="mz-tooltip" data-ar="نسبة التسليم آخر 60 يوم">Delivery rate, last 60 days</span></div>
+    </div>
+  </div>
+</div></section>
+
+<!-- ───────── App ───────── -->
+<section class="ds-sec" id="app"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">06</span><h2 data-ar="كله مع بعض: شاشة الأوردرات">Put together: the orders screen</h2>
+    <p data-ar="نفس المكونات في شاشة حقيقية. جرب الوضع الداكن والعربي من فوق. البيانات أمثلة.">The same components on a working screen. Switch theme and language from the top bar. Data shown is sample data.</p></div>
+  <div class="ds-frame"><div class="mz-app">
+    <aside class="mz-rail">
+      <div class="mz-rail__brand"><img data-logo="on-dark" alt="mizan" style="height:20px"></div>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-home"/></svg><span data-ar="الرئيسية">Home</span></a>
+      <a class="mz-nav" href="#app" aria-current="page"><svg class="mz-icon"><use href="#mz-orders"/></svg><span data-ar="الأوردرات">Orders</span><span class="mz-nav__count">1,284</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-verification"/></svg><span data-ar="التأكيد">Verification</span><span class="mz-nav__count">41</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-payments"/></svg><span data-ar="المدفوعات">Payments</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon mz-rtl-flip"><use href="#mz-shipping"/></svg><span data-ar="الشحن">Shipping</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-warehouse"/></svg><span data-ar="المخزن">Warehouse</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-inbox"/></svg><span data-ar="الرسايل">Inbox</span><span class="mz-nav__count">12</span></a>
+      <div class="mz-rail__section" data-ar="الفلوس">Money</div>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-profit"/></svg><span data-ar="الربح">Profit</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-reconciliation"/></svg><span data-ar="التسوية">Reconciliation</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-finance"/></svg><span data-ar="الحسابات">Finance</span></a>
+      <div class="mz-rail__section" data-ar="المنصة">Platform</div>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-automations"/></svg><span data-ar="الأتمتة">Automations</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-reports"/></svg><span data-ar="التقارير">Reports</span></a>
+      <a class="mz-nav" href="#app"><svg class="mz-icon"><use href="#mz-settings"/></svg><span data-ar="الإعدادات">Settings</span></a>
+    </aside>
+    <div style="min-width:0">
+      <div class="mz-header">
+        <div class="mz-input-wrap" style="width:min(380px,100%)"><svg class="mz-icon"><use href="#mz-search"/></svg><input class="mz-input" id="app-q" placeholder="Search orders, phones, tracking numbers" data-ar-placeholder="دور برقم أوردر أو موبايل أو بوليصة" aria-label="Search"><span class="mz-kbd">⌘K</span></div>
+        <div style="margin-inline-start:auto;display:flex;gap:8px;align-items:center"><button class="mz-btn mz-btn--ghost mz-btn--icon" type="button" aria-label="Notifications"><svg class="mz-icon"><use href="#mz-notification"/></svg></button><span class="mz-avatar">AH</span></div>
+      </div>
+      <div class="ds-shell">
+        <div class="mz-page" style="max-width:none">
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between"><h3 class="mz-page__title" data-ar="الأوردرات">Orders</h3><div class="mz-btn-group"><button class="mz-btn mz-btn--secondary" type="button"><svg class="mz-icon"><use href="#mz-filter"/></svg><span data-ar="تصفية">Filter</span></button><button class="mz-btn mz-btn--primary" type="button"><svg class="mz-icon"><use href="#mz-add"/></svg><span data-ar="أوردر جديد">New order</span></button></div></div>
+          <div class="ds-kpis">
+            <div class="mz-card mz-kpi mz-kpi--hero"><span class="mz-kpi__label" data-ar="صافي الربح · آخر 30 يوم">Net profit · last 30 days</span><span class="mz-kpi__value mz-num"><span class="mz-ltr">212,480</span><small>EGP</small></span><span class="mz-kpi__delta"><b>14.9%</b> <span data-ar="هامش">margin</span></span></div>
+            <div class="mz-card mz-kpi"><span class="mz-kpi__label" data-ar="نسبة التسليم">Delivered rate</span><span class="mz-kpi__value mz-num">78.4%</span><span class="mz-kpi__delta"><b class="up">+6.1</b> <span data-ar="نقطة من الشهر اللي فات">pts vs last month</span></span></div>
+            <div class="mz-card mz-kpi"><span class="mz-kpi__label" data-ar="مدفوع مقدماً">Prepaid share</span><span class="mz-kpi__value mz-num">38%</span><span class="mz-kpi__delta"><b class="up">+9</b> <span data-ar="نقط">pts</span></span></div>
+            <div class="mz-card mz-kpi"><span class="mz-kpi__label" data-ar="كاش عند شركات الشحن">Cash with couriers</span><span class="mz-kpi__value mz-num">184k</span><span class="mz-kpi__delta"><b class="down">41k</b> <span data-ar="متأخر أكتر من 10 أيام">overdue &gt; 10 d</span></span></div>
+          </div>
+          <div class="mz-tabs" role="tablist"><button class="mz-tab" role="tab" aria-selected="true" type="button"><span data-ar="الكل">All</span><span class="count">1,284</span></button><button class="mz-tab" role="tab" aria-selected="false" type="button"><span data-ar="مستني التأكيد">Pending</span><span class="count">41</span></button><button class="mz-tab" role="tab" aria-selected="false" type="button"><span data-ar="مستني الدفع">Awaiting payment</span><span class="count">6</span></button><button class="mz-tab" role="tab" aria-selected="false" type="button"><span data-ar="اتشحن">Shipped</span><span class="count">803</span></button></div>
+          <div class="mz-table-wrap"><table class="mz-table">
+            <thead><tr><th data-ar="الأوردر">Order</th><th data-ar="العميل">Customer</th><th data-ar="الدفع">Payment</th><th class="mz-num" data-ar="الإجمالي">Total</th><th data-ar="المخاطرة">Risk</th><th data-ar="الحالة">Status</th></tr></thead>
+            <tbody>
+              <tr><td><span class="mz-id">#EO-48213</span></td><td><span data-ar="منى ع.">Mona A.</span><span class="sub mz-num">010•••4821</span></td><td><span class="mz-tag" data-ar="عند الاستلام">COD</span></td><td class="mz-num">1,150</td><td><span class="mz-risk mz-risk--med"><span class="mz-risk__bar"><i style="width:54%"></i></span>54</span></td><td><span class="mz-badge mz-badge--warning" data-ar="مستني التأكيد">Pending</span></td></tr>
+              <tr aria-selected="true"><td><span class="mz-id">#EO-48302</span></td><td><span data-ar="سارة م.">Sara M.</span><span class="sub mz-num">011•••0912</span></td><td><span class="mz-tag" data-ar="عربون + كاش">Deposit + COD</span></td><td class="mz-num">2,100</td><td><span class="mz-risk mz-risk--high"><span class="mz-risk__bar"><i style="width:66%"></i></span>66</span></td><td><span class="mz-badge mz-badge--info" data-ar="اتشحن">Shipped</span></td></tr>
+              <tr><td><span class="mz-id">#SH-11021</span></td><td><span data-ar="كريم ح.">Karim H.</span><span class="sub mz-num">012•••7730</span></td><td><span class="mz-tag" data-ar="كارت">Card</span></td><td class="mz-num">1,450</td><td><span class="mz-risk"><span class="mz-risk__bar"><i style="width:12%"></i></span>12</span></td><td><span class="mz-badge mz-badge--success" data-ar="اتسلم">Delivered</span></td></tr>
+              <tr><td><span class="mz-id">#SL-5601</span></td><td><span data-ar="عبدالله ر.">Abdullah R.</span><span class="sub mz-num">05•••4417</span></td><td><span class="mz-tag">Tabby</span></td><td class="mz-num">SAR 899</td><td><span class="mz-risk"><span class="mz-risk__bar"><i style="width:9%"></i></span>9</span></td><td><span class="mz-badge mz-badge--success" data-ar="اتسلم">Delivered</span></td></tr>
+              <tr><td><span class="mz-id">#WC-3412</span></td><td><span data-ar="يوسف ك.">Youssef K.</span><span class="sub mz-num">015•••3301</span></td><td><span class="mz-tag" data-ar="تحويل بنكي">Bank transfer</span></td><td class="mz-num">3,200</td><td><span class="mz-risk"><span class="mz-risk__bar"><i style="width:22%"></i></span>22</span></td><td><span class="mz-badge" data-ar="مستني الدفع">Awaiting payment</span></td></tr>
+            </tbody></table></div>
+        </div>
+        <aside class="ds-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center"><span class="mz-id" style="font-size:14px">#EO-48302</span><span class="mz-badge mz-badge--info" data-ar="اتشحن">Shipped</span></div>
+          <dl class="mz-kv">
+            <dt data-ar="الإجمالي">Total</dt><dd class="mz-num">EGP 2,100</dd>
+            <dt data-ar="العربون">Deposit</dt><dd class="mz-num">EGP 300 · Kashier</dd>
+            <dt data-ar="يتحصل كاش">Courier collects</dt><dd class="mz-num">EGP 1,800</dd>
+            <dt data-ar="شركة الشحن">Courier</dt><dd>Bosta · <span class="mz-num">77118802</span></dd>
+            <dt data-ar="صافي الربح">Net profit</dt><dd class="mz-num" style="color:var(--mz-success-text)">+ EGP 512</dd>
+          </dl>
+          <div class="mz-timeline">
+            <div class="mz-timeline__item"><div><span data-ar="بوسطة هتحصّل الباقي 1,800">Bosta will collect the 1,800 balance</span><time>14:20</time></div></div>
+            <div class="mz-timeline__item"><div><span data-ar="العربون اتدفع بالكارت">Deposit paid by card</span><time>13:52</time></div></div>
+            <div class="mz-timeline__item"><div><span data-ar="الأتمتة بعتت لينك عربون (المخاطرة 66)">Automation sent a deposit link (risk 66)</span><time>13:41</time></div></div>
+          </div>
+          <div class="mz-btn-group"><button class="mz-btn mz-btn--secondary mz-btn--sm" type="button"><svg class="mz-icon"><use href="#mz-print"/></svg><span data-ar="البوليصة">Label</span></button><button class="mz-btn mz-btn--ghost mz-btn--sm" type="button"><svg class="mz-icon"><use href="#mz-message"/></svg><span data-ar="راسل العميل">Message</span></button></div>
+        </aside>
+      </div>
+    </div>
+  </div></div>
+</div></section>
+
+<!-- ───────── Files ───────── -->
+<section class="ds-sec" id="files"><div class="ds-wrap">
+  <div class="ds-h2"><span class="n">07</span><h2 data-ar="الملفات لـClaude Code">Files for Claude Code</h2><p data-ar="كل حاجة في packages/design-system. عدّل tokens.json بس، والباقي بيتولد.">Everything lives in <code>packages/design-system</code>. Edit <code>tokens/tokens.json</code> only; every platform file is generated from it.</p></div>
+  <div class="ds-files">
+    <div><code>dist/tokens.css</code><span>CSS variables, light, dark and system themes, type classes</span></div>
+    <div><code>dist/tailwind.css</code><span>Tailwind v4 @theme mapping</span></div>
+    <div><code>dist/tailwind-preset.cjs</code><span>Tailwind v3 preset, same names</span></div>
+    <div><code>dist/tokens.ts</code><span>Typed tokens for React and charts</span></div>
+    <div><code>dist/mizan_tokens.dart</code><span>Flutter colours, text styles, ThemeData</span></div>
+    <div><code>css/components.css</code><span>Reference components (mz-*)</span></div>
+    <div><code>icons/react.tsx</code><span>&lt;Icon name="cod" /&gt; on lucide-react</span></div>
+    <div><code>icons/svg · sprite.svg</code><span>Every icon as SVG and as a sprite</span></div>
+    <div><code>logo/svg · png · favicon.ico</code><span>Wordmarks, lockups, app icons</span></div>
+    <div><code>fonts/web · ttf</code><span>WOFF2 for web, TTF for Flutter, OFL licences</span></div>
+  </div>
+</div></section>
+
+<footer class="ds-foot"><div class="ds-wrap"><img data-logo="endorsed" alt="mizan, powered by Brandita" style="height:44px"><span>© 2026 Brandita.net · Cairo · <span data-ar="نظام تصميم ميزان، الإصدار 1.0">Mizan design system v1.0</span></span></div></footer>
+
+<script>
+const LOGOS = /*@@LOGOS@@*/{};
+const VIZ = /*@@VIZ@@*/{};
+const root = document.documentElement;
+function paintLogos() {
+  const dark = root.getAttribute("data-theme") === "dark" || (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  document.querySelectorAll("img[data-logo]").forEach((img) => {
+    let k = img.dataset.logo;
+    const inInk = img.closest(".ink, .ds-hero, .mz-rail");
+    if (k === "wordmark" && dark && !inInk) k = "on-dark";
+    if (k === "endorsed" && dark) k = "endorsed-on-dark";
+    if (k === "ar" && dark && !inInk) k = "ar-on-dark";
+    img.src = LOGOS[k] || LOGOS[img.dataset.logo];
+  });
+  const viz = document.getElementById("viz");
+  viz.innerHTML = (dark ? VIZ.dark : VIZ.light).map((c, i) => `<div style="background:${c}">${i + 1} · ${c}</div>`).join("");
+}
+function setTheme(t) {
+  try { localStorage.setItem("mz-theme", t); } catch (e) {}
+  root.setAttribute("data-theme", t);
+  document.getElementById("th-light").setAttribute("aria-pressed", String(t === "light"));
+  document.getElementById("th-dark").setAttribute("aria-pressed", String(t === "dark"));
+  paintLogos();
+}
+function setLang(ar) {
+  root.lang = ar ? "ar" : "en"; root.dir = ar ? "rtl" : "ltr";
+  document.querySelectorAll("[data-ar]").forEach((el) => {
+    if (el.dataset.en === undefined) el.dataset.en = el.innerHTML;
+    el.innerHTML = ar ? el.dataset.ar : el.dataset.en;
+  });
+  document.querySelectorAll("[data-ar-placeholder]").forEach((el) => {
+    if (el.dataset.enPlaceholder === undefined) el.dataset.enPlaceholder = el.placeholder;
+    el.placeholder = ar ? el.dataset.arPlaceholder : el.dataset.enPlaceholder;
+  });
+  document.querySelector("#lang span").textContent = ar ? "English" : "عربي";
+  try { localStorage.setItem("mz-lang", ar ? "ar" : "en"); } catch (e) {}
+}
+document.getElementById("th-light").onclick = () => setTheme("light");
+document.getElementById("th-dark").onclick = () => setTheme("dark");
+document.getElementById("lang").onclick = () => setLang(root.lang !== "ar");
+document.getElementById("icon-q").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll(".ds-ic").forEach((c) => { c.hidden = q && !c.dataset.k.includes(q); });
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintLogos);
+let saved = null, lang = null;
+try { saved = localStorage.getItem("mz-theme"); lang = localStorage.getItem("mz-lang"); } catch (e) {}
+if (saved) setTheme(saved); else { const d = matchMedia("(prefers-color-scheme: dark)").matches; document.getElementById(d ? "th-dark" : "th-light").setAttribute("aria-pressed", "true"); paintLogos(); }
+if (lang === "ar") setLang(true);
+</script>
+</body>
+</html>

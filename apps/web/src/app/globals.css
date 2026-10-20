@@ -1,113 +1,20 @@
 @import "tailwindcss";
 
 /*
- * Design tokens (docs/08 §2, design/prototype.html). Light by default; dark from the
- * system preference unless the user chose a theme (<html data-theme="light|dark">).
- * Components use the Tailwind names below (bg-surface, text-ink-2, border-line …),
- * which resolve to these variables, so every colour follows the theme.
+ * Mizan design system (packages/design-system, docs/08): Brandita's ink, paper and one red point.
+ * Tokens (--mz-*) switch with <html data-theme="light|dark"> or the system preference; components
+ * use the semantic Tailwind names (bg-surface, text-text-2, border-line, bg-primary …), never hex.
  */
-:root {
-  --bg: #F1F2F4; --surface: #FFFFFF; --surface-2: #F7F8FA; --sunk: #ECEEF1;
-  --ink: #12151B; --ink-2: #4B5261; --ink-3: #848B99; --line: #E2E5EA; --line-2: #D3D7DE;
-  --accent: #9C7320; --accent-ink: #7A5912; --accent-soft: #F4ECDA; --on-accent: #FFFFFF;
-  --rail: #0E1116; --rail-2: #171B22; --rail-ink: #C9CDD5; --rail-dim: #6F7684; --rail-line: #232833;
-  --good: #11795A; --good-soft: #E3F3EC; --warn: #A35F00; --warn-soft: #FBF0DD;
-  --bad: #BE3328; --bad-soft: #FBE7E5; --info: #2F5FB3; --info-soft: #E6EDF9;
-  --shadow: 0 1px 2px rgba(16, 20, 28, .05), 0 8px 24px -12px rgba(16, 20, 28, .12);
-  --r: 10px; --r-sm: 6px;
-  color-scheme: light;
-}
+@import "@mizan/design-system/fonts.css";
+@import "@mizan/design-system/tokens.css";
+@import "@mizan/design-system/tailwind.css";
+/* In the base layer, so Tailwind utilities (mt-1 on an h1 …) still win over its element resets. */
+@import "@mizan/design-system/base.css" layer(base);
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0B0D11; --surface: #13161C; --surface-2: #181C23; --sunk: #0F1217;
-    --ink: #ECEEF2; --ink-2: #A8AEBA; --ink-3: #6E7583; --line: #232731; --line-2: #2E3440;
-    --accent: #D6A94C; --accent-ink: #E6BE6A; --accent-soft: #2A2314; --on-accent: #1A1406;
-    --rail: #08090C; --rail-2: #12151B; --rail-ink: #C9CDD5; --rail-dim: #666D7B; --rail-line: #1D212A;
-    --good: #3DBD8C; --good-soft: #12261F; --warn: #E3A43B; --warn-soft: #2A2010;
-    --bad: #F06B5F; --bad-soft: #2C1513; --info: #7EA4EE; --info-soft: #151F33;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -14px rgba(0, 0, 0, .7);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --bg: #0B0D11; --surface: #13161C; --surface-2: #181C23; --sunk: #0F1217;
-  --ink: #ECEEF2; --ink-2: #A8AEBA; --ink-3: #6E7583; --line: #232731; --line-2: #2E3440;
-  --accent: #D6A94C; --accent-ink: #E6BE6A; --accent-soft: #2A2314; --on-accent: #1A1406;
-  --rail: #08090C; --rail-2: #12151B; --rail-ink: #C9CDD5; --rail-dim: #666D7B; --rail-line: #1D212A;
-  --good: #3DBD8C; --good-soft: #12261F; --warn: #E3A43B; --warn-soft: #2A2010;
-  --bad: #F06B5F; --bad-soft: #2C1513; --info: #7EA4EE; --info-soft: #151F33;
-  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -14px rgba(0, 0, 0, .7);
-  color-scheme: dark;
-}
-
-/* `dark:` follows the user's choice, or the system when there is none. */
+/* `dark:` follows the user's choice, or the system when there is none (same rule as tokens.css). */
 @custom-variant dark {
   &:where([data-theme="dark"], [data-theme="dark"] *) { @slot; }
   @media (prefers-color-scheme: dark) {
     &:where(:root:not([data-theme]) *) { @slot; }
   }
 }
-
-@theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-sunk: var(--sunk);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-ink-3: var(--ink-3);
-  --color-line: var(--line);
-  --color-line-2: var(--line-2);
-  --color-accent: var(--accent);
-  --color-accent-ink: var(--accent-ink);
-  --color-accent-soft: var(--accent-soft);
-  --color-on-accent: var(--on-accent);
-  --color-rail: var(--rail);
-  --color-rail-2: var(--rail-2);
-  --color-rail-ink: var(--rail-ink);
-  --color-rail-dim: var(--rail-dim);
-  --color-rail-line: var(--rail-line);
-  --color-good: var(--good);
-  --color-good-soft: var(--good-soft);
-  --color-warn: var(--warn);
-  --color-warn-soft: var(--warn-soft);
-  --color-bad: var(--bad);
-  --color-bad-soft: var(--bad-soft);
-  --color-info: var(--info);
-  --color-info-soft: var(--info-soft);
-
-  --radius-card: var(--r);
-  --radius-control: var(--r-sm);
-  --shadow-card: var(--shadow);
-
-  --font-display: var(--f-display);
-  --font-body: var(--f-body);
-  --font-mono: var(--f-mono);
-}
-
-/* Families come from next/font (root layout). Arabic pages put Plex Sans Arabic first (docs/08 §2). */
-:root {
-  --f-display: var(--font-bricolage), var(--font-plex-arabic), system-ui, sans-serif;
-  --f-body: var(--font-plex), var(--font-plex-arabic), system-ui, sans-serif;
-  --f-mono: var(--font-plex-mono), ui-monospace, monospace;
-}
-html[lang="ar"] {
-  --f-display: var(--font-plex-arabic), var(--font-plex), system-ui, sans-serif;
-  --f-body: var(--font-plex-arabic), var(--font-plex), system-ui, sans-serif;
-}
-
-@layer base {
-  body {
-    background: var(--bg);
-    color: var(--ink);
-    font: 14px/1.5 var(--f-body);
-    -webkit-font-smoothing: antialiased;
-  }
-  html[lang="ar"] body { font-size: 14.5px; }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-}
-
-@utility tnum { font-variant-numeric: tabular-nums; }
-@utility num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }

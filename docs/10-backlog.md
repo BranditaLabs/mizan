@@ -84,8 +84,9 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 ### E4 · Web app foundation
 
 - [x] **E4-1** `M` `apps/web`: Next.js (App Router, latest stable), Tailwind with tokens from `docs/08`, fonts via `next/font`, next-intl AR/EN, RTL switch, dark mode. *Accept:* lint rule blocks physical direction classes; Arabic default. *Done:* Next 16.4 + Tailwind 4.3 + next-intl 4.14 (pinned); tokens with light / dark / system themes (server-rendered from a cookie); fonts self-hosted (`next/font/local`, no Google fetch); `/` → `/ar` (cookie → Accept-Language → Arabic); prototype shell with language and theme switches; `mizan/no-physical-direction` + `react/jsx-no-literals` (a planted `ml-4` or literal string fails lint, tested); AR/EN parity, formatting and token tests; Playwright smoke in CI (`web-e2e`).
+- [x] **E4-1b** `S` Adopt the design system (Oct 2026): `packages/design-system` (`@mizan/design-system`, Brandita ink/paper/red, Geist + Alexandria + Plex Arabic, 124 icons, wordmark, Flutter tokens, 70 tests) added verbatim; `apps/web` imports its CSS, uses its wordmark, icons and favicons; old palette, fonts and hand-made icons removed; unit test blocks non-token classes and hex values; smoke test checks paper/ink backgrounds, fonts, wordmark per language, icon mirroring. docs/08 now points to the package.
 - [ ] **E4-2** `M` Firebase sign-in (email + phone OTP), tenant switcher, protected layout with side rail (as prototype).
-- [ ] **E4-3** `M` UI kit from `docs/08` §5 with Storybook or a `/ui` gallery page in both directions.
+- [ ] **E4-3** `M` UI kit from `packages/design-system/docs/components.md` (recipes, docs/08 §5) with Storybook or a `/ui` gallery page in both directions.
 - [ ] **E4-4** `S` Typed API client generated from OpenAPI; TanStack Query; error toasts from problem+json codes.
 - [ ] **E4-5** `M` Onboarding wizard: connect store → connect courier → set COGS → first order. *Accept:* time-to-first-value measured (product events).
 
@@ -123,7 +124,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [ ] **E8-1** `M` Products/variants screens, COGS entry (bulk CSV), barcodes; sync with Shopify (field ownership).
 - [ ] **E8-2** `M` Stock levels, movements, reservations on confirm, release on cancel; oversell block.
 - [ ] **E8-3** `M` `POST /v1/ops/sync` batch endpoint, exactly-once by `opId`.
-- [ ] **E8-4** `L` `apps/ops` Flutter: sign-in, pick list, scan-to-pack (camera), offline queue (drift), sync, AR/EN. Prototype offline sync first (riskiest). Split before starting.
+- [ ] **E8-4** `L` `apps/ops` Flutter: sign-in, pick list, scan-to-pack (camera), offline queue (drift), sync, AR/EN. Theme from `packages/design-system/dist/mizan_tokens.dart` + its TTF fonts. Prototype offline sync first (riskiest). Split before starting.
 - [ ] **E8-5** `S` Low-stock alerts; push stock to Shopify via engine `updateProduct`.
 
 ### E9 · M5 Profit engine
