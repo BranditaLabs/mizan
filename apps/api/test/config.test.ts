@@ -34,7 +34,9 @@ describe("loadConfig", () => {
   });
 
   it("requires DATABASE_URL in production", () => {
-    expect(() => loadConfig({ ...valid, NODE_ENV: "production" })).toThrow(/DATABASE_URL: is required in production/);
+    expect(() => loadConfig({ ...valid, NODE_ENV: "production" })).toThrow(/DATABASE_URL: a postgres:\/\/ URL is required in production/);
+    expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "pglite:./data" })).toThrow(/required in production/);
+    expect(() => loadConfig({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL: must be a postgres:\/\/ URL or pglite:<dir>/);
     expect(loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan" }).NODE_ENV).toBe("production");
   });
 

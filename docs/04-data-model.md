@@ -1,6 +1,6 @@
 # 04 — Data model
 
-The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`, `0002_commerce_os.sql`). This page explains it. Tests in `packages/db/test/schema.test.ts` prove that migrations apply, RLS isolates tenants (and is enabled on **every** tenant table), generated columns compute correctly, and gateway transactions cannot be double-counted.
+The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`, `0002_commerce_os.sql`, `0003_app_role.sql`). This page explains it. Tests in `packages/db/test/schema.test.ts` prove that migrations apply, RLS isolates tenants (and is enabled on **every** tenant table), generated columns compute correctly, and gateway transactions cannot be double-counted.
 
 ## 1. Conventions
 
@@ -15,6 +15,17 @@ The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`
 | Personal data | `customers.phone_e164`, names, addresses: encrypted at application level in production (see `docs/07-security-compliance.md`); `phone_hash` for lookups |
 | Soft delete | Only where the business needs history (`tenants.status = 'deleted'`); otherwise real deletes for privacy requests |
 | Migrations | Forward-only, numbered `NNNN_name.sql`; never edit an applied migration |
+
+### Access from code (ADR-0012)
+
+| Piece | Where | Rule |
+| --- | --- | --- |
+| Query builder | Kysely, typed by `packages/db/src/schema.ts` | Generated: run `npm run codegen -w @mizan/db` after every migration (a test fails if stale) |
+| Tenant scope | `withTenant(db, tenantId, fn)` / `Database.tenant()` in the API | Transaction with `SET LOCAL ROLE mizan_app` + `set_config('app.tenant_id', …, true)`; RLS filters every query |
+| Platform scope | `withoutTenant` / `Database.platform()` | App role, no tenant: tenant tables return nothing; for tenants/users/memberships lookups |
+| Owner access | `Database.kysely` | Migrations and signup bootstrap only |
+| Migrations | `mizan-db migrate` (`DATABASE_URL_MIGRATOR`) | One transaction per file, checksums, advisory lock; PGlite dev/test databases migrate at boot |
+| BIGINT | Parsed to JS `bigint` (pg and PGlite) | Never `number`: KWD amounts in fils pass 2^53 sooner than you think |
 
 Canonical (engine) money is a decimal **string** (`"1150.00"`). Convert at the boundary: `toMinor("1150.00", "EGP") = 115000`. The helpers live in `packages/shared/src/money.ts` (`toMinor`, `fromMinor`, `currencyDecimals`, `addMoney` …), tested for 0, 2, 3 and 4 decimal currencies. They never round: an amount with more decimals than its currency allows is rejected.
 

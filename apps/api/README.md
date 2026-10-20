@@ -19,8 +19,9 @@ npm run build -w @mizan/api && node apps/api/dist/main.js
 | `src/platform/logging/` | pino via `nestjs-pino`; `X-Request-Id`; PII redaction by key (`phone`, `name`, `address*`, tokens…) and by content (phones in EG/SA/AE formats incl. Arabic digits, emails, bearer tokens, provider keys) |
 | `src/platform/http/` | `ProblemError`, global `ProblemFilter` (RFC 9457, AR/EN titles), `ZodPipe` for DTOs from `@mizan/shared` |
 | `src/platform/i18n/` | Server-side AR/EN messages, `Accept-Language` negotiation (Arabic default) |
+| `src/platform/db/` | `Database` (inject it): `tenant(id, fn)` under RLS, `platform(fn)`, `ping()`. Postgres pool in prod; in-memory PGlite (migrated at boot) when `DATABASE_URL` is unset |
 | `src/platform/openapi.ts` | OpenAPI 3.1 from decorators + zod component schemas, served at `/v1/openapi.json` |
-| `src/modules/` | Product modules (M1–M22). Today: `health` |
+| `src/modules/` | Product modules (M1–M22). Today: `health` (`/health` liveness, `/health/ready` DB readiness) |
 
 ## Rules
 

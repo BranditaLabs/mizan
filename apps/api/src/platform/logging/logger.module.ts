@@ -70,7 +70,7 @@ export class LoggingModule {
                 }),
                 res: (res: { statusCode?: number | null; raw?: ServerResponse }) => ({ statusCode: res.raw?.statusCode ?? res.statusCode }),
               },
-              autoLogging: { ignore: (req: IncomingMessage) => req.url === "/health" },
+              autoLogging: { ignore: (req: IncomingMessage) => req.url === "/health" || req.url === "/health/ready" },
             };
             return { pinoHttp: destination ? [options, destination] : options };
           },

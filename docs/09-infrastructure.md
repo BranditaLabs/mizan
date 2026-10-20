@@ -32,7 +32,7 @@ Infrastructure as code: Terraform in `infra/` (create in backlog E1).
 All config through environment variables, validated at startup with zod (`apps/api/src/platform/config.ts`, ✅ built in E1-3). An invalid environment exits with code 1 and one line per bad variable (names and reasons, never values). `apps/api/.env.example` lists what the API reads today; the root `.env.example` is for the standalone engine only. Groups (target):
 
 ```
-DATABASE_URL, DATABASE_URL_MIGRATOR
+DATABASE_URL (postgres:// · unset or pglite:<dir> in dev/test), DATABASE_URL_MIGRATOR, DATABASE_POOL_MAX
 FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only)
 KMS_KEY_NAME
 PUBLIC_URL, WEB_URL

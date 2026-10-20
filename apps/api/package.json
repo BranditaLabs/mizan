@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "predev": "npm run build -w @mizan/shared",
+    "predev": "npm run build -w @mizan/shared -w @mizan/db",
     "dev": "tsc -p tsconfig.build.json && concurrently -k -n tsc,api \"tsc -p tsconfig.build.json --watch --preserveWatchOutput\" \"node --env-file-if-exists=.env --watch dist/main.js\"",
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
@@ -15,11 +15,13 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@mizan/db": "0.1.0",
     "@mizan/shared": "0.1.0",
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",
     "@nestjs/platform-express": "12.2.0",
     "@nestjs/swagger": "12.0.2",
+    "kysely": "0.29.7",
     "nestjs-pino": "5.3.1",
     "pino": "10.4.0",
     "pino-http": "11.0.0",

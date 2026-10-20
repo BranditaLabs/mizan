@@ -22,9 +22,11 @@ export const ConfigSchema = z.object({
   PUBLIC_URL: url,
   WEB_URL: url,
 
-  // Database (E1-4). Optional until the DB layer lands; required in production.
-  DATABASE_URL: optionalString,
+  // Database. postgres://… in staging/production. Unset in development/test = in-memory
+  // PGlite with migrations applied at boot; "pglite:<dir>" keeps local data between runs.
+  DATABASE_URL: z.string().trim().regex(/^(postgres(ql)?:\/\/|pglite:)/, "must be a postgres:// URL or pglite:<dir>").optional(),
   DATABASE_URL_MIGRATOR: optionalString,
+  DATABASE_POOL_MAX: z.coerce.number({ error: "must be a number" }).int().min(1).max(100).default(10),
 
   // Auth (E1-5)
   FIREBASE_PROJECT_ID: optionalString,
@@ -37,8 +39,8 @@ export const ConfigSchema = z.object({
 
   SENTRY_DSN: optionalString,
 }).superRefine((env, ctx) => {
-  if (env.NODE_ENV === "production" && !env.DATABASE_URL) {
-    ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "is required in production" });
+  if (env.NODE_ENV === "production" && !env.DATABASE_URL?.startsWith("postgres")) {
+    ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "a postgres:// URL is required in production" });
   }
 });
 

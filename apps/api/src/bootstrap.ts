@@ -9,7 +9,7 @@ import { mountOpenApi } from "./platform/openapi.js";
 export async function createApp(config: AppConfig, options: AppOptions = {}): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule.forRoot(config, options), { bufferLogs: true });
   app.useLogger(app.get(Logger));
-  app.setGlobalPrefix("v1", { exclude: [{ path: "health", method: RequestMethod.GET }] });
+  app.setGlobalPrefix("v1", { exclude: [{ path: "health", method: RequestMethod.GET }, { path: "health/ready", method: RequestMethod.GET }] });
   app.enableShutdownHooks();
   const http = app.getHttpAdapter().getInstance() as { disable?: (s: string) => void; set?: (k: string, v: unknown) => void };
   http.disable?.("x-powered-by");

@@ -1,21 +1,15 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, describe, expect, it } from "vitest";
+import { pgliteMigrationClient } from "../src/clients.js";
+import { migrate } from "../src/migrate.js";
 
-const dir = join(import.meta.dirname, "..", "migrations");
 const db = new PGlite();
 const T1 = "11111111-1111-1111-1111-111111111111";
 const T2 = "22222222-2222-2222-2222-222222222222";
 
 beforeAll(async () => {
-  for (const f of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) await db.exec(readFileSync(join(dir, f), "utf8"));
-  await db.exec(`
-    INSERT INTO tenants (id, name, slug) VALUES ('${T1}', 'Store A', 'a'), ('${T2}', 'Store B', 'b');
-    CREATE ROLE mizan_app NOLOGIN;
-    GRANT USAGE ON SCHEMA public TO mizan_app;
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO mizan_app;
-  `);
+  await migrate(pgliteMigrationClient(db)); // 0003 creates the mizan_app role and its grants
+  await db.exec(`INSERT INTO tenants (id, name, slug) VALUES ('${T1}', 'Store A', 'a'), ('${T2}', 'Store B', 'b');`);
 });
 
 async function asTenant<T>(tenant: string, fn: () => Promise<T>): Promise<T> {
