@@ -17,7 +17,10 @@ async function main(): Promise<void> {
     throw err;
   }
   const { createApp } = await import("./bootstrap.js");
+  const { exitOnSignals } = await import("./platform/shutdown.js");
+  const { Logger } = await import("@nestjs/common");
   const app = await createApp(config);
+  exitOnSignals(app, (m) => new Logger("Process").log(m));
   await app.listen(config.PORT, "0.0.0.0");
 }
 

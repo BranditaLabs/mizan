@@ -4,6 +4,7 @@ import { setActingUser } from "@mizan/db";
 import { COUNTRY_DEFAULTS, type CountryCode } from "@mizan/shared";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
+import { AuditService } from "../../platform/audit/audit.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import type { CreateTenantBody, TenantView } from "./tenants.dto.js";
 
@@ -54,13 +55,14 @@ export class TenantsService {
   constructor(
     @Inject(Database) private readonly db: Database,
     @Inject(EventsService) private readonly events: EventsService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   /**
    * Signup: the store, its owner membership and a default warehouse, in one
    * transaction scoped to the new tenant (RLS applies from the first row).
    */
-  async create(userId: string, body: CreateTenantBody): Promise<TenantView> {
+  async create(userId: string, body: CreateTenantBody, ip?: string): Promise<TenantView> {
     const owned = await this.db.platform(async (trx) => {
       await setActingUser(trx, userId);
       const r = await trx.selectFrom("memberships").select((eb) => eb.fn.countAll<number>().as("n"))
@@ -97,6 +99,10 @@ export class TenantsService {
           await this.events.emit(trx, {
             type: "tenant.created", tenantId: id, entity: { type: "tenant", id },
             actor: { type: "user", id: userId }, data: { country, plan: tenant.plan },
+          });
+          await this.audit.record(trx, {
+            action: "tenant.created", tenantId: id, actor: { type: "user", id: userId }, ip,
+            entity: { type: "tenant", id }, after: { slug, country, currency: defaults.currency },
           });
           return toView(tenant, "owner");
         });

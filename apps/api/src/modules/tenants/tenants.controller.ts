@@ -17,7 +17,7 @@ export class TenantsController {
   @HttpCode(201)
   @ApiCreatedResponse({ description: "The new store, with the caller as owner." })
   create(@Auth() auth: AuthContext, @Body(new ZodPipe(CreateTenantSchema)) body: CreateTenantBody): Promise<TenantView> {
-    return this.tenants.create(auth.user.id, body);
+    return this.tenants.create(auth.user.id, body, auth.ip);
   }
 
   /** The current store (X-Tenant-Id). */

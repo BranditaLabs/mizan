@@ -21,6 +21,8 @@ export interface AuthContext {
   identity: VerifiedIdentity;
   user: AuthUser;
   tenant?: AuthTenant;
+  /** Client IP (behind the load balancer: X-Forwarded-For, trust proxy). */
+  ip?: string;
 }
 
 export type AuthedRequest = Request & { auth?: AuthContext };

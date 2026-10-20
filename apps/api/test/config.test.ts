@@ -57,6 +57,25 @@ describe("loadConfig", () => {
 const main = fileURLToPath(new URL("../dist/main.js", import.meta.url));
 
 describe.skipIf(!existsSync(main))("process start (built)", () => {
+  it("the API serves, then exits 0 on SIGTERM with its last logs flushed", async () => {
+    const { spawn } = await import("node:child_process");
+    const child = spawn(process.execPath, [main], {
+      env: { PATH: process.env.PATH, NODE_ENV: "test", PORT: "18931", PUBLIC_URL: "http://localhost", WEB_URL: "http://localhost:3000" },
+    });
+    let out = "";
+    child.stdout.on("data", (d) => { out += String(d); });
+    let up = false;
+    for (let i = 0; i < 150 && !up; i++) {
+      up = await fetch("http://127.0.0.1:18931/health").then((r) => r.ok, () => false);
+      if (!up) await new Promise((r) => setTimeout(r, 100));
+    }
+    expect(up).toBe(true);
+    child.kill("SIGTERM");
+    const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
+    expect(code).toBe(0);
+    expect(out).toContain("SIGTERM received, shutting down");
+  });
+
   it("the worker starts, dispatches, and stops cleanly on SIGTERM", async () => {
     const { spawn } = await import("node:child_process");
     const worker = fileURLToPath(new URL("../dist/worker.js", import.meta.url));
@@ -70,9 +89,10 @@ describe.skipIf(!existsSync(main))("process start (built)", () => {
       child.stdout.on("data", () => { if (out.includes("dispatching domain events")) { clearTimeout(t); resolve(); } });
     });
     child.kill("SIGTERM");
-    // Nest runs the shutdown hooks (dispatcher stops, DB closes), then re-raises the signal.
-    const [code, signal] = await new Promise<[number | null, string | null]>((resolve) => child.on("exit", (c, s) => resolve([c, s])));
-    expect(code === 0 || signal === "SIGTERM").toBe(true);
+    // Shutdown hooks run (dispatcher stops, DB closes), logs flush, exit code 0.
+    const code = await new Promise<number | null>((resolve) => child.on("exit", resolve));
+    expect(code).toBe(0);
+    expect(out).toContain("SIGTERM received, shutting down");
     expect(out).toContain("event dispatcher stopped");
   });
 

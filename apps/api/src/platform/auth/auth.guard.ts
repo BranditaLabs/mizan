@@ -39,7 +39,7 @@ export class AuthGuard implements CanActivate {
 
     const identity = await this.verifier.verify(token);
     const user = await this.auth.resolveUser(identity);
-    req.auth = { identity, user };
+    req.auth = { identity, user, ...(req.ip ? { ip: req.ip } : {}) };
 
     if (this.reflector.getAllAndOverride<boolean>(NO_TENANT, targets)) return true;
 

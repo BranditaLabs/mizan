@@ -42,7 +42,7 @@ export class MembersController {
   @Roles("owner", "admin")
   @HttpCode(204)
   async revoke(@Auth() auth: AuthContext, @Param("id") id: string): Promise<void> {
-    await this.members.revoke(auth.tenant!.id, id);
+    await this.members.revoke(auth, id);
   }
 
   @Post("invitations/:id/accept")

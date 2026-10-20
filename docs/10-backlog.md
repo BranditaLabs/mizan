@@ -21,7 +21,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Signup: `POST /v1/tenants` with country defaults (E1-6).
 - ✅ Team: invitations by email/phone, roles, disable, remove (E1-7).
 - ✅ Domain events: transactional outbox, exactly-once consumers, worker (E1-8).
-- ⏭️ **Next:** E1-9 (audit log).
+- ✅ Audit log: append-only, tenant-scoped, same-transaction (E1-9).
+- ⏭️ **Next:** E1-10 (secrets service).
 
 ---
 
@@ -49,7 +50,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [x] **E1-6** `S` Tenants + signup: `POST /tenants`, owner membership, default warehouse, default settings by country. *Accept:* creating an EG tenant sets EGP, Africa/Cairo, ar-EG. *Done:* `POST /v1/tenants` + `GET /v1/tenant`; `COUNTRY_DEFAULTS` for EG, SA, AE, KW, QA, BH, OM, JO, MA in `@mizan/shared`; one RLS-scoped transaction creates tenant, owner membership and default warehouse; slug derivation with collision retry and reserved words; 10 owned stores per account.
 - [x] **E1-7** `M` Members and invites (email/phone), role change, disable. *Accept:* invited agent can sign in and sees only agent routes. *Done:* migration 0005 `invitations` (RLS + `invitee_read`), invite/revoke/accept, `GET /v1/members`, `PATCH`/`DELETE /v1/members/:userId` with lock-out guards; acceptance requires a verified email or OTP phone matching the invitation; `/me` lists pending invitations.
 - [x] **E1-8** `M` Domain events + outbox writer in the same transaction; dispatcher in `worker.ts`; idempotent consumers by event id. *Accept:* a crash between commit and dispatch still delivers the event once. *Done:* migration 0006 (dispatch columns, `event_deliveries`, `mizan_worker` role + policy), `EventsService.emit`, `@EventConsumer`, `EventDispatcher` (leases, SKIP LOCKED, per-consumer exactly-once, backoff, dead letters), `worker.js`; tenant and member changes emit events; crash tests at every step.
-- [ ] **E1-9** `S` Audit log service; log sensitive actions (`connection.*`, `member.*`, `customer.pii_viewed`, exports).
+- [x] **E1-9** `S` Audit log service; log sensitive actions (`connection.*`, `member.*`, `customer.pii_viewed`, exports). *Done:* migration 0007 (audit_log RLS — it was missing — and append-only for the app role), `AuditService.record(trx, …)` in the same transaction, `AUDIT_ACTIONS` catalogue, tenant and member actions with IP, `GET /v1/audit-log`. `connection.*`, `customer.pii_viewed` and exports are recorded when those modules land.
 - [ ] **E1-10** `M` Secrets service: envelope encryption with Cloud KMS (local: static dev key), `secrets` table, rotation. *Accept:* plaintext never in DB or logs (test greps logs).
 - [ ] **E1-11** `M` `infra/` Terraform for staging (Cloud Run api/worker/web, Cloud SQL, Secret Manager, KMS, Storage, Scheduler); `deploy-staging.yml`.
 

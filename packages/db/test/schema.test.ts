@@ -83,7 +83,7 @@ describe("schema", () => {
     const r = await db.query<{ relname: string }>(`
       SELECT c.relname FROM pg_class c JOIN information_schema.columns col ON col.table_name = c.relname AND col.column_name = 'tenant_id'
       WHERE c.relkind = 'r' AND c.relnamespace = 'public'::regnamespace AND NOT c.relrowsecurity
-        AND c.relname NOT IN ('audit_log', 'mz_inbound_events', 'mz_outbox', 'mz_records')`);
+        AND c.relname NOT IN ('mz_inbound_events', 'mz_outbox', 'mz_records') -- engine tables: tenant-scoped in E2-1`);
     expect(r.rows.map((x) => x.relname)).toEqual([]);
   });
 });

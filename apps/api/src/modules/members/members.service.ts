@@ -6,6 +6,7 @@ import { APP_CONFIG, type AppConfig } from "../../platform/config.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
+import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import type { InvitationView, InviteBody, MemberView, MyInvitationView, UpdateMemberBody } from "./members.dto.js";
 
@@ -27,6 +28,7 @@ export class MembersService {
     @Inject(Database) private readonly db: Database,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(EventsService) private readonly events: EventsService,
+    @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
   private acceptUrl(id: string) {
@@ -84,14 +86,25 @@ export class MembersService {
         type: "member.invited", tenantId: tenant.id, entity: { type: "invitation", id: row.id },
         actor: { type: "user", id: auth.user.id }, data: { role: body.role, channel: email ? "email" : "phone", refreshed: Boolean(pending) },
       });
+      await this.audit.record(trx, {
+        action: "member.invited", tenantId: tenant.id, ...auditActor(auth), entity: { type: "invitation", id: row.id },
+        after: { role: body.role, channel: email ? "email" : "phone" },
+      });
       return this.toInvitation(row);
     });
   }
 
-  async revoke(tenantId: string, invitationId: string): Promise<void> {
-    const r = await this.db.tenant(tenantId, (trx) => trx.updateTable("invitations").set({ status: "revoked" })
-      .where("id", "=", invitationId).where("status", "=", "pending").executeTakeFirst());
-    if (r.numUpdatedRows === 0n) throw new ProblemError(404, "invitation_not_found", "no pending invitation with this id");
+  async revoke(auth: AuthContext, invitationId: string): Promise<void> {
+    const tenantId = auth.tenant!.id;
+    if (!/^[0-9a-f-]{36}$/i.test(invitationId)) throw new ProblemError(404, "invitation_not_found", "no pending invitation with this id");
+    await this.db.tenant(tenantId, async (trx) => {
+      const r = await trx.updateTable("invitations").set({ status: "revoked" })
+        .where("id", "=", invitationId).where("status", "=", "pending").returning("role").executeTakeFirst();
+      if (!r) throw new ProblemError(404, "invitation_not_found", "no pending invitation with this id");
+      await this.audit.record(trx, {
+        action: "member.invitation_revoked", tenantId, ...auditActor(auth), entity: { type: "invitation", id: invitationId }, before: { role: r.role },
+      });
+    });
   }
 
   /** Pending, unexpired invitations addressed to the signed-in user. */
@@ -136,6 +149,10 @@ export class MembersService {
         type: "member.joined", tenantId: invite.tenant_id, entity: { type: "member", id: auth.user.id },
         actor: { type: "user", id: auth.user.id }, data: { role: row.role, invitationId: invite.id },
       });
+      await this.audit.record(trx, {
+        action: "member.joined", tenantId: invite.tenant_id, ...auditActor(auth), entity: { type: "member", id: auth.user.id },
+        after: { role: row.role, invitationId: invite.id },
+      });
       return { tenantId: invite.tenant_id, role: row.role };
     });
   }
@@ -159,6 +176,10 @@ export class MembersService {
         type: "member.updated", tenantId: tenant.id, entity: { type: "member", id: userId }, actor: { type: "user", id: auth.user.id },
         data: { before: { role: target.role, status: target.status }, after: { role: nextRole, status: nextStatus } },
       });
+      await this.audit.record(trx, {
+        action: "member.updated", tenantId: tenant.id, ...auditActor(auth), entity: { type: "member", id: userId },
+        before: { role: target.role, status: target.status }, after: { role: nextRole, status: nextStatus },
+      });
       return this.memberView(trx, userId);
     });
   }
@@ -176,6 +197,10 @@ export class MembersService {
       await this.events.emit(trx, {
         type: "member.removed", tenantId: tenant.id, entity: { type: "member", id: userId },
         actor: { type: "user", id: auth.user.id }, data: { role: target.role },
+      });
+      await this.audit.record(trx, {
+        action: "member.removed", tenantId: tenant.id, ...auditActor(auth), entity: { type: "member", id: userId },
+        before: { role: target.role, status: target.status },
       });
     });
   }

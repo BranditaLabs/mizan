@@ -96,3 +96,17 @@ describe("member_self_read (migration 0004)", () => {
     await expect(withoutTenant(db, (trx) => setActingUser(trx, "nope"))).rejects.toThrow(/UUID/);
   });
 });
+
+describe("audit_log (migration 0007)", () => {
+  it("is tenant-scoped, append-only for the app role, and keeps platform entries private", async () => {
+    await withTenant(db, A, (trx) => trx.insertInto("audit_log").values({ tenant_id: A, actor_type: "user", action: "member.invited" }).execute());
+    await withTenant(db, B, (trx) => trx.insertInto("audit_log").values({ tenant_id: B, actor_type: "user", action: "member.removed" }).execute());
+    await withoutTenant(db, (trx) => trx.insertInto("audit_log").values({ tenant_id: null, actor_type: "user", action: "user.signed_in" }).execute());
+
+    expect(await withTenant(db, A, (trx) => trx.selectFrom("audit_log").select("action").execute())).toEqual([{ action: "member.invited" }]);
+    expect(await withoutTenant(db, (trx) => trx.selectFrom("audit_log").select("action").execute())).toEqual([]);
+    await expect(withTenant(db, A, (trx) => trx.updateTable("audit_log").set({ action: "nothing.happened" }).execute())).rejects.toThrow(/permission denied/);
+    await expect(withTenant(db, A, (trx) => trx.deleteFrom("audit_log").execute())).rejects.toThrow(/permission denied/);
+    await expect(withTenant(db, A, (trx) => trx.insertInto("audit_log").values({ tenant_id: B, actor_type: "user", action: "forged" }).execute())).rejects.toThrow(/row-level security/);
+  });
+});

@@ -54,6 +54,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | DELETE | `/invitations/{id}` | ✅ Revoke a pending invitation (owner/admin) |
 | POST | `/invitations/{id}/accept` | ✅ Signed in, no `X-Tenant-Id`. Only when the caller's **verified** email or OTP phone matches; otherwise `invitation_not_found` (also for revoked/accepted/expired; 7-day TTL). `GET /me` lists `invitations` addressed to the caller |
 | GET / POST / DELETE | `/api-keys` | Manage API keys (owner/admin) |
+| GET | `/audit-log` | ✅ Who did what in this store, newest first (owner/admin). `?limit≤200&cursor=&action=member.` (exact or prefix) |
 
 ### Connections
 
