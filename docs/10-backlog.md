@@ -23,7 +23,8 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - ✅ Domain events: transactional outbox, exactly-once consumers, worker (E1-8).
 - ✅ Audit log: append-only, tenant-scoped, same-transaction (E1-9).
 - ✅ Secrets: envelope encryption with Cloud KMS (E1-10).
-- ⏭️ **Next:** E1-11 (staging Terraform — needs GCP project details), then E2 (engine inside the platform).
+- ✅ Engine tables tenant-scoped under RLS (E2-1).
+- ⏭️ **Next:** E2-2 (connection resolver); E1-11 waits for GCP project details.
 
 ---
 
@@ -57,7 +58,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E2 · Engine inside the platform
 
-- [ ] **E2-1** `M` Add `tenant_id` + `connection_id` to engine jobs and records; `SqlStore` uses the platform tables from `0001_core.sql`. *Accept:* all 57 engine tests pass; chaos suite green.
+- [x] **E2-1** `M` Add `tenant_id` + `connection_id` to engine jobs and records; `SqlStore` uses the platform tables from `0001_core.sql`. *Accept:* all engine tests pass (85 at the time); chaos suite green. *Done:* migration 0008 (tenant_id NOT NULL + FKs, keys unique per tenant, `connection_id` on jobs, RLS on all three tables, `worker_claim` policy), tenant-scoped `SqlStore`, `tenantQueryClient`; the engine's full flow runs on the platform schema for two tenants with identical Shopify ids; 30-seed chaos sweep green.
 - [ ] **E2-2** `M` Connection resolver: worker loads connection + decrypted secret per job; per-connection circuit and rate bucket. *Accept:* two tenants with two Shopify stores sync independently; one store's 429s do not slow the other.
 - [ ] **E2-3** `M` Map engine events to domain events (`order.ingested` → `order.created` …) and persist canonical orders into `orders`, `order_lines`, `customers` (with phone hash). *Accept:* replaying the same webhook 3× creates one order.
 - [ ] **E2-4** `S` Persist engine-learned data (status codes, city aliases, query variants) into `connections.learned`.

@@ -1,4 +1,4 @@
-import { sql, type Kysely, type Transaction } from "kysely";
+import { CompiledQuery, sql, type Kysely, type Transaction } from "kysely";
 import type { DB } from "./schema.js";
 
 /** The role every tenant transaction runs as (created in migration 0003). */
@@ -66,4 +66,18 @@ export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => 
     await sql`SET LOCAL ROLE ${sql.raw(WORKER_ROLE)}`.execute(trx);
     return fn(trx);
   });
+}
+
+/**
+ * A minimal `query(text, params)` client bound to one tenant: each call runs
+ * in its own withTenant transaction (app role + app.tenant_id), so RLS
+ * applies to every statement. Used to run the engine's SqlStore inside the platform.
+ */
+export function tenantQueryClient(db: Kysely<DB>, tenantId: string) {
+  return {
+    async query<R = Record<string, unknown>>(text: string, params: unknown[] = []): Promise<{ rows: R[] }> {
+      const res = await withTenant(db, tenantId, (trx) => trx.executeQuery<R>(CompiledQuery.raw(text, params)));
+      return { rows: [...res.rows] };
+    },
+  };
 }

@@ -19,7 +19,11 @@ export type JobStatus = "pending" | "running" | "done" | "dead";
 export interface OutboxJob<P = unknown> {
   id: string;
   kind: string;
+  /** Provider the job talks to ("shopify", "bosta"). */
   connection: string;
+  /** Platform scope (SqlStore); undefined in MemoryStore. */
+  tenantId?: string;
+  connectionId?: string | null;
   payload: P;
   idempotencyKey: string;
   status: JobStatus;

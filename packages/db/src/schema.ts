@@ -307,13 +307,13 @@ export interface Messages {
 
 export interface MzInboundEvents {
   key: string;
-  tenant_id: string | null;
+  tenant_id: string;
   received_at: Int8;
 }
 
 export interface MzOutbox {
   id: string;
-  tenant_id: string | null;
+  tenant_id: string;
   kind: string;
   connection: string;
   payload: Json;
@@ -325,12 +325,13 @@ export interface MzOutbox {
   last_error: string | null;
   created_at: Int8;
   updated_at: Int8;
+  connection_id: string | null;
 }
 
 export interface MzRecords {
   type: string;
   key: string;
-  tenant_id: string | null;
+  tenant_id: string;
   value: Json;
   updated_at: Int8;
 }
