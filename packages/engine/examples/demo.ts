@@ -89,7 +89,30 @@ await engine.handleShopifyWebhook(wp.headers, wp.body);
 await settle(engine, store, clock);
 ok(`admin edit to 450.00 detected and restored → ${shop.products.get(p.productId)!.variants[0].price} (Mizan owns price)`);
 
-step(5, "Health");
+step(5, "Every payment method, not only cash on delivery");
+const methods = [
+  ["cod", "Cash on delivery"], ["card", "Card · Paymob"], ["deposit", "Deposit 300 + COD balance"], ["bnpl", "Tabby (BNPL)"], ["bank", "Bank transfer"],
+] as const;
+const byMethod = methods.map(([payment, label]) => ({ label, o: shop.addOrder({ tags: ["mizan-confirmed"], payment, total: "2100.00" }) }));
+for (const { o } of byMethod) {
+  const w = shop.webhook("orders/create", o);
+  await engine.handleShopifyWebhook(w.headers, w.body);
+}
+await settle(engine, store, clock);
+for (const { label, o } of byMethod) {
+  const d = [...bosta.deliveries.values()].find((x) => x.businessReference === o.id);
+  ok(d ? `${label}: shipped · courier collects EGP ${d.cod}` : `${label}: held, awaiting payment (nothing shipped)`);
+}
+const bankOrder = byMethod[4].o;
+clock.advance(60_000);
+shop.paid(bankOrder.id);
+const wb = shop.webhook("orders/updated", shop.orders.get(bankOrder.id)!);
+await engine.handleShopifyWebhook(wb.headers, wb.body);
+await settle(engine, store, clock);
+const bankDelivery = [...bosta.deliveries.values()].find((x) => x.businessReference === bankOrder.id);
+ok(`bank transfer arrived → shipped automatically · courier collects EGP ${bankDelivery?.cod}`);
+
+step(6, "Health");
 const h = await engine.health();
 ok(`requests that failed and were absorbed: ${failed}`);
 ok(`outbox: ${h.outbox.pending} pending, ${h.outbox.dead} dead-lettered`);

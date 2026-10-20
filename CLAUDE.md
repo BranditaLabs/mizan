@@ -4,15 +4,17 @@ Instructions for Claude Code working in this repository. Read this first, then t
 
 ## What Mizan is
 
-Mizan (ميزان, "the scale") is a MENA e-commerce operating system, powered by Brandita. It runs the work between checkout and cash for online stores that sell cash on delivery (COD): order intake, confirmation, shipping, warehouse, returns, cash reconciliation, and a **profit engine that shows real profit per order**. Launch market is Egypt, then KSA and the GCC.
+Mizan (ميزان, "the scale") is the **complete commerce operating system** for MENA brands, powered by Brandita. One product runs orders from every channel (stores, marketplaces, POS), payments by **every method** (cash on delivery, cards, wallets, deposits, BNPL, bank transfer), verification, shipping, warehouse, purchasing, returns, customer service, reconciliation, finance and reports — connected by an event bus and **Automation Studio**, with a **profit engine that shows real profit per order**. 22 modules (M1–M22). Launch market is Egypt, then KSA and the GCC. COD is a strength, not the boundary: never write code that assumes an order is COD.
 
 ## Doc map
 
 | Need | Read |
 | --- | --- |
 | Why, for whom, pricing, unit economics | `docs/01-business-model.md` |
-| Scope, lifecycle, statuses, NFRs, roles | `docs/02-product.md` |
+| Scope, domains, 22 modules, lifecycles, NFRs, roles | `docs/02-product.md` |
 | One module in depth | `docs/modules/Mxx-*.md` |
+| Payment methods, ledger, cash rule, refunds, fees | `docs/12-payments.md` |
+| Events, actions, recipes, automation guarantees | `docs/13-automation-platform.md` |
 | Deployables, module layout, events, tenancy | `docs/03-architecture.md` |
 | Tables, money, profit rules | `docs/04-data-model.md` + `packages/db/migrations/` |
 | Endpoint conventions and list | `docs/05-api.md` |
@@ -27,12 +29,12 @@ Mizan (ميزان, "the scale") is a MENA e-commerce operating system, powered b
 ## Repository map
 
 ```
-packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, outbox, resilience, adaptation (57 tests)
-packages/db/       ✅ BUILT — PostgreSQL schema (migrations/0001_core.sql) with RLS; tests prove tenant isolation (5 tests)
+packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
+packages/db/       ✅ BUILT — PostgreSQL schema (0001_core, 0002_commerce_os) with RLS on every tenant table (8 tests)
 packages/shared/   ⏳ planned — canonical types, zod schemas, money + phone helpers (backlog E1-2)
-apps/api/          ⏳ planned — NestJS modular monolith (REST API, auth, tenants, modules M1–M14)
+apps/api/          ⏳ planned — NestJS modular monolith (REST API, auth, tenants, modules M1–M22)
 apps/web/          ⏳ planned — Next.js dashboard, Arabic + English, RTL; visual reference: design/prototype.html
-apps/ops/          ⏳ planned — Flutter app for warehouse staff and confirmation agents (offline-first)
+apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
 .claude/commands/  slash commands for recurring work
@@ -56,7 +58,7 @@ Node 22+. TypeScript strict everywhere. Tests use vitest.
 | Layer | Choice |
 | --- | --- |
 | Language | TypeScript (strict) for backend and web; Dart for the ops app |
-| API | NestJS modular monolith, one deployable, modules map to M1–M14 |
+| API | NestJS modular monolith, one deployable, modules map to M1–M22 |
 | Web | Next.js (App Router) + Tailwind CSS; RTL first-class; next-intl for AR/EN |
 | Mobile ops app | Flutter, offline-first (local queue, sync on reconnect) |
 | Database | PostgreSQL with row-level security per tenant |
@@ -84,7 +86,9 @@ Pin exact versions in `package.json` when creating each app.
 10. **Secrets** (provider tokens, API keys) are encrypted at rest and read through a secrets service. Never commit them, never log them.
 11. **Arabic and English are equal.** All user-facing strings go through i18n; layouts use logical CSS properties (`margin-inline-start`, not `margin-left`); numbers, phones and order IDs are wrapped in `<bdi>` inside Arabic text. Egyptian Arabic for merchant UI copy.
 12. **Personal data:** customer phones/addresses are personal data under Egypt Law 151/2020 and KSA PDPL. Minimize, encrypt, log access, honour deletion requests (Shopify `customers/redact`, `shop/redact`).
-13. **Tests first for integration logic.** Every connector gets a fake server with the provider's real quirks and failure modes, and must pass the chaos suite (`packages/engine/test/e2e.chaos.test.ts` pattern).
+13. **Payments are first class.** Every order carries `payment_mode` and `payment_status`. Courier cash comes only from `cashToCollect(order)` (`packages/engine/src/core/payments.ts`), never from the order total. Unknown or unpaid methods never ship. Card data never enters Mizan (hosted pages and links only). Every money movement is a line in the `payments` ledger. See `docs/12-payments.md` and ADR-0011.
+14. **Every module talks through events.** New behaviour that reacts to another module is an automation or an event handler, never a direct cross-module call. Register new triggers and actions in the catalogue (`docs/13-automation-platform.md`).
+15. **Tests first for integration logic.** Every connector gets a fake server with the provider's real quirks and failure modes, and must pass the chaos suite (`packages/engine/test/e2e.chaos.test.ts` pattern).
 
 ## Definition of done (any task)
 
@@ -99,6 +103,7 @@ Pin exact versions in `package.json` when creating each app.
 - Bosta numeric state codes, `deliveries/search` body, `dropOffAddress` city field, public tracking URL — confirm with Bosta's API reference in the business account; the engine is built to tolerate all variants until then.
 - Shopify: pinned API version `2026-10`; review quarterly. Protected customer data Level 2 must be approved for order PII.
 - WhatsApp: Embedded Signup v4 (v2 deprecated 15 Oct 2026). Per-message pricing since 1 Jul 2025.
+- Each gateway, BNPL and marketplace: authentication, webhook signing, refunds and payout report formats — confirm from the provider's docs before building (`docs/06-integrations.md`).
 - All prices in `docs/01-business-model.md` are proposals to validate with pilot merchants.
 
 ## How to work here

@@ -47,7 +47,7 @@ Two V3 intelligence features. Courier routing picks the best courier for each or
 Filters: `Suggested: profit this week` · `RTO by courier` · `Best campaign` · `Cash held`  
 Actions: Routing rules
 
-| Zone | Bosta | J&amp;T | Aramex | Chosen | Why |
+| Zone | Bosta | J&T | Aramex | Chosen | Why |
 | --- | --- | --- | --- | --- | --- |
 | Cairo | 91% | 88% | 86% | Bosta | Best rate, same price |
 | Alexandria | 84% | 89% | 85% | J&T | +5 pts delivery |

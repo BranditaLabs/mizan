@@ -57,6 +57,18 @@ Actions: Connect platform, Export
 
 _Sample data. Full visual in `design/prototype.html`._
 
+## Conversion events by payment method
+
+Ad platforms learn from the moment money is real, which depends on how the customer paid.
+
+| Payment method | Event sent | When | Value |
+| --- | --- | --- | --- |
+| Cash on delivery | Purchase (delivered) | On delivery | Delivered amount |
+| Card, wallet, BNPL | Purchase | On capture | Captured amount; refunds sent as adjustments where supported |
+| Bank transfer | Purchase | On match | Matched amount |
+| Any method, refused or refunded | No purchase, or a refund event | On refusal or refund | Removes the order from optimisation |
+| Marketplace, POS | Not sent | — | Excluded unless matched by click ID |
+
 ## Rules — Attribution and event rules
 
 | Rule | Default |

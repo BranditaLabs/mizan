@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { cashToCollect } from "../../core/payments.js";
 import { IntegrationError } from "../../core/errors.js";
 import type { CanonicalOrder, CanonicalShipment, ShipmentStatus } from "../../core/model.js";
 import { TERMINAL_STATUSES } from "../../core/model.js";
@@ -158,7 +159,7 @@ export class BostaConnector {
     const cityValue = cityField === "cityId" ? match.city.id : cityField === "cityCode" ? match.city.code ?? match.city.name : match.city.name;
     const [firstName, ...rest] = (a.name ?? order.customer.name ?? "Customer").trim().split(/\s+/);
     const items = order.lines.reduce((n, l) => n + l.quantity, 0);
-    const cod = order.paymentMode === "cod" ? Number(order.total.amount) : 0;
+    const cod = Number(cashToCollect(order).amount); // what the customer still owes; 0 for prepaid, balance for deposits; throws if the order must not ship
     return {
       type: DELIVERY_TYPE_SEND,
       specs: {

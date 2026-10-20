@@ -15,7 +15,7 @@ interface Product { id: string; title: string; status: string; vendor: string; p
 interface Order {
   id: string; name: string; createdAt: string; updatedAt: string; cancelledAt: string | null; displayFinancialStatus: string;
   paymentGatewayNames: string[]; tags: string[]; currencyCode: string; email: string | null; phone: string | null;
-  total: string; shippingAddress: Record<string, unknown> | null; customer: Record<string, unknown>;
+  total: string; received: string; refunded: string; shippingAddress: Record<string, unknown> | null; customer: Record<string, unknown>;
   lines: Array<{ id: string; title: string; sku: string; quantity: number; price: string }>;
   fulfillmentOrders: Array<{ id: string; status: string }>;
   fulfillments: Array<{ id: string; status: string; trackingInfo: Array<{ company: string; number: string; url?: string }> }>;
@@ -64,14 +64,30 @@ export class FakeShopify {
     return { productId: id, variantId: vid, inventoryItemId: itemId };
   }
 
-  addOrder(o: Partial<{ city: string; province: string; phone: string; cod: boolean; tags: string[]; total: string; name: string }> = {}) {
+  /**
+   * payment: how the customer pays. "cod" (default), "card" (paid via Paymob), "deposit" (300 paid online,
+   * balance COD), "bnpl" (Tabby), "bank" (bank transfer, unpaid until paid()), "manual" (unrecognised method).
+   * `cod: false` is kept as a shorthand for "card".
+   */
+  addOrder(o: Partial<{ city: string; province: string; phone: string; cod: boolean; payment: "cod" | "card" | "deposit" | "bnpl" | "bank" | "manual"; tags: string[]; total: string; name: string }> = {}) {
     const id = this.nextId("Order");
     const now = this.touch();
+    const payment = o.payment ?? (o.cod === false ? "card" : "cod");
+    const total = o.total ?? "1150.00";
+    const P: Record<string, { status: string; gateways: string[]; received: string }> = {
+      cod: { status: "PENDING", gateways: ["Cash on Delivery (COD)"], received: "0.00" },
+      card: { status: "PAID", gateways: ["paymob"], received: total },
+      deposit: { status: "PARTIALLY_PAID", gateways: ["paymob", "Cash on Delivery (COD)"], received: "300.00" },
+      bnpl: { status: "PAID", gateways: ["Tabby"], received: total },
+      bank: { status: "PENDING", gateways: ["Bank Deposit"], received: "0.00" },
+      manual: { status: "PENDING", gateways: ["manual"], received: "0.00" },
+    };
+    const pay = P[payment];
     const order: Order = {
       id, name: o.name ?? `#${1000 + this.orders.size + 1}`, createdAt: now, updatedAt: now, cancelledAt: null,
-      displayFinancialStatus: o.cod === false ? "PAID" : "PENDING",
-      paymentGatewayNames: o.cod === false ? ["paymob"] : ["Cash on Delivery (COD)"],
-      tags: o.tags ?? [], currencyCode: "EGP", email: "mona@example.com", phone: null, total: o.total ?? "1150.00",
+      displayFinancialStatus: pay.status,
+      paymentGatewayNames: pay.gateways, received: pay.received, refunded: "0.00",
+      tags: o.tags ?? [], currencyCode: "EGP", email: "mona@example.com", phone: null, total,
       shippingAddress: {
         name: "Mona Adel", firstName: "Mona", lastName: "Adel", phone: o.phone ?? "+20 100 123 4821",
         address1: "12 Abbas El Akkad St", address2: "Floor 3", city: o.city ?? "Nasr City", province: o.province ?? "Cairo", zip: "11765", countryCodeV2: "EG",
@@ -83,6 +99,22 @@ export class FakeShopify {
     };
     this.orders.set(id, order);
     return order;
+  }
+
+  /** The customer completes payment (e.g. the bank transfer arrives and the merchant marks it). */
+  paid(orderId: string) {
+    const o = this.orders.get(orderId)!;
+    o.received = o.total;
+    o.displayFinancialStatus = "PAID";
+    o.updatedAt = this.touch();
+  }
+
+  /** The merchant refunds part or all of the order in Shopify admin. */
+  refund(orderId: string, amount: string) {
+    const o = this.orders.get(orderId)!;
+    o.refunded = (Number(o.refunded) + Number(amount)).toFixed(2);
+    o.displayFinancialStatus = Number(o.refunded) >= Number(o.received) ? "REFUNDED" : "PARTIALLY_REFUNDED";
+    o.updatedAt = this.touch();
   }
 
   /** A merchant edits a price directly in Shopify admin. */
@@ -161,6 +193,8 @@ export class FakeShopify {
       id: o.id, name: o.name, createdAt: o.createdAt, updatedAt: o.updatedAt, cancelledAt: o.cancelledAt, displayFinancialStatus: o.displayFinancialStatus,
       paymentGatewayNames: o.paymentGatewayNames, tags: o.tags, currencyCode: o.currencyCode, email: o.email, phone: o.phone,
       totalPriceSet: m(o.total), subtotalPriceSet: m(o.total), totalShippingPriceSet: m("0.00"),
+      totalReceivedSet: m(o.received), totalRefundedSet: m(o.refunded),
+      totalOutstandingSet: m(Math.max(0, Number(o.total) - Number(o.received)).toFixed(2)),
       shippingAddress: o.shippingAddress, customer: o.customer,
       lineItems: { nodes: o.lines.map((l) => ({ id: l.id, title: l.title, sku: l.sku, quantity: l.quantity, originalUnitPriceSet: m(l.price) })) },
       fulfillmentOrders: { nodes: o.fulfillmentOrders.map((f) => ({ id: f.id, status: f.status, lineItems: { nodes: o.lines.map((l) => ({ id: `${f.id}-${l.id}`, lineItem: { id: l.id } })) } })) },
@@ -252,6 +286,7 @@ export class FakeShopify {
         if (!o) return { orderMarkAsPaid: { order: null, userErrors: [{ field: ["id"], message: "Order does not exist" }] } };
         if (o.displayFinancialStatus === "PAID") return { orderMarkAsPaid: { order: null, userErrors: [{ field: ["id"], message: "Order is already paid" }] } };
         o.displayFinancialStatus = "PAID";
+        o.received = o.total;
         o.updatedAt = this.touch();
         return { orderMarkAsPaid: { order: { id: o.id, displayFinancialStatus: "PAID" }, userErrors: [] } };
       }

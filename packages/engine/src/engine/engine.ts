@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { cashToCollect, deliveryCompletesPayment, ShipBlockedError } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "../core/model.js";
 import { TERMINAL_STATUSES } from "../core/model.js";
@@ -150,7 +151,10 @@ export class MizanEngine {
     const version = iso((payload.updated_at as string) ?? undefined) ?? meta.eventId ?? hash(rawBody);
     if (meta.topic.startsWith("orders/")) {
       const id = gidFromWebhook("Order", payload);
-      if (id) await this.enqueue("shopify.ingestOrder", { orderId: id }, `shopify:order:${id}:${version}`);
+      // Keyed by Shopify's event id, not updated_at: updated_at has 1-second precision, so an order created
+      // and paid within the same second would otherwise lose its payment update. Duplicate deliveries of one
+      // event are already dropped above; re-ingesting is safe (fat fetch, idempotent writes).
+      if (id) await this.enqueue("shopify.ingestOrder", { orderId: id }, `shopify:order:${id}:${meta.eventId ?? version}`);
     } else if (meta.topic.startsWith("products/") && meta.topic !== "products/delete") {
       const id = gidFromWebhook("Product", payload);
       if (id) await this.enqueue("shopify.ingestProduct", { productId: id }, `shopify:product:${id}:${version}`);
@@ -267,13 +271,31 @@ export class MizanEngine {
     const prev = await this.store.get<OrderRecord>("order", orderId);
     const rec: OrderRecord = { ...prev, order: { ...order, raw: undefined } };
     await this.store.put("order", orderId, rec, this.now());
-    this.emit("order.ingested", { orderId, number: order.number, paymentMode: order.paymentMode, updatedAt: order.updatedAt });
+    this.emit("order.ingested", { orderId, number: order.number, paymentMode: order.paymentMode, paymentStatus: order.paymentStatus, updatedAt: order.updatedAt });
+    const before = prev?.order;
+    if (before && (before.paymentStatus !== order.paymentStatus || before.refunded?.amount !== order.refunded?.amount)) {
+      this.emit("order.payment_changed", {
+        orderId, mode: order.paymentMode, from: before.paymentStatus, to: order.paymentStatus,
+        received: order.received?.amount, outstanding: order.outstanding?.amount, refunded: order.refunded?.amount,
+      });
+    }
 
     if (order.cancelled && rec.trackingNumber) {
       this.emit("order.cancelled_after_shipping", { orderId, trackingNumber: rec.trackingNumber }); // ops decides whether to terminate the delivery
       return;
     }
     if (this.opts.autoShipTag && order.tags.includes(this.opts.autoShipTag) && !order.cancelled && !rec.trackingNumber) {
+      // Confirmed orders ship automatically only once payment allows it. An unpaid bank transfer
+      // waits; the next orders/updated webhook (or poll) after payment ships it.
+      try {
+        cashToCollect(order);
+      } catch (e) {
+        if (e instanceof ShipBlockedError) {
+          this.emit("order.awaiting_payment", { orderId, number: order.number, reason: e.reason, mode: order.paymentMode, status: order.paymentStatus });
+          return;
+        }
+        throw e;
+      }
       await this.shipOrder(orderId);
     }
   }
@@ -283,6 +305,7 @@ export class MizanEngine {
     const order = rec?.order ?? (await this.shopify.getOrder(orderId));
     if (rec?.trackingNumber) return; // already shipped
     if (order.cancelled) throw new IntegrationError({ kind: "validation", connector: "engine", message: `order ${order.number} is cancelled` });
+    cashToCollect(order); // fail fast with a clear reason (awaiting_payment, payment_mode_unknown …) before calling the courier
 
     const { shipment, adopted } = await this.bosta.createShipmentOnce(order, orderId, attempt > 1);
     await this.saveLearned();
@@ -326,7 +349,7 @@ export class MizanEngine {
 
   private async afterStatusChange(orderId: string, status: ShipmentStatus, trackingNumber: string) {
     const rec = await this.store.get<OrderRecord>("order", orderId);
-    if (status === "delivered" && this.opts.markCodPaidOnDelivery && rec?.order.paymentMode === "cod") {
+    if (status === "delivered" && this.opts.markCodPaidOnDelivery && rec && deliveryCompletesPayment(rec.order)) {
       await this.enqueue("shopify.markPaid", { orderId }, `paid:${orderId}`);
     }
     if (status === "returned" && this.opts.tagOnReturn) {
@@ -407,9 +430,11 @@ export class MizanEngine {
     for await (const page of this.shopify.ordersUpdatedSince(since)) {
       for (const o of page) {
         const known = await this.store.get<OrderRecord>("order", o.externalId);
-        if (!known || Date.parse(known.order.updatedAt) < Date.parse(o.updatedAt)) {
-          // Same key format as the webhook path, so a webhook and a poll for one version run once.
-          await this.enqueue("shopify.ingestOrder", { orderId: o.externalId }, `shopify:order:${o.externalId}:${iso(o.updatedAt)}`);
+        // Compare what Mizan acts on, not only updated_at (1-second precision): a payment or tag change in the
+        // same second as the previous version must still be picked up.
+        const fp = orderFingerprint(o);
+        if (!known || orderFingerprint(known.order) !== fp) {
+          await this.enqueue("shopify.ingestOrder", { orderId: o.externalId }, `shopify:order:${o.externalId}:poll:${hash(fp)}`);
         }
         if (Date.parse(o.updatedAt) > Date.parse(maxSeen)) maxSeen = o.updatedAt;
       }
@@ -432,4 +457,9 @@ export class MizanEngine {
       if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
     }
   }
+}
+
+/** The order fields that drive engine decisions (shipping, payment, cancellation). */
+function orderFingerprint(o: CanonicalOrder): string {
+  return [o.updatedAt, o.paymentMode, o.paymentStatus, o.outstanding?.amount ?? "", o.refunded?.amount ?? "", o.cancelled ? 1 : 0, [...o.tags].sort().join(",")].join("|");
 }

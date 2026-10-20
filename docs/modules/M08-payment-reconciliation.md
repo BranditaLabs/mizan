@@ -1,20 +1,20 @@
-# M8 — COD cash reconciliation · تسوية الكاش مع شركات الشحن
+# M8 — Cash and payment reconciliation · تسوية الكاش والمدفوعات
 
-> **Phase:** V2 · **Depends on:** M3 Shipping, M5 Profit, M6 Returns  
+> **Phase:** V2 · **Depends on:** M3 Shipping, M5 Profit, M6 Returns, M15 Payments, M18 Channels  
 > **Estimate:** 2 sprints — 1 backend + 1 frontend. Courier file samples needed before sprint 1.
 
-_Every pound the courier collected, matched to the order — or flagged._
+_Every pound and riyal accounted for: courier cash, gateway payouts, BNPL settlements and bank transfers, matched to orders._
 
 ## Purpose
 
-Couriers collect COD cash and pay merchants later, in batches, often with fees deducted and gaps. Cash reconciliation imports each settlement, matches every line to a delivered order, and flags anything missing, short-paid or overdue. Finance stops reconciling spreadsheets by hand.
+Reconciliation matches every expected payment to money that actually arrived. It covers courier COD settlements, payment gateway payouts (cards, wallets, Apple Pay), BNPL settlements (Tabby, Tamara, valU), bank transfers and marketplace payouts. Each payout is split into orders, fees, refunds and chargebacks; anything missing, short or late is flagged, and the real fees flow into the profit engine.
 
 ## Users
 
 | User | Uses it to |
 | --- | --- |
-| Finance | Imports settlements, resolves gaps |
-| Owner | Sees cash held by each courier |
+| Finance | Imports payouts, resolves gaps |
+| Owner | Sees money held by couriers, gateways and marketplaces |
 | Ops manager | Opens claims with couriers |
 | Accountant | Exports matched data |
 
@@ -22,40 +22,52 @@ Couriers collect COD cash and pay merchants later, in batches, often with fees d
 
 | Metric | Definition |
 | --- | --- |
-| Cash reconciled in 14 days | Matched ÷ delivered COD value |
-| Cash in transit | Collected but not yet paid |
+| Reconciled in 14 days | Matched ÷ expected value, all sources |
+| Money in transit | Collected or captured, not yet paid out |
 | Short-paid amount | Paid less than expected |
-| Days to remit | Per courier |
+| Days to payout | Per courier, gateway, BNPL and marketplace |
 
-## Flow — Expected cash, actual cash, and **every difference explained**.
+## Flow — Expected money, actual money, and **every difference explained**.
 
 | # | Step | What happens | Who |
 | --- | --- | --- | --- |
-| 1 | Expect | Each delivered COD order creates an expected amount, minus estimated fees. | Automatic |
-| 2 | Import | Settlement file (Excel, CSV) uploaded, or synced by courier API. | Finance |
-| 3 | Match | Lines matched by tracking number, then order number, then amount. | Automatic |
-| 4 | ⭐ Flag | Missing, short-paid, overpaid or overdue amounts listed. | Automatic |
-| 5 | Resolve | Open a claim with the courier or accept the difference. | Finance |
-| 6 | Post | Actual fees replace estimates in M5; export to accounting. | Automatic |
+| 1 | Expect | Each delivered COD order, captured payment, BNPL sale or marketplace order creates an expected amount, minus estimated fees. | Automatic |
+| 2 | Import | Courier settlement files or API; gateway, BNPL and marketplace payout reports by API or file; bank statement lines. | Finance / automatic |
+| 3 | Match | By tracking number, gateway reference, order number, then amount and date. | Automatic |
+| 4 | ⭐ Flag | Missing, short-paid, overpaid, overdue; refunds and chargebacks deducted from payouts. | Automatic |
+| 5 | Resolve | Open a claim or accept the difference as a fee. | Finance |
+| 6 | Post | Actual fees replace estimates in M5; export to M19. | Automatic |
 
 - **Column mapping.** Each courier's file layout is mapped once; later files import with one click.
 - **Fees become actual.** The difference between expected and paid often is a fee. Mizan records it as the real fee on that order.
 - **Ageing.** Cash held over the merchant's limit (for example 10 days) is flagged per courier.
 
-## Main screen — Cash reconciliation
+## Main screen — Reconciliation
 
-Filters: `Unmatched · 37` · `Short-paid · 12` · `Overdue · 58` · `Matched · 2,904`  
-Actions: Upload settlement
+Filters: `All sources` · `Couriers` · `Gateways` · `BNPL` · `Marketplaces` · `Unmatched · 37`  
+Actions: Import payout, Upload file
 
-| Tracking | Courier | Expected | Paid | Difference | Status |
+| Reference | Source | Expected | Paid | Difference | Status |
 | --- | --- | --- | --- | --- | --- |
 | BOS-77118802 | Bosta | 1,150 | 1,150 | — | Matched |
-| JT-EG4409871 | J&T | 980 | 915 | − 65 | Short · fee? |
+| PMB-55120931 | Paymob | 1,450 | 1,405 | − 45 | Fee 3.1% |
 | BOS-77118790 | Bosta | 640 | — | − 640 | Missing |
-| ARX-90011100 | Aramex | 2,300 | 2,300 | — | Matched |
-| JT-EG4409850 | J&T | 720 | — | Held 14 d | Overdue |
+| TBY-90311 | Tabby | SAR 899 | SAR 845 | − 54 | Fee 6% |
+| NOON-EG-44120 | Noon | 1,280 | 1,088 | − 192 | Commission |
 
 _Sample data. Full visual in `design/prototype.html`._
+
+## Payout sources
+
+| Source | Arrives as | Match key | Typical deductions |
+| --- | --- | --- | --- |
+| Courier COD settlement | Bank transfer + Excel/CSV or API | Tracking number | Shipping, COD fee, return legs |
+| Card / wallet gateway (Paymob, Kashier, Moyasar, Tap, HyperPay, Checkout.com, Stripe) | Payout + transaction report (API or file) | Gateway transaction ID | % + fixed fee, refunds, chargebacks, reserves |
+| BNPL (Tabby, Tamara, valU) | Settlement report | Provider order ID | Merchant fee, refunds |
+| Bank transfer / InstaPay | Bank statement line | Reference or amount + date + name | Bank fee |
+| Marketplace (Amazon, Noon, Jumia) | Payout report | Marketplace order ID | Commission, fulfilment, ads, refunds |
+
+Each source has a column mapping learned once. Unmatched lines stay visible until resolved.
 
 ## Rules — Matching rules, in order
 

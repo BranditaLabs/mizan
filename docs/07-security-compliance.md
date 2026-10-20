@@ -16,6 +16,9 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | PII leakage via logs / analytics | Structured logger with PII redaction (phones, names, addresses, tokens); analytics events carry IDs only |
 | Mass export | Export endpoints rate-limited, owner/finance only, audited |
 | Supply chain | Lockfiles; Dependabot/Renovate; `npm audit` in CI; pinned base images |
+| Card data exposure | Never collected: hosted payment pages and links only; PCI DSS scope stays with the gateway (merchant SAQ-A) |
+| Fraudulent refunds | Role permissions, approval thresholds, refunds to original method by default, audit log, alerts on refund spikes |
+| Wrong cash on a shipment | Engine `cashToCollect` rule; unknown payment methods never ship; chaos-tested |
 
 ## 2. Personal data handling
 
@@ -24,7 +27,7 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | Customer phone | `customers.phone_e164`, `orders.ship_phone` | Application-level encryption (AES-256-GCM, tenant data key); `phone_hash` = HMAC-SHA256 with a tenant pepper for lookups |
 | Name, address, location pin | `orders.ship_*`, `customers.name` | Same as phone; masked in lists (`010•••4821`); full view logged as `customer.pii_viewed` |
 | Email | `customers.email`, `users.email` | Encrypted at rest (DB-level) |
-| Payment data | Never stored | PSP-hosted payment pages only |
+| Payment data | Never stored: no card numbers, CVV or bank credentials | PSP-hosted payment pages only; Mizan stores amounts, method, status and the gateway reference |
 | Provider credentials | `secrets` | Envelope encryption, KMS |
 
 **Retention:** order PII kept while the merchant is active + 90 days after cancellation, then deleted or anonymized (keep financial aggregates). Configurable per tenant for legal holds. `[CONFIRM with counsel]`

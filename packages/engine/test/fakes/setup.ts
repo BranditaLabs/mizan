@@ -6,11 +6,12 @@ import { FakeShopify } from "./shopify.js";
 
 export const LOCATION = "gid://shopify/Location/1";
 
-export function setup(overrides: Partial<EngineOptions> = {}, store: Store = new MemoryStore()) {
+/** `seed` varies every random fault pattern; CHAOS_SEED overrides it for seed sweeps. */
+export function setup(overrides: Partial<EngineOptions> = {}, store: Store = new MemoryStore(), seed = Number(process.env.CHAOS_SEED ?? 0)) {
   const clock = new FakeClock();
-  const shop = new FakeShopify(clock, seeded(2));
-  const bosta = new FakeBosta(clock, seeded(3));
-  const rt = testRuntime(clock, { [shop.host]: shop.handler, [bosta.host]: bosta.handler }, seeded(4));
+  const shop = new FakeShopify(clock, seeded(2 + seed * 7));
+  const bosta = new FakeBosta(clock, seeded(3 + seed * 7));
+  const rt = testRuntime(clock, { [shop.host]: shop.handler, [bosta.host]: bosta.handler }, seeded(4 + seed * 7));
   const engine = new MizanEngine(store, rt, {
     shopify: { shop: shop.host, accessToken: "shpat_test", apiVersion: "2026-10", clientSecret: shop.secret },
     bosta: {
