@@ -26,4 +26,6 @@ export const apiEnv = {
   FIREBASE_PROJECT_ID: PROJECT,
   FIREBASE_AUTH_EMULATOR_HOST: new URL(EMULATOR).host,
   AUTH_REQUIRE_MFA: "true",
+  // No live exchange-rate feed: tests must not depend on an outside service (the FX card then says "missing").
+  FX_SOURCE: "none",
 };
