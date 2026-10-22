@@ -92,7 +92,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E5 · M1 Orders
 
-- [ ] **E5-1** `M` `GET /orders` with filters, search, cursor pagination; order list screen with status chips + counts.
+- [x] **E5-1** `M` `GET /orders` with filters, search, cursor pagination; order list screen with status chips + counts. *Done:* `GET /v1/orders` (status, payment mode, store, date window; search by order number with or without `#`, store order id, or phone through its keyed hash — names are encrypted and not searchable; cursor on (placed time, id); counts per status for the same filters; agents see their assigned orders, warehouse confirmed + shipped); rows carry only an encrypted list label (`Mona A.`) and the phone's last four digits (migration 0016). Web `/orders`: status tabs with counts, debounced search kept in the URL, table (order, customer, payment method + status, total + cash to collect, risk, status, age), show more, empty states; Home and Orders are links in the sidebar.
 - [ ] **E5-2** `M` Order detail screen (timeline, lines, customer masked + reveal with audit, map pin).
 - [ ] **E5-3** `M` Duplicate detection (phone hash + variant within 48 h, configurable) → `order.duplicate_found`; merge endpoint + UI.
 - [ ] **E5-4** `M` Bulk actions (assign, cancel, tag, ship) as jobs with progress.
@@ -118,6 +118,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [ ] **E7-4** `M` Courier scorecard by zone (delivery rate, RTO, days to remit).
 - [ ] **E7-5** `M` J&T connector (once API access is granted).
 - [ ] **E7-6** `S` CSV import of courier statuses (fallback for couriers without API).
+- [ ] **E7-7** `M` Courier progress → Shopify: fulfillment events (`fulfillmentEventCreate`) for picked up / in transit / out for delivery / delivered / failed attempt; refused and lost reflected; per-store switches for mark-paid-on-delivery and the return tag. *Why:* today only shipment created (fulfillment + tracking), delivered (mark paid, COD only) and returned (tag `mizan-returned`) reach Shopify.
 
 ### E8 · M4 Warehouse + ops app
 

@@ -445,6 +445,8 @@ export interface Orders {
   balance_minor: GeneratedAlways<Int8 | null>;
   location_id: string | null;
   pii_redacted_at: Timestamp | null;
+  customer_label: string | null;
+  phone_last4: string | null;
 }
 
 export interface PaymentLinks {

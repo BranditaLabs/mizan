@@ -1,7 +1,9 @@
 import { Global, Module } from "@nestjs/common";
 import { OrderProjector } from "./order-projector.js";
+import { OrdersController } from "./orders.controller.js";
+import { OrdersService } from "./orders.service.js";
 
-/** M1 Orders. Today: projecting store orders from the engine; list/detail endpoints come with E5. */
+/** M1 Orders: projecting store orders from the engine (E2-3), the list (E5-1); detail comes with E5-2. */
 @Global()
-@Module({ providers: [OrderProjector], exports: [OrderProjector] })
+@Module({ controllers: [OrdersController], providers: [OrderProjector, OrdersService], exports: [OrderProjector] })
 export class OrdersModule {}

@@ -74,7 +74,7 @@ erDiagram
 | --- | --- |
 | Platform | `product_events` (0015: docs/02 §8, ids only; milestones carry `dedupe_key` so they are recorded once), `tenants`, `users`, `memberships`, `api_keys`, `connections`, `secrets`, `domain_events`, `audit_log`, `privacy_requests`, `shopify_installs` (pending OAuth installs before they are claimed into a store: no tenant yet, worker role only, token sealed; 0013). `privacy_requests` gained `connection_id`, `dedupe_key` (unique per tenant), `result` (encrypted export) in 0014; `orders.pii_redacted_at` and `customers.redacted_at` mark redacted rows |
 | Engine | `mz_inbound_events`, `mz_outbox`, `mz_records` (same as `packages/engine/src/sync/sql-store.ts`, plus `tenant_id`) |
-| M1 Orders | `orders` (incl. `channel`, `payment_mode`, `payment_status`, `paid_minor`, `refunded_minor`, `balance_minor`), `order_lines`, `order_events`, `customers`, `external_variants` |
+| M1 Orders | `orders` (incl. `channel`, `payment_mode`, `payment_status`, `paid_minor`, `refunded_minor`, `balance_minor`), `order_lines`, `order_events`, `customers`, `external_variants`. ✅ 0016 (E5-1): `orders.customer_label` (first name + last initial, encrypted), `orders.phone_last4`; indexes `orders_recent` (tenant, placed_at desc, id desc) and `orders_number` (tenant, lower(number)) for the list |
 | M2 Confirmation | `confirmations`, `orders.risk_score`, `orders.confirm_route` |
 | M3 Shipping | `shipments`, `shipment_events` |
 | M4 Warehouse | `products`, `variants`, `warehouses`, `stock_levels`, `stock_movements`. ✅ 0015: `products.connection_id` + `external_id` (unique: a store product is projected once, updated after); `variants.cogs_set_at` (null = cost never entered; `cogs_minor` 0 can be a real cost). Store syncs never touch costs |

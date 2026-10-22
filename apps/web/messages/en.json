@@ -210,6 +210,27 @@
       "deposit": "Deposit",
       "bnpl": "Pay later",
       "bank_transfer": "Bank transfer"
+    },
+    "mode": {
+      "cod": "Cash on delivery",
+      "prepaid": "Prepaid",
+      "partial": "Deposit + cash",
+      "bnpl": "Pay later",
+      "bank_transfer": "Bank transfer",
+      "store_credit": "Store credit",
+      "mixed": "Mixed",
+      "unknown": "Unknown"
+    },
+    "status": {
+      "unpaid": "Unpaid",
+      "authorized": "Authorized",
+      "partially_paid": "Partly paid",
+      "paid": "Paid",
+      "partially_refunded": "Partly refunded",
+      "refunded": "Refunded",
+      "disputed": "Disputed",
+      "failed": "Failed",
+      "voided": "Voided"
     }
   },
   "gallery": {
@@ -473,5 +494,51 @@
         "missing": "This page needs a link from Shopify. Start the connection from Mizan."
       }
     }
+  },
+  "orders": {
+    "title": "Orders",
+    "subtitle": "Every order from your stores in one list, newest first.",
+    "search": "Search by order number or customer phone",
+    "tabsLabel": "Order status",
+    "all": "All",
+    "status": {
+      "new": "New",
+      "pending_confirmation": "Waiting to confirm",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "returned": "Returned"
+    },
+    "columns": {
+      "order": "Order",
+      "customer": "Customer",
+      "payment": "Payment",
+      "total": "Total",
+      "risk": "Risk",
+      "status": "Status",
+      "age": "Age"
+    },
+    "label": "Orders",
+    "cod": "Collect <m>{amount}</m>",
+    "riskLabel": "Risk {score} of 100",
+    "noRisk": "Not scored",
+    "noCustomer": "No name",
+    "more": "Show more orders",
+    "loading": "Loading orders",
+    "empty": {
+      "title": "No orders yet",
+      "body": "Connect your store and your orders show here within a minute.",
+      "cta": "Set up your store"
+    },
+    "emptyTab": {
+      "title": "No orders here",
+      "body": "Orders with this status show here as they arrive."
+    },
+    "noMatch": {
+      "title": "No order matches",
+      "body": "Search by order number like #1042, or by the customer's phone."
+    },
+    "manual": "Manual"
   }
 }

@@ -83,7 +83,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/orders` | List / filter / search |
+| GET | `/orders` | ✅ E5-1. List, newest first. Query: `status`, `paymentMode`, `connectionId`, `from`, `to`, `q`, `limit` (≤ 100, default 50), `cursor`. `q` matches the order number (with or without `#`, prefix), the store's order id, or a phone in any form (keyed hash; names are not searchable). Returns `{ data, nextCursor, counts }`: rows show the customer as `{ label: "Mona A.", phoneLast4 }`, total, cash to collect, payment mode and status, risk; `counts` per status use the same filters except `status`. Agents see orders assigned to them, warehouse confirmed and shipped; media buyers are refused. Bad cursor → 422 |
 | GET | `/orders/{id}` | Order with lines, customer, history, shipments, P&L |
 | POST | `/orders` | Manual order |
 | PATCH | `/orders/{id}` | Edit address, items, notes (before shipping) |

@@ -1,6 +1,22 @@
 /* Generated from apps/api/openapi.json by `npm run gen:api -w @mizan/web`. Do not edit. */
 
 export interface paths {
+    "/v1/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/onboarding": {
         parameters: {
             query?: never;
@@ -664,6 +680,54 @@ export interface components {
             complete: boolean;
             dismissed: boolean;
         };
+        OrderPage: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** @enum {string} */
+                status: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                channel: string;
+                store: {
+                    /** Format: uuid */
+                    connectionId: string | null;
+                    provider: string | null;
+                };
+                customer: {
+                    /** @description "Mona A." */
+                    label: string | null;
+                    phoneLast4: string | null;
+                };
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Cash the courier collects; from cashToCollect, never the total */
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @enum {string} */
+                paymentMode: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+                /** @enum {string} */
+                paymentStatus: "unpaid" | "authorized" | "partially_paid" | "paid" | "partially_refunded" | "refunded" | "disputed" | "failed" | "voided";
+                risk: number | null;
+                tags: string[];
+                /** Format: date-time */
+                placedAt: string;
+            }[];
+            nextCursor: string | null;
+            counts: {
+                all: number;
+                new: number;
+                pending_confirmation: number;
+                confirmed: number;
+                cancelled: number;
+                shipped: number;
+                delivered: number;
+                returned: number;
+            };
+        };
         /** @description The customer's data compiled for a data request (JSON) */
         PrivacyExport: unknown;
         PrivacyRequests: {
@@ -843,6 +907,49 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    OrdersController_list: {
+        parameters: {
+            query?: {
+                status?: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                /** @description Order number, store order id, or the customer's phone */
+                q?: string;
+                paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+                connectionId?: string;
+                from?: string;
+                to?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Agents see orders assigned to them; warehouse sees confirmed and shipped orders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     OnboardingController_get: {
         parameters: {
             query?: never;

@@ -44,6 +44,8 @@ Orders Sync pulls orders from each connected storefront the moment they are plac
 
 ## Main screen — Orders
 
+✅ Built in E5-1 (`apps/web/src/components/orders/OrdersScreen.tsx`, `GET /v1/orders`): status tabs with counts, search, table, show more. Store column, Duplicates tab, Import CSV and New order come with E5-3, E5-5 and more connectors.
+
 Filters: `All · 1,284` · `New · 96` · `Pending confirmation · 41` · `Confirmed · 212` · `Shipped · 803` · `Duplicates · 7`  
 Actions: Import CSV, New order
 

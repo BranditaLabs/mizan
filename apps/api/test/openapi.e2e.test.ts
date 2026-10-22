@@ -120,6 +120,8 @@ describe("real responses match the documented schemas", () => {
     conforms("get", "/v1/audit-log", await http().get("/v1/audit-log?limit=5").set(as("owner", store)));
     conforms("get", "/v1/privacy-requests", await http().get("/v1/privacy-requests").set(as("owner", store)));
     conforms("get", "/v1/admin/integrations/health", await http().get("/v1/admin/integrations/health").set(as("owner", store)));
+    conforms("get", "/v1/orders", await http().get("/v1/orders?status=new&limit=5").set(as("owner", store)));
+    conforms("get", "/v1/orders", await http().get("/v1/orders?cursor=bad").set(as("owner", store))); // 422
     conforms("get", "/v1/onboarding", await http().get("/v1/onboarding").set(as("owner", store)));
     conforms("patch", "/v1/onboarding", await http().patch("/v1/onboarding").set(as("owner", store)).send({ skip: { courier: true } }));
     conforms("get", "/v1/connections", await http().get("/v1/connections").set(as("owner", store)));

@@ -12,7 +12,7 @@ export default async function AppLayout({ children, params }: { children: ReactN
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <StoreGate>
-      <Shell theme={theme} active="home">{children}</Shell>
+      <Shell theme={theme}>{children}</Shell>
     </StoreGate>
   );
 }

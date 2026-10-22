@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import { cashToCollect, type ShipBlockReason } from "@mizan/engine";
-import { normalizePhone, toMinor, type CanonicalOrder } from "@mizan/shared";
+import { normalizePhone, toAsciiDigits, toMinor, type CanonicalOrder } from "@mizan/shared";
 import { phoneCountryOf } from "../../platform/pii/phone-country.js";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
@@ -15,7 +15,24 @@ const PAYMENT_STATUSES = new Set(["unpaid", "authorized", "partially_paid", "pai
 
 /** Business fields compared to decide whether an update is worth an event. */
 /** Personal data columns of an order, as they are after redaction. */
-export const REDACTED_ORDER = { ship_name: null, ship_phone: null, ship_line1: null, ship_line2: null, ship_lat: null, ship_lng: null } as const;
+export const REDACTED_ORDER = { ship_name: null, ship_phone: null, ship_line1: null, ship_line2: null, ship_lat: null, ship_lng: null, customer_label: null, phone_last4: null } as const;
+
+/**
+ * The most a list row shows of a customer (E5-1): first name and the last name's initial, "Mona A." /
+ * "منى ع.". Still personal data, so stored encrypted like the rest (decrypting one short field per
+ * list row is cheap); the full name is revealed only in the order.
+ */
+const lastFour = (phone: string | null) => {
+  const digits = toAsciiDigits(phone ?? "").replace(/\D/g, "");
+  return digits.length >= 4 ? digits.slice(-4) : null;
+};
+
+export function customerLabel(name: string | null | undefined): string | null {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return null;
+  const first = [...words[0]!].slice(0, 24).join("");
+  return words.length > 1 ? `${first} ${[...words.at(-1)!][0]}.` : first;
+}
 
 const TRACKED = ["status", "payment_mode", "payment_status", "total_minor", "paid_minor", "refunded_minor", "cod_minor", "tags"] as const;
 const PAYMENT_FIELDS = new Set<string>(["payment_status", "paid_minor", "refunded_minor"]);
@@ -202,6 +219,8 @@ export class OrderProjector {
       refunded_minor: minor(order.refunded),
       tags: order.tags,
       ship_name: pii.encrypt(a?.name ?? order.customer.name, "orders.ship_name"),
+      customer_label: pii.encrypt(customerLabel(a?.name ?? order.customer.name), "orders.customer_label"),
+      phone_last4: lastFour(shipPhone),
       ship_phone: pii.encrypt(shipPhone, "orders.ship_phone"),
       ship_line1: pii.encrypt(a?.line1, "orders.ship_line1"),
       ship_line2: pii.encrypt(a?.line2, "orders.ship_line2"),

@@ -66,8 +66,8 @@ export function Select({ label, hint, error, className, children, ...select }: S
 export function SearchInput({ label, shortcut, className, ...input }: InputHTMLAttributes<HTMLInputElement> & { label: string; shortcut?: string }) {
   return (
     <div className={cx("mz-input-wrap", className)}>
-      <Icon name="search" size={16} />
-      <input type="search" aria-label={label} className="mz-input" {...input} />
+      <Icon name="search" size={16} className="mz-icon" />
+      <input type="search" aria-label={label} className="mz-input w-full" {...input} />
       {shortcut ? <kbd className="mz-kbd" dir="ltr">{shortcut}</kbd> : null}
     </div>
   );
