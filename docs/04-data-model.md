@@ -78,7 +78,7 @@ erDiagram
 | M2 Confirmation | `confirmations`, `orders.risk_score`, `orders.confirm_route` |
 | M3 Shipping | `shipments`, `shipment_events` |
 | M4 Warehouse | `products`, `variants`, `warehouses`, `stock_levels`, `stock_movements`. ✅ 0015: `products.connection_id` + `external_id` (unique: a store product is projected once, updated after); `variants.cogs_set_at` (null = cost never entered; `cogs_minor` 0 can be a real cost). Store syncs never touch costs |
-| M5 Profit | `order_pnl`, `cost_rules`, `fx_rates` |
+| M5 Profit | `order_pnl`, `cost_rules`, `fx_rates`. ✅ 0017 (E9-1): `cost_rules` versioned (never edited: a change closes the version in force with `valid_to` = day before and adds one; `fixed_minor` for "2.5% + EGP 2", `return_minor` for a courier's return leg; shape checks per kind; `cost_rules_active`). `fx_rates`: one row per (day, base, quote), 1 base = rate quote, fetched daily with base USD (cross rates for other pairs), worker writes. `fx_rate_overrides`: a store's own rate for a day (RLS). Lookup: override > day's rate > latest earlier ≤ 7 days (stale) > missing |
 | M6 Returns | `tickets` |
 | M7 Attribution | `ad_spend`, `orders.utm`, `orders.click_ids` |
 | M8 Reconciliation | `settlements` (`source_type`: courier, gateway, bnpl, bank, marketplace), `settlement_lines` (`line_kind`, `payment_id`) |
@@ -123,6 +123,8 @@ erDiagram
 | `chargeback_minor` | Disputed amount + dispute fee | On `dispute.opened`; reversed if won |
 
 `is_final = true` once delivered and settled, or returned and inspected. Dashboards show provisional and final profit separately.
+
+Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data
 

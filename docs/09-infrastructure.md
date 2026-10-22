@@ -154,7 +154,9 @@ Measured per API process (1 core, shared VM, `docs/perf/README.md`): ~450 webhoo
 
 ## 5a. Table hygiene (✅ H-7)
 
-The worker prunes high-churn tables every 10 minutes in batches (5,000 rows × up to 20 batches per table per run): finished engine jobs after `RETENTION_JOBS_DAYS` (7), webhook dedupe keys after `RETENTION_WEBHOOK_KEYS_DAYS` (14; providers retry for ≤ 48 h), dispatched domain events after `RETENTION_EVENTS_DAYS` (30), expired idempotency keys, claimed or expired pending Shopify installs. Pending, running and dead work is never pruned. At 10× scale (10M orders/month ≈ 50M engine jobs/month) the outbox holds about a week of done jobs (~12M rows), indexed for the due queries only.
+The worker prunes high-churn tables every 10 minutes in batches (5,000 rows × up to 20 batches per table per run): finished engine jobs after `RETENTION_JOBS_DAYS` (7), webhook dedupe keys after `RETENTION_WEBHOOK_KEYS_DAYS` (14; providers retry for ≤ 48 h), dispatched domain events after `RETENTION_EVENTS_DAYS` (30), expired idempotency keys, claimed or expired pending Shopify installs. Pending, running and dead work is never pruned.
+
+The worker also stores daily exchange rates (E9-1): every `FX_REFRESH_MINUTES` (60) it checks whether today's USD rates are in and, if not, fetches them once from `FX_SOURCE` (`open-er-api`; `none` turns it off, the default in tests). Egress to `open.er-api.com:443` must be allowed; a failed fetch keeps the stored rates (lookups fall back up to 7 days, marked stale) and counts `mizan_fx_refresh_total{result="failed"}` (alert if no `stored` for 48 h). At 10× scale (10M orders/month ≈ 50M engine jobs/month) the outbox holds about a week of done jobs (~12M rows), indexed for the due queries only.
 
 ## 5b. Database connection budget (✅ H-8)
 

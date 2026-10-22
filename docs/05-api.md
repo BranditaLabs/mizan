@@ -122,7 +122,10 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | --- | --- | --- |
 | GET | `/profit/summary?from&to` | Net profit, margin, components |
 | GET | `/profit/breakdown?by=product\|store\|courier\|country\|day` | Grouped P&L |
-| GET / POST | `/cost-rules` | Agent, packaging, fee rules |
+| GET / POST | `/cost-rules` | ✅ E9-1. GET `?at=YYYY-MM-DD` (rules that apply that day, default today in store time) or `?history=true` (every version) → `{ baseCurrency, today, data }`. POST one rule (`kind` = `packaging_per_order` · `agent_per_order` {amount, scope.connectionId?} · `cod_fee_pct` {pct, scope.courier?} · `payment_fee_pct` {pct, fixed?, scope.method?} · `courier_rate` {amount, returnAmount?, scope.courier, scope.zone?} · `fixed_monthly` {amount, scope.label}; `validFrom` default today, 90 days back to 365 ahead) → 201 new version; the previous one for the same kind and scope ends the day before; same day = correction; 409 `later_version_exists`. Owner, admin, finance write; ops manager reads |
+| DELETE | `/cost-rules/{id}` | ✅ E9-1. Stop: the rule applies through today; a version that has not started is withdrawn. 204 |
+| GET | `/fx-rates?day=` | ✅ E9-1. `{ base, day, feed, rates[] }`: the store's base against USD and every currency its orders used in 90 days; each `{ quote, rate, source: manual\|feed\|same\|missing, day, stale }` |
+| PUT | `/fx-rates/{day}/{quote}` | ✅ E9-1. `{ rate }` = 1 base → rate quote: the store's own rate for that day (wins over the feed). Today or earlier; audited |
 | GET / POST / PATCH | `/tickets` | Complaints, exchanges, returns |
 | POST | `/tickets/{id}/inspection` | `{ result: restock\|damaged\|write_off, lines }` |
 

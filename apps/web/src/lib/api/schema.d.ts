@@ -81,6 +81,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/cost-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProfitController_list"];
+        put?: never;
+        post: operations["ProfitController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/cost-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["ProfitController_end"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/fx-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProfitController_rates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/fx-rates/{day}/{quote}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["ProfitController_setRate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -493,9 +557,175 @@ export interface components {
                 updatedAt: string;
             }[];
         };
+        CostRule: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "agent_per_order" | "packaging_per_order" | "cod_fee_pct" | "payment_fee_pct" | "courier_rate" | "fixed_monthly";
+            scope: {
+                /** Format: uuid */
+                connectionId?: string;
+                courier?: string;
+                zone?: string;
+                method?: string;
+                label?: string;
+            };
+            amount: {
+                amount: string;
+                currency: string;
+            } | null;
+            returnAmount: {
+                amount: string;
+                currency: string;
+            } | null;
+            pct: string | null;
+            fixed: {
+                amount: string;
+                currency: string;
+            } | null;
+            /** Format: date */
+            validFrom: string;
+            /**
+             * Format: date
+             * @description Last day it applies; null = until changed
+             */
+            validTo: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CostRuleList: {
+            baseCurrency: string;
+            /**
+             * Format: date
+             * @description Today in the store's time zone
+             */
+            today: string;
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "agent_per_order" | "packaging_per_order" | "cod_fee_pct" | "payment_fee_pct" | "courier_rate" | "fixed_monthly";
+                scope: {
+                    /** Format: uuid */
+                    connectionId?: string;
+                    courier?: string;
+                    zone?: string;
+                    method?: string;
+                    label?: string;
+                };
+                amount: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                returnAmount: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                pct: string | null;
+                fixed: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** Format: date */
+                validFrom: string;
+                /**
+                 * Format: date
+                 * @description Last day it applies; null = until changed
+                 */
+                validTo: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
         CostsUpdated: {
             updated: number;
             missingCost: number;
+        };
+        CreateCostRule: {
+            /** @enum {string} */
+            kind: "packaging_per_order";
+            amount: string;
+            /** @default {} */
+            scope: {
+                /** Format: uuid */
+                connectionId?: string;
+            };
+            /**
+             * Format: date
+             * @description First day the rule applies (default: today, store time)
+             */
+            validFrom?: string;
+        } | {
+            /** @enum {string} */
+            kind: "agent_per_order";
+            amount: string;
+            /** @default {} */
+            scope: {
+                /** Format: uuid */
+                connectionId?: string;
+            };
+            /**
+             * Format: date
+             * @description First day the rule applies (default: today, store time)
+             */
+            validFrom?: string;
+        } | {
+            /** @enum {string} */
+            kind: "cod_fee_pct";
+            pct: string;
+            /** @default {} */
+            scope: {
+                courier?: string;
+            };
+            /**
+             * Format: date
+             * @description First day the rule applies (default: today, store time)
+             */
+            validFrom?: string;
+        } | {
+            /** @enum {string} */
+            kind: "payment_fee_pct";
+            pct: string;
+            /** @description Fixed part per payment, e.g. 2.5% + 2.00 */
+            fixed?: string;
+            /** @default {} */
+            scope: {
+                /** @enum {string} */
+                method?: "card" | "wallet" | "apple_pay" | "bnpl" | "bank_transfer" | "instapay" | "fawry_ref" | "store_credit" | "cash_pos" | "marketplace";
+            };
+            /**
+             * Format: date
+             * @description First day the rule applies (default: today, store time)
+             */
+            validFrom?: string;
+        } | {
+            /** @enum {string} */
+            kind: "courier_rate";
+            /** @description Delivery price */
+            amount: string;
+            /** @description Price of a return leg */
+            returnAmount?: string;
+            scope: {
+                courier: string;
+                zone?: string;
+            };
+            /**
+             * Format: date
+             * @description First day the rule applies (default: today, store time)
+             */
+            validFrom?: string;
+        } | {
+            /** @enum {string} */
+            kind: "fixed_monthly";
+            amount: string;
+            scope: {
+                label: string;
+            };
+            /**
+             * Format: date
+             * @description First day the rule applies (default: today, store time)
+             */
+            validFrom?: string;
         };
         CreateTenant: {
             name: string;
@@ -518,6 +748,39 @@ export interface components {
                 payload: unknown;
                 /** Format: date-time */
                 failedAt: string;
+            }[];
+        };
+        FxRate: {
+            quote: string;
+            /** @description 1 base = rate quote; null when missing */
+            rate: string | null;
+            /** @enum {string} */
+            source: "manual" | "feed" | "same" | "missing";
+            /**
+             * Format: date
+             * @description Day of the rate used (earlier than asked when stale)
+             */
+            day: string | null;
+            stale: boolean;
+        };
+        FxRates: {
+            base: string;
+            /** Format: date */
+            day: string;
+            /** @description Where daily rates come from (shown with attribution) */
+            feed: string | null;
+            rates: {
+                quote: string;
+                /** @description 1 base = rate quote; null when missing */
+                rate: string | null;
+                /** @enum {string} */
+                source: "manual" | "feed" | "same" | "missing";
+                /**
+                 * Format: date
+                 * @description Day of the rate used (earlier than asked when stale)
+                 */
+                day: string | null;
+                stale: boolean;
             }[];
         };
         Health: {
@@ -974,6 +1237,10 @@ export interface components {
                 cost: string;
             }[];
         };
+        SetFxRate: {
+            /** @description 1 unit of the store's base currency = rate units of the quote currency */
+            rate: string;
+        };
         ShopifyClaim: {
             install: string;
         };
@@ -1392,6 +1659,208 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_list: {
+        parameters: {
+            query?: {
+                /** @description Rules that apply on this day (default today) */
+                at?: string;
+                /** @description Every version, newest first */
+                history?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Rules that apply on a day (default today), or every version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostRuleList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCostRule"];
+            };
+        };
+        responses: {
+            /** @description The new version; the previous one for the same kind and scope now ends the day before */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostRule"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_end: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ended: applies through today, not after (a version that has not started is withdrawn) */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_rates: {
+        parameters: {
+            query?: {
+                /** @description Default today (store time) */
+                day?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The store's base currency against USD and the currencies its orders used in the last 90 days */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FxRates"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_setRate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                day: string;
+                quote: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFxRate"];
+            };
+        };
+        responses: {
+            /** @description The store's own rate for that day; it wins over the feed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FxRate"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

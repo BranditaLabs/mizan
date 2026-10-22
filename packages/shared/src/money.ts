@@ -113,3 +113,61 @@ export function compareMoney(a: Money, b: Money): -1 | 0 | 1 {
 export function isZeroMoney(m: Money): boolean {
   return toMinor(m) === 0n;
 }
+
+/** A decimal string as an exact fraction: "2.5" → 25/10. */
+function fraction(value: string, what: string): { num: bigint; den: bigint } {
+  const m = DECIMAL.exec(value.trim());
+  if (!m) throw new RangeError(`${what} is not a decimal: "${value}"`);
+  const [, int, frac = ""] = m;
+  const num = BigInt(int + frac);
+  return { num: value.trim().startsWith("-") ? -num : num, den: 10n ** BigInt(frac.length) };
+}
+
+/** n / d rounded to the nearest integer, ties to even (banker's rounding: no drift over many orders). */
+function divHalfEven(n: bigint, d: bigint): bigint {
+  if (d < 0n) { n = -n; d = -d; }
+  const q = n / d;
+  const r = n % d;
+  const twice = 2n * (r < 0n ? -r : r);
+  if (twice < d) return q;
+  if (twice > d) return q + (n < 0n ? -1n : 1n);
+  return q % 2n === 0n ? q : q + (n < 0n ? -1n : 1n);
+}
+
+/**
+ * `pct` percent of an amount, rounded half-even to the currency's minor unit.
+ * `percentOf({ amount: "1250.00", currency: "EGP" }, "1.5")` → `{ amount: "18.75", currency: "EGP" }`.
+ */
+export function percentOf(money: Money, pct: string): Money {
+  const p = fraction(pct, "percentage");
+  if (p.num < 0n) throw new RangeError(`percentage must not be negative: "${pct}"`);
+  return fromMinor(divHalfEven(toMinor(money) * p.num, p.den * 100n), money.currency);
+}
+
+/**
+ * Converts with an exchange rate given as units of `to` per one unit of the amount's currency,
+ * rounded half-even to `to`'s minor unit. `convertMoney({ amount: "100.00", currency: "USD" }, "EGP", "48.75")`
+ * → `{ amount: "4875.00", currency: "EGP" }`. Never floats; a zero or negative rate is refused.
+ */
+export function convertMoney(money: Money, to: string, rate: string): Money {
+  const r = fraction(rate, "exchange rate");
+  if (r.num <= 0n) throw new RangeError(`exchange rate must be positive: "${rate}"`);
+  const from = currencyDecimals(money.currency);
+  const target = currencyDecimals(to);
+  return fromMinor(divHalfEven(toMinor(money) * r.num * 10n ** BigInt(target), r.den * 10n ** BigInt(from)), to);
+}
+
+/**
+ * a ÷ b as a decimal string with `digits` decimals (half-even): cross rates from one feed base.
+ * With USD-based rates, EGP→SAR = ratio(usd.SAR, usd.EGP).
+ */
+export function ratio(a: string, b: string, digits = 12): string {
+  const x = fraction(a, "dividend");
+  const y = fraction(b, "divisor");
+  if (y.num === 0n) throw new RangeError("division by zero");
+  const scaled = divHalfEven(x.num * y.den * 10n ** BigInt(digits), x.den * y.num);
+  const neg = scaled < 0n;
+  const s = (neg ? -scaled : scaled).toString().padStart(digits + 1, "0");
+  const out = digits ? `${s.slice(0, -digits)}.${s.slice(-digits)}` : s;
+  return neg ? `-${out}` : out;
+}

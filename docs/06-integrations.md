@@ -17,6 +17,7 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | --- | --- | --- |
 | Shopify (Admin GraphQL 2026-10) | ✅ Built and tested (orders with payment mode/status and received, outstanding, refunded amounts; products; inventory CAS; fulfil; mark paid; tags; webhooks) | `packages/engine/src/connectors/shopify` |
 | Bosta (v2) | ✅ Built and tested (duplicate-safe create collecting only what is owed, search, track, cancel, cities, learning status map) | `packages/engine/src/connectors/bosta` |
+| FX daily rates | ✅ E9-1: `OpenErApiSource` (open.er-api.com, free, no key, latest only, USD base) behind `FxSource`; worker job once a day; **confirm the terms (attribution shown in Settings → Costs) and pick a licensed or central-bank source before production** | `apps/api/src/modules/profit/fx` |
 | Payment rules for every courier | ✅ Built and tested (`cashToCollect`, exact money, hold unpaid orders) | `packages/engine/src/core/payments.ts` |
 | Shopify OAuth install | ✅ E3-1: install / App Store entry / callback / claim, token exchange through `send()` (`exchangeShopifyCode`), fake OAuth in `FakeShopify` | `apps/api/src/modules/connections/shopify`, `packages/engine/src/connectors/shopify/oauth.ts` |
 | Shopify webhook registration | ✅ E3-2: `connection.connected` → `shopify.syncWebhooks` engine job (converges subscriptions, safe to repeat) | `ShopifyConnector.syncWebhooks`, `apps/api/src/integrations/shopify-connected.consumer.ts` |

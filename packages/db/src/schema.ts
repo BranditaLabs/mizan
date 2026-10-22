@@ -152,6 +152,10 @@ export interface CostRules {
   currency: string | null;
   valid_from: Generated<Timestamp>;
   valid_to: Timestamp | null;
+  fixed_minor: Int8 | null;
+  return_minor: Int8 | null;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
 }
 
 export interface Customers {
@@ -236,6 +240,15 @@ export interface ExternalVariants {
   variant_id: string | null;
   field_owner: Generated<Json>;
   last_seen: Json | null;
+}
+
+export interface FxRateOverrides {
+  tenant_id: string;
+  day: Timestamp;
+  quote: string;
+  rate: Numeric;
+  set_by: string | null;
+  set_at: Generated<Timestamp>;
 }
 
 export interface FxRates {
@@ -874,6 +887,7 @@ export interface DB {
   event_deliveries: EventDeliveries;
   expenses: Expenses;
   external_variants: ExternalVariants;
+  fx_rate_overrides: FxRateOverrides;
   fx_rates: FxRates;
   idempotency_keys: IdempotencyKeys;
   invitations: Invitations;

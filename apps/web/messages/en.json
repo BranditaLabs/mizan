@@ -635,5 +635,92 @@
       "other": "Order updated",
       "changed": "Changed: {fields}"
     }
+  },
+  "costs": {
+    "title": "Costs",
+    "subtitle": "What each order costs beyond its products, so profit is real.",
+    "loading": "Loading costs",
+    "loadFailed": "Couldn't load costs. Try again.",
+    "versioning": "Changes apply to orders from today (<d></d>). Older orders keep the cost of their day.",
+    "readOnly": "You can see costs; only the owner, an admin or finance can change them.",
+    "notAllowed": {
+      "title": "Costs are for owners and finance",
+      "body": "Ask the store owner if you need to see them."
+    },
+    "save": "Save",
+    "saved": "Saved. It applies to orders from today.",
+    "notSet": "Not set yet",
+    "since": "Since",
+    "end": "Stop",
+    "invalidAmount": "Enter an amount like 7.50",
+    "invalidPercent": "Enter a percentage like 1.5 (100 at most)",
+    "perOrder": {
+      "title": "Per order",
+      "body": "Costs every order carries, whatever is in it.",
+      "packaging": "Packaging",
+      "packagingHint": "Box, bag, tape, flyer.",
+      "agent": "Confirmation agent",
+      "agentHint": "What one confirmed order costs in agent time or commission."
+    },
+    "cod": {
+      "title": "Cash on delivery",
+      "body": "What the courier takes for collecting cash, as a share of the amount collected.",
+      "pct": "COD fee %"
+    },
+    "payment": {
+      "title": "Online payment fees",
+      "body": "What the gateway or wallet keeps per payment: a percentage plus a fixed amount.",
+      "pct": "Fee %",
+      "fixed": "Fixed",
+      "methods": {
+        "card": "Card",
+        "wallet": "Mobile wallet",
+        "apple_pay": "Apple Pay",
+        "bnpl": "Pay later (BNPL)",
+        "instapay": "InstaPay",
+        "bank_transfer": "Bank transfer"
+      }
+    },
+    "courier": {
+      "title": "Courier rate card",
+      "body": "What each courier charges per delivery and per return. A zone rate wins over the courier's general rate.",
+      "empty": "No courier rates yet.",
+      "courier": "Courier",
+      "zone": "Zone",
+      "zoneHint": "Leave empty for every zone.",
+      "delivery": "Delivery",
+      "return": "Return",
+      "add": "Add rate",
+      "allZones": "All zones",
+      "names": {
+        "bosta": "Bosta",
+        "jt": "J&T Express",
+        "aramex": "Aramex",
+        "mylerz": "Mylerz",
+        "other": "Other courier"
+      }
+    },
+    "monthly": {
+      "title": "Monthly fixed costs",
+      "body": "Rent, salaries, subscriptions: spread over the month's orders in the profit view.",
+      "empty": "No monthly costs yet.",
+      "label": "What it is",
+      "labelHint": "For example: warehouse rent.",
+      "amount": "Per month",
+      "add": "Add cost"
+    },
+    "fx": {
+      "title": "Exchange rates",
+      "body": "Orders in another currency are converted with the rate of the day they were placed. Rates update daily; set your own for a day if your bank's differs.",
+      "missing": "No rate for",
+      "manual": "Your rate",
+      "stale": "Older rate",
+      "currency": "Currency",
+      "day": "Day",
+      "rate": "Rate: 1 {base} =",
+      "set": "Set rate",
+      "invalid": "Enter a rate like 0.0205",
+      "line": "<c>1 {base}</c> = <c>{rate} {quote}</c>"
+    }
   }
 }

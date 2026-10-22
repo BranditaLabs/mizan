@@ -8,7 +8,7 @@ type Key = "home" | "orders" | "confirmation" | "shipping" | "warehouse" | "prof
 const NAV: ReadonlyArray<{ key: Key; icon: IconProps["name"]; href?: string }> = [
   { key: "home", icon: "home", href: "/" }, { key: "orders", icon: "orders", href: "/orders" }, { key: "confirmation", icon: "verification" },
   { key: "shipping", icon: "shipping" }, { key: "warehouse", icon: "warehouse" }, { key: "profit", icon: "profit" },
-  { key: "settings", icon: "settings" },
+  { key: "settings", icon: "settings", href: "/settings/costs" },
 ];
 
 /** The rail's main menu. Built modules are links (active from the path); the rest say "soon". */

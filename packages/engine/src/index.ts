@@ -10,6 +10,7 @@ export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bost
 export type { ShopifyLearned } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";
 export { send, type RequestSpec, type HttpResponse } from "./resilience/http.js";
+export { CircuitBreaker } from "./resilience/circuit.js";
 export { exchangeShopifyCode, missingScopes, normalizeShop, shopifyAuthorizeUrl, signShopifyQuery, verifyShopifyQuery, type ShopifyGrant } from "./connectors/shopify/oauth.js";
 export { verifyShopifyHmac, readShopifyHeaders, signShopify, type ShopifyWebhookMeta } from "./connectors/shopify/webhooks.js";
 export { parseComplianceWebhook, COMPLIANCE_TOPICS, type ComplianceRequest, type ComplianceTopic } from "./connectors/shopify/compliance.js";

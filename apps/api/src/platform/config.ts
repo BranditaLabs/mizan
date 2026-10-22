@@ -43,6 +43,9 @@ export const ConfigSchema = z.object({
   RETENTION_JOBS_DAYS: z.coerce.number().int().min(1).max(365).default(7),
   RETENTION_WEBHOOK_KEYS_DAYS: z.coerce.number().int().min(3).max(365).default(14),
   RETENTION_EVENTS_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /** Daily exchange rates (E9-1): the feed, and how often the worker checks whether today's rates are in. Unset = open-er-api, none in tests. */
+  FX_SOURCE: z.enum(["open-er-api", "none"], { error: "must be open-er-api or none" }).optional(),
+  FX_REFRESH_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
   /** Largest provider webhook body accepted (bytes). */
   WEBHOOK_MAX_BODY_BYTES: z.coerce.number().int().min(1024).max(50 * 1024 * 1024).default(5 * 1024 * 1024),
   /** Largest JSON body accepted (bytes). Webhooks and imports have their own limits. */
@@ -134,3 +137,6 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
   });
   throw new ConfigError(problems);
 }
+
+/** Which FX feed the worker uses (none in tests: they pass a fake source). */
+export const fxSourceOf = (c: AppConfig): "open-er-api" | "none" => c.FX_SOURCE ?? (c.NODE_ENV === "test" ? "none" : "open-er-api");

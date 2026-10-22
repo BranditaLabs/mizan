@@ -70,7 +70,7 @@ describe("openapi.json", () => {
   it("every operation has a typed success response, a problem default, and its request body", () => {
     const bodies = new Set([
       "post /v1/tenants", "post /v1/members/invite", "patch /v1/members/{userId}", "post /v1/admin/integrations/cities/resolve", "post /v1/connections/shopify/claim",
-      "post /v1/connections/bosta", "put /v1/products/variants/costs", "patch /v1/onboarding",
+      "post /v1/connections/bosta", "put /v1/products/variants/costs", "patch /v1/onboarding", "post /v1/cost-rules", "put /v1/fx-rates/{day}/{quote}",
     ]);
     for (const [path, item] of Object.entries(doc.paths)) {
       for (const [method, op] of Object.entries(item)) {
@@ -131,8 +131,15 @@ describe("real responses match the documented schemas", () => {
     conforms("post", "/v1/connections/bosta", await http().post("/v1/connections/bosta").set(as("owner", store)).send({ apiKey: FAKE_KEY })); // 409: no store yet
     conforms("get", "/v1/products/variants/costs", await http().get("/v1/products/variants/costs?missingCost=true").set(as("owner", store)));
     conforms("put", "/v1/products/variants/costs", await http().put("/v1/products/variants/costs").set(as("owner", store)).send({ items: [{ variantId: store, cost: "10" }] })); // 404
+    const rule = await http().post("/v1/cost-rules").set(as("owner", store)).send({ kind: "courier_rate", amount: "60", scope: { courier: "bosta" } });
+    conforms("post", "/v1/cost-rules", rule);
+    conforms("post", "/v1/cost-rules", await http().post("/v1/cost-rules").set(as("owner", store)).send({ kind: "cod_fee_pct", pct: "500" })); // 422
+    conforms("get", "/v1/cost-rules", await http().get("/v1/cost-rules?history=true").set(as("owner", store)));
+    conforms("delete", "/v1/cost-rules/{id}", await http().delete(`/v1/cost-rules/${rule.body.id}`).set(as("owner", store)));
+    conforms("put", "/v1/fx-rates/{day}/{quote}", await http().put("/v1/fx-rates/2026-10-20/USD").set(as("owner", store)).send({ rate: "0.0205" }));
+    conforms("get", "/v1/fx-rates", await http().get("/v1/fx-rates?day=2026-10-20").set(as("owner", store)));
     conforms("get", "/v1/connections/shopify/install", await http().get("/v1/connections/shopify/install?shop=nile.myshopify.com").set(as("owner", store)));
 
-    expect(checked.size).toBeGreaterThanOrEqual(23);
+    expect(checked.size).toBeGreaterThanOrEqual(28);
   });
 });

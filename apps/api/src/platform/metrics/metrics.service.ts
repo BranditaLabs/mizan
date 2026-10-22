@@ -43,6 +43,10 @@ export class MetricsService {
     buckets: [300, 900, 3600, 4 * 3600, 86_400, 3 * 86_400, 7 * 86_400, 30 * 86_400], registers: [this.registry],
   });
 
+  readonly fxRefresh = new Counter({
+    name: "mizan_fx_refresh_total", help: "Daily FX feed refreshes by result (stored, failed)", labelNames: ["result"] as const, registers: [this.registry],
+  });
+
   readonly idempotentReplays = new Counter({
     name: "mizan_idempotent_replays_total", help: "Responses replayed for a repeated Idempotency-Key", registers: [this.registry],
   });

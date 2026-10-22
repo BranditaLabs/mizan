@@ -93,7 +93,26 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active",
     ]) expect(have, ix).toContain(ix);
+  });
+
+  it("keeps cost rules well formed (E9-1)", async () => {
+    const insert = (cols: string, vals: string) => asTenant(T1, () => db.query(`INSERT INTO cost_rules (tenant_id, kind, ${cols}) VALUES ('${T1}', ${vals})`));
+    await insert("amount_minor, currency", "'packaging_per_order', 750, 'EGP'");
+    await insert("pct, fixed_minor, currency", "'payment_fee_pct', 2.5, 200, 'EGP'");
+    await insert("amount_minor, return_minor, currency, scope", `'courier_rate', 6000, 3000, 'EGP', '{"courier":"bosta","zone":"cairo"}'`);
+    await expect(insert("pct", "'packaging_per_order', 2")).rejects.toThrow(/cost_rules_shape/);
+    await expect(insert("pct", "'cod_fee_pct', 101")).rejects.toThrow(/cost_rules_shape/);
+    await expect(insert("amount_minor", "'agent_per_order', 500")).rejects.toThrow(/cost_rules_shape/); // no currency
+    await expect(insert("amount_minor, currency, valid_from, valid_to", "'agent_per_order', 500, 'EGP', '2026-10-10', '2026-10-01'")).rejects.toThrow(/cost_rules_dates/);
+  });
+
+  it("keeps each store's own exchange rates to itself (E9-1)", async () => {
+    await asTenant(T1, () => db.query(`INSERT INTO fx_rate_overrides (tenant_id, day, quote, rate) VALUES ($1, '2026-10-22', 'USD', 0.0205)`, [T1]));
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM fx_rate_overrides`))).rows).toEqual([]);
+    await expect(asTenant(T2, () => db.query(`INSERT INTO fx_rate_overrides (tenant_id, day, quote, rate) VALUES ($1, '2026-10-22', 'USD', 1)`, [T1])))
+      .rejects.toThrow(/row-level security/);
+    await expect(db.query(`INSERT INTO fx_rates (day, base, quote, rate, source) VALUES ('2026-10-22', 'USD', 'EGP', 0, 'test')`)).rejects.toThrow(/fx_rates_positive/);
   });
 });

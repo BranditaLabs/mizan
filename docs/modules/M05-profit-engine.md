@@ -93,6 +93,8 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 | Unattributed spend | Shared by revenue |
 
 > Money is stored in minor units with a currency code. FX rates are stored per day, so old orders never change when today's rate does.
+>
+> ✅ E9-1: costs live in Settings → Costs. Every change is a new version from its day; older orders keep the cost of theirs. Rates come from a daily feed (open.er-api.com first, pluggable), a store can set its own rate for a day, a day without a rate uses the latest within 7 days (marked stale), and beyond that the profit stays provisional.
 
 ## Events emitted
 
@@ -146,7 +148,8 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 | GET | `/v1/profit/summary` | Totals for a period and grouping |
 | GET | `/v1/orders/{id}/pnl` | One order's P&L lines |
 | GET | `/v1/profit/by/{dimension}` | Product, store, courier, country |
-| PUT | `/v1/settings/costs` | Packaging, fees, allocation |
+| GET / POST / DELETE | `/v1/cost-rules` | ✅ E9-1: packaging, agent, COD %, payment fees, courier rate card, monthly costs; versioned |
+| GET / PUT | `/v1/fx-rates` | ✅ E9-1: daily rates, store's own rate for a day |
 | POST | `/v1/profit/recalculate` | Recalculate a range |
 | GET | `/v1/profit/export` | CSV for accounting |
 
