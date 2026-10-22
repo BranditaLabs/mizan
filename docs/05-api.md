@@ -84,7 +84,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/orders` | ✅ E5-1. List, newest first. Query: `status`, `paymentMode`, `connectionId`, `from`, `to`, `q`, `limit` (≤ 100, default 50), `cursor`. `q` matches the order number (with or without `#`, prefix), the store's order id, or a phone in any form (keyed hash; names are not searchable). Returns `{ data, nextCursor, counts }`: rows show the customer as `{ label: "Mona A.", phoneLast4 }`, total, cash to collect, payment mode and status, risk; `counts` per status use the same filters except `status`. Agents see orders assigned to them, warehouse confirmed and shipped; media buyers are refused. Bad cursor → 422 |
-| GET | `/orders/{id}` | Order with lines, customer, history, shipments, P&L |
+| GET | `/orders/{id}` | ✅ E5-2. Order with lines, money (subtotal, shipping, discount, total, paid, refunded, still owed, cash to collect), payments ledger, shipments, timeline (newest first; `data` keeps source / changed fields / reason / payment from → to only), risk and reasons, delivery area. Customer masked as in the list (`label`, `phoneLast4`); `hasLocation`, `redacted`. Same role scope as the list: outside it → 404. P&L joins with E9 |
+| POST | `/orders/{id}/reveal` | ✅ E5-2. `{ name, phone, address, location }` decrypted for this caller; each call writes `customer.pii_viewed` to the audit log (field names only). Owner, admin, ops manager, agent (assigned orders), warehouse (confirmed, shipped); not finance. 410 `pii_redacted` after a deletion request; 429 over 30 per minute per person; `Cache-Control: no-store`; `Idempotency-Key` is ignored (never stored or replayed) |
 | POST | `/orders` | Manual order |
 | PATCH | `/orders/{id}` | Edit address, items, notes (before shipping) |
 | POST | `/orders/{id}/status` | `{ status, reason }` |

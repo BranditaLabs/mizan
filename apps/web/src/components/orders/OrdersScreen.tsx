@@ -1,10 +1,9 @@
 "use client";
 
-import type { IconProps } from "@mizan/design-system/icons/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { Badge, RiskMeter, Tag, type BadgeTone } from "@/components/ui/Badge";
+import { Badge, RiskMeter, Tag } from "@/components/ui/Badge";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/Field";
@@ -14,6 +13,7 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { MODE_ICON, STATUS_TONE, maskedLast4 } from "./order-ui";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
@@ -21,15 +21,7 @@ export type StatusTab = Status | "all";
 
 /** Tab order: the work first (components.md §1 "queues, not reports"), then the record. */
 const TABS: readonly StatusTab[] = ["all", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
-const TONE: Record<Status, BadgeTone> = {
-  new: "neutral", pending_confirmation: "warning", confirmed: "success", shipped: "info", delivered: "success", cancelled: "neutral", returned: "danger",
-};
-const MODE_ICON: Record<Order["paymentMode"], IconProps["name"]> = {
-  cod: "cod", prepaid: "card", partial: "deposit", bnpl: "bnpl", bank_transfer: "bank-transfer", store_credit: "wallet", mixed: "payments", unknown: "help",
-};
-/** Only the last four digits ever reach the browser; the dots say the rest is hidden. */
-const masked = (last4: string) => `••• ${last4}`;
-const isTab =(v: string | null): v is StatusTab => v !== null && (TABS as readonly string[]).includes(v);
+const isTab = (v: string | null): v is StatusTab => v !== null && (TABS as readonly string[]).includes(v);
 
 /**
  * M1 order list (E5-1): status tabs with counts, search (order number or phone), newest first,
@@ -74,10 +66,10 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const canSetUp = store?.role === "owner" || store?.role === "admin";
 
   const columns: Column<Order>[] = [
-    { id: "order", header: t("columns.order"), cell: (o) => <Cell main={<IdCell>{o.number}</IdCell>} sub={o.store.provider ?? t("manual")} /> },
+    { id: "order", header: t("columns.order"), cell: (o) => <Cell main={<Link href={`/orders/${o.id}`} className="hover:underline"><IdCell>{o.number}</IdCell></Link>} sub={o.store.provider ?? t("manual")} /> },
     {
       id: "customer", header: t("columns.customer"),
-      cell: (o) => <Cell main={o.customer.label ?? <span className="text-text-3">{t("noCustomer")}</span>} sub={o.customer.phoneLast4 ? <IdCell>{masked(o.customer.phoneLast4)}</IdCell> : null} />,
+      cell: (o) => <Cell main={o.customer.label ?? <span className="text-text-3">{t("noCustomer")}</span>} sub={o.customer.phoneLast4 ? <IdCell>{maskedLast4(o.customer.phoneLast4)}</IdCell> : null} />,
     },
     { id: "payment", header: t("columns.payment"), cell: (o) => <Cell main={<Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>} sub={tp(o.paymentStatus)} /> },
     {
@@ -85,7 +77,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
       cell: (o) => <Cell main={<MoneyText money={o.total} />} sub={Number(o.cod.amount) > 0 ? t.rich("cod", { amount: "", m: () => <MoneyText money={o.cod} /> }) : null} />,
     },
     { id: "risk", header: t("columns.risk"), cell: (o) => (o.risk === null ? <span className="text-text-3">{t("noRisk")}</span> : <RiskMeter score={o.risk} label={t("riskLabel", { score: o.risk })} />) },
-    { id: "status", header: t("columns.status"), cell: (o) => <Badge tone={TONE[o.status]}>{t(`status.${o.status}`)}</Badge> },
+    { id: "status", header: t("columns.status"), cell: (o) => <Badge tone={STATUS_TONE[o.status]}>{t(`status.${o.status}`)}</Badge> },
     { id: "age", header: t("columns.age"), cell: (o) => <span className="text-text-2"><DateText relative now={now} value={o.placedAt} /></span> },
   ];
 

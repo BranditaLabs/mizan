@@ -59,6 +59,10 @@ Actions: Import CSV, New order
 
 _Sample data. Full visual in `design/prototype.html`._
 
+## Order detail
+
+✅ Built in E5-2 (`apps/web/src/components/orders/OrderDetail.tsx`, `GET /v1/orders/{id}`, `POST /v1/orders/{id}/reveal`): header with status and payment, items, money (paid, still owed, cash the courier collects), payments ledger, shipments (from E7), risk and reasons, activity timeline (newest first). The customer card is masked (`Mona A.`, `••• 4821`, area); **Show details** asks the API, which decrypts and writes `customer.pii_viewed` to the audit log, then shows name, phone (`tel:` link), address and a Google Maps link when the order has a pin (filled from WhatsApp location in E6-4). Actions (confirm, assign, cancel, merge) arrive with E5-3, E5-4 and E6.
+
 ## Payment methods and channels
 
 Orders arrive with any payment method and from any channel. M1 normalizes both:

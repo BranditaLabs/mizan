@@ -4,10 +4,12 @@ import type { DB } from "@mizan/db";
 import { fromMinor, normalizePhone } from "@mizan/shared";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
+import { AuditService, auditActor } from "../../platform/audit/audit.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
+import { TokenBuckets } from "../../platform/http/rate-limit.js";
 import { PiiCipher } from "../../platform/pii/pii-cipher.js";
 import { phoneCountryOf } from "../../platform/pii/phone-country.js";
-import { ORDER_STATUSES, type ListOrdersQuery, type OrderSummary } from "./orders.dto.js";
+import { ORDER_STATUSES, type ListOrdersQuery, type OrderDetail, type OrderSummary, type RevealedCustomer } from "./orders.dto.js";
 
 type Eb = ExpressionBuilder<DB & { o: DB["orders"] }, "o">;
 
@@ -20,6 +22,19 @@ function decode(cursor: string) {
   return { at: d, id };
 }
 const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+const iso = (d: Date | null) => d?.toISOString() ?? null;
+const notFound = () => new ProblemError(404, "not_found", "no such order in this store");
+
+/** Timeline data keeps business facts only, whatever a writer put in the row. */
+function eventData(raw: unknown): OrderDetail["events"][number]["data"] {
+  const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const text = (k: string) => (typeof d[k] === "string" ? { [k]: d[k] as string } : {});
+  const changed = Array.isArray(d.changed) ? { changed: d.changed.filter((x): x is string => typeof x === "string") } : {};
+  return { ...text("source"), ...text("reason"), ...text("from"), ...text("to"), ...changed };
+}
+/** Risk reasons as codes (E6-1 writes them; strings or { code }). */
+const reasonCodes = (raw: unknown): string[] =>
+  Array.isArray(raw) ? raw.flatMap((r) => (typeof r === "string" ? [r] : r && typeof r === "object" && typeof (r as { code?: unknown }).code === "string" ? [(r as { code: string }).code] : [])) : [];
 
 /**
  * M1 order list (E5-1). Role scope: agents see orders assigned to them, warehouse sees confirmed
@@ -29,7 +44,14 @@ const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
  */
 @Injectable()
 export class OrdersService {
-  constructor(@Inject(Database) private readonly db: Database, @Inject(PiiCipher) private readonly cipher: PiiCipher) {}
+  /** Reveals per person per minute: enough for a confirmation shift, not for scraping a store. */
+  private readonly reveals = new TokenBuckets(30);
+
+  constructor(
+    @Inject(Database) private readonly db: Database,
+    @Inject(PiiCipher) private readonly cipher: PiiCipher,
+    @Inject(AuditService) private readonly audit: AuditService,
+  ) {}
 
   async list(auth: AuthContext, q: ListOrdersQuery) {
     const tenantId = auth.tenant!.id;
@@ -66,18 +88,85 @@ export class OrdersService {
     });
   }
 
+  /** One order (E5-2): masked like the list; out of the caller's scope reads as not found. */
+  async detail(auth: AuthContext, id: string): Promise<OrderDetail> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const o = await trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id").selectAll("o").select("c.provider")
+        .where("o.id", "=", id).where((eb) => roleScope(eb, auth)).executeTakeFirst();
+      if (!o) throw notFound();
+      const [lines, payments, shipments, events] = await Promise.all([
+        trx.selectFrom("order_lines").select(["id", "sku", "title", "quantity", "unit_price_minor", "variant_id"]).where("order_id", "=", id).orderBy("id").execute(),
+        trx.selectFrom("payments").select(["id", "kind", "method", "status", "amount_minor", "currency", "occurred_at"]).where("order_id", "=", id).orderBy("occurred_at", "desc").execute(),
+        trx.selectFrom("shipments").select(["id", "provider", "tracking_number", "status", "status_at", "cod_minor", "currency"]).where("order_id", "=", id).orderBy("created_at", "desc").execute(),
+        trx.selectFrom("order_events").select(["id", "type", "from_status", "to_status", "actor_type", "data", "created_at"]).where("order_id", "=", id)
+          .orderBy("created_at", "desc").orderBy("id", "desc").limit(200).execute(),
+      ]);
+      const pii = o.customer_label ? await this.cipher.forTenant(trx, tenantId) : null;
+      const money = (minor: string | number | bigint, currency = o.currency) => fromMinor(BigInt(minor), currency);
+      return {
+        id: o.id, number: o.number, externalId: o.external_id, status: o.status as OrderDetail["status"], channel: o.channel,
+        store: { connectionId: o.connection_id, provider: o.provider },
+        customer: { label: pii?.decrypt(o.customer_label, "orders.customer_label") ?? null, phoneLast4: o.phone_last4 },
+        currency: o.currency,
+        total: money(o.total_minor), cod: money(o.cod_minor), subtotal: money(o.subtotal_minor), shipping: money(o.shipping_minor), discount: money(o.discount_minor),
+        paid: money(o.paid_minor), refunded: money(o.refunded_minor), balance: money(String(o.balance_minor ?? 0)),
+        paymentMode: o.payment_mode as OrderDetail["paymentMode"], paymentStatus: o.payment_status as OrderDetail["paymentStatus"],
+        risk: o.risk_score, riskReasons: reasonCodes(o.risk_reasons), tags: o.tags, assignedTo: o.assigned_to,
+        area: { city: o.ship_city, province: o.ship_province, country: o.ship_country },
+        hasLocation: o.ship_lat !== null && o.ship_lng !== null,
+        redacted: o.pii_redacted_at !== null,
+        placedAt: o.placed_at.toISOString(),
+        timestamps: { placedAt: o.placed_at.toISOString(), confirmedAt: iso(o.confirmed_at), shippedAt: iso(o.shipped_at), deliveredAt: iso(o.delivered_at), cancelledAt: iso(o.cancelled_at) },
+        lines: lines.map((l) => ({
+          id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPrice: money(l.unit_price_minor), total: money(BigInt(l.unit_price_minor) * BigInt(l.quantity)), variantId: l.variant_id,
+        })),
+        payments: payments.map((p) => ({ id: p.id, kind: p.kind, method: p.method, status: p.status, amount: money(p.amount_minor, p.currency), occurredAt: p.occurred_at.toISOString() })),
+        shipments: shipments.map((x) => ({ id: x.id, provider: x.provider, trackingNumber: x.tracking_number, status: x.status, statusAt: iso(x.status_at), cod: money(x.cod_minor, x.currency) })),
+        events: events.map((e) => ({
+          id: e.id, type: e.type, fromStatus: e.from_status, toStatus: e.to_status, actorType: e.actor_type as OrderDetail["events"][number]["actorType"],
+          at: e.created_at.toISOString(), data: eventData(e.data),
+        })),
+      };
+    });
+  }
+
+  /**
+   * The delivery contact in full (E5-2), decrypted for this caller only and recorded as
+   * `customer.pii_viewed` (field names, never values) in the same transaction.
+   */
+  async reveal(auth: AuthContext, id: string): Promise<RevealedCustomer> {
+    const tenantId = auth.tenant!.id;
+    const limit = this.reveals.take(`${tenantId}:${auth.user.id}`);
+    if (!limit.allowed) throw new ProblemError(429, "rate_limited", `too many customer views; retry in ${Math.max(1, limit.resetS)} s`);
+    return this.db.tenant(tenantId, async (trx) => {
+      const o = await trx.selectFrom("orders as o")
+        .select(["o.id", "o.ship_name", "o.ship_phone", "o.ship_line1", "o.ship_line2", "o.ship_city", "o.ship_province", "o.ship_country", "o.ship_lat", "o.ship_lng", "o.pii_redacted_at"])
+        .where("o.id", "=", id).where((eb) => roleScope(eb, auth)).executeTakeFirst();
+      if (!o) throw notFound();
+      if (o.pii_redacted_at) throw new ProblemError(410, "pii_redacted", "this customer's details were deleted on request");
+      const pii = await this.cipher.forTenant(trx, tenantId);
+      const shown: RevealedCustomer = {
+        name: pii.decrypt(o.ship_name, "orders.ship_name"),
+        phone: pii.decrypt(o.ship_phone, "orders.ship_phone"),
+        address: { line1: pii.decrypt(o.ship_line1, "orders.ship_line1"), line2: pii.decrypt(o.ship_line2, "orders.ship_line2"), city: o.ship_city, province: o.ship_province, country: o.ship_country },
+        location: o.ship_lat !== null && o.ship_lng !== null ? { lat: o.ship_lat, lng: o.ship_lng } : null,
+      };
+      const fields = [shown.name && "name", shown.phone && "phone", (shown.address.line1 || shown.address.line2) && "address", shown.location && "location"].filter((f): f is string => Boolean(f));
+      await this.audit.record(trx, { action: "customer.pii_viewed", tenantId, ...auditActor(auth), entity: { type: "order", id }, after: { fields } });
+      return shown;
+    });
+  }
+
   /** Everything but the status filter (the tabs count across statuses). */
   private async scope(trx: Transaction<DB>, auth: AuthContext, q: ListOrdersQuery) {
-    const role = auth.tenant!.role;
     let phoneHash: string | null = null;
     if (q.q) {
       const phone = normalizePhone(q.q, await phoneCountryOf(trx, auth.tenant!.id));
       if (phone) phoneHash = (await this.cipher.forTenant(trx, auth.tenant!.id)).phoneHash(phone.e164);
     }
     return (eb: Eb) => {
-      const and = [];
-      if (role === "agent") and.push(eb("o.assigned_to", "=", auth.user.id));
-      if (role === "warehouse") and.push(eb("o.status", "in", ["confirmed", "shipped"]));
+      const and = [roleScope(eb, auth)];
       if (q.paymentMode) and.push(eb("o.payment_mode", "=", q.paymentMode));
       if (q.connectionId) and.push(eb("o.connection_id", "=", q.connectionId));
       if (q.from) and.push(eb("o.placed_at", ">=", new Date(q.from)));
@@ -93,4 +182,12 @@ export class OrdersService {
       return eb.and(and);
     };
   }
+}
+
+/** What a role may see: agents their assigned orders, warehouse confirmed and shipped; others all. */
+function roleScope(eb: Eb, auth: AuthContext) {
+  const role = auth.tenant!.role;
+  if (role === "agent") return eb("o.assigned_to", "=", auth.user.id);
+  if (role === "warehouse") return eb("o.status", "in", ["confirmed", "shipped"]);
+  return eb.and([]);
 }

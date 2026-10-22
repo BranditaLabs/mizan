@@ -399,7 +399,8 @@
   },
   "problems": {
     "network": "No connection to the server. Check the internet and try again.",
-    "generic": "Something went wrong and we couldn't finish. Try again."
+    "generic": "Something went wrong and we couldn't finish. Try again.",
+    "retry": "Try again"
   },
   "onboarding": {
     "title": "Set up your store",
@@ -539,6 +540,100 @@
       "title": "No order matches",
       "body": "Search by order number like #1042, or by the customer's phone."
     },
-    "manual": "Manual"
+    "manual": "Manual",
+    "detail": {
+      "back": "All orders",
+      "notFound": {
+        "title": "Order not found",
+        "body": "It may be in another store, or not one you can open."
+      },
+      "loading": "Loading the order",
+      "placed": "Placed",
+      "store": "Store",
+      "lines": {
+        "title": "Items",
+        "sku": "SKU",
+        "item": "Item",
+        "qty": "Qty",
+        "price": "Price",
+        "total": "Total",
+        "noSku": "No SKU",
+        "empty": "No items on this order."
+      },
+      "money": {
+        "title": "Money",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "discount": "Discount",
+        "total": "Total",
+        "paid": "Paid",
+        "refunded": "Refunded",
+        "balance": "Still owed",
+        "cod": "Courier collects"
+      },
+      "payments": {
+        "title": "Payments",
+        "empty": "No money has moved on this order yet."
+      },
+      "kind": {
+        "authorization": "Authorized",
+        "capture": "Captured",
+        "sale": "Payment",
+        "cod_collection": "Cash collected",
+        "refund": "Refund",
+        "chargeback": "Chargeback",
+        "chargeback_reversal": "Chargeback reversed",
+        "void": "Voided"
+      },
+      "method": {
+        "cod": "Cash on delivery",
+        "card": "Card",
+        "wallet": "Wallet",
+        "apple_pay": "Apple Pay",
+        "bnpl": "Pay later",
+        "bank_transfer": "Bank transfer",
+        "instapay": "InstaPay",
+        "fawry_ref": "Fawry",
+        "store_credit": "Store credit",
+        "cash_pos": "Cash (POS)",
+        "marketplace": "Marketplace"
+      },
+      "customer": {
+        "title": "Customer",
+        "area": "Area",
+        "show": "Show details",
+        "hide": "Hide",
+        "recorded": "Viewing is recorded in the activity log.",
+        "name": "Name",
+        "phone": "Phone",
+        "address": "Address",
+        "map": "Open in Google Maps",
+        "noPin": "No map pin yet",
+        "redacted": "Deleted at the customer's request.",
+        "gone": "These details were deleted on request.",
+        "tooMany": "Too many views in a short time. Try again in a minute.",
+        "none": "No customer details on this order."
+      },
+      "risk": {
+        "title": "Risk",
+        "notScored": "Not scored yet. Scoring comes with confirmation."
+      },
+      "timeline": {
+        "title": "Activity",
+        "empty": "Nothing yet."
+      },
+      "shipments": {
+        "title": "Shipments"
+      }
+    },
+    "events": {
+      "created": "Order received from {source}",
+      "updated": "Updated from the store",
+      "statusChanged": "Status: {from} → {to}",
+      "payment_changed": "Payment: {from} → {to}",
+      "awaiting_payment": "Waiting for the online payment",
+      "other": "Order updated",
+      "changed": "Changed: {fields}"
+    }
   }
 }

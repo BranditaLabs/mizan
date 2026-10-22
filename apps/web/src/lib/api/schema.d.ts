@@ -17,6 +17,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/reveal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_reveal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/onboarding": {
         parameters: {
             query?: never;
@@ -680,6 +712,154 @@ export interface components {
             complete: boolean;
             dismissed: boolean;
         };
+        OrderDetail: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            status: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+            channel: string;
+            store: {
+                /** Format: uuid */
+                connectionId: string | null;
+                provider: string | null;
+            };
+            customer: {
+                /** @description "Mona A." */
+                label: string | null;
+                phoneLast4: string | null;
+            };
+            total: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Cash the courier collects; from cashToCollect, never the total */
+            cod: {
+                amount: string;
+                currency: string;
+            };
+            /** @enum {string} */
+            paymentMode: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+            /** @enum {string} */
+            paymentStatus: "unpaid" | "authorized" | "partially_paid" | "paid" | "partially_refunded" | "refunded" | "disputed" | "failed" | "voided";
+            risk: number | null;
+            tags: string[];
+            /** Format: date-time */
+            placedAt: string;
+            externalId: string | null;
+            currency: string;
+            subtotal: {
+                amount: string;
+                currency: string;
+            };
+            shipping: {
+                amount: string;
+                currency: string;
+            };
+            discount: {
+                amount: string;
+                currency: string;
+            };
+            paid: {
+                amount: string;
+                currency: string;
+            };
+            refunded: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Still owed by the customer: total − paid, never below zero */
+            balance: {
+                amount: string;
+                currency: string;
+            };
+            area: {
+                city: string | null;
+                province: string | null;
+                country: string | null;
+            };
+            /** @description A map pin exists (shown on reveal) */
+            hasLocation: boolean;
+            riskReasons: string[];
+            /** Format: uuid */
+            assignedTo: string | null;
+            /** @description Personal data deleted at the customer's or store's request */
+            redacted: boolean;
+            timestamps: {
+                /** Format: date-time */
+                placedAt: string;
+                /** Format: date-time */
+                confirmedAt: string | null;
+                /** Format: date-time */
+                shippedAt: string | null;
+                /** Format: date-time */
+                deliveredAt: string | null;
+                /** Format: date-time */
+                cancelledAt: string | null;
+            };
+            lines: {
+                /** Format: uuid */
+                id: string;
+                sku: string | null;
+                title: string;
+                quantity: number;
+                unitPrice: {
+                    amount: string;
+                    currency: string;
+                };
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                /** Format: uuid */
+                variantId: string | null;
+            }[];
+            payments: {
+                /** Format: uuid */
+                id: string;
+                kind: string;
+                method: string;
+                status: string;
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                /** Format: date-time */
+                occurredAt: string;
+            }[];
+            shipments: {
+                /** Format: uuid */
+                id: string;
+                provider: string;
+                trackingNumber: string | null;
+                status: string;
+                /** Format: date-time */
+                statusAt: string | null;
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+            events: {
+                /** Format: uuid */
+                id: string;
+                /** @description created, updated, payment_changed, awaiting_payment, … */
+                type: string;
+                fromStatus: string | null;
+                toStatus: string | null;
+                /** @enum {string} */
+                actorType: "user" | "system" | "automation" | "customer" | "courier";
+                /** Format: date-time */
+                at: string;
+                data: {
+                    source?: string;
+                    changed?: string[];
+                    reason?: string;
+                    from?: string;
+                    to?: string;
+                };
+            }[];
+        };
         OrderPage: {
             data: {
                 /** Format: uuid */
@@ -770,6 +950,22 @@ export interface components {
             text: string;
             cityId: string;
             jobId?: string;
+        };
+        RevealedCustomer: {
+            name: string | null;
+            /** @description E.164 */
+            phone: string | null;
+            address: {
+                line1: string | null;
+                line2: string | null;
+                city: string | null;
+                province: string | null;
+                country: string | null;
+            };
+            location: {
+                lat: number;
+                lng: number;
+            } | null;
         };
         SetCosts: {
             items: {
@@ -937,6 +1133,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_detail: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One order; an order outside the caller's scope is not found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_reveal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Name, phone, address and map pin; recorded in the audit log */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedCustomer"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gone (pii_redacted: deleted on request, …) */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests (rate_limited; see Retry-After) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

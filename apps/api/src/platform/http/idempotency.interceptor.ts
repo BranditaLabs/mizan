@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { Inject, Injectable, type CallHandler, type ExecutionContext, type NestInterceptor } from "@nestjs/common";
+import { Inject, Injectable, SetMetadata, type CallHandler, type ExecutionContext, type NestInterceptor } from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
 import type { Response } from "express";
 import { setActingUser } from "@mizan/db";
 import { from, mergeMap, Observable, of, throwError, catchError } from "rxjs";
@@ -9,6 +10,13 @@ import { ProblemError } from "./problem.js";
 
 export const IDEMPOTENCY_TTL_MS = 24 * 3600_000;
 const KEY = /^[\x21-\x7e]{1,255}$/;
+const NOT_STORED = "mizan:idempotencyNotStored";
+
+/**
+ * For POST routes whose response must never be stored or replayed (decrypted personal data,
+ * reads that must be audited each time): the Idempotency-Key header is ignored there.
+ */
+export const NoIdempotency = () => SetMetadata(NOT_STORED, true);
 
 /**
  * Idempotency-Key on POST (docs/05): the same key with the same request returns
@@ -19,12 +27,13 @@ const KEY = /^[\x21-\x7e]{1,255}$/;
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
-  constructor(@Inject(Database) private readonly db: Database) {}
+  constructor(@Inject(Database) private readonly db: Database, @Inject(Reflector) private readonly reflector: Reflector) {}
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
     const key = req.headers["idempotency-key"];
     if (req.method !== "POST" || key === undefined || !req.auth) return next.handle();
+    if (this.reflector.getAllAndOverride<boolean>(NOT_STORED, [ctx.getHandler(), ctx.getClass()])) return next.handle();
     if (typeof key !== "string" || !KEY.test(key)) {
       return throwError(() => new ProblemError(400, "invalid_idempotency_key", "Idempotency-Key must be 1–255 visible ASCII characters"));
     }

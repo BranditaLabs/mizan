@@ -55,7 +55,9 @@ const PROBLEM_DESCRIPTIONS: Record<number, string> = {
   403: "Not allowed (not_a_member, insufficient_role, mfa_required)",
   404: "Not found",
   409: "Conflict with the current state",
+  410: "Gone (pii_redacted: deleted on request, …)",
   422: "Understood but refused (a business rule)",
+  429: "Too many requests (rate_limited; see Retry-After)",
   503: "A dependency is down",
 };
 

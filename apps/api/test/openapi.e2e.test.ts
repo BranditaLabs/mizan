@@ -122,6 +122,9 @@ describe("real responses match the documented schemas", () => {
     conforms("get", "/v1/admin/integrations/health", await http().get("/v1/admin/integrations/health").set(as("owner", store)));
     conforms("get", "/v1/orders", await http().get("/v1/orders?status=new&limit=5").set(as("owner", store)));
     conforms("get", "/v1/orders", await http().get("/v1/orders?cursor=bad").set(as("owner", store))); // 422
+    const noOrder = "00000000-0000-4000-8000-000000000000";
+    conforms("get", "/v1/orders/{id}", await http().get(`/v1/orders/${noOrder}`).set(as("owner", store))); // 404
+    conforms("post", "/v1/orders/{id}/reveal", await http().post(`/v1/orders/${noOrder}/reveal`).set(as("owner", store))); // 404
     conforms("get", "/v1/onboarding", await http().get("/v1/onboarding").set(as("owner", store)));
     conforms("patch", "/v1/onboarding", await http().patch("/v1/onboarding").set(as("owner", store)).send({ skip: { courier: true } }));
     conforms("get", "/v1/connections", await http().get("/v1/connections").set(as("owner", store)));
@@ -130,6 +133,6 @@ describe("real responses match the documented schemas", () => {
     conforms("put", "/v1/products/variants/costs", await http().put("/v1/products/variants/costs").set(as("owner", store)).send({ items: [{ variantId: store, cost: "10" }] })); // 404
     conforms("get", "/v1/connections/shopify/install", await http().get("/v1/connections/shopify/install?shop=nile.myshopify.com").set(as("owner", store)));
 
-    expect(checked.size).toBeGreaterThanOrEqual(21);
+    expect(checked.size).toBeGreaterThanOrEqual(23);
   });
 });

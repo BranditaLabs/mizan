@@ -50,3 +50,69 @@ test("agent in English: their own queue, no setup link", async ({ page }) => {
   await expect(main.getByText("No orders yet")).toBeVisible();
   await expect(main.getByRole("link", { name: "Set up your store" })).toHaveCount(0);
 });
+
+test("order detail in Arabic: an unknown order says so and links back to the list", async ({ page }) => {
+  const owner = await ownerWithStore("متجر الدلتا");
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
+  await page.goto("/ar/orders/00000000-0000-4000-8000-000000000000");
+  const main = page.getByRole("main");
+  await expect(main.getByText("الأوردر مش موجود")).toBeVisible();
+  await main.getByRole("link", { name: "كل الأوردرات" }).click();
+  await expect(page).toHaveURL(/\/ar\/orders$/);
+});
+
+/**
+ * The browser stack has no store to import from, so this order is served by the test (shapes
+ * from the OpenAPI contract); the API side of detail and reveal runs in apps/api's order-detail e2e.
+ */
+test("order detail in Arabic: masked customer, money, timeline; showing details asks the API once", async ({ page }) => {
+  const owner = await ownerWithStore("متجر الصعيد");
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
+
+  const id = "11111111-1111-4111-8111-111111111111";
+  const egp = (amount: string) => ({ amount, currency: "EGP" });
+  const at = "2026-10-21T09:01:00.000Z";
+  await page.route(`**/v1/orders/${id}`, (route) => route.fulfill({ json: {
+    id, number: "#7001", externalId: "gid://shopify/Order/7001", status: "pending_confirmation", channel: "store",
+    store: { connectionId: null, provider: "shopify" }, customer: { label: "منى ع.", phoneLast4: "4821" },
+    currency: "EGP", total: egp("1250.00"), cod: egp("1250.00"), subtotal: egp("1200.00"), shipping: egp("50.00"), discount: egp("0.00"),
+    paid: egp("0.00"), refunded: egp("0.00"), balance: egp("1250.00"), paymentMode: "cod", paymentStatus: "unpaid",
+    risk: 64, riskReasons: ["new_customer"], tags: [], assignedTo: null, area: { city: "مدينة نصر", province: "القاهرة", country: "EG" },
+    hasLocation: true, redacted: false, placedAt: at,
+    timestamps: { placedAt: at, confirmedAt: null, shippedAt: null, deliveredAt: null, cancelledAt: null },
+    lines: [{ id: "22222222-2222-4222-8222-222222222222", sku: "AB-1", title: "عباية سادة", quantity: 2, unitPrice: egp("600.00"), total: egp("1200.00"), variantId: null }],
+    payments: [], shipments: [],
+    events: [{ id: "33333333-3333-4333-8333-333333333333", type: "created", fromStatus: null, toStatus: "new", actorType: "system", at, data: { source: "shopify" } }],
+  } }));
+  let reveals = 0;
+  await page.route(`**/v1/orders/${id}/reveal`, (route) => {
+    reveals++;
+    return route.fulfill({ json: {
+      name: "منى عادل", phone: "+201001234821",
+      address: { line1: "12 شارع عباس العقاد", line2: null, city: "مدينة نصر", province: "القاهرة", country: "EG" },
+      location: { lat: 30.0561, lng: 31.3301 },
+    } });
+  });
+
+  await page.goto(`/ar/orders/${id}`);
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { level: 1 })).toHaveText("#7001");
+  await expect(main.getByText("مستني التأكيد").first()).toBeVisible();
+  await expect(main.getByText("المندوب هيحصّل")).toBeVisible();
+  await expect(main.getByText("الأوردر وصل من Shopify")).toBeVisible();
+  await expect(main.getByText("••• 4821")).toBeVisible();
+  await expect(main.getByText("منى عادل")).toHaveCount(0);
+
+  await main.getByRole("button", { name: "اعرض البيانات" }).click();
+  const shown = main.getByTestId("customer-revealed");
+  await expect(shown).toContainText("منى عادل");
+  await expect(shown).toContainText("+201001234821");
+  await expect(shown.getByRole("link", { name: "افتح على خرائط جوجل" })).toHaveAttribute("href", "https://www.google.com/maps?q=30.0561,31.3301");
+  expect(reveals).toBe(1);
+  await main.getByRole("button", { name: "اخفي" }).click();
+  await expect(main.getByText("منى عادل")).toHaveCount(0);
+});
