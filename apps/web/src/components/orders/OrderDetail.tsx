@@ -16,6 +16,7 @@ import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
+import { DuplicateBanner } from "./DuplicateBanner";
 import { ProfitCard } from "./ProfitCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
@@ -118,6 +119,8 @@ export function OrderDetail({ id }: { id: string }) {
           {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{o.store.provider ? sourceName(o.store.provider) : t("manual")}
         </p>
       </header>
+
+      {o.duplicateOf && o.duplicate ? <DuplicateBanner order={o} /> : null}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-4">

@@ -74,6 +74,7 @@ beforeAll(async () => {
   });
   // Calls at any hour in these tests; calling hours have their own test below.
   await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+  await http().put("/v1/settings/orders").set(as("owner")).send({ duplicateWindowHours: 0 }).expect(200); // the same test customer orders again and again (E5-3 has its own test)
   for (const [token, phone, role] of [["agent", "01201117777", "agent"], ["finance", "01201115555", "finance"]] as const) {
     const inv = await http().post("/v1/members/invite").set(as("owner")).send({ phone, role }).expect(201);
     fake.add(token, { uid: `fb-${token}`, phone: inv.body.phone });

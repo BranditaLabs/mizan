@@ -548,6 +548,8 @@ export interface Orders {
   pii_redacted_at: Timestamp | null;
   customer_label: string | null;
   phone_last4: string | null;
+  duplicate_status: string | null;
+  duplicate_reason: Json | null;
 }
 
 export interface PaymentLinks {

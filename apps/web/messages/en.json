@@ -828,6 +828,24 @@
     "emptyCalls": {
       "title": "No one to call right now",
       "body": "Orders whose customer didn't answer on WhatsApp, or asked for a change, show here for your team to call."
+    },
+    "duplicates": "Duplicates",
+    "duplicateBadge": "Possible duplicate",
+    "emptyDuplicates": {
+      "title": "No possible duplicates",
+      "body": "When a customer orders the same product again within 48 hours, the order waits here for you to keep or merge it."
+    },
+    "duplicate": {
+      "title": "Possible duplicate",
+      "body": "The same customer ordered <order></order> {minutes, plural, one {# minute} other {# minutes}} earlier with the same products: {items}. It is held from confirmation until you decide.",
+      "keep": "Keep both",
+      "merge": "Merge into the earlier order",
+      "mergeTitle": "Merge this order?",
+      "mergeBody": "This order will be cancelled in Mizan as a duplicate of <order></order> and tagged mizan-duplicate in your store. The earlier order goes on as it is.",
+      "kept": "Kept. It goes on to confirmation.",
+      "merged": "Merged. This order is cancelled as a duplicate.",
+      "wasKept": "Kept as a separate order, though it looked like a duplicate of <order></order>.",
+      "wasMerged": "Merged into <order></order> as a duplicate."
     }
   },
   "costs": {

@@ -5,6 +5,7 @@ import { cashToCollect, type ShipBlockReason } from "@mizan/engine";
 import { normalizePhone, toAsciiDigits, toMinor, type CanonicalOrder } from "@mizan/shared";
 import { phoneCountryOf } from "../../platform/pii/phone-country.js";
 import { Database } from "../../platform/db/database.js";
+import { DuplicatesService } from "./duplicates.service.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { PiiCipher, type TenantPii } from "../../platform/pii/pii-cipher.js";
 
@@ -74,6 +75,7 @@ export class OrderProjector {
     @Inject(Database) private readonly db: Database,
     @Inject(PiiCipher) private readonly cipher: PiiCipher,
     @Inject(EventsService) private readonly events: EventsService,
+    @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
   ) {}
 
   async project(tenantId: string, connectionId: string, order: CanonicalOrder): Promise<ProjectResult> {
@@ -106,6 +108,9 @@ export class OrderProjector {
         await this.events.emit(trx, { type: "order.created", tenantId, entity: { type: "order", id: row.id }, actor: { type: "engine" }, data: this.eventData(order, row.status, values) });
         if (row.status === "cancelled") {
           await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: row.id }, actor: { type: "engine" }, data: { number: order.number, reason: "cancelled_in_store" } });
+        } else {
+          // Same transaction as the order: marked before anything reacts to order.created (E5-3).
+          await this.duplicates.detect(trx, tenantId, row.id);
         }
         return { orderId: row.id, created: true, changed: [] };
       }

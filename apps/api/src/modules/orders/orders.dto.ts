@@ -9,6 +9,7 @@ export const ListOrdersQuerySchema = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
   /** needs_call: waiting for the team's call (confirmation escalated, retry time reached). */
   confirmation: z.enum(["needs_call"]).optional().describe("needs_call: orders the team should call now"),
+  duplicate: z.enum(["suspected"]).optional().describe("suspected: likely duplicates waiting for the team (keep or merge)"),
   /** Order number ("#1042", "1042"), the store's order id, or the customer's phone in any form. */
   q: z.string().trim().min(1).max(64).optional().describe("Order number, store order id, or the customer's phone"),
   paymentMode: z.enum(PAYMENT_MODES).optional(),
@@ -38,6 +39,7 @@ export const OrderSummarySchema = z.object({
   risk: z.number().int().min(0).max(100).nullable(),
   tags: z.array(z.string()),
   placedAt: z.iso.datetime(),
+  duplicate: z.enum(["suspected", "kept", "merged"]).nullable().describe("A likely duplicate of an earlier order of the same customer (E5-3)"),
 });
 export type OrderSummary = z.infer<typeof OrderSummarySchema>;
 
@@ -48,6 +50,8 @@ export const OrderPageSchema = z.object({
   counts: z.object({ all: z.number().int(), ...Object.fromEntries(ORDER_STATUSES.map((s) => [s, z.number().int()])) } as Record<"all" | (typeof ORDER_STATUSES)[number], z.ZodNumber>),
   /** Orders the team should call now (the "Needs a call" tab). */
   needsCall: z.number().int(),
+  /** Likely duplicates waiting for the team (the "Duplicates" tab). */
+  duplicates: z.number().int(),
 });
 
 export const OrderIdParamSchema = z.uuid();
@@ -68,6 +72,8 @@ export const OrderEventSchema = z.object({
     reason: z.string().optional(),
     from: z.string().optional(),
     to: z.string().optional(),
+    of: z.string().optional().describe("duplicate_found / duplicate_kept: the earlier order's number"),
+    into: z.string().optional().describe("duplicate_merged: the order it was merged into"),
   }),
 });
 
@@ -102,6 +108,11 @@ export const OrderDetailSchema = OrderSummarySchema.extend({
   shipments: z.array(z.object({
     id: z.uuid(), provider: z.string(), trackingNumber: z.string().nullable(), status: z.string(), statusAt: z.iso.datetime().nullable(), cod: MoneyLine,
   })),
+  /** The earlier order this one likely repeats, and what matched (E5-3). */
+  duplicateOf: z.object({
+    id: z.uuid(), number: z.string(), status: z.enum(ORDER_STATUSES),
+    items: z.array(z.string()).describe("Products in both orders"), minutesApart: z.number().int(),
+  }).nullable(),
   /** Newest first. */
   events: z.array(OrderEventSchema),
 });
@@ -117,3 +128,6 @@ export const RevealedCustomerSchema = z.object({
   location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
 });
 export type RevealedCustomer = z.infer<typeof RevealedCustomerSchema>;
+
+export const ResolveDuplicateSchema = z.strictObject({ action: z.enum(["keep", "merge"]).describe("keep: both are real orders; merge: cancel this one as a duplicate of the earlier") });
+export const DuplicateResolvedSchema = z.object({ status: z.enum(["kept", "merged"]) });

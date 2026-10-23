@@ -85,7 +85,7 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | Packed | Warehouse scan completes | Shipped |
 | Shipped | Courier shipment created (M3) | Delivered, Refused |
 | Delivered / Refused | Courier final status | Closed, Returned |
-| Duplicate | Same phone + product within window | Merged or kept |
+| Duplicate | Same phone + product within window (✅ E5-3: held from confirmation; `duplicate_status suspected`) | Merged (cancelled, tagged `mizan-duplicate`) or kept (confirmation starts) |
 
 ### Settings (defaults)
 
@@ -105,7 +105,8 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | --- | --- |
 | `order.created` | A new order was synced and normalized |
 | `order.status_changed` | Any status move, with old and new status |
-| `order.duplicate_found` | A likely duplicate was detected |
+| `order.duplicate_found` | A likely duplicate was detected (✅ E5-3) |
+| `order.duplicate_resolved` | The team kept it or merged it (✅ E5-3) |
 | `order.cancelled` | Cancelled in Mizan or in the store |
 
 ## Actions exposed (for Automation Studio)

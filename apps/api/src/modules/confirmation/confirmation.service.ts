@@ -59,8 +59,9 @@ export class ConfirmationService {
 
   /** Starts a run for a new cash-on-delivery order (consumer of order.created). Returns the run id, or null when it does not apply. */
   async start(trx: Transaction<DB>, tenantId: string, orderId: string, now = new Date()): Promise<string | null> {
-    const order = await trx.selectFrom("orders").select(["id", "number", "status", "payment_mode", "placed_at", "created_at"]).where("id", "=", orderId).executeTakeFirst();
+    const order = await trx.selectFrom("orders").select(["id", "number", "status", "payment_mode", "placed_at", "created_at", "duplicate_status"]).where("id", "=", orderId).executeTakeFirst();
     if (!order || order.status !== "new" || !CONFIRMS.has(order.payment_mode)) return null;
+    if (order.duplicate_status === "suspected") return null; // held until the team keeps or merges it (E5-3)
     if (now.getTime() - order.placed_at.getTime() > FRESH_HOURS * 3_600_000) return null; // imported history: never message old customers
     const { settings } = await this.store(trx, tenantId);
     if (!settings.enabled) return null;

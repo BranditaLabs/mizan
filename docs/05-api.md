@@ -105,7 +105,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | PATCH | `/orders/{id}` | Edit address, items, notes (before shipping) |
 | POST | `/orders/{id}/status` | `{ status, reason }` |
 | POST | `/orders/bulk` | `{ action: assign\|confirm\|cancel\|ship\|tag, ids, params }` → job id |
-| POST | `/orders/{id}/merge` | Merge duplicate into target |
+| POST | `/orders/{id}/duplicate` | ✅ E5-3. `{ action: keep \| merge }` → `{ status: kept \| merged }`: keep starts confirmation; merge cancels this order as a duplicate of the earlier one and tags it `mizan-duplicate` in Shopify. 409 `not_a_duplicate`, `not_mergeable` (shipped); an answered order keeps its answer. Owner, admin, ops manager, agent (own orders); audited. List: `?duplicate=suspected` and `duplicates` count; detail: `duplicate`, `duplicateOf { id, number, status, items, minutesApart }` |
+| GET / PUT | `/settings/orders` | ✅ E5-3. `{ duplicateWindowHours }` 0–168 (48 by default; 0 turns detection off). Owner, admin, ops manager; audited |
 | GET | `/confirmation/queue` | Agent queue (own or team) |
 | POST | `/orders/{id}/confirmations` | Log an attempt `{ channel, outcome, notes }` |
 | POST | `/orders/{id}/whatsapp` | Send confirmation script now |

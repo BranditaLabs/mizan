@@ -1,17 +1,18 @@
-import { Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
-import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
+import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
-import { ListOrdersQuerySchema, OrderDetailSchema, OrderPageSchema, RevealedCustomerSchema, type ListOrdersQuery } from "./orders.dto.js";
+import { DuplicateResolvedSchema, ListOrdersQuerySchema, OrderDetailSchema, OrderPageSchema, ResolveDuplicateSchema, RevealedCustomerSchema, type ListOrdersQuery } from "./orders.dto.js";
+import { DuplicatesService, OrderSettingsSchema, type OrderSettings } from "./duplicates.service.js";
 import { OrdersService } from "./orders.service.js";
 
 @ApiTags("orders")
 @Controller("orders")
 export class OrdersController {
-  constructor(@Inject(OrdersService) private readonly orders: OrdersService) {}
+  constructor(@Inject(OrdersService) private readonly orders: OrdersService, @Inject(DuplicatesService) private readonly duplicates: DuplicatesService) {}
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
   @Get()
@@ -41,5 +42,38 @@ export class OrdersController {
   @ApiProblems(404, 410, 429)
   reveal(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
     return this.orders.reveal(auth, id);
+  }
+
+  /** A likely duplicate (E5-3): keep both, or merge this one into the earlier order (cancelled here, tagged in the store). */
+  @Post(":id/duplicate")
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @HttpCode(200)
+  @ApiJsonBody("ResolveDuplicate", ResolveDuplicateSchema)
+  @ApiJson(200, "DuplicateResolved", DuplicateResolvedSchema, "The order's answer; one already answered keeps it")
+  @ApiProblems(404, 409)
+  resolveDuplicate(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(ResolveDuplicateSchema)) body: { action: "keep" | "merge" }) {
+    return this.duplicates.resolve(auth, id, body.action).then((r) => ({ status: r.status }));
+  }
+}
+
+/** Settings → Orders (M1): the duplicate window. Owner, admin and ops manager. */
+@ApiTags("orders")
+@Controller("settings/orders")
+export class OrderSettingsController {
+  constructor(@Inject(DuplicatesService) private readonly duplicates: DuplicatesService) {}
+
+  @Get()
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJson(200, "OrderSettings", OrderSettingsSchema, "How orders are handled as they arrive")
+  get(@Auth() auth: AuthContext) {
+    return this.duplicates.getSettings(auth.tenant!.id);
+  }
+
+  @Put()
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("OrderSettings", OrderSettingsSchema)
+  @ApiJson(200, "OrderSettings", OrderSettingsSchema, "Saved; applies to orders that arrive from now on")
+  put(@Auth() auth: AuthContext, @Body(new ZodPipe(OrderSettingsSchema)) body: OrderSettings) {
+    return this.duplicates.putSettings(auth, body);
   }
 }

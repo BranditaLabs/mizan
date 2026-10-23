@@ -49,6 +49,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_resolveDuplicate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrderSettingsController_get"];
+        put: operations["OrderSettingsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/onboarding": {
         parameters: {
             query?: never;
@@ -1223,6 +1255,10 @@ export interface components {
                 failedAt: string;
             }[];
         };
+        DuplicateResolved: {
+            /** @enum {string} */
+            status: "kept" | "merged";
+        };
         FxRate: {
             quote: string;
             /** @description 1 base = rate quote; null when missing */
@@ -1717,6 +1753,11 @@ export interface components {
             tags: string[];
             /** Format: date-time */
             placedAt: string;
+            /**
+             * @description A likely duplicate of an earlier order of the same customer (E5-3)
+             * @enum {string|null}
+             */
+            duplicate: "suspected" | "kept" | "merged" | null;
             externalId: string | null;
             currency: string;
             subtotal: {
@@ -1811,6 +1852,16 @@ export interface components {
                     currency: string;
                 };
             }[];
+            duplicateOf: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** @enum {string} */
+                status: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                /** @description Products in both orders */
+                items: string[];
+                minutesApart: number;
+            } | null;
             events: {
                 /** Format: uuid */
                 id: string;
@@ -1829,6 +1880,10 @@ export interface components {
                     reason?: string;
                     from?: string;
                     to?: string;
+                    /** @description duplicate_found / duplicate_kept: the earlier order's number */
+                    of?: string;
+                    /** @description duplicate_merged: the order it was merged into */
+                    into?: string;
                 };
             }[];
         };
@@ -1867,6 +1922,11 @@ export interface components {
                 tags: string[];
                 /** Format: date-time */
                 placedAt: string;
+                /**
+                 * @description A likely duplicate of an earlier order of the same customer (E5-3)
+                 * @enum {string|null}
+                 */
+                duplicate: "suspected" | "kept" | "merged" | null;
             }[];
             nextCursor: string | null;
             counts: {
@@ -1880,6 +1940,7 @@ export interface components {
                 returned: number;
             };
             needsCall: number;
+            duplicates: number;
         };
         OrderPnl: {
             currency: string;
@@ -1956,6 +2017,10 @@ export interface components {
                 amount: string;
                 currency: string;
             };
+        };
+        OrderSettings: {
+            /** @description An order of the same customer with the same product within this many hours of another is a likely duplicate; 0 turns detection off (at most 7 days) */
+            duplicateWindowHours: number;
         };
         /** @description The customer's data compiled for a data request (JSON) */
         PrivacyExport: unknown;
@@ -2228,6 +2293,13 @@ export interface components {
             cityId: string;
             jobId?: string;
         };
+        ResolveDuplicate: {
+            /**
+             * @description keep: both are real orders; merge: cancel this one as a duplicate of the earlier
+             * @enum {string}
+             */
+            action: "keep" | "merge";
+        };
         RevealedCustomer: {
             name: string | null;
             /** @description E.164 */
@@ -2416,6 +2488,8 @@ export interface operations {
                 status?: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
                 /** @description needs_call: orders the team should call now */
                 confirmation?: "needs_call";
+                /** @description suspected: likely duplicates waiting for the team (keep or merge) */
+                duplicate?: "suspected";
                 /** @description Order number, store order id, or the customer's phone */
                 q?: string;
                 paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
@@ -2548,6 +2622,133 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_resolveDuplicate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveDuplicate"];
+            };
+        };
+        responses: {
+            /** @description The order's answer; one already answered keeps it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DuplicateResolved"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How orders are handled as they arrive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderSettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderSettingsController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderSettings"];
+            };
+        };
+        responses: {
+            /** @description Saved; applies to orders that arrive from now on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderSettings"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

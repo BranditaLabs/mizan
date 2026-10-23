@@ -17,10 +17,10 @@ import { MODE_ICON, STATUS_TONE, maskedLast4 } from "./order-ui";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
-export type StatusTab = Status | "all" | "needs_call";
+export type StatusTab = Status | "all" | "needs_call" | "duplicates";
 
 /** Tab order: the work first (components.md §1 "queues, not reports"), then the record. "needs_call": the team's call list (E6-10). */
-const TABS: readonly StatusTab[] = ["all", "needs_call", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
+const TABS: readonly StatusTab[] = ["all", "needs_call", "duplicates", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
 const isTab = (v: string | null): v is StatusTab => v !== null && (TABS as readonly string[]).includes(v);
 
 /**
@@ -55,7 +55,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const orders = useInfiniteQuery({
     queryKey: ["orders", user?.uid ?? "", store?.tenantId ?? "", status, q],
     queryFn: ({ pageParam }) => ok(api.GET("/v1/orders", { params: { query: {
-      ...(status === "all" ? {} : status === "needs_call" ? { confirmation: "needs_call" as const } : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
+      ...(status === "all" ? {} : status === "needs_call" ? { confirmation: "needs_call" as const } : status === "duplicates" ? { duplicate: "suspected" as const } : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
     } } })),
     initialPageParam: "",
     getNextPageParam: (last) => last.nextCursor ?? undefined,
@@ -77,7 +77,15 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
       cell: (o) => <Cell main={<MoneyText money={o.total} />} sub={Number(o.cod.amount) > 0 ? t.rich("cod", { amount: "", m: () => <MoneyText money={o.cod} /> }) : null} />,
     },
     { id: "risk", header: t("columns.risk"), cell: (o) => (o.risk === null ? <span className="text-text-3">{t("noRisk")}</span> : <RiskMeter score={o.risk} label={t("riskLabel", { score: o.risk })} />) },
-    { id: "status", header: t("columns.status"), cell: (o) => <Badge tone={STATUS_TONE[o.status]}>{t(`status.${o.status}`)}</Badge> },
+    {
+      id: "status", header: t("columns.status"),
+      cell: (o) => (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <Badge tone={STATUS_TONE[o.status]}>{t(`status.${o.status}`)}</Badge>
+          {o.duplicate === "suspected" ? <Badge tone="warning">{t("duplicateBadge")}</Badge> : null}
+        </span>
+      ),
+    },
     { id: "age", header: t("columns.age"), cell: (o) => <span className="text-text-2"><DateText relative now={now} value={o.placedAt} /></span> },
   ];
 
@@ -86,6 +94,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
       <EmptyState icon="orders" title={t("empty.title")} body={t("empty.body")}
         action={canSetUp ? <Link href="/onboarding" className={buttonClass("primary")}>{t("empty.cta")}</Link> : undefined} />
     ) : status === "needs_call" ? <EmptyState icon="confirm" title={t("emptyCalls.title")} body={t("emptyCalls.body")} />
+    : status === "duplicates" ? <EmptyState icon="orders" title={t("emptyDuplicates.title")} body={t("emptyDuplicates.body")} />
     : <EmptyState icon="orders" title={t("emptyTab.title")} body={t("emptyTab.body")} />;
 
   return (
@@ -100,8 +109,8 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
 
       <Tabs label={t("tabsLabel")} value={status} onChange={setStatus}
         items={TABS.map((s) => ({
-          value: s, label: s === "all" ? t("all") : s === "needs_call" ? t("needsCall") : t(`status.${s}`),
-          ...(counts ? { count: s === "needs_call" ? (orders.data?.pages[0]?.needsCall ?? 0) : counts[s] } : {}),
+          value: s, label: s === "all" ? t("all") : s === "needs_call" ? t("needsCall") : s === "duplicates" ? t("duplicates") : t(`status.${s}`),
+          ...(counts ? { count: s === "needs_call" ? (orders.data?.pages[0]?.needsCall ?? 0) : s === "duplicates" ? (orders.data?.pages[0]?.duplicates ?? 0) : counts[s] } : {}),
         }))}>
         {orders.isPending ? (
           <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>

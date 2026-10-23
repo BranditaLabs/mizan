@@ -301,6 +301,11 @@ export class MizanEngine {
     return { kind: "shopify.addOffer", connection: "shopify", payload: p, idempotencyKey: `shopify:offer:${p.offerId}` };
   }
 
+  /** Tag a store order (Mizan's decisions the merchant should see in Shopify, e.g. mizan-duplicate); tags are idempotent. */
+  static shopifyTagJob(orderId: string, tags: string[], key: string): NewJob<{ id: string; tags: string[] }> {
+    return { kind: "shopify.addTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `tag:${orderId}:${tags.join(",")}:${key}` };
+  }
+
   static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
   }

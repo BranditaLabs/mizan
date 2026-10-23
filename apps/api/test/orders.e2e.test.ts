@@ -54,7 +54,7 @@ beforeAll(async () => {
   db = app.get(Database);
   projector = app.get(OrderProjector);
   await db.kysely.insertInto("tenants").values([
-    { id: T, name: "Nile", slug: "nile", settings: JSON.stringify({ phoneCountry: "EG" }) },
+    { id: T, name: "Nile", slug: "nile", settings: JSON.stringify({ phoneCountry: "EG", orders: { duplicateWindowHours: 0 } }) }, // one test customer, many orders: duplicates have their own test
     { id: U, name: "Other", slug: "other" },
   ]).execute();
   const secrets = app.get(SecretsService);

@@ -105,6 +105,7 @@ beforeAll(async () => {
     return (await trx.insertInto("connections").values({ tenant_id: store, kind: "store", provider: "shopify", external_account: "nile-wa.myshopify.com", secret_ref: ref }).returning("id").executeTakeFirstOrThrow()).id;
   });
   await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+  await http().put("/v1/settings/orders").set(as("owner")).send({ duplicateWindowHours: 0 }).expect(200); // the same test customer orders again and again (E5-3 has its own test)
 });
 beforeEach(async () => {
   await db.tenant(store, async (trx) => {

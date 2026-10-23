@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -139,6 +139,14 @@ describe("schema", () => {
     const o9 = rows.rows.find((r) => r.key === "o9")!.value;
     expect(o9).toMatchObject({ trackingNumber: "TN1", order: { total: { amount: "1150.00" }, customer: { name: "" }, shippingAddress: { line1: "", city: "Nasr City", province: "Cairo", countryCode: "EG" } } });
     expect(rows.rows.find((r) => r.key === "o10")!.value.order.shippingAddress).toBeNull();
+  });
+
+  it("a duplicate points at another order and has a state, or neither (E5-3)", async () => {
+    const [a, b] = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, number, currency, total_minor, placed_at) VALUES ($1, '#D-1', 'EGP', 1, now()), ($1, '#D-2', 'EGP', 1, now()) RETURNING id`, [T1]))).rows;
+    await asTenant(T1, () => db.query(`UPDATE orders SET duplicate_of = $1, duplicate_status = 'suspected' WHERE id = $2`, [a!.id, b!.id]));
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET duplicate_status = NULL WHERE id = $1`, [b!.id]))).rejects.toThrow(/orders_duplicate_shape/);
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET duplicate_of = id, duplicate_status = 'kept' WHERE id = $1`, [a!.id]))).rejects.toThrow(/orders_duplicate_shape/);
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET duplicate_status = 'maybe' WHERE id = $1`, [b!.id]))).rejects.toThrow(/duplicate_status_check/);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {

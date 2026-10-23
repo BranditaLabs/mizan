@@ -36,6 +36,19 @@
             "description": "needs_call: orders the team should call now"
           },
           {
+            "name": "duplicate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "suspected: likely duplicates waiting for the team (keep or merge)",
+              "type": "string",
+              "enum": [
+                "suspected"
+              ]
+            },
+            "description": "suspected: likely duplicates waiting for the team (keep or merge)"
+          },
+          {
             "name": "q",
             "required": false,
             "in": "query",
@@ -309,6 +322,214 @@
               "application/problem+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/v1/orders/{id}/duplicate": {
+      "post": {
+        "operationId": "OrdersController_resolveDuplicate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDuplicate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The order's answer; one already answered keeps it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateResolved"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/v1/settings/orders": {
+      "get": {
+        "operationId": "OrderSettingsController_get",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How orders are handled as they arrive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      },
+      "put": {
+        "operationId": "OrderSettingsController_put",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderSettings"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved; applies to orders that arrive from now on",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderSettings"
                 }
               }
             }
@@ -5932,6 +6153,22 @@
         ],
         "additionalProperties": false
       },
+      "DuplicateResolved": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "kept",
+              "merged"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
       "FxRate": {
         "type": "object",
         "properties": {
@@ -7808,6 +8045,16 @@
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
+          "duplicate": {
+            "nullable": true,
+            "description": "A likely duplicate of an earlier order of the same customer (E5-3)",
+            "type": "string",
+            "enum": [
+              "suspected",
+              "kept",
+              "merged"
+            ]
+          },
           "externalId": {
             "nullable": true,
             "type": "string"
@@ -8176,6 +8423,52 @@
               "additionalProperties": false
             }
           },
+          "duplicateOf": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "number": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "new",
+                  "pending_confirmation",
+                  "confirmed",
+                  "cancelled",
+                  "shipped",
+                  "delivered",
+                  "returned"
+                ]
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Products in both orders"
+              },
+              "minutesApart": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "status",
+              "items",
+              "minutesApart"
+            ],
+            "additionalProperties": false
+          },
           "events": {
             "type": "array",
             "items": {
@@ -8236,6 +8529,14 @@
                     },
                     "to": {
                       "type": "string"
+                    },
+                    "of": {
+                      "description": "duplicate_found / duplicate_kept: the earlier order's number",
+                      "type": "string"
+                    },
+                    "into": {
+                      "description": "duplicate_merged: the order it was merged into",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -8268,6 +8569,7 @@
           "risk",
           "tags",
           "placedAt",
+          "duplicate",
           "externalId",
           "currency",
           "subtotal",
@@ -8285,6 +8587,7 @@
           "lines",
           "payments",
           "shipments",
+          "duplicateOf",
           "events"
         ],
         "additionalProperties": false
@@ -8435,6 +8738,16 @@
                   "type": "string",
                   "format": "date-time",
                   "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "duplicate": {
+                  "nullable": true,
+                  "description": "A likely duplicate of an earlier order of the same customer (E5-3)",
+                  "type": "string",
+                  "enum": [
+                    "suspected",
+                    "kept",
+                    "merged"
+                  ]
                 }
               },
               "required": [
@@ -8450,7 +8763,8 @@
                 "paymentStatus",
                 "risk",
                 "tags",
-                "placedAt"
+                "placedAt",
+                "duplicate"
               ],
               "additionalProperties": false
             }
@@ -8519,13 +8833,19 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "duplicates": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           }
         },
         "required": [
           "data",
           "nextCursor",
           "counts",
-          "needsCall"
+          "needsCall",
+          "duplicates"
         ],
         "additionalProperties": false
       },
@@ -8822,6 +9142,21 @@
           "net",
           "expectedRevenue",
           "expectedNet"
+        ],
+        "additionalProperties": false
+      },
+      "OrderSettings": {
+        "type": "object",
+        "properties": {
+          "duplicateWindowHours": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 168,
+            "description": "An order of the same customer with the same product within this many hours of another is a likely duplicate; 0 turns detection off (at most 7 days)"
+          }
+        },
+        "required": [
+          "duplicateWindowHours"
         ],
         "additionalProperties": false
       },
@@ -9878,6 +10213,23 @@
         "required": [
           "text",
           "cityId"
+        ],
+        "additionalProperties": false
+      },
+      "ResolveDuplicate": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "keep",
+              "merge"
+            ],
+            "description": "keep: both are real orders; merge: cancel this one as a duplicate of the earlier"
+          }
+        },
+        "required": [
+          "action"
         ],
         "additionalProperties": false
       },

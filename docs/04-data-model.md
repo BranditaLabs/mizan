@@ -138,6 +138,8 @@ erDiagram
 
 ✅ Migration 0024 (E9-3): `ad_spend` primary key adds `platform` (one row per store, day, platform, campaign; `campaign_id` empty for a day's total), `source` (`manual`, `csv`, `api`), `updated_at`, `updated_by`, check `spend_minor >= 0` and platform code, index `ad_spend_day`. `connection_id` is the store the ads sold for until ad accounts connect (M7). Flag `ads_fx_missing` on `order_pnl.flags`.
 
+✅ Migration 0026 (E5-3): `orders.duplicate_status` (`suspected`, `kept`, `merged`) with `duplicate_of` (0001) — both or neither, never itself (`orders_duplicate_shape`) — and `duplicate_reason` (products in both, minutes apart, window; no personal data). Indexes `orders_duplicates` (the tab), `orders_customer_recent` (detection). Settings `tenants.settings.orders.duplicateWindowHours`.
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data
