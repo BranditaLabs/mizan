@@ -43,6 +43,10 @@ export const ConfigSchema = z.object({
   RETENTION_JOBS_DAYS: z.coerce.number().int().min(1).max(365).default(7),
   RETENTION_WEBHOOK_KEYS_DAYS: z.coerce.number().int().min(3).max(365).default(14),
   RETENTION_EVENTS_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
+  /** Signs customer confirmation links (E6-7): base64 of 32 random bytes. Required in production; a fixed dev key elsewhere. */
+  LINK_SIGNING_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
+  /** Customer messaging for confirmation (E6-7): none = links are sent by hand; log = development, pretends every channel is connected. */
+  MESSAGING_PROVIDER: z.enum(["none", "log"], { error: "must be none or log" }).default("none"),
   /** Daily exchange rates (E9-1): the feed, and how often the worker checks whether today's rates are in. Unset = open-er-api, none in tests. */
   FX_SOURCE: z.enum(["open-er-api", "none"], { error: "must be open-er-api or none" }).optional(),
   FX_REFRESH_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),
@@ -93,6 +97,12 @@ export const ConfigSchema = z.object({
 }).superRefine((env, ctx) => {
   if (env.NODE_ENV === "production" && !env.DATABASE_URL?.startsWith("postgres")) {
     ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "a postgres:// URL is required in production" });
+  }
+  if (env.NODE_ENV === "production" && !env.LINK_SIGNING_KEY) {
+    ctx.addIssue({ code: "custom", path: ["LINK_SIGNING_KEY"], message: "is required in production" });
+  }
+  if (env.NODE_ENV === "production" && env.MESSAGING_PROVIDER === "log") {
+    ctx.addIssue({ code: "custom", path: ["MESSAGING_PROVIDER"], message: "log is for development only" });
   }
   if (env.NODE_ENV === "production" && !env.KMS_KEY_NAME) {
     ctx.addIssue({ code: "custom", path: ["KMS_KEY_NAME"], message: "is required in production" });

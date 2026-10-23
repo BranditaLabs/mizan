@@ -59,6 +59,7 @@ export const OrderEventSchema = z.object({
   at: z.iso.datetime(),
   data: z.object({
     source: z.string().optional(),
+    channel: z.string().optional(),
     changed: z.array(z.string()).optional(),
     reason: z.string().optional(),
     from: z.string().optional(),

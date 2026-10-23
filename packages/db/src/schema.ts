@@ -92,6 +92,39 @@ export interface Automations {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ConfirmationRuns {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  status: Generated<string>;
+  plan: Generated<Json>;
+  step: Generated<number>;
+  outcome: string | null;
+  answered_channel: string | null;
+  reason: string | null;
+  link_expires_at: Timestamp;
+  started_at: Generated<Timestamp>;
+  finished_at: Timestamp | null;
+}
+
+export interface ConfirmationSteps {
+  id: Generated<string>;
+  tenant_id: string;
+  run_id: string;
+  idx: number;
+  channel: string;
+  kind: string;
+  run_at: Timestamp;
+  status: Generated<string>;
+  attempts: Generated<number>;
+  locked_until: Timestamp | null;
+  idempotency_key: string;
+  provider_ref: string | null;
+  last_error: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Confirmations {
   id: Generated<string>;
   tenant_id: string;
@@ -105,6 +138,7 @@ export interface Confirmations {
   notes: string | null;
   started_at: Generated<Timestamp>;
   finished_at: Timestamp | null;
+  run_id: string | null;
 }
 
 export interface Connections {
@@ -877,6 +911,8 @@ export interface DB {
   audit_log: AuditLog;
   automation_runs: AutomationRuns;
   automations: Automations;
+  confirmation_runs: ConfirmationRuns;
+  confirmation_steps: ConfirmationSteps;
   confirmations: Confirmations;
   connections: Connections;
   conversations: Conversations;

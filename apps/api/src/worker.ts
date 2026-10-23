@@ -3,7 +3,7 @@ import { ConfigError, loadConfig } from "./platform/config.js";
 
 /**
  * Worker entry point (same image as the API, ADR-0003): delivers domain events
- * to consumers, runs engine jobs, retention and the daily FX refresh.
+ * to consumers, runs engine jobs, retention, the daily FX refresh and confirmation steps.
  * Listens on PORT for /health and /metrics only.
  * Stops cleanly on SIGTERM (Cloud Run): the current batch finishes, leases are released by expiry.
  */
@@ -25,6 +25,7 @@ async function main(): Promise<void> {
   const { EngineJobRunner } = await import("./integrations/engine-runner.js");
   const { RetentionService } = await import("./platform/maintenance/retention.service.js");
   const { FxService } = await import("./modules/profit/fx/fx.service.js");
+  const { ConfirmationRunner } = await import("./modules/confirmation/confirmation.runner.js");
   const { exitOnSignals } = await import("./platform/shutdown.js");
   const { Logger: NestLogger } = await import("@nestjs/common");
   const { MetricsService } = await import("./platform/metrics/metrics.service.js");
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
   app.get(EngineJobRunner).start();
   app.get(RetentionService).start();
   app.get(FxService).start();
+  app.get(ConfirmationRunner).start();
 }
 
 void main();

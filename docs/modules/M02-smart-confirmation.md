@@ -42,6 +42,21 @@ Verification scores every order 0–100 and picks how to check it. Cash-on-deliv
 - **Fallbacks.** Bot no reply in 2 hours moves the order to the agent queue automatically.
 - **Fair load.** Orders are spread across online agents by queue size and language.
 
+## Automated confirmation (built, E6-7)
+
+Every new cash-on-delivery or deposit order (placed in the last 24 hours, never imported history) becomes **Waiting to confirm** and walks the store's cascade without anyone touching it:
+
+1. **WhatsApp** — order summary with Confirm / Change / Cancel and the link (wait 2 h).
+2. **SMS with the confirm link** (wait 2 h).
+3. **Automated call** — "press 1 to confirm, 2 to change, 3 to cancel" (wait 1 h, twice), only within calling hours (10:00–22:00 store time).
+4. **Agent** — whatever is left unanswered, or a change request.
+
+The customer can always answer on the **link page** (`/c/{token}`, no app, no sign-in): their order, the amount to pay on delivery, Confirm in one tap, Change (a note, stored encrypted), Cancel (a reason), and optionally their location for the courier. Every channel answers through one service: the order becomes Confirmed or Cancelled, the timeline and attempts log record who and how, a second answer is refused.
+
+Vendors are pluggable (`MessagingProvider`): a channel with no vendor is skipped. With none connected, orders go straight to an agent, who sends the link on WhatsApp in one tap (wa.me, prefilled message); the customer's tap on Confirm is still automatic. Settings → Confirmation turns it on or off, orders the steps, sets the waits, calling hours and how long the link works.
+
+**Next:** WhatsApp Cloud API (E6-4), SMS + IVR vendor (E6-8), then an **AI voice agent** (E6-9, V2) that talks with the customer in Egyptian Arabic, confirms, changes or reschedules, and hands off to a human when unsure — the same answer service, one more channel in the cascade.
+
 ## Main screen — Confirmation queue
 
 Filters: `My queue · 38` · `Bot waiting · 112` · `Retry due · 14` · `On hold · 9` · `Done today · 287`  
@@ -103,6 +118,8 @@ The risk score is one model with method-specific signals. Reasons are always sho
 | `confirmation.confirmed` | Order confirmed, by which route |
 | `confirmation.no_answer` | Attempt failed, retry scheduled |
 | `confirmation.cancelled` | Customer or agent cancelled |
+| ✅ `confirmation.started`, `confirmation.sent`, `confirmation.escalated` | E6-7: a run started, a message or call went out, the order went to an agent (no reply, no channel, change requested) |
+| ✅ `order.confirmed`, `order.confirmation_failed` | E6-7: answered by any channel (`channel` in data) |
 
 ## Actions exposed (for Automation Studio)
 
@@ -150,7 +167,11 @@ The risk score is one model with method-specific signals. Reasons are always sho
 | POST | `/v1/orders/{id}/attempts` | Log a call outcome |
 | POST | `/v1/orders/{id}/bot` | Send WhatsApp confirmation |
 | POST | `/v1/whatsapp/webhook` | Inbound replies |
-| PUT | `/v1/settings/confirmation` | Thresholds and hours |
+| GET / PUT | `/v1/settings/confirmation` | ✅ E6-7: on/off, steps and waits, calling hours, link lifetime; connected channels |
+| GET | `/v1/orders/{id}/confirmation` | ✅ E6-7: the run, steps, attempts |
+| POST | `/v1/orders/{id}/confirmation/link` | ✅ E6-7: link + WhatsApp (wa.me) message to send by hand |
+| POST | `/v1/orders/{id}/confirmation` | ✅ E6-7: agent records confirm / cancel |
+| GET / POST | `/v1/public/confirm/{token}` | ✅ E6-7: the customer's link page (no sign-in) |
 
 Conventions: `docs/05-api.md`.
 

@@ -71,6 +71,7 @@ describe("openapi.json", () => {
     const bodies = new Set([
       "post /v1/tenants", "post /v1/members/invite", "patch /v1/members/{userId}", "post /v1/admin/integrations/cities/resolve", "post /v1/connections/shopify/claim",
       "post /v1/connections/bosta", "put /v1/products/variants/costs", "patch /v1/onboarding", "post /v1/cost-rules", "put /v1/fx-rates/{day}/{quote}",
+      "post /v1/orders/{id}/confirmation", "put /v1/settings/confirmation", "post /v1/public/confirm/{token}",
     ]);
     for (const [path, item] of Object.entries(doc.paths)) {
       for (const [method, op] of Object.entries(item)) {
@@ -138,8 +139,16 @@ describe("real responses match the documented schemas", () => {
     conforms("delete", "/v1/cost-rules/{id}", await http().delete(`/v1/cost-rules/${rule.body.id}`).set(as("owner", store)));
     conforms("put", "/v1/fx-rates/{day}/{quote}", await http().put("/v1/fx-rates/2026-10-20/USD").set(as("owner", store)).send({ rate: "0.0205" }));
     conforms("get", "/v1/fx-rates", await http().get("/v1/fx-rates?day=2026-10-20").set(as("owner", store)));
+    conforms("get", "/v1/orders/{id}/confirmation", await http().get(`/v1/orders/${noOrder}/confirmation`).set(as("owner", store))); // 404
+    conforms("post", "/v1/orders/{id}/confirmation/link", await http().post(`/v1/orders/${noOrder}/confirmation/link`).set(as("owner", store))); // 404
+    conforms("post", "/v1/orders/{id}/confirmation", await http().post(`/v1/orders/${noOrder}/confirmation`).set(as("owner", store)).send({ answer: "confirm" })); // 404
+    const conf = await http().get("/v1/settings/confirmation").set(as("owner", store));
+    conforms("get", "/v1/settings/confirmation", conf);
+    conforms("put", "/v1/settings/confirmation", await http().put("/v1/settings/confirmation").set(as("owner", store)).send(conf.body.settings));
+    conforms("get", "/v1/public/confirm/{token}", await http().get("/v1/public/confirm/nope")); // 404
+    conforms("post", "/v1/public/confirm/{token}", await http().post("/v1/public/confirm/nope").send({ answer: "confirm" })); // 404
     conforms("get", "/v1/connections/shopify/install", await http().get("/v1/connections/shopify/install?shop=nile.myshopify.com").set(as("owner", store)));
 
-    expect(checked.size).toBeGreaterThanOrEqual(28);
+    expect(checked.size).toBeGreaterThanOrEqual(35);
   });
 });

@@ -9,7 +9,7 @@ import { SecretsService } from "../secrets/secrets.service.js";
 export type PiiColumn =
   | "customers.name" | "customers.phone_e164" | "customers.email"
   | "orders.ship_name" | "orders.ship_phone" | "orders.ship_line1" | "orders.ship_line2" | "orders.customer_label"
-  | "privacy_requests.result";
+  | "privacy_requests.result" | "confirmations.notes";
 
 const PREFIX = "pii:v1:";
 

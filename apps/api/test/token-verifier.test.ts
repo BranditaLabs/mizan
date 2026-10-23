@@ -101,7 +101,7 @@ describe("EmulatorTokenVerifier (development and tests only)", () => {
   it("production refuses the emulator setting", () => {
     expect(() => loadConfig({
       NODE_ENV: "production", PUBLIC_URL: "https://api.mizan.app", WEB_URL: "https://app.mizan.app", DATABASE_URL: "postgres://x/y",
-      FIREBASE_PROJECT_ID: "mizan-prod", KMS_KEY_NAME: "k", FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
+      FIREBASE_PROJECT_ID: "mizan-prod", KMS_KEY_NAME: "k", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64"), FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099",
     })).toThrow(/FIREBASE_AUTH_EMULATOR_HOST: must not be set in production/);
   });
 });

@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -114,5 +114,23 @@ describe("schema", () => {
     await expect(asTenant(T2, () => db.query(`INSERT INTO fx_rate_overrides (tenant_id, day, quote, rate) VALUES ($1, '2026-10-22', 'USD', 1)`, [T1])))
       .rejects.toThrow(/row-level security/);
     await expect(db.query(`INSERT INTO fx_rates (day, base, quote, rate, source) VALUES ('2026-10-22', 'USD', 'EGP', 0, 'test')`)).rejects.toThrow(/fx_rates_positive/);
+  });
+
+  it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
+    const run = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO confirmation_runs (tenant_id, order_id, link_expires_at) VALUES ($1, $2, now() + interval '3 days') RETURNING id`, [T1, order]))).rows[0]!.id;
+    await expect(asTenant(T1, () => db.query(`INSERT INTO confirmation_runs (tenant_id, order_id, link_expires_at) VALUES ($1, $2, now())`, [T1, order]))).rejects.toThrow(/confirmation_runs_live/);
+    const step = (key: string) => asTenant(T1, () => db.query(`INSERT INTO confirmation_steps (tenant_id, run_id, idx, channel, kind, run_at, idempotency_key) VALUES ($1, $2, 0, 'sms', 'send', now(), $3)`, [T1, run, key]));
+    await step("r:0:send");
+    await expect(step("r:0:send")).rejects.toThrow(/duplicate key/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO confirmations (tenant_id, order_id, channel, outcome, run_id) VALUES ($1, $2, 'link', 'confirmed', $3)`, [T1, order, run]))).resolves.toBeDefined();
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM confirmation_runs`))).rows).toEqual([]);
+    // The worker sees ids and times only.
+    await db.exec("BEGIN; SET LOCAL ROLE mizan_worker;");
+    try {
+      const due = await db.query<{ tenant_id: string }>(`SELECT tenant_id FROM confirmation_steps WHERE status = 'pending'`);
+      expect(due.rows.map((r) => r.tenant_id)).toEqual([T1]);
+      await expect(db.query(`SELECT idempotency_key FROM confirmation_steps`)).rejects.toThrow(/permission denied/);
+    } finally { await db.exec("ROLLBACK;"); }
   });
 });

@@ -15,6 +15,7 @@ import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
+import { ConfirmationCard } from "./ConfirmationCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
 type Order = Schemas["OrderDetail"];
@@ -25,6 +26,7 @@ type Revealed = Schemas["RevealedCustomer"];
 const PAYMENT_STATUSES = new Set(["unpaid", "authorized", "partially_paid", "paid", "partially_refunded", "refunded", "disputed", "failed", "voided"]);
 const LEDGER_KINDS = new Set(["authorization", "capture", "sale", "cod_collection", "refund", "chargeback", "chargeback_reversal", "void"]);
 const LEDGER_METHODS = new Set(["cod", "card", "wallet", "apple_pay", "bnpl", "bank_transfer", "instapay", "fawry_ref", "store_credit", "cash_pos", "marketplace"]);
+const ANSWER_CHANNELS = new Set(["link", "whatsapp", "sms", "voice_ivr", "voice_ai", "agent"]);
 const sourceName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const mapsUrl = (l: { lat: number; lng: number }) => `https://www.google.com/maps?q=${l.lat},${l.lng}`;
 const isZero = (m: { amount: string }) => Number(m.amount) === 0;
@@ -69,6 +71,7 @@ export function OrderDetail({ id }: { id: string }) {
   const o = order.data;
   const paymentLabel = (s: string) => (PAYMENT_STATUSES.has(s) ? tp(s as Order["paymentStatus"]) : s);
   const statusLabel = (s: string | null) => (isStatus(s) ? t(`status.${s}`) : s ?? "");
+  const channelLabel = (c: string | undefined) => (c && ANSWER_CHANNELS.has(c) ? t(`answerChannel.${c as "link"}`) : t("answerChannel.other"));
   const eventTitle = (e: Event) => {
     switch (e.type) {
       case "created": return t("events.created", { source: sourceName(e.data.source ?? o.store.provider ?? "") });
@@ -76,6 +79,11 @@ export function OrderDetail({ id }: { id: string }) {
         ? t("events.statusChanged", { from: statusLabel(e.fromStatus), to: statusLabel(e.toStatus) }) : t("events.updated");
       case "payment_changed": return t("events.payment_changed", { from: paymentLabel(e.data.from ?? ""), to: paymentLabel(e.data.to ?? "") });
       case "awaiting_payment": return t("events.awaiting_payment");
+      case "confirmation_started": return t("events.confirmation_started");
+      case "confirmed": return t("events.confirmed", { channel: channelLabel(e.data.channel) });
+      case "cancelled": return t("events.cancelled", { channel: channelLabel(e.data.channel) });
+      case "change_requested": return t("events.change_requested", { channel: channelLabel(e.data.channel) });
+      case "confirmation_escalated": return t("events.confirmation_escalated");
       default: return t("events.other");
     }
   };
@@ -144,6 +152,7 @@ export function OrderDetail({ id }: { id: string }) {
 
         <aside className="flex flex-col gap-4">
           <CustomerCard order={o} />
+          <ConfirmationCard orderId={o.id} orderStatus={o.status} />
           <Card title={t("detail.risk.title")}>
             {o.risk === null ? <p className="text-body-sm text-text-2">{t("detail.risk.notScored")}</p> : (
               <div className="flex flex-col gap-2">

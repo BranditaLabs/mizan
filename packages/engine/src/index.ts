@@ -11,6 +11,7 @@ export type { ShopifyLearned } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";
 export { send, type RequestSpec, type HttpResponse } from "./resilience/http.js";
 export { CircuitBreaker } from "./resilience/circuit.js";
+export { LogMessaging, maskNumber, unreachableNumber, type MessagingChannel, type MessagingProvider, type Sms, type VoiceCall, type WhatsAppTemplate } from "./connectors/messaging/provider.js";
 export { exchangeShopifyCode, missingScopes, normalizeShop, shopifyAuthorizeUrl, signShopifyQuery, verifyShopifyQuery, type ShopifyGrant } from "./connectors/shopify/oauth.js";
 export { verifyShopifyHmac, readShopifyHeaders, signShopify, type ShopifyWebhookMeta } from "./connectors/shopify/webhooks.js";
 export { parseComplianceWebhook, COMPLIANCE_TOPICS, type ComplianceRequest, type ComplianceTopic } from "./connectors/shopify/compliance.js";

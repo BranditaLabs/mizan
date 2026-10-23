@@ -615,8 +615,8 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-tabs { display: flex; gap: 20px; border-block-end: 1px solid var(--mz-line); overflow-x: auto; scrollbar-width: none; }
 .mz-tabs::-webkit-scrollbar { display: none; }
 .mz-tab { position: relative; flex: none; white-space: nowrap; padding: 10px 0 12px; font: 500 13px/1 var(--mz-font-sans); color: var(--mz-text-3); background: none; border: 0; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
-.mz-tab[aria-selected="true"] { color: var(--mz-text); }
-.mz-tab[aria-selected="true"]::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: -1px; height: 2px; background: var(--mz-text); }
+.mz-tab[aria-selected="true"], .mz-tab[aria-current="page"] { color: var(--mz-text); }
+.mz-tab[aria-selected="true"]::after, .mz-tab[aria-current="page"]::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: -1px; height: 2px; background: var(--mz-text); }
 .mz-tab .count { font: 500 11px/1 var(--mz-font-mono); color: var(--mz-text-3); background: var(--mz-surface-sunk); padding: 3px 6px; border-radius: 999px; }
 
 /* ───────────── Floating layers (the only shadows) ───────────── */

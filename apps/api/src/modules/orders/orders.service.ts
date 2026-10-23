@@ -30,7 +30,7 @@ function eventData(raw: unknown): OrderDetail["events"][number]["data"] {
   const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const text = (k: string) => (typeof d[k] === "string" ? { [k]: d[k] as string } : {});
   const changed = Array.isArray(d.changed) ? { changed: d.changed.filter((x): x is string => typeof x === "string") } : {};
-  return { ...text("source"), ...text("reason"), ...text("from"), ...text("to"), ...changed };
+  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...changed };
 }
 /** Risk reasons as codes (E6-1 writes them; strings or { code }). */
 const reasonCodes = (raw: unknown): string[] =>
@@ -185,7 +185,7 @@ export class OrdersService {
 }
 
 /** What a role may see: agents their assigned orders, warehouse confirmed and shipped; others all. */
-function roleScope(eb: Eb, auth: AuthContext) {
+export function roleScope(eb: Eb, auth: AuthContext) {
   const role = auth.tenant!.role;
   if (role === "agent") return eb("o.assigned_to", "=", auth.user.id);
   if (role === "warehouse") return eb("o.status", "in", ["confirmed", "shipped"]);

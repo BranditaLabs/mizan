@@ -38,7 +38,8 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "pglite:./data" })).toThrow(/required in production/);
     expect(() => loadConfig({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL: must be a postgres:\/\/ URL or pglite:<dir>/);
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan" })).toThrow(/FIREBASE_PROJECT_ID: is required in production/);
-    const prod = { ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod" };
+    expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", KMS_KEY_NAME: "k" })).toThrow(/LINK_SIGNING_KEY: is required in production/);
+    const prod = { ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64") };
     expect(() => loadConfig(prod)).toThrow(/KMS_KEY_NAME: is required in production/);
     const kms = "projects/mizan-prod/locations/me-central1/keyRings/mizan/cryptoKeys/tenant-data";
     expect(loadConfig({ ...prod, KMS_KEY_NAME: kms }).NODE_ENV).toBe("production");

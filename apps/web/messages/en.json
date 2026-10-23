@@ -633,7 +633,66 @@
       "payment_changed": "Payment: {from} → {to}",
       "awaiting_payment": "Waiting for the online payment",
       "other": "Order updated",
-      "changed": "Changed: {fields}"
+      "changed": "Changed: {fields}",
+      "confirmation_started": "Confirmation started",
+      "confirmed": "Confirmed by {channel}",
+      "cancelled": "Cancelled by {channel}",
+      "change_requested": "Change requested by {channel}",
+      "confirmation_escalated": "Handed to an agent"
+    },
+    "confirmation": {
+      "title": "Confirmation",
+      "loading": "Loading",
+      "none": "No confirmation for this order.",
+      "status": {
+        "running": "Automatic",
+        "needs_agent": "Needs a call",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "stopped": "Stopped"
+      },
+      "reason": {
+        "no_reply": "The customer didn't answer the automatic messages. Call them, or send the link again.",
+        "no_channel": "No WhatsApp, SMS or calls connected yet: send the link by hand.",
+        "change_requested": "The customer asked for a change. Call them.",
+        "manual": "Link sent by hand. Waiting for the customer."
+      },
+      "nextSend": "Next: {channel}",
+      "waiting": "Waiting for an answer to {channel}, until",
+      "channel": {
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "voice": "Automatic call",
+        "agent": "Agent"
+      },
+      "stepStatus": {
+        "pending": "waiting",
+        "running": "sending",
+        "done": "sent",
+        "skipped": "not connected",
+        "cancelled": "not needed",
+        "dead": "failed"
+      },
+      "noVendor": "Automatic messages start when WhatsApp, SMS or calls are connected.",
+      "sendWhatsApp": "Send on WhatsApp",
+      "copyLink": "Copy link",
+      "copied": "Link copied",
+      "noPhone": "This order has no phone number.",
+      "markConfirmed": "Mark confirmed",
+      "markCancelled": "Cancel order",
+      "cancelTitle": "Cancel this order?",
+      "cancelBody": "The order won't ship. The customer isn't notified automatically.",
+      "confirmedToast": "Order confirmed",
+      "cancelledToast": "Order cancelled"
+    },
+    "answerChannel": {
+      "link": "the customer's link",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "voice_ivr": "automatic call",
+      "voice_ai": "AI call",
+      "agent": "an agent",
+      "other": "the store"
     }
   },
   "costs": {
@@ -721,6 +780,126 @@
       "set": "Set rate",
       "invalid": "Enter a rate like 0.0205",
       "line": "<c>1 {base}</c> = <c>{rate} {quote}</c>"
+    }
+  },
+  "confirm": {
+    "title": "Confirm your order",
+    "loading": "Loading your order",
+    "hello": "Hi {name}",
+    "helloNoName": "Hi there",
+    "intro": "Please confirm your order <n>{number}</n> so we can ship it.",
+    "qty": "Qty {count}",
+    "payOnDelivery": "You pay on delivery",
+    "total": "Total",
+    "deliverTo": "Delivery to {city}",
+    "confirm": "Confirm my order",
+    "change": "Change something",
+    "cancel": "Cancel order",
+    "location": {
+      "share": "Share my location for the courier",
+      "added": "Location added",
+      "denied": "Location wasn't shared. That's fine: the courier will call you."
+    },
+    "changeLabel": "What would you like to change?",
+    "changeHint": "Size, color, address, delivery time…",
+    "sendChange": "Send",
+    "back": "Back",
+    "reasonLabel": "Why are you cancelling?",
+    "sendCancel": "Cancel the order",
+    "reasons": {
+      "changed_mind": "I changed my mind",
+      "ordered_by_mistake": "I ordered by mistake",
+      "found_cheaper": "I found it cheaper",
+      "delivery_too_late": "Delivery takes too long",
+      "other": "Another reason"
+    },
+    "already": "This order was already answered.",
+    "privacy": "Only you and the store can see this page.",
+    "invalid": {
+      "title": "This link doesn't work",
+      "body": "Check the message you received, or contact the store."
+    },
+    "failed": {
+      "title": "Something went wrong",
+      "body": "We couldn't load your order. Try again in a moment."
+    },
+    "expired": {
+      "body": "This link has expired. The store will contact you."
+    },
+    "done": {
+      "confirmed": {
+        "title": "Order confirmed",
+        "body": "Thank you! {store} will ship your order soon."
+      },
+      "cancelled": {
+        "title": "Order cancelled",
+        "body": "Your order was cancelled. Nothing will be shipped."
+      },
+      "changed": {
+        "title": "We got your request",
+        "body": "{store} will call you shortly about the change."
+      },
+      "expired": {
+        "title": "This link has expired",
+        "body": "{store} will contact you to confirm your order."
+      },
+      "closed": {
+        "title": "Nothing to confirm",
+        "body": "This order no longer needs your confirmation."
+      }
+    }
+  },
+  "settings": {
+    "label": "Settings",
+    "pages": {
+      "costs": "Costs",
+      "confirmation": "Confirmation"
+    }
+  },
+  "confirmationSettings": {
+    "title": "Confirmation",
+    "subtitle": "How new cash-on-delivery orders get confirmed automatically, before an agent steps in.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load the settings. Try again.",
+    "saved": "Saved. New orders follow these settings.",
+    "save": "Save",
+    "discard": "Discard changes",
+    "notAllowed": {
+      "title": "For owners, admins and ops managers",
+      "body": "Ask the store owner to change how orders are confirmed."
+    },
+    "enabled": "Confirm new cash-on-delivery orders automatically",
+    "enabledHint": "Each new order is asked to confirm on WhatsApp, then SMS, then an automatic call. Orders nobody answers go to an agent.",
+    "channel": {
+      "whatsapp": "WhatsApp",
+      "sms": "SMS with link",
+      "voice": "Automatic call"
+    },
+    "channels": {
+      "title": "Connected channels",
+      "connected": "connected",
+      "notConnected": "not connected",
+      "none": "Nothing is connected yet, so new orders go straight to an agent, who sends the confirm link on WhatsApp with one tap. Connecting WhatsApp, SMS or calls makes it automatic."
+    },
+    "steps": {
+      "title": "Order of steps",
+      "body": "Mizan tries each step in turn and waits for an answer before the next. A channel that isn't connected is skipped.",
+      "channel": "Channel",
+      "wait": "Wait (minutes)",
+      "remove": "Remove step",
+      "add": "Add a step",
+      "agent": "Then: an agent calls"
+    },
+    "hours": {
+      "title": "Calling hours",
+      "body": "Automatic calls only happen in these hours, store time. Messages are sent any time.",
+      "start": "From",
+      "end": "Until",
+      "invalid": "Start must be before end"
+    },
+    "link": {
+      "hours": "Link works for (hours)",
+      "hint": "After that the customer is asked to wait for a call."
     }
   }
 }

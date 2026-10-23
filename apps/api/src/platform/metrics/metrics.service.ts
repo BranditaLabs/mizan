@@ -47,6 +47,11 @@ export class MetricsService {
     name: "mizan_fx_refresh_total", help: "Daily FX feed refreshes by result (stored, failed)", labelNames: ["result"] as const, registers: [this.registry],
   });
 
+  readonly confirmationSteps = new Counter({
+    name: "mizan_confirmation_steps_total", help: "Automated confirmation steps by channel and result (sent, skipped, retry, failed)",
+    labelNames: ["channel", "result"] as const, registers: [this.registry],
+  });
+
   readonly idempotentReplays = new Counter({
     name: "mizan_idempotent_replays_total", help: "Responses replayed for a repeated Idempotency-Key", registers: [this.registry],
   });

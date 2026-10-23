@@ -145,6 +145,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConfirmationController_summary"];
+        put?: never;
+        post: operations["ConfirmationController_answer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/confirmation/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConfirmationController_settings"];
+        put: operations["ConfirmationController_saveSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/public/confirm/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicConfirmationController_view"];
+        put?: never;
+        post: operations["PublicConfirmationController_answer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -491,6 +555,16 @@ export interface components {
             /** @enum {string} */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
         };
+        AgentAnswer: {
+            /** @enum {string} */
+            answer: "confirm" | "cancel";
+            /** @enum {string} */
+            reason?: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
+            note?: string;
+        };
+        AnswerResult: {
+            outcome: string;
+        };
         AuditLogPage: {
             data: {
                 /** @description Increasing id; use as cursor */
@@ -522,6 +596,54 @@ export interface components {
             /** @enum {boolean} */
             saved: true;
             replayed: boolean;
+        };
+        ConfirmationLink: {
+            /** @description The customer's confirm link */
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description wa.me link with the message, to send by hand */
+            whatsappUrl: string | null;
+        };
+        ConfirmationSettings: {
+            /** @description Start a confirmation for every new cash-on-delivery order */
+            enabled: boolean;
+            steps: {
+                /** @enum {string} */
+                channel: "whatsapp" | "sms" | "voice";
+                /** @description How long to wait for an answer before the next step */
+                waitMinutes: number;
+            }[];
+            callingHours: {
+                start: string;
+                end: string;
+            };
+            /** @description How long the customer's confirm link works */
+            linkHours: number;
+        };
+        ConfirmationSettingsView: {
+            settings: {
+                /** @description Start a confirmation for every new cash-on-delivery order */
+                enabled: boolean;
+                steps: {
+                    /** @enum {string} */
+                    channel: "whatsapp" | "sms" | "voice";
+                    /** @description How long to wait for an answer before the next step */
+                    waitMinutes: number;
+                }[];
+                callingHours: {
+                    start: string;
+                    end: string;
+                };
+                /** @description How long the customer's confirm link works */
+                linkHours: number;
+            };
+            /** @description Channels a messaging vendor is connected for */
+            channels: {
+                whatsapp: boolean;
+                sms: boolean;
+                voice: boolean;
+            };
         };
         Connection: {
             /** Format: uuid */
@@ -975,6 +1097,55 @@ export interface components {
             complete: boolean;
             dismissed: boolean;
         };
+        OrderConfirmation: {
+            run: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                status: "running" | "confirmed" | "cancelled" | "needs_agent" | "stopped";
+                outcome: string | null;
+                reason: string | null;
+                answeredChannel: string | null;
+                plan: {
+                    /** @enum {string} */
+                    channel: "whatsapp" | "sms" | "voice";
+                    waitMinutes: number;
+                }[];
+                step: number;
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+                /** Format: date-time */
+                linkExpiresAt: string;
+                next: {
+                    channel: string;
+                    /** @enum {string} */
+                    kind: "send" | "timeout";
+                    /** Format: date-time */
+                    at: string;
+                } | null;
+            } | null;
+            steps: {
+                idx: number;
+                channel: string;
+                status: string;
+                /** Format: date-time */
+                at: string;
+            }[];
+            attempts: {
+                channel: string;
+                outcome: string | null;
+                /** Format: date-time */
+                at: string;
+            }[];
+            /** @description Channels a messaging vendor is connected for */
+            channels: {
+                whatsapp: boolean;
+                sms: boolean;
+                voice: boolean;
+            };
+        };
         OrderDetail: {
             /** Format: uuid */
             id: string;
@@ -1116,6 +1287,7 @@ export interface components {
                 at: string;
                 data: {
                     source?: string;
+                    channel?: string;
                     changed?: string[];
                     reason?: string;
                     from?: string;
@@ -1200,6 +1372,48 @@ export interface components {
                 message?: string;
             }[];
             requestId?: string;
+        };
+        PublicAnswer: {
+            /** @enum {string} */
+            answer: "confirm" | "cancel" | "change";
+            /**
+             * @description Why they cancel
+             * @enum {string}
+             */
+            reason?: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
+            /** @description What to change (stored encrypted) */
+            note?: string;
+            /** @description Shared from the phone, for the courier */
+            location?: {
+                lat: number;
+                lng: number;
+            };
+        };
+        PublicConfirmation: {
+            store: string;
+            /** @enum {string} */
+            state: "open" | "confirmed" | "cancelled" | "changed" | "expired" | "closed";
+            firstName: string | null;
+            order: {
+                number: string;
+                items: {
+                    title: string;
+                    quantity: number;
+                }[];
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description What the customer pays the courier */
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+                city: string | null;
+            };
+            hasLocation: boolean;
+            /** Format: date-time */
+            expiresAt: string;
         };
         Ready: {
             /** @enum {string} */
@@ -1861,6 +2075,340 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FxRate"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_summary: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order's confirmation run, its steps and the answers so far */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderConfirmation"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_answer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AgentAnswer"];
+            };
+        };
+        responses: {
+            /** @description Confirmed or cancelled by an agent; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerResult"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_link: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The customer's confirm link and a WhatsApp link with the message, to send by hand; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationLink"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_settings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The store's cascade, waits, calling hours, and which channels are connected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationSettingsView"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_saveSettings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmationSettings"];
+            };
+        };
+        responses: {
+            /** @description Saved; applies to orders that start confirmation from now on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationSettingsView"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PublicConfirmationController_view: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order behind a confirm link */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConfirmation"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PublicConfirmationController_answer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublicAnswer"];
+            };
+        };
+        responses: {
+            /** @description Answered: the order as it is now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicConfirmation"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Gone (pii_redacted: deleted on request, …) */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

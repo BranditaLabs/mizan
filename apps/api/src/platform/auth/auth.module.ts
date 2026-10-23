@@ -28,7 +28,7 @@ export class AuthModule {
             },
         { provide: APP_GUARD, useClass: AuthGuard },
       ],
-      exports: [AuthService, TOKEN_VERIFIER],
+      exports: [AuthService, TOKEN_VERIFIER, RateLimiter],
     };
   }
 }

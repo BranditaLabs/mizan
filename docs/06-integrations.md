@@ -136,7 +136,7 @@ Marketplace orders enter M1 with `channel = 'marketplace'`; marketplace-fulfille
 | Instagram and Messenger | Meta app with messaging permissions, App Review | V2 |
 | Email | Inbound forwarding address per tenant + outbound with SPF/DKIM | V2 |
 | Web chat | Mizan widget on the storefront | V2 |
-| SMS / voice | Local provider with sender IDs (EG, KSA) | MVP (fallback) |
+| SMS / voice | Local provider with sender IDs (EG, KSA). ✅ E6-7: any vendor plugs in as a `MessagingProvider` (`packages/engine/src/connectors/messaging`); none connected = links sent by hand | MVP (fallback) |
 
 ## 10. Accounting tools (M19)
 
