@@ -17,10 +17,10 @@ import { MODE_ICON, STATUS_TONE, maskedLast4 } from "./order-ui";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
-export type StatusTab = Status | "all";
+export type StatusTab = Status | "all" | "needs_call";
 
-/** Tab order: the work first (components.md §1 "queues, not reports"), then the record. */
-const TABS: readonly StatusTab[] = ["all", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
+/** Tab order: the work first (components.md §1 "queues, not reports"), then the record. "needs_call": the team's call list (E6-10). */
+const TABS: readonly StatusTab[] = ["all", "needs_call", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
 const isTab = (v: string | null): v is StatusTab => v !== null && (TABS as readonly string[]).includes(v);
 
 /**
@@ -55,7 +55,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const orders = useInfiniteQuery({
     queryKey: ["orders", user?.uid ?? "", store?.tenantId ?? "", status, q],
     queryFn: ({ pageParam }) => ok(api.GET("/v1/orders", { params: { query: {
-      ...(status === "all" ? {} : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
+      ...(status === "all" ? {} : status === "needs_call" ? { confirmation: "needs_call" as const } : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
     } } })),
     initialPageParam: "",
     getNextPageParam: (last) => last.nextCursor ?? undefined,
@@ -85,7 +85,8 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
     : counts?.all === 0 ? (
       <EmptyState icon="orders" title={t("empty.title")} body={t("empty.body")}
         action={canSetUp ? <Link href="/onboarding" className={buttonClass("primary")}>{t("empty.cta")}</Link> : undefined} />
-    ) : <EmptyState icon="orders" title={t("emptyTab.title")} body={t("emptyTab.body")} />;
+    ) : status === "needs_call" ? <EmptyState icon="confirm" title={t("emptyCalls.title")} body={t("emptyCalls.body")} />
+    : <EmptyState icon="orders" title={t("emptyTab.title")} body={t("emptyTab.body")} />;
 
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6">
@@ -98,7 +99,10 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
       </header>
 
       <Tabs label={t("tabsLabel")} value={status} onChange={setStatus}
-        items={TABS.map((s) => ({ value: s, label: s === "all" ? t("all") : t(`status.${s}`), ...(counts ? { count: counts[s] } : {}) }))}>
+        items={TABS.map((s) => ({
+          value: s, label: s === "all" ? t("all") : s === "needs_call" ? t("needsCall") : t(`status.${s}`),
+          ...(counts ? { count: s === "needs_call" ? (orders.data?.pages[0]?.needsCall ?? 0) : counts[s] } : {}),
+        }))}>
         {orders.isPending ? (
           <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>
         ) : (

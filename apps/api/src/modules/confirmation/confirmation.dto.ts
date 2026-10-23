@@ -2,7 +2,11 @@ import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
 import { AUTOMATED_CHANNELS, ConfirmationSettingsSchema } from "./confirmation.settings.js";
 
-export const ChannelsSchema = z.object({ whatsapp: z.boolean(), sms: z.boolean(), voice: z.boolean() }).describe("Channels a messaging vendor is connected for");
+export const ChannelsSchema = z.object({
+  whatsapp: z.boolean().describe("The store's WhatsApp number is connected and its template approved"),
+  call_auto: z.boolean().describe("A vendor for automated calls is connected"),
+  call_team: z.literal(true).describe("The store's team can always call"),
+}).describe("Channels the store can use for confirmation");
 export const ConfirmationSettingsViewSchema = z.object({ settings: ConfirmationSettingsSchema, channels: ChannelsSchema });
 
 const Reason = z.enum(["changed_mind", "ordered_by_mistake", "found_cheaper", "delivery_too_late", "other"]);
@@ -34,6 +38,21 @@ export const AgentAnswerSchema = z.object({
   answer: z.enum(["confirm", "cancel"]),
   reason: Reason.optional(),
   note: z.string().trim().min(1).max(500).optional(),
+  byCall: z.boolean().optional().describe("Answered on a team call (counts for the call channel)"),
+});
+
+export const NoAnswerSchema = z.object({
+  attempts: z.number().int().describe("Team calls tried so far"),
+  max: z.number().int(),
+  after: z.iso.datetime().nullable().describe("When the order comes back on the call list; null after the last try"),
+  unreachable: z.boolean(),
+});
+
+/** The store's WhatsApp number, from Meta (WhatsApp Manager / the app's WhatsApp → API setup). */
+export const WhatsAppConnectSchema = z.strictObject({
+  phoneNumberId: z.string().trim().regex(/^\d{6,20}$/, "the number's id from Meta (digits), not the phone number").describe("Phone number ID (not the phone number)"),
+  wabaId: z.string().trim().regex(/^\d{6,20}$/, "the WhatsApp Business Account id (digits)").describe("WhatsApp Business Account ID"),
+  accessToken: z.string().trim().min(20).max(1024).describe("A permanent system-user token with whatsapp_business_messaging and whatsapp_business_management; stored encrypted, never shown again"),
 });
 export const AnswerResultSchema = z.object({ outcome: z.string() });
 
@@ -56,8 +75,20 @@ export const OrderConfirmationSchema = z.object({
     finishedAt: z.iso.datetime().nullable(),
     linkExpiresAt: z.iso.datetime(),
     next: z.object({ channel: z.string(), kind: z.enum(["send", "timeout"]), at: z.iso.datetime() }).nullable(),
+    calls: z.object({ attempts: z.number().int(), max: z.number().int(), after: z.iso.datetime().nullable().describe("Back on the call list at") }),
   }).nullable(),
   steps: z.array(z.object({ idx: z.number().int(), channel: z.string(), status: z.string(), at: z.iso.datetime() })),
   attempts: z.array(z.object({ channel: z.string(), outcome: z.string().nullable(), at: z.iso.datetime() })),
+  /** The WhatsApp conversation: what was sent, delivered and read, and what the customer tapped (no message text). */
+  whatsapp: z.array(z.object({
+    direction: z.enum(["in", "out"]),
+    kind: z.string().describe("out: template, list, text; in: quick_reply, button_reply, list_reply, text, location"),
+    action: z.string().nullable().describe("out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored"),
+    status: z.string(),
+    errorCode: z.number().int().nullable(),
+    at: z.iso.datetime(),
+  })),
+  /** Lines for the team to read on the call while the order is open. */
+  script: z.array(z.string()),
   channels: ChannelsSchema,
 });

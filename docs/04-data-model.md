@@ -128,6 +128,8 @@ erDiagram
 
 ✅ Migration 0020: `order_lines.external_variant_id` (the store's variant id) links each line to `variants` through `external_variants`; a line that arrives before its product is linked when the product is read (`ProductProjector`, then `costs.changed` so its profit counts the cost). `variants.available` / `available_at`: stock as the store last reported it (NULL = unknown), used by offers (E6-11).
 
+✅ Migration 0021 (E6-10): `confirmation_steps` channels `whatsapp | call_auto | call_team` (old `sms`/`voice` rows kept), kind `reply` (a follow-up in the chat, `payload {message}`); `confirmation_runs.chat_state` (`awaiting_change`, `awaiting_reason`), `customer_hash` (phone HMAC: finds the run a typed message belongs to), `call_attempts`, `call_after` (team-call retry); `whatsapp_messages` (the conversation: direction, Meta `wamid` unique per store, kind, action, delivery status, error code, step key; no message text — a typed change is encrypted in `confirmations.notes`). Worker reads `connections.external_account`/`kind` to route Meta's webhooks by phone number id.
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data

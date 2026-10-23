@@ -105,6 +105,10 @@ export interface ConfirmationRuns {
   link_expires_at: Timestamp;
   started_at: Generated<Timestamp>;
   finished_at: Timestamp | null;
+  chat_state: string | null;
+  customer_hash: string | null;
+  call_attempts: Generated<number>;
+  call_after: Timestamp | null;
 }
 
 export interface ConfirmationSteps {
@@ -123,6 +127,7 @@ export interface ConfirmationSteps {
   last_error: string | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  payload: Json | null;
 }
 
 export interface Confirmations {
@@ -912,6 +917,24 @@ export interface WebhookSubscriptions {
   created_at: Generated<Timestamp>;
 }
 
+export interface WhatsappMessages {
+  id: Generated<string>;
+  tenant_id: string;
+  connection_id: string | null;
+  run_id: string | null;
+  order_id: string | null;
+  direction: string;
+  wamid: string;
+  kind: string;
+  action: string | null;
+  status: string;
+  error_code: number | null;
+  step_key: string | null;
+  customer_hash: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface DB {
   accounting_periods: AccountingPeriods;
   ad_spend: AdSpend;
@@ -976,4 +999,5 @@ export interface DB {
   warehouses: Warehouses;
   webhook_deliveries: WebhookDeliveries;
   webhook_subscriptions: WebhookSubscriptions;
+  whatsapp_messages: WhatsappMessages;
 }

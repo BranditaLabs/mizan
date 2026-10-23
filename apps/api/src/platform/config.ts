@@ -50,6 +50,12 @@ export const ConfigSchema = z.object({
   LINK_SIGNING_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
   /** Customer messaging for confirmation (E6-7): none = links are sent by hand; log = development, pretends every channel is connected. */
   MESSAGING_PROVIDER: z.enum(["none", "log"], { error: "must be none or log" }).default("none"),
+  /** WhatsApp Cloud API (E6-10): the Meta app's secret signs webhooks; the verify token answers Meta's subscription check. Unset = WhatsApp webhooks refused. */
+  META_APP_SECRET: z.string().min(16).optional(),
+  WHATSAPP_VERIFY_TOKEN: z.string().min(16).optional(),
+  /** Graph API base and version (tests point it at a fake server). */
+  WHATSAPP_GRAPH_URL: url.default("https://graph.facebook.com"),
+  WHATSAPP_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/, "like v24.0").default("v24.0"),
   /** Daily exchange rates (E9-1): the feed, and how often the worker checks whether today's rates are in. Unset = open-er-api, none in tests. */
   FX_SOURCE: z.enum(["open-er-api", "none"], { error: "must be open-er-api or none" }).optional(),
   FX_REFRESH_MINUTES: z.coerce.number().int().min(5).max(1440).default(60),

@@ -23,6 +23,19 @@
             }
           },
           {
+            "name": "confirmation",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "needs_call: orders the team should call now",
+              "type": "string",
+              "enum": [
+                "needs_call"
+              ]
+            },
+            "description": "needs_call: orders the team should call now"
+          },
+          {
             "name": "q",
             "required": false,
             "in": "query",
@@ -1306,6 +1319,226 @@
           },
           "409": {
             "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/orders/{id}/confirmation/no-answer": {
+      "post": {
+        "operationId": "ConfirmationController_noAnswer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The team called and nobody answered: the order leaves the call list until the store's retry time; audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NoAnswer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/connections/whatsapp": {
+      "post": {
+        "operationId": "ConfirmationController_connectWhatsApp",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatsAppConnect"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved (token encrypted) as pending; checked in the background: active when the token works and the confirmation template is approved, else needs_attention (token_refused, token_lacks_permission, template_pending, template_rejected, template_missing)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/connections/whatsapp/check": {
+      "post": {
+        "operationId": "ConfirmationController_checkWhatsApp",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Check the WhatsApp number again (after a template is approved)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -3189,6 +3422,10 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 500
+          },
+          "byCall": {
+            "description": "Answered on a team call (counts for the call channel)",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3365,6 +3602,7 @@
             "description": "Start a confirmation for every new cash-on-delivery order"
           },
           "steps": {
+            "minItems": 1,
             "maxItems": 6,
             "type": "array",
             "items": {
@@ -3374,8 +3612,8 @@
                   "type": "string",
                   "enum": [
                     "whatsapp",
-                    "sms",
-                    "voice"
+                    "call_auto",
+                    "call_team"
                   ]
                 },
                 "waitMinutes": {
@@ -3408,17 +3646,39 @@
               "end"
             ]
           },
+          "teamCalls": {
+            "type": "object",
+            "properties": {
+              "attempts": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10,
+                "description": "How many times the team tries before the order stays on the list as unreachable"
+              },
+              "retryMinutes": {
+                "type": "integer",
+                "minimum": 10,
+                "maximum": 1440,
+                "description": "After \"no answer\", when the order comes back on the list"
+              }
+            },
+            "required": [
+              "attempts",
+              "retryMinutes"
+            ]
+          },
           "linkHours": {
             "type": "integer",
             "minimum": 6,
             "maximum": 168,
-            "description": "How long the customer's confirm link works"
+            "description": "How long a hand-sent confirm link works"
           }
         },
         "required": [
           "enabled",
           "steps",
           "callingHours",
+          "teamCalls",
           "linkHours"
         ]
       },
@@ -3433,6 +3693,7 @@
                 "description": "Start a confirmation for every new cash-on-delivery order"
               },
               "steps": {
+                "minItems": 1,
                 "maxItems": 6,
                 "type": "array",
                 "items": {
@@ -3442,8 +3703,8 @@
                       "type": "string",
                       "enum": [
                         "whatsapp",
-                        "sms",
-                        "voice"
+                        "call_auto",
+                        "call_team"
                       ]
                     },
                     "waitMinutes": {
@@ -3478,17 +3739,40 @@
                 ],
                 "additionalProperties": false
               },
+              "teamCalls": {
+                "type": "object",
+                "properties": {
+                  "attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "How many times the team tries before the order stays on the list as unreachable"
+                  },
+                  "retryMinutes": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 1440,
+                    "description": "After \"no answer\", when the order comes back on the list"
+                  }
+                },
+                "required": [
+                  "attempts",
+                  "retryMinutes"
+                ],
+                "additionalProperties": false
+              },
               "linkHours": {
                 "type": "integer",
                 "minimum": 6,
                 "maximum": 168,
-                "description": "How long the customer's confirm link works"
+                "description": "How long a hand-sent confirm link works"
               }
             },
             "required": [
               "enabled",
               "steps",
               "callingHours",
+              "teamCalls",
               "linkHours"
             ],
             "additionalProperties": false
@@ -3497,22 +3781,28 @@
             "type": "object",
             "properties": {
               "whatsapp": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "The store's WhatsApp number is connected and its template approved"
               },
-              "sms": {
-                "type": "boolean"
+              "call_auto": {
+                "type": "boolean",
+                "description": "A vendor for automated calls is connected"
               },
-              "voice": {
-                "type": "boolean"
+              "call_team": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ],
+                "description": "The store's team can always call"
               }
             },
             "required": [
               "whatsapp",
-              "sms",
-              "voice"
+              "call_auto",
+              "call_team"
             ],
             "additionalProperties": false,
-            "description": "Channels a messaging vendor is connected for"
+            "description": "Channels the store can use for confirmation"
           }
         },
         "required": [
@@ -3672,6 +3962,77 @@
         },
         "required": [
           "data"
+        ],
+        "additionalProperties": false
+      },
+      "ConnectionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "store",
+              "courier",
+              "whatsapp",
+              "ads",
+              "payment",
+              "tax"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "account": {
+            "nullable": true,
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "needs_attention",
+              "disconnected"
+            ]
+          },
+          "reason": {
+            "nullable": true,
+            "description": "key_refused, key_lacks_permission, app_uninstalled, scopes_changed …",
+            "type": "string"
+          },
+          "missingScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "verifiedAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "provider",
+          "account",
+          "status",
+          "reason",
+          "missingScopes",
+          "verifiedAt",
+          "updatedAt"
         ],
         "additionalProperties": false
       },
@@ -4939,6 +5300,39 @@
         ],
         "additionalProperties": false
       },
+      "NoAnswer": {
+        "type": "object",
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Team calls tried so far"
+          },
+          "max": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "after": {
+            "nullable": true,
+            "description": "When the order comes back on the call list; null after the last try",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "unreachable": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "attempts",
+          "max",
+          "after",
+          "unreachable"
+        ],
+        "additionalProperties": false
+      },
       "Onboarding": {
         "type": "object",
         "properties": {
@@ -5248,8 +5642,8 @@
                       "type": "string",
                       "enum": [
                         "whatsapp",
-                        "sms",
-                        "voice"
+                        "call_auto",
+                        "call_team"
                       ]
                     },
                     "waitMinutes": {
@@ -5312,6 +5706,34 @@
                   "at"
                 ],
                 "additionalProperties": false
+              },
+              "calls": {
+                "type": "object",
+                "properties": {
+                  "attempts": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "max": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "after": {
+                    "nullable": true,
+                    "description": "Back on the call list at",
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  }
+                },
+                "required": [
+                  "attempts",
+                  "max",
+                  "after"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -5325,7 +5747,8 @@
               "startedAt",
               "finishedAt",
               "linkExpiresAt",
-              "next"
+              "next",
+              "calls"
             ],
             "additionalProperties": false
           },
@@ -5386,32 +5809,93 @@
               "additionalProperties": false
             }
           },
+          "whatsapp": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "direction": {
+                  "type": "string",
+                  "enum": [
+                    "in",
+                    "out"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "description": "out: template, list, text; in: quick_reply, button_reply, list_reply, text, location"
+                },
+                "action": {
+                  "nullable": true,
+                  "description": "out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored",
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "errorCode": {
+                  "nullable": true,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "direction",
+                "kind",
+                "action",
+                "status",
+                "errorCode",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "script": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "channels": {
             "type": "object",
             "properties": {
               "whatsapp": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "The store's WhatsApp number is connected and its template approved"
               },
-              "sms": {
-                "type": "boolean"
+              "call_auto": {
+                "type": "boolean",
+                "description": "A vendor for automated calls is connected"
               },
-              "voice": {
-                "type": "boolean"
+              "call_team": {
+                "type": "boolean",
+                "enum": [
+                  true
+                ],
+                "description": "The store's team can always call"
               }
             },
             "required": [
               "whatsapp",
-              "sms",
-              "voice"
+              "call_auto",
+              "call_team"
             ],
             "additionalProperties": false,
-            "description": "Channels a messaging vendor is connected for"
+            "description": "Channels the store can use for confirmation"
           }
         },
         "required": [
           "run",
           "steps",
           "attempts",
+          "whatsapp",
+          "script",
           "channels"
         ],
         "additionalProperties": false
@@ -6264,12 +6748,18 @@
               "returned"
             ],
             "additionalProperties": false
+          },
+          "needsCall": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           }
         },
         "required": [
           "data",
           "nextCursor",
-          "counts"
+          "counts",
+          "needsCall"
         ],
         "additionalProperties": false
       },
@@ -7503,6 +7993,33 @@
           "data",
           "nextCursor",
           "counts"
+        ],
+        "additionalProperties": false
+      },
+      "WhatsAppConnect": {
+        "type": "object",
+        "properties": {
+          "phoneNumberId": {
+            "type": "string",
+            "pattern": "^\\d{6,20}$",
+            "description": "Phone number ID (not the phone number)"
+          },
+          "wabaId": {
+            "type": "string",
+            "pattern": "^\\d{6,20}$",
+            "description": "WhatsApp Business Account ID"
+          },
+          "accessToken": {
+            "type": "string",
+            "minLength": 20,
+            "maxLength": 1024,
+            "description": "A permanent system-user token with whatsapp_business_messaging and whatsapp_business_management; stored encrypted, never shown again"
+          }
+        },
+        "required": [
+          "phoneNumberId",
+          "wabaId",
+          "accessToken"
         ],
         "additionalProperties": false
       }

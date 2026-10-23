@@ -63,9 +63,14 @@ export class OrdersService {
           "o.currency", "o.payment_mode", "o.payment_status", "o.risk_score", "o.tags", "o.placed_at"])
         .where(scope).orderBy("o.placed_at", "desc").orderBy("o.id", "desc").limit(q.limit + 1);
       if (q.status) rows = rows.where("o.status", "=", q.status);
+      // Waiting for the team's call now: escalated confirmation whose retry time has come (E6-10).
+      const needsCall = (eb: ExpressionBuilder<DB & { o: DB["orders"] }, "o">) => eb("o.id", "in", eb.selectFrom("confirmation_runs as r").select("r.order_id")
+        .where("r.status", "=", "needs_agent").where((x) => x.or([x("r.call_after", "is", null), x("r.call_after", "<=", sql<Date>`now()`)])));
+      if (q.confirmation === "needs_call") rows = rows.where((eb) => needsCall(eb as never));
       if (after) rows = rows.where((eb) => eb.or([eb("o.placed_at", "<", after.at), eb.and([eb("o.placed_at", "=", after.at), eb("o.id", "<", after.id)])]));
       const found = await rows.execute();
       const counts = await trx.selectFrom("orders as o").where(scope).select(["o.status", sql<string>`count(*)`.as("n")]).groupBy("o.status").execute();
+      const calls = await trx.selectFrom("orders as o").where(scope).where((eb) => needsCall(eb as never)).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
 
       const page = found.slice(0, q.limit);
       const pii = page.some((r) => r.customer_label) ? await this.cipher.forTenant(trx, tenantId) : null;
@@ -84,6 +89,7 @@ export class OrdersService {
         })),
         nextCursor: found.length > q.limit && last ? encode(last.placed_at, last.id) : null,
         counts: { all: Object.values(byStatus).reduce((a, b) => a + b, 0), ...byStatus },
+        needsCall: Number(calls.n),
       };
     });
   }

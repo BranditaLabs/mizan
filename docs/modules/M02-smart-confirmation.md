@@ -42,20 +42,44 @@ Verification scores every order 0–100 and picks how to check it. Cash-on-deliv
 - **Fallbacks.** Bot no reply in 2 hours moves the order to the agent queue automatically.
 - **Fair load.** Orders are spread across online agents by queue size and language.
 
-## Automated confirmation (built, E6-7)
+## Automated confirmation (built, E6-7 · in the chat, E6-10)
 
-Every new cash-on-delivery or deposit order (placed in the last 24 hours, never imported history) becomes **Waiting to confirm** and walks the store's cascade without anyone touching it:
+Every new cash-on-delivery or deposit order (placed in the last 24 hours, never imported history) becomes **Waiting to confirm** and walks the store's cascade without anyone touching it. Default:
 
-1. **WhatsApp** — order summary with Confirm / Change / Cancel and the link (wait 2 h).
-2. **SMS with the confirm link** (wait 2 h).
-3. **Automated call** — "press 1 to confirm, 2 to change, 3 to cancel" (wait 1 h, twice), only within calling hours (10:00–22:00 store time).
-4. **Agent** — whatever is left unanswered, or a change request.
+1. **WhatsApp** — the approved template with three buttons: **أكّد الأوردر / عايز أعدّل / ألغي الأوردر**. No link to open: the customer answers by tapping, inside the chat (wait 2 h).
+2. **Our team calls** — the order goes on the **"محتاج مكالمة" (Needs a call)** list, with a call script; outcomes Confirmed / No answer / Cancelled. "No answer" hides the order until the retry time (default 3 tries, 1 h apart, calling hours only), then it stays on the list marked unreachable.
 
-The customer can always answer on the **link page** (`/c/{token}`, no app, no sign-in): their order, the amount to pay on delivery, Confirm in one tap, Change (a note, stored encrypted), Cancel (a reason), and optionally their location for the courier. Every channel answers through one service: the order becomes Confirmed or Cancelled, the timeline and attempts log record who and how, a second answer is refused.
+An **automated call** (IVR, "press 1 to confirm…") can sit between them once a voice vendor is connected (E6-8). The team call, when present, is always last. SMS is no longer offered (settings saved before read `sms` as skipped and `voice` as the automated call).
 
-Vendors are pluggable (`MessagingProvider`): a channel with no vendor is skipped. With none connected, orders go straight to an agent, who sends the link on WhatsApp in one tap (wa.me, prefilled message); the customer's tap on Confirm is still automatic. Settings → Confirmation turns it on or off, orders the steps, sets the waits, calling hours and how long the link works.
+### The conversation (E6-10)
 
-**Next:** WhatsApp Cloud API (E6-4), SMS + IVR vendor (E6-8), then an **AI voice agent** (E6-9, V2) that talks with the customer in Egyptian Arabic, confirms, changes or reschedules, and hands off to a human when unsure — the same answer service, one more channel in the cascade.
+```
+Template  [أكّد]  → order Confirmed → "تمام ✅ أوردرك … اتأكّد وهنشحنه قريب"
+          [عدّل]  → on the call list (change requested) → "اكتب لنا التعديل…" → what they type next is the note (encrypted) → "وصلنا ✍️"
+          [ألغي]  → a list: reasons + "لا، كمّل الأوردر" → a reason cancels ("اتلغى أوردرك…"); keep confirms
+Anything typed → on the call list (customer_message) → "وصلنا ✍️ فريق المتجر هيكلّمك"
+A location     → kept on the order for the courier
+```
+
+- **Signed buttons.** Each button and list row carries `c1.<run>.<action>[.<arg>].<mac>` (HMAC with `LINK_SIGNING_KEY`): a forged or edited id does nothing; a tap on an old message only touches its own order; a second tap or a redelivered webhook changes nothing ("late").
+- **Replies are queued steps** (`kind = reply`) sent by the runner, keyed by the customer's message id: never sent twice.
+- **Delivery statuses** (sent, delivered, read, failed) build the transcript on the order card. A failed template (number not on WhatsApp, 131026) moves the cascade on immediately.
+- **No idempotency key at Meta:** a send whose response is lost waits 10 minutes for its status webhook (our key in `biz_opaque_callback_data`); found → recorded as sent; none → sent again, once.
+- **Utility vs marketing:** the template stays pure utility (no promotion). Upsell offers (E6-11) go as a follow-up inside the free 24-hour window that the customer's tap opens.
+
+### Templates (submit in WhatsApp Manager, category Utility)
+
+`mizan_order_confirm_ar` — body: `{{1}} 👋` / `أوردرك رقم {{3}} من {{2}} وصلنا.` / `الإجمالي {{4}}.` / `أكّد الأوردر عشان نجهّزه ونشحنه لك.` — quick replies in order: أكّد الأوردر · عايز أعدّل · ألغي الأوردر.
+`mizan_order_confirm_en` — body: `{{1}} 👋` / `We received your order {{3}} from {{2}}.` / `Total: {{4}}.` / `Please confirm so we can prepare and ship it.` — quick replies: Confirm order · I want a change · Cancel order.
+Parameters: 1 greeting with first name, 2 store name, 3 order number, 4 amount ("1,250 ج.م. عند الاستلام"). The store's language decides which one is sent; the connection is **active** only when that one is approved.
+
+### Connecting the number
+
+Settings → Confirmation → the store's WhatsApp number (owner, admin): Phone number ID, WhatsApp Business Account ID and a permanent system-user token (stored encrypted). Checked in the background: active, or needs attention (`token_refused`, `token_lacks_permission`, `template_pending`, `template_rejected`, `template_missing`) with what to do. Embedded Signup (one click, E6-4b) replaces the form once Meta approves Mizan as a Tech Provider. Everything to set up at Meta: `docs/needed-from-you.md` §1.
+
+The **link page** (`/c/{token}`) stays for stores without a WhatsApp number: the team sends it by hand (wa.me, prefilled) or copies it. Every channel answers through one service (`applyAnswer`): the order becomes Confirmed or Cancelled, the timeline and attempts log record who and how, a second answer is refused.
+
+**Next:** offers in the chat (E6-11, E6-12, E6-13), SMS-free automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
 
 ## Main screen — Confirmation queue
 

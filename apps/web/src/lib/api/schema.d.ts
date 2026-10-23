@@ -209,6 +209,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/confirmation/no-answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_noAnswer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_connectWhatsApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/whatsapp/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_checkWhatsApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/settings/confirmation": {
         parameters: {
             query?: never;
@@ -593,6 +641,8 @@ export interface components {
             /** @enum {string} */
             reason?: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
             note?: string;
+            /** @description Answered on a team call (counts for the call channel) */
+            byCall?: boolean;
         };
         AnswerResult: {
             outcome: string;
@@ -642,7 +692,7 @@ export interface components {
             enabled: boolean;
             steps: {
                 /** @enum {string} */
-                channel: "whatsapp" | "sms" | "voice";
+                channel: "whatsapp" | "call_auto" | "call_team";
                 /** @description How long to wait for an answer before the next step */
                 waitMinutes: number;
             }[];
@@ -650,7 +700,13 @@ export interface components {
                 start: string;
                 end: string;
             };
-            /** @description How long the customer's confirm link works */
+            teamCalls: {
+                /** @description How many times the team tries before the order stays on the list as unreachable */
+                attempts: number;
+                /** @description After "no answer", when the order comes back on the list */
+                retryMinutes: number;
+            };
+            /** @description How long a hand-sent confirm link works */
             linkHours: number;
         };
         ConfirmationSettingsView: {
@@ -659,7 +715,7 @@ export interface components {
                 enabled: boolean;
                 steps: {
                     /** @enum {string} */
-                    channel: "whatsapp" | "sms" | "voice";
+                    channel: "whatsapp" | "call_auto" | "call_team";
                     /** @description How long to wait for an answer before the next step */
                     waitMinutes: number;
                 }[];
@@ -667,14 +723,26 @@ export interface components {
                     start: string;
                     end: string;
                 };
-                /** @description How long the customer's confirm link works */
+                teamCalls: {
+                    /** @description How many times the team tries before the order stays on the list as unreachable */
+                    attempts: number;
+                    /** @description After "no answer", when the order comes back on the list */
+                    retryMinutes: number;
+                };
+                /** @description How long a hand-sent confirm link works */
                 linkHours: number;
             };
-            /** @description Channels a messaging vendor is connected for */
+            /** @description Channels the store can use for confirmation */
             channels: {
+                /** @description The store's WhatsApp number is connected and its template approved */
                 whatsapp: boolean;
-                sms: boolean;
-                voice: boolean;
+                /** @description A vendor for automated calls is connected */
+                call_auto: boolean;
+                /**
+                 * @description The store's team can always call
+                 * @enum {boolean}
+                 */
+                call_team: true;
             };
         };
         Connection: {
@@ -712,6 +780,23 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
             }[];
+        };
+        ConnectionView: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "store" | "courier" | "whatsapp" | "ads" | "payment" | "tax";
+            provider: string;
+            account: string | null;
+            /** @enum {string} */
+            status: "pending" | "active" | "needs_attention" | "disconnected";
+            /** @description key_refused, key_lacks_permission, app_uninstalled, scopes_changed … */
+            reason: string | null;
+            missingScopes: string[];
+            /** Format: date-time */
+            verifiedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
         };
         CostRule: {
             /** Format: uuid */
@@ -1071,6 +1156,17 @@ export interface components {
             amount: string;
             currency: string;
         };
+        NoAnswer: {
+            /** @description Team calls tried so far */
+            attempts: number;
+            max: number;
+            /**
+             * Format: date-time
+             * @description When the order comes back on the call list; null after the last try
+             */
+            after: string | null;
+            unreachable: boolean;
+        };
         Onboarding: {
             steps: {
                 store: {
@@ -1143,7 +1239,7 @@ export interface components {
                 answeredChannel: string | null;
                 plan: {
                     /** @enum {string} */
-                    channel: "whatsapp" | "sms" | "voice";
+                    channel: "whatsapp" | "call_auto" | "call_team";
                     waitMinutes: number;
                 }[];
                 step: number;
@@ -1160,6 +1256,15 @@ export interface components {
                     /** Format: date-time */
                     at: string;
                 } | null;
+                calls: {
+                    attempts: number;
+                    max: number;
+                    /**
+                     * Format: date-time
+                     * @description Back on the call list at
+                     */
+                    after: string | null;
+                };
             } | null;
             steps: {
                 idx: number;
@@ -1174,11 +1279,30 @@ export interface components {
                 /** Format: date-time */
                 at: string;
             }[];
-            /** @description Channels a messaging vendor is connected for */
+            whatsapp: {
+                /** @enum {string} */
+                direction: "in" | "out";
+                /** @description out: template, list, text; in: quick_reply, button_reply, list_reply, text, location */
+                kind: string;
+                /** @description out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored */
+                action: string | null;
+                status: string;
+                errorCode: number | null;
+                /** Format: date-time */
+                at: string;
+            }[];
+            script: string[];
+            /** @description Channels the store can use for confirmation */
             channels: {
+                /** @description The store's WhatsApp number is connected and its template approved */
                 whatsapp: boolean;
-                sms: boolean;
-                voice: boolean;
+                /** @description A vendor for automated calls is connected */
+                call_auto: boolean;
+                /**
+                 * @description The store's team can always call
+                 * @enum {boolean}
+                 */
+                call_team: true;
             };
         };
         OrderDetail: {
@@ -1377,6 +1501,7 @@ export interface components {
                 delivered: number;
                 returned: number;
             };
+            needsCall: number;
         };
         OrderPnl: {
             currency: string;
@@ -1703,6 +1828,14 @@ export interface components {
                 missingCost: number;
             };
         };
+        WhatsAppConnect: {
+            /** @description Phone number ID (not the phone number) */
+            phoneNumberId: string;
+            /** @description WhatsApp Business Account ID */
+            wabaId: string;
+            /** @description A permanent system-user token with whatsapp_business_messaging and whatsapp_business_management; stored encrypted, never shown again */
+            accessToken: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -1716,6 +1849,8 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                /** @description needs_call: orders the team should call now */
+                confirmation?: "needs_call";
                 /** @description Order number, store order id, or the customer's phone */
                 q?: string;
                 paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
@@ -2433,6 +2568,147 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_noAnswer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The team called and nobody answered: the order leaves the call list until the store's retry time; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoAnswer"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_connectWhatsApp: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WhatsAppConnect"];
+            };
+        };
+        responses: {
+            /** @description Saved (token encrypted) as pending; checked in the background: active when the token works and the confirmation template is approved, else needs_attention (token_refused, token_lacks_permission, template_pending, template_rejected, template_missing) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionView"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_checkWhatsApp: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Check the WhatsApp number again (after a template is approved) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionView"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

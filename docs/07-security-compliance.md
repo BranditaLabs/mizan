@@ -90,3 +90,10 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 - 99.5% uptime target at launch; status page.
 - Incident response: severity levels, on-call, merchant notification template (AR/EN), post-mortem within 5 working days.
 - Access reviews quarterly; offboarding checklist.
+
+### WhatsApp confirmation (E6-10)
+
+- Webhooks are verified with `X-Hub-Signature-256` (HMAC of the raw body with the Meta app secret) before parsing; unsigned or wrongly signed deliveries get 401. Meta's subscription check needs the verify token.
+- Button and list ids are signed per run (`c1.<run>.<action>.<mac>`, HMAC-SHA256 with `LINK_SIGNING_KEY`, 12 bytes): a forged, edited or replayed tap does nothing beyond its own order, and an answered order refuses a second answer.
+- No message text is stored or logged: the transcript keeps what a message meant (asked, confirmed, tapped cancel…) and its delivery status. A change the customer types is stored only encrypted (`confirmations.notes`). Numbers in logs are masked.
+- The merchant's WhatsApp token is a secret (encrypted, never shown again, never logged).

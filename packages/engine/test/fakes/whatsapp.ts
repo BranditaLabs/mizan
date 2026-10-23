@@ -19,8 +19,9 @@ export interface FakeWaMessage { id: string; to: string; key: string | undefined
 
 export class FakeWhatsApp {
   readonly host = "fake-graph.test";
-  readonly token = "EAAG-test-token";
-  readonly appSecret = "meta-app-secret";
+  readonly token = "EAAG-test-token-for-mizan";
+  /** Signs webhooks; tests may set it to the app's configured secret. */
+  appSecret = "meta-app-secret";
   readonly phoneNumberId = "1098765432";
   readonly wabaId = "2034567890";
   readonly version = "v24.0";
@@ -42,6 +43,8 @@ export class FakeWhatsApp {
     { name: "old_template", language: "en", status: "PAUSED", category: "UTILITY" },
     { name: "pending_one", language: "ar", status: "PENDING", category: "UTILITY" },
   ];
+  /** Numbers not on WhatsApp: Meta accepts the send, then fails it by webhook (131026). */
+  readonly undeliverable = new Set<string>();
   /** Last time each customer wrote to the business: opens the 24-hour window. */
   private readonly lastInbound = new Map<string, number>();
   private readonly lastSentTo = new Map<string, number>();
@@ -77,6 +80,7 @@ export class FakeWhatsApp {
     return this.inbound(from, { type: "interactive", interactive: { type: kind, [kind]: { id, title: "ضيفها" } }, ...(context ? { context: { from: "201000000000", id: context } } : {}) });
   }
   writes(from: string, text: string) { return this.inbound(from, { type: "text", text: { body: text } }); }
+  sharesLocation(from: string, latitude: number, longitude: number) { return this.inbound(from, { type: "location", location: { latitude, longitude } }); }
 
   private inbound(from: string, msg: Record<string, unknown>) {
     const id = `wamid.IN${++this.seq}`;
@@ -142,7 +146,8 @@ export class FakeWhatsApp {
       this.lastSentTo.set(to, this.clock.now());
       // Free-form outside the window: accepted now, failed by webhook (Meta behaviour).
       const windowOpen = this.clock.now() - (this.lastInbound.get(to) ?? -Infinity) < 24 * 3_600_000;
-      if (body.type !== "template" && !windowOpen) this.status(m, "failed", 131047);
+      if (this.undeliverable.has(to)) this.status(m, "failed", 131026);
+      else if (body.type !== "template" && !windowOpen) this.status(m, "failed", 131047);
       else this.status(m, "sent");
       if (fault === "lost") return hang(init); // accepted; the caller never hears back
       return json(200, { messaging_product: "whatsapp", ...(this.shape === "alt" ? {} : { contacts: [{ input: to, wa_id: to }] }), messages: [{ id: m.id, ...(body.type === "template" ? { message_status: "accepted" } : {}) }] });

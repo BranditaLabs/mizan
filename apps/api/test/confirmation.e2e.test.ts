@@ -11,14 +11,18 @@ import { Database } from "../src/platform/db/database.js";
 import { EventDispatcher } from "../src/platform/events/dispatcher.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { OrderProjector } from "../src/modules/orders/order-projector.js";
-import { linkToken, runIdOf } from "../src/modules/confirmation/confirmation-link.js";
+import { linkToken, parseActionId, runIdOf } from "../src/modules/confirmation/confirmation-link.js";
 import { ConfirmationRunner } from "../src/modules/confirmation/confirmation.runner.js";
-import { DEFAULT_CONFIRMATION, nextCallingTime } from "../src/modules/confirmation/confirmation.settings.js";
+import { confirmationSettings, DEFAULT_CONFIRMATION, nextCallingTime } from "../src/modules/confirmation/confirmation.settings.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
-import { smsText } from "../src/modules/confirmation/messages.js";
+import { callScript, linkText } from "../src/modules/confirmation/messages.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
-/** E6-7: a new COD order walks WhatsApp → SMS link → call → agent; any channel answers the same way. */
+/**
+ * E6-7, E6-10: a new COD order walks the store's cascade (WhatsApp → team call by default; an
+ * automated call when a voice vendor is connected); any channel answers the same way. The
+ * WhatsApp conversation itself (taps, replies, statuses) is in whatsapp-chat.e2e.test.ts.
+ */
 const fake = new FakeVerifier();
 let app: INestApplication;
 let db: Database;
@@ -88,14 +92,16 @@ beforeEach(async () => {
 afterAll(() => app.close());
 
 describe("starting", () => {
-  it("a new COD order waits for confirmation and gets a WhatsApp message with its link", async () => {
+  it("a new COD order waits for confirmation and gets the WhatsApp template with signed buttons, no link", async () => {
     const id = await newOrder();
     expect((await orderRow(id)).status).toBe("pending_confirmation");
     expect(await run(new Date())).toBe(1);
     const [msg] = vendor.of("whatsapp");
-    expect(msg?.message).toMatchObject({ to: "+201001234821", template: "order_confirmation", lang: "ar", buttons: ["confirm", "change", "cancel"] });
-    expect((msg?.message as { params: string[] }).params).toEqual(["أهلاً Mona", "Nile Abayas", `#${8000 + n}`, "1,250 ج.م."]);
-    expect((msg?.message as { url: string }).url).toMatch(/^https:\/\/app\.mizan\.test\/ar\/c\/[A-Za-z0-9_-]{38}$/);
+    expect(msg?.message).toMatchObject({ to: "+201001234821", template: "mizan_order_confirm_ar", lang: "ar" });
+    expect((msg?.message as { params: string[] }).params).toEqual(["أهلاً Mona", "Nile Abayas", `#${8000 + n}`, "1,250 ج.م. عند الاستلام"]);
+    expect((msg?.message as { url?: string }).url).toBeUndefined();
+    const runId = (await runOf(id))!.id;
+    expect((msg?.message as { buttons: string[] }).buttons.map((b) => parseActionId(undefined, b))).toEqual(["confirm", "change", "cancel"].map((action) => ({ runId, action })));
     expect((await eventsOf(id)).map((e) => e.type)).toEqual(expect.arrayContaining(["order.created", "confirmation.started", "confirmation.sent"]));
     expect(JSON.stringify(await eventsOf(id))).not.toMatch(/Mona|1001234821|Abbas/);
   });
@@ -115,37 +121,44 @@ describe("starting", () => {
 });
 
 describe("the cascade", () => {
-  it("moves on when nobody answers: WhatsApp → SMS → call → call → agent", async () => {
+  it("by default: WhatsApp, then after 2 hours the order goes on the team's call list", async () => {
     const id = await newOrder();
     const t0 = Date.now();
     await run(new Date(t0));
-    await run(new Date(t0 + 121 * MIN)); // WhatsApp wait over → SMS
-    expect(vendor.of("sms")).toHaveLength(1);
-    expect((vendor.of("sms")[0]!.message as { text: string }).text).toMatch(/^أهلاً Mona، أوردرك #\d+ من Nile Abayas بـ .*أكّده أو عدّله من هنا: https:\/\/app\.mizan\.test\/ar\/c\//);
-    await run(new Date(t0 + 242 * MIN)); // SMS wait over → call
-    expect(vendor.of("voice")).toHaveLength(1);
-    expect(vendor.of("voice")[0]!.message).toMatchObject({ digits: { "1": "confirm", "2": "change", "3": "cancel" } });
-    await run(new Date(t0 + 303 * MIN)); // second call
-    expect(vendor.of("voice")).toHaveLength(2);
-    await run(new Date(t0 + 364 * MIN)); // last wait over → agent
-    expect(await runOf(id)).toMatchObject({ status: "needs_agent", outcome: "no_reply" });
+    expect(await runOf(id)).toMatchObject({ status: "running", step: 0 });
+    await run(new Date(t0 + 121 * MIN)); // WhatsApp wait over → the team calls
+    expect(await runOf(id)).toMatchObject({ status: "needs_agent", reason: "team_call", step: 1 });
+    expect(vendor.sent).toHaveLength(1); // nothing automated after WhatsApp
     expect((await orderRow(id)).status).toBe("pending_confirmation");
     expect((await eventsOf(id)).map((e) => e.type)).toContain("confirmation.escalated");
     expect(await run(new Date(t0 + 999 * MIN))).toBe(0); // nothing left to do
   });
 
-  it("skips channels without a vendor, and goes straight to an agent when none is connected", async () => {
-    vendor = new FakeMessaging(["sms"]);
-    app.get(MessagingRegistry).use(vendor);
-    const smsOnly = await newOrder();
-    await run(new Date());
-    expect(vendor.of("whatsapp")).toHaveLength(0);
-    expect(vendor.of("sms")).toHaveLength(1);
+  it("with an automated call in the cascade: WhatsApp → call (calling hours) → team", async () => {
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({
+      ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" },
+      steps: [{ channel: "whatsapp", waitMinutes: 60 }, { channel: "call_auto", waitMinutes: 60 }, { channel: "call_team", waitMinutes: 60 }],
+    }).expect(200);
+    const id = await newOrder();
+    const t0 = Date.now();
+    await run(new Date(t0));
+    await run(new Date(t0 + 61 * MIN));
+    expect(vendor.of("voice")).toHaveLength(1);
+    expect(vendor.of("voice")[0]!.message).toMatchObject({ digits: { "1": "confirm", "2": "change", "3": "cancel" } });
+    await run(new Date(t0 + 122 * MIN));
+    expect(await runOf(id)).toMatchObject({ status: "needs_agent", reason: "team_call" });
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+  });
+
+  it("without WhatsApp the order goes straight to the team; with nothing at all, no_channel", async () => {
     app.get(MessagingRegistry).use(null);
     const none = await newOrder();
-    expect(await runOf(none)).toMatchObject({ status: "needs_agent", reason: "no_channel" });
+    expect(await runOf(none)).toMatchObject({ status: "needs_agent", reason: "team_call" });
     expect((await orderRow(none)).status).toBe("pending_confirmation");
-    expect(await runOf(smsOnly)).toMatchObject({ status: "running" });
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, steps: [{ channel: "whatsapp", waitMinutes: 60 }], callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+    const nothing = await newOrder();
+    expect(await runOf(nothing)).toMatchObject({ status: "needs_agent", reason: "no_channel" });
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
   });
 
   it("retries a vendor that fails for now, and moves on from a number it refuses", async () => {
@@ -160,9 +173,8 @@ describe("the cascade", () => {
 
     vendor.refused.add("+201001234821");
     const refused = await newOrder();
-    await run(new Date(t0 + 3 * MIN)); // WhatsApp refused → SMS refused → calls refused → agent
-    for (let i = 0; i < 4; i++) await run(new Date(t0 + (4 + i) * MIN));
-    expect(await runOf(refused)).toMatchObject({ status: "needs_agent" });
+    await run(new Date(t0 + 3 * MIN)); // WhatsApp refused → the team
+    expect(await runOf(refused)).toMatchObject({ status: "needs_agent", reason: "team_call" });
   });
 
   it("waits for calling hours before calling", () => {
@@ -193,7 +205,7 @@ describe("the customer's link", () => {
     expect((await eventsOf(id)).map((e) => e.type)).toContain("order.confirmed");
     // The pending wait is cancelled: nothing else is sent.
     await run(new Date(Date.now() + 500 * MIN));
-    expect(vendor.sent.filter((s) => (s.message as { url?: string; text?: string }).url?.endsWith(token) || (s.message as { text?: string }).text?.endsWith(token))).toHaveLength(1);
+    expect(vendor.sent).toHaveLength(1);
     // A second answer is refused.
     expect((await http().post(`/v1/public/confirm/${token}`).send({ answer: "cancel" }).expect(409)).body.code).toBe("already_answered");
     expect((await http().get(`/v1/public/confirm/${token}`).expect(200)).body.state).toBe("confirmed");
@@ -241,7 +253,9 @@ describe("staff", () => {
     expect(decodeURIComponent(link.body.whatsappUrl.split("text=")[1])).toContain(link.body.url);
 
     const summary = await http().get(`/v1/orders/${id}/confirmation`).set(as("agent")).expect(200);
-    expect(summary.body).toMatchObject({ run: { status: "needs_agent", reason: "no_channel" }, channels: { whatsapp: false, sms: false, voice: false } });
+    expect(summary.body).toMatchObject({ run: { status: "needs_agent", reason: "team_call", calls: { attempts: 0, max: 3 } }, channels: { whatsapp: false, call_auto: false, call_team: true } });
+    expect(summary.body.script).toEqual(callScript({ lang: "ar", store: "Nile Abayas", firstName: "Mona", number: `#${8000 + n}`, total: { amount: "1250.00", currency: "EGP" }, cod: { amount: "1250.00", currency: "EGP" }, link: "", items: [{ title: "Abaya", quantity: 2 }], city: "Nasr City" }));
+    expect(summary.body.script[0]).toBe("أهلاً Mona، معاك فريق Nile Abayas.");
 
     expect((await http().post(`/v1/orders/${id}/confirmation`).set(as("agent")).send({ answer: "confirm" }).expect(200)).body).toEqual({ outcome: "confirmed" });
     expect((await orderRow(id)).status).toBe("confirmed");
@@ -256,7 +270,9 @@ describe("staff", () => {
     await http().post(`/v1/orders/${id}/confirmation/link`).set(as("finance")).expect(403);
     await http().get("/v1/settings/confirmation").set(as("agent")).expect(403);
     const s = await http().get("/v1/settings/confirmation").set(as("owner")).expect(200);
-    expect(s.body.channels).toEqual({ whatsapp: true, sms: true, voice: true });
+    expect(s.body.channels).toEqual({ whatsapp: true, call_auto: true, call_team: true });
+    // The team call ends the automatic part: it must be last.
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, steps: [{ channel: "call_team", waitMinutes: 60 }, { channel: "whatsapp", waitMinutes: 60 }] }).expect(422);
     await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "22:00", end: "10:00" } }).expect(422);
     await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, steps: [{ channel: "fax", waitMinutes: 60 }] }).expect(422);
   });
@@ -277,9 +293,43 @@ describe("staff", () => {
   });
 });
 
+describe("team calls (E6-10)", () => {
+  it("the call list shows escalated orders; no answer hides the order until the retry time, then unreachable", async () => {
+    app.get(MessagingRegistry).use(null);
+    const id = await newOrder();
+    const list = async () => (await http().get("/v1/orders?confirmation=needs_call").set(as("owner")).expect(200)).body;
+    expect((await list()).data.map((o: { id: string }) => o.id)).toContain(id);
+    expect((await list()).needsCall).toBeGreaterThan(0);
+
+    const first = await http().post(`/v1/orders/${id}/confirmation/no-answer`).set(as("owner")).expect(200);
+    expect(first.body).toMatchObject({ attempts: 1, max: 3, unreachable: false });
+    expect(Date.parse(first.body.after)).toBeGreaterThan(Date.now() + 50 * MIN);
+    expect((await list()).data.map((o: { id: string }) => o.id)).not.toContain(id); // back after the retry time
+    await http().post(`/v1/orders/${id}/confirmation/no-answer`).set(as("owner")).expect(200);
+    const last = await http().post(`/v1/orders/${id}/confirmation/no-answer`).set(as("owner")).expect(200);
+    expect(last.body).toMatchObject({ attempts: 3, after: null, unreachable: true });
+    expect(await runOf(id)).toMatchObject({ reason: "unreachable", call_attempts: 3 });
+    expect((await list()).data.map((o: { id: string }) => o.id)).toContain(id); // stays, marked unreachable
+
+    // Reached on a later call: confirmed by the team, counted as a team call.
+    await http().post(`/v1/orders/${id}/confirmation`).set(as("owner")).send({ answer: "confirm", byCall: true }).expect(200);
+    expect(await runOf(id)).toMatchObject({ status: "confirmed", answered_channel: "call_team" });
+    await http().post(`/v1/orders/${id}/confirmation/no-answer`).set(as("owner")).expect(409);
+    const tries = await db.tenant(store, (trx) => trx.selectFrom("confirmations").select(["channel", "outcome"]).where("order_id", "=", id).orderBy("started_at").execute());
+    expect(tries.filter((t) => t.channel === "call_team").map((t) => t.outcome)).toEqual(["no_answer", "no_answer", "no_answer", "confirmed"]);
+  });
+
+  it("reads settings saved before E6-10: SMS dropped, an automated voice call becomes call_auto", () => {
+    const s = confirmationSettings({ confirmation: { enabled: true, steps: [{ channel: "whatsapp", waitMinutes: 120 }, { channel: "sms", waitMinutes: 120 }, { channel: "voice", waitMinutes: 60 }], callingHours: { start: "10:00", end: "22:00" }, linkHours: 72 } });
+    expect(s.steps).toEqual([{ channel: "whatsapp", waitMinutes: 120 }, { channel: "call_auto", waitMinutes: 60 }]);
+    expect(s.teamCalls).toEqual({ attempts: 3, retryMinutes: 60 });
+    expect(confirmationSettings({ confirmation: { steps: [{ channel: "sms", waitMinutes: 10 }] } }).steps).toEqual(DEFAULT_CONFIRMATION.steps);
+  });
+});
+
 describe("messages", () => {
   it("speak English for an English store", () => {
-    expect(smsText({ lang: "en", store: "Nile", firstName: null, number: "#1", total: { amount: "100.00", currency: "EGP" }, cod: { amount: "0.00", currency: "EGP" }, link: "https://x/c/t" }))
+    expect(linkText({ lang: "en", store: "Nile", firstName: null, number: "#1", total: { amount: "100.00", currency: "EGP" }, cod: { amount: "0.00", currency: "EGP" }, link: "https://x/c/t" }))
       .toBe("Hi, your order #1 from Nile is EGP 100. Confirm or change it here: https://x/c/t");
   });
 });

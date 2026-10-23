@@ -76,7 +76,12 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("التأكيد");
   await expect(main.getByTestId("confirmation-channels")).toContainText("واتساب · مش متوصّل");
-  await expect(main).toContainText("لسه مفيش حاجة متوصّلة");
+  await expect(main.getByTestId("confirmation-channels")).toContainText("فريقنا يكلّم العميل · متاح دايماً");
+  await expect(main).toContainText("واتساب مش متوصّل لسه");
+  // The WhatsApp connect form (owner): ids from Meta and a token, shown as a password field.
+  const wa = main.getByTestId("whatsapp-connect");
+  await expect(wa.getByLabel("معرّف الرقم (Phone number ID)")).toBeVisible();
+  await expect(wa.getByLabel("التوكن الدائم")).toHaveAttribute("type", "password");
   const toggle = main.getByRole("switch", { name: /أكّد الأوردرات الجديدة/ });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
@@ -86,7 +91,7 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   await expect(main.getByRole("switch", { name: /أكّد الأوردرات الجديدة/ })).not.toBeChecked();
 });
 
-test("order detail: the confirmation card hands off to an agent with the WhatsApp link", async ({ page }) => {
+test("order detail: the team's call panel with the script, the WhatsApp conversation, and the hand-sent link", async ({ page }) => {
   const owner = await ownerWithStore("متجر الكارت");
   await page.goto("/ar/sign-in");
   await signInOwner(page, owner, "ar");
@@ -99,17 +104,34 @@ test("order detail: the confirmation card hands off to an agent with the WhatsAp
     discount: egp("0.00"), paid: egp("0.00"), refunded: egp("0.00"), balance: egp("1250.00"), paymentMode: "cod", paymentStatus: "unpaid", risk: null, riskReasons: [], tags: [],
     assignedTo: null, area: { city: "مدينة نصر", province: null, country: "EG" }, hasLocation: false, redacted: false, placedAt: at,
     timestamps: { placedAt: at, confirmedAt: null, shippedAt: null, deliveredAt: null, cancelledAt: null }, lines: [], payments: [], shipments: [],
-    events: [{ id: "55555555-5555-4555-8555-555555555555", type: "confirmation_escalated", fromStatus: null, toStatus: null, actorType: "system", at, data: { reason: "no_channel" } }],
+    events: [{ id: "55555555-5555-4555-8555-555555555555", type: "confirmation_escalated", fromStatus: null, toStatus: null, actorType: "system", at, data: { reason: "team_call" } }],
   } }));
   await page.route(`**/v1/orders/${id}/confirmation`, (route) => route.fulfill({ json: {
-    run: { id: "66666666-6666-4666-8666-666666666666", status: "needs_agent", outcome: null, reason: "no_channel", answeredChannel: null, plan: [], step: 0, startedAt: at, finishedAt: null, linkExpiresAt: "2026-10-26T09:00:00.000Z", next: null },
-    steps: [{ idx: 0, channel: "whatsapp", status: "skipped", at }], attempts: [], channels: { whatsapp: false, sms: false, voice: false },
+    run: { id: "66666666-6666-4666-8666-666666666666", status: "needs_agent", outcome: null, reason: "team_call", answeredChannel: null, plan: [], step: 1, startedAt: at, finishedAt: null, linkExpiresAt: "2026-10-26T09:00:00.000Z", next: null, calls: { attempts: 1, max: 3, after: null } },
+    steps: [{ idx: 0, channel: "whatsapp", status: "done", at }, { idx: 1, channel: "call_team", status: "done", at }], attempts: [],
+    whatsapp: [
+      { direction: "out", kind: "template", action: "ask", status: "read", errorCode: null, at },
+      { direction: "in", kind: "text", action: "message", status: "received", errorCode: null, at },
+    ],
+    script: ["أهلاً منى، معاك فريق متجر الكارت.", "بنأكّد أوردرك رقم #7002: عباية سادة × 2.", "الإجمالي 1,250 ج.م. عند الاستلام."],
+    channels: { whatsapp: false, call_auto: false, call_team: true },
   } }));
+  let noAnswer = 0;
+  await page.route(`**/v1/orders/${id}/confirmation/no-answer`, (route) => { noAnswer++; return route.fulfill({ json: { attempts: 2, max: 3, after: "2026-10-23T11:00:00.000Z", unreachable: false } }); });
   await page.goto(`/ar/orders/${id}`);
   const card = page.getByRole("main").getByTestId("confirmation-card");
-  await expect(card).toContainText("لسه مفيش واتساب أو SMS أو مكالمات متوصّلة");
-  await expect(card).toContainText("واتساب · مش متوصّل");
+  await expect(card).toContainText("العميل مردّش على واتساب. كلّمه.");
+  await expect(card.getByTestId("confirmation-chat")).toContainText("اتبعت طلب التأكيد · اتقرت");
+  await expect(card.getByTestId("confirmation-chat")).toContainText("العميل كتب رسالة");
+  const panel = card.getByTestId("call-panel");
+  await expect(panel).toContainText("اتصلنا 1 من 3");
+  await expect(panel.getByTestId("call-script")).toContainText("بنأكّد أوردرك رقم #7002: عباية سادة × 2.");
+  await expect(panel.getByRole("button", { name: "العميل أكّد" })).toBeVisible();
+  await panel.getByRole("button", { name: "مردّش" }).click();
+  await expect(page.locator(".mz-toast")).toContainText("هيرجع للقايمة");
+  expect(noAnswer).toBe(1);
+  // Without a WhatsApp number the link can still be sent by hand.
   await expect(card.getByRole("button", { name: "ابعت على واتساب" })).toBeVisible();
-  await expect(card.getByRole("button", { name: "علّم إنه متأكد" })).toBeVisible();
+  await expect(card).toContainText("واتساب مش متوصّل لسه");
   await expect(page.getByRole("main")).toContainText("اتحوّل لموظف");
 });

@@ -9,8 +9,10 @@ import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { RateLimiter } from "../../platform/http/rate-limit.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AgentAnswerSchema, AnswerResultSchema, ConfirmationLinkSchema, ConfirmationSettingsViewSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema,
+  AgentAnswerSchema, AnswerResultSchema, ConfirmationLinkSchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, WhatsAppConnectSchema,
 } from "./confirmation.dto.js";
+import { ConnectionViewSchema } from "../connections/connections.dto.js";
+import { WhatsAppConnections } from "./whatsapp-connections.service.js";
 import { ConfirmationService } from "./confirmation.service.js";
 import { ConfirmationSettingsSchema, type ConfirmationSettings } from "./confirmation.settings.js";
 
@@ -18,7 +20,10 @@ import { ConfirmationSettingsSchema, type ConfirmationSettings } from "./confirm
 @ApiTags("confirmation")
 @Controller()
 export class ConfirmationController {
-  constructor(@Inject(ConfirmationService) private readonly confirmations: ConfirmationService) {}
+  constructor(
+    @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
+    @Inject(WhatsAppConnections) private readonly whatsapp: WhatsAppConnections,
+  ) {}
 
   @Get("orders/:id/confirmation")
   @Roles("owner", "admin", "ops_manager", "agent")
@@ -47,6 +52,35 @@ export class ConfirmationController {
   @ApiProblems(404, 409)
   answer(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(AgentAnswerSchema)) body: z.output<typeof AgentAnswerSchema>) {
     return this.confirmations.agentAnswer(auth, id, body);
+  }
+
+  @Post("orders/:id/confirmation/no-answer")
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @HttpCode(200)
+  @ApiJson(200, "NoAnswer", NoAnswerSchema, "The team called and nobody answered: the order leaves the call list until the store's retry time; audited")
+  @ApiProblems(404, 409)
+  noAnswer(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
+    return this.confirmations.noAnswer(auth, id);
+  }
+
+  @Post("connections/whatsapp")
+  @Roles("owner", "admin")
+  @HttpCode(200)
+  @NoIdempotency()
+  @ApiJsonBody("WhatsAppConnect", WhatsAppConnectSchema)
+  @ApiJson(200, "ConnectionView", ConnectionViewSchema, "Saved (token encrypted) as pending; checked in the background: active when the token works and the confirmation template is approved, else needs_attention (token_refused, token_lacks_permission, template_pending, template_rejected, template_missing)")
+  @ApiProblems(409)
+  connectWhatsApp(@Auth() auth: AuthContext, @Body(new ZodPipe(WhatsAppConnectSchema)) body: z.output<typeof WhatsAppConnectSchema>) {
+    return this.whatsapp.save(auth, body);
+  }
+
+  @Post("connections/whatsapp/check")
+  @Roles("owner", "admin", "ops_manager")
+  @HttpCode(200)
+  @ApiJson(200, "ConnectionView", ConnectionViewSchema, "Check the WhatsApp number again (after a template is approved)")
+  @ApiProblems(404)
+  checkWhatsApp(@Auth() auth: AuthContext) {
+    return this.whatsapp.recheck(auth);
   }
 
   @Get("settings/confirmation")

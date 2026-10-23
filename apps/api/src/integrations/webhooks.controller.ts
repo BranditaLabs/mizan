@@ -1,8 +1,9 @@
-import { Controller, HttpCode, Inject, Param, Post, Query, Req, Res } from "@nestjs/common";
+import { Controller, Get, HttpCode, Inject, Param, Post, Query, Req, Res } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { Public } from "../platform/auth/decorators.js";
 import { PrivacyService } from "../modules/privacy/privacy.service.js";
+import { WhatsAppChat } from "../modules/confirmation/whatsapp-chat.service.js";
 import { ConnectionLifecycle } from "./connection-lifecycle.js";
 import { EngineRegistry } from "./engine-registry.js";
 import { WebhookRouter } from "./webhook-router.js";
@@ -26,7 +27,25 @@ export class WebhooksController {
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
     @Inject(PrivacyService) private readonly privacy: PrivacyService,
     @Inject(ConnectionLifecycle) private readonly lifecycle: ConnectionLifecycle,
+    @Inject(WhatsAppChat) private readonly whatsapp: WhatsAppChat,
   ) {}
+
+  /**
+   * WhatsApp Cloud API (E6-10): one URL for every connected number (Meta app → WhatsApp →
+   * Configuration). GET answers Meta's subscription check with the verify token; POST carries
+   * messages and delivery statuses, signed with the app secret, routed by the number's id.
+   */
+  @Get("whatsapp")
+  whatsappVerify(@Query() query: Record<string, string>, @Res() res: Response) {
+    return res.status(200).type("text/plain").send(this.whatsapp.challenge(query));
+  }
+
+  @Post("whatsapp")
+  @HttpCode(200)
+  async whatsappEvents(@Req() req: Request, @Res() res: Response) {
+    const result = await this.whatsapp.receive(headersOf(req)["x-hub-signature-256"], rawBody(req));
+    return res.status(result.status).json(result.body);
+  }
 
   /** Shopify compliance webhooks (one URL for the app, set in its configuration). Declared before the per-connection route. */
   @Post("shopify/gdpr")

@@ -12,13 +12,15 @@ import { PiiCipher } from "../../platform/pii/pii-cipher.js";
 import { roleScope } from "../orders/orders.service.js";
 import { linkToken, runIdOf } from "./confirmation-link.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
-import { manualText, type MessageFacts } from "./messages.js";
+import { callScript, linkText, type MessageFacts } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 
 export type Answer = "confirm" | "cancel" | "change";
-export type AnswerChannel = "link" | "whatsapp" | "sms" | "voice_ivr" | "voice_ai" | "agent";
-type Plan = Array<{ channel: AutomatedChannel; waitMinutes: number }>;
-export interface RunRow { id: string; order_id: string; status: string; plan: unknown; step: number; outcome: string | null; link_expires_at: Date; started_at: Date }
+export type AnswerChannel = "link" | "whatsapp" | "voice_ivr" | "voice_ai" | "agent" | "call_team";
+export interface RunRow {
+  id: string; order_id: string; status: string; plan: unknown; step: number; outcome: string | null; link_expires_at: Date; started_at: Date;
+  chat_state: string | null; customer_hash: string | null; call_attempts: number; call_after: Date | null;
+}
 
 /** Only orders the courier collects cash for are confirmed; prepaid ones get fraud screening (E6-1). */
 const CONFIRMS = new Set(["cod", "partial"]);
@@ -26,14 +28,21 @@ const CONFIRMS = new Set(["cod", "partial"]);
 export const FRESH_HOURS = 24;
 const LIVE = ["running", "needs_agent"] as const;
 const OUTCOME: Record<Answer, "confirmed" | "cancelled" | "changed"> = { confirm: "confirmed", cancel: "cancelled", change: "changed" };
-const RUN_COLUMNS = ["id", "order_id", "status", "plan", "step", "outcome", "link_expires_at", "started_at"] as const;
-const planOf = (run: RunRow): Plan => (Array.isArray(run.plan) ? (run.plan as Plan) : []);
+const RUN_COLUMNS = ["id", "order_id", "status", "plan", "step", "outcome", "link_expires_at", "started_at", "chat_state", "customer_hash", "call_attempts", "call_after"] as const;
+/**
+ * The run's cascade as stored when it started. Positions never change (steps are keyed by them);
+ * a pre-E6-10 "voice" step reads as call_auto, and an "sms" step is skipped as unavailable.
+ */
+export const planOf = (run: Pick<RunRow, "plan">): Array<{ channel: AutomatedChannel | "sms"; waitMinutes: number }> =>
+  (Array.isArray(run.plan) ? (run.plan as Array<{ channel: string; waitMinutes: number }>) : [])
+    .map((x) => ({ channel: (x.channel === "voice" ? "call_auto" : x.channel) as AutomatedChannel | "sms", waitMinutes: x.waitMinutes }));
 
 /**
- * Automated order confirmation (M2, E6-7). A run walks the store's cascade (WhatsApp → SMS link
- * → automated call), each step a scheduled row the runner executes; whatever is left unanswered
- * goes to an agent. Every channel answers through `applyAnswer`, the same way: order status,
- * timeline, attempts log and domain events in one transaction, a second answer refused.
+ * Automated order confirmation (M2, E6-7, E6-10). A run walks the store's cascade (WhatsApp, an
+ * automated call), each step a scheduled row the runner executes; a team-call step, or nothing
+ * left, puts the order on the team's "Needs a call" list. Every channel answers through
+ * `applyAnswer`, the same way: order status, timeline, attempts log and domain events in one
+ * transaction, a second answer refused. WhatsApp answers arrive as button taps (chat.service.ts).
  */
 @Injectable()
 export class ConfirmationService {
@@ -69,15 +78,22 @@ export class ConfirmationService {
    */
   async advance(trx: Transaction<DB>, tenantId: string, run: RunRow, from: number, now: Date): Promise<void> {
     const plan = planOf(run);
-    const channels = this.messaging.channelsFor(tenantId);
+    const channels = await this.messaging.channels(tenantId, trx);
     for (let idx = from; idx < plan.length; idx++) {
       const step = plan[idx]!;
-      if (!channels[step.channel]) {
+      if (step.channel === "call_team") {
+        // The automatic part ends here: the order goes on the team's call list.
+        await trx.updateTable("confirmation_runs").set({ step: idx }).where("id", "=", run.id).execute();
+        await this.insertStep(trx, tenantId, run.id, idx, step.channel, "send", now, "done");
+        await this.escalate(trx, tenantId, run, "team_call", now);
+        return;
+      }
+      if (step.channel === "sms" || !channels[step.channel]) {
         await this.insertStep(trx, tenantId, run.id, idx, step.channel, "send", now, "skipped", "channel not connected");
         continue;
       }
       let at = now;
-      if (step.channel === "voice") {
+      if (step.channel === "call_auto") {
         const { settings, timezone } = await this.store(trx, tenantId);
         at = nextCallingTime(now, settings.callingHours, timezone);
       }
@@ -91,7 +107,10 @@ export class ConfirmationService {
 
   async escalate(trx: Transaction<DB>, tenantId: string, run: RunRow, reason: string, now: Date): Promise<void> {
     if (run.status !== "running") return;
-    await trx.updateTable("confirmation_runs").set({ status: "needs_agent", reason, ...(reason === "no_reply" ? { outcome: "no_reply" } : {}) }).where("id", "=", run.id).execute();
+    // On the team's list from the next calling hour.
+    const { settings, timezone } = await this.store(trx, tenantId);
+    const callAfter = nextCallingTime(now, settings.callingHours, timezone);
+    await trx.updateTable("confirmation_runs").set({ status: "needs_agent", reason, call_after: callAfter > now ? callAfter : null, ...(reason === "no_reply" ? { outcome: "no_reply" } : {}) }).where("id", "=", run.id).execute();
     await this.cancelSteps(trx, run.id, now);
     const order = await trx.selectFrom("orders").select("number").where("id", "=", run.order_id).executeTakeFirstOrThrow();
     await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: run.order_id, type: "confirmation_escalated", actor_type: "system", data: JSON.stringify({ reason }) }).execute();
@@ -128,8 +147,8 @@ export class ConfirmationService {
     if (run) {
       await this.cancelSteps(trx, run.id, now);
       await trx.updateTable("confirmation_runs").set(a.answer === "change"
-        ? { status: "needs_agent", outcome, answered_channel: a.channel, reason: "change_requested" }
-        : { status: outcome, outcome, answered_channel: a.channel, finished_at: now, ...(a.reason ? { reason: a.reason } : {}) }).where("id", "=", run.id).execute();
+        ? { status: "needs_agent", outcome, answered_channel: a.channel, reason: "change_requested", chat_state: null, call_after: null }
+        : { status: outcome, outcome, answered_channel: a.channel, finished_at: now, chat_state: null, ...(a.reason ? { reason: a.reason } : {}) }).where("id", "=", run.id).execute();
     }
     const evActor = actor.type === "user" ? { type: "user" as const, id: actor.id } : { type: "system" as const };
     if (a.answer === "confirm") {
@@ -152,18 +171,22 @@ export class ConfirmationService {
   }
 
   /** Everything a message needs, read inside the store's transaction. Null when the order has no phone. */
-  async facts(trx: Transaction<DB>, tenantId: string, run: RunRow): Promise<{ to: string; facts: MessageFacts } | null> {
-    const o = await trx.selectFrom("orders").select(["number", "ship_phone", "customer_label", "currency", "total_minor", "cod_minor"]).where("id", "=", run.order_id).executeTakeFirstOrThrow();
+  async facts(trx: Transaction<DB>, tenantId: string, run: Pick<RunRow, "id" | "order_id" | "customer_hash">): Promise<{ to: string; facts: MessageFacts } | null> {
+    const o = await trx.selectFrom("orders").select(["number", "ship_phone", "customer_label", "currency", "total_minor", "cod_minor", "ship_city"]).where("id", "=", run.order_id).executeTakeFirstOrThrow();
     const pii = await this.cipher.forTenant(trx, tenantId);
     const to = pii.decrypt(o.ship_phone, "orders.ship_phone");
     if (!to) return null;
+    // The number's hash finds this run when the customer types instead of tapping (E6-10).
+    if (!run.customer_hash) await trx.updateTable("confirmation_runs").set({ customer_hash: pii.phoneHash(to) }).where("id", "=", run.id).execute();
     const { name, lang } = await this.store(trx, tenantId);
     const label = pii.decrypt(o.customer_label, "orders.customer_label");
+    const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
     return {
       to,
       facts: {
         lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number,
         total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: this.linkFor(run.id, lang),
+        items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city,
       },
     };
   }
@@ -222,16 +245,25 @@ export class ConfirmationService {
       const run = await trx.selectFrom("confirmation_runs").select(RUN_COLUMNS).select(["answered_channel", "reason", "finished_at"]).where("order_id", "=", orderId).orderBy("started_at", "desc").executeTakeFirst();
       const steps = run ? await trx.selectFrom("confirmation_steps").select(["idx", "channel", "kind", "status", "run_at", "updated_at"]).where("run_id", "=", run.id).orderBy("run_at").orderBy("idx").execute() : [];
       const attempts = await trx.selectFrom("confirmations").select(["channel", "outcome", "started_at"]).where("order_id", "=", orderId).orderBy("started_at", "desc").limit(50).execute();
-      const next = steps.find((s) => s.status === "pending" || s.status === "running");
+      const chat = await trx.selectFrom("whatsapp_messages").select(["direction", "kind", "action", "status", "error_code", "created_at"])
+        .where("order_id", "=", orderId).orderBy("created_at").orderBy("id").limit(50).execute();
+      const next = steps.find((s) => (s.status === "pending" || s.status === "running") && s.kind !== "reply");
+      const { settings } = await this.store(trx, tenantId);
+      const order = await trx.selectFrom("orders").select("status").where("id", "=", orderId).executeTakeFirstOrThrow();
+      const open = Boolean(run) && ["new", "pending_confirmation"].includes(order.status);
+      const f = open && run ? await this.facts(trx, tenantId, run as RunRow) : null;
       return {
         run: run ? {
           id: run.id, status: run.status as "running", outcome: run.outcome, reason: run.reason, answeredChannel: run.answered_channel,
-          plan: planOf(run as RunRow), step: run.step, startedAt: run.started_at.toISOString(), finishedAt: run.finished_at?.toISOString() ?? null,
-          linkExpiresAt: run.link_expires_at.toISOString(), next: next ? { channel: next.channel, kind: next.kind, at: next.run_at.toISOString() } : null,
+          plan: planOf(run as RunRow).filter((x): x is { channel: AutomatedChannel; waitMinutes: number } => x.channel !== "sms"), step: run.step, startedAt: run.started_at.toISOString(), finishedAt: run.finished_at?.toISOString() ?? null,
+          linkExpiresAt: run.link_expires_at.toISOString(), next: next ? { channel: next.channel, kind: next.kind as "send", at: next.run_at.toISOString() } : null,
+          calls: { attempts: run.call_attempts, max: settings.teamCalls.attempts, after: run.call_after?.toISOString() ?? null },
         } : null,
         steps: steps.filter((s) => s.kind === "send").map((s) => ({ idx: s.idx, channel: s.channel, status: s.status, at: s.run_at.toISOString() })),
         attempts: attempts.map((x) => ({ channel: x.channel, outcome: x.outcome, at: x.started_at.toISOString() })),
-        channels: this.messaging.channelsFor(tenantId),
+        whatsapp: chat.map((m) => ({ direction: m.direction as "in", kind: m.kind, action: m.action, status: m.status, errorCode: m.error_code, at: m.created_at.toISOString() })),
+        script: f ? callScript(f.facts) : [],
+        channels: await this.messaging.channels(tenantId, trx),
       };
     });
   }
@@ -260,26 +292,49 @@ export class ConfirmationService {
       const url = this.linkFor(run.id, f?.facts.lang ?? "ar");
       return {
         url, expiresAt: expires.toISOString(),
-        whatsappUrl: f ? `https://wa.me/${f.to.replace(/^\+/, "")}?text=${encodeURIComponent(manualText(f.facts))}` : null,
+        whatsappUrl: f ? `https://wa.me/${f.to.replace(/^\+/, "")}?text=${encodeURIComponent(linkText(f.facts))}` : null,
       };
     });
   }
 
-  async agentAnswer(auth: AuthContext, orderId: string, body: { answer: "confirm" | "cancel"; reason?: string; note?: string }, now = new Date()) {
+  async agentAnswer(auth: AuthContext, orderId: string, body: { answer: "confirm" | "cancel"; reason?: string; note?: string; byCall?: boolean }, now = new Date()) {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
       await this.scopedOrder(trx, auth, orderId);
       const run = await this.liveRun(trx, orderId);
-      const r = await this.applyAnswer(trx, tenantId, orderId, run, { ...body, channel: "agent", actor: { type: "user", id: auth.user.id } }, now);
+      const { byCall, ...answer } = body;
+      const r = await this.applyAnswer(trx, tenantId, orderId, run, { ...answer, channel: byCall ? "call_team" : "agent", actor: { type: "user", id: auth.user.id } }, now);
       await this.audit.record(trx, { action: "confirmation.answered_by_agent", tenantId, ...auditActor(auth), entity: { type: "order", id: orderId }, after: { answer: body.answer, ...(body.reason ? { reason: body.reason } : {}) } });
       return r;
+    });
+  }
+
+  /**
+   * The team called and nobody answered (E6-10): the order leaves the list and comes back after
+   * the store's retry time; after the last try it stays on the list, marked unreachable.
+   */
+  async noAnswer(auth: AuthContext, orderId: string, now = new Date()) {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      await this.scopedOrder(trx, auth, orderId);
+      const run = await this.liveRun(trx, orderId);
+      if (!run || run.status !== "needs_agent") throw new ProblemError(409, "not_waiting_for_call", "this order is not waiting for a call");
+      const { settings, timezone } = await this.store(trx, tenantId);
+      const attempts = run.call_attempts + 1;
+      const last = attempts >= settings.teamCalls.attempts;
+      const after = last ? null : nextCallingTime(new Date(now.getTime() + settings.teamCalls.retryMinutes * 60_000), settings.callingHours, timezone);
+      await trx.updateTable("confirmation_runs").set({ call_attempts: attempts, call_after: after, ...(last ? { reason: "unreachable", outcome: "no_reply" } : {}) }).where("id", "=", run.id).execute();
+      await trx.insertInto("confirmations").values({ tenant_id: tenantId, order_id: orderId, run_id: run.id, channel: "call_team", attempt: attempts, outcome: "no_answer", agent_id: auth.user.id, started_at: now, finished_at: now }).execute();
+      await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "call_no_answer", actor_type: "user", actor_id: auth.user.id, data: JSON.stringify({ channel: "call_team", attempt: String(attempts) }) }).execute();
+      await this.audit.record(trx, { action: "confirmation.call_no_answer", tenantId, ...auditActor(auth), entity: { type: "order", id: orderId }, after: { attempts, callAfter: after?.toISOString() ?? null } });
+      return { attempts, max: settings.teamCalls.attempts, after: after?.toISOString() ?? null, unreachable: last };
     });
   }
 
   // ───────────── settings ─────────────
 
   async getSettings(tenantId: string) {
-    return this.db.tenant(tenantId, async (trx) => ({ settings: (await this.store(trx, tenantId)).settings, channels: this.messaging.channelsFor(tenantId) }));
+    return this.db.tenant(tenantId, async (trx) => ({ settings: (await this.store(trx, tenantId)).settings, channels: await this.messaging.channels(tenantId, trx) }));
   }
 
   async putSettings(auth: AuthContext, body: ConfirmationSettings) {
@@ -290,7 +345,7 @@ export class ConfirmationService {
       const before = confirmationSettings(t.settings);
       await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...(t.settings as object), confirmation: next }) }).where("id", "=", tenantId).execute();
       await this.audit.record(trx, { action: "confirmation.settings_updated", tenantId, ...auditActor(auth), entity: { type: "tenant", id: tenantId }, before, after: next });
-      return { settings: next, channels: this.messaging.channelsFor(tenantId) };
+      return { settings: next, channels: await this.messaging.channels(tenantId, trx) };
     });
   }
 
@@ -308,14 +363,25 @@ export class ConfirmationService {
     return run as RunRow;
   }
 
-  async insertStep(trx: Transaction<DB>, tenantId: string, runId: string, idx: number, channel: string, kind: "send" | "timeout", at: Date, status: "pending" | "skipped" = "pending", note?: string): Promise<void> {
+  async insertStep(trx: Transaction<DB>, tenantId: string, runId: string, idx: number, channel: string, kind: "send" | "timeout", at: Date, status: "pending" | "skipped" | "done" = "pending", note?: string): Promise<void> {
     await trx.insertInto("confirmation_steps").values({
       tenant_id: tenantId, run_id: runId, idx, channel, kind, run_at: at, status, idempotency_key: `${runId}:${idx}:${kind}`, last_error: note ?? null,
     }).onConflict((oc) => oc.columns(["tenant_id", "idempotency_key"]).doNothing()).execute();
   }
 
-  private async cancelSteps(trx: Transaction<DB>, runId: string, now: Date): Promise<void> {
-    await trx.updateTable("confirmation_steps").set({ status: "cancelled", updated_at: now }).where("run_id", "=", runId).where("status", "in", ["pending", "running"]).execute();
+  /**
+   * A follow-up message in the chat (E6-10), queued like any send. Keyed by what it answers (the
+   * customer's message id), so a redelivered tap never sends it twice.
+   */
+  async queueReply(trx: Transaction<DB>, tenantId: string, run: Pick<RunRow, "id" | "step">, message: string, inReplyTo: string, now: Date): Promise<void> {
+    await trx.insertInto("confirmation_steps").values({
+      tenant_id: tenantId, run_id: run.id, idx: run.step, channel: "whatsapp", kind: "reply", run_at: now, payload: JSON.stringify({ message }), idempotency_key: `${run.id}:reply:${inReplyTo}`,
+    }).onConflict((oc) => oc.columns(["tenant_id", "idempotency_key"]).doNothing()).execute();
+  }
+
+  /** Cancels the run's waiting sends and waits; replies already queued in the chat still go out. */
+  async cancelSteps(trx: Transaction<DB>, runId: string, now: Date): Promise<void> {
+    await trx.updateTable("confirmation_steps").set({ status: "cancelled", updated_at: now }).where("run_id", "=", runId).where("kind", "!=", "reply").where("status", "in", ["pending", "running"]).execute();
   }
 
   private async scopedOrder(trx: Transaction<DB>, auth: AuthContext, orderId: string) {

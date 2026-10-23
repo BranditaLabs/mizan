@@ -654,17 +654,21 @@
         "stopped": "Stopped"
       },
       "reason": {
-        "no_reply": "The customer didn't answer the automatic messages. Call them, or send the link again.",
-        "no_channel": "No WhatsApp, SMS or calls connected yet: send the link by hand.",
+        "team_call": "The customer didn't answer on WhatsApp. Call them.",
+        "no_reply": "The customer didn't answer. Call them or send the link.",
+        "no_channel": "WhatsApp isn't connected yet: call the customer or send the link by hand.",
         "change_requested": "The customer asked for a change. Call them.",
-        "manual": "Link sent by hand. Waiting for the customer."
+        "customer_message": "The customer wrote on WhatsApp. Call them.",
+        "unreachable": "Called several times with no answer. Decide whether to keep or cancel.",
+        "manual": "The link was sent by hand. Waiting for the customer."
       },
       "nextSend": "Next: {channel}",
       "waiting": "Waiting for an answer to {channel}, until",
       "channel": {
         "whatsapp": "WhatsApp",
+        "call_auto": "Automated call",
+        "call_team": "Call by your team",
         "sms": "SMS",
-        "voice": "Automatic call",
         "agent": "Agent"
       },
       "stepStatus": {
@@ -675,7 +679,7 @@
         "cancelled": "not needed",
         "dead": "failed"
       },
-      "noVendor": "Automatic messages start when WhatsApp, SMS or calls are connected.",
+      "noVendor": "WhatsApp isn't connected yet: connect it in Settings → Confirmation so customers confirm with one tap in the chat.",
       "sendWhatsApp": "Send on WhatsApp",
       "copyLink": "Copy link",
       "copied": "Link copied",
@@ -685,7 +689,51 @@
       "cancelTitle": "Cancel this order?",
       "cancelBody": "The order won't ship. The customer isn't notified automatically.",
       "confirmedToast": "Order confirmed",
-      "cancelledToast": "Order cancelled"
+      "cancelledToast": "Order cancelled",
+      "chat": {
+        "title": "WhatsApp conversation",
+        "out": {
+          "ask": "Confirmation request sent",
+          "confirmed": "Sent: order confirmed",
+          "change_prompt": "Sent: write your change",
+          "change_received": "Sent: change received",
+          "cancel_reasons": "Sent: cancel reasons",
+          "cancelled": "Sent: order cancelled",
+          "noted": "Sent: our team will call",
+          "already": "Sent: order already recorded",
+          "other": "Message"
+        },
+        "in": {
+          "confirm": "Customer tapped: Confirm",
+          "change": "Customer tapped: Change",
+          "cancel": "Customer tapped: Cancel",
+          "reason": "Customer chose a cancel reason",
+          "keep": "Customer chose: keep the order",
+          "note": "Customer wrote the change",
+          "message": "Customer wrote a message",
+          "location": "Customer shared a location",
+          "late": "Tap after the order was recorded",
+          "ignored": "Message not understood"
+        },
+        "status": {
+          "accepted": "Sent",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "read": "Read",
+          "failed": "Not delivered"
+        }
+      },
+      "calls": {
+        "title": "Confirmation call",
+        "tried": "Called {attempts} of {max}",
+        "phoneHint": "Reveal the customer's number on the customer card, then call.",
+        "after": "Call back",
+        "confirmed": "Customer confirmed",
+        "noAnswer": "No answer",
+        "cancelled": "Customer cancelled",
+        "retryToast": "Done: it comes back on the list at the next call time.",
+        "unreachableToast": "That was the last try. The order stays on the list as unreachable."
+      }
     },
     "answerChannel": {
       "link": "the customer's link",
@@ -694,7 +742,8 @@
       "voice_ivr": "automatic call",
       "voice_ai": "AI call",
       "agent": "an agent",
-      "other": "the store"
+      "other": "the store",
+      "call_team": "Team call"
     },
     "profit": {
       "title": "Profit",
@@ -734,6 +783,11 @@
         "packaging_cost_missing": "Packaging cost"
       },
       "setCosts": "Set costs"
+    },
+    "needsCall": "Needs a call",
+    "emptyCalls": {
+      "title": "No one to call right now",
+      "body": "Orders whose customer didn't answer on WhatsApp, or asked for a change, show here for your team to call."
     }
   },
   "costs": {
@@ -910,37 +964,76 @@
       "body": "Ask the store owner to change how orders are confirmed."
     },
     "enabled": "Confirm new cash-on-delivery orders automatically",
-    "enabledHint": "Each new order is asked to confirm on WhatsApp, then SMS, then an automatic call. Orders nobody answers go to an agent.",
+    "enabledHint": "Every new order gets a confirmation request on WhatsApp; the customer confirms, changes or cancels with one tap in the chat. Whoever doesn't answer goes to your team to call.",
     "channel": {
       "whatsapp": "WhatsApp",
-      "sms": "SMS with link",
-      "voice": "Automatic call"
+      "call_auto": "Automated call",
+      "call_team": "Our team calls"
     },
     "channels": {
-      "title": "Connected channels",
+      "title": "Channels",
       "connected": "connected",
       "notConnected": "not connected",
-      "none": "Nothing is connected yet, so new orders go straight to an agent, who sends the confirm link on WhatsApp with one tap. Connecting WhatsApp, SMS or calls makes it automatic."
+      "always": "always available",
+      "none": "WhatsApp isn't connected yet, so new orders go straight to your team to call. Connect the store's WhatsApp number below."
     },
     "steps": {
       "title": "Order of steps",
-      "body": "Mizan tries each step in turn and waits for an answer before the next. A channel that isn't connected is skipped.",
+      "body": "Mizan tries each step in order and waits for an answer before the next. A channel that isn't connected is skipped. The team call is always the last step.",
       "channel": "Channel",
       "wait": "Wait (minutes)",
       "remove": "Remove step",
       "add": "Add a step",
-      "agent": "Then: an agent calls"
+      "agent": "If nobody answers: the order goes on the \"Needs a call\" list",
+      "teamLast": "The team call must be the last step."
     },
     "hours": {
       "title": "Calling hours",
-      "body": "Automatic calls only happen in these hours, store time. Messages are sent any time.",
+      "body": "Calls (automated and by your team) only in these hours, store time. WhatsApp messages go out any time.",
       "start": "From",
       "end": "Until",
       "invalid": "Start must be before end"
     },
     "link": {
-      "hours": "Link works for (hours)",
-      "hint": "After that the customer is asked to wait for a call."
+      "hours": "Hand-sent link works for (hours)",
+      "hint": "For the link your team sends by hand when WhatsApp isn't connected."
+    },
+    "team": {
+      "title": "Team calls",
+      "body": "When your team calls and nobody answers, the order leaves the list and comes back after this time, up to the number of tries.",
+      "attempts": "Tries",
+      "retry": "Back after (minutes)"
+    },
+    "whatsapp": {
+      "title": "The store's WhatsApp number",
+      "body": "Customers confirm their order with one tap in the chat. From your WhatsApp Business account on Meta: the phone number ID, the account ID and a permanent token. The token is stored encrypted and never shown again.",
+      "number": "Phone number ID: <n>{id}</n>",
+      "checking": "Checking the token and that Meta approved the confirmation message…",
+      "phoneNumberId": "Phone number ID",
+      "phoneNumberIdHint": "Digits only, from the API setup page, not the phone number.",
+      "wabaId": "WhatsApp Business Account ID",
+      "token": "Permanent token",
+      "tokenHint": "A system-user token with whatsapp_business_messaging and whatsapp_business_management.",
+      "connect": "Connect WhatsApp",
+      "replace": "Save the new details",
+      "cancel": "Cancel",
+      "check": "Check again",
+      "change": "Change details",
+      "saved": "Saved. Checking it now.",
+      "ownerOnly": "Only the owner or an admin can connect WhatsApp.",
+      "status": {
+        "pending": "Checking",
+        "active": "Connected",
+        "needs_attention": "Needs attention",
+        "disconnected": "Disconnected"
+      },
+      "reason": {
+        "token_refused": "Meta refused the token. Create a new one and enter it again.",
+        "token_lacks_permission": "The token lacks permissions on this account (whatsapp_business_messaging and whatsapp_business_management).",
+        "template_pending": "Meta is still reviewing the confirmation message. WhatsApp confirmation starts as soon as it's approved.",
+        "template_rejected": "Meta rejected the confirmation message. Submit it again with the wording in the setup guide.",
+        "template_missing": "The confirmation message in the store's language (mizan_order_confirm_ar or mizan_order_confirm_en) isn't in the account. Add it in WhatsApp Manager with the wording in the setup guide."
+      }
     }
   }
 }

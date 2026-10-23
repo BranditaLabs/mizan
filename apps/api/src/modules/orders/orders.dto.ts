@@ -7,6 +7,8 @@ export const PAYMENT_STATUSES = ["unpaid", "authorized", "partially_paid", "paid
 
 export const ListOrdersQuerySchema = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
+  /** needs_call: waiting for the team's call (confirmation escalated, retry time reached). */
+  confirmation: z.enum(["needs_call"]).optional().describe("needs_call: orders the team should call now"),
   /** Order number ("#1042", "1042"), the store's order id, or the customer's phone in any form. */
   q: z.string().trim().min(1).max(64).optional().describe("Order number, store order id, or the customer's phone"),
   paymentMode: z.enum(PAYMENT_MODES).optional(),
@@ -44,6 +46,8 @@ export const OrderPageSchema = z.object({
   nextCursor: z.string().nullable(),
   /** Per status for the same search and filters (the status filter aside): the list's tabs. */
   counts: z.object({ all: z.number().int(), ...Object.fromEntries(ORDER_STATUSES.map((s) => [s, z.number().int()])) } as Record<"all" | (typeof ORDER_STATUSES)[number], z.ZodNumber>),
+  /** Orders the team should call now (the "Needs a call" tab). */
+  needsCall: z.number().int(),
 });
 
 export const OrderIdParamSchema = z.uuid();
