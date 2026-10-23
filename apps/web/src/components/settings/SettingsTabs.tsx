@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
-const PAGES = [{ key: "costs", href: "/settings/costs" }, { key: "confirmation", href: "/settings/confirmation" }] as const;
+const PAGES = [{ key: "costs", href: "/settings/costs" }, { key: "confirmation", href: "/settings/confirmation" }, { key: "offers", href: "/settings/offers" }] as const;
 
 /** The settings pages, as links styled like tabs (each page has its own URL; the current one is aria-current). */
 export function SettingsTabs() {

@@ -169,6 +169,7 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
       if (!CHAT_MESSAGES.includes(name)) return Promise.reject(new Error(`unknown reply ${String(name)}`));
       const c = chatContent(name, f);
       if (c.type === "text") return provider.sendText({ to, key, text: c.text });
+      if (c.type === "buttons") return provider.sendButtons({ to, key, body: c.body, buttons: c.buttons.map((b) => ({ id: sign(b.action, b.arg), title: b.title })) });
       return provider.sendList({ to, key, body: c.body, button: c.button, rows: c.rows.map((r) => ({ id: sign(r.action, r.arg), title: r.title })) });
     }
     if (step.channel === "whatsapp") {
@@ -188,7 +189,8 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
         this.metrics.confirmationSteps.inc({ channel: step.channel, result: "sent" });
         if (step.channel === "whatsapp") {
           // The transcript; a status webhook may have arrived first and made the row already.
-          const kind = step.kind === "reply" ? (step.payload as { message?: string } | null)?.message === "cancel_reasons" ? "list" : "text" : "template";
+          const reply = (step.payload as { message?: string } | null)?.message;
+          const kind = step.kind === "reply" ? reply === "cancel_reasons" ? "list" : reply === "confirmed_offer" ? "buttons" : "text" : "template";
           const action = step.kind === "reply" ? (step.payload as { message?: string } | null)?.message ?? null : "ask";
           await trx.insertInto("whatsapp_messages").values({
             tenant_id: tenantId, connection_id: connectionId, run_id: live.id, order_id: live.order_id, direction: "out", wamid: r.ref, kind, action, status: "accepted",

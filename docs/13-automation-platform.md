@@ -19,7 +19,7 @@ Stored in `automations` (JSON definition, versioned) with one `automation_runs` 
 | Domain | Events (triggers) | Actions |
 | --- | --- | --- |
 | Orders and channels | `order.created`, `order.duplicate_found`, `order.status_changed`, `channel.order_received`, `listing.error` | `order.set_status`, `order.assign`, `order.add_tag`, `order.hold`, `listing.pause`, `listing.set_price` |
-| Verification | `order.scored`, `order.confirmed`, `order.confirmation_failed`, `confirmation.started`, `confirmation.sent`, `confirmation.escalated` (E6-7) | `whatsapp.send_template`, `order.convert_to_prepaid`, `call.schedule` |
+| Verification | `order.scored`, `order.confirmed`, `order.confirmation_failed`, `confirmation.started`, `confirmation.sent`, `confirmation.escalated` (E6-7), `offer.proposed`, `offer.accepted`, `offer.declined`, `offer.expired` (E6-11; ids, price and channel only) | `whatsapp.send_template`, `order.convert_to_prepaid`, `call.schedule` |
 | Payments | `payment.link_sent`, `payment.received`, `payment.failed`, `refund.created`, `refund.completed`, `dispute.opened`, `order.awaiting_payment` | `payment.send_link`, `payment.capture`, `refund.create` |
 | Fulfilment | `shipment.created`, `shipment.status_changed`, `shipment.stuck`, `stock.low`, `stock.reorder_suggested`, `po.received`, `supplier.late` | `shipment.book`, `shipment.cancel`, `po.create_draft`, `po.send`, `stock.transfer` |
 | Returns | `ticket.created`, `ticket.sla_breached`, `return.inspected` | `ticket.create`, `ticket.assign` |

@@ -18,6 +18,22 @@ export interface MessageFacts {
   link: string;
   items?: Array<{ title: string; quantity: number }>;
   city?: string | null;
+  /** The run's offer while it is open (E6-11). */
+  offer?: OfferFacts | null;
+}
+
+export interface OfferFacts {
+  id: string;
+  title: string;
+  qty: number;
+  /** For one, after the discount. */
+  price: Money;
+  /** Before the discount, when there is one. */
+  was: Money | null;
+  /** The owner's wording for this offer, in the store's language. */
+  message: string | null;
+  /** What the customer pays in total with the offer added. */
+  newTotal: Money;
 }
 
 /** "1,250 ج.م." / "EGP 1,250": plain text (no direction marks, Western digits). */
@@ -51,18 +67,47 @@ const REASON_TITLE: Record<"ar" | "en", Record<CancelReason | "keep", string>> =
 };
 
 /** Follow-up messages inside the chat, after the customer taps (free-form, no template). */
-export type ChatMessage = "confirmed" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already";
-export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already"];
+export type ChatMessage = "confirmed" | "confirmed_offer" | "offer_added" | "offer_declined" | "offer_expired" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already";
+export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already"];
 
 export type ChatContent =
   | { type: "text"; text: string }
+  | { type: "buttons"; body: string; buttons: Array<{ action: "offer_yes" | "offer_no"; arg: string; title: string }> }
   | { type: "list"; body: string; button: string; rows: Array<{ action: "reason" | "keep"; arg?: CancelReason; title: string }> };
+
+/** Ends a sentence with one full stop ("1,250 ج.م." already has one). */
+const stop = (s: string) => (s.endsWith(".") ? s : `${s}.`);
+
+/** "طرحة مطابقة بـ 135 ج.م. بدل 150 ج.م." / "a matching scarf for EGP 135 instead of EGP 150". */
+export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
+  const qty = o.qty > 1 ? ` × ${o.qty}` : "";
+  if (lang === "ar") return `${o.title}${qty} بـ ${money(o.price, lang)}${o.was ? ` بدل ${money(o.was, lang)}` : ""}`;
+  return `${o.title}${qty} for ${money(o.price, lang)}${o.was ? ` instead of ${money(o.was, lang)}` : ""}`;
+}
 
 export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
   const ar = f.lang === "ar";
   switch (m) {
     case "confirmed":
       return { type: "text", text: ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!` };
+    case "confirmed_offer": {
+      const o = f.offer;
+      if (!o) return chatContent("confirmed", f);
+      const pitch = o.message ?? (ar ? `🎁 عرض ليك: ${stop(offerLine(o, "ar"))}` : `🎁 An offer for you: ${stop(offerLine(o, "en"))}`);
+      return {
+        type: "buttons",
+        body: ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `Done ✅ your order ${f.number} is confirmed.\n\n${pitch}\nShall we add it to the same order?`,
+        buttons: [{ action: "offer_yes", arg: o.id, title: ar ? "ضيفه" : "Add it" }, { action: "offer_no", arg: o.id, title: ar ? "لا شكراً" : "No, thanks" }],
+      };
+    }
+    case "offer_added":
+      return { type: "text", text: f.offer
+        ? (ar ? `تمام ✅ هنضيف ${f.offer.title} لأوردرك، والإجمالي الجديد ${stop(money(f.offer.newTotal, "ar"))}` : `Done ✅ we'll add ${f.offer.title} to your order; the new total is ${stop(money(f.offer.newTotal, "en"))}`)
+        : (ar ? "تمام ✅ هنضيفه لأوردرك." : "Done ✅ we'll add it to your order.") };
+    case "offer_declined":
+      return { type: "text", text: ar ? "ولا يهمك 🙏 أوردرك ماشي زي ما هو." : "No problem 🙏 your order stays as it is." };
+    case "offer_expired":
+      return { type: "text", text: ar ? "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏" : "This offer has ended, but your order goes ahead as it is 🙏" };
     case "change_prompt":
       return { type: "text", text: ar ? "اكتب لنا التعديل اللي عايزه في رسالة (المقاس، اللون، العنوان أو المعاد)، وفريقنا هيكلّمك." : "Write the change you need in a message (size, colour, address or time) and our team will call you." };
     case "change_received":
@@ -93,8 +138,10 @@ export function callScript(f: MessageFacts): string[] {
   const items = (f.items ?? []).map((i) => (f.lang === "ar" ? `${i.title} × ${i.quantity}` : `${i.quantity} × ${i.title}`)).join(f.lang === "ar" ? "، " : ", ");
   const amount = `${money(due(f), f.lang)}${payNote(f)}`;
   return f.lang === "ar"
-    ? [`${hello(f)}، معاك فريق ${f.store}.`, `بنأكّد أوردرك رقم ${f.number}${items ? `: ${items}` : ""}.`, `الإجمالي ${amount}.`, ...(f.city ? [`التوصيل لـ ${f.city}، صح؟`] : []), "نأكّد الأوردر ونشحنه لك؟"]
-    : [`${hello(f)}, this is the ${f.store} team.`, `We're confirming your order ${f.number}${items ? `: ${items}` : ""}.`, `The total is ${amount}.`, ...(f.city ? [`Delivery to ${f.city}, right?`] : []), "Shall we confirm and ship it?"];
+    ? [`${hello(f)}، معاك فريق ${f.store}.`, `بنأكّد أوردرك رقم ${f.number}${items ? `: ${items}` : ""}.`, `الإجمالي ${amount}.`, ...(f.city ? [`التوصيل لـ ${f.city}، صح؟`] : []), "نأكّد الأوردر ونشحنه لك؟",
+      ...(f.offer ? [`🎁 وبعد ما يأكّد اعرض عليه: ${stop(offerLine(f.offer, "ar"))} تحب نضيفه لنفس الأوردر؟`] : [])]
+    : [`${hello(f)}, this is the ${f.store} team.`, `We're confirming your order ${f.number}${items ? `: ${items}` : ""}.`, `The total is ${amount}.`, ...(f.city ? [`Delivery to ${f.city}, right?`] : []), "Shall we confirm and ship it?",
+      ...(f.offer ? [`🎁 Once confirmed, offer: ${stop(offerLine(f.offer, "en"))} Shall we add it to the same order?`] : [])];
 }
 
 /** The message a team member sends by hand on WhatsApp (wa.me) with the confirm link, when no WhatsApp number is connected. */

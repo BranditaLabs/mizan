@@ -310,3 +310,108 @@ describe("Meta misbehaving, and forgeries", () => {
     await http().get("/webhooks/whatsapp").query({ "hub.mode": "subscribe", "hub.verify_token": "nope", "hub.challenge": "1" }).expect(403);
   });
 });
+
+describe("offers in the chat (E6-11)", () => {
+  const V = { abaya: "gid://shopify/ProductVariant/501", scarf: "gid://shopify/ProductVariant/502", pin: "gid://shopify/ProductVariant/503" };
+  let ids: Record<keyof typeof V, string>;
+  const abayaLine = (k = "A") => ({ externalLineId: `OL-${k}-${n}`, sku: "AB-OF", variantExternalId: V.abaya, title: "Abaya", quantity: 2, unitPrice: { amount: "600.00", currency: "EGP" } });
+  const offerOf = (orderId: string) => db.tenant(store, (trx) => trx.selectFrom("order_offers").selectAll().where("order_id", "=", orderId).executeTakeFirst());
+  const settings = (over: Record<string, unknown> = {}) => http().put("/v1/settings/offers").set(as("owner"))
+    .send({ enabled: true, mode: "rules_then_auto", maxDiscountPct: "15", autoDiscountPct: "10", inWhatsApp: true, inCalls: true, ...over }).expect(200);
+
+  beforeAll(async () => {
+    ids = await db.tenant(store, async (trx) => {
+      const out = {} as Record<keyof typeof V, string>;
+      for (const [k, title, price] of [["abaya", "Abaya", 60000], ["scarf", "Matching scarf", 15000], ["pin", "Pin", 5000]] as const) {
+        const p = (await trx.insertInto("products").values({ tenant_id: store, title, status: "active" }).returning("id").executeTakeFirstOrThrow()).id;
+        const v = (await trx.insertInto("variants").values({ tenant_id: store, product_id: p, sku: `OF-${k}`, currency: "EGP", price_minor: price, available: 5 }).returning("id").executeTakeFirstOrThrow()).id;
+        await trx.insertInto("external_variants").values({ tenant_id: store, connection_id: shop, external_id: V[k], variant_id: v }).execute();
+        out[k] = v;
+      }
+      return out;
+    });
+  });
+
+  it("is off until the owner turns it on; settings and rules are for owner, admin and ops", async () => {
+    expect((await http().get("/v1/settings/offers").set(as("owner")).expect(200)).body).toMatchObject({ enabled: false, mode: "rules_then_auto", maxDiscountPct: "15" });
+    const id = await newOrder({ lines: [abayaLine()] });
+    expect(await offerOf(id)).toBeUndefined();
+    await http().put("/v1/settings/offers").set(as("owner")).send({ enabled: true, mode: "auto", maxDiscountPct: "10", autoDiscountPct: "20", inWhatsApp: true, inCalls: true }).expect(422);
+    await http().post("/v1/offer-rules").set(as("owner")).send({ triggerVariantId: ids.abaya, offerVariantId: ids.abaya }).expect(422);
+    const products = (await http().get("/v1/offer-products?q=Matching").set(as("owner")).expect(200)).body.data;
+    expect(products).toEqual([expect.objectContaining({ variantId: ids.scarf, title: "Matching scarf", price: { amount: "150.00", currency: "EGP" }, available: 5 })]);
+  });
+
+  it("confirm → the thank-you carries the owner's offer with Add / No thanks; Add records it and gives the new total", async () => {
+    await settings();
+    const rule = (await http().post("/v1/offer-rules").set(as("owner")).send({ triggerVariantId: ids.abaya, offerVariantId: ids.scarf, discountPct: "10" }).expect(201)).body.id;
+    expect((await http().get("/v1/offer-rules").set(as("owner")).expect(200)).body.data[0]).toMatchObject({ id: rule, trigger: { title: "Abaya" }, offer: { title: "Matching scarf" }, discountPct: "10", active: true });
+    const id = await newOrder({ lines: [abayaLine()] });
+    expect(await offerOf(id)).toMatchObject({ status: "proposed", source: "rule", unit_price_minor: 15000n, offer_price_minor: 13500n, discount_pct: "10.00" });
+    await run();
+    const t = await templateFor(id);
+    const before = wa.accepted.length;
+    wa.tapQuickReply(CUSTOMER, t.confirm, t.message.id);
+    await deliver();
+    await run();
+    const msg = sentAfter(before)[0]!;
+    expect(msg.body.interactive.type).toBe("button");
+    expect(msg.body.interactive.body.text).toBe(`تمام ✅ أوردرك #${9100 + n} اتأكّد.\n\n🎁 عرض ليك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.\nتحب نضيفه لنفس الأوردر؟`);
+    const [add, no] = msg.body.interactive.action.buttons as Array<{ reply: { id: string; title: string } }>;
+    expect([add!.reply.title, no!.reply.title]).toEqual(["ضيفه", "لا شكراً"]);
+
+    wa.tapReply(CUSTOMER, add!.reply.id);
+    await deliver();
+    expect(await offerOf(id)).toMatchObject({ status: "accepted", channel: "whatsapp" });
+    await run();
+    expect(sentAfter(before)[1]!.body.text.body).toBe("تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.");
+    wa.tapReply(CUSTOMER, no!.reply.id); // changes nothing now
+    await deliver();
+    await run();
+    expect(sentAfter(before)).toHaveLength(2);
+    expect(await offerOf(id)).toMatchObject({ status: "accepted" });
+    const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("entity_id", "=", id).where("type", "like", "offer.%").execute());
+    expect(events.map((e) => e.type)).toEqual(["offer.proposed", "offer.accepted"]);
+    expect(JSON.stringify(events)).not.toMatch(/Mona|1001234821/);
+    await http().patch(`/v1/offer-rules/${rule}`).set(as("owner")).send({ active: false }).expect(204);
+  });
+
+  it("no thanks, and without rules: what customers buy with abayas", async () => {
+    await settings({ mode: "auto" });
+    // History: abayas are bought with pins.
+    for (let i = 0; i < 3; i++) await newOrder({ createdAt: new Date(Date.now() - 3 * 86_400_000).toISOString(), lines: [abayaLine(`H${i}`), { externalLineId: `PL-${i}-${n}`, sku: "PIN", variantExternalId: V.pin, title: "Pin", quantity: 1, unitPrice: { amount: "50.00", currency: "EGP" } }] });
+    const id = await newOrder({ lines: [abayaLine()] });
+    expect(await offerOf(id)).toMatchObject({ status: "proposed", source: "auto", variant_id: ids.pin, offer_price_minor: 4500n });
+    await run();
+    const t = await templateFor(id);
+    const before = wa.accepted.length;
+    wa.tapQuickReply(CUSTOMER, t.confirm, t.message.id);
+    await deliver();
+    await run();
+    const no = (sentAfter(before)[0]!.body.interactive.action.buttons as Array<{ reply: { id: string } }>)[1]!.reply.id;
+    wa.tapReply(CUSTOMER, no);
+    await deliver();
+    await run();
+    expect(await offerOf(id)).toMatchObject({ status: "declined" });
+    expect(sentAfter(before)[1]!.body.text.body).toBe("ولا يهمك 🙏 أوردرك ماشي زي ما هو.");
+  });
+
+  it("on the team's call: the offer is in the script and the team records the answer; results add up", async () => {
+    await settings();
+    await http().post("/v1/offer-rules").set(as("owner")).send({ triggerVariantId: null, offerVariantId: ids.scarf, discountPct: "0", messageAr: "طرحة على نفس اللون بـ 150 ج.م." }).expect(201);
+    wa.undeliverable.add(CUSTOMER); // straight to the team
+    const id = await newOrder({ lines: [abayaLine()] });
+    await run();
+    await deliver();
+    const s = (await http().get(`/v1/orders/${id}/confirmation`).set(as("owner")).expect(200)).body;
+    expect(s.offer).toMatchObject({ title: "Matching scarf", status: "proposed", offerPrice: { amount: "150.00" }, source: "rule" });
+    expect(s.script.at(-1)).toBe("🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 150 ج.م. تحب نضيفه لنفس الأوردر؟");
+    expect((await http().post(`/v1/orders/${id}/offer`).set(as("owner")).send({ decision: "accept" }).expect(200)).body).toEqual({ status: "accepted" });
+    expect((await http().post(`/v1/orders/${id}/offer`).set(as("owner")).send({ decision: "decline" }).expect(200)).body).toEqual({ status: "accepted" }); // already answered
+    const sum = (await http().get("/v1/offers/summary?days=7").set(as("owner")).expect(200)).body;
+    expect(sum.accepted).toBeGreaterThanOrEqual(2);
+    expect(sum.declined).toBeGreaterThanOrEqual(1);
+    expect(sum.added[0]).toMatchObject({ currency: "EGP" });
+    await settings({ enabled: false });
+  });
+});

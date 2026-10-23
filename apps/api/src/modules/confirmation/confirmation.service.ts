@@ -14,6 +14,7 @@ import { linkToken, runIdOf } from "./confirmation-link.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
 import { callScript, linkText, type MessageFacts } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
+import { OffersService } from "./offers/offers.service.js";
 
 export type Answer = "confirm" | "cancel" | "change";
 export type AnswerChannel = "link" | "whatsapp" | "voice_ivr" | "voice_ai" | "agent" | "call_team";
@@ -53,6 +54,7 @@ export class ConfirmationService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(MessagingRegistry) private readonly messaging: MessagingRegistry,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(OffersService) private readonly offers: OffersService,
   ) {}
 
   /** Starts a run for a new cash-on-delivery order (consumer of order.created). Returns the run id, or null when it does not apply. */
@@ -68,6 +70,8 @@ export class ConfirmationService {
     }).returning(RUN_COLUMNS).executeTakeFirstOrThrow() as RunRow;
     await this.setOrderStatus(trx, tenantId, orderId, "new", "pending_confirmation", "confirmation_started", { type: "system" }, { steps: String(settings.steps.length) });
     await this.events.emit(trx, { type: "confirmation.started", tenantId, entity: { type: "order", id: orderId }, actor: { type: "system" }, data: { number: order.number, runId: run.id, steps: settings.steps.map((s) => s.channel) } });
+    // The offer is chosen now (E6-11): ready the moment the customer confirms, and in the team's script.
+    await this.offers.propose(trx, tenantId, run, now);
     await this.advance(trx, tenantId, run, 0, now);
     return run.id;
   }
@@ -181,12 +185,21 @@ export class ConfirmationService {
     const { name, lang } = await this.store(trx, tenantId);
     const label = pii.decrypt(o.customer_label, "orders.customer_label");
     const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
+    const due = BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor);
+    const f = await this.offers.forRun(trx, run.id);
+    const offer = f && (f.status === "proposed" || f.status === "accepted") ? (() => {
+      const v = this.offers.view(f);
+      return {
+        id: f.id, title: v.title, qty: v.qty, price: v.offerPrice, was: Number(v.discountPct) > 0 ? v.unitPrice : null,
+        message: lang === "ar" ? f.message_ar : f.message_en, newTotal: fromMinor(due + BigInt(f.offer_price_minor) * BigInt(f.qty), o.currency),
+      };
+    })() : null;
     return {
       to,
       facts: {
         lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number,
         total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: this.linkFor(run.id, lang),
-        items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city,
+        items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city, offer,
       },
     };
   }
@@ -252,6 +265,9 @@ export class ConfirmationService {
       const order = await trx.selectFrom("orders").select("status").where("id", "=", orderId).executeTakeFirstOrThrow();
       const open = Boolean(run) && ["new", "pending_confirmation"].includes(order.status);
       const f = open && run ? await this.facts(trx, tenantId, run as RunRow) : null;
+      const offerRow = run ? await this.offers.forRun(trx, run.id) : null;
+      const offerSettings = await this.offers.settings(trx, tenantId);
+      if (f && !offerSettings.inCalls) f.facts.offer = null;
       return {
         run: run ? {
           id: run.id, status: run.status as "running", outcome: run.outcome, reason: run.reason, answeredChannel: run.answered_channel,
@@ -263,6 +279,7 @@ export class ConfirmationService {
         attempts: attempts.map((x) => ({ channel: x.channel, outcome: x.outcome, at: x.started_at.toISOString() })),
         whatsapp: chat.map((m) => ({ direction: m.direction as "in", kind: m.kind, action: m.action, status: m.status, errorCode: m.error_code, at: m.created_at.toISOString() })),
         script: f ? callScript(f.facts) : [],
+        offer: offerRow ? this.offers.view(offerRow) : null,
         channels: await this.messaging.channels(tenantId, trx),
       };
     });

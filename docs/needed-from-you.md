@@ -170,7 +170,7 @@ Mizan never sends customer names, phones or addresses to Claude; only products, 
 - [ ] **Confirmation defaults:**
   - WhatsApp, then wait 2 h, then the team calls (3 tries, 1 h apart, 10:00–22:00): OK?
   - Should the team call **first** for high-value orders?
-- [ ] **Upsell rules for the pilot** (E6-11):
+- [ ] **Upsell rules for the pilot** (E6-11, built: off by default; turn it on in Settings → Offers):
   - Max discount (suggestion 15%).
   - One offer per order.
   - Offer only items in stock and margin-positive.

@@ -1,5 +1,6 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
+import { OfferViewSchema } from "./offers/offers.dto.js";
 import { AUTOMATED_CHANNELS, ConfirmationSettingsSchema } from "./confirmation.settings.js";
 
 export const ChannelsSchema = z.object({
@@ -90,5 +91,7 @@ export const OrderConfirmationSchema = z.object({
   })),
   /** Lines for the team to read on the call while the order is open. */
   script: z.array(z.string()),
+  /** The run's offer (E6-11), whatever its status. */
+  offer: OfferViewSchema.nullable(),
   channels: ChannelsSchema,
 });

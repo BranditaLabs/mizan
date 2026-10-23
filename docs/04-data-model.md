@@ -130,6 +130,8 @@ erDiagram
 
 ✅ Migration 0021 (E6-10): `confirmation_steps` channels `whatsapp | call_auto | call_team` (old `sms`/`voice` rows kept), kind `reply` (a follow-up in the chat, `payload {message}`); `confirmation_runs.chat_state` (`awaiting_change`, `awaiting_reason`), `customer_hash` (phone HMAC: finds the run a typed message belongs to), `call_attempts`, `call_after` (team-call retry); `whatsapp_messages` (the conversation: direction, Meta `wamid` unique per store, kind, action, delivery status, error code, step key; no message text — a typed change is encrypted in `confirmations.notes`). Worker reads `connections.external_account`/`kind` to route Meta's webhooks by phone number id.
 
+✅ Migration 0022 (E6-11): `offer_rules` (trigger variant or any order, offer variant, `discount_pct` 0–50, priority, optional wording, active) and `order_offers` (one per confirmation run: variant, qty, unit and offer price in minor units with `offer_price ≤ unit_price`, discount, source `rule|auto|ai`, status `proposed → accepted|declined|expired → applying → applied|failed`, channel, who decided). Settings in `tenants.settings.offers`. Index `order_lines_variant` for bought-together.
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data

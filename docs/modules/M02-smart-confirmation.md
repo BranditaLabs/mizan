@@ -79,7 +79,27 @@ Settings → Confirmation → the store's WhatsApp number (owner, admin): Phone 
 
 The **link page** (`/c/{token}`) stays for stores without a WhatsApp number: the team sends it by hand (wa.me, prefilled) or copies it. Every channel answers through one service (`applyAnswer`): the order becomes Confirmed or Cancelled, the timeline and attempts log record who and how, a second answer is refused.
 
-**Next:** offers in the chat (E6-11, E6-12, E6-13), SMS-free automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
+### Offers: upsell and cross-sell (E6-11)
+
+One offer per confirmation, chosen when the run starts (so it is ready the moment the customer confirms, and in the team's script):
+
+1. **The owner's rules** (Settings → Offers): "if the order has *Abaya* → offer *Matching scarf* at 10% off", or for any order; a rule for the order's product beats a rule for any order, then priority. Optional own wording.
+2. **Otherwise Mizan's suggestion**: what customers of this store bought with these items (last 180 days), then what sells most (90 days), then the margin.
+3. **Never**: something already in the order, sold out, an archived product, more than 60% of the order total, sold at a loss after the discount (when its cost is known), or a discount above the store's maximum (default 15%; suggestions 10%).
+
+The customer sees it **in the thank-you message** right after tapping Confirm, with two buttons:
+
+```
+تمام ✅ أوردرك #1042 اتأكّد.
+
+🎁 عرض ليك: طرحة مطابقة بـ 135 ج.م. بدل 150 ج.م.
+تحب نضيفه لنفس الأوردر؟          [ ضيفه ]  [ لا شكراً ]
+→ "تمام ✅ هنضيف طرحة مطابقة لأوردرك، والإجمالي الجديد 1,385 ج.م."   or   "ولا يهمك 🙏 أوردرك ماشي زي ما هو."
+```
+
+It goes inside the free window the customer's tap opened, so the template stays utility. On a team call the script ends with the offer, and the order card has "Customer accepted / Not interested". The price recorded is the price shown, never more; an offer ends when the order ships or after 48 hours. Off by default; the owner turns it on. Accepting records the offer (`offer.accepted`); adding it to the Shopify order is E6-13 (until then, the card asks the team to add it by hand). Settings → Offers also shows offers made, accepted and the sales they added (30 days).
+
+**Next:** Claude picks and words the offer (E6-12), accepted offers added to the Shopify order (E6-13), automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
 
 ## Main screen — Confirmation queue
 

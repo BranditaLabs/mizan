@@ -701,7 +701,11 @@
           "cancelled": "Sent: order cancelled",
           "noted": "Sent: our team will call",
           "already": "Sent: order already recorded",
-          "other": "Message"
+          "other": "Message",
+          "confirmed_offer": "Sent: order confirmed + the offer",
+          "offer_added": "Sent: offer will be added",
+          "offer_declined": "Sent: no problem",
+          "offer_expired": "Sent: offer ended"
         },
         "in": {
           "confirm": "Customer tapped: Confirm",
@@ -713,7 +717,9 @@
           "message": "Customer wrote a message",
           "location": "Customer shared a location",
           "late": "Tap after the order was recorded",
-          "ignored": "Message not understood"
+          "ignored": "Message not understood",
+          "offer_yes": "Customer tapped: Add it",
+          "offer_no": "Customer tapped: No thanks"
         },
         "status": {
           "accepted": "Sent",
@@ -733,6 +739,32 @@
         "cancelled": "Customer cancelled",
         "retryToast": "Done: it comes back on the list at the next call time.",
         "unreachableToast": "That was the last try. The order stays on the list as unreachable."
+      },
+      "offer": {
+        "title": "Offer",
+        "accept": "Customer accepted",
+        "decline": "Not interested",
+        "acceptedHint": "It will be added to the store's order (automatically soon). For now, add it in Shopify by hand.",
+        "status": {
+          "proposed": "Offered",
+          "accepted": "Accepted",
+          "declined": "Declined",
+          "expired": "Ended",
+          "applying": "Adding",
+          "applied": "Added",
+          "failed": "Not added"
+        },
+        "source": {
+          "rule": "From your rule",
+          "auto": "Mizan's suggestion",
+          "ai": "Smart suggestion"
+        },
+        "toast": {
+          "accepted": "Recorded: the customer accepted the offer",
+          "declined": "Recorded: the customer declined the offer",
+          "expired": "This offer has ended"
+        },
+        "qty": "(qty <n>{qty}</n>)"
       }
     },
     "answerChannel": {
@@ -948,7 +980,8 @@
     "label": "Settings",
     "pages": {
       "costs": "Costs",
-      "confirmation": "Confirmation"
+      "confirmation": "Confirmation",
+      "offers": "Offers"
     }
   },
   "confirmationSettings": {
@@ -1034,6 +1067,66 @@
         "template_rejected": "Meta rejected the confirmation message. Submit it again with the wording in the setup guide.",
         "template_missing": "The confirmation message in the store's language (mizan_order_confirm_ar or mizan_order_confirm_en) isn't in the account. Add it in WhatsApp Manager with the wording in the setup guide."
       }
+    }
+  },
+  "offersSettings": {
+    "title": "Offers",
+    "subtitle": "Offer one more item when a customer confirms: inside the WhatsApp chat and in your team's call script.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load the settings. Try again.",
+    "saved": "Saved. New confirmations follow these settings.",
+    "save": "Save",
+    "discard": "Discard changes",
+    "notAllowed": {
+      "title": "For the owner, admins and ops managers",
+      "body": "Ask the store owner to set up offers."
+    },
+    "enabled": "Offer one more item when the customer confirms",
+    "enabledHint": "One offer per order: your rules first; when none fits, Mizan suggests what customers buy with the same products.",
+    "summary": {
+      "offered": "Offers made",
+      "accepted": "Offers accepted",
+      "added": "Sales added",
+      "period": "Last {days} days",
+      "rate": "{pct}% of offers"
+    },
+    "how": {
+      "title": "How the offer is chosen",
+      "mode": "Method",
+      "maxDiscount": "Maximum discount (%)",
+      "maxDiscountHint": "No offer is ever discounted more than this.",
+      "autoDiscount": "Discount on suggestions (%)",
+      "autoDiscountHint": "On what Mizan suggests. Rules carry their own.",
+      "pctInvalid": "Enter 0 to 50, like 10 or 12.5",
+      "overMax": "Must be at most the maximum discount",
+      "inWhatsApp": "Offer it in the WhatsApp chat after the customer confirms",
+      "inCalls": "Put it in your team's call script",
+      "guards": "Mizan never offers something already in the order, sold out, sold at a loss after the discount, or priced over 60% of the order."
+    },
+    "mode": {
+      "rules_then_auto": "My rules first, then Mizan's suggestions",
+      "rules": "My rules only",
+      "auto": "Mizan's suggestions only"
+    },
+    "rules": {
+      "title": "Offer rules",
+      "body": "When the order has a given product, offer another at a discount. A rule for a product beats a rule for any order.",
+      "line": "If the order has <b>{trigger}</b> → offer <b>{offer}</b> at <n>{pct}%</n> off",
+      "anyOrder": "any order",
+      "stopped": "Stopped",
+      "stop": "Stop",
+      "start": "Start",
+      "none": "No rules yet. Mizan suggests on its own if you choose so.",
+      "new": "New rule",
+      "when": "If the order has",
+      "offer": "Offer",
+      "offerPlaceholder": "Choose a product",
+      "noProducts": "No products by that name",
+      "discount": "Discount (%)",
+      "message": "Your message to the customer (optional)",
+      "messageHint": "Leave it empty and Mizan writes it, like: \"🎁 An offer for you: a scarf for EGP 135 instead of EGP 150.\"",
+      "add": "Add the rule",
+      "added": "Rule added"
     }
   }
 }

@@ -14,6 +14,7 @@ export const AUDIT_ACTIONS = [
   "connection.connected", "connection.disconnected", "connection.secret_rotated", "connection.key_saved", "connection.needs_attention",
   "catalog.costs_updated", "onboarding.updated", "cost_rule.changed", "fx.rate_overridden",
   "confirmation.link_created", "confirmation.settings_updated", "confirmation.answered_by_agent", "confirmation.call_no_answer",
+  "offer.decided", "offer_rule.changed", "offers.settings_updated",
   "integration.job_replayed", "integration.city_resolved",
   "customer.pii_viewed",
   "privacy.request_received", "privacy.request_completed", "privacy.export_downloaded",

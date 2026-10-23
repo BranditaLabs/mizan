@@ -289,6 +289,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/settings/offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OffersController_settings"];
+        put: operations["OffersController_saveSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/offer-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OffersController_rules"];
+        put?: never;
+        post: operations["OffersController_addRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/offer-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OffersController_setRule"];
+        trace?: never;
+    };
+    "/v1/offer-products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OffersController_products"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/offers/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OffersController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/offer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OffersController_decide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1032,6 +1128,10 @@ export interface components {
             /** Format: date-time */
             time: string;
         };
+        Id: {
+            /** Format: uuid */
+            id: string;
+        };
         IntegrationsHealth: {
             connected: boolean;
             reason?: string;
@@ -1167,6 +1267,107 @@ export interface components {
             after: string | null;
             unreachable: boolean;
         };
+        OfferDecided: {
+            /** @enum {string} */
+            status: "accepted" | "declined" | "expired";
+        };
+        OfferDecision: {
+            /**
+             * @description The customer's answer on the call
+             * @enum {string}
+             */
+            decision: "accept" | "decline";
+        };
+        OfferProducts: {
+            data: {
+                /** Format: uuid */
+                variantId: string;
+                sku: string;
+                title: string;
+                price: {
+                    amount: string;
+                    currency: string;
+                };
+                available: number | null;
+            }[];
+        };
+        OfferRuleCreate: {
+            /**
+             * Format: uuid
+             * @description When the order has this product; null = any order
+             */
+            triggerVariantId: string | null;
+            /**
+             * Format: uuid
+             * @description The product to offer
+             */
+            offerVariantId: string;
+            /** @default 0 */
+            discountPct: string;
+            /** @default 0 */
+            priority: number;
+            /** @description Your wording (else Mizan writes it) */
+            messageAr?: string;
+            messageEn?: string;
+        };
+        OfferRuleList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                trigger: {
+                    /** Format: uuid */
+                    variantId: string;
+                    title: string;
+                } | null;
+                offer: {
+                    /** Format: uuid */
+                    variantId: string;
+                    title: string;
+                    price: {
+                        amount: string;
+                        currency: string;
+                    };
+                };
+                discountPct: string;
+                priority: number;
+                messageAr: string | null;
+                messageEn: string | null;
+                active: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        OfferRuleUpdate: {
+            active: boolean;
+        };
+        OfferSettings: {
+            /** @description Offer one more item when a customer confirms */
+            enabled: boolean;
+            /**
+             * @description rules_then_auto: the owner's rules first, else what is bought together
+             * @enum {string}
+             */
+            mode: "rules_then_auto" | "rules" | "auto";
+            /** @description No offer is ever discounted more than this */
+            maxDiscountPct: string;
+            /** @description Discount on recommended offers (rules carry their own) */
+            autoDiscountPct: string;
+            /** @description Offer in the WhatsApp chat right after the customer confirms */
+            inWhatsApp: boolean;
+            /** @description Show the offer in the team's call script */
+            inCalls: boolean;
+        };
+        OfferSummary: {
+            days: number;
+            offered: number;
+            accepted: number;
+            declined: number;
+            /** @description What accepted offers added, per currency */
+            added: {
+                amount: string;
+                currency: string;
+            }[];
+        };
         Onboarding: {
             steps: {
                 store: {
@@ -1292,6 +1493,29 @@ export interface components {
                 at: string;
             }[];
             script: string[];
+            offer: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                qty: number;
+                /** @description Before the discount */
+                unitPrice: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description For one, after the discount: what the customer was shown */
+                offerPrice: {
+                    amount: string;
+                    currency: string;
+                };
+                discountPct: string;
+                /** @enum {string} */
+                source: "rule" | "auto" | "ai";
+                /** @enum {string} */
+                status: "proposed" | "accepted" | "declined" | "expired" | "applying" | "applied" | "failed";
+                messageAr: string | null;
+                messageEn: string | null;
+            } | null;
             /** @description Channels the store can use for confirmation */
             channels: {
                 /** @description The store's WhatsApp number is connected and its template approved */
@@ -2889,6 +3113,329 @@ export interface operations {
             };
             /** @description Gone (pii_redacted: deleted on request, …) */
             410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_settings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offers on or off, rules or recommendations, discount caps, where they show */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferSettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_saveSettings: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferSettings"];
+            };
+        };
+        responses: {
+            /** @description Saved; applies to confirmations that start from now on; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferSettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_rules: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The owner's offer rules, active first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferRuleList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_addRule: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferRuleCreate"];
+            };
+        };
+        responses: {
+            /** @description Rule added; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Id"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_setRule: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferRuleUpdate"];
+            };
+        };
+        responses: {
+            /** @description Stopped or restarted; audited */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_products: {
+        parameters: {
+            query?: {
+                /** @description Product title or SKU */
+                q?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active products to pick in a rule (100 at most) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferProducts"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_summary: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Offers made and taken, and what they added */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferSummary"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OffersController_decide: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OfferDecision"];
+            };
+        };
+        responses: {
+            /** @description The customer's answer to the offer on the team's call; expired when too late; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OfferDecided"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

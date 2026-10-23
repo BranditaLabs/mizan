@@ -401,6 +401,21 @@ export interface MzRecords {
   updated_at: Int8;
 }
 
+export interface OfferRules {
+  id: Generated<string>;
+  tenant_id: string;
+  trigger_variant_id: string | null;
+  offer_variant_id: string;
+  discount_pct: Generated<Numeric>;
+  priority: Generated<number>;
+  message_ar: string | null;
+  message_en: string | null;
+  active: Generated<boolean>;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface OrderEvents {
   id: Generated<string>;
   tenant_id: string;
@@ -427,6 +442,31 @@ export interface OrderLines {
   unit_cost_minor: Generated<Int8>;
   cost_set_at: Timestamp | null;
   external_variant_id: string | null;
+}
+
+export interface OrderOffers {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  run_id: string;
+  rule_id: string | null;
+  variant_id: string;
+  qty: Generated<number>;
+  currency: string;
+  unit_price_minor: Int8;
+  discount_pct: Generated<Numeric>;
+  offer_price_minor: Int8;
+  source: string;
+  message_ar: string | null;
+  message_en: string | null;
+  status: Generated<string>;
+  channel: string | null;
+  decided_at: Timestamp | null;
+  decided_by: string | null;
+  shopify_ref: string | null;
+  error: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface OrderPnl {
@@ -965,8 +1005,10 @@ export interface DB {
   mz_inbound_events: MzInboundEvents;
   mz_outbox: MzOutbox;
   mz_records: MzRecords;
+  offer_rules: OfferRules;
   order_events: OrderEvents;
   order_lines: OrderLines;
+  order_offers: OrderOffers;
   order_pnl: OrderPnl;
   orders: Orders;
   payment_links: PaymentLinks;

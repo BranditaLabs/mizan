@@ -10,6 +10,7 @@ import { parseActionId, type ChatAction } from "./confirmation-link.js";
 import { ConfirmationService, type RunRow } from "./confirmation.service.js";
 import { CANCEL_REASONS, type CancelReason, type ChatMessage } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
+import { OffersService } from "./offers/offers.service.js";
 
 /** Delivery order; a late "delivered" never overwrites "read", "failed" is final. */
 const RANK: Record<string, number> = { accepted: 0, received: 0, sent: 1, delivered: 2, read: 3, failed: 4 };
@@ -41,6 +42,7 @@ export class WhatsAppChat {
     @Inject(PiiCipher) private readonly cipher: PiiCipher,
     @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
     @Inject(MessagingRegistry) private readonly registry: MessagingRegistry,
+    @Inject(OffersService) private readonly offers: OffersService,
   ) {}
 
   /** Meta's subscription check (GET). */
@@ -178,7 +180,13 @@ export class WhatsAppChat {
     switch (action) {
       case "confirm":
       case "keep":
-        if (open && (await answer("confirm"))) { await this.reply(trx, tenantId, run, "confirmed", inbound, now); return action; }
+        if (open && (await answer("confirm"))) {
+          // With an offer for this run (E6-11), the thank-you carries it, with Add / No thanks.
+          const offer = await this.offers.forRun(trx, run.id);
+          const show = offer?.status === "proposed" && (await this.offers.settings(trx, tenantId)).inWhatsApp;
+          await this.reply(trx, tenantId, run, show ? "confirmed_offer" : "confirmed", inbound, now);
+          return action;
+        }
         if (run.outcome !== "confirmed") await this.reply(trx, tenantId, run, "already", inbound, now);
         return "late";
       case "change":
@@ -203,8 +211,17 @@ export class WhatsAppChat {
         if (run.outcome !== "cancelled") await this.reply(trx, tenantId, run, "already", inbound, now);
         return "late";
       }
+      case "offer_yes":
+      case "offer_no": {
+        const offer = await this.offers.forRun(trx, run.id);
+        if (!offer || offer.id !== arg) return "ignored";
+        const r = await this.offers.decide(trx, tenantId, offer.id, action === "offer_yes" ? "accept" : "decline", { channel: "whatsapp" }, now);
+        if (!r.changed) return "late"; // a second tap: already answered
+        await this.reply(trx, tenantId, run, r.status === "accepted" ? "offer_added" : r.status === "declined" ? "offer_declined" : "offer_expired", inbound, now);
+        return action;
+      }
       default:
-        return "ignored"; // offers come with E6-11
+        return "ignored";
     }
   }
 
