@@ -591,6 +591,142 @@
         ]
       }
     },
+    "/v1/orders/{id}/pnl": {
+      "get": {
+        "operationId": "ProfitController_orderPnl",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One order's profit: realised components, expected profit, missing inputs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPnl"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profit"
+        ]
+      }
+    },
+    "/v1/profit/recalculate": {
+      "post": {
+        "operationId": "ProfitController_recalculate",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Recalculate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Provisional orders in the range recomputed (up to 2,000 per call)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Recalculated"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profit"
+        ]
+      }
+    },
     "/v1/cost-rules": {
       "get": {
         "operationId": "ProfitController_list",
@@ -6116,6 +6252,302 @@
         ],
         "additionalProperties": false
       },
+      "OrderPnl": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "day": {
+            "nullable": true,
+            "description": "The order's day, store time (rules and rate of that day)",
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "isFinal": {
+            "type": "boolean",
+            "description": "Final once settled or inspected; provisional before"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "fx_missing, cost_missing, shipping_rate_missing, cod_fee_missing, payment_fee_missing, agent_cost_missing, packaging_cost_missing, return_rate_missing, estimated, awaiting_settlement"
+          },
+          "computedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "revenue": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "refunds": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "productCost": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "shipping": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "codFee": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "paymentFee": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "channelFee": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "ads": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "agent": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "packaging": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "returns": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "chargebacks": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "net": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false,
+            "description": "Realised profit so far"
+          },
+          "expectedRevenue": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "expectedNet": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false,
+            "description": "Profit if the order delivers (orders still moving); equals net otherwise"
+          }
+        },
+        "required": [
+          "currency",
+          "day",
+          "isFinal",
+          "flags",
+          "computedAt",
+          "revenue",
+          "refunds",
+          "productCost",
+          "shipping",
+          "codFee",
+          "paymentFee",
+          "channelFee",
+          "ads",
+          "agent",
+          "packaging",
+          "returns",
+          "chargebacks",
+          "net",
+          "expectedRevenue",
+          "expectedNet"
+        ],
+        "additionalProperties": false
+      },
       "PrivacyExport": {
         "description": "The customer's data compiled for a data request (JSON)"
       },
@@ -6409,6 +6841,42 @@
         },
         "required": [
           "status"
+        ],
+        "additionalProperties": false
+      },
+      "Recalculate": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "description": "First order day (store time)",
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "to": {
+            "description": "Last order day (store time)",
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          }
+        }
+      },
+      "Recalculated": {
+        "type": "object",
+        "properties": {
+          "recomputed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "More provisional orders remain: call again"
+          }
+        },
+        "required": [
+          "recomputed",
+          "truncated"
         ],
         "additionalProperties": false
       },

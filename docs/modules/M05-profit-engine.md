@@ -146,11 +146,11 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/v1/profit/summary` | Totals for a period and grouping |
-| GET | `/v1/orders/{id}/pnl` | One order's P&L lines |
+| GET | `/v1/orders/{id}/pnl` | ✅ E9-2: one order's P&L lines, expected profit, missing inputs |
 | GET | `/v1/profit/by/{dimension}` | Product, store, courier, country |
 | GET / POST / DELETE | `/v1/cost-rules` | ✅ E9-1: packaging, agent, COD %, payment fees, courier rate card, monthly costs; versioned |
 | GET / PUT | `/v1/fx-rates` | ✅ E9-1: daily rates, store's own rate for a day |
-| POST | `/v1/profit/recalculate` | Recalculate a range |
+| POST | `/v1/profit/recalculate` | ✅ E9-2: recalculate provisional orders in a range |
 | GET | `/v1/profit/export` | CSV for accounting |
 
 Conventions: `docs/05-api.md`.

@@ -125,6 +125,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/orders/{id}/pnl` | ✅ E9-2. One order's profit: `{ currency, day, isFinal, flags[], revenue, refunds, productCost, shipping, codFee, paymentFee, channelFee, ads, agent, packaging, returns, chargebacks, net, expectedRevenue, expectedNet }` (Money). Computed on first read. Owner, admin, finance, ops manager |
+| POST | `/profit/recalculate` | ✅ E9-2. `{ from?, to? }` (store days) → `{ recomputed, truncated }`: provisional orders recomputed, 2,000 per call. Owner, admin, finance |
 | GET | `/profit/summary?from&to` | Net profit, margin, components |
 | GET | `/profit/breakdown?by=product\|store\|courier\|country\|day` | Grouped P&L |
 | GET / POST | `/cost-rules` | ✅ E9-1. GET `?at=YYYY-MM-DD` (rules that apply that day, default today in store time) or `?history=true` (every version) → `{ baseCurrency, today, data }`. POST one rule (`kind` = `packaging_per_order` · `agent_per_order` {amount, scope.connectionId?} · `cod_fee_pct` {pct, scope.courier?} · `payment_fee_pct` {pct, fixed?, scope.method?} · `courier_rate` {amount, returnAmount?, scope.courier, scope.zone?} · `fixed_monthly` {amount, scope.label}; `validFrom` default today, 90 days back to 365 ahead) → 201 new version; the previous one for the same kind and scope ends the day before; same day = correction; 409 `later_version_exists`. Owner, admin, finance write; ops manager reads |

@@ -693,6 +693,45 @@
       "voice_ai": "AI call",
       "agent": "an agent",
       "other": "the store"
+    },
+    "profit": {
+      "title": "Profit",
+      "loading": "Working out the profit",
+      "failed": "Couldn't load the profit.",
+      "final": "Final",
+      "provisional": "Provisional",
+      "expectedNet": "Expected profit if it delivers",
+      "net": "Profit",
+      "margin": "Margin <n>{pct}%</n>",
+      "movingHint": "Counted for real when the money arrives: on delivery for cash, on payment for prepaid.",
+      "expectedRevenue": "Order total",
+      "revenue": "Revenue",
+      "refunds": "Refunds",
+      "costs": {
+        "productCost": "Product cost",
+        "shipping": "Shipping",
+        "codFee": "Cash collection fee",
+        "paymentFee": "Payment fee",
+        "agent": "Confirmation agent",
+        "packaging": "Packaging",
+        "returns": "Return shipping",
+        "chargebacks": "Chargebacks",
+        "channelFee": "Marketplace fees",
+        "ads": "Ads"
+      },
+      "estimated": "Courier and fee costs are estimates from your rates until the courier's settlement arrives.",
+      "missingTitle": "Missing to be accurate",
+      "missing": {
+        "fx_missing": "Exchange rate for this order's currency and day",
+        "cost_missing": "Product cost for some items",
+        "shipping_rate_missing": "Courier rate for this area",
+        "return_rate_missing": "Courier's return price",
+        "cod_fee_missing": "Cash collection fee %",
+        "payment_fee_missing": "Payment fee for this method",
+        "agent_cost_missing": "Confirmation agent cost",
+        "packaging_cost_missing": "Packaging cost"
+      },
+      "setCosts": "Set costs"
     }
   },
   "costs": {

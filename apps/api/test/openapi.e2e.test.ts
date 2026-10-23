@@ -71,7 +71,7 @@ describe("openapi.json", () => {
     const bodies = new Set([
       "post /v1/tenants", "post /v1/members/invite", "patch /v1/members/{userId}", "post /v1/admin/integrations/cities/resolve", "post /v1/connections/shopify/claim",
       "post /v1/connections/bosta", "put /v1/products/variants/costs", "patch /v1/onboarding", "post /v1/cost-rules", "put /v1/fx-rates/{day}/{quote}",
-      "post /v1/orders/{id}/confirmation", "put /v1/settings/confirmation", "post /v1/public/confirm/{token}",
+      "post /v1/orders/{id}/confirmation", "put /v1/settings/confirmation", "post /v1/public/confirm/{token}", "post /v1/profit/recalculate",
     ]);
     for (const [path, item] of Object.entries(doc.paths)) {
       for (const [method, op] of Object.entries(item)) {
@@ -147,8 +147,10 @@ describe("real responses match the documented schemas", () => {
     conforms("put", "/v1/settings/confirmation", await http().put("/v1/settings/confirmation").set(as("owner", store)).send(conf.body.settings));
     conforms("get", "/v1/public/confirm/{token}", await http().get("/v1/public/confirm/nope")); // 404
     conforms("post", "/v1/public/confirm/{token}", await http().post("/v1/public/confirm/nope").send({ answer: "confirm" })); // 404
+    conforms("get", "/v1/orders/{id}/pnl", await http().get(`/v1/orders/${noOrder}/pnl`).set(as("owner", store))); // 404
+    conforms("post", "/v1/profit/recalculate", await http().post("/v1/profit/recalculate").set(as("owner", store)).send({}));
     conforms("get", "/v1/connections/shopify/install", await http().get("/v1/connections/shopify/install?shop=nile.myshopify.com").set(as("owner", store)));
 
-    expect(checked.size).toBeGreaterThanOrEqual(35);
+    expect(checked.size).toBeGreaterThanOrEqual(37);
   });
 });

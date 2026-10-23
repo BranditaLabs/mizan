@@ -16,6 +16,7 @@ import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
+import { ProfitCard } from "./ProfitCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
 type Order = Schemas["OrderDetail"];
@@ -125,6 +126,7 @@ export function OrderDetail({ id }: { id: string }) {
               empty={<EmptyState icon="product" title={t("detail.lines.empty")} body="" />} />
           </Card>
           <Card title={t("detail.money.title")}><KeyValue items={money} /></Card>
+          <ProfitCard orderId={o.id} moving={["new", "pending_confirmation", "confirmed", "shipped"].includes(o.status)} />
           <Card title={t("detail.payments.title")}>
             {o.payments.length === 0 ? <p className="text-body-sm text-text-2">{t("detail.payments.empty")}</p> : (
               <ul className="flex flex-col divide-y divide-line">

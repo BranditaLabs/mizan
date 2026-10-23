@@ -693,6 +693,45 @@
       "voice_ai": "مكالمة ذكاء اصطناعي",
       "agent": "موظف",
       "other": "المتجر"
+    },
+    "profit": {
+      "title": "الربح",
+      "loading": "بنحسب الربح",
+      "failed": "معرفناش نحمّل الربح.",
+      "final": "نهائي",
+      "provisional": "مبدئي",
+      "expectedNet": "الربح المتوقع لو اتسلّم",
+      "net": "الربح",
+      "margin": "الهامش <n>{pct}%</n>",
+      "movingHint": "بيتحسب فعلي لما الفلوس توصل: عند الاستلام للكاش، وعند الدفع للمدفوع أونلاين.",
+      "expectedRevenue": "إجمالي الأوردر",
+      "revenue": "الإيراد",
+      "refunds": "المرتجع من الفلوس",
+      "costs": {
+        "productCost": "تكلفة المنتجات",
+        "shipping": "الشحن",
+        "codFee": "رسوم تحصيل الكاش",
+        "paymentFee": "رسوم الدفع",
+        "agent": "موظف التأكيد",
+        "packaging": "التغليف",
+        "returns": "شحن المرتجع",
+        "chargebacks": "اعتراضات الدفع",
+        "channelFee": "رسوم الماركت بليس",
+        "ads": "الإعلانات"
+      },
+      "estimated": "تكاليف الشحن والرسوم تقديرية من أسعارك لحد ما تسوية شركة الشحن توصل.",
+      "missingTitle": "ناقص عشان الرقم يبقى دقيق",
+      "missing": {
+        "fx_missing": "سعر العملة ليوم الأوردر",
+        "cost_missing": "تكلفة بعض المنتجات",
+        "shipping_rate_missing": "سعر شركة الشحن للمنطقة دي",
+        "return_rate_missing": "سعر المرتجع عند شركة الشحن",
+        "cod_fee_missing": "نسبة رسوم تحصيل الكاش",
+        "payment_fee_missing": "رسوم طريقة الدفع دي",
+        "agent_cost_missing": "تكلفة موظف التأكيد",
+        "packaging_cost_missing": "تكلفة التغليف"
+      },
+      "setCosts": "حدّد التكاليف"
     }
   },
   "costs": {

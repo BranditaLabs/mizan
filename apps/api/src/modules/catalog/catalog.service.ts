@@ -6,6 +6,7 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { ProductEventsService } from "../onboarding/product-events.service.js";
+import { EventsService } from "../../platform/events/events.service.js";
 import type { SetCostsBody, VariantCost } from "./catalog.dto.js";
 
 /** Cursor = "<created_at ISO>|<id>": stable order even when costs change between pages. */
@@ -24,6 +25,7 @@ export class CatalogService {
     @Inject(Database) private readonly db: Database,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ProductEventsService) private readonly productEvents: ProductEventsService,
+    @Inject(EventsService) private readonly events: EventsService,
   ) {}
 
   async costs(tenantId: string, q: { missingCost: boolean; limit: number; cursor?: string | undefined }) {
@@ -70,6 +72,8 @@ export class CatalogService {
         .where("p.status", "!=", "archived").where("v.cogs_set_at", "is", null).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow()).n);
       await this.audit.record(trx, { action: "catalog.costs_updated", tenantId, after: { variants: ids.length, missingCost: missing }, ...auditActor(auth) });
       await this.productEvents.record(trx, tenantId, { name: "costs_entered", once: true, userId: auth.user.id, data: { variants: ids.length } });
+      // Open orders with these products get their profit recomputed (E9-2); confirmed ones keep their locked cost.
+      await this.events.emit(trx, { type: "costs.changed", tenantId, entity: { type: "tenant", id: tenantId }, actor: { type: "user", id: auth.user.id }, data: { kind: "product_cost", variantIds: ids.slice(0, 500) } });
       return { updated: ids.length, missingCost: missing };
     });
   }

@@ -9,12 +9,35 @@ import { CostRuleListSchema, CostRuleQuerySchema, CostRuleSchema, CreateCostRule
 import { CostRulesService } from "./cost-rules.service.js";
 import { FxParamsSchema, FxQuerySchema, FxRateSchema, FxRatesSchema, SetFxRateSchema } from "./fx.dto.js";
 import { FxService } from "./fx/fx.service.js";
+import { OrderPnlSchema, RecalculatedSchema, RecalculateSchema } from "./profit.dto.js";
+import { ProfitService } from "./profit.service.js";
 
 /** M5 profit inputs (E9-1): cost rules and exchange rates. Owner, admin and finance change them; ops managers read. */
 @ApiTags("profit")
 @Controller()
 export class ProfitController {
-  constructor(@Inject(CostRulesService) private readonly rules: CostRulesService, @Inject(FxService) private readonly fx: FxService) {}
+  constructor(
+    @Inject(CostRulesService) private readonly rules: CostRulesService,
+    @Inject(FxService) private readonly fx: FxService,
+    @Inject(ProfitService) private readonly profit: ProfitService,
+  ) {}
+
+  @Get("orders/:id/pnl")
+  @Roles("owner", "admin", "finance", "ops_manager")
+  @ApiJson(200, "OrderPnl", OrderPnlSchema, "One order's profit: realised components, expected profit, missing inputs")
+  @ApiProblems(404)
+  orderPnl(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
+    return this.profit.orderPnl(auth, id);
+  }
+
+  @Post("profit/recalculate")
+  @Roles("owner", "admin", "finance")
+  @HttpCode(200)
+  @ApiJsonBody("Recalculate", RecalculateSchema)
+  @ApiJson(200, "Recalculated", RecalculatedSchema, "Provisional orders in the range recomputed (up to 2,000 per call)")
+  recalculate(@Auth() auth: AuthContext, @Body(new ZodPipe(RecalculateSchema)) body: z.output<typeof RecalculateSchema>) {
+    return this.profit.recalculate(auth, body);
+  }
 
   @Get("cost-rules")
   @Roles("owner", "admin", "finance", "ops_manager")

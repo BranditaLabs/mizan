@@ -81,6 +81,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/pnl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProfitController_orderPnl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/profit/recalculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ProfitController_recalculate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/cost-rules": {
         parameters: {
             query?: never;
@@ -1343,6 +1375,82 @@ export interface components {
                 returned: number;
             };
         };
+        OrderPnl: {
+            currency: string;
+            /**
+             * Format: date
+             * @description The order's day, store time (rules and rate of that day)
+             */
+            day: string | null;
+            /** @description Final once settled or inspected; provisional before */
+            isFinal: boolean;
+            /** @description fx_missing, cost_missing, shipping_rate_missing, cod_fee_missing, payment_fee_missing, agent_cost_missing, packaging_cost_missing, return_rate_missing, estimated, awaiting_settlement */
+            flags: string[];
+            /** Format: date-time */
+            computedAt: string;
+            revenue: {
+                amount: string;
+                currency: string;
+            };
+            refunds: {
+                amount: string;
+                currency: string;
+            };
+            productCost: {
+                amount: string;
+                currency: string;
+            };
+            shipping: {
+                amount: string;
+                currency: string;
+            };
+            codFee: {
+                amount: string;
+                currency: string;
+            };
+            paymentFee: {
+                amount: string;
+                currency: string;
+            };
+            channelFee: {
+                amount: string;
+                currency: string;
+            };
+            ads: {
+                amount: string;
+                currency: string;
+            };
+            agent: {
+                amount: string;
+                currency: string;
+            };
+            packaging: {
+                amount: string;
+                currency: string;
+            };
+            returns: {
+                amount: string;
+                currency: string;
+            };
+            chargebacks: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Realised profit so far */
+            net: {
+                amount: string;
+                currency: string;
+            };
+            expectedRevenue: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Profit if the order delivers (orders still moving); equals net otherwise */
+            expectedNet: {
+                amount: string;
+                currency: string;
+            };
+        };
         /** @description The customer's data compiled for a data request (JSON) */
         PrivacyExport: unknown;
         PrivacyRequests: {
@@ -1418,6 +1526,23 @@ export interface components {
         Ready: {
             /** @enum {string} */
             status: "ready";
+        };
+        Recalculate: {
+            /**
+             * Format: date
+             * @description First order day (store time)
+             */
+            from?: string;
+            /**
+             * Format: date
+             * @description Last order day (store time)
+             */
+            to?: string;
+        };
+        Recalculated: {
+            recomputed: number;
+            /** @description More provisional orders remain: call again */
+            truncated: boolean;
         };
         Replayed: {
             /** @enum {boolean} */
@@ -1873,6 +1998,87 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_orderPnl: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One order's profit: realised components, expected profit, missing inputs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderPnl"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_recalculate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Recalculate"];
+            };
+        };
+        responses: {
+            /** @description Provisional orders in the range recomputed (up to 2,000 per call) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recalculated"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

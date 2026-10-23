@@ -420,6 +420,7 @@ export interface OrderLines {
   quantity: number;
   unit_price_minor: Int8;
   unit_cost_minor: Generated<Int8>;
+  cost_set_at: Timestamp | null;
 }
 
 export interface OrderPnl {
@@ -443,6 +444,10 @@ export interface OrderPnl {
   chargeback_minor: Generated<Int8>;
   channel_fee_minor: Generated<Int8>;
   net_minor: GeneratedAlways<Int8 | null>;
+  day: Timestamp | null;
+  expected_revenue_minor: Generated<Int8>;
+  expected_net_minor: Generated<Int8>;
+  flags: Generated<ArrayType<string>>;
 }
 
 export interface Orders {
