@@ -81,6 +81,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/profit/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProfitController_home"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ad-spend": {
         parameters: {
             query?: never;
@@ -1874,7 +1890,7 @@ export interface components {
             day: string | null;
             /** @description Final once settled or inspected; provisional before */
             isFinal: boolean;
-            /** @description fx_missing, cost_missing, shipping_rate_missing, cod_fee_missing, payment_fee_missing, agent_cost_missing, packaging_cost_missing, return_rate_missing, estimated, awaiting_settlement */
+            /** @description fx_missing, ads_fx_missing, cost_missing, shipping_rate_missing, cod_fee_missing, payment_fee_missing, agent_cost_missing, packaging_cost_missing, return_rate_missing, estimated, awaiting_settlement */
             flags: string[];
             /** Format: date-time */
             computedAt: string;
@@ -1970,6 +1986,175 @@ export interface components {
                 message?: string;
             }[];
             requestId?: string;
+        };
+        ProfitHome: {
+            baseCurrency: string;
+            /** Format: date */
+            today: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            days: number;
+            yesterday: {
+                /** Format: date */
+                day: string;
+                orders: number;
+                revenue: {
+                    amount: string;
+                    currency: string;
+                };
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                expectedNet: {
+                    amount: string;
+                    currency: string;
+                };
+            };
+            period: {
+                orders: number;
+                /** @description Money that is real: prepaid when paid, COD when delivered; less refunds */
+                revenue: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Σ orders' realised profit */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Σ orders' profit if those still on their way deliver */
+                expectedNet: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Monthly fixed costs spread over the period's days */
+                fixedCosts: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Ad spend on days with no order to carry it */
+                unallocatedAds: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description What the store kept: net − fixed costs − unallocated ads */
+                kept: {
+                    amount: string;
+                    currency: string;
+                };
+                expectedKept: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description kept ÷ revenue */
+                margin: string | null;
+                /** @description Of every 100 of revenue, what was kept */
+                keptPer100: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description The same for the period before */
+                previousKept: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description kept vs the period before */
+                change: string | null;
+                delivered: number;
+                /** @description Refused or returned after shipping */
+                returned: number;
+                /** @description delivered ÷ (delivered + returned) */
+                deliveryRate: string | null;
+                /** @description What refused orders lost, all costs counted */
+                refusalLoss: {
+                    amount: string;
+                    currency: string;
+                };
+                adSpend: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Where every pound of revenue went */
+                breakdown: {
+                    revenue: {
+                        amount: string;
+                        currency: string;
+                    };
+                    productCost: {
+                        amount: string;
+                        currency: string;
+                    };
+                    shippingAndCod: {
+                        amount: string;
+                        currency: string;
+                    };
+                    ads: {
+                        amount: string;
+                        currency: string;
+                    };
+                    returns: {
+                        amount: string;
+                        currency: string;
+                    };
+                    team: {
+                        amount: string;
+                        currency: string;
+                    };
+                    /** @description Payment, channel and chargeback fees and packaging */
+                    fees: {
+                        amount: string;
+                        currency: string;
+                    };
+                    fixed: {
+                        amount: string;
+                        currency: string;
+                    };
+                    kept: {
+                        amount: string;
+                        currency: string;
+                    };
+                };
+            };
+            cash: {
+                /** @description Cash to collect on parcels on their way */
+                inTransit: {
+                    amount: string;
+                    currency: string;
+                };
+                inTransitOrders: number;
+                /** @description Cash collected by couriers, not yet paid to the store */
+                awaitingRemittance: {
+                    amount: string;
+                    currency: string;
+                };
+                awaitingRemittanceOrders: number;
+            };
+            trend: {
+                /** Format: date */
+                day: string;
+                orders: number;
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                expectedNet: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+            /** @description What is costing money or hiding it, most costly first */
+            leaks: {
+                /** @enum {string} */
+                kind: "losing_orders" | "refusals" | "unallocated_ads" | "other_currency" | "cost_missing" | "shipping_rate_missing" | "cod_fee_missing" | "agent_cost_missing" | "packaging_cost_missing" | "payment_fee_missing" | "fx_missing" | "ads_fx_missing";
+                count: number;
+                amount: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
         };
         PublicAnswer: {
             /** @enum {string} */
@@ -2516,6 +2701,42 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_home: {
+        parameters: {
+            query?: {
+                /** @description Period: the last 7, 30 or 90 store days, today included */
+                days?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What the store kept over the last 7, 30 or 90 days and yesterday, where it went, cash with couriers, leaks */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfitHome"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

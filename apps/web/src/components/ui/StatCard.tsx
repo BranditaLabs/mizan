@@ -33,7 +33,7 @@ export function StatCard({ label, value, unit, delta, good, period, trend, trend
           ) : <span />}
           {trend && trend.length > 1 ? <Sparkline values={trend} label={trendLabel} /> : null}
         </div>
-      ) : null}
+      ) : period ? <p className="mz-kpi__delta">{period}</p> : null}
     </div>
   );
 }

@@ -1232,5 +1232,108 @@
       "removeLabel": "امسح صرف {platform} يوم {day}",
       "removed": "اتمسح. أوردرات اليوم ده اتحدّثت."
     }
+  },
+  "profitHome": {
+    "title": "نظرة عامة",
+    "subtitle": "اللي متجرك كسبه بجد: كل أوردر، كل تكلفة، كل جنيه.",
+    "loading": "بنحمّل ربحك",
+    "loadFailed": "ماقدرناش نحمّل ربحك. جرّب تاني.",
+    "pct": "{v}٪",
+    "period": {
+      "label": "الفترة",
+      "days": "{days, plural, few {# أيام} other {# يوم}}"
+    },
+    "kept": {
+      "title": "اللي فضل معاك · آخر {days, plural, few {# أيام} other {# يوم}}",
+      "change": "{pct}٪",
+      "vsPrev": "مقارنة بالـ {days, plural, few {# أيام} other {# يوم}} اللي قبلها",
+      "per100": "من كل <hundred></hundred> مبيعات، فضل معاك <kept></kept>.",
+      "noRevenue": "لسه مفيش أوردرات اتسلّمت أو اتدفعت في الفترة دي: المبيعات بتتحسب لما الفلوس تبقى حقيقية.",
+      "expected": "لو الأوردرات اللي في الطريق اتسلّمت: <money></money>."
+    },
+    "where": {
+      "title": "كل جنيه راح فين",
+      "revenue": "المبيعات",
+      "productCost": "المنتجات",
+      "shippingAndCod": "الشحن والتحصيل",
+      "ads": "الإعلانات",
+      "returns": "المرتجعات (رجوع الشحنة)",
+      "team": "فريق التأكيد",
+      "fees": "رسوم وتغليف",
+      "fixed": "مصاريف ثابتة",
+      "kept": "فضل معاك",
+      "share": "{pct}٪"
+    },
+    "kpi": {
+      "yesterday": "أوردرات امبارح",
+      "yesterdayHint": "{orders, plural, =0 {مفيش أوردرات} one {أوردر واحد} two {أوردرين} other {# أوردر}}، لو اتسلّمت",
+      "delivery": "اتسلّم",
+      "deliveryHint": "{delivered} اتسلّم · {returned} اترفض",
+      "refusals": "خسارة المرتجعات",
+      "refusalsHint": "{count, plural, =0 {مفيش مرتجعات} one {أوردر واحد اترفض، بكل تكاليفه} two {أوردرين اترفضوا، بكل تكاليفهم} other {# أوردر اترفضوا، بكل تكاليفهم}}",
+      "cash": "فلوس مع شركات الشحن",
+      "cashHint": "{transit} في الطريق · {held} اتحصّلت ولسه ماوصلتش"
+    },
+    "trend": {
+      "title": "الربح اليومي",
+      "hint": "اللي أوردرات كل يوم بتكسبه لو اللي في الطريق اتسلّم. الخسارة بالأحمر.",
+      "day": "اليوم",
+      "profit": "الربح",
+      "orders": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}}",
+      "tip": "{day} · {money} · {count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}}"
+    },
+    "leaks": {
+      "title": "محتاج انتباهك",
+      "none": "مفيش حاجة بتسرّب فلوس. تمام.",
+      "open": "افتح",
+      "losing_orders": {
+        "title": "{count, plural, one {أوردر واحد خسران} two {أوردرين خسرانين} other {# أوردر خسرانين}}",
+        "body": "مع بعض <money></money>، حتى لو اتسلّموا. راجع السعر وتكلفة المنتج والشحن."
+      },
+      "refusals": {
+        "title": "{count, plural, one {أوردر واحد اترفض} two {أوردرين اترفضوا} other {# أوردر اترفضوا}}",
+        "body": "كلّفوك <money></money>: شحن رايح جاي وإعلانات ورسوم."
+      },
+      "unallocated_ads": {
+        "title": "صرف إعلانات مش متحمّل على أوردر",
+        "body": "<money></money> في {count, plural, one {يوم واحد} two {يومين} other {# أيام}} مفيهاش أوردرات. برضه تكلفة."
+      },
+      "other_currency": {
+        "title": "{count, plural, one {أوردر واحد بعملة تانية} two {أوردرين بعملة تانية} other {# أوردر بعملات تانية}}",
+        "body": "مش داخلين في الإجماليات دي: ضيف سعر الصرف لأيامهم."
+      },
+      "cost_missing": {
+        "title": "تكلفة منتج ناقصة",
+        "body": "{count, plural, one {أوردر واحد فيه} two {أوردرين فيهم} other {# أوردر فيهم}} منتج من غير تكلفة: الربح طالع أعلى من الحقيقي."
+      },
+      "shipping_rate_missing": {
+        "title": "سعر الشحن ناقص",
+        "body": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} من غير سعر توصيل لمنطقتهم."
+      },
+      "cod_fee_missing": {
+        "title": "رسوم التحصيل ناقصة",
+        "body": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} من غير رسوم تحصيل شركة الشحن."
+      },
+      "agent_cost_missing": {
+        "title": "تكلفة التأكيد ناقصة",
+        "body": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} من غير تكلفة الفريق للأوردر."
+      },
+      "packaging_cost_missing": {
+        "title": "تكلفة التغليف ناقصة",
+        "body": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} من غير تكلفة تغليف."
+      },
+      "payment_fee_missing": {
+        "title": "رسوم الدفع ناقصة",
+        "body": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} اتدفعوا أونلاين من غير رسوم بوابة الدفع."
+      },
+      "fx_missing": {
+        "title": "سعر الصرف ناقص",
+        "body": "{count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} من غير سعر صرف ليومهم."
+      },
+      "ads_fx_missing": {
+        "title": "صرف إعلانات من غير سعر صرف",
+        "body": "صرف بعملة تانية في أيام {count, plural, one {أوردر واحد} two {أوردرين} other {# أوردر}} لسه مش محسوب."
+      }
+    }
   }
 }

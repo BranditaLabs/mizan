@@ -135,7 +135,7 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 
 ## Acceptance criteria
 
-- [ ] Net profit for yesterday and 30 days is on the home screen.
+- [x] Net profit for yesterday and 30 days is on the home screen. (E9-4)
 - [ ] Every number drills down to the orders behind it.
 - [ ] A refused order shows its full RTO cost.
 - [ ] Recalculation finishes within 1 minute of an event.
@@ -145,6 +145,7 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/v1/profit/home` | ✅ E9-4: the home — kept over 7/30/90 days and yesterday, where it went, delivery and refusals, cash with couriers, leaks |
 | GET | `/v1/profit/summary` | Totals for a period and grouping |
 | GET | `/v1/orders/{id}/pnl` | ✅ E9-2: one order's P&L lines, expected profit, missing inputs |
 | GET | `/v1/profit/by/{dimension}` | Product, store, courier, country |

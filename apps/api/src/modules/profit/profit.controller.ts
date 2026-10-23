@@ -9,7 +9,8 @@ import { CostRuleListSchema, CostRuleQuerySchema, CostRuleSchema, CreateCostRule
 import { CostRulesService } from "./cost-rules.service.js";
 import { FxParamsSchema, FxQuerySchema, FxRateSchema, FxRatesSchema, SetFxRateSchema } from "./fx.dto.js";
 import { FxService } from "./fx/fx.service.js";
-import { OrderPnlSchema, RecalculatedSchema, RecalculateSchema } from "./profit.dto.js";
+import { HomeQuerySchema, OrderPnlSchema, ProfitHomeSchema, RecalculatedSchema, RecalculateSchema } from "./profit.dto.js";
+import { ProfitHomeService } from "./home.service.js";
 import { ProfitService } from "./profit.service.js";
 import { AdSpendDeleteQuerySchema, AdSpendImportedSchema, AdSpendListSchema, AdSpendParamsSchema, AdSpendQuerySchema, AdSpendRowSchema, ImportAdSpendSchema, SetAdSpendSchema } from "./ads/ad-spend.dto.js";
 import { AdSpendService } from "./ads/ad-spend.service.js";
@@ -24,7 +25,16 @@ export class ProfitController {
     @Inject(FxService) private readonly fx: FxService,
     @Inject(ProfitService) private readonly profit: ProfitService,
     @Inject(AdSpendService) private readonly ads: AdSpendService,
+    @Inject(ProfitHomeService) private readonly homeService: ProfitHomeService,
   ) {}
+
+  @Get("profit/home")
+  @Roles("owner", "admin", "finance", "ops_manager")
+  @ApiQueryZod(HomeQuerySchema)
+  @ApiJson(200, "ProfitHome", ProfitHomeSchema, "What the store kept over the last 7, 30 or 90 days and yesterday, where it went, cash with couriers, leaks")
+  home(@Auth() auth: AuthContext, @Query(new ZodPipe(HomeQuerySchema)) q: z.output<typeof HomeQuerySchema>) {
+    return this.homeService.home(auth.tenant!.id, q.days);
+  }
 
   @Get("ad-spend")
   @Roles("owner", "admin", "finance", "ops_manager")

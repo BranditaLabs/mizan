@@ -1232,5 +1232,108 @@
       "removeLabel": "Remove spend on {platform} for {day}",
       "removed": "Removed. That day's orders were updated."
     }
+  },
+  "profitHome": {
+    "title": "Overview",
+    "subtitle": "What your store really kept: every order, every cost, every pound.",
+    "loading": "Loading your profit",
+    "loadFailed": "Couldn't load your profit. Try again.",
+    "pct": "{v}%",
+    "period": {
+      "label": "Period",
+      "days": "{days} days"
+    },
+    "kept": {
+      "title": "Kept · last {days} days",
+      "change": "{pct}%",
+      "vsPrev": "vs the {days} days before",
+      "per100": "Of every <hundred></hundred> in revenue, you kept <kept></kept>.",
+      "noRevenue": "No delivered or paid orders in this period yet: revenue counts when the money is real.",
+      "expected": "If the orders on their way deliver: <money></money>."
+    },
+    "where": {
+      "title": "Where every pound went",
+      "revenue": "Revenue",
+      "productCost": "Products",
+      "shippingAndCod": "Shipping and COD",
+      "ads": "Ads",
+      "returns": "Refusals (return leg)",
+      "team": "Confirmation team",
+      "fees": "Fees and packaging",
+      "fixed": "Fixed costs",
+      "kept": "Kept",
+      "share": "{pct}%"
+    },
+    "kpi": {
+      "yesterday": "Yesterday's orders",
+      "yesterdayHint": "{orders, plural, =0 {No orders} one {# order} other {# orders}}, if they deliver",
+      "delivery": "Delivered",
+      "deliveryHint": "{delivered} delivered · {returned} refused",
+      "refusals": "Lost to refusals",
+      "refusalsHint": "{count, plural, =0 {No refusals} one {# refused order, all costs} other {# refused orders, all costs}}",
+      "cash": "Cash with couriers",
+      "cashHint": "{transit} on the way · {held} collected, not paid yet"
+    },
+    "trend": {
+      "title": "Profit per day",
+      "hint": "What each day's orders make if those on their way deliver. Losses in red.",
+      "day": "Day",
+      "profit": "Profit",
+      "orders": "{count, plural, one {# order} other {# orders}}",
+      "tip": "{day} · {money} · {count, plural, one {# order} other {# orders}}"
+    },
+    "leaks": {
+      "title": "Needs attention",
+      "none": "Nothing is leaking. Good.",
+      "open": "Open",
+      "losing_orders": {
+        "title": "{count, plural, one {# order loses money} other {# orders lose money}}",
+        "body": "Together <money></money>, even if they deliver. Check their price, product cost and shipping."
+      },
+      "refusals": {
+        "title": "{count, plural, one {# refused order} other {# refused orders}}",
+        "body": "They cost <money></money>: shipping both ways, ads and fees."
+      },
+      "unallocated_ads": {
+        "title": "Ad spend no order carried",
+        "body": "<money></money> on {count, plural, one {# day} other {# days}} with no orders. Still a cost."
+      },
+      "other_currency": {
+        "title": "{count, plural, one {# order in another currency} other {# orders in other currencies}}",
+        "body": "Not in these totals: add the exchange rate for their days."
+      },
+      "cost_missing": {
+        "title": "Product cost missing",
+        "body": "{count, plural, one {# order has} other {# orders have}} a product without a cost: profit is too high."
+      },
+      "shipping_rate_missing": {
+        "title": "Courier price missing",
+        "body": "{count, plural, one {# order} other {# orders}} without a delivery price for their area."
+      },
+      "cod_fee_missing": {
+        "title": "COD fee missing",
+        "body": "{count, plural, one {# order} other {# orders}} without the courier's collection fee."
+      },
+      "agent_cost_missing": {
+        "title": "Confirmation cost missing",
+        "body": "{count, plural, one {# order} other {# orders}} without the team's cost per order."
+      },
+      "packaging_cost_missing": {
+        "title": "Packaging cost missing",
+        "body": "{count, plural, one {# order} other {# orders}} without a packaging cost."
+      },
+      "payment_fee_missing": {
+        "title": "Payment fee missing",
+        "body": "{count, plural, one {# order} other {# orders}} paid online without the gateway's fee."
+      },
+      "fx_missing": {
+        "title": "Exchange rate missing",
+        "body": "{count, plural, one {# order} other {# orders}} without a rate for their day."
+      },
+      "ads_fx_missing": {
+        "title": "Ad spend without a rate",
+        "body": "Spend in another currency on {count, plural, one {# order's day} other {the days of # orders}} isn't counted yet."
+      }
+    }
   }
 }

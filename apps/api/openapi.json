@@ -604,6 +604,73 @@
         ]
       }
     },
+    "/v1/profit/home": {
+      "get": {
+        "operationId": "ProfitController_home",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 30,
+              "description": "Period: the last 7, 30 or 90 store days, today included",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Period: the last 7, 30 or 90 store days, today included"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the store kept over the last 7, 30 or 90 days and yesterday, where it went, cash with couriers, leaks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfitHome"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "profit"
+        ]
+      }
+    },
     "/v1/ad-spend": {
       "get": {
         "operationId": "ProfitController_adSpend",
@@ -8484,7 +8551,7 @@
             "items": {
               "type": "string"
             },
-            "description": "fx_missing, cost_missing, shipping_rate_missing, cod_fee_missing, payment_fee_missing, agent_cost_missing, packaging_cost_missing, return_rate_missing, estimated, awaiting_settlement"
+            "description": "fx_missing, ads_fx_missing, cost_missing, shipping_rate_missing, cod_fee_missing, payment_fee_missing, agent_cost_missing, packaging_cost_missing, return_rate_missing, estimated, awaiting_settlement"
           },
           "computedAt": {
             "type": "string",
@@ -8869,6 +8936,691 @@
           "title",
           "status",
           "code"
+        ],
+        "additionalProperties": false
+      },
+      "ProfitHome": {
+        "type": "object",
+        "properties": {
+          "baseCurrency": {
+            "type": "string"
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "from": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "yesterday": {
+            "type": "object",
+            "properties": {
+              "day": {
+                "type": "string",
+                "format": "date",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+              },
+              "orders": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "revenue": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "net": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "expectedNet": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "day",
+              "orders",
+              "revenue",
+              "net",
+              "expectedNet"
+            ],
+            "additionalProperties": false
+          },
+          "period": {
+            "type": "object",
+            "properties": {
+              "orders": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "revenue": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Money that is real: prepaid when paid, COD when delivered; less refunds"
+              },
+              "net": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Σ orders' realised profit"
+              },
+              "expectedNet": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Σ orders' profit if those still on their way deliver"
+              },
+              "fixedCosts": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Monthly fixed costs spread over the period's days"
+              },
+              "unallocatedAds": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Ad spend on days with no order to carry it"
+              },
+              "kept": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "What the store kept: net − fixed costs − unallocated ads"
+              },
+              "expectedKept": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "margin": {
+                "nullable": true,
+                "description": "kept ÷ revenue",
+                "type": "string"
+              },
+              "keptPer100": {
+                "nullable": true,
+                "description": "Of every 100 of revenue, what was kept",
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "previousKept": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "The same for the period before"
+              },
+              "change": {
+                "nullable": true,
+                "description": "kept vs the period before",
+                "type": "string"
+              },
+              "delivered": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "returned": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Refused or returned after shipping"
+              },
+              "deliveryRate": {
+                "nullable": true,
+                "description": "delivered ÷ (delivered + returned)",
+                "type": "string"
+              },
+              "refusalLoss": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "What refused orders lost, all costs counted"
+              },
+              "adSpend": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "breakdown": {
+                "type": "object",
+                "properties": {
+                  "revenue": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "productCost": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "shippingAndCod": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "ads": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "returns": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "team": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "fees": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Payment, channel and chargeback fees and packaging"
+                  },
+                  "fixed": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "kept": {
+                    "type": "object",
+                    "properties": {
+                      "amount": {
+                        "type": "string"
+                      },
+                      "currency": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "amount",
+                      "currency"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "revenue",
+                  "productCost",
+                  "shippingAndCod",
+                  "ads",
+                  "returns",
+                  "team",
+                  "fees",
+                  "fixed",
+                  "kept"
+                ],
+                "additionalProperties": false,
+                "description": "Where every pound of revenue went"
+              }
+            },
+            "required": [
+              "orders",
+              "revenue",
+              "net",
+              "expectedNet",
+              "fixedCosts",
+              "unallocatedAds",
+              "kept",
+              "expectedKept",
+              "margin",
+              "keptPer100",
+              "previousKept",
+              "change",
+              "delivered",
+              "returned",
+              "deliveryRate",
+              "refusalLoss",
+              "adSpend",
+              "breakdown"
+            ],
+            "additionalProperties": false
+          },
+          "cash": {
+            "type": "object",
+            "properties": {
+              "inTransit": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Cash to collect on parcels on their way"
+              },
+              "inTransitOrders": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "awaitingRemittance": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Cash collected by couriers, not yet paid to the store"
+              },
+              "awaitingRemittanceOrders": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "inTransit",
+              "inTransitOrders",
+              "awaitingRemittance",
+              "awaitingRemittanceOrders"
+            ],
+            "additionalProperties": false
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "net": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "expectedNet": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "day",
+                "orders",
+                "net",
+                "expectedNet"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "leaks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "losing_orders",
+                    "refusals",
+                    "unallocated_ads",
+                    "other_currency",
+                    "cost_missing",
+                    "shipping_rate_missing",
+                    "cod_fee_missing",
+                    "agent_cost_missing",
+                    "packaging_cost_missing",
+                    "payment_fee_missing",
+                    "fx_missing",
+                    "ads_fx_missing"
+                  ]
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "amount": {
+                  "nullable": true,
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "kind",
+                "count",
+                "amount"
+              ],
+              "additionalProperties": false
+            },
+            "description": "What is costing money or hiding it, most costly first"
+          }
+        },
+        "required": [
+          "baseCurrency",
+          "today",
+          "from",
+          "to",
+          "days",
+          "yesterday",
+          "period",
+          "cash",
+          "trend",
+          "leaks"
         ],
         "additionalProperties": false
       },
