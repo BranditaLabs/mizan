@@ -26,7 +26,7 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | Shopify initial backfill | ✅ E3-5: on every connect, `shopify.backfill` job chain — orders created in the last 60 days, then all products, one page (50) per job, cursor in the next job (resumable), cost-limited; newest run wins on reconnect; progress in `/v1/admin/integrations/health` → `backfill` | `MizanEngine.shopifyBackfillJob`, `ShopifyConnector.ordersPage/productsPage` |
 | EasyOrders, WooCommerce, LightFunnels | ⏳ MVP backlog | use `/new-connector` |
 | J&T, Mylerz | ⏳ MVP / V2 | — |
-| WhatsApp Cloud API | ⏳ MVP backlog | — |
+| WhatsApp Cloud API | ✅ E6-4a connector: templates with quick replies, reply buttons, lists, text, template review status; Meta body-coded errors classified (`send()` `classify` hook); webhook signature, subscription challenge, messages and statuses parsed through the `Resolver`; fake Graph server + chaos suite (10/25/50 %). ⏳ Connecting a number (E6-4b) and the API webhook endpoint (E6-10) | `packages/engine/src/connectors/whatsapp` |
 | Paymob (links, refunds, transactions) | ⏳ MVP backlog | — |
 | Meta / TikTok / Snap ads + CAPI | ⏳ V2 | — |
 | Kashier, Fawry, Moyasar, Tap, HyperPay, Checkout.com, Stripe | ⏳ V2 (per market) | — |
@@ -89,6 +89,19 @@ Scopes: `read_orders` (+ `read_all_orders` for > 60 days), `write_orders` (mark 
 4. Exchange code for the merchant's business token; subscribe webhooks; register the number with a 6-digit PIN.
 5. Merchant adds a payment method in WhatsApp Manager; Meta bills them directly.
 6. **Templates** need Meta approval before sending.
+
+**Engine connector (E6-4a)** — `WhatsAppCloudConnector`, one per merchant number:
+
+| Call | Endpoint | Notes |
+| --- | --- | --- |
+| Send | `POST /{version}/{phone-number-id}/messages` | `type` `template` (quick-reply payloads per button index), `interactive` (`button` ≤ 3 replies, titles ≤ 20; `list` ≤ 10 rows, titles ≤ 24, descriptions ≤ 72), `text`. Limits checked before sending. `biz_opaque_callback_data` = our step key |
+| Templates | `GET /{version}/{waba-id}/message_templates?fields=name,status,language,category` | Paged by `paging.cursors.after`; status APPROVED / PENDING / REJECTED / PAUSED / DISABLED |
+| Subscribe | `GET` webhook with `hub.mode`, `hub.verify_token`, `hub.challenge` | `verifyChallenge` |
+| Deliveries | `POST` webhook, `X-Hub-Signature-256: sha256=<hex HMAC(app secret, raw body)>` | `verifyMetaSignature`, then `parseWhatsAppWebhook`: messages (`button` = template quick reply, `interactive.button_reply` / `list_reply`, `text`, `location`) and statuses (`sent`, `delivered`, `read`, `failed` + error code; others → `unknown` + drift) |
+
+Quirks handled: errors come as HTTP 400 with a body code (130429 throughput and 131056 same customer within ~6 s are rate limits; 190 token → `auth`; 132001 template missing → `validation`; 131000/1/2 → retry); a free-form message outside the 24-hour window is accepted and fails later by webhook (131047); webhooks arrive batched, duplicated and out of order, sometimes before the send's response. **No idempotency key on sends:** a send whose response is lost is never re-sent blindly; the caller waits for a status webhook carrying its key and re-sends only if none arrives in 10 minutes (`afterUnknownSend`). Sends are not engine outbox jobs: they ride the confirmation step outbox in the API (E6-7/E6-10).
+
+**Not confirmed (Meta's docs unreachable from the build environment; check before production):** the Graph version to pin (`v24.0` assumed, configurable); that every code above maps as listed (notably 131056's wait, 131047 only by webhook); that `biz_opaque_callback_data` is echoed on every status including `failed`; that numbers may be sent as digits without `+`; template list page size and fields; whether a template quick-reply tap always carries `button.payload` (fallback reads `button.text`).
 
 **Pricing since 1 Jul 2025:** per delivered template message (marketing, utility, authentication; per country). Inside the 24-hour customer service window, replies are free and utility templates are free. → Design checkout with a click-to-WhatsApp button so the customer starts the chat and confirmation runs inside the free window.
 

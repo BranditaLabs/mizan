@@ -23,8 +23,10 @@ export interface WhatsAppTemplate {
   params: string[];
   /** Quick-reply payloads, in button order: confirm, change, cancel. */
   buttons: string[];
-  /** The confirm link, for a URL button. */
-  url: string;
+  /** The confirm link, for a URL button (link-page flow only; the in-chat flow has none). */
+  url?: string;
+  /** Our key for the send, echoed back in status webhooks (WhatsApp Cloud: biz_opaque_callback_data). */
+  key?: string;
 }
 
 export interface Sms {

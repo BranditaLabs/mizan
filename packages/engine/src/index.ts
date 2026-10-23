@@ -12,6 +12,15 @@ export type { ShopifyCredentials } from "./connectors/shopify/client.js";
 export { send, type RequestSpec, type HttpResponse } from "./resilience/http.js";
 export { CircuitBreaker } from "./resilience/circuit.js";
 export { LogMessaging, maskNumber, unreachableNumber, type MessagingChannel, type MessagingProvider, type Sms, type VoiceCall, type WhatsAppTemplate } from "./connectors/messaging/provider.js";
+export {
+  LIMITS as WHATSAPP_LIMITS, WHATSAPP_GRAPH_VERSION, WhatsAppCloudConnector,
+  type ButtonsMessage, type ListMessage, type SendResult, type TemplateInfo, type TemplateMessage, type TextMessage, type WhatsAppChat, type WhatsAppCloudConfig,
+} from "./connectors/whatsapp/connector.js";
+export { classifyGraphError, kindOfCode, RECIPIENT_CODES, WINDOW_CLOSED } from "./connectors/whatsapp/errors.js";
+export {
+  afterUnknownSend, parseWhatsAppWebhook, signMeta, STATUS_RANK, verifyChallenge, verifyMetaSignature,
+  type DeliveryStatus, type InboundKind, type InboundMessage, type ParsedWebhook, type StatusUpdate,
+} from "./connectors/whatsapp/webhooks.js";
 export { exchangeShopifyCode, missingScopes, normalizeShop, shopifyAuthorizeUrl, signShopifyQuery, verifyShopifyQuery, type ShopifyGrant } from "./connectors/shopify/oauth.js";
 export { verifyShopifyHmac, readShopifyHeaders, signShopify, type ShopifyWebhookMeta } from "./connectors/shopify/webhooks.js";
 export { parseComplianceWebhook, COMPLIANCE_TOPICS, type ComplianceRequest, type ComplianceTopic } from "./connectors/shopify/compliance.js";
