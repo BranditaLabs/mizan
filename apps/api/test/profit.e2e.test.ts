@@ -10,6 +10,7 @@ import { Database } from "../src/platform/db/database.js";
 import { EventDispatcher } from "../src/platform/events/dispatcher.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { OrderProjector } from "../src/modules/orders/order-projector.js";
+import { ProductProjector } from "../src/modules/catalog/product-projector.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
 import { FakeFxSource } from "../src/modules/profit/fx/fx-source.js";
 import { FxService } from "../src/modules/profit/fx/fx.service.js";
@@ -37,7 +38,7 @@ function order(over: Partial<CanonicalOrder> = {}): CanonicalOrder {
     received: { amount: "0.00", currency: "EGP" }, outstanding: { amount: "1250.00", currency: "EGP" }, refunded: { amount: "0.00", currency: "EGP" },
     cancelled: false, customer: { name: "Mona Adel", phone: "+201001234821" },
     shippingAddress: { name: "Mona Adel", phone: "01001234821", line1: "12 Abbas El Akkad St", city: "Cairo", countryCode: "EG" },
-    lines: [{ externalLineId: `L${n}`, sku: "AB-1", title: "Abaya", quantity: 2, unitPrice: { amount: "625.00", currency: "EGP" } }],
+    lines: [{ externalLineId: `L${n}`, sku: "AB-1", variantExternalId: "gid://shopify/ProductVariant/1", title: "Abaya", quantity: 2, unitPrice: { amount: "625.00", currency: "EGP" } }],
     fulfillmentGroups: [], tags: [], ...over,
   };
 }
@@ -45,7 +46,6 @@ async function newOrder(over: Partial<CanonicalOrder> = {}): Promise<string> {
   const o = order(over);
   await app.get(OrderProjector).project(store, connectionId, o);
   const id = (await db.tenant(store, (trx) => trx.selectFrom("orders").select("id").where("number", "=", o.number).executeTakeFirstOrThrow())).id;
-  await db.tenant(store, (trx) => trx.updateTable("order_lines").set({ variant_id: variantId }).where("order_id", "=", id).execute());
   await drain();
   return id;
 }
@@ -69,6 +69,7 @@ beforeAll(async () => {
     await trx.insertInto("connections").values({ tenant_id: store, kind: "courier", provider: "bosta", external_account: "bosta", secret_ref: bref, status: "active" }).execute();
     const p = (await trx.insertInto("products").values({ tenant_id: store, title: "Abaya" }).returning("id").executeTakeFirstOrThrow()).id;
     const v = (await trx.insertInto("variants").values({ tenant_id: store, product_id: p, sku: "AB-1", currency: "EGP", price_minor: 62500 }).returning("id").executeTakeFirstOrThrow()).id;
+    await trx.insertInto("external_variants").values({ tenant_id: store, connection_id: c, external_id: "gid://shopify/ProductVariant/1", variant_id: v }).execute();
     return { connectionId: c, variantId: v };
   }));
   for (const [token, phone, role] of [["agent", "01201117777", "agent"], ["finance", "01201115555", "finance"]] as const) {
@@ -136,7 +137,7 @@ describe("order profit", () => {
   it("converts a foreign-currency order with the rate of its day, once there is one", async () => {
     const id = await newOrder({ currency: "USD", total: { amount: "100.00", currency: "USD" }, subtotal: { amount: "100.00", currency: "USD" }, shipping: { amount: "0.00", currency: "USD" },
       received: { amount: "0.00", currency: "USD" }, outstanding: { amount: "100.00", currency: "USD" }, refunded: { amount: "0.00", currency: "USD" },
-      lines: [{ externalLineId: "LX", sku: "AB-1", title: "Abaya", quantity: 1, unitPrice: { amount: "100.00", currency: "USD" } }] });
+      lines: [{ externalLineId: "LX", sku: "AB-1", variantExternalId: "gid://shopify/ProductVariant/1", title: "Abaya", quantity: 1, unitPrice: { amount: "100.00", currency: "USD" } }] });
     const before = await pnl(id);
     expect(before).toMatchObject({ currency: "USD", expectedRevenue: { amount: "100.00", currency: "USD" } });
     expect(before.flags).toContain("fx_missing");
@@ -147,6 +148,24 @@ describe("order profit", () => {
     const after = await pnl(id);
     expect(after).toMatchObject({ currency: "EGP", expectedRevenue: { amount: "5000.00", currency: "EGP" } });
     expect(after.flags).not.toContain("fx_missing");
+  });
+
+  it("a line that arrives before its product is linked when the product is read, and its cost then counts", async () => {
+    const id = await newOrder({ lines: [{ externalLineId: "LATE", sku: "SC-1", variantExternalId: "gid://shopify/ProductVariant/77", title: "Scarf", quantity: 1, unitPrice: { amount: "1250.00", currency: "EGP" } }] });
+    const line = async () => db.tenant(store, (trx) => trx.selectFrom("order_lines").select(["variant_id", "external_variant_id"]).where("order_id", "=", id).executeTakeFirstOrThrow());
+    expect(await line()).toEqual({ variant_id: null, external_variant_id: "gid://shopify/ProductVariant/77" });
+    expect((await pnl(id)).flags).toContain("cost_missing");
+    await app.get(ProductProjector).project(store, connectionId, {
+      connector: "shopify", externalId: "gid://shopify/Product/77", title: "Scarf", status: "active", tags: [], updatedAt: new Date().toISOString(),
+      variants: [{ externalId: "gid://shopify/ProductVariant/77", sku: "SC-1", title: "Default Title", price: { amount: "1250.00", currency: "EGP" }, available: 4 }],
+    });
+    const linked = await line();
+    expect(linked.variant_id).toBeTruthy();
+    const v = await db.tenant(store, (trx) => trx.selectFrom("variants").select(["available"]).where("id", "=", linked.variant_id!).executeTakeFirstOrThrow());
+    expect(v.available).toBe(4);
+    await http().put("/v1/products/variants/costs").set(as("owner")).send({ items: [{ variantId: linked.variant_id, cost: "300" }] }).expect(200);
+    await drain();
+    expect((await pnl(id)).flags).not.toContain("cost_missing");
   });
 
   it("is for owner, admin, finance and ops; emits pnl.recomputed only when a number changes", async () => {

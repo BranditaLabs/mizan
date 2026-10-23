@@ -29,6 +29,8 @@ export interface Address {
 export interface OrderLine {
   externalLineId: string;
   sku?: string;
+  /** The platform's variant id, when the product still exists; links the line to the catalogue. */
+  variantExternalId?: string;
   title: string;
   quantity: number;
   unitPrice: Money;

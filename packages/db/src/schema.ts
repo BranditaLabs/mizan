@@ -421,6 +421,7 @@ export interface OrderLines {
   unit_price_minor: Int8;
   unit_cost_minor: Generated<Int8>;
   cost_set_at: Timestamp | null;
+  external_variant_id: string | null;
 }
 
 export interface OrderPnl {
@@ -877,6 +878,8 @@ export interface Variants {
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
   cogs_set_at: Timestamp | null;
+  available: number | null;
+  available_at: Timestamp | null;
 }
 
 export interface Warehouses {

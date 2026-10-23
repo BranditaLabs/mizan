@@ -11,9 +11,12 @@ import { z } from "zod";
 
 const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"] as const;
 
-/** docs/06 §3. `read_all_orders` (orders older than 60 days) needs Shopify's approval first. */
+/**
+ * docs/06 §3. `read_all_orders` (orders older than 60 days) needs Shopify's approval first.
+ * write_orders: mark paid, tags (E2-6); write_order_edits: accepted offers join the order (E6-13).
+ */
 export const SHOPIFY_DEFAULT_SCOPES = [
-  "read_orders", "read_products", "write_products", "read_inventory", "write_inventory",
+  "read_orders", "write_orders", "write_order_edits", "read_products", "write_products", "read_inventory", "write_inventory",
   "read_merchant_managed_fulfillment_orders", "write_merchant_managed_fulfillment_orders", "read_customers",
 ].join(",");
 

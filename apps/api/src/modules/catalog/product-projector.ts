@@ -3,6 +3,7 @@ import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import { toMinor, type CanonicalProduct } from "@mizan/shared";
 import { Database } from "../../platform/db/database.js";
+import { EventsService } from "../../platform/events/events.service.js";
 
 const STATUS: Record<CanonicalProduct["status"], "active" | "draft" | "archived"> = { active: "active", draft: "draft", archived: "archived", unknown: "draft" };
 
@@ -14,12 +15,16 @@ const STATUS: Record<CanonicalProduct["status"], "active" | "draft" | "archived"
  */
 @Injectable()
 export class ProductProjector {
-  constructor(@Inject(Database) private readonly db: Database) {}
+  constructor(
+    @Inject(Database) private readonly db: Database,
+    @Inject(EventsService) private readonly events: EventsService,
+  ) {}
 
   async project(tenantId: string, connectionId: string, product: CanonicalProduct): Promise<void> {
     await this.db.tenant(tenantId, async (trx) => {
       const base = (await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow()).base_currency;
       const productId = await this.upsertProduct(trx, tenantId, connectionId, product);
+      const linked: string[] = [];
       for (const v of product.variants) {
         const currency = v.price.currency || base;
         const title = v.title && v.title !== "Default Title" ? v.title : null;
@@ -30,6 +35,7 @@ export class ProductProjector {
           price_minor: toMinor(v.price.amount, currency),
           compare_at_minor: v.compareAtPrice ? toMinor(v.compareAtPrice.amount, v.compareAtPrice.currency || currency) : null,
           currency, updated_at: new Date(),
+          ...(v.available !== undefined ? { available: v.available, available_at: new Date() } : {}),
         };
         let variantId = link?.variant_id ?? null;
         if (variantId) {
@@ -46,6 +52,19 @@ export class ProductProjector {
           variant_id: variantId, external_product_id: product.externalId, inventory_item_id: v.inventoryItemId ?? null,
           last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, updatedAt: product.updatedAt }),
         })).execute();
+        // Lines of orders that arrived before this product now learn what they are.
+        const lines = await trx.updateTable("order_lines").set({ variant_id: variantId })
+          .where("variant_id", "is", null).where("external_variant_id", "=", v.externalId)
+          .where("order_id", "in", trx.selectFrom("orders").select("id").where("connection_id", "=", connectionId))
+          .executeTakeFirst();
+        if (Number(lines.numUpdatedRows) > 0) linked.push(variantId);
+      }
+      if (linked.length) {
+        // Their product cost now counts: the profit consumer recomputes those orders.
+        await this.events.emit(trx, {
+          type: "costs.changed", tenantId, entity: { type: "product", id: productId }, actor: { type: "engine" },
+          data: { kind: "product_cost", variantIds: linked, reason: "lines_linked" },
+        });
       }
     });
   }

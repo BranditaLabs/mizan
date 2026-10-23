@@ -47,6 +47,17 @@ describe("Shopify connector", () => {
     expect(engine.drift.report().some((d) => d.kind === "fallback_field" && d.field === "customer.phone")).toBe(true);
   });
 
+  it("reads which product each line is, and leaves a deleted product's line unlinked", async () => {
+    const { shop, engine } = setup();
+    const { variantId } = shop.addProduct({ title: "Vitamin C serum", price: "575.00", sku: "SER-30" });
+    const linked = await engine.shopify.getOrder(shop.addOrder().id);
+    expect(linked.lines[0]).toMatchObject({ sku: "SER-30", variantExternalId: variantId });
+    shop.products.clear();
+    const orphan = await engine.shopify.getOrder(shop.addOrder().id);
+    expect(orphan.lines[0]!.variantExternalId).toBeUndefined();
+    expect(engine.drift.report().some((d) => d.field === "order.lineItem.variantExternalId")).toBe(false); // optional: not drift
+  });
+
   it("rejects webhooks with a bad signature and processes duplicates once", async () => {
     const { shop, engine, store, clock } = setup();
     const o = shop.addOrder();

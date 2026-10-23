@@ -430,7 +430,9 @@
       "connected": "Connected to <n>{shop}</n>.",
       "importing": "Importing: {orders} orders and {products} products so far…",
       "imported": "Imported {orders} orders and {products} products.",
-      "invalid": "That address doesn't look like a Shopify store. It ends with .myshopify.com."
+      "invalid": "That address doesn't look like a Shopify store. It ends with .myshopify.com.",
+      "scopesChanged": "Mizan needs new Shopify permissions to edit orders (mark them paid and add offers the customer accepted). Approve them once.",
+      "approveScopes": "Approve the new permissions"
     },
     "courier": {
       "title": "Connect your courier",

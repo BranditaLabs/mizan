@@ -269,6 +269,12 @@ export class FakeShopify {
     return clone;
   }
 
+  /** Like Shopify: a line points at its variant while the product exists, else null. */
+  private variantBySku(sku: string) {
+    for (const p of this.products.values()) for (const v of p.variants) if (v.sku === sku) return { id: v.id };
+    return null;
+  }
+
   private gqlOrder(o: Order) {
     const m = (a: string) => ({ shopMoney: { amount: a, currencyCode: "EGP" } });
     return {
@@ -278,7 +284,7 @@ export class FakeShopify {
       totalReceivedSet: m(o.received), totalRefundedSet: m(o.refunded),
       totalOutstandingSet: m(Math.max(0, Number(o.total) - Number(o.received)).toFixed(2)),
       shippingAddress: o.shippingAddress, customer: o.customer,
-      lineItems: { nodes: o.lines.map((l) => ({ id: l.id, title: l.title, sku: l.sku, quantity: l.quantity, originalUnitPriceSet: m(l.price) })) },
+      lineItems: { nodes: o.lines.map((l) => ({ id: l.id, title: l.title, sku: l.sku, quantity: l.quantity, variant: this.variantBySku(l.sku), originalUnitPriceSet: m(l.price) })) },
       fulfillmentOrders: { nodes: o.fulfillmentOrders.map((f) => ({ id: f.id, status: f.status, lineItems: { nodes: o.lines.map((l) => ({ id: `${f.id}-${l.id}`, lineItem: { id: l.id } })) } })) },
       fulfillments: o.fulfillments,
     };

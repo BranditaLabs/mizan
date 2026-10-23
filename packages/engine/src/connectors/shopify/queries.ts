@@ -24,7 +24,7 @@ const ORDER_BASE = `
   subtotalPriceSet { ${MONEY} }
   totalShippingPriceSet { ${MONEY} }
   shippingAddress { name firstName lastName phone address1 address2 city province zip countryCodeV2 }
-  lineItems(first: 100) { nodes { id title sku quantity originalUnitPriceSet { ${MONEY} } } }
+  lineItems(first: 100) { nodes { id title sku quantity variant { id } originalUnitPriceSet { ${MONEY} } } }
   fulfillmentOrders(first: 10) { nodes { id status lineItems(first: 100) { nodes { id lineItem { id } } } } }
   fulfillments(first: 10) { id status trackingInfo { company number url } }
 `;

@@ -4,6 +4,7 @@ import { trxQueryClient } from "@mizan/db";
 import { MizanEngine, SqlStore } from "@mizan/engine";
 import { auditActor, AuditService } from "../../../platform/audit/audit.service.js";
 import type { AuthContext } from "../../../platform/auth/auth.types.js";
+import { APP_CONFIG, type AppConfig } from "../../../platform/config.js";
 import { Database } from "../../../platform/db/database.js";
 import { ProblemError } from "../../../platform/http/problem.js";
 import { SecretsService } from "../../../platform/secrets/secrets.service.js";
@@ -26,6 +27,7 @@ export class BostaConnectService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async saveKey(auth: AuthContext, apiKey: string): Promise<ConnectionView> {
@@ -68,7 +70,8 @@ export class BostaConnectService {
 
   async list(tenantId: string): Promise<ConnectionView[]> {
     const rows = await this.db.tenant(tenantId, (trx) => trx.selectFrom("connections").select([...CONNECTION_COLUMNS]).orderBy("created_at").execute());
-    return rows.map(toConnectionView);
+    const required = this.config.SHOPIFY_SCOPES.split(",");
+    return rows.map((r) => toConnectionView(r, required));
   }
 }
 

@@ -249,17 +249,27 @@ export class OrderProjector {
     const current = await trx.selectFrom("order_lines").select(["id", "external_line_id"]).where("order_id", "=", orderId).execute();
     const byExt = new Map(current.map((l) => [l.external_line_id, l.id]));
     const keep = new Set<string>();
+    // The store's variant → Mizan's variant; a product not read yet links later (ProductProjector).
+    const extIds = [...new Set(order.lines.map((l) => l.variantExternalId).filter((x): x is string => Boolean(x)))];
+    const conn = extIds.length ? (await trx.selectFrom("orders").select("connection_id").where("id", "=", orderId).executeTakeFirst())?.connection_id : null;
+    const links = conn
+      ? new Map((await trx.selectFrom("external_variants").select(["external_id", "variant_id"]).where("connection_id", "=", conn).where("external_id", "in", extIds).execute())
+        .map((x) => [x.external_id, x.variant_id]))
+      : new Map<string, string | null>();
     for (const line of order.lines.filter((l) => l.quantity > 0)) {
       const values = {
         sku: line.sku ?? null, title: line.title, quantity: line.quantity,
         unit_price_minor: toMinor({ ...line.unitPrice, currency: line.unitPrice.currency || order.currency }),
+        external_variant_id: line.variantExternalId ?? null,
       };
+      const variantId = line.variantExternalId ? links.get(line.variantExternalId) : undefined;
+      const linked = variantId ? { variant_id: variantId } : {};
       const id = byExt.get(line.externalLineId);
       if (id) {
         keep.add(id);
-        await trx.updateTable("order_lines").set(values).where("id", "=", id).execute();
+        await trx.updateTable("order_lines").set({ ...values, ...linked }).where("id", "=", id).execute();
       } else {
-        await trx.insertInto("order_lines").values({ tenant_id: tenantId, order_id: orderId, external_line_id: line.externalLineId, ...values }).execute();
+        await trx.insertInto("order_lines").values({ tenant_id: tenantId, order_id: orderId, external_line_id: line.externalLineId, ...values, ...linked }).execute();
       }
     }
     const remove = current.filter((l) => !keep.has(l.id)).map((l) => l.id);

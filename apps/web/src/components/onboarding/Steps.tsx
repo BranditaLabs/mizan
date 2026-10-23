@@ -36,6 +36,14 @@ export function StoreStep({ o }: { o: Onboarding }) {
     return (
       <div className="flex flex-col gap-3">
         <Alert tone="success">{t.rich("connected", { shop: s.shop ?? "", n })}</Alert>
+        {s.missingScopes.length > 0 && s.shop ? (
+          <Alert tone="warning">
+            <span className="flex flex-col items-start gap-2">
+              {t("scopesChanged")}
+              <Button variant="secondary" size="sm" icon="refresh" busy={install.isPending || install.isSuccess} onClick={() => install.mutate(s.shop!)}>{t("approveScopes")}</Button>
+            </span>
+          </Alert>
+        ) : null}
         {imp ? (
           <p className="text-body-sm text-text-2" role="status">
             {t(imp.status === "running" ? "importing" : "imported", { orders: imp.orders, products: imp.products })}

@@ -686,8 +686,9 @@ export interface components {
             account: string | null;
             /** @enum {string} */
             status: "pending" | "active" | "needs_attention" | "disconnected";
-            /** @description key_refused, key_lacks_permission, app_uninstalled … */
+            /** @description key_refused, key_lacks_permission, app_uninstalled, scopes_changed … */
             reason: string | null;
+            missingScopes: string[];
             /** Format: date-time */
             verifiedAt: string | null;
             /** Format: date-time */
@@ -703,8 +704,9 @@ export interface components {
                 account: string | null;
                 /** @enum {string} */
                 status: "pending" | "active" | "needs_attention" | "disconnected";
-                /** @description key_refused, key_lacks_permission, app_uninstalled … */
+                /** @description key_refused, key_lacks_permission, app_uninstalled, scopes_changed … */
                 reason: string | null;
+                missingScopes: string[];
                 /** Format: date-time */
                 verifiedAt: string | null;
                 /** Format: date-time */
@@ -1085,6 +1087,7 @@ export interface components {
                         orders: number;
                         products: number;
                     } | null;
+                    missingScopes: string[];
                 };
                 courier: {
                     /** @enum {string} */

@@ -57,7 +57,7 @@ How Mizan gets access to each outside system, what the engine already supports, 
 - Webhook subscriptions (✅ E3-2): on every connect the engine converges this app's subscriptions to `ORDERS_CREATE`, `ORDERS_UPDATED`, `ORDERS_CANCELLED`, `PRODUCTS_UPDATE`, `APP_UNINSTALLED` → `PUBLIC_URL/webhooks/shopify/{connectionId}` (job `shopify.syncWebhooks`: list, delete ours that point elsewhere, create the missing ones; duplicates refused by Shopify are fine). Uses `uri` on `WebhookSubscriptionInput` (2025-04+); reading falls back to `endpoint.callbackUrl`. **Confirm on a dev store** that 2026-10 accepts `uri` on create.
 - **App Store requirement:** mandatory compliance webhooks `customers/data_request`, `customers/redact`, `shop/redact` (backlog E3).
 
-Scopes: `read_orders` (+ `read_all_orders` for > 60 days), `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders`, `read_customers`.
+Scopes: `read_orders` (+ `read_all_orders` for > 60 days), `write_orders` (mark paid, tags), `write_order_edits` (accepted offers join the order, E6-13), `read_products`, `write_products`, `read_inventory`, `write_inventory`, `read_merchant_managed_fulfillment_orders`, `write_merchant_managed_fulfillment_orders`, `read_customers`. A store installed before a scope was added shows `needs_attention` / `scopes_changed` with `missingScopes` (connections list and the onboarding store step) until the owner connects again and approves them in Shopify; scopes granted are kept in `connections.config.scopes`.
 
 ## 4. Couriers
 

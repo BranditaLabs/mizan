@@ -1,15 +1,23 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
+import { missingScopes } from "@mizan/engine";
 import { fromMinor } from "@mizan/shared";
 import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
+import { APP_CONFIG, type AppConfig } from "../../platform/config.js";
 import { Database } from "../../platform/db/database.js";
 import { EngineRegistry } from "../../integrations/engine-registry.js";
 import type { Onboarding, OnboardingSettings, UpdateOnboardingBody } from "./onboarding.dto.js";
 import { ProductEventsService } from "./product-events.service.js";
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
+
+/** Scopes Mizan now asks for that the store approved before they were added (config.scopes, set on install). */
+function grantedMissing(config: unknown, required: string[]): string[] {
+  const scopes = (config as { scopes?: unknown } | null)?.scopes;
+  return Array.isArray(scopes) ? missingScopes(required, scopes.filter((x): x is string => typeof x === "string")) : [];
+}
 
 /**
  * Where a store is in its setup (E4-5): connect the store → courier → product costs → first order.
@@ -23,6 +31,7 @@ export class OnboardingService {
     @Inject(EngineRegistry) private readonly engines: EngineRegistry,
     @Inject(ProductEventsService) private readonly productEvents: ProductEventsService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async get(tenantId: string): Promise<Onboarding> {
@@ -44,7 +53,10 @@ export class OnboardingService {
     const costsStatus = s.variants > 0 && s.missingCost === 0 ? "done" : s.settings.skipped?.costs ? "skipped" : "todo";
     const m = s.milestones;
     const steps: Onboarding["steps"] = {
-      store: { status: s.store ? "done" : "todo", connectionId: s.store?.id ?? null, shop: s.store?.external_account ?? null, import: imported },
+      store: {
+        status: s.store ? "done" : "todo", connectionId: s.store?.id ?? null, shop: s.store?.external_account ?? null, import: imported,
+        missingScopes: s.store ? grantedMissing(s.store.config, this.config.SHOPIFY_SCOPES.split(",")) : [],
+      },
       courier: { status: courierStatus, provider: s.courier?.provider ?? null, reason: s.courier?.status === "needs_attention" ? s.courier.status_reason : null },
       costs: { status: costsStatus, variants: s.variants, missingCost: s.missingCost },
       firstOrder: s.firstOrder
@@ -82,7 +94,7 @@ export class OnboardingService {
   private async read(trx: Transaction<DB>, tenantId: string) {
     const t = await trx.selectFrom("tenants").select("settings").where("id", "=", tenantId).executeTakeFirstOrThrow();
     const settings = ((t.settings ?? {}) as { onboarding?: OnboardingSettings }).onboarding ?? {};
-    const connections = await trx.selectFrom("connections").select(["id", "kind", "provider", "external_account", "status", "status_reason"])
+    const connections = await trx.selectFrom("connections").select(["id", "kind", "provider", "external_account", "status", "status_reason", "config"])
       .where("status", "!=", "disconnected").orderBy("created_at").execute();
     const counts = await trx.selectFrom("variants as v").innerJoin("products as p", "p.id", "v.product_id").where("p.status", "!=", "archived")
       .select([sql<string>`count(*)`.as("variants"), sql<string>`count(*) filter (where v.cogs_set_at is null)`.as("missing")]).executeTakeFirstOrThrow();

@@ -126,6 +126,8 @@ erDiagram
 
 ✅ E9-2 (`apps/api/src/modules/profit/pnl.ts`, migration 0019): `order_pnl.day` (the order's store day), `expected_revenue_minor` / `expected_net_minor` (what a still-moving order makes if it delivers, at today's rules), `flags` (`fx_missing`, `cost_missing`, `shipping_rate_missing`, `return_rate_missing`, `cod_fee_missing`, `payment_fee_missing`, `agent_cost_missing`, `packaging_cost_missing`, `estimated`, `awaiting_settlement`). `order_lines.cost_set_at`: the product cost is locked on the line at confirmation, so a later price change never rewrites a confirmed order. A returned order's goods count as restocked until inspection (E10). Without an exchange rate the row stays in the order's currency and costs from rules are not mixed in. Monthly fixed costs are not spread per order (E9-4 shows them against the period).
 
+✅ Migration 0020: `order_lines.external_variant_id` (the store's variant id) links each line to `variants` through `external_variants`; a line that arrives before its product is linked when the product is read (`ProductProjector`, then `costs.changed` so its profit counts the cost). `variants.available` / `available_at`: stock as the store last reported it (NULL = unknown), used by offers (E6-11).
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data

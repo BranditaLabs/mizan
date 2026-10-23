@@ -12,6 +12,8 @@ export const OnboardingSchema = z.object({
       shop: z.string().nullable(),
       /** The history import after connecting (60 days of orders, then products). */
       import: z.object({ status: z.enum(["running", "done"]), phase: z.enum(["orders", "products", "done"]), orders: z.number().int(), products: z.number().int() }).nullable(),
+      /** Permissions added since the store was connected; the owner approves them in Shopify (connect again). */
+      missingScopes: z.array(z.string()),
     }),
     courier: z.object({
       status: z.enum(["todo", "checking", "done", "needs_attention", "skipped"]),

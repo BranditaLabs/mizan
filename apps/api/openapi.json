@@ -3558,8 +3558,14 @@
           },
           "reason": {
             "nullable": true,
-            "description": "key_refused, key_lacks_permission, app_uninstalled …",
+            "description": "key_refused, key_lacks_permission, app_uninstalled, scopes_changed …",
             "type": "string"
+          },
+          "missingScopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "verifiedAt": {
             "nullable": true,
@@ -3580,6 +3586,7 @@
           "account",
           "status",
           "reason",
+          "missingScopes",
           "verifiedAt",
           "updatedAt"
         ],
@@ -3627,8 +3634,14 @@
                 },
                 "reason": {
                   "nullable": true,
-                  "description": "key_refused, key_lacks_permission, app_uninstalled …",
+                  "description": "key_refused, key_lacks_permission, app_uninstalled, scopes_changed …",
                   "type": "string"
+                },
+                "missingScopes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "verifiedAt": {
                   "nullable": true,
@@ -3649,6 +3662,7 @@
                 "account",
                 "status",
                 "reason",
+                "missingScopes",
                 "verifiedAt",
                 "updatedAt"
               ],
@@ -4988,13 +5002,20 @@
                       "products"
                     ],
                     "additionalProperties": false
+                  },
+                  "missingScopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "required": [
                   "status",
                   "connectionId",
                   "shop",
-                  "import"
+                  "import",
+                  "missingScopes"
                 ],
                 "additionalProperties": false
               },

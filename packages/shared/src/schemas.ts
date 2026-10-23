@@ -43,6 +43,7 @@ export const AddressSchema = z.object({
 export const OrderLineSchema = z.object({
   externalLineId: z.string().min(1),
   sku: z.string().optional(),
+  variantExternalId: z.string().optional(),
   title: z.string(),
   quantity: z.number().int().positive(),
   unitPrice: MoneySchema,

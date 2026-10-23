@@ -109,6 +109,19 @@ describe("Shopify install from inside Mizan", () => {
     expect((await app.get(ConnectionResolver).resolve(stores.sara!)).shopify.accessToken.reveal()).toBe(shop.tokens.at(-1));
   });
 
+  it("a store installed before Mizan needed order edits is asked to approve the new permissions; approving clears it", async () => {
+    const old = SCOPES.filter((x) => x !== "write_orders" && x !== "write_order_edits");
+    await db.tenant(stores.sara!, (trx) => trx.updateTable("connections").set({ config: JSON.stringify({ scopes: old }) }).where("provider", "=", "shopify").execute());
+    const list = (await http().get("/v1/connections").set(as("sara")).expect(200)).body.data;
+    expect(list.find((c: { provider: string }) => c.provider === "shopify")).toMatchObject({ status: "needs_attention", reason: "scopes_changed", missingScopes: ["write_orders", "write_order_edits"] });
+    expect((await http().get("/v1/onboarding").set(as("sara")).expect(200)).body.steps.store).toMatchObject({ status: "done", missingScopes: ["write_orders", "write_order_edits"] });
+
+    const { install } = await installFlow("sara", shop);
+    await http().post("/v1/connections/shopify/claim").set(as("sara")).send({ install }).expect(201);
+    const after = (await http().get("/v1/connections").set(as("sara")).expect(200)).body.data;
+    expect(after.find((c: { provider: string }) => c.provider === "shopify")).toMatchObject({ status: "active", reason: null, missingScopes: [] });
+  });
+
   it("each connect registers the store's webhooks and imports its history through the outbox (E3-2, E3-5)", async () => {
     const runner = app.get(EngineJobRunner);
     for (let i = 0; i < 5; i++) {
@@ -122,7 +135,7 @@ describe("Shopify install from inside Mizan", () => {
     expect(subs.map((w) => w.topic).sort()).toEqual([...SHOPIFY_WEBHOOK_TOPICS].sort());
     expect(new Set(subs.map((w) => w.uri))).toEqual(new Set([`https://api.mizan.test/webhooks/shopify/${shopify.connectionId}`]));
     const jobs = await db.tenant(stores.sara!, (trx) => trx.selectFrom("mz_outbox").select(["kind", "status"]).where("kind", "=", "shopify.syncWebhooks").execute());
-    expect(jobs).toEqual([{ kind: "shopify.syncWebhooks", status: "done" }, { kind: "shopify.syncWebhooks", status: "done" }]); // install + reinstall
+    expect(jobs).toEqual(Array(3).fill({ kind: "shopify.syncWebhooks", status: "done" })); // install, reinstall, approving new scopes
 
     // History: the orders already in the shop are now Mizan orders; progress is visible to the team.
     const orders = await db.tenant(stores.sara!, (trx) => trx.selectFrom("orders").select("external_id").execute());
