@@ -11,6 +11,7 @@ import { ConfirmationService, type RunRow } from "./confirmation.service.js";
 import { CALL_DIGITS, callPrompts, chatContent, CHAT_MESSAGES, TEMPLATE_ACTIONS, templateName, whatsappParams, type ChatMessage, type MessageFacts } from "./messages.js";
 import { canChat, MessagingRegistry } from "./messaging.registry.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
+import { OfferAi } from "./offers/offer-ai.service.js";
 
 interface StepRow { id: string; run_id: string; idx: number; channel: string; kind: string; attempts: number; idempotency_key: string; payload: unknown; last_error: string | null; updated_at: Date }
 
@@ -46,6 +47,7 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
     @Inject(WhatsAppConnections) private readonly whatsappConnections: WhatsAppConnections,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(MetricsService) private readonly metrics: MetricsService,
+    @Inject(OfferAi) private readonly offerAi: OfferAi,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -103,7 +105,7 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
     });
     for (const step of claimed) {
       try {
-        await (step.kind === "timeout" ? this.timeout(tenantId, step, now) : this.send(tenantId, step, now));
+        await (step.kind === "timeout" ? this.timeout(tenantId, step, now) : step.kind === "ai_offer" ? this.offerAi.run(tenantId, step, now) : this.send(tenantId, step, now));
       } catch (err) {
         this.logger.error({ err, step: step.id }, "confirmation step failed");
       }

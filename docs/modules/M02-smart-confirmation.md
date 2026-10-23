@@ -99,7 +99,17 @@ The customer sees it **in the thank-you message** right after tapping Confirm, w
 
 It goes inside the free window the customer's tap opened, so the template stays utility. On a team call the script ends with the offer, and the order card has "Customer accepted / Not interested". The price recorded is the price shown, never more; an offer ends when the order ships or after 48 hours. Off by default; the owner turns it on. Accepting records the offer (`offer.accepted`); adding it to the Shopify order is E6-13 (until then, the card asks the team to add it by hand). Settings → Offers also shows offers made, accepted and the sales they added (30 days).
 
-**Next:** Claude picks and words the offer (E6-12), accepted offers added to the Shopify order (E6-13), automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
+### Claude picks and words the offer (E6-12)
+
+With **"Let AI choose and write the offer"** on (Settings → Offers; needs `ANTHROPIC_API_KEY` on the platform), each offer gets a queued `ai_offer` step at the start of confirmation. Claude (`claude-opus-5-5` by default, `ANTHROPIC_MODEL`; low effort; structured JSON output; `fallbacks: "default"`) sees the store's name, the order's items, and Mizan's shortlist (up to 5 items that already passed every guard: title, price, margin band high/medium/low/unknown, bought-together and popularity counts) and returns `{ id, discountPct, messageAr, messageEn }` with `{price}` where the price goes. Mizan then:
+
+- accepts only an item from the shortlist and a whole discount within the store's maximum; re-checks every guard (stock, no loss, ≤ 60% of the order) and computes the price itself;
+- keeps an owner's rule as it is (item and discount), using Claude only for its wording when the owner wrote none;
+- applies nothing if the customer has already been shown the offer, if Claude refused or was cut off, if the answer has a link or a phone number, or if Claude is down after 3 tries: Mizan's own offer and wording stay.
+
+No customer name, phone or address is ever sent. Metrics: `mizan_ai_offer_total{result}` (picked, worded, refusal, invalid, unsafe, error, late, retry) and `mizan_ai_tokens_total{kind}`.
+
+**Next:** accepted offers added to the Shopify order (E6-13), automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
 
 ## Main screen — Confirmation queue
 

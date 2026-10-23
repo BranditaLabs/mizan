@@ -757,7 +757,7 @@
         "source": {
           "rule": "From your rule",
           "auto": "Mizan's suggestion",
-          "ai": "Smart suggestion"
+          "ai": "Chosen by AI"
         },
         "toast": {
           "accepted": "Recorded: the customer accepted the offer",
@@ -1101,7 +1101,9 @@
       "overMax": "Must be at most the maximum discount",
       "inWhatsApp": "Offer it in the WhatsApp chat after the customer confirms",
       "inCalls": "Put it in your team's call script",
-      "guards": "Mizan never offers something already in the order, sold out, sold at a loss after the discount, or priced over 60% of the order."
+      "guards": "Mizan never offers something already in the order, sold out, sold at a loss after the discount, or priced over 60% of the order.",
+      "ai": "Let AI choose and write the offer",
+      "aiHint": "Claude picks from the same suggestions and writes a short message; Mizan sets the price. Your rules stay as they are; it only writes their message when you didn't. No customer data is sent."
     },
     "mode": {
       "rules_then_auto": "My rules first, then Mizan's suggestions",

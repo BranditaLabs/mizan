@@ -1356,6 +1356,8 @@ export interface components {
             inWhatsApp: boolean;
             /** @description Show the offer in the team's call script */
             inCalls: boolean;
+            /** @description Let Claude choose among Mizan's candidates and write the message (no customer data is sent) */
+            ai: boolean;
         };
         OfferSummary: {
             days: number;

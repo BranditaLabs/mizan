@@ -132,6 +132,8 @@ erDiagram
 
 ✅ Migration 0022 (E6-11): `offer_rules` (trigger variant or any order, offer variant, `discount_pct` 0–50, priority, optional wording, active) and `order_offers` (one per confirmation run: variant, qty, unit and offer price in minor units with `offer_price ≤ unit_price`, discount, source `rule|auto|ai`, status `proposed → accepted|declined|expired → applying → applied|failed`, channel, who decided). Settings in `tenants.settings.offers`. Index `order_lines_variant` for bought-together.
 
+✅ Migration 0023 (E6-12): `confirmation_steps.kind` adds `ai_offer` (payload: the offer id, the order's items and the shortlist with prices and costs; product facts only). Settings `offers.ai`.
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data

@@ -51,7 +51,9 @@ async function newOrder(over: Partial<CanonicalOrder> = {}): Promise<string> {
 }
 const pnl = async (id: string) => (await http().get(`/v1/orders/${id}/pnl`).set(as("owner")).expect(200)).body;
 const amounts = (p: Record<string, { amount: string }>) => Object.fromEntries(["revenue", "productCost", "shipping", "codFee", "agent", "packaging", "returns", "net", "expectedRevenue", "expectedNet"].map((k) => [k, p[k]!.amount]));
-const post = (body: object) => http().post("/v1/cost-rules").set(as("owner")).send(body).expect(201);
+/** Rules from two days back: the test's orders fall inside them at any hour (a rule starts on its store day). */
+const SINCE = new Date(Date.now() - 2 * 86_400_000).toISOString().slice(0, 10);
+const post = (body: object) => http().post("/v1/cost-rules").set(as("owner")).send({ validFrom: SINCE, ...body }).expect(201);
 
 beforeAll(async () => {
   const config = loadConfig({ NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "https://app.mizan.test" });

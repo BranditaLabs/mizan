@@ -4,3 +4,4 @@ export { FakeClock, hang, json, seeded, testRuntime, type Route } from "./clock.
 export { FakeShopify } from "./shopify.js";
 export { FakeMessaging, type FakeSent } from "./messaging.js";
 export { FakeWhatsApp, type FakeWaMessage } from "./whatsapp.js";
+export { FakeClaude, type ClaudeAnswer } from "./claude.js";

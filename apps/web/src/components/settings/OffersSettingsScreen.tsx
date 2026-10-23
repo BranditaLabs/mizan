@@ -92,6 +92,7 @@ export function OffersSettingsScreen() {
             <Checkbox label={t("how.inWhatsApp")} checked={s.inWhatsApp} onChange={(e) => edit({ inWhatsApp: e.target.checked })} />
             <Checkbox label={t("how.inCalls")} checked={s.inCalls} onChange={(e) => edit({ inCalls: e.target.checked })} />
           </div>
+          <Switch label={t("how.ai")} description={t("how.aiHint")} checked={s.ai} onChange={(e) => edit({ ai: e.target.checked })} />
           <p className="text-caption text-text-3">{t("how.guards")}</p>
         </div>
       </Card>

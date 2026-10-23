@@ -6181,6 +6181,10 @@
           "inCalls": {
             "type": "boolean",
             "description": "Show the offer in the team's call script"
+          },
+          "ai": {
+            "type": "boolean",
+            "description": "Let Claude choose among Mizan's candidates and write the message (no customer data is sent)"
           }
         },
         "required": [
@@ -6189,7 +6193,8 @@
           "maxDiscountPct",
           "autoDiscountPct",
           "inWhatsApp",
-          "inCalls"
+          "inCalls",
+          "ai"
         ],
         "additionalProperties": false
       },

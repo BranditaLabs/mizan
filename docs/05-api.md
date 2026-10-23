@@ -89,7 +89,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/orders/{id}/confirmation/link` | ✅ E6-7. `{ url, expiresAt, whatsappUrl }`: the customer's link and a wa.me link with the message, to send by hand; starts a manual run if none; audited; `no-store`, never replayed |
 | POST | `/orders/{id}/confirmation` | ✅ E6-7. `{ answer: confirm\|cancel, reason?, note?, byCall? }` by the team (`byCall` counts it as a team call); 409 once answered; audited |
 | GET / PUT | `/settings/confirmation` | ✅ E6-7, E6-10. `{ settings: { enabled, steps[{channel: whatsapp\|call_auto\|call_team, waitMinutes}] (team call last), callingHours{start,end}, teamCalls{attempts, retryMinutes}, linkHours }, channels }`. Owner, admin, ops manager |
-| GET / PUT | `/settings/offers` | ✅ E6-11. `{ enabled, mode: rules_then_auto\|rules\|auto, maxDiscountPct, autoDiscountPct, inWhatsApp, inCalls }` (off by default; suggestion discount ≤ max). Owner, admin, ops manager; audited |
+| GET / PUT | `/settings/offers` | ✅ E6-11, E6-12. `{ enabled, mode: rules_then_auto\|rules\|auto, maxDiscountPct, autoDiscountPct, inWhatsApp, inCalls, ai }` (off by default; suggestion discount ≤ max). Owner, admin, ops manager; audited |
 | GET / POST | `/offer-rules` | ✅ E6-11. List (active first); add `{ triggerVariantId \| null, offerVariantId, discountPct, priority, messageAr?, messageEn? }` (422 same product; 404 unknown product); audited |
 | PATCH | `/offer-rules/{id}` | ✅ E6-11. `{ active }` stop or restart; 204 |
 | GET | `/offer-products?q=` | ✅ E6-11. Active products to pick in a rule (title or SKU; 100 at most) |

@@ -3,7 +3,8 @@ import { createHmac } from "node:crypto";
 import { Writable } from "node:stream";
 import type { INestApplication } from "@nestjs/common";
 import type { CanonicalOrder } from "@mizan/shared";
-import { FakeClock, FakeWhatsApp, seeded, testRuntime } from "@mizan/engine/testing";
+import { ClaudeOfferWriter, DriftMonitor } from "@mizan/engine";
+import { FakeClaude, FakeClock, FakeWhatsApp, seeded, testRuntime } from "@mizan/engine/testing";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
@@ -16,6 +17,7 @@ import { actionId, parseActionId } from "../src/modules/confirmation/confirmatio
 import { ConfirmationRunner } from "../src/modules/confirmation/confirmation.runner.js";
 import { DEFAULT_CONFIRMATION } from "../src/modules/confirmation/confirmation.settings.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
+import { OfferAi } from "../src/modules/confirmation/offers/offer-ai.service.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
 /**
@@ -317,7 +319,7 @@ describe("offers in the chat (E6-11)", () => {
   const abayaLine = (k = "A") => ({ externalLineId: `OL-${k}-${n}`, sku: "AB-OF", variantExternalId: V.abaya, title: "Abaya", quantity: 2, unitPrice: { amount: "600.00", currency: "EGP" } });
   const offerOf = (orderId: string) => db.tenant(store, (trx) => trx.selectFrom("order_offers").selectAll().where("order_id", "=", orderId).executeTakeFirst());
   const settings = (over: Record<string, unknown> = {}) => http().put("/v1/settings/offers").set(as("owner"))
-    .send({ enabled: true, mode: "rules_then_auto", maxDiscountPct: "15", autoDiscountPct: "10", inWhatsApp: true, inCalls: true, ...over }).expect(200);
+    .send({ enabled: true, mode: "rules_then_auto", maxDiscountPct: "15", autoDiscountPct: "10", inWhatsApp: true, inCalls: true, ai: false, ...over }).expect(200);
 
   beforeAll(async () => {
     ids = await db.tenant(store, async (trx) => {
@@ -336,7 +338,7 @@ describe("offers in the chat (E6-11)", () => {
     expect((await http().get("/v1/settings/offers").set(as("owner")).expect(200)).body).toMatchObject({ enabled: false, mode: "rules_then_auto", maxDiscountPct: "15" });
     const id = await newOrder({ lines: [abayaLine()] });
     expect(await offerOf(id)).toBeUndefined();
-    await http().put("/v1/settings/offers").set(as("owner")).send({ enabled: true, mode: "auto", maxDiscountPct: "10", autoDiscountPct: "20", inWhatsApp: true, inCalls: true }).expect(422);
+    await http().put("/v1/settings/offers").set(as("owner")).send({ enabled: true, mode: "auto", maxDiscountPct: "10", autoDiscountPct: "20", inWhatsApp: true, inCalls: true, ai: false }).expect(422);
     await http().post("/v1/offer-rules").set(as("owner")).send({ triggerVariantId: ids.abaya, offerVariantId: ids.abaya }).expect(422);
     const products = (await http().get("/v1/offer-products?q=Matching").set(as("owner")).expect(200)).body.data;
     expect(products).toEqual([expect.objectContaining({ variantId: ids.scarf, title: "Matching scarf", price: { amount: "150.00", currency: "EGP" }, available: 5 })]);
@@ -413,5 +415,100 @@ describe("offers in the chat (E6-11)", () => {
     expect(sum.declined).toBeGreaterThanOrEqual(1);
     expect(sum.added[0]).toMatchObject({ currency: "EGP" });
     await settings({ enabled: false });
+  });
+});
+
+describe("Claude picks and words the offer (E6-12)", () => {
+  const claude = new FakeClaude(clock, seeded(41));
+  const V = { abaya: "gid://shopify/ProductVariant/601", scarf: "gid://shopify/ProductVariant/602", pin: "gid://shopify/ProductVariant/603" };
+  let ids: Record<keyof typeof V, string>;
+  const line = (k: keyof typeof V, tag: string, price: string) => ({ externalLineId: `AI-${k}-${tag}-${n}`, sku: `AI-${k}`, variantExternalId: V[k], title: k, quantity: 1, unitPrice: { amount: price, currency: "EGP" } });
+  const offerOf = (orderId: string) => db.tenant(store, (trx) => trx.selectFrom("order_offers").selectAll().where("order_id", "=", orderId).executeTakeFirstOrThrow());
+  const aiStep = (orderId: string) => db.tenant(store, (trx) => trx.selectFrom("confirmation_steps as s").innerJoin("confirmation_runs as r", "r.id", "s.run_id")
+    .select(["s.status", "s.last_error"]).where("r.order_id", "=", orderId).where("s.kind", "=", "ai_offer").executeTakeFirst());
+  const settings = (over: Record<string, unknown> = {}) => http().put("/v1/settings/offers").set(as("owner"))
+    .send({ enabled: true, mode: "auto", maxDiscountPct: "15", autoDiscountPct: "10", inWhatsApp: true, inCalls: true, ai: true, ...over }).expect(200);
+
+  beforeAll(async () => {
+    app.get(OfferAi).use(new ClaudeOfferWriter({ apiKey: claude.apiKey, baseUrl: claude.baseUrl }, testRuntime(clock, { [claude.host]: claude.handler }, seeded(42)), new DriftMonitor()));
+    ids = await db.tenant(store, async (trx) => {
+      const out = {} as Record<keyof typeof V, string>;
+      for (const [k, title, price, cost] of [["abaya", "AI Abaya", 60000, 30000], ["scarf", "AI Scarf", 15000, 5000], ["pin", "AI Pin", 5000, 1000]] as const) {
+        const p = (await trx.insertInto("products").values({ tenant_id: store, title, status: "active" }).returning("id").executeTakeFirstOrThrow()).id;
+        const v = (await trx.insertInto("variants").values({ tenant_id: store, product_id: p, sku: `AI-${k}`, currency: "EGP", price_minor: price, cogs_minor: cost, cogs_set_at: new Date(), available: 5 }).returning("id").executeTakeFirstOrThrow()).id;
+        await trx.insertInto("external_variants").values({ tenant_id: store, connection_id: shop, external_id: V[k], variant_id: v }).execute();
+        out[k] = v;
+      }
+      return out;
+    });
+    // History: abayas go with scarves (most) and pins.
+    for (let i = 0; i < 3; i++) await newOrder({ createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(), lines: [line("abaya", `h${i}`, "600.00"), line("scarf", `h${i}`, "150.00")] });
+    await newOrder({ createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString(), lines: [line("abaya", "h9", "600.00"), line("pin", "h9", "50.00")] });
+  });
+  afterAll(() => app.get(OfferAi).use(undefined));
+
+  it("Claude chooses among Mizan's candidates and writes it; Mizan sets the price; the customer sees Claude's words", async () => {
+    await settings();
+    const id = await newOrder({ lines: [line("abaya", "a", "600.00")] });
+    expect(await offerOf(id)).toMatchObject({ source: "auto", variant_id: ids.scarf, message_ar: null });
+    await run();
+    expect(await aiStep(id)).toMatchObject({ status: "done", last_error: null });
+    expect(await offerOf(id)).toMatchObject({ source: "ai", variant_id: ids.scarf, discount_pct: "10.00", offer_price_minor: 13500n, message_ar: "🎁 كمّلي اللوك بـ 135 ج.م. بس", message_en: "🎁 Complete the look for just EGP 135" });
+
+    const sent = JSON.parse(claude.requests.at(-1)!.messages[0].content);
+    expect(sent).toMatchObject({ store: "Nile Abayas", maxDiscountPct: 15, order: [{ title: "abaya", quantity: 1 }] });
+    const shown = sent.candidates.map((c: { title: string; margin: string }) => [c.title, c.margin]);
+    expect(shown[0]).toEqual(["AI Scarf", "high"]); // bought with abayas most
+    expect(shown).toContainEqual(["AI Pin", "high"]);
+    expect(shown.length).toBeLessThanOrEqual(5);
+    expect(JSON.stringify(claude.requests)).not.toMatch(/Mona|1001234821|Abbas|Nasr/); // no customer data
+
+    const t = await templateFor(id);
+    const before = wa.accepted.length;
+    wa.tapQuickReply(CUSTOMER, t.confirm, t.message.id);
+    await deliver();
+    await run();
+    expect(sentAfter(before)[0]!.body.interactive.body.text).toContain("🎁 كمّلي اللوك بـ 135 ج.م. بس");
+  });
+
+  it("an owner's rule keeps its item and discount; Claude only writes the words", async () => {
+    await settings({ mode: "rules_then_auto" });
+    const rule = (await http().post("/v1/offer-rules").set(as("owner")).send({ triggerVariantId: ids.abaya, offerVariantId: ids.pin, discountPct: "0" }).expect(201)).body.id;
+    const id = await newOrder({ lines: [line("abaya", "r", "600.00")] });
+    await run();
+    expect(await offerOf(id)).toMatchObject({ source: "rule", variant_id: ids.pin, discount_pct: "0.00", offer_price_minor: 5000n, message_ar: "🎁 كمّلي اللوك بـ 50 ج.م. بس" });
+    await http().patch(`/v1/offer-rules/${rule}`).set(as("owner")).send({ active: false }).expect(204);
+  });
+
+  it("a refusal, an answer that breaks a rule, or Claude being down keeps Mizan's own offer", async () => {
+    await settings();
+    for (const answer of ["refusal", "invented", "phone"] as const) {
+      claude.answers.push(answer);
+      const id = await newOrder({ lines: [line("abaya", answer, "600.00")] });
+      await run();
+      expect(await offerOf(id)).toMatchObject({ source: "auto", message_ar: null, offer_price_minor: 13500n });
+      expect((await aiStep(id))?.status).toBe("done");
+    }
+    claude.faults.push("500", "500", "500", "500", "500", "500", "500", "500", "500");
+    const down = await newOrder({ lines: [line("abaya", "down", "600.00")] });
+    await run(); // retried later, then given up: the offer stays Mizan's
+    await run(2);
+    await run(2);
+    expect(await offerOf(down)).toMatchObject({ source: "auto", message_ar: null });
+    expect((await aiStep(down))?.status).toBe("done");
+    claude.faults = [];
+  });
+
+  it("too late: once the customer has seen the offer, Claude's answer is not applied", async () => {
+    await settings();
+    const id = await newOrder({ lines: [line("abaya", "late", "600.00")] });
+    const r = await runOf(id);
+    await db.tenant(store, (trx) => trx.insertInto("confirmation_steps").values({
+      tenant_id: store, run_id: r.id, idx: 0, channel: "whatsapp", kind: "reply", run_at: new Date(), status: "done", payload: JSON.stringify({ message: "confirmed_offer" }), idempotency_key: `${r.id}:reply:test`,
+    }).execute());
+    await run();
+    expect(await aiStep(id)).toMatchObject({ status: "done", last_error: "late" });
+    expect(await offerOf(id)).toMatchObject({ source: "auto", message_ar: null });
+    await settings({ enabled: false, ai: false });
   });
 });

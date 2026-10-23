@@ -144,7 +144,7 @@ Scopes Mizan asks for (already in the code): `read_orders, write_orders, write_o
 
 - [ ] Create an **Anthropic Console** organization for Brandita at console.anthropic.com. Add billing and set a **monthly spend limit** (suggestion: start at USD 50 for the pilot).
 - [ ] Create an **API key** for production. Put it in Secret Manager as `ANTHROPIC_API_KEY`.
-- [ ] Decision: per-store AI wording switch **on** or **off** by default. I recommend off until each store tries it.
+- [ ] Decision: per-store AI switch **on** or **off** by default. It's built **off**; each store turns it on in Settings → Offers. Model: `claude-opus-5-5` (change with `ANTHROPIC_MODEL`).
 
 Mizan never sends customer names, phones or addresses to Claude; only products, prices and the store name.
 

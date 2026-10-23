@@ -55,6 +55,10 @@ export const ConfigSchema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().min(16).optional(),
   /** Graph API base and version (tests point it at a fake server). */
   WHATSAPP_GRAPH_URL: url.default("https://graph.facebook.com"),
+  /** Claude writes and picks offers (E6-12). Unset = offers keep Mizan's own choice and wording. */
+  ANTHROPIC_API_KEY: z.string().min(20).optional(),
+  ANTHROPIC_MODEL: z.string().regex(/^claude-[a-z0-9-]+$/, "a Claude model id").default("claude-opus-5-5"),
+  ANTHROPIC_BASE_URL: url.default("https://api.anthropic.com"),
   WHATSAPP_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/, "like v24.0").default("v24.0"),
   /** Daily exchange rates (E9-1): the feed, and how often the worker checks whether today's rates are in. Unset = open-er-api, none in tests. */
   FX_SOURCE: z.enum(["open-er-api", "none"], { error: "must be open-er-api or none" }).optional(),

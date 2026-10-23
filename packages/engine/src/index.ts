@@ -25,3 +25,7 @@ export { exchangeShopifyCode, missingScopes, normalizeShop, shopifyAuthorizeUrl,
 export { verifyShopifyHmac, readShopifyHeaders, signShopify, type ShopifyWebhookMeta } from "./connectors/shopify/webhooks.js";
 export { parseComplianceWebhook, COMPLIANCE_TOPICS, type ComplianceRequest, type ComplianceTopic } from "./connectors/shopify/compliance.js";
 export { DriftMonitor, type DriftSink, type DriftEvent } from "./adapt/drift.js";
+export {
+  ANTHROPIC_VERSION, CLAUDE_DEFAULT_MODEL, ClaudeOfferWriter, OFFER_MESSAGE_MAX, validate as validateOfferPick,
+  type ClaudeConfig, type OfferCandidateForAi, type OfferPick, type OfferRequest, type OfferResult,
+} from "./connectors/ai/claude.js";

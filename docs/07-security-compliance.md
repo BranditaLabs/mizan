@@ -97,3 +97,9 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 - Button and list ids are signed per run (`c1.<run>.<action>.<mac>`, HMAC-SHA256 with `LINK_SIGNING_KEY`, 12 bytes): a forged, edited or replayed tap does nothing beyond its own order, and an answered order refuses a second answer.
 - No message text is stored or logged: the transcript keeps what a message meant (asked, confirmed, tapped cancel…) and its delivery status. A change the customer types is stored only encrypted (`confirmations.notes`). Numbers in logs are masked.
 - The merchant's WhatsApp token is a secret (encrypted, never shown again, never logged).
+
+### AI-written offers (E6-12)
+
+- Claude receives the store's name, product titles, prices, quantities and margin bands: never the customer's name, phone, address or anything they typed. The request is built from product rows only (tested: no customer data in what is sent).
+- Claude's answer is validated, never trusted: only a shortlisted item, a discount within the store's maximum, no links or phone numbers; the price is Mizan's. The owner's rules cannot be changed by it.
+- `ANTHROPIC_API_KEY` is a platform secret (Secret Manager), never logged; Anthropic's data handling terms apply (check retention settings for the organization before production).

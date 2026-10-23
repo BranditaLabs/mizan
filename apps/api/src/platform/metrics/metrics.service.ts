@@ -52,6 +52,14 @@ export class MetricsService {
     labelNames: ["channel", "result"] as const, registers: [this.registry],
   });
 
+  readonly aiOffers = new Counter({
+    name: "mizan_ai_offer_total", help: "Claude offer picks by result (picked, worded, refusal, invalid, unsafe, error, late)", labelNames: ["result"] as const, registers: [this.registry],
+  });
+
+  readonly aiTokens = new Counter({
+    name: "mizan_ai_tokens_total", help: "Claude tokens used for offers, input and output", labelNames: ["kind"] as const, registers: [this.registry],
+  });
+
   readonly idempotentReplays = new Counter({
     name: "mizan_idempotent_replays_total", help: "Responses replayed for a repeated Idempotency-Key", registers: [this.registry],
   });

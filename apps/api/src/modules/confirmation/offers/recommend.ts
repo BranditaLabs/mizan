@@ -73,17 +73,39 @@ export function discounted(priceMinor: bigint, pct: string, currency: string): b
   return priceMinor - toMinor(percentOf(fromMinor(priceMinor, currency), pct));
 }
 
+/** Whether an item may be offered on this order at this discount (the guards above). */
+export function isOfferable(i: Pick<RecommendInput, "orderVariantIds" | "orderTotalMinor" | "currency">, c: Candidate | undefined, pct: string): c is Candidate {
+  if (!c || !c.active || i.orderVariantIds.includes(c.variantId)) return false;
+  if (c.available !== null && c.available <= 0) return false;
+  if (c.priceMinor <= 0n) return false;
+  const price = discounted(c.priceMinor, pct, i.currency);
+  if (price > toMinor(percentOf(fromMinor(i.orderTotalMinor, i.currency), MAX_SHARE_PCT))) return false;
+  return c.costMinor === null || price > c.costMinor; // never at a loss
+}
+
+export interface Ranked { candidate: Candidate; together: number; popular: number }
+
+/**
+ * Items customers want with this order, best first: bought with these items, then popular in the
+ * store, then what the store earns on it. Only offerable items at the suggestion discount.
+ */
+export function shortlist(i: RecommendInput, n = 5): Ranked[] {
+  const pct = minPct(i.autoDiscountPct, i.maxDiscountPct);
+  const out: Array<Ranked & { key: [number, number, bigint] }> = [];
+  for (const c of i.candidates.values()) {
+    if (!isOfferable(i, c, pct)) continue;
+    const together = i.boughtWith.get(c.variantId) ?? 0;
+    const popular = i.popularity.get(c.variantId) ?? 0;
+    if (together === 0 && popular === 0) continue; // nothing says customers want it
+    const price = discounted(c.priceMinor, pct, i.currency);
+    out.push({ candidate: c, together, popular, key: [together, popular, c.costMinor === null ? price : price - c.costMinor] });
+  }
+  out.sort((a, b) => (same(a.key, b.key) ? a.candidate.variantId.localeCompare(b.candidate.variantId) : better(a.key, b.key) ? -1 : 1));
+  return out.slice(0, n).map(({ candidate, together, popular }) => ({ candidate, together, popular }));
+}
+
 export function recommend(i: RecommendInput): Offer | null {
   const inOrder = new Set(i.orderVariantIds);
-  const cap = toMinor(percentOf(fromMinor(i.orderTotalMinor, i.currency), MAX_SHARE_PCT));
-  const offerable = (c: Candidate | undefined, pct: string): c is Candidate => {
-    if (!c || !c.active || inOrder.has(c.variantId)) return false;
-    if (c.available !== null && c.available <= 0) return false;
-    if (c.priceMinor <= 0n) return false;
-    const price = discounted(c.priceMinor, pct, i.currency);
-    if (price > cap) return false;
-    return c.costMinor === null || price > c.costMinor; // never at a loss
-  };
   const make = (c: Candidate, pct: string, source: Offer["source"], rule: Rule | null): Offer => ({
     variantId: c.variantId, title: c.title, qty: 1, unitPriceMinor: c.priceMinor, discountPct: pct,
     offerPriceMinor: discounted(c.priceMinor, pct, i.currency), source, ruleId: rule?.id ?? null,
@@ -98,24 +120,13 @@ export function recommend(i: RecommendInput): Offer | null {
     for (const r of fitting) {
       const pct = minPct(r.discountPct, i.maxDiscountPct);
       const c = i.candidates.get(r.offerVariantId);
-      if (offerable(c, pct)) return make(c, pct, "rule", r);
+      if (isOfferable(i, c, pct)) return make(c, pct, "rule", r);
     }
     if (i.mode === "rules") return null;
   }
 
-  const pct = minPct(i.autoDiscountPct, i.maxDiscountPct);
-  let best: { c: Candidate; key: [number, number, bigint] } | null = null;
-  for (const c of i.candidates.values()) {
-    if (!offerable(c, pct)) continue;
-    const together = i.boughtWith.get(c.variantId) ?? 0;
-    const popular = i.popularity.get(c.variantId) ?? 0;
-    if (together === 0 && popular === 0) continue; // nothing says customers want it
-    // Bought with these items first, then popular in the store, then what the store earns on it.
-    const price = discounted(c.priceMinor, pct, i.currency);
-    const key: [number, number, bigint] = [together, popular, c.costMinor === null ? price : price - c.costMinor];
-    if (!best || better(key, best.key) || (same(key, best.key) && c.variantId < best.c.variantId)) best = { c, key };
-  }
-  return best ? make(best.c, pct, "auto", null) : null;
+  const best = shortlist(i, 1)[0];
+  return best ? make(best.candidate, minPct(i.autoDiscountPct, i.maxDiscountPct), "auto", null) : null;
 }
 
 const better = (a: [number, number, bigint], b: [number, number, bigint]) => a[0] !== b[0] ? a[0] > b[0] : a[1] !== b[1] ? a[1] > b[1] : a[2] > b[2];

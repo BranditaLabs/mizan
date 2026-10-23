@@ -13,10 +13,11 @@ export const OfferSettingsSchema = z.object({
   autoDiscountPct: Pct.describe("Discount on recommended offers (rules carry their own)"),
   inWhatsApp: z.boolean().describe("Offer in the WhatsApp chat right after the customer confirms"),
   inCalls: z.boolean().describe("Show the offer in the team's call script"),
+  ai: z.boolean().describe("Let Claude choose among Mizan's candidates and write the message (no customer data is sent)"),
 }).refine((s) => Number(s.autoDiscountPct) <= Number(s.maxDiscountPct), { message: "the recommended discount cannot exceed the maximum", path: ["autoDiscountPct"] });
 export type OfferSettings = z.infer<typeof OfferSettingsSchema>;
 
-export const DEFAULT_OFFERS: OfferSettings = { enabled: false, mode: "rules_then_auto", maxDiscountPct: "15", autoDiscountPct: "10", inWhatsApp: true, inCalls: true };
+export const DEFAULT_OFFERS: OfferSettings = { enabled: false, mode: "rules_then_auto", maxDiscountPct: "15", autoDiscountPct: "10", inWhatsApp: true, inCalls: true, ai: false };
 
 /** Stored settings over the defaults; a broken stored value never breaks confirmation (defaults win). */
 export function offerSettings(settings: unknown): OfferSettings {

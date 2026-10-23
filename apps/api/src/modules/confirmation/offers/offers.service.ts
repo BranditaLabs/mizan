@@ -8,7 +8,8 @@ import { Database } from "../../../platform/db/database.js";
 import { EventsService } from "../../../platform/events/events.service.js";
 import { ProblemError } from "../../../platform/http/problem.js";
 import { offerSettings, OfferSettingsSchema, type OfferSettings } from "./offer.settings.js";
-import { recommend, type Candidate, type Rule } from "./recommend.js";
+import { OfferAi, type AiOfferPayload } from "./offer-ai.service.js";
+import { recommend, shortlist, type Candidate, type Rule } from "./recommend.js";
 
 export type OfferDecision = "accept" | "decline";
 export type OfferChannel = "whatsapp" | "call_team" | "agent";
@@ -36,6 +37,7 @@ export class OffersService {
     @Inject(Database) private readonly db: Database,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(OfferAi) private readonly ai: OfferAi,
   ) {}
 
   async settings(trx: Transaction<DB>, tenantId: string): Promise<OfferSettings> {
@@ -89,10 +91,11 @@ export class OffersService {
         });
       }
     }
-    const offer = recommend({
+    const input = {
       mode: s.mode, maxDiscountPct: s.maxDiscountPct, autoDiscountPct: s.autoDiscountPct, currency, orderTotalMinor: BigInt(order.total_minor),
       orderVariantIds, rules, candidates, boughtWith, popularity,
-    });
+    };
+    const offer = recommend(input);
     if (!offer) return null;
     const row = await trx.insertInto("order_offers").values({
       tenant_id: tenantId, order_id: run.order_id, run_id: run.id, rule_id: offer.ruleId, variant_id: offer.variantId, qty: offer.qty, currency,
@@ -100,6 +103,24 @@ export class OffersService {
       source: offer.source, message_ar: offer.messageAr, message_en: offer.messageEn, created_at: now, updated_at: now,
     }).onConflict((oc) => oc.column("run_id").doNothing()).returning("id").executeTakeFirst();
     if (!row) return this.forRun(trx, run.id);
+    // E6-12: Claude may pick among the same candidates and write the message; a queued step
+    // (never a call inside this transaction). Not for a rule that already has the owner's words.
+    if (s.ai && this.ai.available && !(offer.source === "rule" && offer.messageAr && offer.messageEn)) {
+      const list = offer.source === "rule" ? [{ candidate: candidates.get(offer.variantId)!, together: boughtWith.get(offer.variantId) ?? 0, popular: popularity.get(offer.variantId) ?? 0 }] : shortlist(input, 5);
+      const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
+      const payload: AiOfferPayload = {
+        offerId: row.id, currency, orderTotalMinor: order.total_minor.toString(), orderVariantIds, maxDiscountPct: s.maxDiscountPct,
+        fixed: offer.source === "rule" ? { variantId: offer.variantId, discountPct: offer.discountPct } : null,
+        order: items.map((l) => ({ title: l.title, quantity: l.quantity })),
+        candidates: list.map((x) => ({
+          variantId: x.candidate.variantId, title: x.candidate.title, priceMinor: x.candidate.priceMinor.toString(),
+          costMinor: x.candidate.costMinor === null ? null : x.candidate.costMinor.toString(), available: x.candidate.available, together: x.together, popular: x.popular,
+        })),
+      };
+      await trx.insertInto("confirmation_steps").values({
+        tenant_id: tenantId, run_id: run.id, idx: 0, channel: "whatsapp", kind: "ai_offer", run_at: now, payload: JSON.stringify(payload), idempotency_key: `${run.id}:ai_offer`,
+      }).onConflict((oc) => oc.columns(["tenant_id", "idempotency_key"]).doNothing()).execute();
+    }
     await this.events.emit(trx, {
       type: "offer.proposed", tenantId, entity: { type: "order", id: run.order_id }, actor: { type: "system" },
       data: { number: order.number, offerId: row.id, variantId: offer.variantId, source: offer.source, discountPct: offer.discountPct, offerPriceMinor: offer.offerPriceMinor.toString(), currency },
