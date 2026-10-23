@@ -116,7 +116,7 @@ erDiagram
 | `cod_fee_minor` | Settlement, else `cod_fee_pct` | On delivered (COD and deposit balance) |
 | `payment_fee_minor` | Gateway or BNPL fee: estimate at capture, actual from payout | Card, wallet, BNPL, deposit |
 | `channel_fee_minor` | Marketplace commission and fulfilment fees | Marketplace orders |
-| `ads_minor` | Attributed spend (M7); MVP: daily spend ÷ delivered orders that day, per store | Daily job |
+| `ads_minor` | Attributed spend (M7); MVP (E9-3): the store's spend that day ÷ its orders placed that day, not cancelled before shipping (refused ones keep their share) | On order placed; re-split when spend or the day's orders change |
 | `agent_minor` | `agent_per_order` rule or M10 commission | On confirm |
 | `packaging_minor` | `packaging_per_order` rule | On pack |
 | `rto_minor` | Return leg fee + write-off value for damaged items | On returned / inspected |
@@ -135,6 +135,8 @@ erDiagram
 ✅ Migration 0023 (E6-12): `confirmation_steps.kind` adds `ai_offer` (payload: the offer id, the order's items and the shortlist with prices and costs; product facts only). Settings `offers.ai`.
 
 ✅ E6-13 (no migration): `order_offers.status` moves `accepted → applying → applied|failed` from the engine's `shopify.addOffer` job; `error` keeps the reason (`not_in_store`, `validation`, `not_found`, `permission`, `failed`); `order_events` gets `offer_applied` / `offer_failed`.
+
+✅ Migration 0024 (E9-3): `ad_spend` primary key adds `platform` (one row per store, day, platform, campaign; `campaign_id` empty for a day's total), `source` (`manual`, `csv`, `api`), `updated_at`, `updated_by`, check `spend_minor >= 0` and platform code, index `ad_spend_day`. `connection_id` is the store the ads sold for until ad accounts connect (M7). Flag `ads_fx_missing` on `order_pnl.flags`.
 
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 

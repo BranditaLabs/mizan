@@ -150,6 +150,7 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 | GET | `/v1/profit/by/{dimension}` | Product, store, courier, country |
 | GET / POST / DELETE | `/v1/cost-rules` | ✅ E9-1: packaging, agent, COD %, payment fees, courier rate card, monthly costs; versioned |
 | GET / PUT | `/v1/fx-rates` | ✅ E9-1: daily rates, store's own rate for a day |
+| GET / PUT / DELETE | `/v1/ad-spend`, `POST /v1/ad-spend/import` | ✅ E9-3: a day's ad spend per store and platform, typed or CSV; split over that day's orders |
 | POST | `/v1/profit/recalculate` | ✅ E9-2: recalculate provisional orders in a range |
 | GET | `/v1/profit/export` | CSV for accounting |
 
@@ -163,4 +164,4 @@ Conventions: `docs/05-api.md`.
 
 - Include VAT in revenue or report it separately?
 - Which accounting export first: CSV, Zoho or Odoo?
-- Allocate unattributed ad spend, or only show it?
+- Allocate unattributed ad spend, or only show it? *MVP (E9-3):* a store's day of spend is split over the orders it took that day; a day with no orders is shown as unallocated, never hidden. Per-campaign attribution comes with M7.

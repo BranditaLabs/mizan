@@ -40,6 +40,9 @@ export interface AdSpend {
   currency: string;
   impressions: Int8 | null;
   clicks: Int8 | null;
+  source: Generated<string>;
+  updated_at: Generated<Timestamp>;
+  updated_by: string | null;
 }
 
 export interface ApiKeys {

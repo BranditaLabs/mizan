@@ -989,7 +989,8 @@
     "pages": {
       "costs": "Costs",
       "confirmation": "Confirmation",
-      "offers": "Offers"
+      "offers": "Offers",
+      "ads": "Ad spend"
     }
   },
   "confirmationSettings": {
@@ -1137,6 +1138,99 @@
       "messageHint": "Leave it empty and Mizan writes it, like: \"🎁 An offer for you: a scarf for EGP 135 instead of EGP 150.\"",
       "add": "Add the rule",
       "added": "Rule added"
+    }
+  },
+  "adSpend": {
+    "title": "Ad spend",
+    "subtitle": "What you spend on ads each day. Mizan splits each day's spend over the orders that came in that day, so every order's profit includes its ads.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load ad spend. Try again.",
+    "readOnly": "You can see ad spend; the owner, an admin or finance can change it.",
+    "notAllowed": {
+      "title": "Not for your role",
+      "body": "Ad spend is for the owner, admins, finance and ops managers."
+    },
+    "summary": {
+      "total": "Spend",
+      "period": "Last 30 days",
+      "unallocated": "Not carried by any order",
+      "unallocatedHint": "Days with spend and no orders: still a cost",
+      "platforms": "By platform"
+    },
+    "platform": {
+      "meta": "Meta (Facebook, Instagram)",
+      "tiktok": "TikTok",
+      "google": "Google",
+      "snapchat": "Snapchat",
+      "other": "Other"
+    },
+    "add": {
+      "title": "Enter a day's spend",
+      "body": "Saving replaces what that day and platform had.",
+      "day": "Day",
+      "platform": "Platform",
+      "amount": "Amount",
+      "amountInvalid": "An amount like 2500 or 2500.50",
+      "currency": "Currency",
+      "currencyHint": "As the platform charged you; converted at that day's rate",
+      "save": "Save",
+      "saved": "Saved. That day's orders now carry it."
+    },
+    "import": {
+      "title": "Import a CSV",
+      "body": "A platform's export or your own sheet: a header row with date and spend, plus platform (or choose one below); currency and campaign are optional. Each day and platform in the file replaces what was there.",
+      "file": "Choose a file",
+      "paste": "Or paste it",
+      "pasteHint": "date,platform,spend,currency",
+      "platform": "Platform",
+      "platformFromFile": "From the file",
+      "run": "Import",
+      "done": "Imported {rows} rows for {days} days.",
+      "failed": "Couldn't import the file. Try again.",
+      "invalid": "{count, plural, one {# line} other {# lines}} couldn't be read. Nothing was saved.",
+      "line": "Line <n>{line}</n>",
+      "problem": {
+        "header": "The header needs date and spend, and platform",
+        "columns": "Missing columns",
+        "day": "Not a date (2026-10-22 or 22/10/2026)",
+        "future": "In the future",
+        "too_old": "More than 400 days ago",
+        "platform": "Unknown platform",
+        "spend": "Not an amount",
+        "currency": "Not a currency code",
+        "too_many": "More than 5,000 lines",
+        "empty": "No rows",
+        "other": "Couldn't read it"
+      }
+    },
+    "days": {
+      "title": "By day",
+      "empty": "No spend in the last 30 days.",
+      "day": "Day",
+      "spend": "Spend",
+      "orders": "Orders",
+      "perOrder": "Per order",
+      "unallocated": "No orders",
+      "fxMissing": "Rate missing"
+    },
+    "entries": {
+      "title": "Entries",
+      "empty": "Nothing entered yet.",
+      "day": "Day",
+      "platform": "Platform",
+      "campaign": "Campaign",
+      "dayTotal": "Day total",
+      "spend": "Spend",
+      "source": "Source",
+      "sources": {
+        "manual": "Typed",
+        "csv": "CSV",
+        "api": "Connected"
+      },
+      "actions": "Actions",
+      "remove": "Remove",
+      "removeLabel": "Remove spend on {platform} for {day}",
+      "removed": "Removed. That day's orders were updated."
     }
   }
 }

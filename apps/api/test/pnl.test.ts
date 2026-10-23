@@ -1,6 +1,6 @@
 import { convertMoney, fromMinor, toMinor } from "@mizan/shared";
 import { describe, expect, it } from "vitest";
-import { computePnl, stageOf, type OrderStage, type PnlInput } from "../src/modules/profit/pnl.js";
+import { computePnl, spreadShare, stageOf, type OrderStage, type PnlInput } from "../src/modules/profit/pnl.js";
 
 /**
  * E9-2: properties of the profit function over thousands of generated orders (seeded, so a
@@ -41,6 +41,7 @@ function gen(r: () => number): PnlInput {
       courier: has() ? { amount: egp("60.00"), returnAmount: has() ? egp("30.00") : null } : null,
       paymentFee: (m) => (m === "card" ? { pct: "2.75", fixed: egp("2.00") } : null),
     },
+    ...(r() < 0.4 ? { adsMinor: int(30_000), adsFxMissing: r() < 0.1 } : {}),
     ...(r() < 0.3 ? { actual: { shipping: int(9_000), ...(r() < 0.5 ? { cod: int(2_000) } : {}) } } : {}),
   };
 }
@@ -68,7 +69,7 @@ describe("profit properties (5,000 generated orders)", () => {
     for (const c of cases) {
       const p = computePnl(c);
       if (c.paymentMode === "cod" && c.stage !== "delivered") expect(p.revenue).toBe(0n);
-      if (c.stage === "cancelled") { expect(p.cogs + p.shipping + p.packaging + p.codFee).toBe(0n); }
+      if (c.stage === "cancelled") { expect(p.cogs + p.shipping + p.packaging + p.codFee + p.ads).toBe(0n); }
       if (c.stage === "open") { expect(p.cogs + p.shipping + p.packaging).toBe(0n); }
     }
   });
@@ -95,6 +96,32 @@ describe("profit properties (5,000 generated orders)", () => {
         expect(p.cogs + p.agent + p.packaging).toBe(0n);
       } else expect(p.currency).toBe("EGP");
     }
+  });
+
+  it("an order carries its ad share from the day it is placed, a refused one too; a cancelled one gives it back", () => {
+    for (const c of cases) {
+      const p = computePnl(c);
+      const known = p.currency === "EGP";
+      if (c.stage === "cancelled" || !known) expect(p.ads).toBe(0n);
+      else expect(p.ads).toBe(c.adsMinor ?? 0n);
+      if (c.adsFxMissing && c.stage !== "cancelled") expect(p.flags).toContain("ads_fx_missing");
+    }
+  });
+
+  it("a day's spend is split to the minor unit: shares add up exactly and differ by at most one", () => {
+    const r2 = rng(93);
+    for (let k = 0; k < 2000; k++) {
+      const total = BigInt(Math.floor(r2() * 10_000_000));
+      const n = 1 + Math.floor(r2() * 400);
+      const shares = Array.from({ length: n }, (_, i) => spreadShare(total, n, i));
+      expect(shares.reduce((a, b) => a + b, 0n)).toBe(total);
+      const min = shares.reduce((a, b) => (b < a ? b : a)), max = shares.reduce((a, b) => (b > a ? b : a));
+      expect(max - min <= 1n).toBe(true);
+    }
+    expect(spreadShare(100n, 3, 0)).toBe(34n);
+    expect(spreadShare(100n, 3, 2)).toBe(33n);
+    expect(spreadShare(100n, 0, 0)).toBe(0n);
+    expect(spreadShare(100n, 3, 3)).toBe(0n); // not one of the day's orders
   });
 
   it("is deterministic", () => {

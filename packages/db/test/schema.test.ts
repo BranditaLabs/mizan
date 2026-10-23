@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -114,6 +114,17 @@ describe("schema", () => {
     await expect(asTenant(T2, () => db.query(`INSERT INTO fx_rate_overrides (tenant_id, day, quote, rate) VALUES ($1, '2026-10-22', 'USD', 1)`, [T1])))
       .rejects.toThrow(/row-level security/);
     await expect(db.query(`INSERT INTO fx_rates (day, base, quote, rate, source) VALUES ('2026-10-22', 'USD', 'EGP', 0, 'test')`)).rejects.toThrow(/fx_rates_positive/);
+  });
+
+  it("keeps ad spend per store, day, platform and campaign, never negative (E9-3)", async () => {
+    const conn = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO connections (tenant_id, kind, provider) VALUES ($1, 'store', 'shopify') RETURNING id`, [T1]))).rows[0]!.id;
+    const add = (platform: string, spend: number) => asTenant(T1, () => db.query(`INSERT INTO ad_spend (tenant_id, connection_id, day, platform, campaign_id, spend_minor, currency, source) VALUES ($1, $2, '2026-10-22', $3, '', $4, 'EGP', 'manual')`, [T1, conn, platform, spend]));
+    await add("meta", 250000);
+    await add("tiktok", 90000); // same day, another platform
+    await expect(add("meta", 1)).rejects.toThrow(/duplicate key/);
+    await expect(add("google", -1)).rejects.toThrow(/ad_spend_shape/);
+    await expect(add("Meta Ads", 1)).rejects.toThrow(/ad_spend_shape/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM ad_spend`))).rows).toEqual([]);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {

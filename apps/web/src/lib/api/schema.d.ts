@@ -81,6 +81,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ad-spend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProfitController_adSpend"];
+        put: operations["ProfitController_setAdSpend"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ad-spend/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ProfitController_importAdSpend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ad-spend/{day}/{platform}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["ProfitController_removeAdSpend"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/{id}/pnl": {
         parameters: {
             query?: never;
@@ -731,6 +779,78 @@ export interface components {
             /** @enum {string} */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
         };
+        AdSpendImported: {
+            rows: number;
+            /** @description Days whose spend was replaced by the file */
+            days: number;
+        };
+        AdSpendList: {
+            from: string;
+            to: string;
+            baseCurrency: string;
+            total: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Spend on days with no order to carry it: still a cost, shown, never hidden */
+            unallocated: {
+                amount: string;
+                currency: string;
+            };
+            byPlatform: {
+                /** @enum {string} */
+                platform: "meta" | "tiktok" | "google" | "snapchat" | "other";
+                spend: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+            days: {
+                day: string;
+                /** Format: uuid */
+                connectionId: string;
+                /** @description The day's spend in the base currency */
+                spend: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Orders that share it (placed that day, not cancelled before shipping) */
+                orders: number;
+                /** @description Each order's share (null when no order shares it: unallocated) */
+                perOrder: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description Some spend is in a currency without a rate that day; not counted */
+                fxMissing: boolean;
+            }[];
+            data: {
+                day: string;
+                /** @enum {string} */
+                platform: "meta" | "tiktok" | "google" | "snapchat" | "other";
+                campaign: string | null;
+                spend: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @enum {string} */
+                source: "manual" | "csv" | "api";
+                /** Format: uuid */
+                connectionId: string;
+                updatedAt: string;
+            }[];
+        };
+        AdSpendSet: {
+            day: string;
+            /** @enum {string} */
+            platform: "meta" | "tiktok" | "google" | "snapchat" | "other";
+            spend: {
+                amount: string;
+                currency: string;
+            };
+            /** Format: uuid */
+            connectionId: string;
+        };
         AgentAnswer: {
             /** @enum {string} */
             answer: "confirm" | "cancel";
@@ -1131,6 +1251,17 @@ export interface components {
         Id: {
             /** Format: uuid */
             id: string;
+        };
+        ImportAdSpend: {
+            /** @description The file's text: a header row with date and spend, and platform (or `platform` below), optional currency and campaign */
+            csv: string;
+            /**
+             * @description Platform for every row when the file has no platform column
+             * @enum {string}
+             */
+            platform?: "meta" | "tiktok" | "google" | "snapchat" | "other";
+            /** Format: uuid */
+            connectionId?: string;
         };
         IntegrationsHealth: {
             connected: boolean;
@@ -1928,6 +2059,24 @@ export interface components {
                 lng: number;
             } | null;
         };
+        SetAdSpend: {
+            /**
+             * Format: date
+             * @description YYYY-MM-DD in the store's time zone
+             */
+            day: string;
+            /** @enum {string} */
+            platform: "meta" | "tiktok" | "google" | "snapchat" | "other";
+            /** @description What the platform charged that day */
+            amount: string;
+            /** @description Default: the store's base currency */
+            currency?: string;
+            /**
+             * Format: uuid
+             * @description The store the ads sold for (default: the only store)
+             */
+            connectionId?: string;
+        };
         SetCosts: {
             items: {
                 /** Format: uuid */
@@ -2362,6 +2511,216 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_adSpend: {
+        parameters: {
+            query?: {
+                /** @description First day (default: 29 days before today) */
+                from?: string;
+                /** @description Last day (default: today) */
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Spend per day and platform (default last 30 days), each day's share per order, unallocated spend */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdSpendList"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_setAdSpend: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAdSpend"];
+            };
+        };
+        responses: {
+            /** @description The day's spend on that platform (replaces what it had); that day's orders get their new share */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdSpendSet"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_importAdSpend: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportAdSpend"];
+            };
+        };
+        responses: {
+            /** @description Every day and platform in the file replaced; any unreadable line: 422 csv_invalid naming each line, nothing saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdSpendImported"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_removeAdSpend: {
+        parameters: {
+            query?: {
+                connectionId?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description That day's spend on that platform removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

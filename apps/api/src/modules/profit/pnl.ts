@@ -12,7 +12,9 @@ import { convertMoney, fromMinor, percentOf, toMinor, type Money } from "@mizan/
  *   returns    a returned order: the return leg (actual, else the rate card's return price).
  *   COD fee    on delivery, a % of the cash collected (actual from settlement later).
  *   payment    each online payment: actual fee, else % + fixed for its method.
- *   agent      once confirmed. packaging: once shipped. ads and channel fees: later (E9-3, M18).
+ *   agent      once confirmed. packaging: once shipped. channel fees: later (M18).
+ *   ads        the order's share of its store's ad spend that day (E9-3, `spreadShare`), from
+ *              the day it is placed: a refused order keeps it; a cancelled one gives it back.
  *
  * Everything is in the store's base currency; order amounts are converted with the rate of the
  * order's day. Without a rate the order stays in its own currency and is flagged `fx_missing`.
@@ -45,6 +47,10 @@ export interface PnlInput {
     courier: { amount: Money | null; returnAmount: Money | null } | null;
     paymentFee: (method: string) => { pct: string; fixed: Money | null } | null;
   };
+  /** This order's share of its store's ad spend for its day, base minor units (E9-3). */
+  adsMinor?: bigint;
+  /** Some of that day's spend is in a currency with no rate: not counted, flagged. */
+  adsFxMissing?: boolean;
   /** Actual courier fees in base minor units, once known (shipments / settlement). */
   actual?: { shipping?: bigint; cod?: bigint; returnLeg?: bigint };
 }
@@ -128,7 +134,8 @@ export function computePnl(i: PnlInput): Pnl {
 
   const agent = i.confirmed ? rule(i.rules.agent, "agent_cost_missing") : 0n;
   const packaging = shipped ? rule(i.rules.packaging, "packaging_cost_missing") : 0n;
-  const ads = 0n;
+  const ads = known && !cancelled ? (i.adsMinor ?? 0n) : 0n;
+  if (i.adsFxMissing && !cancelled) flags.add("ads_fx_missing");
   const channelFee = 0n;
   const costs = cogs + shipping + codFee + paymentFee + channelFee + ads + agent + packaging + rto + chargeback;
   const net = revenue - refund - costs;
@@ -169,4 +176,15 @@ export function stageOf(status: string, shipped: boolean): OrderStage {
     case "cancelled": return shipped ? "returned" : "cancelled";
     default: return "open";
   }
+}
+
+/**
+ * One order's share of a day's spend over `count` orders, by its place (0-based) in a stable
+ * order: equal parts in minor units, the remainder one unit each to the first ones, so the
+ * shares of a day add up to the spend exactly.
+ */
+export function spreadShare(totalMinor: bigint, count: number, rank: number): bigint {
+  if (count <= 0 || rank < 0 || rank >= count || totalMinor <= 0n) return 0n;
+  const n = BigInt(count);
+  return totalMinor / n + (BigInt(rank) < totalMinor % n ? 1n : 0n);
 }

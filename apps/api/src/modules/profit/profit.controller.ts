@@ -11,8 +11,11 @@ import { FxParamsSchema, FxQuerySchema, FxRateSchema, FxRatesSchema, SetFxRateSc
 import { FxService } from "./fx/fx.service.js";
 import { OrderPnlSchema, RecalculatedSchema, RecalculateSchema } from "./profit.dto.js";
 import { ProfitService } from "./profit.service.js";
+import { AdSpendDeleteQuerySchema, AdSpendImportedSchema, AdSpendListSchema, AdSpendParamsSchema, AdSpendQuerySchema, AdSpendRowSchema, ImportAdSpendSchema, SetAdSpendSchema } from "./ads/ad-spend.dto.js";
+import { AdSpendService } from "./ads/ad-spend.service.js";
+import type { AdPlatform } from "./ads/ad-spend.csv.js";
 
-/** M5 profit inputs (E9-1): cost rules and exchange rates. Owner, admin and finance change them; ops managers read. */
+/** M5 profit inputs (E9-1, E9-3): cost rules, exchange rates, ad spend. Owner, admin and finance change them; ops managers read. */
 @ApiTags("profit")
 @Controller()
 export class ProfitController {
@@ -20,7 +23,49 @@ export class ProfitController {
     @Inject(CostRulesService) private readonly rules: CostRulesService,
     @Inject(FxService) private readonly fx: FxService,
     @Inject(ProfitService) private readonly profit: ProfitService,
+    @Inject(AdSpendService) private readonly ads: AdSpendService,
   ) {}
+
+  @Get("ad-spend")
+  @Roles("owner", "admin", "finance", "ops_manager")
+  @ApiQueryZod(AdSpendQuerySchema)
+  @ApiJson(200, "AdSpendList", AdSpendListSchema, "Spend per day and platform (default last 30 days), each day's share per order, unallocated spend")
+  @ApiProblems(422)
+  adSpend(@Auth() auth: AuthContext, @Query(new ZodPipe(AdSpendQuerySchema)) q: z.output<typeof AdSpendQuerySchema>) {
+    return this.ads.list(auth.tenant!.id, q);
+  }
+
+  @Put("ad-spend")
+  @Roles("owner", "admin", "finance")
+  @ApiJsonBody("SetAdSpend", SetAdSpendSchema)
+  @ApiJson(200, "AdSpendSet", AdSpendRowSchema.pick({ day: true, platform: true, spend: true, connectionId: true }), "The day's spend on that platform (replaces what it had); that day's orders get their new share")
+  @ApiProblems(404, 422)
+  setAdSpend(@Auth() auth: AuthContext, @Body(new ZodPipe(SetAdSpendSchema)) body: z.output<typeof SetAdSpendSchema>) {
+    return this.ads.set(auth, body);
+  }
+
+  @Post("ad-spend/import")
+  @Roles("owner", "admin", "finance")
+  @HttpCode(200)
+  @ApiJsonBody("ImportAdSpend", ImportAdSpendSchema)
+  @ApiJson(200, "AdSpendImported", AdSpendImportedSchema, "Every day and platform in the file replaced; any unreadable line: 422 csv_invalid naming each line, nothing saved")
+  @ApiProblems(404, 422)
+  importAdSpend(@Auth() auth: AuthContext, @Body(new ZodPipe(ImportAdSpendSchema)) body: z.output<typeof ImportAdSpendSchema>) {
+    return this.ads.import(auth, body);
+  }
+
+  @Delete("ad-spend/:day/:platform")
+  @Roles("owner", "admin", "finance")
+  @HttpCode(204)
+  @ApiQueryZod(AdSpendDeleteQuerySchema)
+  @ApiNoContent("That day's spend on that platform removed")
+  @ApiProblems(404, 422)
+  async removeAdSpend(
+    @Auth() auth: AuthContext, @Param("day", new ZodPipe(AdSpendParamsSchema.shape.day)) day: string, @Param("platform", new ZodPipe(AdSpendParamsSchema.shape.platform)) platform: AdPlatform,
+    @Query(new ZodPipe(AdSpendDeleteQuerySchema)) q: z.output<typeof AdSpendDeleteQuerySchema>,
+  ): Promise<void> {
+    await this.ads.remove(auth, day, platform, q.connectionId);
+  }
 
   @Get("orders/:id/pnl")
   @Roles("owner", "admin", "finance", "ops_manager")

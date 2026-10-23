@@ -1,14 +1,14 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
-import { fromMinor, ratio, type Money } from "@mizan/shared";
+import { convertMoney, fromMinor, ratio, toMinor, type Money } from "@mizan/shared";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { CostRulesService } from "./cost-rules.service.js";
 import { FxService } from "./fx/fx.service.js";
-import { computePnl, stageOf, type Pnl } from "./pnl.js";
+import { computePnl, spreadShare, stageOf, type Pnl } from "./pnl.js";
 import { asDate, dayText, localDay, storeClock } from "./store-day.js";
 
 /** Orders recomputed at most per trigger in one transaction; the rest on the next trigger or POST /profit/recalculate. */
@@ -80,6 +80,8 @@ export class ProfitService {
       fees.set(m, r?.pct ? { pct: r.pct, fixed: r.fixed } : null);
     }
 
+    const ads = o.connection_id ? await this.adsShare(trx, tenantId, { id: o.id, connectionId: o.connection_id }, day, base, timezone) : null;
+
     const pnl = computePnl({
       stage: stageOf(o.status, Boolean(o.shipped_at)), paymentMode: o.payment_mode, currency, base, rateToBase,
       totalMinor: BigInt(o.total_minor), codMinor: BigInt(o.cod_minor), refundedMinor: BigInt(o.refunded_minor), confirmed,
@@ -90,6 +92,7 @@ export class ProfitService {
         courier: rate ? { amount: rate.amount, returnAmount: rate.returnAmount } : null,
         paymentFee: (m) => fees.get(m) ?? null,
       },
+      ...(ads ? { adsMinor: ads.minor, adsFxMissing: ads.fxMissing } : {}),
     });
 
     const row = {
@@ -109,6 +112,63 @@ export class ProfitService {
       });
     }
     return pnl;
+  }
+
+  /**
+   * This order's share of its store's ad spend for its day (E9-3): the day's spend in the base
+   * currency (each currency at that day's rate), split over the store's orders placed that day
+   * and not cancelled before shipping, in placing order. Null when the store spent nothing then.
+   */
+  async adsShare(trx: Transaction<DB>, tenantId: string, order: { id: string; connectionId: string }, day: string, base: string, timezone: string): Promise<{ minor: bigint; fxMissing: boolean } | null> {
+    const spend = await trx.selectFrom("ad_spend").select(["currency", sql<string>`sum(spend_minor)`.as("minor")])
+      .where("connection_id", "=", order.connectionId).where("day", "=", asDate(day)).groupBy("currency").execute();
+    if (!spend.length) return null;
+    let total = 0n;
+    let fxMissing = false;
+    for (const s of spend) {
+      const cur = s.currency.trim();
+      const minor = BigInt(s.minor);
+      if (cur === base) { total += minor; continue; }
+      const r = await this.fx.rate(trx, tenantId, base, cur, day);
+      if (!r.rate) { fxMissing = true; continue; }
+      total += toMinor(convertMoney(fromMinor(minor, cur), base, ratio("1", r.rate, 12)));
+    }
+    const ids = (await this.dayOrders(trx, order.connectionId, day, timezone)).map((r) => r.id);
+    return { minor: spreadShare(total, ids.length, ids.indexOf(order.id)), fxMissing };
+  }
+
+  /** A store's orders placed on a store day that share its ad spend: all but those cancelled before shipping. */
+  dayOrders(trx: Transaction<DB>, connectionId: string, day: string, timezone: string) {
+    return trx.selectFrom("orders").select("id").where("connection_id", "=", connectionId)
+      .where(sql<boolean>`placed_at >= (${day}::date::timestamp AT TIME ZONE ${timezone})`)
+      .where(sql<boolean>`placed_at < ((${day}::date + 1)::timestamp AT TIME ZONE ${timezone})`)
+      .where((eb) => eb.not(eb.and([eb("status", "=", "cancelled"), eb("shipped_at", "is", null)])))
+      .orderBy("placed_at").orderBy("id").limit(RECOMPUTE_BATCH).execute();
+  }
+
+  /**
+   * An order joined or left its day's split (created, cancelled): the other orders of that store
+   * day get their new share. Nothing to do when the store spent nothing that day.
+   */
+  async respreadDayOf(trx: Transaction<DB>, tenantId: string, orderId: string, now = new Date()): Promise<number> {
+    const o = await trx.selectFrom("orders").select(["connection_id", "placed_at"]).where("id", "=", orderId).executeTakeFirst();
+    if (!o?.connection_id) return 0;
+    const { timezone } = await storeClock(trx, tenantId);
+    const day = localDay(o.placed_at, timezone);
+    return this.respreadDay(trx, tenantId, o.connection_id, day, now);
+  }
+
+  /** Recompute a store day's orders after its spend or its orders changed (bounded). */
+  async respreadDay(trx: Transaction<DB>, tenantId: string, connectionId: string, day: string, now = new Date()): Promise<number> {
+    const any = await trx.selectFrom("ad_spend").select("day").where("connection_id", "=", connectionId).where("day", "=", asDate(day)).executeTakeFirst();
+    const { timezone } = await storeClock(trx, tenantId);
+    const ids = await this.dayOrders(trx, connectionId, day, timezone);
+    // Without spend a share can only have been dropped: only orders still carrying one change.
+    if (!ids.length) return 0;
+    const targets = any ? ids.map((r) => r.id)
+      : (await trx.selectFrom("order_pnl").select("order_id").where("order_id", "in", ids.map((r) => r.id)).where(sql<boolean>`ads_minor > 0`).execute()).map((r) => r.order_id);
+    for (const id of targets) await this.recompute(trx, tenantId, id, now);
+    return targets.length;
   }
 
   /** Recompute provisional orders matching a filter (a cost or rate change); bounded per call. */
