@@ -127,6 +127,20 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT * FROM ad_spend`))).rows).toEqual([]);
   });
 
+  it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {
+    const sql = (await import("node:fs")).readFileSync(new URL("../migrations/0025_engine_records_without_pii.sql", import.meta.url), "utf8");
+    const order = { externalId: "gid://shopify/Order/9", total: { amount: "1150.00", currency: "EGP" }, customer: { name: "Mona Adel", phone: "+201001234821", email: "mona@example.com" },
+      shippingAddress: { name: "Mona", phone: "01001234821", line1: "12 Abbas El Akkad St", line2: "Floor 3", city: "Nasr City", province: "Cairo", zip: "11765", countryCode: "EG" } };
+    await db.query(`INSERT INTO mz_records (tenant_id, type, key, value, updated_at) VALUES ($1, 'order', 'o9', $2, 0), ($1, 'order', 'o10', $3, 0), ($1, 'cursor', 'c', '{"since": 1}', 0)`,
+      [T1, JSON.stringify({ order, trackingNumber: "TN1" }), JSON.stringify({ order: { ...order, shippingAddress: undefined } })]);
+    await db.exec(sql);
+    const rows = await db.query<{ key: string; value: { order: Record<string, unknown>; trackingNumber?: string } }>(`SELECT key, value FROM mz_records WHERE type = 'order' ORDER BY key`);
+    expect(JSON.stringify(rows.rows)).not.toMatch(/Mona|4821|Abbas|Floor|11765|mona@/);
+    const o9 = rows.rows.find((r) => r.key === "o9")!.value;
+    expect(o9).toMatchObject({ trackingNumber: "TN1", order: { total: { amount: "1150.00" }, customer: { name: "" }, shippingAddress: { line1: "", city: "Nasr City", province: "Cairo", countryCode: "EG" } } });
+    expect(rows.rows.find((r) => r.key === "o10")!.value.order.shippingAddress).toBeNull();
+  });
+
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {
     const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
     const run = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO confirmation_runs (tenant_id, order_id, link_expires_at) VALUES ($1, $2, now() + interval '3 days') RETURNING id`, [T1, order]))).rows[0]!.id;

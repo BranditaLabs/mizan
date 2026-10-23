@@ -70,7 +70,12 @@ beforeAll(async () => {
   for (const o of [o1, o2, o3]) await http().post(`/webhooks/shopify/${conn.shop}`).set(shop.webhook("orders/create", o).headers).set("Content-Type", "application/json").send(shop.webhook("orders/create", o).body);
   await work();
   const mona = (await record(T.sara!, o1.id)).value as unknown as { order: CanonicalOrder };
-  await app.get(OrderProjector).project(T.sara!, conn.woo!, { ...mona.order, externalId: "woo-77", number: "W-77" });
+  // The engine keeps no personal data (E2-8): the same customer ordering on WooCommerce brings her own.
+  expect(JSON.stringify(mona)).not.toMatch(/Mona|4821|Abbas|mona@/);
+  await app.get(OrderProjector).project(T.sara!, conn.woo!, {
+    ...mona.order, externalId: "woo-77", number: "W-77", customer: { name: "Mona Adel", phone: "+201001234821", email: "mona@example.com" },
+    shippingAddress: { ...mona.order.shippingAddress!, name: "Mona Adel", phone: "+20 100 123 4821", line1: "12 Abbas El Akkad St" },
+  });
 });
 afterAll(() => app.close());
 

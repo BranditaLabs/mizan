@@ -70,6 +70,7 @@ export interface WebhookResult {
 }
 
 interface OrderRecord {
+  /** Without personal data (`withoutPersonalData`): the engine keeps ids, money, statuses and the area only. */
   order: CanonicalOrder;
   trackingNumber?: string;
   fulfilled?: boolean;
@@ -481,8 +482,10 @@ export class MizanEngine {
   private async ingestOrderData(order: CanonicalOrder) {
     const orderId = order.externalId;
     const prev = await this.store.get<OrderRecord>("order", orderId);
-    const rec: OrderRecord = { ...prev, order: { ...order, raw: undefined } };
-    await this.runHook(() => this.opts.hooks?.onOrder?.(rec.order, prev?.order));
+    const full: CanonicalOrder = { ...order, raw: undefined };
+    const rec: OrderRecord = { ...prev, order: withoutPersonalData(full) };
+    // Mizan's projector gets the whole order (it encrypts personal data); the engine's record does not keep it.
+    await this.runHook(() => this.opts.hooks?.onOrder?.(full, prev?.order));
     await this.store.put("order", orderId, rec, this.now());
     this.emit("order.ingested", { orderId, number: order.number, paymentMode: order.paymentMode, paymentStatus: order.paymentStatus, updatedAt: order.updatedAt });
     const before = prev?.order;
@@ -504,7 +507,7 @@ export class MizanEngine {
         cashToCollect(order);
       } catch (e) {
         if (e instanceof ShipBlockedError) {
-          await this.runHook(() => this.opts.hooks?.onAwaitingPayment?.(rec.order, e.reason));
+          await this.runHook(() => this.opts.hooks?.onAwaitingPayment?.(full, e.reason));
           this.emit("order.awaiting_payment", { orderId, number: order.number, reason: e.reason, mode: order.paymentMode, status: order.paymentStatus });
           return;
         }
@@ -516,14 +519,16 @@ export class MizanEngine {
 
   private async createShipment(orderId: string, attempt: number) {
     const rec = await this.store.get<OrderRecord>("order", orderId);
-    const order = rec?.order ?? (await this.shopify.getOrder(orderId));
     if (rec?.trackingNumber) return; // already shipped
+    // Fat fetch: the courier needs the address and phone, which the engine does not keep; and the
+    // order may have changed (address edited, cancelled) since it was recorded.
+    const order = await this.shopify.getOrder(orderId);
     if (order.cancelled) throw new IntegrationError({ kind: "validation", connector: "engine", message: `order ${order.number} is cancelled` });
     cashToCollect(order); // fail fast with a clear reason (awaiting_payment, payment_mode_unknown …) before calling the courier
 
     const { shipment, adopted } = await this.bosta.createShipmentOnce(order, orderId, attempt > 1);
     await this.saveLearned();
-    await this.store.put<OrderRecord>("order", orderId, { ...(rec ?? { order }), trackingNumber: shipment.trackingNumber }, this.now());
+    await this.store.put<OrderRecord>("order", orderId, { ...(rec ?? {}), order: withoutPersonalData({ ...order, raw: undefined }), trackingNumber: shipment.trackingNumber }, this.now());
     await this.store.put<ShipmentRecord>("shipment", shipment.trackingNumber, { shipment: { ...shipment, raw: undefined }, orderId, statusAt: Date.parse(shipment.updatedAt) || this.now() }, this.now());
     this.emit("shipment.created", { orderId, trackingNumber: shipment.trackingNumber, adopted, cod: shipment.cod.amount });
     await this.enqueue("shopify.fulfill", { orderId, trackingNumber: shipment.trackingNumber }, `fulfill:${orderId}:${shipment.trackingNumber}`);
@@ -685,6 +690,19 @@ export class MizanEngine {
 }
 
 /** The order fields that drive engine decisions (shipping, payment, cancellation). */
+/**
+ * An order without personal data, as the engine keeps it in its records (E2-8, docs/07): no
+ * customer name, phone or email, and of the address only the city, province and country (the
+ * courier's zone). Mizan's own tables keep the rest, encrypted.
+ */
+export function withoutPersonalData(o: CanonicalOrder): CanonicalOrder {
+  const a = o.shippingAddress;
+  return {
+    ...o, raw: undefined, customer: { name: "" },
+    ...(a ? { shippingAddress: { line1: "", city: a.city, countryCode: a.countryCode, ...(a.province ? { province: a.province } : {}) } } : {}),
+  };
+}
+
 function orderFingerprint(o: CanonicalOrder): string {
   return [o.updatedAt, o.paymentMode, o.paymentStatus, o.outstanding?.amount ?? "", o.refunded?.amount ?? "", o.cancelled ? 1 : 0, [...o.tags].sort().join(",")].join("|");
 }

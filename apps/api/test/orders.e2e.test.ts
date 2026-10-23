@@ -83,6 +83,10 @@ describe("engine → orders (acceptance)", () => {
     expect((await events("order.created")).filter((e) => e.entity_id === orders[0]!.id)).toHaveLength(1);
     expect((await events("order.updated")).filter((e) => e.entity_id === orders[0]!.id)).toHaveLength(0);
     expect((await rows("order_lines")).filter((l) => l.order_id === orders[0]!.id)).toHaveLength(1);
+    // The engine's own records keep no personal data (E2-8): the whole table, not one row.
+    const engineRecords = await db.tenant(T, (trx) => trx.selectFrom("mz_records").select(["type", "value"]).execute());
+    expect(engineRecords.some((r) => r.type === "order")).toBe(true);
+    expect(JSON.stringify(engineRecords)).not.toMatch(/Mona|Adel|4821|Abbas|mona@example/);
   });
 });
 
