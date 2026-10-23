@@ -10,7 +10,8 @@ import { hang, json, type FakeClock } from "./clock.js";
  * fields (as after an API version change) and dropped fields.
  */
 
-type Fault = "500" | "timeout" | "network" | "throttle";
+/** lost: the call is carried out, then the response never arrives (a commit that "timed out"). */
+type Fault = "500" | "timeout" | "network" | "throttle" | "lost";
 
 interface Variant { id: string; sku: string; title: string; price: string; compareAtPrice: string | null; inventoryItemId: string }
 interface Product { id: string; title: string; status: string; vendor: string; productType: string; tags: string[]; descriptionHtml: string; updatedAt: string; variants: Variant[] }
@@ -35,6 +36,9 @@ export class FakeShopify {
   /** This app's webhook subscriptions on the shop. */
   webhooks = new Map<string, { topic: string; uri: string }>();
   products = new Map<string, Product>();
+  /** Open order edits (orderEditBegin) and how many were committed. */
+  readonly edits = new Map<string, { orderId: string; adds: Array<{ lineId: string; variantId: string; qty: number; pct: number }> }>();
+  committedEdits = 0;
   orders = new Map<string, Order>();
   inventory = new Map<string, number>();
   calls: Array<{ op: string; variables: Record<string, unknown> }> = [];
@@ -250,6 +254,7 @@ export class FakeShopify {
     this.bucket.available -= this.costPerCall;
     this.calls.push({ op, variables });
     const data = this.execute(op, variables);
+    if (fault === "lost") return hang(init);
     return json(200, { data: this.drop(data), extensions: this.cost() }, headers);
   };
 
@@ -404,6 +409,46 @@ export class FakeShopify {
       case "MizanWebhookDelete": {
         if (!this.webhooks.delete(v.id)) return { webhookSubscriptionDelete: { deletedWebhookSubscriptionId: null, userErrors: [{ field: ["id"], message: "Webhook subscription does not exist" }] } };
         return { webhookSubscriptionDelete: { deletedWebhookSubscriptionId: v.id, userErrors: [] } };
+      }
+      case "MizanOrderEditBegin": {
+        const o = this.orders.get(v.id);
+        if (!o) return { orderEditBegin: { calculatedOrder: null, userErrors: [{ field: ["id"], message: "Order does not exist" }] } };
+        if (o.cancelledAt) return { orderEditBegin: { calculatedOrder: null, userErrors: [{ field: ["id"], message: "Cannot edit a cancelled order" }] } };
+        const id = this.nextId("CalculatedOrder");
+        this.edits.set(id, { orderId: o.id, adds: [] });
+        return { orderEditBegin: { calculatedOrder: { id }, userErrors: [] } };
+      }
+      case "MizanOrderEditAddVariant": {
+        const e = this.edits.get(v.id);
+        const variant = [...this.products.values()].flatMap((p) => p.variants.map((x) => ({ p, x }))).find(({ x }) => x.id === v.variantId);
+        if (!e) return { orderEditAddVariant: { calculatedLineItem: null, userErrors: [{ field: ["id"], message: "Calculated order does not exist" }] } };
+        if (!variant) return { orderEditAddVariant: { calculatedLineItem: null, userErrors: [{ field: ["variantId"], message: "Variant does not exist" }] } };
+        const stock = [...this.inventory.entries()].filter(([k]) => k.startsWith(variant.x.inventoryItemId)).reduce((n, [, q]) => n + q, 0);
+        if (stock < v.quantity) return { orderEditAddVariant: { calculatedLineItem: null, userErrors: [{ field: ["variantId"], message: "is out of stock" }] } };
+        const lineId = this.nextId("CalculatedLineItem");
+        e.adds.push({ lineId, variantId: v.variantId, qty: v.quantity, pct: 0 });
+        return { orderEditAddVariant: { calculatedLineItem: { id: lineId }, calculatedOrder: { id: v.id }, userErrors: [] } };
+      }
+      case "MizanOrderEditAddLineItemDiscount": {
+        const add = this.edits.get(v.id)?.adds.find((a) => a.lineId === v.lineItemId);
+        if (!add) return { orderEditAddLineItemDiscount: { calculatedOrder: null, userErrors: [{ field: ["lineItemId"], message: "Line item does not exist" }] } };
+        add.pct = Number(v.discount?.percentValue ?? 0);
+        return { orderEditAddLineItemDiscount: { calculatedOrder: { id: v.id }, userErrors: [] } };
+      }
+      case "MizanOrderEditCommit": {
+        const e = this.edits.get(v.id);
+        const o = e ? this.orders.get(e.orderId) : undefined;
+        if (!e || !o) return { orderEditCommit: { order: null, userErrors: [{ field: ["id"], message: "Calculated order does not exist" }] } };
+        for (const a of e.adds) {
+          const { p, x } = [...this.products.values()].flatMap((p) => p.variants.map((x) => ({ p, x }))).find(({ x }) => x.id === a.variantId)!;
+          const unit = (Number(x.price) * (1 - a.pct / 100)).toFixed(2);
+          o.lines.push({ id: this.nextId("LineItem"), title: p.title, sku: x.sku, quantity: a.qty, price: unit });
+          o.total = (Number(o.total) + Number(unit) * a.qty).toFixed(2);
+        }
+        this.edits.delete(v.id);
+        this.committedEdits++;
+        o.updatedAt = this.touch();
+        return { orderEditCommit: { order: { id: o.id }, userErrors: [] } };
       }
       case "MizanTagsAdd": {
         const o = this.orders.get(v.id);

@@ -170,6 +170,53 @@ export const TAGS_ADD: GqlOperation = {
 };
 
 /**
+ * Order editing (E6-13: an accepted offer joins the customer's order). Needs write_order_edits.
+ * begin → add the variant → discount it → commit; nothing changes in the store until the commit,
+ * and an uncommitted edit is simply abandoned. Confirm the 2026-10 shapes on a dev store.
+ */
+export const ORDER_EDIT_BEGIN: GqlOperation = {
+  name: "MizanOrderEditBegin",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditBegin($id: ID!) {
+      orderEditBegin(id: $id) { calculatedOrder { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_ADD_VARIANT: GqlOperation = {
+  name: "MizanOrderEditAddVariant",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!) {
+      orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity, allowDuplicates: false) {
+        calculatedLineItem { id } calculatedOrder { id } userErrors { field message }
+      }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_ADD_DISCOUNT: GqlOperation = {
+  name: "MizanOrderEditAddLineItemDiscount",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditAddLineItemDiscount($id: ID!, $lineItemId: ID!, $discount: OrderEditAppliedDiscountInput!) {
+      orderEditAddLineItemDiscount(id: $id, lineItemId: $lineItemId, discount: $discount) { calculatedOrder { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_COMMIT: GqlOperation = {
+  name: "MizanOrderEditCommit",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditCommit($id: ID!, $notifyCustomer: Boolean, $staffNote: String) {
+      orderEditCommit(id: $id, notifyCustomer: $notifyCustomer, staffNote: $staffNote) { order { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+/**
  * Webhook subscriptions of this app on this shop (the API only returns our own).
  * `uri` replaced `endpoint { callbackUrl }` in 2025-04; variant 1 keeps the older shape.
  */

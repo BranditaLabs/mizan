@@ -15,7 +15,14 @@ export type OfferDecision = "accept" | "decline";
 export type OfferChannel = "whatsapp" | "call_team" | "agent";
 export interface OfferRow {
   id: string; order_id: string; run_id: string; variant_id: string; qty: number; currency: string; unit_price_minor: string; discount_pct: string;
-  offer_price_minor: string; source: string; message_ar: string | null; message_en: string | null; status: string; title: string;
+  offer_price_minor: string; source: string; message_ar: string | null; message_en: string | null; status: string; title: string; error: string | null;
+}
+
+/** Why an offer could not be added, for the team: the engine's reason in their terms. */
+export function failureOf(error: string | null): "not_in_store" | "unavailable" | "permission" | "failed" {
+  if (error === "not_in_store" || error === "permission") return error;
+  if (error === "validation" || error === "not_found") return "unavailable"; // sold out, removed, or the order was cancelled in Shopify
+  return "failed";
 }
 
 /** Orders from this long ago tell what is bought together; popularity is the last 90 days. */
@@ -31,6 +38,8 @@ const OPEN_ORDER = ["new", "pending_confirmation", "confirmed"];
  * chat right after the customer confirms and in the team's call script. Accepting records it and
  * emits offer.accepted; adding it to the store's order is E6-13.
  */
+export type OfferResult = { ok: true; outcome: string } | { ok: false; reason: string; message: string };
+
 @Injectable()
 export class OffersService {
   constructor(
@@ -138,7 +147,7 @@ export class OffersService {
 
   private base(trx: Transaction<DB>) {
     return trx.selectFrom("order_offers as f").innerJoin("variants as v", "v.id", "f.variant_id").innerJoin("products as p", "p.id", "v.product_id")
-      .select(["f.id", "f.order_id", "f.run_id", "f.variant_id", "f.qty", "f.currency", "f.unit_price_minor", "f.discount_pct", "f.offer_price_minor", "f.source", "f.message_ar", "f.message_en", "f.status", "f.created_at"])
+      .select(["f.id", "f.order_id", "f.run_id", "f.variant_id", "f.qty", "f.currency", "f.unit_price_minor", "f.discount_pct", "f.offer_price_minor", "f.source", "f.message_ar", "f.message_en", "f.status", "f.error", "f.created_at"])
       .select(sql<string>`CASE WHEN v.title IS NULL THEN p.title ELSE p.title || ' — ' || v.title END`.as("title"));
   }
 
@@ -182,7 +191,36 @@ export class OffersService {
     return {
       id: f.id, title: f.title, qty: f.qty, unitPrice: m(f.unit_price_minor), offerPrice: m(f.offer_price_minor), discountPct: String(Number(f.discount_pct)),
       source: f.source as "rule", status: f.status as "proposed", messageAr: f.message_ar, messageEn: f.message_en,
+      failure: f.status === "failed" ? failureOf(f.error) : null,
     };
+  }
+
+  /**
+   * What the store said (E6-13, engine hook): the offer is in the Shopify order now, or could not
+   * be added. On failure the team sees it on the order card, and a customer who accepted in the
+   * chat is told the team will call. Safe to repeat.
+   */
+  async recordResult(tenantId: string, offerId: string, result: OfferResult, now = new Date()): Promise<void> {
+    await this.db.tenant(tenantId, (trx) => this.recordResultIn(trx, tenantId, offerId, result, now));
+  }
+
+  /** The engine's answer for an offer (or an offer that cannot reach the store): applied or failed, once. */
+  async recordResultIn(trx: Transaction<DB>, tenantId: string, offerId: string, result: OfferResult, now = new Date()): Promise<void> {
+    const f = await trx.selectFrom("order_offers as f").innerJoin("orders as o", "o.id", "f.order_id")
+      .select(["f.id", "f.status", "f.order_id", "f.run_id", "f.channel", "o.number"]).where("f.id", "=", offerId).forUpdate().executeTakeFirst();
+    if (!f || !["accepted", "applying"].includes(f.status)) return;
+    const status = result.ok ? "applied" : "failed";
+    await trx.updateTable("order_offers").set({ status, error: result.ok ? null : result.reason, updated_at: now }).where("id", "=", f.id).execute();
+    await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: f.order_id, type: `offer_${status}`, actor_type: "system", data: JSON.stringify(result.ok ? {} : { reason: result.reason }) }).execute();
+    await this.events.emit(trx, {
+      type: `offer.${status}` as "offer.applied", tenantId, entity: { type: "order", id: f.order_id }, actor: { type: "system" },
+      data: { number: f.number, offerId: f.id, ...(result.ok ? { outcome: result.outcome } : { reason: result.reason }) },
+    });
+    if (!result.ok && f.channel === "whatsapp") {
+      await trx.insertInto("confirmation_steps").values({
+        tenant_id: tenantId, run_id: f.run_id, idx: 0, channel: "whatsapp", kind: "reply", run_at: now, payload: JSON.stringify({ message: "offer_failed" }), idempotency_key: `${f.run_id}:reply:offer_failed:${f.id}`,
+      }).onConflict((oc) => oc.columns(["tenant_id", "idempotency_key"]).doNothing()).execute();
+    }
   }
 
   // ───────────── settings, rules, summary ─────────────

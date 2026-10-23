@@ -134,6 +134,8 @@ erDiagram
 
 ✅ Migration 0023 (E6-12): `confirmation_steps.kind` adds `ai_offer` (payload: the offer id, the order's items and the shortlist with prices and costs; product facts only). Settings `offers.ai`.
 
+✅ E6-13 (no migration): `order_offers.status` moves `accepted → applying → applied|failed` from the engine's `shopify.addOffer` job; `error` keeps the reason (`not_in_store`, `validation`, `not_found`, `permission`, `failed`); `order_events` gets `offer_applied` / `offer_failed`.
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data

@@ -6861,6 +6861,17 @@
               "messageEn": {
                 "nullable": true,
                 "type": "string"
+              },
+              "failure": {
+                "nullable": true,
+                "description": "Why it was not added to the store's order: not_in_store (manual order or unlinked product), unavailable (sold out, removed, order cancelled), permission (reconnect the store), failed",
+                "type": "string",
+                "enum": [
+                  "not_in_store",
+                  "unavailable",
+                  "permission",
+                  "failed"
+                ]
               }
             },
             "required": [
@@ -6873,7 +6884,8 @@
               "source",
               "status",
               "messageAr",
-              "messageEn"
+              "messageEn",
+              "failure"
             ],
             "additionalProperties": false
           },

@@ -187,7 +187,7 @@ export class ConfirmationService {
     const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
     const due = BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor);
     const f = await this.offers.forRun(trx, run.id);
-    const offer = f && (f.status === "proposed" || f.status === "accepted") ? (() => {
+    const offer = f && !["declined", "expired"].includes(f.status) ? (() => {
       const v = this.offers.view(f);
       return {
         id: f.id, title: v.title, qty: v.qty, price: v.offerPrice, was: Number(v.discountPct) > 0 ? v.unitPrice : null,

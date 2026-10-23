@@ -9,12 +9,15 @@ import { WhatsAppConnections } from "./whatsapp-connections.service.js";
 import { OffersController } from "./offers/offers.controller.js";
 import { OffersService } from "./offers/offers.service.js";
 import { OfferAi } from "./offers/offer-ai.service.js";
+import { OfferApplyConsumer } from "./offers/offer-apply.consumer.js";
+import { OFFER_RESULTS } from "../../integrations/engine-registry.js";
 
-/** M2 Confirmation (E6-7, E6-10): automated cascade, the WhatsApp chat, team calls, the customer's link, settings. */
+/** M2 Confirmation (E6-7, E6-10…E6-13): automated cascade, the WhatsApp chat, team calls, offers, the customer's link, settings. */
 @Global()
 @Module({
   controllers: [ConfirmationController, PublicConfirmationController, OffersController],
-  providers: [ConfirmationService, ConfirmationRunner, ConfirmationConsumer, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OffersService, OfferAi],
-  exports: [ConfirmationService, ConfirmationRunner, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OfferAi],
+  providers: [ConfirmationService, ConfirmationRunner, ConfirmationConsumer, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OffersService, OfferAi, OfferApplyConsumer,
+    { provide: OFFER_RESULTS, useExisting: OffersService }],
+  exports: [ConfirmationService, ConfirmationRunner, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OfferAi, OFFER_RESULTS],
 })
 export class ConfirmationModule {}

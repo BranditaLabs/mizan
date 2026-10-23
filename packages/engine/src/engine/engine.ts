@@ -51,8 +51,15 @@ export interface EngineOptions {
     onProduct?: (product: CanonicalProduct) => Promise<void>;
     /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
     onAccessChecked?: (provider: "bosta", result: AccessCheck) => Promise<void>;
+    /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
+    onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
   };
 }
+
+/** Adding an offer to the store's order: done (now or before), or why not (final; the team adds it by hand). */
+export type OfferOutcome = { ok: true; outcome: "added" | "already_added" } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string };
+
+export interface OfferJob { offerId: string; orderId: string; variantId: string; qty: number; discountPct: string; note: string }
 
 /** The outcome of checking a courier key: a refusal is final (the merchant must fix the key), not retried. */
 export type AccessCheck = { ok: true } | { ok: false; reason: "auth" | "permission"; message: string };
@@ -288,6 +295,11 @@ export class MizanEngine {
     return { kind: "bosta.checkAccess", connection: "bosta", payload: {}, idempotencyKey: `bosta:access:${runKey}` };
   }
 
+  /** Add an accepted offer to the store's order (E6-13): one job per offer, whatever happens. */
+  static shopifyOfferJob(p: OfferJob): NewJob<OfferJob> {
+    return { kind: "shopify.addOffer", connection: "shopify", payload: p, idempotencyKey: `shopify:offer:${p.offerId}` };
+  }
+
   static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
   }
@@ -417,7 +429,28 @@ export class MizanEngine {
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
       "shopify.backfill": (j) => this.backfillPage(j.payload),
       "bosta.checkAccess": () => this.checkBostaAccess(),
+      "shopify.addOffer": (j) => this.addOffer(j.payload),
     };
+  }
+
+  private async addOffer(p: OfferJob) {
+    let outcome: OfferOutcome;
+    try {
+      const r = await this.shopify.addOfferToOrder({ orderId: p.orderId, variantId: p.variantId, qty: p.qty, discountPct: p.discountPct, marker: p.offerId, note: p.note });
+      outcome = { ok: true, outcome: r };
+    } catch (e) {
+      // Retryable trouble is retried by the worker (and reported if it never succeeds); the rest is final.
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, { ok: false, reason, message: e.message }));
+      this.emit("offer.failed", { offerId: p.offerId, orderId: p.orderId, reason });
+      if (reason === "permission") throw e; // the store must approve order edits again: surfaces as needs attention
+      return;
+    }
+    // Fat fetch: the order's new total and line come back like any other order change.
+    await this.ingestOrder(p.orderId);
+    await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, outcome));
+    this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
   }
 
   private async checkBostaAccess() {
@@ -641,6 +674,12 @@ export class MizanEngine {
       const kind = o.error instanceof IntegrationError ? o.error.kind : "permanent";
       this.emit("job.dead", { jobId: o.job.id, job: o.job.kind, errorKind: kind, error: o.error.message, payload: o.job.payload as Record<string, unknown> });
       if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
+      // An offer that never made it into the store's order: the team adds it by hand.
+      if (o.job.kind === "shopify.addOffer" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as OfferJob;
+        this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "offer result hook failed", { offerId: p.offerId, error: e instanceof Error ? e.message : String(e) }));
+      }
     }
   }
 }

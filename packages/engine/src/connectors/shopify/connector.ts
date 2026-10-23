@@ -208,6 +208,63 @@ export class ShopifyConnector {
     return "marked";
   }
 
+  /**
+   * Add an accepted offer to the customer's order (E6-13) through Shopify's order edit. Safe to
+   * repeat: it reads first and stops if the order already carries the offer (its marker tag, or
+   * the item's line already there after a commit whose response was lost); the commit itself is
+   * not idempotent, so a timeout is verified by reading the order again, never re-sent blindly.
+   * The marker tag goes on last. Throws `validation` for an order that cannot take it (cancelled,
+   * item sold out or gone).
+   */
+  async addOfferToOrder(o: { orderId: string; variantId: string; qty: number; discountPct: string; marker: string; note: string }): Promise<"added" | "already_added"> {
+    const tag = `mizan-offer-${o.marker}`;
+    const state = async () => {
+      const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: o.orderId }, { idempotent: true });
+      if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${o.orderId} not found` });
+      const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+      const lines = r.arr("lineItems", ["lineItems"]).map((li) => {
+        const lr = r.child(li, "order.lineItem");
+        return { variantId: lr.str("variantId", ["variant.id", "variantId"]), quantity: lr.num("quantity", ["currentQuantity", "quantity"]) ?? 0 };
+      });
+      return {
+        tagged: r.arr<string>("tags", ["tags"]).includes(tag),
+        hasLine: lines.some((l) => l.variantId === o.variantId && l.quantity >= o.qty),
+        cancelled: Boolean(r.str("cancelledAt", ["cancelledAt"])),
+      };
+    };
+    const before = await state();
+    if (before.tagged) return "already_added";
+    if (before.hasLine) { await this.addTags(o.orderId, [tag]); return "already_added"; }
+    if (before.cancelled) throw new IntegrationError({ kind: "validation", connector: "shopify", message: `order ${o.orderId} is cancelled` });
+
+    const begin = await this.gql.run<{ orderEditBegin: { calculatedOrder?: { id: string } | null; userErrors: UserErrors } }>(Q.ORDER_EDIT_BEGIN, { id: o.orderId }, { idempotent: true });
+    assertNoUserErrors("orderEditBegin", begin.orderEditBegin?.userErrors);
+    const calc = begin.orderEditBegin?.calculatedOrder?.id;
+    if (!calc) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderEditBegin: no calculatedOrder.id" });
+    // Adding to an uncommitted edit changes nothing in the store: safe to repeat.
+    const add = await this.gql.run<{ orderEditAddVariant: { calculatedLineItem?: { id: string } | null; userErrors: UserErrors } }>(Q.ORDER_EDIT_ADD_VARIANT, { id: calc, variantId: o.variantId, quantity: o.qty }, { idempotent: true });
+    assertNoUserErrors("orderEditAddVariant", add.orderEditAddVariant?.userErrors);
+    const line = add.orderEditAddVariant?.calculatedLineItem?.id;
+    if (!line) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderEditAddVariant: no calculatedLineItem.id" });
+    if (Number(o.discountPct) > 0) {
+      const d = await this.gql.run<{ orderEditAddLineItemDiscount: { userErrors: UserErrors } }>(Q.ORDER_EDIT_ADD_DISCOUNT, {
+        id: calc, lineItemId: line, discount: { percentValue: Number(o.discountPct), description: o.note },
+      }, { idempotent: true });
+      assertNoUserErrors("orderEditAddLineItemDiscount", d.orderEditAddLineItemDiscount?.userErrors);
+    }
+    try {
+      const c = await this.gql.run<{ orderEditCommit: { userErrors: UserErrors } }>(Q.ORDER_EDIT_COMMIT, { id: calc, notifyCustomer: false, staffNote: o.note }, { idempotent: false });
+      assertNoUserErrors("orderEditCommit", c.orderEditCommit?.userErrors);
+    } catch (err) {
+      // The commit may have gone through before the response was lost: look before anything else.
+      if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+      const after = await state();
+      if (!after.hasLine && !after.tagged) throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderEditCommit timed out and the order has no new line: will start the edit again", cause: err });
+    }
+    await this.addTags(o.orderId, [tag]);
+    return "added";
+  }
+
   async addTags(id: string, tags: string[]): Promise<void> {
     const d = await this.gql.run<{ tagsAdd: { userErrors: UserErrors } }>(Q.TAGS_ADD, { id, tags }, { idempotent: true });
     assertNoUserErrors("tagsAdd", d.tagsAdd?.userErrors);

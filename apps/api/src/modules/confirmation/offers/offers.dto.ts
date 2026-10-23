@@ -18,6 +18,8 @@ export const OfferViewSchema = z.object({
   status: z.enum(["proposed", "accepted", "declined", "expired", "applying", "applied", "failed"]),
   messageAr: z.string().nullable(),
   messageEn: z.string().nullable(),
+  failure: z.enum(["not_in_store", "unavailable", "permission", "failed"]).nullable()
+    .describe("Why it was not added to the store's order: not_in_store (manual order or unlinked product), unavailable (sold out, removed, order cancelled), permission (reconnect the store), failed"),
 });
 
 export const OfferDecisionSchema = z.strictObject({ decision: z.enum(["accept", "decline"]).describe("The customer's answer on the call") });

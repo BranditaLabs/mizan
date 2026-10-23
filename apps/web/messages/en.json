@@ -744,7 +744,15 @@
         "title": "Offer",
         "accept": "Customer accepted",
         "decline": "Not interested",
-        "acceptedHint": "It will be added to the store's order (automatically soon). For now, add it in Shopify by hand.",
+        "acceptedHint": "Mizan is adding it to the store's order now.",
+        "applyingHint": "Being added to the store's order…",
+        "appliedHint": "Added to the store's order: the courier collects the new total.",
+        "failed": {
+          "not_in_store": "Not added: this order or product isn't in a connected store. Add it by hand and tell the customer.",
+          "unavailable": "Not added: the item is sold out or no longer in the store, or the order was cancelled. Call the customer.",
+          "permission": "Not added: the store needs reconnecting to allow order edits (Settings → Integrations). Add it by hand for now.",
+          "failed": "Not added: the store didn't accept the change. Add it by hand and tell the customer."
+        },
         "status": {
           "proposed": "Offered",
           "accepted": "Accepted",

@@ -4,6 +4,7 @@ import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { Alert } from "@/components/ui/Alert";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button, ButtonGroup } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/Dialog";
@@ -127,7 +128,10 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
                 <Button size="sm" variant="ghost" busy={offerDecision.isPending && offerDecision.variables === "decline"} onClick={() => offerDecision.mutate("decline")}>{t("offer.decline")}</Button>
               </ButtonGroup>
             ) : null}
-            {s.offer.status === "accepted" ? <p className="text-caption text-text-2">{t("offer.acceptedHint")}</p> : null}
+            {s.offer.status === "accepted" || s.offer.status === "applying" || s.offer.status === "applied" ? (
+              <p className="text-caption text-text-2">{t(s.offer.status === "applied" ? "offer.appliedHint" : s.offer.status === "applying" ? "offer.applyingHint" : "offer.acceptedHint")}</p>
+            ) : null}
+            {s.offer.status === "failed" ? <Alert tone="warning">{t(`offer.failed.${s.offer.failure ?? "failed"}`)}</Alert> : null}
           </section>
         ) : null}
 

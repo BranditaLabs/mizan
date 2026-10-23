@@ -67,8 +67,8 @@ const REASON_TITLE: Record<"ar" | "en", Record<CancelReason | "keep", string>> =
 };
 
 /** Follow-up messages inside the chat, after the customer taps (free-form, no template). */
-export type ChatMessage = "confirmed" | "confirmed_offer" | "offer_added" | "offer_declined" | "offer_expired" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already";
-export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already"];
+export type ChatMessage = "confirmed" | "confirmed_offer" | "offer_added" | "offer_declined" | "offer_expired" | "offer_failed" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already";
+export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "offer_failed", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already"];
 
 export type ChatContent =
   | { type: "text"; text: string }
@@ -106,6 +106,10 @@ export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
         : (ar ? "تمام ✅ هنضيفه لأوردرك." : "Done ✅ we'll add it to your order.") };
     case "offer_declined":
       return { type: "text", text: ar ? "ولا يهمك 🙏 أوردرك ماشي زي ما هو." : "No problem 🙏 your order stays as it is." };
+    case "offer_failed":
+      return { type: "text", text: f.offer
+        ? (ar ? `معلش، مقدرناش نضيف ${f.offer.title} لأوردرك دلوقتي. فريق ${f.store} هيكلّمك يظبطها معاك.` : `Sorry, we couldn't add ${f.offer.title} to your order just now. The ${f.store} team will call you to sort it out.`)
+        : (ar ? `معلش، مقدرناش نضيف العرض دلوقتي. فريق ${f.store} هيكلّمك.` : `Sorry, we couldn't add the offer just now. The ${f.store} team will call you.`) };
     case "offer_expired":
       return { type: "text", text: ar ? "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏" : "This offer has ended, but your order goes ahead as it is 🙏" };
     case "change_prompt":

@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { defaultRuntime, MizanEngine, SqlStore, type EngineOptions, type Runtime } from "@mizan/engine";
+import { ModuleRef } from "@nestjs/core";
+import { defaultRuntime, MizanEngine, SqlStore, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
 import { APP_CONFIG, type AppConfig } from "../platform/config.js";
 import { Database } from "../platform/db/database.js";
@@ -17,6 +18,12 @@ export const ENGINE_RUNTIME = Symbol("ENGINE_RUNTIME");
 /** Listener for engine events (order.ingested, shipment.status …); E2-3 maps them to domain events. */
 export type EngineEventSink = (tenantId: string, event: string, data: Record<string, unknown>) => void;
 export const ENGINE_EVENT_SINK = Symbol("ENGINE_EVENT_SINK");
+
+/** Where the engine's answer for an accepted offer goes (E6-13); M2's OffersService, bound by token to keep the import graph acyclic. */
+export interface OfferResultSink {
+  recordResult(tenantId: string, offerId: string, result: OfferOutcome): Promise<void>;
+}
+export const OFFER_RESULTS = Symbol("OFFER_RESULTS");
 
 export interface TenantEngine {
   tenantId: string;
@@ -63,7 +70,13 @@ export class EngineRegistry {
     @Inject(OrderProjector) private readonly orders: OrderProjector,
     @Inject(ProductProjector) private readonly products: ProductProjector,
     @Inject(CourierAccess) private readonly courierAccess: CourierAccess,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
+
+  /** M2 depends on the engine and the engine reports back to M2: resolved when first needed. */
+  private get offerResults(): OfferResultSink | undefined {
+    try { return this.moduleRef.get<OfferResultSink>(OFFER_RESULTS, { strict: false }); } catch { return undefined; }
+  }
 
   async get(tenantId: string): Promise<TenantEngine> {
     const hit = this.cache.get(tenantId);
@@ -131,6 +144,10 @@ export class EngineRegistry {
         },
         onAwaitingPayment: async (order, reason) => {
           await this.orders.awaitingPayment(tenantId, c.shopify.connectionId, order, reason);
+        },
+        // An accepted offer is in the Shopify order now, or could not be added (E6-13).
+        onOfferResult: async (offerId, result) => {
+          await this.offerResults?.recordResult(tenantId, offerId, result);
         },
         // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
         onLearned: async (provider, state) => {

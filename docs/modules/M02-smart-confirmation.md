@@ -97,7 +97,7 @@ The customer sees it **in the thank-you message** right after tapping Confirm, w
 → "تمام ✅ هنضيف طرحة مطابقة لأوردرك، والإجمالي الجديد 1,385 ج.م."   or   "ولا يهمك 🙏 أوردرك ماشي زي ما هو."
 ```
 
-It goes inside the free window the customer's tap opened, so the template stays utility. On a team call the script ends with the offer, and the order card has "Customer accepted / Not interested". The price recorded is the price shown, never more; an offer ends when the order ships or after 48 hours. Off by default; the owner turns it on. Accepting records the offer (`offer.accepted`); adding it to the Shopify order is E6-13 (until then, the card asks the team to add it by hand). Settings → Offers also shows offers made, accepted and the sales they added (30 days).
+It goes inside the free window the customer's tap opened, so the template stays utility. On a team call the script ends with the offer, and the order card has "Customer accepted / Not interested". The price recorded is the price shown, never more; an offer ends when the order ships or after 48 hours. Off by default; the owner turns it on. Accepting records the offer (`offer.accepted`) and Mizan adds it to the Shopify order (E6-13): one engine job per offer (`shopify.addOffer`, key `shopify:offer:<id>`) reads the order first (tag `mizan-offer-<id>` or the line already there = done), then `orderEditBegin` → `orderEditAddVariant` → `orderEditAddLineItemDiscount` (the offer's %) → `orderEditCommit` (customer not notified by Shopify), verifies a commit whose answer was lost by reading the order again (never commits twice), then tags it. The order is read back, so its total, the cash to collect and profit include the new line. The offer becomes `applying` → `applied`, or `failed` with a reason the card spells out: not in a connected store (manual order, unlinked product: fails at once, no job), unavailable (sold out, removed, order cancelled), permission (store must reconnect for `write_order_edits`), or failed; the team adds it by hand. A customer who accepted in the chat gets "we couldn't add it, the team will call you". **Shipping waits** while an order's offer is `accepted` or `applying` (E7-1). Settings → Offers also shows offers made, accepted and the sales they added (30 days).
 
 ### Claude picks and words the offer (E6-12)
 
@@ -109,7 +109,7 @@ With **"Let AI choose and write the offer"** on (Settings → Offers; needs `ANT
 
 No customer name, phone or address is ever sent. Metrics: `mizan_ai_offer_total{result}` (picked, worded, refusal, invalid, unsafe, error, late, retry) and `mizan_ai_tokens_total{kind}`.
 
-**Next:** accepted offers added to the Shopify order (E6-13), automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
+**Next:** automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
 
 ## Main screen — Confirmation queue
 

@@ -131,6 +131,7 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 | Address change after booking | Courier update API if supported, else cancel and rebook |
 | Partial delivery | Delivered items charged; rest go to M6 |
 | Duplicate tracking number | Rejected; alert to ops |
+| Upsell offer still being added (M2, E6-13) | Booking waits while the order's offer is `accepted` or `applying`, so the parcel and the cash to collect include it; a proposed offer is allowed up to 30 minutes after confirmation, then it expires and booking goes ahead |
 
 ## Acceptance criteria
 

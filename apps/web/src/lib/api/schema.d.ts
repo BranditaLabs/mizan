@@ -1517,6 +1517,11 @@ export interface components {
                 status: "proposed" | "accepted" | "declined" | "expired" | "applying" | "applied" | "failed";
                 messageAr: string | null;
                 messageEn: string | null;
+                /**
+                 * @description Why it was not added to the store's order: not_in_store (manual order or unlinked product), unavailable (sold out, removed, order cancelled), permission (reconnect the store), failed
+                 * @enum {string|null}
+                 */
+                failure: "not_in_store" | "unavailable" | "permission" | "failed" | null;
             } | null;
             /** @description Channels the store can use for confirmation */
             channels: {
