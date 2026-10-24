@@ -71,7 +71,10 @@ export class ProfitHomeService {
         trx.selectFrom("order_pnl as p").innerJoin("orders as o", "o.id", "p.order_id").select(sql<string>`unnest(p.flags)`.as("flag"))
           .where("p.day", ">=", asDate(from)).where("p.day", "<=", asDate(to)).where("o.status", "<>", "cancelled").as("x"),
       ).select(["x.flag", sql<string>`count(*)`.as("n")]).groupBy("x.flag").execute();
-      return { base, today, from, to, yesterday, byDay, period, prev, y, excluded: Number(excluded.n), fixed, prevFixed, cash, flags };
+      // Store days whose nightly reconciliation left a gap (E5-8): the totals above miss orders.
+      const gaps = await trx.selectFrom("order_reconciliations").select(sql<string>`count(*)`.as("n"))
+        .where("day", ">=", asDate(from)).where("day", "<=", asDate(to)).where("gap", "<>", 0).executeTakeFirstOrThrow();
+      return { base, today, from, to, yesterday, byDay, period, prev, y, excluded: Number(excluded.n), fixed, prevFixed, cash, flags, gapDays: Number(gaps.n) };
     });
 
     const ads = await this.ads.list(tenantId, { from: result.from, to: result.to }, now);
@@ -89,6 +92,7 @@ export class ProfitHomeService {
     if (p.losing > 0n) leaks.push({ kind: "losing_orders", count: Number(p.losing), amount: m(-p.losingNet) });
     if (p.returned > 0n && p.returnedNet < 0n) leaks.push({ kind: "refusals", count: Number(p.returned), amount: m(-p.returnedNet) });
     if (unallocated > 0n) leaks.push({ kind: "unallocated_ads", count: ads.days.filter((d) => d.perOrder === null).length, amount: m(unallocated) });
+    if (result.gapDays > 0) leaks.push({ kind: "sync_gap", count: result.gapDays, amount: null });
     if (result.excluded > 0) leaks.push({ kind: "other_currency", count: result.excluded, amount: null });
     for (const f of SETUP_LEAKS) if (counts.get(f)) leaks.push({ kind: f, count: counts.get(f)!, amount: null });
     leaks.sort((a, b) => (a.amount && b.amount ? Number(toMinor(b.amount) - toMinor(a.amount)) : a.amount ? -1 : b.amount ? 1 : 0));

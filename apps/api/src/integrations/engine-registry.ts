@@ -9,6 +9,7 @@ import { ConnectionResolver, type ResolvedConnections } from "./connection-resol
 import { ProductProjector } from "../modules/catalog/product-projector.js";
 import { CourierAccess } from "./courier-access.js";
 import { OrderProjector } from "../modules/orders/order-projector.js";
+import { ReconciliationService } from "../modules/orders/reconciliation.service.js";
 
 /** Builds the engine runtime for a tenant (tests inject fake providers here). */
 /** Runtime for a tenant's engine; also called without connections for one-off provider calls (OAuth code exchange). */
@@ -71,6 +72,7 @@ export class EngineRegistry {
     @Inject(ProductProjector) private readonly products: ProductProjector,
     @Inject(CourierAccess) private readonly courierAccess: CourierAccess,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
+    @Inject(ReconciliationService) private readonly reconciliation: ReconciliationService,
   ) {}
 
   /** M2 depends on the engine and the engine reports back to M2: resolved when first needed. */
@@ -144,6 +146,10 @@ export class EngineRegistry {
         },
         onAwaitingPayment: async (order, reason) => {
           await this.orders.awaitingPayment(tenantId, c.shopify.connectionId, order, reason);
+        },
+        // A store day was reconciled (E5-8): Mizan counts its own orders and records the result.
+        onReconciled: async (result) => {
+          await this.reconciliation.record(tenantId, c.shopify.connectionId, result);
         },
         // An accepted offer is in the Shopify order now, or could not be added (E6-13).
         onOfferResult: async (offerId, result) => {

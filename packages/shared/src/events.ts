@@ -10,7 +10,7 @@ export const DOMAIN_EVENT_TYPES = [
   "connection.connected", "connection.disconnected", "connection.needs_attention",
   "privacy.requested", "privacy.completed",
   // M1 Orders
-  "order.created", "order.updated", "order.cancelled", "order.duplicate_found", "order.duplicate_resolved",
+  "order.created", "order.updated", "order.cancelled", "order.duplicate_found", "order.duplicate_resolved", "orders.reconciled", "orders.reconciliation_gap",
   // M2 Confirmation
   "order.scored", "order.confirmed", "order.confirmation_failed",
   "confirmation.started", "confirmation.sent", "confirmation.escalated",

@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -147,6 +147,14 @@ describe("schema", () => {
     await expect(asTenant(T1, () => db.query(`UPDATE orders SET duplicate_status = NULL WHERE id = $1`, [b!.id]))).rejects.toThrow(/orders_duplicate_shape/);
     await expect(asTenant(T1, () => db.query(`UPDATE orders SET duplicate_of = id, duplicate_status = 'kept' WHERE id = $1`, [a!.id]))).rejects.toThrow(/orders_duplicate_shape/);
     await expect(asTenant(T1, () => db.query(`UPDATE orders SET duplicate_status = 'maybe' WHERE id = $1`, [b!.id]))).rejects.toThrow(/duplicate_status_check/);
+  });
+
+  it("records one reconciliation per store and day, with the gap computed (E5-8)", async () => {
+    const conn = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO connections (tenant_id, kind, provider, external_account) VALUES ($1, 'store', 'shopify', 'rec.myshopify.com') RETURNING id`, [T1]))).rows[0]!.id;
+    const add = (store: number, mizan: number) => asTenant(T1, () => db.query<{ gap: number }>(`INSERT INTO order_reconciliations (tenant_id, connection_id, day, store_orders, mizan_orders) VALUES ($1, $2, '2026-10-23', $3, $4) RETURNING gap`, [T1, conn, store, mizan]));
+    expect((await add(12, 11)).rows[0]!.gap).toBe(1);
+    await expect(add(12, 12)).rejects.toThrow(/duplicate key/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM order_reconciliations`))).rows).toEqual([]);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {

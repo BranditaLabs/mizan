@@ -28,11 +28,12 @@ const noon = (day: string) => new Date(`${day}T12:00:00Z`);
 const LEAK_LINK: Record<Leak["kind"], string> = {
   losing_orders: "/orders", refusals: "/orders", unallocated_ads: "/settings/ads", other_currency: "/settings/costs",
   cost_missing: "/onboarding", shipping_rate_missing: "/settings/costs", cod_fee_missing: "/settings/costs", agent_cost_missing: "/settings/costs",
-  packaging_cost_missing: "/settings/costs", payment_fee_missing: "/settings/costs", fx_missing: "/settings/costs", ads_fx_missing: "/settings/costs",
+  packaging_cost_missing: "/settings/costs", payment_fee_missing: "/settings/costs", fx_missing: "/settings/costs", ads_fx_missing: "/settings/costs", sync_gap: "/onboarding",
 };
 const LEAK_ICON: Record<Leak["kind"], IconProps["name"]> = {
   losing_orders: "warning", refusals: "warning", unallocated_ads: "finance", other_currency: "finance", cost_missing: "info", shipping_rate_missing: "info",
   cod_fee_missing: "info", agent_cost_missing: "info", packaging_cost_missing: "info", payment_fee_missing: "info", fx_missing: "info", ads_fx_missing: "info",
+  sync_gap: "warning",
 };
 
 /**

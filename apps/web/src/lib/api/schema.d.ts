@@ -2213,7 +2213,7 @@ export interface components {
             /** @description What is costing money or hiding it, most costly first */
             leaks: {
                 /** @enum {string} */
-                kind: "losing_orders" | "refusals" | "unallocated_ads" | "other_currency" | "cost_missing" | "shipping_rate_missing" | "cod_fee_missing" | "agent_cost_missing" | "packaging_cost_missing" | "payment_fee_missing" | "fx_missing" | "ads_fx_missing";
+                kind: "losing_orders" | "refusals" | "unallocated_ads" | "other_currency" | "cost_missing" | "shipping_rate_missing" | "cod_fee_missing" | "agent_cost_missing" | "packaging_cost_missing" | "payment_fee_missing" | "fx_missing" | "ads_fx_missing" | "sync_gap";
                 count: number;
                 amount: {
                     amount: string;

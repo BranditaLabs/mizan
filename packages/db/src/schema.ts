@@ -499,6 +499,17 @@ export interface OrderPnl {
   flags: Generated<ArrayType<string>>;
 }
 
+export interface OrderReconciliations {
+  tenant_id: string;
+  connection_id: string;
+  day: Timestamp;
+  store_orders: number;
+  recovered: Generated<number>;
+  mizan_orders: number;
+  gap: GeneratedAlways<number | null>;
+  checked_at: Generated<Timestamp>;
+}
+
 export interface Orders {
   id: Generated<string>;
   tenant_id: string;
@@ -1015,6 +1026,7 @@ export interface DB {
   order_lines: OrderLines;
   order_offers: OrderOffers;
   order_pnl: OrderPnl;
+  order_reconciliations: OrderReconciliations;
   orders: Orders;
   payment_links: PaymentLinks;
   payments: Payments;

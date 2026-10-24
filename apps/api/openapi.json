@@ -9909,7 +9909,8 @@
                     "packaging_cost_missing",
                     "payment_fee_missing",
                     "fx_missing",
-                    "ads_fx_missing"
+                    "ads_fx_missing",
+                    "sync_gap"
                   ]
                 },
                 "count": {

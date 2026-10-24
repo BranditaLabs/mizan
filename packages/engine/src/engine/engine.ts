@@ -53,11 +53,18 @@ export interface EngineOptions {
     onAccessChecked?: (provider: "bosta", result: AccessCheck) => Promise<void>;
     /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
     onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
+    /** A store day was reconciled (E5-8): what the store had, and how many the engine recovered. */
+    onReconciled?: (result: ReconcileResult) => Promise<void>;
   };
 }
 
 /** Adding an offer to the store's order: done (now or before), or why not (final; the team adds it by hand). */
 export type OfferOutcome = { ok: true; outcome: "added" | "already_added" } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string };
+
+/** One store day to reconcile (E5-8): orders created in [from, to). */
+export interface ReconcileJob { day: string; from: string; to: string }
+/** What the store had that day, and how many of those the engine had never recorded (now ingested). */
+export interface ReconcileResult { day: string; from: string; to: string; seen: number; recovered: number }
 
 export interface OfferJob { offerId: string; orderId: string; variantId: string; qty: number; discountPct: string; note: string }
 
@@ -301,6 +308,14 @@ export class MizanEngine {
     return { kind: "shopify.addOffer", connection: "shopify", payload: p, idempotencyKey: `shopify:offer:${p.offerId}` };
   }
 
+  /**
+   * Nightly reconciliation (E5-8): read every order the store created in a window and ingest any
+   * the engine never recorded (a webhook lost on the way). One job per store day.
+   */
+  static shopifyReconcileJob(p: ReconcileJob): NewJob<ReconcileJob> {
+    return { kind: "shopify.reconcile", connection: "shopify", payload: p, idempotencyKey: `shopify:reconcile:${p.day}` };
+  }
+
   /** Tag a store order (Mizan's decisions the merchant should see in Shopify, e.g. mizan-duplicate); tags are idempotent. */
   static shopifyTagJob(orderId: string, tags: string[], key: string): NewJob<{ id: string; tags: string[] }> {
     return { kind: "shopify.addTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `tag:${orderId}:${tags.join(",")}:${key}` };
@@ -436,6 +451,7 @@ export class MizanEngine {
       "shopify.backfill": (j) => this.backfillPage(j.payload),
       "bosta.checkAccess": () => this.checkBostaAccess(),
       "shopify.addOffer": (j) => this.addOffer(j.payload),
+      "shopify.reconcile": (j) => this.reconcile(j.payload),
     };
   }
 
@@ -477,6 +493,25 @@ export class MizanEngine {
     if (!uri) throw new IntegrationError({ kind: "validation", connector: "shopify", message: "no webhook URL configured for this store" });
     const r = await this.shopify.syncWebhooks(uri, SHOPIFY_WEBHOOK_TOPICS);
     this.emit("shopify.webhooks_synced", { topics: [...SHOPIFY_WEBHOOK_TOPICS], created: r.created, deleted: r.deleted });
+  }
+
+  private async reconcile(p: ReconcileJob) {
+    let after: string | null = null;
+    let seen = 0;
+    let recovered = 0;
+    do {
+      const page = await this.shopify.ordersPage(`created_at:>='${p.from}' created_at:<'${p.to}'`, after, 100);
+      for (const o of page.nodes) {
+        seen++;
+        if (await this.store.get<OrderRecord>("order", o.externalId)) continue;
+        await this.ingestOrderData(o); // the same path as a webhook: projected, recorded, reacted to
+        recovered++;
+      }
+      after = page.next;
+    } while (after);
+    const result: ReconcileResult = { ...p, seen, recovered };
+    this.emit("orders.reconciled", { ...result });
+    await this.runHook(() => this.opts.hooks?.onReconciled?.(result));
   }
 
   private async ingestOrder(orderId: string) {

@@ -23,6 +23,7 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | Shopify webhook registration | ✅ E3-2: `connection.connected` → `shopify.syncWebhooks` engine job (converges subscriptions, safe to repeat) | `ShopifyConnector.syncWebhooks`, `apps/api/src/integrations/shopify-connected.consumer.ts` |
 | Shopify compliance webhooks | ✅ E3-3: `/webhooks/shopify/gdpr` → `privacy_requests` → redact / compile (docs/07 §3) | `parseComplianceWebhook`, `apps/api/src/modules/privacy` |
 | Shopify uninstall | ✅ E3-4: `app/uninstalled` → `ConnectionLifecycle.providerRevoked` (disconnect, delete token, drop queued jobs); `FakeShopify.uninstall()` revokes tokens (401) and drops subscriptions | `apps/api/src/integrations/connection-lifecycle.ts` |
+| Shopify nightly reconciliation | ✅ E5-8: `shopify.reconcile` job per store day: `orders(query: "created_at:>='…' created_at:<'…'")`, 100 per page; orders the engine never recorded are ingested as if their webhook had come | `MizanEngine.shopifyReconcileJob`, `ShopifyConnector.ordersPage` |
 | Shopify initial backfill | ✅ E3-5: on every connect, `shopify.backfill` job chain — orders created in the last 60 days, then all products, one page (50) per job, cursor in the next job (resumable), cost-limited; newest run wins on reconnect; progress in `/v1/admin/integrations/health` → `backfill` | `MizanEngine.shopifyBackfillJob`, `ShopifyConnector.ordersPage/productsPage` |
 | EasyOrders, WooCommerce, LightFunnels | ⏳ MVP backlog | use `/new-connector` |
 | J&T, Mylerz | ⏳ MVP / V2 | — |

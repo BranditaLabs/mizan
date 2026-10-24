@@ -1351,6 +1351,10 @@
       "ads_fx_missing": {
         "title": "Ad spend without a rate",
         "body": "Spend in another currency on {count, plural, one {# order's day} other {the days of # orders}} isn't counted yet."
+      },
+      "sync_gap": {
+        "title": "Orders missing from the store sync",
+        "body": "On {count, plural, one {# day} other {# days}} the store had a different number of orders than Mizan, even after the nightly check fetched the missing ones. Check the store connection."
       }
     }
   }

@@ -26,7 +26,7 @@ export const HomeQuerySchema = z.object({
 });
 
 const Pct = z.string().nullable().describe("Percent with one decimal (\"14.9\"); null when there is nothing to divide by");
-export const HOME_LEAKS = ["losing_orders", "refusals", "unallocated_ads", "other_currency", "cost_missing", "shipping_rate_missing", "cod_fee_missing", "agent_cost_missing", "packaging_cost_missing", "payment_fee_missing", "fx_missing", "ads_fx_missing"] as const;
+export const HOME_LEAKS = ["losing_orders", "refusals", "unallocated_ads", "other_currency", "cost_missing", "shipping_rate_missing", "cod_fee_missing", "agent_cost_missing", "packaging_cost_missing", "payment_fee_missing", "fx_missing", "ads_fx_missing", "sync_gap"] as const;
 
 /** The profit home (E9-4), in the store's base currency; orders by the store day they were placed. */
 export const ProfitHomeSchema = z.object({

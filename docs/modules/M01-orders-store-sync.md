@@ -107,6 +107,8 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | `order.status_changed` | Any status move, with old and new status |
 | `order.duplicate_found` | A likely duplicate was detected (✅ E5-3) |
 | `order.duplicate_resolved` | The team kept it or merged it (✅ E5-3) |
+| `orders.reconciled` | The nightly check fetched orders a lost webhook never brought (✅ E5-8) |
+| `orders.reconciliation_gap` | After the nightly check, the store and Mizan still count a day's orders differently (✅ E5-8) |
 | `order.cancelled` | Cancelled in Mizan or in the store |
 
 ## Actions exposed (for Automation Studio)

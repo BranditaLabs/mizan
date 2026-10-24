@@ -311,7 +311,8 @@ export class FakeShopify {
       case "MizanOrders": {
         const since = String(v.query ?? "").match(/updated_at:>='([^']+)'/)?.[1];
         const created = String(v.query ?? "").match(/created_at:>='([^']+)'/)?.[1];
-        const all = [...this.orders.values()].filter((o) => (!since || o.updatedAt >= since) && (!created || o.createdAt >= created))
+        const before = String(v.query ?? "").match(/created_at:<'([^']+)'/)?.[1];
+        const all = [...this.orders.values()].filter((o) => (!since || o.updatedAt >= since) && (!created || o.createdAt >= created) && (!before || o.createdAt < before))
           .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
         const start = v.after ? Number(v.after) : 0;
         const page = all.slice(start, start + v.first);

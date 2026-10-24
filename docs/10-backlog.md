@@ -100,7 +100,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [ ] **E5-5** `S` Manual order creation.
 - [ ] **E5-6** `M` EasyOrders connector (via `/new-connector`), fake + chaos suite.
 - [ ] **E5-7** `M` WooCommerce connector.
-- [ ] **E5-8** `S` Nightly reconciliation: store order count vs Mizan per connection → alert on gap.
+- [x] **E5-8** `S` Nightly reconciliation: store order count vs Mizan per connection → alert on gap. *Done:* after 03:00 store time the worker queues one `shopify.reconcile` job per active Shopify store for yesterday's store day (keyed by day: the hourly tick never doubles it); the engine reads every order the store created that day and ingests those it never recorded (a lost webhook) through the normal path; the result (`onReconciled`) is recorded in `order_reconciliations` (migration 0027: store orders, recovered, Mizan orders, generated gap) and emits `orders.reconciled` (something recovered) or `orders.reconciliation_gap` (still off). The profit home lists days with a gap as a leak. Engine test under faults; API e2e with a lost webhook and a gap.
 
 ### E6 · M2 Confirmation + M14 scripts (basic)
 
