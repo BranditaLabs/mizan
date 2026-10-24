@@ -85,10 +85,19 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   const toggle = main.getByRole("switch", { name: /أكّد الأوردرات الجديدة/ });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();
+  // Routing by risk (E6-2): off by default; on, three thresholds that must go up.
+  const routing = main.getByTestId("routing");
+  await routing.getByRole("switch", { name: /وجّه كل أوردر/ }).check();
+  await routing.getByLabel("أكّد من غير ما تسأل لحد").fill("70");
+  await expect(routing).toContainText("كل رقم لازم يكون أكبر من أو يساوي اللي قبله");
+  await expect(main.getByRole("button", { name: "احفظ" })).toBeDisabled();
+  await routing.getByLabel("أكّد من غير ما تسأل لحد").fill("20");
   await main.getByRole("button", { name: "احفظ" }).click();
   await expect(page.locator(".mz-toast")).toContainText("اتحفظ");
   await page.reload();
   await expect(main.getByRole("switch", { name: /أكّد الأوردرات الجديدة/ })).not.toBeChecked();
+  await expect(main.getByTestId("routing").getByRole("switch", { name: /وجّه كل أوردر/ })).toBeChecked();
+  await expect(main.getByTestId("routing").getByLabel("أكّد من غير ما تسأل لحد")).toHaveValue("20");
 });
 
 test("order detail: the team's call panel with the script, the WhatsApp conversation, and the hand-sent link", async ({ page }) => {

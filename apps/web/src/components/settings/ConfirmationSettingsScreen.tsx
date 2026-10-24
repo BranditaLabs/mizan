@@ -65,6 +65,10 @@ export function ConfirmationSettingsScreen() {
   const hoursValid = s.callingHours.start < s.callingHours.end;
   const teamLast = s.steps.findIndex((x) => x.channel === "call_team");
   const stepsValid = s.steps.length > 0 && (teamLast === -1 || teamLast === s.steps.length - 1);
+  const rt = s.routing;
+  const routingValid = rt.autoMax <= rt.botMax && rt.botMax <= rt.agentMax;
+  const setRouting = (next: Partial<Settings["routing"]>) => edit({ routing: { ...rt, ...next } });
+  const threshold = (v: string) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
   /** A new step goes before the team call, which stays last. */
   const addStep = () => {
     const step: Step = { channel: channels.call_auto ? "call_auto" : "whatsapp", waitMinutes: 60 };
@@ -115,6 +119,23 @@ export function ConfirmationSettingsScreen() {
         ) : null}
       </Card>
 
+      <Card title={t("routing.title")}>
+        <div className="flex flex-col gap-3" data-testid="routing">
+          <Switch label={t("routing.enabled")} description={t("routing.enabledHint")} checked={rt.enabled} onChange={(e) => setRouting({ enabled: e.target.checked })} />
+          {rt.enabled ? (
+            <>
+              <div className="flex flex-wrap gap-3">
+                <Field label={t("routing.autoMax")} hint={t("routing.autoMaxHint")} type="number" ltr min={0} max={100} value={rt.autoMax} className="w-44" onChange={(e) => setRouting({ autoMax: threshold(e.target.value) })} />
+                <Field label={t("routing.botMax")} hint={t("routing.botMaxHint")} type="number" ltr min={0} max={100} value={rt.botMax} className="w-44" onChange={(e) => setRouting({ botMax: threshold(e.target.value) })} />
+                <Field label={t("routing.agentMax")} hint={t("routing.agentMaxHint")} type="number" ltr min={0} max={100} value={rt.agentMax} className="w-44"
+                  error={routingValid ? null : t("routing.order")} onChange={(e) => setRouting({ agentMax: threshold(e.target.value) })} />
+              </div>
+              <p className="text-caption text-text-3">{t("routing.paid")}</p>
+            </>
+          ) : null}
+        </div>
+      </Card>
+
       <Card title={t("team.title")}>
         <p className="mb-3 text-body-sm text-text-2">{t("team.body")}</p>
         <div className="flex flex-wrap gap-3">
@@ -136,7 +157,7 @@ export function ConfirmationSettingsScreen() {
       </Card>
 
       <ButtonGroup>
-        <Button busy={save.isPending} disabled={!draft || !hoursValid || !stepsValid} onClick={() => save.mutate(s)}>{t("save")}</Button>
+        <Button busy={save.isPending} disabled={!draft || !hoursValid || !stepsValid || !routingValid} onClick={() => save.mutate(s)}>{t("save")}</Button>
         {draft ? <Button variant="ghost" onClick={() => setDraft(null)}>{t("discard")}</Button> : null}
       </ButtonGroup>
     </>,

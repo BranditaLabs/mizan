@@ -972,6 +972,16 @@ export interface components {
             };
             /** @description How long a hand-sent confirm link works */
             linkHours: number;
+            routing: {
+                /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
+                enabled: boolean;
+                /** @description Cash orders scored at or below: confirmed without asking */
+                autoMax: number;
+                /** @description At or below: asked in the chat (the steps above) */
+                botMax: number;
+                /** @description At or below: straight to the team's calls; above: held for review (paid orders too) */
+                agentMax: number;
+            };
         };
         ConfirmationSettingsView: {
             settings: {
@@ -995,6 +1005,16 @@ export interface components {
                 };
                 /** @description How long a hand-sent confirm link works */
                 linkHours: number;
+                routing: {
+                    /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
+                    enabled: boolean;
+                    /** @description Cash orders scored at or below: confirmed without asking */
+                    autoMax: number;
+                    /** @description At or below: asked in the chat (the steps above) */
+                    botMax: number;
+                    /** @description At or below: straight to the team's calls; above: held for review (paid orders too) */
+                    agentMax: number;
+                };
             };
             /** @description Channels the store can use for confirmation */
             channels: {

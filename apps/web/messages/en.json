@@ -678,7 +678,9 @@
         "change_requested": "The customer asked for a change. Call them.",
         "customer_message": "The customer wrote on WhatsApp. Call them.",
         "unreachable": "Called several times with no answer. Decide whether to keep or cancel.",
-        "manual": "The link was sent by hand. Waiting for the customer."
+        "manual": "The link was sent by hand. Waiting for the customer.",
+        "high_risk": "High risk score: call the customer before anything is sent.",
+        "hold": "Very high risk score: review this order before confirming it."
       },
       "nextSend": "Next: {channel}",
       "waiting": "Waiting for an answer to {channel}, until",
@@ -1112,6 +1114,19 @@
         "template_rejected": "Meta rejected the confirmation message. Submit it again with the wording in the setup guide.",
         "template_missing": "The confirmation message in the store's language (mizan_order_confirm_ar or mizan_order_confirm_en) isn't in the account. Add it in WhatsApp Manager with the wording in the setup guide."
       }
+    },
+    "routing": {
+      "title": "Route by risk",
+      "enabled": "Route each order by its risk score",
+      "enabledHint": "Off: every cash order goes through the steps above.",
+      "autoMax": "Confirm without asking up to",
+      "autoMaxHint": "Customers who received before",
+      "botMax": "Ask in the chat up to",
+      "botMaxHint": "The steps above",
+      "agentMax": "Team calls up to",
+      "agentMaxHint": "Above it: held for review",
+      "order": "Each number must be at least the one before",
+      "paid": "Paid orders are approved unless above the team's number; instalments are approved; a bank transfer waits for its money."
     }
   },
   "offersSettings": {

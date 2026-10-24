@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_ROUTING } from "./routing.js";
 
 /**
  * whatsapp: the customer answers with buttons in the chat. call_auto: an automated call (needs a
@@ -31,6 +32,12 @@ export const ConfirmationSettingsSchema = z.object({
     retryMinutes: z.number().int().min(10).max(24 * 60).describe("After \"no answer\", when the order comes back on the list"),
   }),
   linkHours: z.number().int().min(6).max(7 * 24).describe("How long a hand-sent confirm link works"),
+  routing: z.object({
+    enabled: z.boolean().describe("Route each order by its risk score (E6-2); off: every cash order walks the steps above"),
+    autoMax: z.number().int().min(0).max(100).describe("Cash orders scored at or below: confirmed without asking"),
+    botMax: z.number().int().min(0).max(100).describe("At or below: asked in the chat (the steps above)"),
+    agentMax: z.number().int().min(0).max(100).describe("At or below: straight to the team's calls; above: held for review (paid orders too)"),
+  }).refine((r) => r.autoMax <= r.botMax && r.botMax <= r.agentMax, "thresholds must go up: auto ≤ chat ≤ team"),
 });
 export type ConfirmationSettings = z.infer<typeof ConfirmationSettingsSchema>;
 
@@ -43,6 +50,7 @@ export const DEFAULT_CONFIRMATION: ConfirmationSettings = {
   callingHours: { start: "10:00", end: "22:00" },
   teamCalls: { attempts: 3, retryMinutes: 60 },
   linkHours: 72,
+  routing: DEFAULT_ROUTING,
 };
 
 /** A stored cascade with pre-E6-10 channels read as today's; null when nothing usable is left. */

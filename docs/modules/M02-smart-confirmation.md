@@ -148,7 +148,7 @@ The risk score is one model with method-specific signals. Reasons are always sho
 | Address incomplete, no pin | Raises | Address check |
 | Order value far above store average | Raises | Order |
 | Invalid or new phone | Raises | Phone check |
-| Score 0–25 · 26–60 · 61–85 · 86+ | Auto · Bot · Agent · Hold | Route thresholds |
+| Score 0–25 · 26–60 · 61–85 · 86+ | Auto · Bot · Agent · Hold | Route thresholds (✅ E6-2: Settings → Confirmation → Route by risk, off by default) |
 
 ### Settings (defaults)
 
@@ -168,7 +168,7 @@ The risk score is one model with method-specific signals. Reasons are always sho
 | Event | Meaning |
 | --- | --- |
 | `confirmation.scored` | Score and reasons calculated |
-| `confirmation.routed` | Route chosen: auto, bot, agent, hold |
+| `confirmation.routed` | Route chosen: auto, bot, agent, hold (✅ E6-2) |
 | `confirmation.confirmed` | Order confirmed, by which route |
 | `confirmation.no_answer` | Attempt failed, retry scheduled |
 | `confirmation.cancelled` | Customer or agent cancelled |

@@ -13,7 +13,7 @@ export const DOMAIN_EVENT_TYPES = [
   "order.created", "order.updated", "order.cancelled", "order.duplicate_found", "order.duplicate_resolved", "orders.reconciled", "orders.reconciliation_gap",
   // M2 Confirmation
   "order.scored", "order.confirmed", "order.confirmation_failed",
-  "confirmation.started", "confirmation.sent", "confirmation.escalated",
+  "confirmation.started", "confirmation.routed", "confirmation.sent", "confirmation.escalated",
   "offer.proposed", "offer.accepted", "offer.declined", "offer.expired", "offer.applied", "offer.failed",
   // M3 Shipping
   "shipment.created", "shipment.status_changed", "shipment.delivered", "shipment.returned",

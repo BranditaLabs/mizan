@@ -11,13 +11,14 @@ import { ProblemError } from "../../platform/http/problem.js";
 import { PiiCipher } from "../../platform/pii/pii-cipher.js";
 import { roleScope } from "../orders/orders.service.js";
 import { linkToken, runIdOf } from "./confirmation-link.js";
+import { routeFor } from "./routing.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
 import { callScript, linkText, type MessageFacts } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
 
 export type Answer = "confirm" | "cancel" | "change";
-export type AnswerChannel = "link" | "whatsapp" | "voice_ivr" | "voice_ai" | "agent" | "call_team";
+export type AnswerChannel = "link" | "whatsapp" | "voice_ivr" | "voice_ai" | "agent" | "call_team" | "auto";
 export interface RunRow {
   id: string; order_id: string; status: string; plan: unknown; step: number; outcome: string | null; link_expires_at: Date; started_at: Date;
   chat_state: string | null; customer_hash: string | null; call_attempts: number; call_after: Date | null;
@@ -57,15 +58,33 @@ export class ConfirmationService {
     @Inject(OffersService) private readonly offers: OffersService,
   ) {}
 
-  /** Starts a run for a new cash-on-delivery order (consumer of order.created). Returns the run id, or null when it does not apply. */
+  /**
+   * A new order (consumer of order.created): routed by payment method and risk score (E6-2) when
+   * the store turned routing on — confirmed without asking, asked in the chat (the cascade), put
+   * on the team's calls, or held for review — else every cash order walks the cascade. Returns
+   * the run id, or null when nothing is started.
+   */
   async start(trx: Transaction<DB>, tenantId: string, orderId: string, now = new Date()): Promise<string | null> {
-    const order = await trx.selectFrom("orders").select(["id", "number", "status", "payment_mode", "placed_at", "created_at", "duplicate_status"]).where("id", "=", orderId).executeTakeFirst();
-    if (!order || order.status !== "new" || !CONFIRMS.has(order.payment_mode)) return null;
+    const order = await trx.selectFrom("orders").select(["id", "number", "status", "payment_mode", "payment_status", "paid_minor", "risk_score", "placed_at", "created_at", "duplicate_status"])
+      .where("id", "=", orderId).executeTakeFirst();
+    if (!order || order.status !== "new") return null;
     if (order.duplicate_status === "suspected") return null; // held until the team keeps or merges it (E5-3)
     if (now.getTime() - order.placed_at.getTime() > FRESH_HOURS * 3_600_000) return null; // imported history: never message old customers
     const { settings } = await this.store(trx, tenantId);
     if (!settings.enabled) return null;
+    const route = routeFor({ paymentMode: order.payment_mode, paid: BigInt(order.paid_minor) > 0n || order.payment_status === "paid", score: order.risk_score }, settings.routing);
+    if (!route) return null;
     if (await this.liveRun(trx, orderId)) return null;
+    if (settings.routing.enabled) {
+      await trx.updateTable("orders").set({ confirm_route: route }).where("id", "=", orderId).execute();
+      await this.events.emit(trx, { type: "confirmation.routed", tenantId, entity: { type: "order", id: orderId }, actor: { type: "system" }, data: { number: order.number, route, score: order.risk_score } });
+    }
+    if (route === "auto") {
+      // Trusted enough (or paid): confirmed without asking the customer.
+      await this.applyAnswer(trx, tenantId, orderId, null, { answer: "confirm", channel: "auto", actor: { type: "system" } }, now);
+      return null;
+    }
+    if (!CONFIRMS.has(order.payment_mode) && route !== "hold") return null;
     const run = await trx.insertInto("confirmation_runs").values({
       tenant_id: tenantId, order_id: orderId, plan: JSON.stringify(settings.steps), link_expires_at: new Date(now.getTime() + settings.linkHours * 3_600_000),
     }).returning(RUN_COLUMNS).executeTakeFirstOrThrow() as RunRow;
@@ -73,6 +92,11 @@ export class ConfirmationService {
     await this.events.emit(trx, { type: "confirmation.started", tenantId, entity: { type: "order", id: orderId }, actor: { type: "system" }, data: { number: order.number, runId: run.id, steps: settings.steps.map((s) => s.channel) } });
     // The offer is chosen now (E6-11): ready the moment the customer confirms, and in the team's script.
     await this.offers.propose(trx, tenantId, run, now);
+    if (route === "agent" || route === "hold") {
+      // Too risky to message automatically: the team calls (agent) or reviews it first (hold).
+      await this.escalate(trx, tenantId, run, route === "agent" ? "high_risk" : "hold", now);
+      return run.id;
+    }
     await this.advance(trx, tenantId, run, 0, now);
     return run.id;
   }
@@ -135,7 +159,7 @@ export class ConfirmationService {
    * calls back. Refused (409) once the order is past confirmation or the run already answered.
    */
   async applyAnswer(trx: Transaction<DB>, tenantId: string, orderId: string, run: RunRow | null, a: {
-    answer: Answer; channel: AnswerChannel; actor: { type: "customer" } | { type: "user"; id: string }; reason?: string; note?: string; location?: { lat: number; lng: number };
+    answer: Answer; channel: AnswerChannel; actor: { type: "customer" } | { type: "system" } | { type: "user"; id: string }; reason?: string; note?: string; location?: { lat: number; lng: number };
   }, now = new Date()): Promise<{ outcome: string }> {
     if (run && run.outcome && run.status !== "needs_agent") throw new ProblemError(409, "already_answered", `this order was already ${run.outcome}`);
     const order = await trx.selectFrom("orders").select(["status", "number"]).where("id", "=", orderId).executeTakeFirstOrThrow();
