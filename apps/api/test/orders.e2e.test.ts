@@ -237,6 +237,7 @@ describe("payments (E2-6)", () => {
     expect(m("bank_transfer", ["Bank Deposit"])).toBe("bank_transfer");
     expect(m("partial", ["paymob", "COD"], true)).toBe("card");
     expect(m("partial", ["paymob", "COD"], false)).toBe("cod");
+    expect(m("partial", ["InstaPay", "COD"], true)).toBe("instapay"); // a deposit by InstaPay, not a card
   });
 
   it("a confirmed bank transfer waiting for payment is flagged once (order.awaiting_payment), through the engine", async () => {

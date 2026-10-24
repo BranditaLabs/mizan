@@ -64,6 +64,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const rows = orders.data?.pages.flatMap((p) => p.data) ?? [];
   const counts = orders.data?.pages[0]?.counts;
   const canSetUp = store?.role === "owner" || store?.role === "admin";
+  const canCreate = ["owner", "admin", "ops_manager", "agent"].includes(store?.role ?? "");
 
   const columns: Column<Order>[] = [
     { id: "order", header: t("columns.order"), cell: (o) => <Cell main={<Link href={`/orders/${o.id}`} className="hover:underline"><IdCell>{o.number}</IdCell></Link>} sub={o.store.provider ?? t("manual")} /> },
@@ -104,7 +105,10 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
           <h1 className="font-display text-heading-lg">{t("title")}</h1>
           <p className="mt-1 text-body-sm text-text-2">{t("subtitle")}</p>
         </div>
-        <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-80" />
+        <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto">
+          <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-80" />
+          {canCreate ? <Link href="/orders/new" className={buttonClass("primary")}>{t("newOrder")}</Link> : null}
+        </div>
       </header>
 
       <Tabs label={t("tabsLabel")} value={status} onChange={setStatus}

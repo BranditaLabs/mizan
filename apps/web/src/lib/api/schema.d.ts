@@ -10,6 +10,22 @@ export interface paths {
         };
         get: operations["OrdersController_list"];
         put?: never;
+        post: operations["OrdersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_products"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1512,6 +1528,53 @@ export interface components {
             amount: string;
             currency: string;
         };
+        NewOrder: {
+            /**
+             * @description Where the customer ordered
+             * @enum {string}
+             */
+            source: "phone" | "whatsapp" | "instagram" | "facebook" | "tiktok" | "walk_in" | "other";
+            customer: {
+                name: string;
+                /** @description Local or international; checked for the store's country */
+                phone: string;
+            };
+            address: {
+                line1: string;
+                line2?: string;
+                city: string;
+                province?: string;
+            };
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description A product from the catalogue (its price unless unitPrice is given)
+                 */
+                variantId?: string;
+                /** @description An item not in the catalogue (needs unitPrice) */
+                title?: string;
+                quantity: number;
+                unitPrice?: string;
+            }[];
+            /** @default 0 */
+            shipping: string;
+            /** @default 0 */
+            discount: string;
+            payment: {
+                /**
+                 * @description cod: the courier collects all; prepaid: paid in full; partial: a deposit now, the rest on delivery; bank_transfer: waits for the money unless paid
+                 * @enum {string}
+                 */
+                mode: "cod" | "prepaid" | "partial" | "bank_transfer";
+                /**
+                 * @description How money already paid came in (prepaid, partial, bank_transfer)
+                 * @enum {string}
+                 */
+                method?: "wallet" | "card" | "instapay";
+                /** @description partial: the deposit; prepaid: the total (optional); bank_transfer: the total once it arrived */
+                paid?: string;
+            };
+        };
         NoAnswer: {
             /** @description Team calls tried so far */
             attempts: number;
@@ -1791,6 +1854,13 @@ export interface components {
                  */
                 call_team: true;
             };
+        };
+        OrderCreated: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            status: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
         };
         OrderDetail: {
             /** Format: uuid */
@@ -2090,6 +2160,19 @@ export interface components {
                 amount: string;
                 currency: string;
             };
+        };
+        OrderProducts: {
+            data: {
+                /** Format: uuid */
+                variantId: string;
+                sku: string | null;
+                title: string;
+                price: {
+                    amount: string;
+                    currency: string;
+                };
+                available: number | null;
+            }[];
         };
         OrderSettings: {
             /** @description An order of the same customer with the same product within this many hours of another is a likely duplicate; 0 turns detection off (at most 7 days) */
@@ -2589,6 +2672,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewOrder"];
+            };
+        };
+        responses: {
+            /** @description Created as M-1001, M-1002…; an agent's order is assigned to them; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderCreated"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_products: {
+        parameters: {
+            query?: {
+                /** @description Product title or SKU */
+                q?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active products to add to a manual order (100 at most) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderProducts"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

@@ -1,5 +1,6 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
+import { MANUAL_PAYMENT_MODES, MONEY_IN_METHODS, ORDER_SOURCES } from "./manual-order.js";
 
 export const ORDER_STATUSES = ["new", "pending_confirmation", "confirmed", "cancelled", "shipped", "delivered", "returned"] as const;
 export const PAYMENT_MODES = ["cod", "prepaid", "partial", "bnpl", "bank_transfer", "store_credit", "mixed", "unknown"] as const;
@@ -131,3 +132,32 @@ export type RevealedCustomer = z.infer<typeof RevealedCustomerSchema>;
 
 export const ResolveDuplicateSchema = z.strictObject({ action: z.enum(["keep", "merge"]).describe("keep: both are real orders; merge: cancel this one as a duplicate of the earlier") });
 export const DuplicateResolvedSchema = z.object({ status: z.enum(["kept", "merged"]) });
+
+/** E5-5: an order the team enters by hand (phone, WhatsApp, Instagram, walk-in). */
+const Amount = z.string().trim().regex(/^\d{1,9}(\.\d{1,2})?$/, "an amount like 150 or 150.50");
+export const NewOrderSchema = z.strictObject({
+  source: z.enum(ORDER_SOURCES).describe("Where the customer ordered"),
+  customer: z.strictObject({ name: z.string().trim().min(2).max(120), phone: z.string().trim().min(6).max(24).describe("Local or international; checked for the store's country") }),
+  address: z.strictObject({
+    line1: z.string().trim().min(3).max(200), line2: z.string().trim().max(200).optional(),
+    city: z.string().trim().min(2).max(80), province: z.string().trim().max(80).optional(),
+  }),
+  lines: z.array(z.strictObject({
+    variantId: z.uuid().optional().describe("A product from the catalogue (its price unless unitPrice is given)"),
+    title: z.string().trim().min(1).max(200).optional().describe("An item not in the catalogue (needs unitPrice)"),
+    quantity: z.number().int().min(1).max(999),
+    unitPrice: Amount.optional(),
+  }).refine((l) => Boolean(l.variantId) !== Boolean(l.title) && (l.variantId || l.unitPrice), "a catalogue product, or a title with a price")).min(1).max(50),
+  shipping: Amount.default("0"),
+  discount: Amount.default("0"),
+  payment: z.strictObject({
+    mode: z.enum(MANUAL_PAYMENT_MODES).describe("cod: the courier collects all; prepaid: paid in full; partial: a deposit now, the rest on delivery; bank_transfer: waits for the money unless paid"),
+    method: z.enum(MONEY_IN_METHODS).optional().describe("How money already paid came in (prepaid, partial, bank_transfer)"),
+    paid: Amount.optional().describe("partial: the deposit; prepaid: the total (optional); bank_transfer: the total once it arrived"),
+  }),
+});
+export const OrderCreatedSchema = z.object({ id: z.uuid(), number: z.string(), status: z.enum(ORDER_STATUSES) });
+export const OrderProductsQuerySchema = z.object({ q: z.string().trim().min(1).max(64).optional().describe("Product title or SKU") });
+export const OrderProductsSchema = z.object({
+  data: z.array(z.object({ variantId: z.uuid(), sku: z.string().nullable(), title: z.string(), price: MoneySchema, available: z.number().int().nullable() })),
+});

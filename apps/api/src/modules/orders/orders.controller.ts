@@ -1,18 +1,27 @@
 import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import type { z } from "zod";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
-import { DuplicateResolvedSchema, ListOrdersQuerySchema, OrderDetailSchema, OrderPageSchema, ResolveDuplicateSchema, RevealedCustomerSchema, type ListOrdersQuery } from "./orders.dto.js";
+import {
+  DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
+  RevealedCustomerSchema, type ListOrdersQuery,
+} from "./orders.dto.js";
+import { ManualOrdersService } from "./manual-orders.service.js";
 import { DuplicatesService, OrderSettingsSchema, type OrderSettings } from "./duplicates.service.js";
 import { OrdersService } from "./orders.service.js";
 
 @ApiTags("orders")
 @Controller("orders")
 export class OrdersController {
-  constructor(@Inject(OrdersService) private readonly orders: OrdersService, @Inject(DuplicatesService) private readonly duplicates: DuplicatesService) {}
+  constructor(
+    @Inject(OrdersService) private readonly orders: OrdersService,
+    @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
+    @Inject(ManualOrdersService) private readonly manual: ManualOrdersService,
+  ) {}
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
   @Get()
@@ -24,6 +33,25 @@ export class OrdersController {
   }
 
   /** M1 detail (E5-2): lines, money, payments, shipments, timeline; the customer stays masked. */
+  /** E5-5: an order taken by phone, WhatsApp or in person; it goes through confirmation like any other. */
+  @Post()
+  @HttpCode(201)
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @ApiJsonBody("NewOrder", NewOrderSchema)
+  @ApiJson(201, "OrderCreated", OrderCreatedSchema, "Created as M-1001, M-1002…; an agent's order is assigned to them; audited")
+  @ApiProblems(422)
+  create(@Auth() auth: AuthContext, @Body(new ZodPipe(NewOrderSchema)) body: z.output<typeof NewOrderSchema>) {
+    return this.manual.create(auth, body);
+  }
+
+  @Get("products")
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @ApiQueryZod(OrderProductsQuerySchema)
+  @ApiJson(200, "OrderProducts", OrderProductsSchema, "Active products to add to a manual order (100 at most)")
+  products(@Auth() auth: AuthContext, @Query(new ZodPipe(OrderProductsQuerySchema)) q: z.output<typeof OrderProductsQuerySchema>) {
+    return this.manual.products(auth.tenant!.id, q.q);
+  }
+
   @Get(":id")
   @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
   @ApiJson(200, "OrderDetail", OrderDetailSchema, "One order; an order outside the caller's scope is not found")

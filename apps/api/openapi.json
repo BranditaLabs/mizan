@@ -176,6 +176,144 @@
         "tags": [
           "orders"
         ]
+      },
+      "post": {
+        "operationId": "OrdersController_create",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created as M-1001, M-1002…; an agent's order is assigned to them; audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderCreated"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/v1/orders/products": {
+      "get": {
+        "operationId": "OrdersController_products",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Product title or SKU",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "description": "Product title or SKU"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active products to add to a manual order (100 at most)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderProducts"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
       }
     },
     "/v1/orders/{id}": {
@@ -7124,6 +7262,159 @@
         ],
         "additionalProperties": false
       },
+      "NewOrder": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "whatsapp",
+              "instagram",
+              "facebook",
+              "tiktok",
+              "walk_in",
+              "other"
+            ],
+            "description": "Where the customer ordered"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 120
+              },
+              "phone": {
+                "type": "string",
+                "minLength": 6,
+                "maxLength": 24,
+                "description": "Local or international; checked for the store's country"
+              }
+            },
+            "required": [
+              "name",
+              "phone"
+            ],
+            "additionalProperties": false
+          },
+          "address": {
+            "type": "object",
+            "properties": {
+              "line1": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 200
+              },
+              "line2": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "city": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "province": {
+                "type": "string",
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "line1",
+              "city"
+            ],
+            "additionalProperties": false
+          },
+          "lines": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "description": "A product from the catalogue (its price unless unitPrice is given)",
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "description": "An item not in the catalogue (needs unitPrice)",
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 999
+                },
+                "unitPrice": {
+                  "type": "string",
+                  "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                }
+              },
+              "required": [
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shipping": {
+            "default": "0",
+            "type": "string",
+            "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+          },
+          "discount": {
+            "default": "0",
+            "type": "string",
+            "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "cod",
+                  "prepaid",
+                  "partial",
+                  "bank_transfer"
+                ],
+                "description": "cod: the courier collects all; prepaid: paid in full; partial: a deposit now, the rest on delivery; bank_transfer: waits for the money unless paid"
+              },
+              "method": {
+                "description": "How money already paid came in (prepaid, partial, bank_transfer)",
+                "type": "string",
+                "enum": [
+                  "wallet",
+                  "card",
+                  "instapay"
+                ]
+              },
+              "paid": {
+                "description": "partial: the deposit; prepaid: the total (optional); bank_transfer: the total once it arrived",
+                "type": "string",
+                "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+              }
+            },
+            "required": [
+              "mode"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "source",
+          "customer",
+          "address",
+          "lines",
+          "payment"
+        ],
+        "additionalProperties": false
+      },
       "NoAnswer": {
         "type": "object",
         "properties": {
@@ -8195,6 +8486,37 @@
           "script",
           "offer",
           "channels"
+        ],
+        "additionalProperties": false
+      },
+      "OrderCreated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "pending_confirmation",
+              "confirmed",
+              "cancelled",
+              "shipped",
+              "delivered",
+              "returned"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status"
         ],
         "additionalProperties": false
       },
@@ -9437,6 +9759,65 @@
           "net",
           "expectedRevenue",
           "expectedNet"
+        ],
+        "additionalProperties": false
+      },
+      "OrderProducts": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "sku": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "available": {
+                  "nullable": true,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "variantId",
+                "sku",
+                "title",
+                "price",
+                "available"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "data"
         ],
         "additionalProperties": false
       },

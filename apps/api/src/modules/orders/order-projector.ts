@@ -52,7 +52,16 @@ export function ledgerMethod(order: CanonicalOrder, firstMoneyIn: boolean): Ledg
     default: return onlineMethod(gw);
   }
 }
-const onlineMethod = (gw: string): LedgerMethod => (/apple/.test(gw) ? "apple_pay" : /wallet|vodafone|meeza|fawry ?pay/.test(gw) ? "wallet" : "card");
+const onlineMethod = (gw: string): LedgerMethod => (/instapay/.test(gw) ? "instapay" : /apple/.test(gw) ? "apple_pay" : /wallet|vodafone|meeza|fawry ?pay/.test(gw) ? "wallet" : "card");
+
+/** For orders that do not come from a store connection (E5-5: entered by the team). */
+export interface ProjectOptions {
+  channel?: "manual";
+  /** Who entered it; the engine otherwise. */
+  actor?: { type: "user"; id: string };
+  /** Mizan variant per line id, for lines picked from the catalogue. */
+  variantIds?: Record<string, string>;
+}
 
 export interface ProjectResult {
   orderId: string;
@@ -80,86 +89,90 @@ export class OrderProjector {
     @Inject(RiskService) private readonly risk: RiskService,
   ) {}
 
-  async project(tenantId: string, connectionId: string, order: CanonicalOrder): Promise<ProjectResult> {
-    return this.db.tenant(tenantId, async (trx) => {
-      const pii = await this.cipher.forTenant(trx, tenantId);
-      const phoneCountry = await phoneCountryOf(trx, tenantId);
+  async project(tenantId: string, connectionId: string | null, order: CanonicalOrder, opts: ProjectOptions = {}): Promise<ProjectResult> {
+    return this.db.tenant(tenantId, (trx) => this.projectIn(trx, tenantId, connectionId, order, opts));
+  }
 
-      const existing = await trx.selectFrom("orders").select(["id", "customer_id", "pii_redacted_at", ...TRACKED])
-        .where("connection_id", "=", connectionId).where("external_id", "=", order.externalId).forUpdate().executeTakeFirst();
-      // A redacted order (E3-3) keeps its business facts; its personal data never comes back.
-      const redacted = Boolean(existing?.pii_redacted_at);
+  /** The same, inside the caller's tenant transaction (a manual order numbers itself first). */
+  async projectIn(trx: Transaction<DB>, tenantId: string, connectionId: string | null, order: CanonicalOrder, opts: ProjectOptions = {}): Promise<ProjectResult> {
+    const pii = await this.cipher.forTenant(trx, tenantId);
+    const phoneCountry = await phoneCountryOf(trx, tenantId);
 
-      const rawPhone = order.shippingAddress?.phone ?? order.customer.phone;
-      const phone = redacted ? undefined : normalizePhone(rawPhone, phoneCountry);
-      const customerId = redacted ? existing!.customer_id : phone ? await this.upsertCustomer(trx, tenantId, pii, order, phone.e164) : null;
+    const existing = await trx.selectFrom("orders").select(["id", "customer_id", "pii_redacted_at", ...TRACKED])
+      .where((eb) => (connectionId === null ? eb("connection_id", "is", null) : eb("connection_id", "=", connectionId)))
+      .where("external_id", "=", order.externalId).forUpdate().executeTakeFirst();
+    // A redacted order (E3-3) keeps its business facts; its personal data never comes back.
+    const redacted = Boolean(existing?.pii_redacted_at);
 
-      const values = { ...this.orderValues(order, pii, phone?.e164 ?? rawPhone ?? null), ...(redacted ? REDACTED_ORDER : {}) };
+    const rawPhone = order.shippingAddress?.phone ?? order.customer.phone;
+    const phone = redacted ? undefined : normalizePhone(rawPhone, phoneCountry);
+    const customerId = redacted ? existing!.customer_id : phone ? await this.upsertCustomer(trx, tenantId, pii, order, phone.e164) : null;
 
-      if (!existing) {
-        const row = await trx.insertInto("orders").values({
-          tenant_id: tenantId, connection_id: connectionId, external_id: order.externalId, customer_id: customerId,
-          ...values, status: order.cancelled ? "cancelled" : "new", placed_at: order.createdAt,
-        }).returning(["id", "status"]).executeTakeFirstOrThrow();
-        await this.syncLines(trx, tenantId, row.id, order);
-        await this.syncLedger(trx, tenantId, row.id, connectionId, order, { paid: 0n, refunded: 0n }, { paid: values.paid_minor, refunded: values.refunded_minor });
-        if (customerId) {
-          await trx.updateTable("customers").set((eb) => ({ orders_count: eb("orders_count", "+", 1) })).where("id", "=", customerId).execute();
-        }
-        await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: row.id, type: "created", to_status: row.status, actor_type: "system", data: JSON.stringify({ source: order.connector }) }).execute();
-        await this.events.emit(trx, { type: "order.created", tenantId, entity: { type: "order", id: row.id }, actor: { type: "engine" }, data: this.eventData(order, row.status, values) });
-        if (row.status === "cancelled") {
-          await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: row.id }, actor: { type: "engine" }, data: { number: order.number, reason: "cancelled_in_store" } });
-        } else {
-          // Same transaction as the order: marked before anything reacts to order.created (E5-3).
-          await this.duplicates.detect(trx, tenantId, row.id);
-          // Scored with what is in the clear only here (E6-1); stored, the address and phone are encrypted.
-          const a = order.shippingAddress;
-          await this.risk.score(trx, tenantId, row.id, {
-            line1Length: (a?.line1 ?? "").trim().length, hasCity: Boolean(a?.city?.trim()), phoneValid: Boolean(phone),
-            totalQuantity: order.lines.reduce((n, l) => n + l.quantity, 0),
-          });
-        }
-        return { orderId: row.id, created: true, changed: [] };
+    const values = { ...this.orderValues(order, pii, phone?.e164 ?? rawPhone ?? null), ...(redacted ? REDACTED_ORDER : {}) };
+
+    if (!existing) {
+      const row = await trx.insertInto("orders").values({
+        tenant_id: tenantId, connection_id: connectionId, external_id: order.externalId, customer_id: customerId,
+        ...values, status: order.cancelled ? "cancelled" : "new", placed_at: order.createdAt, ...(opts.channel ? { channel: opts.channel } : {}),
+      }).returning(["id", "status"]).executeTakeFirstOrThrow();
+      await this.syncLines(trx, tenantId, row.id, order, opts.variantIds);
+      await this.syncLedger(trx, tenantId, row.id, connectionId, order, { paid: 0n, refunded: 0n }, { paid: values.paid_minor, refunded: values.refunded_minor });
+      if (customerId) {
+        await trx.updateTable("customers").set((eb) => ({ orders_count: eb("orders_count", "+", 1) })).where("id", "=", customerId).execute();
       }
-
-      const status = order.cancelled && CANCELLABLE.has(existing.status) ? "cancelled" : existing.status;
-      const next = { ...values, status };
-      const changed = TRACKED.filter((k) => JSON.stringify(normalize(existing[k])) !== JSON.stringify(normalize(next[k])));
-      await trx.updateTable("orders").set({
-        ...values, status, customer_id: customerId, updated_at: new Date(),
-        ...(status === "cancelled" && existing.status !== "cancelled" ? { cancelled_at: new Date() } : {}),
-      }).where("id", "=", existing.id).execute();
-      await this.syncLines(trx, tenantId, existing.id, order);
-      await this.syncLedger(trx, tenantId, existing.id, connectionId, order,
-        { paid: existing.paid_minor, refunded: existing.refunded_minor }, { paid: values.paid_minor, refunded: values.refunded_minor });
-
-      if (changed.some((c) => PAYMENT_FIELDS.has(c))) {
-        await trx.insertInto("order_events").values({
-          tenant_id: tenantId, order_id: existing.id, type: "payment_changed", actor_type: "system",
-          data: JSON.stringify({ from: existing.payment_status, to: values.payment_status }),
-        }).execute();
-        await this.events.emit(trx, {
-          type: "order.payment_changed", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" },
-          data: {
-            number: order.number, mode: values.payment_mode, from: existing.payment_status, to: values.payment_status,
-            paidMinor: String(values.paid_minor), refundedMinor: String(values.refunded_minor), currency: values.currency,
-          },
+      await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: row.id, type: "created", to_status: row.status, actor_type: opts.actor ? "user" : "system", actor_id: opts.actor?.id ?? null, data: JSON.stringify({ source: order.connector }) }).execute();
+      await this.events.emit(trx, { type: "order.created", tenantId, entity: { type: "order", id: row.id }, actor: opts.actor ?? { type: "engine" }, data: this.eventData(order, row.status, values) });
+      if (row.status === "cancelled") {
+        await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: row.id }, actor: { type: "engine" }, data: { number: order.number, reason: "cancelled_in_store" } });
+      } else {
+        // Same transaction as the order: marked before anything reacts to order.created (E5-3).
+        await this.duplicates.detect(trx, tenantId, row.id);
+        // Scored with what is in the clear only here (E6-1); stored, the address and phone are encrypted.
+        const a = order.shippingAddress;
+        await this.risk.score(trx, tenantId, row.id, {
+          line1Length: (a?.line1 ?? "").trim().length, hasCity: Boolean(a?.city?.trim()), phoneValid: Boolean(phone),
+          totalQuantity: order.lines.reduce((n, l) => n + l.quantity, 0),
         });
       }
+      return { orderId: row.id, created: true, changed: [] };
+    }
 
-      if (changed.length) {
-        await trx.insertInto("order_events").values({
-          tenant_id: tenantId, order_id: existing.id, type: "updated", from_status: existing.status, to_status: status,
-          actor_type: "system", data: JSON.stringify({ changed, source: order.connector }),
-        }).execute();
-        await this.events.emit(trx, { type: "order.updated", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" }, data: { ...this.eventData(order, status, values), changed } });
-        if (status === "cancelled" && existing.status !== "cancelled") {
-          await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" }, data: { number: order.number, reason: "cancelled_in_store" } });
-        }
+    const status = order.cancelled && CANCELLABLE.has(existing.status) ? "cancelled" : existing.status;
+    const next = { ...values, status };
+    const changed = TRACKED.filter((k) => JSON.stringify(normalize(existing[k])) !== JSON.stringify(normalize(next[k])));
+    await trx.updateTable("orders").set({
+      ...values, status, customer_id: customerId, updated_at: new Date(),
+      ...(status === "cancelled" && existing.status !== "cancelled" ? { cancelled_at: new Date() } : {}),
+    }).where("id", "=", existing.id).execute();
+    await this.syncLines(trx, tenantId, existing.id, order);
+    await this.syncLedger(trx, tenantId, existing.id, connectionId, order,
+      { paid: existing.paid_minor, refunded: existing.refunded_minor }, { paid: values.paid_minor, refunded: values.refunded_minor });
+
+    if (changed.some((c) => PAYMENT_FIELDS.has(c))) {
+      await trx.insertInto("order_events").values({
+        tenant_id: tenantId, order_id: existing.id, type: "payment_changed", actor_type: "system",
+        data: JSON.stringify({ from: existing.payment_status, to: values.payment_status }),
+      }).execute();
+      await this.events.emit(trx, {
+        type: "order.payment_changed", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" },
+        data: {
+          number: order.number, mode: values.payment_mode, from: existing.payment_status, to: values.payment_status,
+          paidMinor: String(values.paid_minor), refundedMinor: String(values.refunded_minor), currency: values.currency,
+        },
+      });
+    }
+
+    if (changed.length) {
+      await trx.insertInto("order_events").values({
+        tenant_id: tenantId, order_id: existing.id, type: "updated", from_status: existing.status, to_status: status,
+        actor_type: "system", data: JSON.stringify({ changed, source: order.connector }),
+      }).execute();
+      await this.events.emit(trx, { type: "order.updated", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" }, data: { ...this.eventData(order, status, values), changed } });
+      if (status === "cancelled" && existing.status !== "cancelled") {
+        await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" }, data: { number: order.number, reason: "cancelled_in_store" } });
       }
-      return { orderId: existing.id, created: false, changed };
-    });
+    }
+    return { orderId: existing.id, created: false, changed };
   }
 
   /**
@@ -190,7 +203,7 @@ export class OrderProjector {
    * and refunded_minor = −Σ refund lines.
    */
   private async syncLedger(
-    trx: Transaction<DB>, tenantId: string, orderId: string, connectionId: string, order: CanonicalOrder,
+    trx: Transaction<DB>, tenantId: string, orderId: string, connectionId: string | null, order: CanonicalOrder,
     before: { paid: bigint; refunded: bigint }, after: { paid: bigint; refunded: bigint },
   ) {
     const lines: Array<{ kind: "sale" | "cod_collection" | "refund" | "void"; method: LedgerMethod; amount: bigint; ref: string }> = [];
@@ -258,7 +271,7 @@ export class OrderProjector {
   }
 
   /** Lines follow the store: update by external line id, add new ones, remove vanished ones. */
-  private async syncLines(trx: Transaction<DB>, tenantId: string, orderId: string, order: CanonicalOrder) {
+  private async syncLines(trx: Transaction<DB>, tenantId: string, orderId: string, order: CanonicalOrder, picked?: Record<string, string>) {
     const current = await trx.selectFrom("order_lines").select(["id", "external_line_id"]).where("order_id", "=", orderId).execute();
     const byExt = new Map(current.map((l) => [l.external_line_id, l.id]));
     const keep = new Set<string>();
@@ -275,7 +288,7 @@ export class OrderProjector {
         unit_price_minor: toMinor({ ...line.unitPrice, currency: line.unitPrice.currency || order.currency }),
         external_variant_id: line.variantExternalId ?? null,
       };
-      const variantId = line.variantExternalId ? links.get(line.variantExternalId) : undefined;
+      const variantId = line.variantExternalId ? links.get(line.variantExternalId) : picked?.[line.externalLineId];
       const linked = variantId ? { variant_id: variantId } : {};
       const id = byExt.get(line.externalLineId);
       if (id) {

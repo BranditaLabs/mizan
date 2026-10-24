@@ -866,7 +866,8 @@
       "merged": "Merged. This order is cancelled as a duplicate.",
       "wasKept": "Kept as a separate order, though it looked like a duplicate of <order></order>.",
       "wasMerged": "Merged into <order></order> as a duplicate."
-    }
+    },
+    "newOrder": "New order"
   },
   "costs": {
     "title": "Costs",
@@ -1436,6 +1437,97 @@
         "title": "Orders missing from the store sync",
         "body": "On {count, plural, one {# day} other {# days}} the store had a different number of orders than Mizan, even after the nightly check fetched the missing ones. Check the store connection."
       }
+    }
+  },
+  "newOrder": {
+    "title": "New order",
+    "subtitle": "An order taken on the phone, in WhatsApp or Instagram, or in person. It goes through confirmation like any other.",
+    "created": "Order {number} created",
+    "submit": "Create order",
+    "notAllowed": {
+      "title": "You can't create orders",
+      "body": "Ask the store owner for the right role."
+    },
+    "customer": {
+      "title": "Customer",
+      "name": "Name",
+      "phone": "Phone",
+      "phonePlaceholder": "e.g. 01001234567",
+      "source": "Ordered through"
+    },
+    "source": {
+      "phone": "Phone call",
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "tiktok": "TikTok",
+      "walk_in": "In person",
+      "other": "Other"
+    },
+    "address": {
+      "title": "Delivery address",
+      "line1": "Street and building",
+      "line2": "Floor, flat, landmark",
+      "line2Hint": "Optional",
+      "city": "City or area"
+    },
+    "items": {
+      "title": "Items",
+      "pick": "Add a product",
+      "pickPlaceholder": "Search by name or SKU",
+      "noProducts": "No product matches",
+      "empty": "No items yet. Pick a product above.",
+      "quantity": "Quantity",
+      "price": "Price",
+      "remove": "Remove {title}",
+      "custom": "An item not in the catalogue",
+      "customTitle": "Item",
+      "addCustom": "Add item"
+    },
+    "payment": {
+      "title": "Payment and delivery",
+      "mode": "How does the customer pay?",
+      "method": "Paid through",
+      "deposit": "Deposit paid",
+      "transfer": "The transfer",
+      "waiting": "Waiting for it",
+      "received": "Received",
+      "shipping": "Shipping fee",
+      "discount": "Discount"
+    },
+    "mode": {
+      "cod": "Cash on delivery",
+      "partial": "Deposit now, the rest on delivery",
+      "prepaid": "Paid in full",
+      "bank_transfer": "Bank transfer"
+    },
+    "method": {
+      "wallet": "Mobile wallet",
+      "instapay": "InstaPay",
+      "card": "Card"
+    },
+    "summary": {
+      "title": "Summary",
+      "subtotal": "Items",
+      "shipping": "Shipping",
+      "discount": "Discount",
+      "total": "Total",
+      "paid": "Paid already",
+      "collect": "The courier collects",
+      "waitsForTransfer": "It won't ship until the transfer arrives.",
+      "next": "After you create it, confirmation starts as for store orders."
+    },
+    "errors": {
+      "name": "Enter the customer's name",
+      "phone": "Enter a phone number",
+      "line1": "Enter the street and building",
+      "city": "Enter the city or area",
+      "lines": "Add at least one item",
+      "linePrice": "Every item needs a price",
+      "amount": "An amount like 150 or 150.50",
+      "total": "The discount is larger than the order",
+      "deposit": "The deposit must be more than zero and less than the total",
+      "fix": "Fix the highlighted fields first."
     }
   }
 }

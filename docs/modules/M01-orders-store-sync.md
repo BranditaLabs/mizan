@@ -44,7 +44,7 @@ Orders Sync pulls orders from each connected storefront the moment they are plac
 
 ## Main screen — Orders
 
-✅ Built in E5-1 (`apps/web/src/components/orders/OrdersScreen.tsx`, `GET /v1/orders`): status tabs with counts, search, table, show more. Store column, Duplicates tab, Import CSV and New order come with E5-3, E5-5 and more connectors.
+✅ Built in E5-1 (`apps/web/src/components/orders/OrdersScreen.tsx`, `GET /v1/orders`): status tabs with counts, search, table, show more. Store column, Duplicates tab (E5-3) and **New order** (✅ E5-5, `/orders/new`: customer, address, catalogue or one-off items, shipping, discount, payment with a live "the courier collects" summary) are built; Import CSV comes later.
 
 Filters: `All · 1,284` · `New · 96` · `Pending confirmation · 41` · `Confirmed · 212` · `Shipped · 803` · `Duplicates · 7`  
 Actions: Import CSV, New order
@@ -154,7 +154,8 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | --- | --- | --- |
 | GET | `/v1/orders` | List and filter orders |
 | GET | `/v1/orders/{id}` | Order with items and history |
-| POST | `/v1/orders` | Create a manual order |
+| POST | `/v1/orders` | ✅ E5-5: create a manual order (phone, WhatsApp, Instagram, in person); numbered M-1001…; goes through duplicates, risk and confirmation like a store order |
+| GET | `/v1/orders/products` | ✅ E5-5: products to pick for a manual order |
 | PATCH | `/v1/orders/{id}` | Edit, change status, assign |
 | POST | `/v1/orders/bulk` | Bulk assign, tag, status |
 | POST | `/v1/stores/{id}/webhook` | Inbound store webhook |
