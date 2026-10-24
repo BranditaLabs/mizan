@@ -136,7 +136,7 @@ _Sample data. Full visual in `design/prototype.html`._
 | BNPL (Tabby, Tamara, valU) | Provider carries credit risk; check address and stock only | Auto |
 | Bank transfer / InstaPay | Hold until payment is matched (M15); remind customer | Hold › auto when paid |
 
-The risk score is one model with method-specific signals. Reasons are always shown.
+The risk score is one model with method-specific signals. Reasons are always shown. ✅ E6-1: `scoreOrder` (orders module) runs as the order arrives; the order screen shows the score and its top three reasons (AR/EN); routing by band is E6-2.
 
 ## Rules — Default score factors and routes
 

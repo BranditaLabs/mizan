@@ -373,7 +373,7 @@ describe("offers in the chat (E6-11)", () => {
     await run();
     expect(sentAfter(before)).toHaveLength(2);
     expect(await offerOf(id)).toMatchObject({ status: "accepted" });
-    const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("entity_id", "=", id).where("type", "like", "offer.%").execute());
+    const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("entity_id", "=", id).where("type", "like", "offer.%").orderBy("occurred_at").execute());
     expect(events.map((e) => e.type)).toEqual(["offer.proposed", "offer.accepted"]);
     expect(JSON.stringify(events)).not.toMatch(/Mona|1001234821/);
     await http().patch(`/v1/offer-rules/${rule}`).set(as("owner")).send({ active: false }).expect(204);

@@ -20,6 +20,9 @@ import { DuplicateBanner } from "./DuplicateBanner";
 import { ProfitCard } from "./ProfitCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
+/** Risk reason codes the API writes (E6-1); an unknown code is shown as is. */
+const RISK_REASONS = new Set(["delivered_before", "refused_before", "cancelled_before", "first_order", "duplicate", "address_incomplete", "no_city", "phone_invalid", "high_value", "very_high_value", "bulk_quantity", "velocity", "chargeback_before", "bnpl", "awaiting_transfer", "paid"]);
+
 type Order = Schemas["OrderDetail"];
 type Line = Order["lines"][number];
 type Event = Order["events"][number];
@@ -162,7 +165,7 @@ export function OrderDetail({ id }: { id: string }) {
             {o.risk === null ? <p className="text-body-sm text-text-2">{t("detail.risk.notScored")}</p> : (
               <div className="flex flex-col gap-2">
                 <RiskMeter score={o.risk} label={t("riskLabel", { score: o.risk })} />
-                {o.riskReasons.length ? <div className="flex flex-wrap gap-1.5">{o.riskReasons.map((r) => <Tag key={r}>{r}</Tag>)}</div> : null}
+                {o.riskReasons.length ? <div className="flex flex-wrap gap-1.5">{o.riskReasons.map((r) => <Tag key={r}>{RISK_REASONS.has(r) ? t(`detail.risk.reason.${r}`) : r}</Tag>)}</div> : null}
               </div>
             )}
           </Card>

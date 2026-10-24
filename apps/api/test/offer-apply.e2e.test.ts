@@ -102,7 +102,7 @@ describe("an accepted offer joins the Shopify order (E6-13)", () => {
     expect(after.cod_minor).toBe(138500n);
     const lines = await db.tenant(T, (trx) => trx.selectFrom("order_lines").select(["sku", "variant_id"]).where("order_id", "=", before.id).execute());
     expect(lines).toContainEqual({ sku: "SC-1", variant_id: await variantOf(scarf.variantId) });
-    const events = await db.tenant(T, (trx) => trx.selectFrom("domain_events").select("type").where("entity_id", "=", before.id).where("type", "like", "offer.%").execute());
+    const events = await db.tenant(T, (trx) => trx.selectFrom("domain_events").select("type").where("entity_id", "=", before.id).where("type", "like", "offer.%").orderBy("occurred_at").execute());
     expect(events.map((e) => e.type)).toEqual(["offer.accepted", "offer.applied"]);
     const timeline = await db.tenant(T, (trx) => trx.selectFrom("order_events").select("type").where("order_id", "=", before.id).where("type", "like", "offer_%").execute());
     expect(timeline.map((e) => e.type)).toContain("offer_applied");

@@ -618,7 +618,25 @@
       },
       "risk": {
         "title": "Risk",
-        "notScored": "Not scored yet. Scoring comes with confirmation."
+        "notScored": "Not scored yet. Scoring comes with confirmation.",
+        "reason": {
+          "delivered_before": "Received orders before",
+          "refused_before": "Refused orders before",
+          "cancelled_before": "Cancelled orders before",
+          "first_order": "First order",
+          "duplicate": "Possible duplicate",
+          "address_incomplete": "Address incomplete",
+          "no_city": "No city",
+          "phone_invalid": "Phone not valid",
+          "high_value": "Above the usual order",
+          "very_high_value": "Far above the usual order",
+          "bulk_quantity": "Many pieces",
+          "velocity": "Several orders in 24 h",
+          "chargeback_before": "Chargeback before",
+          "bnpl": "Paid by instalments",
+          "awaiting_transfer": "Transfer not received",
+          "paid": "Deposit paid"
+        }
       },
       "timeline": {
         "title": "Activity",

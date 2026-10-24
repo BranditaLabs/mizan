@@ -618,7 +618,25 @@
       },
       "risk": {
         "title": "المخاطرة",
-        "notScored": "لسه متقيّمش. التقييم بييجي مع التأكيد."
+        "notScored": "لسه متقيّمش. التقييم بييجي مع التأكيد.",
+        "reason": {
+          "delivered_before": "استلم أوردرات قبل كده",
+          "refused_before": "رفض أوردرات قبل كده",
+          "cancelled_before": "لغى أوردرات قبل كده",
+          "first_order": "أول أوردر",
+          "duplicate": "ممكن يكون مكرر",
+          "address_incomplete": "العنوان ناقص",
+          "no_city": "مفيش مدينة",
+          "phone_invalid": "الرقم مش سليم",
+          "high_value": "أعلى من الأوردر المعتاد",
+          "very_high_value": "أعلى بكتير من الأوردر المعتاد",
+          "bulk_quantity": "قطع كتير",
+          "velocity": "كذا أوردر في 24 ساعة",
+          "chargeback_before": "عمل استرجاع فلوس قبل كده",
+          "bnpl": "بالتقسيط",
+          "awaiting_transfer": "التحويل لسه ماوصلش",
+          "paid": "دفع عربون"
+        }
       },
       "timeline": {
         "title": "النشاط",

@@ -142,6 +142,8 @@ erDiagram
 
 ✅ Migration 0027 (E5-8): `order_reconciliations` (store connection, store day, `store_orders`, `recovered`, `mizan_orders`, generated `gap`, `checked_at`; one per store and day; RLS).
 
+✅ E6-1 (no migration): `orders.risk_score` 0–100 and `orders.risk_reasons` `[{ code, points }]` (the three reasons that moved it most; codes, never personal data), written when the order is projected.
+
 Cost rules apply by the order's day in the store's time zone (`CostRulesService.resolve`, E9-1); a foreign-currency order converts with the rate of its `placed_at` day (`FxService.toBase`); a missing rate keeps the order's profit provisional and flagged, never guessed.
 
 ## 6. Indexes to add with real data

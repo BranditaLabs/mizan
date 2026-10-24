@@ -6,6 +6,7 @@ import { normalizePhone, toAsciiDigits, toMinor, type CanonicalOrder } from "@mi
 import { phoneCountryOf } from "../../platform/pii/phone-country.js";
 import { Database } from "../../platform/db/database.js";
 import { DuplicatesService } from "./duplicates.service.js";
+import { RiskService } from "./risk.service.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { PiiCipher, type TenantPii } from "../../platform/pii/pii-cipher.js";
 
@@ -76,6 +77,7 @@ export class OrderProjector {
     @Inject(PiiCipher) private readonly cipher: PiiCipher,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
+    @Inject(RiskService) private readonly risk: RiskService,
   ) {}
 
   async project(tenantId: string, connectionId: string, order: CanonicalOrder): Promise<ProjectResult> {
@@ -111,6 +113,12 @@ export class OrderProjector {
         } else {
           // Same transaction as the order: marked before anything reacts to order.created (E5-3).
           await this.duplicates.detect(trx, tenantId, row.id);
+          // Scored with what is in the clear only here (E6-1); stored, the address and phone are encrypted.
+          const a = order.shippingAddress;
+          await this.risk.score(trx, tenantId, row.id, {
+            line1Length: (a?.line1 ?? "").trim().length, hasCity: Boolean(a?.city?.trim()), phoneValid: Boolean(phone),
+            totalQuantity: order.lines.reduce((n, l) => n + l.quantity, 0),
+          });
         }
         return { orderId: row.id, created: true, changed: [] };
       }
