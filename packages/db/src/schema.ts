@@ -965,6 +965,7 @@ export interface Variants {
   cogs_set_at: Timestamp | null;
   available: number | null;
   available_at: Timestamp | null;
+  barcode_set_at: Timestamp | null;
 }
 
 export interface Warehouses {

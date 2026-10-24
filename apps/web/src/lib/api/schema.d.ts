@@ -161,6 +161,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProductsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/variants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ProductsController_update"];
+        trace?: never;
+    };
+    "/v1/products/costs/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ProductsController_import"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/profit/home": {
         parameters: {
             query?: never;
@@ -1131,6 +1179,33 @@ export interface components {
                 unreachable: boolean;
             } | null;
         };
+        CatalogVariant: {
+            /** Format: uuid */
+            id: string;
+            title: string | null;
+            sku: string;
+            barcode: string | null;
+            /**
+             * @description store: follows the store's barcode on every sync; mizan: set here, syncs leave it alone
+             * @enum {string}
+             */
+            barcodeOwner: "store" | "mizan";
+            price: {
+                amount: string;
+                currency: string;
+            };
+            compareAt: {
+                amount: string;
+                currency: string;
+            } | null;
+            /** @description null until entered; 0 is a real cost */
+            cost: {
+                amount: string;
+                currency: string;
+            } | null;
+            /** @description Stock as the store last reported it; null = not known */
+            available: number | null;
+        };
         CityResolved: {
             /** @enum {boolean} */
             saved: true;
@@ -1392,6 +1467,15 @@ export interface components {
                 createdAt: string;
             }[];
         };
+        CostsImported: {
+            /** @description Variants whose cost was set */
+            costs: number;
+            /** @description Variants whose barcode was set */
+            barcodes: number;
+            /** @description Rows with neither a cost nor a barcode */
+            skipped: number;
+            missingCost: number;
+        };
         CostsUpdated: {
             updated: number;
             missingCost: number;
@@ -1564,6 +1648,10 @@ export interface components {
             platform?: "meta" | "tiktok" | "google" | "snapchat" | "other";
             /** Format: uuid */
             connectionId?: string;
+        };
+        ImportCosts: {
+            /** @description The file's text: a header row with SKU and cost and/or barcode; other columns are ignored */
+            csv: string;
         };
         IntegrationsHealth: {
             connected: boolean;
@@ -2369,6 +2457,56 @@ export interface components {
             }[];
             requestId?: string;
         };
+        ProductPage: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                /** @enum {string} */
+                status: "active" | "draft" | "archived";
+                /** @description The store it syncs from; null = added in Mizan */
+                store: {
+                    /** Format: uuid */
+                    connectionId: string;
+                    provider: string;
+                    name: string;
+                } | null;
+                variants: {
+                    /** Format: uuid */
+                    id: string;
+                    title: string | null;
+                    sku: string;
+                    barcode: string | null;
+                    /**
+                     * @description store: follows the store's barcode on every sync; mizan: set here, syncs leave it alone
+                     * @enum {string}
+                     */
+                    barcodeOwner: "store" | "mizan";
+                    price: {
+                        amount: string;
+                        currency: string;
+                    };
+                    compareAt: {
+                        amount: string;
+                        currency: string;
+                    } | null;
+                    /** @description null until entered; 0 is a real cost */
+                    cost: {
+                        amount: string;
+                        currency: string;
+                    } | null;
+                    /** @description Stock as the store last reported it; null = not known */
+                    available: number | null;
+                }[];
+            }[];
+            nextCursor: string | null;
+            counts: {
+                products: number;
+                variants: number;
+                missingCost: number;
+                missingBarcode: number;
+            };
+        };
         ProfitBreakdown: {
             /** @enum {string} */
             by: "day" | "product" | "store" | "courier" | "country";
@@ -2876,6 +3014,12 @@ export interface components {
                 costs?: boolean;
             };
             dismissed?: boolean;
+        };
+        UpdateVariant: {
+            /** @description In the variant's currency */
+            cost?: string;
+            /** @description Set here (Mizan owns it from then); null gives it back to the store's barcode */
+            barcode?: string | null;
         };
         VariantCostPage: {
             data: {
@@ -3504,6 +3648,150 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_list: {
+        parameters: {
+            query?: {
+                search?: string;
+                /** @description all = active and draft (archived only when asked) */
+                status?: "active" | "draft" | "archived" | "all";
+                /** @description Only products with a variant missing its cost or barcode */
+                missing?: "cost" | "barcode";
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Products by title, each with its variants */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVariant"];
+            };
+        };
+        responses: {
+            /** @description Saved; title, price and SKU are the store's and change there */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogVariant"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_import: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportCosts"];
+            };
+        };
+        responses: {
+            /** @description Every row applied; any bad line: 422 csv_invalid naming each line, nothing saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostsImported"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -95,6 +95,8 @@ export interface CanonicalOrder {
 export interface CanonicalVariant {
   externalId: string;
   sku?: string;
+  /** The store's barcode (EAN/UPC/any), when it has one. */
+  barcode?: string;
   title?: string;
   price: Money;
   compareAtPrice?: Money | null;

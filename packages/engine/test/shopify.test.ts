@@ -58,6 +58,15 @@ describe("Shopify connector", () => {
     expect(engine.drift.report().some((d) => d.field === "order.lineItem.variantExternalId")).toBe(false); // optional: not drift
   });
 
+  it("reads each variant's barcode; a blank one is no barcode", async () => {
+    const { shop, engine } = setup();
+    const a = shop.addProduct({ title: "Vitamin C serum", price: "575.00", sku: "SER-30", barcode: " 6221234567890 " });
+    const b = shop.addProduct({ title: "Toner", price: "300.00", sku: "TON-1", barcode: "" });
+    expect((await engine.shopify.getProduct(a.productId)).variants[0]!.barcode).toBe("6221234567890");
+    expect((await engine.shopify.getProduct(b.productId)).variants[0]!.barcode).toBeUndefined();
+    expect(engine.drift.report().some((d) => d.field === "product.variant.barcode")).toBe(false); // optional: not drift
+  });
+
   it("rejects webhooks with a bad signature and processes duplicates once", async () => {
     const { shop, engine, store, clock } = setup();
     const o = shop.addOrder();

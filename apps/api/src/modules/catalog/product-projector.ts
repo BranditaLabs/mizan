@@ -10,8 +10,9 @@ const STATUS: Record<CanonicalProduct["status"], "active" | "draft" | "archived"
 /**
  * Store products → Mizan's catalogue (E4-5): `products`, `variants`, `external_variants`.
  * Called from the engine's onProduct hook for every product it reads (webhook, refetch, backfill),
- * so it must be idempotent. Fields the store owns (title, price, SKU, status) follow the store;
- * the cost (cogs_minor, cogs_set_at) belongs to Mizan and is never touched here.
+ * so it must be idempotent. Fields the store owns (title, price, SKU, status, stock) follow the
+ * store; the cost (cogs_minor, cogs_set_at) belongs to Mizan and is never touched here. The barcode
+ * is the store's until the merchant sets one in Mizan (barcode_set_at), then it is left alone.
  */
 @Injectable()
 export class ProductProjector {
@@ -31,7 +32,7 @@ export class ProductProjector {
         const link = await trx.selectFrom("external_variants").select("variant_id")
           .where("connection_id", "=", connectionId).where("external_id", "=", v.externalId).executeTakeFirst();
         const values = {
-          product_id: productId, title, barcode: null,
+          product_id: productId, title,
           price_minor: toMinor(v.price.amount, currency),
           compare_at_minor: v.compareAtPrice ? toMinor(v.compareAtPrice.amount, v.compareAtPrice.currency || currency) : null,
           currency, updated_at: new Date(),
@@ -39,18 +40,20 @@ export class ProductProjector {
         };
         let variantId = link?.variant_id ?? null;
         if (variantId) {
-          await trx.updateTable("variants").set({ ...values, sku: await this.sku(trx, v.sku, v.externalId, variantId) }).where("id", "=", variantId).execute();
+          const own = await trx.selectFrom("variants").select("barcode_set_at").where("id", "=", variantId).executeTakeFirst();
+          const barcode = own?.barcode_set_at ? {} : { barcode: await this.barcode(trx, v.barcode, variantId) };
+          await trx.updateTable("variants").set({ ...values, ...barcode, sku: await this.sku(trx, v.sku, v.externalId, variantId) }).where("id", "=", variantId).execute();
         } else {
-          variantId = (await trx.insertInto("variants").values({ tenant_id: tenantId, ...values, sku: await this.sku(trx, v.sku, v.externalId, null) })
+          variantId = (await trx.insertInto("variants").values({ tenant_id: tenantId, ...values, barcode: await this.barcode(trx, v.barcode, null), sku: await this.sku(trx, v.sku, v.externalId, null) })
             .returning("id").executeTakeFirstOrThrow()).id;
         }
         await trx.insertInto("external_variants").values({
           tenant_id: tenantId, connection_id: connectionId, external_id: v.externalId, external_product_id: product.externalId,
           inventory_item_id: v.inventoryItemId ?? null, variant_id: variantId,
-          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, updatedAt: product.updatedAt }),
+          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, barcode: v.barcode ?? null, updatedAt: product.updatedAt }),
         }).onConflict((oc) => oc.columns(["connection_id", "external_id"]).doUpdateSet({
           variant_id: variantId, external_product_id: product.externalId, inventory_item_id: v.inventoryItemId ?? null,
-          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, updatedAt: product.updatedAt }),
+          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, barcode: v.barcode ?? null, updatedAt: product.updatedAt }),
         })).execute();
         // Lines of orders that arrived before this product now learn what they are.
         const lines = await trx.updateTable("order_lines").set({ variant_id: variantId })
@@ -91,5 +94,14 @@ export class ProductProjector {
     let q = trx.selectFrom("variants").select("id").where("sku", "=", wanted);
     if (self) q = q.where("id", "!=", self);
     return (await q.executeTakeFirst()) ? fallback : wanted;
+  }
+
+  /** The store's barcode, unless another variant here already has it (a scan must find one item). */
+  private async barcode(trx: Transaction<DB>, barcode: string | undefined, self: string | null): Promise<string | null> {
+    const wanted = barcode?.trim();
+    if (!wanted || wanted.length > 64) return null;
+    let q = trx.selectFrom("variants").select("id").where("barcode", "=", wanted);
+    if (self) q = q.where("id", "!=", self);
+    return (await q.executeTakeFirst()) ? null : wanted;
   }
 }

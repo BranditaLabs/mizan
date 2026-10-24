@@ -13,7 +13,7 @@ import { hang, json, type FakeClock } from "./clock.js";
 /** lost: the call is carried out, then the response never arrives (a commit that "timed out"). */
 type Fault = "500" | "timeout" | "network" | "throttle" | "lost";
 
-interface Variant { id: string; sku: string; title: string; price: string; compareAtPrice: string | null; inventoryItemId: string }
+interface Variant { id: string; sku: string; barcode?: string | null; title: string; price: string; compareAtPrice: string | null; inventoryItemId: string }
 interface Product { id: string; title: string; status: string; vendor: string; productType: string; tags: string[]; descriptionHtml: string; updatedAt: string; variants: Variant[] }
 interface Order {
   id: string; name: string; createdAt: string; updatedAt: string; cancelledAt: string | null; displayFinancialStatus: string;
@@ -68,13 +68,13 @@ export class FakeShopify {
     return new Date(this.clock.now()).toISOString();
   }
 
-  addProduct(p: { title: string; price: string; sku?: string; stock?: number; location?: string }) {
+  addProduct(p: { title: string; price: string; sku?: string; barcode?: string; stock?: number; location?: string }) {
     const id = this.nextId("Product");
     const vid = this.nextId("ProductVariant");
     const itemId = this.nextId("InventoryItem");
     this.products.set(id, {
       id, title: p.title, status: "ACTIVE", vendor: "Serum Beauty", productType: "Skincare", tags: [], descriptionHtml: "", updatedAt: this.touch(),
-      variants: [{ id: vid, sku: p.sku ?? "SKU", title: "Default", price: p.price, compareAtPrice: null, inventoryItemId: itemId }],
+      variants: [{ id: vid, sku: p.sku ?? "SKU", barcode: p.barcode ?? null, title: "Default", price: p.price, compareAtPrice: null, inventoryItemId: itemId }],
     });
     this.inventory.set(`${itemId}|${p.location ?? "gid://shopify/Location/1"}`, p.stock ?? 10);
     return { productId: id, variantId: vid, inventoryItemId: itemId };
@@ -300,7 +300,7 @@ export class FakeShopify {
   private gqlProduct(p: Product) {
     return {
       id: p.id, title: p.title, status: p.status, vendor: p.vendor, productType: p.productType, tags: p.tags, descriptionHtml: p.descriptionHtml, updatedAt: p.updatedAt,
-      variants: { nodes: p.variants.map((v) => ({ id: v.id, sku: v.sku, title: v.title, price: v.price, compareAtPrice: v.compareAtPrice, inventoryQuantity: [...this.inventory.entries()].filter(([k]) => k.startsWith(v.inventoryItemId)).reduce((n, [, q]) => n + q, 0), inventoryItem: { id: v.inventoryItemId } })) },
+      variants: { nodes: p.variants.map((v) => ({ id: v.id, sku: v.sku, barcode: v.barcode ?? null, title: v.title, price: v.price, compareAtPrice: v.compareAtPrice, inventoryQuantity: [...this.inventory.entries()].filter(([k]) => k.startsWith(v.inventoryItemId)).reduce((n, [, q]) => n + q, 0), inventoryItem: { id: v.inventoryItemId } })) },
     };
   }
 

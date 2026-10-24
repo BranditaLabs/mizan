@@ -131,7 +131,9 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET / POST / PATCH | `/products` · `/variants` | Catalog, COGS, barcodes |
+| GET | `/products` | ✅ E8-1. Products by title with their variants `{ id, title, sku, barcode, barcodeOwner: store\|mizan, price, compareAt, cost (null until entered), available }` and the store they sync from (null = added in Mizan). `?search=` (title, SKU or barcode), `status=all\|active\|draft\|archived` (all = not archived), `missing=cost\|barcode`, `limit` ≤ 100, `cursor`; `counts { products, variants, missingCost, missingBarcode }`. Owner, admin, ops manager, finance |
+| PATCH | `/products/variants/{id}` | ✅ E8-1. `{ cost?: "420.50", barcode?: "…" \| null }` (at least one). A barcode set here is Mizan's (store syncs leave it); `null` gives back the store's last barcode. 409 `barcode_taken` (names the SKU that has it). Audited `catalog.variant_updated`; a cost emits `costs.changed`. Title, price, SKU, status and stock are the store's and change there |
+| POST | `/products/costs/import` | ✅ E8-1. `{ csv }`: header with SKU and cost and/or barcode (EN/AR names, Shopify's product export, Mizan's own download); other columns ignored; empty cells change nothing; a row with neither is skipped. All or nothing: 422 `csv_invalid` naming each line (`header`, `columns`, `sku`, `cost`, `barcode`, `duplicate`, `too_many`, `empty`, `unknown_sku`, `barcode_taken`). Barcodes may swap between SKUs in one file. → `{ costs, barcodes, skipped, missingCost }`; audited `catalog.costs_imported`; ≤ 5,000 rows |
 | GET | `/stock` | Levels by warehouse |
 | POST | `/stock/movements` | Adjust, receive, transfer |
 | POST | `/ops/sync` | **Ops app batch sync**: `{ deviceId, ops: [{ opId, type, payload, at }] }` → per-op result. Exactly-once by `opId` |

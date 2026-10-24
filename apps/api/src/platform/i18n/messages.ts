@@ -46,6 +46,7 @@ const PROBLEM_TITLES = {
   no_store: { en: "Connect a store first", ar: "اربط متجرك الأول" },
   store_required: { en: "Choose which store", ar: "اختار المتجر" },
   csv_invalid: { en: "Some lines of the file couldn't be read", ar: "في سطور في الملف ماتقريتش" },
+  barcode_taken: { en: "Another product already has this barcode", ar: "الباركود ده متسجّل على منتج تاني" },
   invalid_idempotency_key: { en: "Invalid Idempotency-Key", ar: "مفتاح التكرار مش صحيح" },
   idempotency_key_reused: { en: "Idempotency-Key already used", ar: "مفتاح التكرار ده اتستخدم لطلب تاني" },
   idempotency_key_in_progress: { en: "Request still running", ar: "الطلب الأول لسه شغال، جرّب كمان شوية" },

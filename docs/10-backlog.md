@@ -133,7 +133,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E8 · M4 Warehouse + ops app
 
-- [ ] **E8-1** `M` Products/variants screens, COGS entry (bulk CSV), barcodes; sync with Shopify (field ownership).
+- [x] **E8-1** `M` Products/variants screens, COGS entry (bulk CSV), barcodes; sync with Shopify (field ownership). ✅ `/products`: search, missing cost/barcode, edit one variant, download the list and import it back (all lines or none, each bad line named); Shopify barcodes read; a barcode set in Mizan survives syncs; unique per store (migration 0029).
 - [ ] **E8-2** `M` Stock levels, movements, reservations on confirm, release on cancel; oversell block.
 - [ ] **E8-3** `M` `POST /v1/ops/sync` batch endpoint, exactly-once by `opId`.
 - [ ] **E8-4** `L` `apps/ops` Flutter: sign-in, pick list, scan-to-pack (camera), offline queue (drift), sync, AR/EN. Theme from `packages/design-system/dist/mizan_tokens.dart` + its TTF fonts. Prototype offline sync first (riskiest). Split before starting.

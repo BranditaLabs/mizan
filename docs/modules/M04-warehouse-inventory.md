@@ -136,9 +136,24 @@ _Sample data. Full visual in `design/prototype.html`._
 | POST | `/v1/picklists` | Create a pick list |
 | POST | `/v1/scans/batch` | Sync offline scans |
 | GET | `/v1/stock/ledger` | Movement history |
-| PATCH | `/v1/skus/{id}` | Threshold, cost, barcode |
+| ✅ GET | `/v1/products` | Products and variants with cost, barcode, stock; search and "missing cost / barcode" filters (E8-1) |
+| ✅ PATCH | `/v1/products/variants/{id}` | Cost and barcode (E8-1); threshold with E8-5 |
+| ✅ POST | `/v1/products/costs/import` | Costs and barcodes from a sheet, all lines or none (E8-1) |
 
 Conventions: `docs/05-api.md`.
+
+## Field ownership with the store (E8-1)
+
+| Field | Owner | On a store sync |
+| --- | --- | --- |
+| Title, price, compare-at price, SKU, status | Store | Follows the store; changed in the store |
+| Stock (`available`) | Store, until E8-2 | Follows the store; E8-5 pushes Mizan's counts back |
+| Cost (`cogs_minor`, `cogs_set_at`) | Mizan | Never touched |
+| Barcode | Store until set in Mizan (`barcode_set_at`) | Follows the store while the store owns it; left alone once set in Mizan; "use the store's barcode" gives it back |
+
+SKUs and barcodes are unique per store: a store SKU another variant has gets a `SHOPIFY-<id>` stand-in; a store barcode another variant has is not copied (the variant shows "not set").
+
+The products screen (`/products`) lists what is missing (cost, barcode), edits one variant, downloads the list as CSV and imports it back (Arabic or English headers, Shopify's export too).
 
 ## Entities
 

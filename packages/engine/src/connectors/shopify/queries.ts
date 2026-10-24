@@ -63,7 +63,7 @@ export const ORDERS_UPDATED: GqlOperation = {
 
 const PRODUCT_FIELDS = `
   id title status vendor productType tags descriptionHtml updatedAt
-  variants(first: 100) { nodes { id sku title price compareAtPrice inventoryQuantity inventoryItem { id } } }
+  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity inventoryItem { id } } }
 `;
 
 export const PRODUCT_BY_ID: GqlOperation = {

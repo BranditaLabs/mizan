@@ -17,7 +17,8 @@
       "shipping": "Shipping",
       "warehouse": "Warehouse",
       "profit": "Profit",
-      "settings": "Settings"
+      "settings": "Settings",
+      "products": "Products"
     },
     "language": {
       "label": "Language",
@@ -1664,5 +1665,117 @@
     "total": "Total",
     "collect": "The courier collects",
     "area": "Area"
+  },
+  "products": {
+    "title": "Products",
+    "subtitle": "What your store sells, with the cost of each item (so profit is real) and its barcode (so the warehouse can scan). Names, prices and SKUs come from your store.",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, operations managers and finance can see products and costs."
+    },
+    "count": {
+      "products": "Products",
+      "variants": "Variants",
+      "missingCost": "Missing cost",
+      "missingBarcode": "Missing barcode"
+    },
+    "filterLabel": "Show",
+    "filter": {
+      "all": "All",
+      "cost": "Missing cost",
+      "barcode": "Missing barcode"
+    },
+    "search": "Search by name, SKU or barcode",
+    "loading": "Loading products…",
+    "loadFailed": "Couldn't load products. Try again.",
+    "label": "Products and variants",
+    "more": "Show more",
+    "col": {
+      "product": "Product",
+      "sku": "SKU",
+      "barcode": "Barcode",
+      "price": "Price",
+      "cost": "Cost",
+      "stock": "Stock",
+      "actions": "Actions"
+    },
+    "status": {
+      "draft": "Draft",
+      "archived": "Archived"
+    },
+    "owner": {
+      "store": "From the store",
+      "mizan": "Set in Mizan"
+    },
+    "none": "Not set",
+    "missingCost": "No cost yet",
+    "edit": "Edit",
+    "editLabel": "Edit {sku}",
+    "noMatch": {
+      "title": "No products match",
+      "body": "Try part of the name, the SKU or the barcode."
+    },
+    "empty": {
+      "title": "No products yet",
+      "body": "Products appear here once your store is connected and synced."
+    },
+    "allSet": {
+      "title": "Nothing missing",
+      "body": "Every product here has what this filter looks for."
+    },
+    "ownership": "Name, price, SKU and stock follow your store: change them there. The cost belongs to Mizan. A barcode set here stays even when the store sends another.",
+    "download": "Download list (CSV)",
+    "exportFailed": "Couldn't prepare the file. Try again.",
+    "csv": {
+      "product": "Product",
+      "variant": "Variant",
+      "sku": "SKU",
+      "barcode": "Barcode",
+      "price": "Price",
+      "cost": "Cost"
+    },
+    "editor": {
+      "title": "Edit {sku}",
+      "cost": "Cost per item ({currency})",
+      "costHint": "What one piece costs you: buying or making it. Used for profit.",
+      "costInvalid": "Write an amount like 250 or 250.50",
+      "barcode": "Barcode",
+      "barcodeStore": "From your store. Typing one here makes it Mizan's: store syncs won't change it.",
+      "barcodeMizan": "Set in Mizan: store syncs leave it as it is.",
+      "barcodeInvalid": "Letters, digits and symbols only, no spaces, up to 64",
+      "barcodeTaken": "Another product already has this barcode",
+      "useStore": "Use the store's barcode again",
+      "storeFields": "To change the name, price or SKU, edit the product in your store.",
+      "save": "Save",
+      "close": "Close",
+      "saved": "Saved {sku}."
+    },
+    "import": {
+      "open": "Import costs",
+      "title": "Import costs from a sheet",
+      "body": "Download the list, fill the cost column (and barcodes if you like), then import it here. Shopify's product export works too. Empty cells are left as they are.",
+      "file": "Choose a file",
+      "paste": "Or paste it",
+      "pasteHint": "SKU,Cost,Barcode",
+      "run": "Import",
+      "close": "Close",
+      "failed": "Couldn't import the file. Try again.",
+      "done": "Saved {costs, plural, one {# cost} other {# costs}} and {barcodes, plural, one {# barcode} other {# barcodes}}.",
+      "invalid": "{count, plural, one {# line} other {# lines}} couldn't be read. Nothing was saved.",
+      "line": "Line <n>{line}</n>",
+      "problem": {
+        "header": "The header needs SKU, and cost or barcode",
+        "columns": "Missing columns",
+        "sku": "No SKU",
+        "cost": "Not an amount",
+        "barcode": "Not a barcode (no spaces, up to 64)",
+        "duplicate": "This SKU is already in the file",
+        "too_many": "More than 5,000 lines",
+        "empty": "No rows",
+        "unknown_sku": "No product with this SKU",
+        "barcode_taken": "Another product has this barcode",
+        "other": "Couldn't read it"
+      }
+    }
   }
 }

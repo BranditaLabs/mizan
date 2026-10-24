@@ -175,6 +175,7 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
       return {
         externalId: vr.str("id", ["id", "admin_graphql_api_id"], { required: true })!,
         sku: vr.str("sku", ["sku"]),
+        barcode: vr.str("barcode", ["barcode"])?.trim() || undefined,
         title: vr.str("title", ["title"]),
         price: { amount: price, currency: "" },
         compareAtPrice: cap ? { amount: cap, currency: "" } : null,
