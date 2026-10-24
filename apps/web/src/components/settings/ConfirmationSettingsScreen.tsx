@@ -13,6 +13,7 @@ import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { ConfirmationResults } from "./ConfirmationResults";
 import { SettingsTabs } from "./SettingsTabs";
 
 type Settings = Schemas["ConfirmationSettings"];
@@ -25,7 +26,7 @@ const MAX_STEPS = 6;
 /**
  * Settings → Confirmation (M2, E6-7, E6-10): turn automatic confirmation on or off, the store's
  * WhatsApp number, the order of the channels (WhatsApp, automated call, our team calls) and how long
- * to wait for each, team-call retries, calling hours, and how long a hand-sent link works.
+ * to wait for each, team-call retries, calling hours, how long a hand-sent link works, and the results (E6-6).
  */
 export function ConfirmationSettingsScreen() {
   const t = useTranslations("confirmationSettings");
@@ -80,6 +81,8 @@ export function ConfirmationSettingsScreen() {
       <Card>
         <Switch label={t("enabled")} description={t("enabledHint")} checked={s.enabled} onChange={(e) => edit({ enabled: e.target.checked })} />
       </Card>
+
+      <ConfirmationResults />
 
       <Card title={t("channels.title")}>
         <ul className="flex flex-wrap gap-2" data-testid="confirmation-channels">

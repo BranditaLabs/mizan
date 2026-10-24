@@ -2190,6 +2190,73 @@
         ]
       }
     },
+    "/v1/confirmation/summary": {
+      "get": {
+        "operationId": "ConfirmationController_results",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 30,
+              "description": "Orders placed in the last 7, 30 or 90 days",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Orders placed in the last 7, 30 or 90 days"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "How confirmation went: rate, time to confirm, by route and by channel (counts only)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmationSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
     "/v1/settings/confirmation": {
       "get": {
         "operationId": "ConfirmationController_settings",
@@ -5345,6 +5412,165 @@
         "required": [
           "settings",
           "channels"
+        ],
+        "additionalProperties": false
+      },
+      "ConfirmationSummary": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "orders": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Orders that went through confirmation"
+          },
+          "confirmed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Confirmed (including those shipped or delivered since)"
+          },
+          "cancelled": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "pending": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Not answered yet"
+          },
+          "rate": {
+            "nullable": true,
+            "description": "Confirmed ÷ (confirmed + cancelled), percent with one decimal; null before anything is decided",
+            "type": "string",
+            "pattern": "^\\d{1,3}\\.\\d$"
+          },
+          "needsTeam": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Waiting on the team: a team call, a change, a refusal, a hold"
+          },
+          "medianMinutes": {
+            "nullable": true,
+            "description": "Median minutes from the order to its confirmation, for orders that were asked (auto-confirmed left out)",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "byRoute": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "bot",
+                    "agent",
+                    "hold"
+                  ]
+                },
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Orders that went through confirmation"
+                },
+                "confirmed": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Confirmed (including those shipped or delivered since)"
+                },
+                "cancelled": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "pending": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Not answered yet"
+                },
+                "rate": {
+                  "nullable": true,
+                  "description": "Confirmed ÷ (confirmed + cancelled), percent with one decimal; null before anything is decided",
+                  "type": "string",
+                  "pattern": "^\\d{1,3}\\.\\d$"
+                }
+              },
+              "required": [
+                "route",
+                "orders",
+                "confirmed",
+                "cancelled",
+                "pending",
+                "rate"
+              ],
+              "additionalProperties": false
+            },
+            "description": "By route (E6-2); with routing off every order is bot (the cascade)"
+          },
+          "byChannel": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "channel": {
+                  "type": "string",
+                  "enum": [
+                    "auto",
+                    "whatsapp",
+                    "link",
+                    "call_team",
+                    "call_auto",
+                    "voice_ai",
+                    "agent",
+                    "store"
+                  ]
+                },
+                "confirmed": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "cancelled": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "channel",
+                "confirmed",
+                "cancelled"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Who got the answer; store = decided outside confirmation (cancelled in the store, for example)"
+          }
+        },
+        "required": [
+          "days",
+          "orders",
+          "confirmed",
+          "cancelled",
+          "pending",
+          "rate",
+          "needsTeam",
+          "medianMinutes",
+          "byRoute",
+          "byChannel"
         ],
         "additionalProperties": false
       },

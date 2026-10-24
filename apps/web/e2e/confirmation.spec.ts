@@ -100,6 +100,39 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   await expect(main.getByTestId("routing").getByLabel("أكّد من غير ما تسأل لحد")).toHaveValue("20");
 });
 
+test("owner: confirmation results by route and channel, Arabic and English (E6-6)", async ({ page }) => {
+  const owner = await ownerWithStore("متجر النتايج");
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
+  await page.goto("/ar/settings/confirmation");
+  const results = page.getByRole("main").getByTestId("confirmation-results");
+  await expect(results).toContainText("لسه مفيش أوردرات عدّت على التأكيد"); // the real API: a new store
+  await page.route("**/v1/confirmation/summary?days=*", (route) => route.fulfill({ json: {
+    days: Number(new URL(route.request().url()).searchParams.get("days")), orders: 7, confirmed: 5, cancelled: 1, pending: 1, rate: "83.3", needsTeam: 1, medianMinutes: 95,
+    byRoute: [
+      { route: "auto", orders: 2, confirmed: 2, cancelled: 0, pending: 0, rate: "100.0" },
+      { route: "bot", orders: 4, confirmed: 2, cancelled: 1, pending: 1, rate: "66.7" },
+      { route: "agent", orders: 1, confirmed: 1, cancelled: 0, pending: 0, rate: "100.0" },
+    ],
+    byChannel: [{ channel: "auto", confirmed: 2, cancelled: 0 }, { channel: "whatsapp", confirmed: 2, cancelled: 1 }, { channel: "call_team", confirmed: 1, cancelled: 0 }],
+  } }));
+  await results.getByRole("button", { name: "آخر 7 يوم" }).click();
+  await expect(results).toContainText("83.3٪");
+  await expect(results).toContainText("1:35ساعة");
+  await expect(results.getByTestId("results-by-route")).toContainText("اتسألوا في الشات");
+  await expect(results.getByTestId("results-by-route")).toContainText("66.7٪");
+  await expect(results.getByTestId("results-by-channel")).toContainText("2 اتأكّدوا · 1 اتلغوا");
+  await page.setViewportSize({ width: 1280, height: 1400 });
+  await results.screenshot({ path: "test-results/confirmation-results-ar.png" });
+  await page.goto("/en/settings/confirmation");
+  const en = page.getByRole("main").getByTestId("confirmation-results");
+  await expect(en).toContainText("Confirmation rate");
+  await expect(en).toContainText("83.3%");
+  await expect(en.getByTestId("results-by-route")).toContainText("Confirmed without asking");
+  await expect(en.getByTestId("results-by-channel")).toContainText("Our team's call");
+});
+
 test("order detail: the team's call panel with the script, the WhatsApp conversation, and the hand-sent link", async ({ page }) => {
   const owner = await ownerWithStore("متجر الكارت");
   await page.goto("/ar/sign-in");

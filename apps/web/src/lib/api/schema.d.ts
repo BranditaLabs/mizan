@@ -353,6 +353,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/confirmation/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConfirmationController_results"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/settings/confirmation": {
         parameters: {
             query?: never;
@@ -1028,6 +1044,43 @@ export interface components {
                  */
                 call_team: true;
             };
+        };
+        ConfirmationSummary: {
+            days: number;
+            /** @description Orders that went through confirmation */
+            orders: number;
+            /** @description Confirmed (including those shipped or delivered since) */
+            confirmed: number;
+            cancelled: number;
+            /** @description Not answered yet */
+            pending: number;
+            /** @description Confirmed ÷ (confirmed + cancelled), percent with one decimal; null before anything is decided */
+            rate: string | null;
+            /** @description Waiting on the team: a team call, a change, a refusal, a hold */
+            needsTeam: number;
+            /** @description Median minutes from the order to its confirmation, for orders that were asked (auto-confirmed left out) */
+            medianMinutes: number | null;
+            /** @description By route (E6-2); with routing off every order is bot (the cascade) */
+            byRoute: {
+                /** @enum {string} */
+                route: "auto" | "bot" | "agent" | "hold";
+                /** @description Orders that went through confirmation */
+                orders: number;
+                /** @description Confirmed (including those shipped or delivered since) */
+                confirmed: number;
+                cancelled: number;
+                /** @description Not answered yet */
+                pending: number;
+                /** @description Confirmed ÷ (confirmed + cancelled), percent with one decimal; null before anything is decided */
+                rate: string | null;
+            }[];
+            /** @description Who got the answer; store = decided outside confirmation (cancelled in the store, for example) */
+            byChannel: {
+                /** @enum {string} */
+                channel: "auto" | "whatsapp" | "link" | "call_team" | "call_auto" | "voice_ai" | "agent" | "store";
+                confirmed: number;
+                cancelled: number;
+            }[];
         };
         Connection: {
             /** Format: uuid */
@@ -3746,6 +3799,42 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_results: {
+        parameters: {
+            query?: {
+                /** @description Orders placed in the last 7, 30 or 90 days */
+                days?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How confirmation went: rate, time to confirm, by route and by channel (counts only) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfirmationSummary"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

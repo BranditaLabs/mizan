@@ -22,9 +22,9 @@ Verification scores every order 0–100 and picks how to check it. Cash-on-deliv
 
 | Metric | Definition |
 | --- | --- |
-| Confirmation rate | Confirmed ÷ orders, per route |
+| Confirmation rate | Confirmed ÷ (confirmed + cancelled), per route and per answering channel; orders not answered yet are shown apart (✅ E6-6, Settings → Confirmation → Results) |
 | Auto-confirm share | Confirmed without a human |
-| Time to confirm | Order created to confirmed |
+| Time to confirm | Order created to confirmed: the median, for orders that were asked (auto-confirmed left out) |
 | Delivered after confirm | Proof the score works |
 
 ## Flow — Score, route, confirm, and **learn from every delivery**.
@@ -226,6 +226,7 @@ The risk score is one model with method-specific signals. Reasons are always sho
 | POST | `/v1/orders/{id}/confirmation/link` | ✅ E6-7: link + WhatsApp (wa.me) message to send by hand |
 | POST | `/v1/orders/{id}/confirmation` | ✅ E6-7: agent records confirm / cancel |
 | GET / POST | `/v1/public/confirm/{token}` | ✅ E6-7: the customer's link page (no sign-in) |
+| GET | `/v1/confirmation/summary?days=7\|30\|90` | ✅ E6-6: rate, waiting on the team, median time to confirm, by route and by answering channel (counts only) |
 
 Conventions: `docs/05-api.md`.
 

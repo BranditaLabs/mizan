@@ -1127,6 +1127,53 @@
       "agentMaxHint": "Above it: held for review",
       "order": "Each number must be at least the one before",
       "paid": "Paid orders are approved unless above the team's number; instalments are approved; a bank transfer waits for its money."
+    },
+    "results": {
+      "title": "Results",
+      "period": "Period",
+      "days": "{days} days",
+      "loading": "Loading results",
+      "loadFailed": "Couldn't load the results.",
+      "empty": "No orders went through confirmation in this period yet.",
+      "none": "Not yet",
+      "pct": "{pct}%",
+      "minutes": "min",
+      "hours": "hours",
+      "rate": "Confirmation rate",
+      "decided": "{n} decided of {orders}",
+      "confirmed": "Confirmed",
+      "cancelledN": "{n} cancelled",
+      "needsTeam": "Waiting on the team",
+      "pendingN": "{n} not answered yet",
+      "median": "Time to confirm",
+      "medianHint": "Median, orders that were asked",
+      "byRoute": "By route",
+      "byChannel": "Who got the answer",
+      "col": {
+        "route": "Route",
+        "orders": "Orders",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "rate": "Rate"
+      },
+      "route": {
+        "auto": "Confirmed without asking",
+        "bot": "Asked in the chat",
+        "agent": "Team calls",
+        "hold": "Held for review"
+      },
+      "channel": {
+        "auto": "Without asking",
+        "whatsapp": "WhatsApp",
+        "link": "The customer's link",
+        "call_team": "Our team's call",
+        "call_auto": "Automated call",
+        "voice_ai": "AI call",
+        "agent": "An agent",
+        "store": "In the store"
+      },
+      "channelCounts": "{confirmed} confirmed · {cancelled} cancelled",
+      "channelShare": "{pct}% confirmed"
     }
   },
   "offersSettings": {

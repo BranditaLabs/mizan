@@ -1,28 +1,30 @@
-import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query, Req, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import type { z } from "zod";
 import { Auth, Public, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
-import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
+import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { RateLimiter } from "../../platform/http/rate-limit.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AgentAnswerSchema, AnswerResultSchema, ConfirmationLinkSchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, WhatsAppConnectSchema,
+  AgentAnswerSchema, AnswerResultSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, WhatsAppConnectSchema,
 } from "./confirmation.dto.js";
 import { ConnectionViewSchema } from "../connections/connections.dto.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
 import { ConfirmationService } from "./confirmation.service.js";
+import { ConfirmationAnalytics } from "./analytics.service.js";
 import { ConfirmationSettingsSchema, type ConfirmationSettings } from "./confirmation.settings.js";
 
-/** M2 staff side (E6-7): an order's confirmation, the hand-sent link, an agent's answer, store settings. */
+/** M2 staff side (E6-7): an order's confirmation, the hand-sent link, an agent's answer, store settings, results (E6-6). */
 @ApiTags("confirmation")
 @Controller()
 export class ConfirmationController {
   constructor(
     @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
     @Inject(WhatsAppConnections) private readonly whatsapp: WhatsAppConnections,
+    @Inject(ConfirmationAnalytics) private readonly analytics: ConfirmationAnalytics,
   ) {}
 
   @Get("orders/:id/confirmation")
@@ -81,6 +83,14 @@ export class ConfirmationController {
   @ApiProblems(404)
   checkWhatsApp(@Auth() auth: AuthContext) {
     return this.whatsapp.recheck(auth);
+  }
+
+  @Get("confirmation/summary")
+  @Roles("owner", "admin", "ops_manager")
+  @ApiQueryZod(ConfirmationSummaryQuerySchema)
+  @ApiJson(200, "ConfirmationSummary", ConfirmationSummarySchema, "How confirmation went: rate, time to confirm, by route and by channel (counts only)")
+  results(@Auth() auth: AuthContext, @Query(new ZodPipe(ConfirmationSummaryQuerySchema)) q: z.output<typeof ConfirmationSummaryQuerySchema>) {
+    return this.analytics.summary(auth.tenant!.id, q.days);
   }
 
   @Get("settings/confirmation")

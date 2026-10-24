@@ -2,6 +2,7 @@ import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
 import { OfferViewSchema } from "./offers/offers.dto.js";
 import { AUTOMATED_CHANNELS, ConfirmationSettingsSchema } from "./confirmation.settings.js";
+import { ANSWER_CHANNELS, ROUTES } from "./analytics.js";
 
 export const ChannelsSchema = z.object({
   whatsapp: z.boolean().describe("The store's WhatsApp number is connected and its template approved"),
@@ -94,4 +95,26 @@ export const OrderConfirmationSchema = z.object({
   /** The run's offer (E6-11), whatever its status. */
   offer: OfferViewSchema.nullable(),
   channels: ChannelsSchema,
+});
+
+/** E6-6: how confirmation went in a period, by route and by the channel that got the answer. */
+export const ConfirmationSummaryQuerySchema = z.object({
+  days: z.coerce.number().int().refine((v) => [7, 30, 90].includes(v), "7, 30 or 90").default(30).describe("Orders placed in the last 7, 30 or 90 days"),
+});
+const Rate = z.string().regex(/^\d{1,3}\.\d$/).nullable().describe("Confirmed ÷ (confirmed + cancelled), percent with one decimal; null before anything is decided");
+const Counts = {
+  orders: z.number().int().describe("Orders that went through confirmation"),
+  confirmed: z.number().int().describe("Confirmed (including those shipped or delivered since)"),
+  cancelled: z.number().int(),
+  pending: z.number().int().describe("Not answered yet"),
+};
+export const ConfirmationSummarySchema = z.object({
+  days: z.number().int(),
+  ...Counts,
+  rate: Rate,
+  needsTeam: z.number().int().describe("Waiting on the team: a team call, a change, a refusal, a hold"),
+  medianMinutes: z.number().int().nullable().describe("Median minutes from the order to its confirmation, for orders that were asked (auto-confirmed left out)"),
+  byRoute: z.array(z.object({ route: z.enum(ROUTES), ...Counts, rate: Rate })).describe("By route (E6-2); with routing off every order is bot (the cascade)"),
+  byChannel: z.array(z.object({ channel: z.enum(ANSWER_CHANNELS), confirmed: z.number().int(), cancelled: z.number().int() }))
+    .describe("Who got the answer; store = decided outside confirmation (cancelled in the store, for example)"),
 });
