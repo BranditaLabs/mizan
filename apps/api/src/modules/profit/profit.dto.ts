@@ -1,5 +1,6 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
+import { BREAKDOWN_DIMENSIONS } from "./breakdown.js";
 
 /** One order's profit (E9-2). Realised numbers count money that is real; expected = if it delivers. */
 export const OrderPnlSchema = z.object({
@@ -65,4 +66,27 @@ export const ProfitHomeSchema = z.object({
   }),
   trend: z.array(z.object({ day: z.iso.date(), orders: z.number().int(), net: MoneySchema, expectedNet: MoneySchema })),
   leaks: z.array(z.object({ kind: z.enum(HOME_LEAKS), count: z.number().int(), amount: MoneySchema.nullable() })).describe("What is costing money or hiding it, most costly first"),
+});
+
+/** E9-5: profit grouped by day, product, store, courier or country. */
+export const BreakdownQuerySchema = z.object({
+  by: z.enum(BREAKDOWN_DIMENSIONS).describe("Group by"),
+  days: z.coerce.number().int().refine((v) => [7, 30, 90].includes(v), "7, 30 or 90").optional().describe("The last 7, 30 or 90 store days (default 30), unless from/to are given"),
+  from: z.iso.date().optional().describe("First store day (with to: at most 366 days)"),
+  to: z.iso.date().optional().describe("Last store day (default today)"),
+});
+const BreakdownRowSchema = z.object({
+  key: z.string().describe("Day, store connection id, courier connection id, country code, variant id (or title:… for a one-off item), or a special key"),
+  label: z.string(),
+  special: z.boolean().describe("The key is one the screen names itself: manual (no store), none (no courier yet), unknown (no country), no_products"),
+  orders: z.number().int(), delivered: z.number().int(), returned: z.number().int().describe("Refused or returned after shipping"),
+  revenue: MoneySchema.describe("After refunds; counted when the money is real"), productCost: MoneySchema, shippingAndCod: MoneySchema, ads: MoneySchema,
+  returns: MoneySchema.describe("Return shipping"), team: MoneySchema, fees: MoneySchema.describe("Payment, channel, packaging, chargebacks"),
+  net: MoneySchema.describe("Realised profit"), expectedNet: MoneySchema.describe("If orders on their way deliver"),
+  margin: z.string().nullable().describe("Net ÷ revenue, percent with one decimal"),
+});
+export const ProfitBreakdownSchema = z.object({
+  by: z.enum(BREAKDOWN_DIMENSIONS), from: z.iso.date(), to: z.iso.date(), baseCurrency: z.string(),
+  rows: z.array(BreakdownRowSchema).describe("Biggest profit first; by day, in date order. A product's share of each order is split exactly (cost by its line cost, the rest by its share of the order's value)"),
+  total: BreakdownRowSchema,
 });

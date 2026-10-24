@@ -145,6 +145,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/profit/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProfitController_breakdown"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ad-spend": {
         parameters: {
             query?: never;
@@ -2208,6 +2224,124 @@ export interface components {
             }[];
             requestId?: string;
         };
+        ProfitBreakdown: {
+            /** @enum {string} */
+            by: "day" | "product" | "store" | "courier" | "country";
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            baseCurrency: string;
+            /** @description Biggest profit first; by day, in date order. A product's share of each order is split exactly (cost by its line cost, the rest by its share of the order's value) */
+            rows: {
+                /** @description Day, store connection id, courier connection id, country code, variant id (or title:… for a one-off item), or a special key */
+                key: string;
+                label: string;
+                /** @description The key is one the screen names itself: manual (no store), none (no courier yet), unknown (no country), no_products */
+                special: boolean;
+                orders: number;
+                delivered: number;
+                /** @description Refused or returned after shipping */
+                returned: number;
+                /** @description After refunds; counted when the money is real */
+                revenue: {
+                    amount: string;
+                    currency: string;
+                };
+                productCost: {
+                    amount: string;
+                    currency: string;
+                };
+                shippingAndCod: {
+                    amount: string;
+                    currency: string;
+                };
+                ads: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Return shipping */
+                returns: {
+                    amount: string;
+                    currency: string;
+                };
+                team: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Payment, channel, packaging, chargebacks */
+                fees: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Realised profit */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description If orders on their way deliver */
+                expectedNet: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net ÷ revenue, percent with one decimal */
+                margin: string | null;
+            }[];
+            total: {
+                /** @description Day, store connection id, courier connection id, country code, variant id (or title:… for a one-off item), or a special key */
+                key: string;
+                label: string;
+                /** @description The key is one the screen names itself: manual (no store), none (no courier yet), unknown (no country), no_products */
+                special: boolean;
+                orders: number;
+                delivered: number;
+                /** @description Refused or returned after shipping */
+                returned: number;
+                /** @description After refunds; counted when the money is real */
+                revenue: {
+                    amount: string;
+                    currency: string;
+                };
+                productCost: {
+                    amount: string;
+                    currency: string;
+                };
+                shippingAndCod: {
+                    amount: string;
+                    currency: string;
+                };
+                ads: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Return shipping */
+                returns: {
+                    amount: string;
+                    currency: string;
+                };
+                team: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Payment, channel, packaging, chargebacks */
+                fees: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Realised profit */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description If orders on their way deliver */
+                expectedNet: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net ÷ revenue, percent with one decimal */
+                margin: string | null;
+            };
+        };
         ProfitHome: {
             baseCurrency: string;
             /** Format: date */
@@ -3176,6 +3310,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProfitHome"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProfitController_breakdown: {
+        parameters: {
+            query: {
+                /** @description Group by */
+                by: "day" | "product" | "store" | "courier" | "country";
+                /** @description The last 7, 30 or 90 store days (default 30), unless from/to are given */
+                days?: number;
+                /** @description First store day (with to: at most 366 days) */
+                from?: string;
+                /** @description Last store day (default today) */
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Profit by day, product, store, courier or country over a range of store days, with the total */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfitBreakdown"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

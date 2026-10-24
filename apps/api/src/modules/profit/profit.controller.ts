@@ -9,14 +9,15 @@ import { CostRuleListSchema, CostRuleQuerySchema, CostRuleSchema, CreateCostRule
 import { CostRulesService } from "./cost-rules.service.js";
 import { FxParamsSchema, FxQuerySchema, FxRateSchema, FxRatesSchema, SetFxRateSchema } from "./fx.dto.js";
 import { FxService } from "./fx/fx.service.js";
-import { HomeQuerySchema, OrderPnlSchema, ProfitHomeSchema, RecalculatedSchema, RecalculateSchema } from "./profit.dto.js";
+import { BreakdownQuerySchema, HomeQuerySchema, OrderPnlSchema, ProfitBreakdownSchema, ProfitHomeSchema, RecalculatedSchema, RecalculateSchema } from "./profit.dto.js";
+import { ProfitBreakdownService } from "./breakdown.service.js";
 import { ProfitHomeService } from "./home.service.js";
 import { ProfitService } from "./profit.service.js";
 import { AdSpendDeleteQuerySchema, AdSpendImportedSchema, AdSpendListSchema, AdSpendParamsSchema, AdSpendQuerySchema, AdSpendRowSchema, ImportAdSpendSchema, SetAdSpendSchema } from "./ads/ad-spend.dto.js";
 import { AdSpendService } from "./ads/ad-spend.service.js";
 import type { AdPlatform } from "./ads/ad-spend.csv.js";
 
-/** M5 profit inputs (E9-1, E9-3): cost rules, exchange rates, ad spend. Owner, admin and finance change them; ops managers read. */
+/** M5 profit inputs (E9-1, E9-3), home (E9-4) and breakdown (E9-5): cost rules, exchange rates, ad spend. Owner, admin and finance change them; ops managers read. */
 @ApiTags("profit")
 @Controller()
 export class ProfitController {
@@ -26,6 +27,7 @@ export class ProfitController {
     @Inject(ProfitService) private readonly profit: ProfitService,
     @Inject(AdSpendService) private readonly ads: AdSpendService,
     @Inject(ProfitHomeService) private readonly homeService: ProfitHomeService,
+    @Inject(ProfitBreakdownService) private readonly breakdowns: ProfitBreakdownService,
   ) {}
 
   @Get("profit/home")
@@ -34,6 +36,14 @@ export class ProfitController {
   @ApiJson(200, "ProfitHome", ProfitHomeSchema, "What the store kept over the last 7, 30 or 90 days and yesterday, where it went, cash with couriers, leaks")
   home(@Auth() auth: AuthContext, @Query(new ZodPipe(HomeQuerySchema)) q: z.output<typeof HomeQuerySchema>) {
     return this.homeService.home(auth.tenant!.id, q.days);
+  }
+
+  @Get("profit/breakdown")
+  @Roles("owner", "admin", "finance", "ops_manager")
+  @ApiQueryZod(BreakdownQuerySchema)
+  @ApiJson(200, "ProfitBreakdown", ProfitBreakdownSchema, "Profit by day, product, store, courier or country over a range of store days, with the total")
+  breakdown(@Auth() auth: AuthContext, @Query(new ZodPipe(BreakdownQuerySchema)) q: z.output<typeof BreakdownQuerySchema>) {
+    return this.breakdowns.breakdown(auth.tenant!.id, q);
   }
 
   @Get("ad-spend")

@@ -136,3 +136,33 @@ describe("profit home (E9-4)", () => {
     await http().get("/v1/profit/home?days=12").set(as("owner")).expect(422);
   });
 });
+
+describe("profit breakdown (E9-5)", () => {
+  it("every grouping adds up to the home's orders (ads no order carried and rent stay on the home)", async () => {
+    const get = async (by: string) => (await http().get(`/v1/profit/breakdown?by=${by}`).set(as("owner")).expect(200)).body;
+    const total = { orders: 4, delivered: 1, returned: 1, revenue: egp("1000.00"), productCost: egp("800.00"), shippingAndCod: egp("190.00"), ads: egp("300.00"), returns: egp("30.00"), net: egp("-320.00"), expectedNet: egp("670.00"), margin: "-32.0" };
+    const day = await get("day");
+    expect(day).toMatchObject({ by: "day", baseCurrency: "EGP", to: TODAY, from: addDays(TODAY, -29), total });
+    expect(day.rows).toEqual([expect.objectContaining({ key: DAY, label: DAY, special: false, orders: 4, net: egp("-320.00") })]);
+    const product = await get("product");
+    expect(product.rows).toEqual([expect.objectContaining({ label: "Abaya", special: false, ...total })]);
+    const store = await get("store");
+    expect(store.rows).toEqual([expect.objectContaining({ key: connectionId, label: "nile-home.myshopify.com", orders: 4 })]);
+    const courier = await get("courier");
+    expect(courier.rows).toEqual([expect.objectContaining({ key: "none", special: true, orders: 4 })]); // no shipment booked through Mizan yet
+    const country = await get("country");
+    expect(country.rows).toEqual([expect.objectContaining({ key: "EG", orders: 4, net: egp("-320.00") })]);
+    for (const b of [product, store, courier, country]) expect(b.total).toEqual(day.total);
+    expect(JSON.stringify(product)).not.toMatch(/Mona|1234821|Abbas/);
+  });
+
+  it("a chosen range; nothing upside down or longer than a year", async () => {
+    const one = (await http().get(`/v1/profit/breakdown?by=day&from=${DAY}&to=${DAY}`).set(as("owner")).expect(200)).body;
+    expect(one).toMatchObject({ from: DAY, to: DAY, total: { orders: 4 } });
+    const before = (await http().get(`/v1/profit/breakdown?by=day&from=${addDays(DAY, -5)}&to=${addDays(DAY, -1)}`).set(as("owner")).expect(200)).body;
+    expect(before).toMatchObject({ rows: [], total: { orders: 0, net: egp("0.00"), margin: null } });
+    await http().get(`/v1/profit/breakdown?by=day&from=${DAY}&to=${addDays(DAY, -1)}`).set(as("owner")).expect(422);
+    await http().get(`/v1/profit/breakdown?by=day&from=${addDays(DAY, -400)}&to=${DAY}`).set(as("owner")).expect(422);
+    await http().get("/v1/profit/breakdown?by=campaign").set(as("owner")).expect(422);
+  });
+});

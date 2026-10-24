@@ -1529,5 +1529,57 @@
       "deposit": "The deposit must be more than zero and less than the total",
       "fix": "Fix the highlighted fields first."
     }
+  },
+  "profitBreakdown": {
+    "title": "Profit breakdown",
+    "subtitle": "Where your profit comes from and where it leaks: by day, product, store, courier or country.",
+    "groupBy": "Group by",
+    "period": "Period",
+    "days": "{days} days",
+    "loading": "Loading profit",
+    "loadFailed": "Couldn't load the breakdown.",
+    "notAllowed": {
+      "title": "You can't see profit",
+      "body": "Ask the store owner for the right role."
+    },
+    "empty": {
+      "title": "No orders in this period",
+      "body": "Profit shows here once orders arrive."
+    },
+    "dimension": {
+      "day": "Day",
+      "product": "Product",
+      "store": "Store",
+      "courier": "Courier",
+      "country": "Country"
+    },
+    "special": {
+      "manual": "Entered by hand",
+      "none": "Not shipped yet",
+      "unknown": "No country",
+      "no_products": "No products"
+    },
+    "col": {
+      "orders": "Orders",
+      "delivered": "Delivered",
+      "returned": "Refused or returned",
+      "revenue": "Revenue",
+      "productCost": "Product cost",
+      "shipping": "Shipping and COD",
+      "ads": "Ads",
+      "returns": "Return shipping",
+      "team": "Team",
+      "fees": "Fees",
+      "net": "Profit",
+      "expectedNet": "Expected profit",
+      "margin": "Margin"
+    },
+    "caption": "Profit by {dimension}",
+    "total": "Total",
+    "outcome": "{delivered} delivered · {returned} refused",
+    "none": "Not yet",
+    "pct": "{pct}%",
+    "export": "Export CSV",
+    "note": "Revenue counts when the money is real (cash on delivery once delivered). Expected profit adds orders on their way if they deliver. A product's share of an order: its own cost, and the rest by its share of the order's value. Rent and ad spend no order carried stay on the home."
   }
 }

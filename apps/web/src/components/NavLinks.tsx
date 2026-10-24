@@ -7,7 +7,7 @@ import { Link, usePathname } from "@/i18n/navigation";
 type Key = "home" | "orders" | "confirmation" | "shipping" | "warehouse" | "profit" | "settings";
 const NAV: ReadonlyArray<{ key: Key; icon: IconProps["name"]; href?: string; section?: string }> = [
   { key: "home", icon: "home", href: "/" }, { key: "orders", icon: "orders", href: "/orders" }, { key: "confirmation", icon: "verification" },
-  { key: "shipping", icon: "shipping" }, { key: "warehouse", icon: "warehouse" }, { key: "profit", icon: "profit" },
+  { key: "shipping", icon: "shipping" }, { key: "warehouse", icon: "warehouse" }, { key: "profit", icon: "profit", href: "/profit" },
   { key: "settings", icon: "settings", href: "/settings/costs", section: "/settings" },
 ];
 

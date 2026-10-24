@@ -146,6 +146,7 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/v1/profit/home` | ✅ E9-4: the home — kept over 7/30/90 days and yesterday, where it went, delivery and refusals, cash with couriers, leaks |
+| GET | `/v1/profit/breakdown` | ✅ E9-5: profit by day, product, store, courier or country, with the total; web `/profit` with CSV export |
 | GET | `/v1/profit/summary` | Totals for a period and grouping |
 | GET | `/v1/orders/{id}/pnl` | ✅ E9-2: one order's P&L lines, expected profit, missing inputs |
 | GET | `/v1/profit/by/{dimension}` | Product, store, courier, country |
