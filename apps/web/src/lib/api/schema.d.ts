@@ -417,6 +417,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/confirmation/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConfirmationController_queueSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/confirmation/queue/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_queueNext"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/confirmation/summary": {
         parameters: {
             query?: never;
@@ -1073,6 +1105,31 @@ export interface components {
             orderIds: string[];
             /** @enum {string} */
             reason: "customer_cancelled" | "duplicate" | "out_of_stock" | "fraud" | "other";
+        };
+        CallQueue: {
+            /** @description Due now: mine and nobody's */
+            waiting: number;
+            /** @description Due now and already mine */
+            mine: number;
+            /** @description Called, no answer: waiting for the retry time */
+            later: number;
+            /**
+             * Format: date-time
+             * @description The next retry time
+             */
+            nextAt: string | null;
+            /** @description Every try used; still on the list */
+            unreachable: number;
+        };
+        CallQueueNext: {
+            /** @description Claimed for the caller (assigned to them); null when nothing is due */
+            order: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                attempts: number;
+                unreachable: boolean;
+            } | null;
         };
         CityResolved: {
             /** @enum {boolean} */
@@ -4318,6 +4375,72 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_queueSummary: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Orders waiting for the team's call: due now, mine, retrying later, unreachable */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallQueue"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_queueNext: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The next order to call, claimed for the caller (mine first, retries due before new, the unreachable last) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallQueueNext"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

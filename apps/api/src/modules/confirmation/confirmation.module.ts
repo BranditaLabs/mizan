@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfirmationAnalytics } from "./analytics.service.js";
+import { CallQueueService } from "./call-queue.service.js";
 import { ConfirmationConsumer } from "./confirmation.consumer.js";
 import { ConfirmationController, PublicConfirmationController } from "./confirmation.controller.js";
 import { ConfirmationRunner } from "./confirmation.runner.js";
@@ -18,7 +19,7 @@ import { ORDER_ANSWERS } from "../orders/ports.js";
 @Global()
 @Module({
   controllers: [ConfirmationController, PublicConfirmationController, OffersController],
-  providers: [ConfirmationService, ConfirmationAnalytics, ConfirmationRunner, ConfirmationConsumer, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OffersService, OfferAi, OfferApplyConsumer,
+  providers: [ConfirmationService, ConfirmationAnalytics, CallQueueService, ConfirmationRunner, ConfirmationConsumer, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OffersService, OfferAi, OfferApplyConsumer,
     { provide: OFFER_RESULTS, useExisting: OffersService }, { provide: ORDER_ANSWERS, useExisting: ConfirmationService }],
   exports: [ORDER_ANSWERS, ConfirmationService, ConfirmationRunner, MessagingRegistry, WhatsAppChat, WhatsAppConnections, OfferAi, OFFER_RESULTS],
 })

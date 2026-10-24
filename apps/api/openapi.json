@@ -2581,6 +2581,114 @@
         ]
       }
     },
+    "/v1/confirmation/queue": {
+      "get": {
+        "operationId": "ConfirmationController_queueSummary",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Orders waiting for the team's call: due now, mine, retrying later, unreachable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallQueue"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/confirmation/queue/next": {
+      "post": {
+        "operationId": "ConfirmationController_queueNext",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The next order to call, claimed for the caller (mine first, retries due before new, the unreachable last)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallQueueNext"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
     "/v1/confirmation/summary": {
       "get": {
         "operationId": "ConfirmationController_results",
@@ -5722,6 +5830,89 @@
             "additionalProperties": false
           }
         ]
+      },
+      "CallQueue": {
+        "type": "object",
+        "properties": {
+          "waiting": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Due now: mine and nobody's"
+          },
+          "mine": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Due now and already mine"
+          },
+          "later": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Called, no answer: waiting for the retry time"
+          },
+          "nextAt": {
+            "nullable": true,
+            "description": "The next retry time",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "unreachable": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Every try used; still on the list"
+          }
+        },
+        "required": [
+          "waiting",
+          "mine",
+          "later",
+          "nextAt",
+          "unreachable"
+        ],
+        "additionalProperties": false
+      },
+      "CallQueueNext": {
+        "type": "object",
+        "properties": {
+          "order": {
+            "nullable": true,
+            "description": "Claimed for the caller (assigned to them); null when nothing is due",
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "number": {
+                "type": "string"
+              },
+              "attempts": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "unreachable": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "attempts",
+              "unreachable"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "order"
+        ],
+        "additionalProperties": false
       },
       "CityResolved": {
         "type": "object",

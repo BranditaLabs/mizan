@@ -216,7 +216,8 @@ The risk score is one model with method-specific signals. Reasons are always sho
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/confirmation/queue` | Agent queue, prioritized |
+| GET | `/v1/confirmation/queue` | ✅ E6-3: the team's call queue counts (due now, mine, later, unreachable) |
+| POST | `/v1/confirmation/queue/next` | ✅ E6-3: claim the next order to call (mine first, retries due, then new, unreachable last); web `/confirmation` |
 | POST | `/v1/orders/{id}/score` | Recalculate the score |
 | POST | `/v1/orders/{id}/attempts` | Log a call outcome |
 | POST | `/v1/orders/{id}/bot` | Send WhatsApp confirmation |

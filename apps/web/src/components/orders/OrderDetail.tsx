@@ -189,7 +189,7 @@ function Page({ children }: { children: React.ReactNode }) {
 }
 
 /** Masked by default; "Show details" is an audited request, and the answer is never cached. */
-function CustomerCard({ order: o }: { order: Order }) {
+export function CustomerCard({ order: o }: { order: Order }) {
   const t = useTranslations("orders.detail.customer");
   const tpr = useTranslations("problems");
   const { api } = useSession();

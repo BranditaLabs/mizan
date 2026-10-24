@@ -9,12 +9,13 @@ import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { RateLimiter } from "../../platform/http/rate-limit.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AgentAnswerSchema, AnswerResultSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, WhatsAppConnectSchema,
+  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, WhatsAppConnectSchema,
 } from "./confirmation.dto.js";
 import { ConnectionViewSchema } from "../connections/connections.dto.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
 import { ConfirmationService } from "./confirmation.service.js";
 import { ConfirmationAnalytics } from "./analytics.service.js";
+import { CallQueueService } from "./call-queue.service.js";
 import { ConfirmationSettingsSchema, type ConfirmationSettings } from "./confirmation.settings.js";
 
 /** M2 staff side (E6-7): an order's confirmation, the hand-sent link, an agent's answer, store settings, results (E6-6). */
@@ -25,6 +26,7 @@ export class ConfirmationController {
     @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
     @Inject(WhatsAppConnections) private readonly whatsapp: WhatsAppConnections,
     @Inject(ConfirmationAnalytics) private readonly analytics: ConfirmationAnalytics,
+    @Inject(CallQueueService) private readonly queue: CallQueueService,
   ) {}
 
   @Get("orders/:id/confirmation")
@@ -83,6 +85,21 @@ export class ConfirmationController {
   @ApiProblems(404)
   checkWhatsApp(@Auth() auth: AuthContext) {
     return this.whatsapp.recheck(auth);
+  }
+
+  @Get("confirmation/queue")
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @ApiJson(200, "CallQueue", CallQueueSchema, "Orders waiting for the team's call: due now, mine, retrying later, unreachable")
+  queueSummary(@Auth() auth: AuthContext) {
+    return this.queue.summary(auth);
+  }
+
+  @Post("confirmation/queue/next")
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @HttpCode(200)
+  @ApiJson(200, "CallQueueNext", CallQueueNextSchema, "The next order to call, claimed for the caller (mine first, retries due before new, the unreachable last)")
+  queueNext(@Auth() auth: AuthContext) {
+    return this.queue.next(auth);
   }
 
   @Get("confirmation/summary")

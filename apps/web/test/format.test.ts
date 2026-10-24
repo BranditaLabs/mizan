@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatMoney, formatNumber, formatRelative } from "../src/lib/format";
+import { formatDate, formatMoney, formatNumber, formatRelative, formatWhen } from "../src/lib/format";
 
 const strip = (s: string) => s.replace(/[‎‏؜  ]/g, " ").replace(/\s+/g, " ").trim();
 
@@ -37,6 +37,7 @@ describe("numbers and dates", () => {
   it("relative times", () => {
     const now = Date.parse("2026-10-20T12:00:00Z");
     expect(formatRelative("2026-10-20T11:54:00Z", "en", now)).toBe("6 minutes ago");
+    expect(formatWhen("2026-10-24T08:00:00Z", "en")).toBe("Sat 11:00 AM"); // Cairo time
     expect(formatRelative("2026-10-20T11:54:00Z", "ar", now)).toContain("6");
   });
 });

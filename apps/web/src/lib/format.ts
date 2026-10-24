@@ -28,6 +28,11 @@ export function formatDate(date: Date | string, locale: string, digits: Digits =
   return new Intl.DateTimeFormat(tag(locale), { dateStyle: style, numberingSystem: digits, timeZone: "Africa/Cairo" }).format(new Date(date));
 }
 
+/** "Sat 10:00 AM" / "السبت ١٠:٠٠ ص" in Cairo time — when something comes due this week (a retry, a call). */
+export function formatWhen(date: Date | string, locale: string, digits: Digits = "latn"): string {
+  return new Intl.DateTimeFormat(tag(locale), { weekday: "short", hour: "numeric", minute: "2-digit", numberingSystem: digits, timeZone: "Africa/Cairo" }).format(new Date(date));
+}
+
 /** "منذ ٦ دقائق" / "6 minutes ago" — for queues and timelines. */
 export function formatRelative(date: Date | string, locale: string, now = Date.now(), digits: Digits = "latn"): string {
   const s = Math.round((new Date(date).getTime() - now) / 1000);

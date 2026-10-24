@@ -1634,5 +1634,35 @@
     "pct": "{pct}%",
     "export": "Export CSV",
     "note": "Revenue counts when the money is real (cash on delivery once delivered). Expected profit adds orders on their way if they deliver. A product's share of an order: its own cost, and the rest by its share of the order's value. Rent and ad spend no order carried stay on the home."
+  },
+  "callQueue": {
+    "title": "Confirmation calls",
+    "subtitle": "Orders waiting for the team's call, one at a time: what to say, the customer's phone, and the outcome.",
+    "start": "Start calling",
+    "next": "Next order",
+    "loading": "Loading the order",
+    "notAllowed": {
+      "title": "You can't make confirmation calls",
+      "body": "Ask the store owner for the right role."
+    },
+    "waiting": "Waiting now",
+    "mine": "Mine",
+    "later": "Later",
+    "nextAt": "Next due {at}",
+    "unreachable": "Unreachable",
+    "ready": {
+      "title": "Ready when you are",
+      "body": "Press Start calling: the next order is yours, and nobody else will call that customer."
+    },
+    "empty": {
+      "title": "Nothing to call right now",
+      "body": "New orders and retries show up here when they are due."
+    },
+    "attempt": "Try {n}",
+    "unreachableBadge": "Unreachable so far",
+    "qty": "Qty {n}",
+    "total": "Total",
+    "collect": "The courier collects",
+    "area": "Area"
   }
 }

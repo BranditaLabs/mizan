@@ -118,3 +118,15 @@ export const ConfirmationSummarySchema = z.object({
   byChannel: z.array(z.object({ channel: z.enum(ANSWER_CHANNELS), confirmed: z.number().int(), cancelled: z.number().int() }))
     .describe("Who got the answer; store = decided outside confirmation (cancelled in the store, for example)"),
 });
+
+/** E6-3: the team's call queue. */
+export const CallQueueSchema = z.object({
+  waiting: z.number().int().describe("Due now: mine and nobody's"),
+  mine: z.number().int().describe("Due now and already mine"),
+  later: z.number().int().describe("Called, no answer: waiting for the retry time"),
+  nextAt: z.iso.datetime().nullable().describe("The next retry time"),
+  unreachable: z.number().int().describe("Every try used; still on the list"),
+});
+export const CallQueueNextSchema = z.object({
+  order: z.object({ id: z.uuid(), number: z.string(), attempts: z.number().int(), unreachable: z.boolean() }).nullable().describe("Claimed for the caller (assigned to them); null when nothing is due"),
+});
