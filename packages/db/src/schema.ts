@@ -95,6 +95,30 @@ export interface Automations {
   updated_at: Generated<Timestamp>;
 }
 
+export interface BulkActionItems {
+  bulk_id: string;
+  tenant_id: string;
+  order_id: string;
+  status: Generated<string>;
+  reason: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface BulkActions {
+  id: Generated<string>;
+  tenant_id: string;
+  action: string;
+  params: Generated<Json>;
+  status: Generated<string>;
+  total: number;
+  done: Generated<number>;
+  skipped: Generated<number>;
+  failed: Generated<number>;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+  finished_at: Timestamp | null;
+}
+
 export interface ConfirmationRuns {
   id: Generated<string>;
   tenant_id: string;
@@ -998,6 +1022,8 @@ export interface DB {
   audit_log: AuditLog;
   automation_runs: AutomationRuns;
   automations: Automations;
+  bulk_action_items: BulkActionItems;
+  bulk_actions: BulkActions;
   confirmation_runs: ConfirmationRuns;
   confirmation_steps: ConfirmationSteps;
   confirmations: Confirmations;

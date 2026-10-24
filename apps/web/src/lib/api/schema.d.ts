@@ -17,6 +17,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_bulkRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/bulk/{bulkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_bulkProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/products": {
         parameters: {
             query?: never;
@@ -985,6 +1017,62 @@ export interface components {
         BostaKey: {
             /** @description From Bosta's dashboard (Settings → API integration); stored encrypted, never shown again */
             apiKey: string;
+        };
+        BulkAction: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            action: "assign" | "tag" | "confirm" | "cancel";
+            /** @enum {string} */
+            status: "running" | "done";
+            total: number;
+            done: number;
+            skipped: number;
+            failed: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** @description Orders skipped or failed and why (200 at most) */
+            issues: {
+                /** Format: uuid */
+                orderId: string;
+                number: string;
+                /** @enum {string} */
+                status: "skipped" | "failed";
+                /** @description cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, error… */
+                reason: string;
+            }[];
+        };
+        BulkRequest: {
+            /** @enum {string} */
+            action: "assign";
+            /** @description Up to 500 orders */
+            orderIds: string[];
+            /**
+             * Format: uuid
+             * @description A team member, or null to unassign
+             */
+            userId: string | null;
+        } | {
+            /** @enum {string} */
+            action: "tag";
+            /** @description Up to 500 orders */
+            orderIds: string[];
+            /** @description Added (in Shopify too); never removed */
+            tags: string[];
+        } | {
+            /** @enum {string} */
+            action: "confirm";
+            /** @description Up to 500 orders */
+            orderIds: string[];
+        } | {
+            /** @enum {string} */
+            action: "cancel";
+            /** @description Up to 500 orders */
+            orderIds: string[];
+            /** @enum {string} */
+            reason: "customer_cancelled" | "duplicate" | "out_of_stock" | "fraud" | "other";
         };
         CityResolved: {
             /** @enum {boolean} */
@@ -2847,6 +2935,96 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_bulkRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRequest"];
+            };
+        };
+        responses: {
+            /** @description Accepted: the worker applies it in chunks; audited */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkAction"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_bulkProgress: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                bulkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Progress: done, skipped and failed so far, and why each order was skipped or failed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkAction"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

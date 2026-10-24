@@ -11,6 +11,7 @@ export const DOMAIN_EVENT_TYPES = [
   "privacy.requested", "privacy.completed",
   // M1 Orders
   "order.created", "order.updated", "order.cancelled", "order.duplicate_found", "order.duplicate_resolved", "orders.reconciled", "orders.reconciliation_gap",
+  "order.assigned", "order.tagged", "order.store_cancel_failed", "orders.bulk_requested", "orders.bulk_continue", "orders.bulk_finished",
   // M2 Confirmation
   "order.scored", "order.confirmed", "order.confirmation_failed",
   "confirmation.started", "confirmation.routed", "confirmation.sent", "confirmation.escalated",

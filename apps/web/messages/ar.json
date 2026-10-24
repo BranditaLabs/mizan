@@ -867,7 +867,60 @@
       "wasKept": "اتساب كأوردر لوحده، مع إنه كان شكله مكرر من <order></order>.",
       "wasMerged": "اتدمج في <order></order> على إنه مكرر."
     },
-    "newOrder": "أوردر جديد"
+    "newOrder": "أوردر جديد",
+    "bulk": {
+      "assign": "اسند",
+      "tag": "ضيف وسم",
+      "confirm": "أكّد",
+      "cancel": "ألغي",
+      "close": "اقفل",
+      "choose": "اختار…",
+      "assignTitle": "اسند {count, plural, one {أوردر واحد} two {أوردرين} few {# أوردرات} other {# أوردر}}",
+      "assignTo": "اسند لـ",
+      "unassign": "ولا حد (شيل الإسناد)",
+      "assignGo": "اسند",
+      "tagTitle": "ضيف وسم لـ {count, plural, one {أوردر واحد} two {أوردرين} few {# أوردرات} other {# أوردر}}",
+      "tagHint": "الوسوم بتتضاف في ميزان وفي شوبيفاي، والقديمة بتفضل زي ما هي.",
+      "tags": "الوسوم",
+      "tagsPlaceholder": "مثال: vip, رمضان",
+      "tagsInvalid": "لحد 5 وسوم، حروف وأرقام، بينهم فاصلة",
+      "tagGo": "ضيف الوسوم",
+      "confirmTitle": "أكّد {count, plural, one {أوردر واحد} two {أوردرين} few {# أوردرات} other {# أوردر}}",
+      "confirmHint": "بنأكّد بس الأوردرات اللي لسه مستنية تأكيد، والباقي بيتعدّى.",
+      "confirmGo": "أكّد",
+      "cancelTitle": "ألغي {count, plural, one {أوردر واحد} two {أوردرين} few {# أوردرات} other {# أوردر}}",
+      "cancelHint": "هتتلغي في ميزان وفي شوبيفاي (المنتجات بترجع المخزن، ومن غير إيميل للعميل). المدفوع والمشحون بيتعدّى: المدفوع محتاج استرجاع فلوس.",
+      "reason": "السبب",
+      "cancelGo": "ألغي الأوردرات",
+      "reasons": {
+        "customer_cancelled": "العميل لغى",
+        "duplicate": "مكرر",
+        "out_of_stock": "خلص من المخزن",
+        "fraud": "احتيال",
+        "other": "سبب تاني"
+      },
+      "name": {
+        "assign": "الإسناد",
+        "tag": "الوسوم",
+        "confirm": "التأكيد",
+        "cancel": "الإلغاء"
+      },
+      "running": "{action} شغّال…",
+      "finished": "{action} خلص",
+      "progress": "التقدّم",
+      "counts": "{done} اتعمل · {skipped} اتعدّى · {failed} فشل من {total}",
+      "why": {
+        "cancelled": "ملغي أصلاً",
+        "unchanged": "مفيش حاجة تتغير",
+        "shipped": "اتشحن خلاص",
+        "paid_needs_refund": "مدفوع: محتاج استرجاع فلوس",
+        "already_confirmed": "متأكّد أصلاً",
+        "duplicate_suspected": "ممكن يكون مكرر: قرّر فيه الأول",
+        "not_found": "مش موجود",
+        "error": "حصلت مشكلة"
+      },
+      "failedHint": "فيه أوردرات فشلت. جرّبها تاني كمان شوية."
+    }
   },
   "costs": {
     "title": "التكاليف",

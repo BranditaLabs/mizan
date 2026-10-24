@@ -157,7 +157,7 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | POST | `/v1/orders` | ✅ E5-5: create a manual order (phone, WhatsApp, Instagram, in person); numbered M-1001…; goes through duplicates, risk and confirmation like a store order |
 | GET | `/v1/orders/products` | ✅ E5-5: products to pick for a manual order |
 | PATCH | `/v1/orders/{id}` | Edit, change status, assign |
-| POST | `/v1/orders/bulk` | Bulk assign, tag, status |
+| POST | `/v1/orders/bulk` | ✅ E5-4: assign, tag, confirm or cancel up to 500 orders (cancel reaches Shopify; paid orders skipped for a refund); `GET /v1/orders/bulk/{id}` for progress. Bulk ship comes with E7 |
 | POST | `/v1/stores/{id}/webhook` | Inbound store webhook |
 
 Conventions: `docs/05-api.md`.

@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -155,6 +155,16 @@ describe("schema", () => {
     expect((await add(12, 11)).rows[0]!.gap).toBe(1);
     await expect(add(12, 12)).rejects.toThrow(/duplicate key/);
     expect((await asTenant(T2, () => db.query(`SELECT * FROM order_reconciliations`))).rows).toEqual([]);
+  });
+
+  it("keeps bulk actions consistent and per store (E5-4)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
+    const bulk = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO bulk_actions (tenant_id, action, total) VALUES ($1, 'cancel', 1) RETURNING id`, [T1]))).rows[0]!.id;
+    await asTenant(T1, () => db.query(`INSERT INTO bulk_action_items (bulk_id, tenant_id, order_id) VALUES ($1, $2, $3)`, [bulk, T1, order]));
+    await expect(asTenant(T1, () => db.query(`INSERT INTO bulk_action_items (bulk_id, tenant_id, order_id) VALUES ($1, $2, $3)`, [bulk, T1, order]))).rejects.toThrow(/duplicate key/);
+    await expect(asTenant(T1, () => db.query(`UPDATE bulk_actions SET done = 2 WHERE id = $1`, [bulk]))).rejects.toThrow(/bulk_actions_counts/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO bulk_actions (tenant_id, action, total) VALUES ($1, 'ship', 1)`, [T1]))).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM bulk_action_items`))).rows).toEqual([]);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {

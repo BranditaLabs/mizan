@@ -170,6 +170,24 @@ export const TAGS_ADD: GqlOperation = {
 };
 
 /**
+ * Cancel an order (E5-4: bulk cancel, a merged duplicate). Never refunds (money goes back through
+ * refunds, with a ledger line) and never emails the customer; restocks. Needs write_orders.
+ * Shopify runs the cancellation as a job: the order reads cancelled shortly after. Confirm the
+ * 2026-10 shape (orderCancelUserErrors) on a dev store.
+ */
+export const ORDER_CANCEL: GqlOperation = {
+  name: "MizanOrderCancel",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderCancel($orderId: ID!, $reason: OrderCancelReason!, $staffNote: String) {
+      orderCancel(orderId: $orderId, reason: $reason, refund: false, restock: true, notifyCustomer: false, staffNote: $staffNote) {
+        job { id } orderCancelUserErrors { field message code } userErrors { field message }
+      }
+    }`,
+  ],
+};
+
+/**
  * Order editing (E6-13: an accepted offer joins the customer's order). Needs write_order_edits.
  * begin → add the variant → discount it → commit; nothing changes in the store until the commit,
  * and an uncommitted edit is simply abandoned. Confirm the 2026-10 shapes on a dev store.

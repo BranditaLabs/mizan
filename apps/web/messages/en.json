@@ -867,7 +867,60 @@
       "wasKept": "Kept as a separate order, though it looked like a duplicate of <order></order>.",
       "wasMerged": "Merged into <order></order> as a duplicate."
     },
-    "newOrder": "New order"
+    "newOrder": "New order",
+    "bulk": {
+      "assign": "Assign",
+      "tag": "Tag",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "close": "Close",
+      "choose": "Choose…",
+      "assignTitle": "Assign {count, plural, one {# order} other {# orders}}",
+      "assignTo": "Assign to",
+      "unassign": "Nobody (unassign)",
+      "assignGo": "Assign",
+      "tagTitle": "Tag {count, plural, one {# order} other {# orders}}",
+      "tagHint": "Tags are added in Mizan and in Shopify; existing tags stay.",
+      "tags": "Tags",
+      "tagsPlaceholder": "vip, ramadan",
+      "tagsInvalid": "Up to 5 tags, letters and numbers, separated by commas",
+      "tagGo": "Add tags",
+      "confirmTitle": "Confirm {count, plural, one {# order} other {# orders}}",
+      "confirmHint": "Only orders still waiting for confirmation are confirmed; the rest are skipped.",
+      "confirmGo": "Confirm",
+      "cancelTitle": "Cancel {count, plural, one {# order} other {# orders}}",
+      "cancelHint": "They are cancelled in Mizan and in Shopify (restocked, no email to the customer). Paid and shipped orders are skipped: a paid order needs a refund.",
+      "reason": "Reason",
+      "cancelGo": "Cancel orders",
+      "reasons": {
+        "customer_cancelled": "The customer cancelled",
+        "duplicate": "Duplicate",
+        "out_of_stock": "Out of stock",
+        "fraud": "Fraud",
+        "other": "Other"
+      },
+      "name": {
+        "assign": "Assigning",
+        "tag": "Tagging",
+        "confirm": "Confirming",
+        "cancel": "Cancelling"
+      },
+      "running": "{action} orders…",
+      "finished": "{action} done",
+      "progress": "Progress",
+      "counts": "{done} done · {skipped} skipped · {failed} failed of {total}",
+      "why": {
+        "cancelled": "already cancelled",
+        "unchanged": "nothing to change",
+        "shipped": "already shipped",
+        "paid_needs_refund": "paid: needs a refund",
+        "already_confirmed": "already confirmed",
+        "duplicate_suspected": "a possible duplicate: decide it first",
+        "not_found": "not found",
+        "error": "something went wrong"
+      },
+      "failedHint": "Some orders failed. Try them again in a moment."
+    }
   },
   "costs": {
     "title": "Costs",

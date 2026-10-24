@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Badge, RiskMeter, Tag } from "@/components/ui/Badge";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
+import { BULK_ROLES, BulkBar, BulkProgress } from "./BulkActions";
 import { SearchInput } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
@@ -36,6 +37,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const [text, setText] = useState(initialQuery ?? "");
   const [q, setQ] = useState((initialQuery ?? "").trim());
   const [now] = useState(() => Date.now());
+  const [bulkId, setBulkId] = useState<string | null>(null);
 
   // Type, pause, search: one request per pause, not per key.
   useEffect(() => {
@@ -65,6 +67,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const counts = orders.data?.pages[0]?.counts;
   const canSetUp = store?.role === "owner" || store?.role === "admin";
   const canCreate = ["owner", "admin", "ops_manager", "agent"].includes(store?.role ?? "");
+  const canBulk = BULK_ROLES.has(store?.role ?? "");
 
   const columns: Column<Order>[] = [
     { id: "order", header: t("columns.order"), cell: (o) => <Cell main={<Link href={`/orders/${o.id}`} className="hover:underline"><IdCell>{o.number}</IdCell></Link>} sub={o.store.provider ?? t("manual")} /> },
@@ -75,7 +78,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
     { id: "payment", header: t("columns.payment"), cell: (o) => <Cell main={<Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>} sub={tp(o.paymentStatus)} /> },
     {
       id: "total", header: t("columns.total"), numeric: true,
-      cell: (o) => <Cell main={<MoneyText money={o.total} />} sub={Number(o.cod.amount) > 0 ? t.rich("cod", { amount: "", m: () => <MoneyText money={o.cod} /> }) : null} />,
+      cell: (o) => <Cell main={<MoneyText money={o.total} />} sub={Number(o.cod.amount) > 0 && o.status !== "cancelled" ? t.rich("cod", { amount: "", m: () => <MoneyText money={o.cod} /> }) : null} />,
     },
     { id: "risk", header: t("columns.risk"), cell: (o) => (o.risk === null ? <span className="text-text-3">{t("noRisk")}</span> : <RiskMeter score={o.risk} label={t("riskLabel", { score: o.risk })} />) },
     {
@@ -120,7 +123,9 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
           <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>
         ) : (
           <div className="flex flex-col gap-3">
-            <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(o) => o.id} empty={empty} />
+            {bulkId ? <BulkProgress id={bulkId} onClose={() => setBulkId(null)} /> : null}
+            <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(o) => o.id} rowLabel={(o) => o.number} empty={empty}
+              selectable={canBulk} bulkActions={(keys, clear) => <BulkBar selected={keys} clear={clear} onStarted={setBulkId} />} />
             {orders.hasNextPage ? (
               <div className="flex justify-center">
                 <Button variant="secondary" busy={orders.isFetchingNextPage} onClick={() => void orders.fetchNextPage()}>{t("more")}</Button>

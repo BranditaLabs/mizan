@@ -6,8 +6,11 @@ import { DuplicatesService } from "./duplicates.service.js";
 import { ReconciliationService } from "./reconciliation.service.js";
 import { RiskService } from "./risk.service.js";
 import { ManualOrdersService } from "./manual-orders.service.js";
+import { BulkActionsService } from "./bulk.service.js";
+import { BulkActionsConsumer } from "./bulk.consumer.js";
+import { CANCEL_RESULTS } from "./ports.js";
 
-/** M1 Orders: projecting store orders from the engine (E2-3), the list (E5-1), detail and audited reveal (E5-2), likely duplicates (E5-3), nightly reconciliation (E5-8), risk score (E6-1), manual orders (E5-5). */
+/** M1 Orders: projecting store orders from the engine (E2-3), the list (E5-1), detail and audited reveal (E5-2), likely duplicates (E5-3), nightly reconciliation (E5-8), risk score (E6-1), manual orders (E5-5), bulk actions (E5-4). */
 @Global()
-@Module({ controllers: [OrdersController, OrderSettingsController], providers: [OrderProjector, OrdersService, ManualOrdersService, DuplicatesService, ReconciliationService, RiskService], exports: [OrderProjector, DuplicatesService, ReconciliationService] })
+@Module({ controllers: [OrdersController, OrderSettingsController], providers: [OrderProjector, OrdersService, ManualOrdersService, BulkActionsService, BulkActionsConsumer, { provide: CANCEL_RESULTS, useExisting: BulkActionsService }, DuplicatesService, ReconciliationService, RiskService], exports: [CANCEL_RESULTS, OrderProjector, DuplicatesService, ReconciliationService] })
 export class OrdersModule {}

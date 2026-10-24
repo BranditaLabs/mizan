@@ -81,13 +81,13 @@ export class DuplicatesService {
   /**
    * The team's answer. keep: both are real orders; the newer one goes on to confirmation.
    * merge: the newer one is cancelled in Mizan as a duplicate of the earlier (which carries on),
-   * and tagged `mizan-duplicate` in the store. Once answered, an order keeps its answer.
+   * and tagged `mizan-duplicate` in the store (cancelled there too when nothing was paid). Once answered, an order keeps its answer.
    */
   async resolve(auth: AuthContext, orderId: string, action: "keep" | "merge", now = new Date()) {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
       const o = await trx.selectFrom("orders as o").leftJoin("orders as e", "e.id", "o.duplicate_of").leftJoin("connections as c", "c.id", "o.connection_id")
-        .select(["o.id", "o.number", "o.status", "o.duplicate_of", "o.duplicate_status", "o.external_id", "o.connection_id", "c.provider", "e.number as of_number", "e.status as of_status"])
+        .select(["o.id", "o.number", "o.status", "o.duplicate_of", "o.duplicate_status", "o.external_id", "o.connection_id", "o.paid_minor", "c.provider", "e.number as of_number", "e.status as of_status"])
         .where("o.id", "=", orderId).where((eb) => roleScope(eb as never, auth)).forUpdate("o").executeTakeFirst();
       if (!o) throw new ProblemError(404, "not_found", "no such order in this store");
       if (!o.duplicate_status || !o.duplicate_of) throw new ProblemError(409, "not_a_duplicate", "this order is not marked as a possible duplicate");
@@ -108,6 +108,8 @@ export class DuplicatesService {
         if (o.provider === "shopify" && o.external_id && o.connection_id) {
           const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: o.connection_id } });
           await store.enqueue(MizanEngine.shopifyTagJob(o.external_id, [DUPLICATE_TAG], o.id), now.getTime());
+          // Cancelled in the store too (E5-4), unless money was paid: that goes back through a refund.
+          if (BigInt(o.paid_minor) === 0n) await store.enqueue(MizanEngine.shopifyCancelJob({ orderId: o.external_id, reason: "OTHER", note: `Mizan: duplicate of ${o.of_number ?? "another order"}` }), now.getTime());
         }
       }
       const status = action === "keep" ? "kept" : "merged";

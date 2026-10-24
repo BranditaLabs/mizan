@@ -29,6 +29,9 @@ export interface ShopifyLearned {
   inventoryCompareField: "changeFromQuantity" | "compareQuantity";
 }
 
+/** Shopify's OrderCancelReason. */
+export type CancelReason = "CUSTOMER" | "DECLINED" | "FRAUD" | "INVENTORY" | "OTHER" | "STAFF";
+
 export class ShopifyConnector {
   readonly id = "shopify";
   readonly gql: ShopifyGraphql;
@@ -263,6 +266,28 @@ export class ShopifyConnector {
     }
     await this.addTags(o.orderId, [tag]);
     return "added";
+  }
+
+  /**
+   * Cancel the store's order (E5-4), once: an order already cancelled is left alone; the mutation is
+   * not idempotent, so a timeout is checked by reading the order before anything is sent again.
+   * Never refunds, never notifies the customer, restocks.
+   */
+  async cancelOrder(o: { orderId: string; reason: CancelReason; note?: string | undefined }): Promise<"cancelled" | "already_cancelled"> {
+    if ((await this.getOrder(o.orderId)).cancelled) return "already_cancelled";
+    try {
+      const d = await this.gql.run<{ orderCancel: { orderCancelUserErrors?: UserErrors; userErrors?: UserErrors } }>(
+        Q.ORDER_CANCEL, { orderId: o.orderId, reason: o.reason, staffNote: o.note ?? null }, { idempotent: false });
+      const errs = [...(d.orderCancel?.orderCancelUserErrors ?? []), ...(d.orderCancel?.userErrors ?? [])];
+      if (errs.some((e) => /already.*cancel/i.test(e.message))) return "already_cancelled";
+      assertNoUserErrors("orderCancel", errs);
+    } catch (err) {
+      if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+      if (!(await this.getOrder(o.orderId)).cancelled) {
+        throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderCancel timed out and the order is not cancelled: will try again", cause: err });
+      }
+    }
+    return "cancelled";
   }
 
   async addTags(id: string, tags: string[]): Promise<void> {

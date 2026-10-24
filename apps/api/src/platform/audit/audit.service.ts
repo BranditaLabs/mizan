@@ -12,7 +12,7 @@ export const AUDIT_ACTIONS = [
   "tenant.created",
   "member.invited", "member.invitation_revoked", "member.joined", "member.updated", "member.removed",
   "connection.connected", "connection.disconnected", "connection.secret_rotated", "connection.key_saved", "connection.needs_attention",
-  "catalog.costs_updated", "onboarding.updated", "cost_rule.changed", "fx.rate_overridden", "ad_spend.changed", "order.duplicate_resolved", "orders.settings_updated", "order.created_manually",
+  "catalog.costs_updated", "onboarding.updated", "cost_rule.changed", "fx.rate_overridden", "ad_spend.changed", "order.duplicate_resolved", "orders.settings_updated", "order.created_manually", "orders.bulk_requested",
   "confirmation.link_created", "confirmation.settings_updated", "confirmation.answered_by_agent", "confirmation.call_no_answer",
   "offer.decided", "offer_rule.changed", "offers.settings_updated",
   "integration.job_replayed", "integration.city_resolved",

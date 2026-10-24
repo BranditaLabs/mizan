@@ -39,6 +39,8 @@ export class FakeShopify {
   /** Open order edits (orderEditBegin) and how many were committed. */
   readonly edits = new Map<string, { orderId: string; adds: Array<{ lineId: string; variantId: string; qty: number; pct: number }> }>();
   committedEdits = 0;
+  /** orderCancel mutations that cancelled an order (a second one is refused by the store). */
+  cancels = 0;
   orders = new Map<string, Order>();
   inventory = new Map<string, number>();
   calls: Array<{ op: string; variables: Record<string, unknown> }> = [];
@@ -450,6 +452,16 @@ export class FakeShopify {
         this.committedEdits++;
         o.updatedAt = this.touch();
         return { orderEditCommit: { order: { id: o.id }, userErrors: [] } };
+      }
+      case "MizanOrderCancel": {
+        const o = this.orders.get(v.orderId);
+        const err = (message: string, code: string) => ({ orderCancel: { job: null, orderCancelUserErrors: [{ field: ["orderId"], message, code }], userErrors: [] } });
+        if (!o) return err("Order does not exist", "NOT_FOUND");
+        if (o.cancelledAt) return err("Order has already been cancelled", "INVALID");
+        o.cancelledAt = this.touch();
+        o.updatedAt = o.cancelledAt;
+        this.cancels++;
+        return { orderCancel: { job: { id: this.nextId("Job") }, orderCancelUserErrors: [], userErrors: [] } };
       }
       case "MizanTagsAdd": {
         const o = this.orders.get(v.id);

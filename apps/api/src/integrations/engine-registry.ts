@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import { defaultRuntime, MizanEngine, SqlStore, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
+import { CANCEL_RESULTS } from "../modules/orders/ports.js";
+import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
 import { APP_CONFIG, type AppConfig } from "../platform/config.js";
 import { Database } from "../platform/db/database.js";
@@ -25,6 +26,7 @@ export interface OfferResultSink {
   recordResult(tenantId: string, offerId: string, result: OfferOutcome): Promise<void>;
 }
 export const OFFER_RESULTS = Symbol("OFFER_RESULTS");
+interface CancelResultSink { recordStoreCancel(tenantId: string, connectionId: string, externalId: string, result: CancelOutcome): Promise<void> }
 
 export interface TenantEngine {
   tenantId: string;
@@ -76,6 +78,10 @@ export class EngineRegistry {
   ) {}
 
   /** M2 depends on the engine and the engine reports back to M2: resolved when first needed. */
+  private get cancelResults(): CancelResultSink | undefined {
+    try { return this.moduleRef.get<CancelResultSink>(CANCEL_RESULTS, { strict: false }); } catch { return undefined; }
+  }
+
   private get offerResults(): OfferResultSink | undefined {
     try { return this.moduleRef.get<OfferResultSink>(OFFER_RESULTS, { strict: false }); } catch { return undefined; }
   }
@@ -150,6 +156,10 @@ export class EngineRegistry {
         // A store day was reconciled (E5-8): Mizan counts its own orders and records the result.
         onReconciled: async (result) => {
           await this.reconciliation.record(tenantId, c.shopify.connectionId, result);
+        },
+        // A bulk cancel reached the store's order, or could not (E5-4): a failure shows on the order.
+        onCancelResult: async (orderId, result) => {
+          await this.cancelResults?.recordStoreCancel(tenantId, c.shopify.connectionId, orderId, result);
         },
         // An accepted offer is in the Shopify order now, or could not be added (E6-13).
         onOfferResult: async (offerId, result) => {

@@ -1,6 +1,7 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
 import { MANUAL_PAYMENT_MODES, MONEY_IN_METHODS, ORDER_SOURCES } from "./manual-order.js";
+import { BULK_ACTIONS, CANCEL_REASONS } from "./bulk.service.js";
 
 export const ORDER_STATUSES = ["new", "pending_confirmation", "confirmed", "cancelled", "shipped", "delivered", "returned"] as const;
 export const PAYMENT_MODES = ["cod", "prepaid", "partial", "bnpl", "bank_transfer", "store_credit", "mixed", "unknown"] as const;
@@ -160,4 +161,22 @@ export const OrderCreatedSchema = z.object({ id: z.uuid(), number: z.string(), s
 export const OrderProductsQuerySchema = z.object({ q: z.string().trim().min(1).max(64).optional().describe("Product title or SKU") });
 export const OrderProductsSchema = z.object({
   data: z.array(z.object({ variantId: z.uuid(), sku: z.string().nullable(), title: z.string(), price: MoneySchema, available: z.number().int().nullable() })),
+});
+
+/** E5-4: one action on many orders, applied by the worker in chunks. */
+const OrderIds = z.array(z.uuid()).min(1).max(500).describe("Up to 500 orders");
+export const BulkRequestSchema = z.discriminatedUnion("action", [
+  z.strictObject({ action: z.literal("assign"), orderIds: OrderIds, userId: z.uuid().nullable().describe("A team member, or null to unassign") }),
+  z.strictObject({ action: z.literal("tag"), orderIds: OrderIds, tags: z.array(z.string().trim().toLowerCase().regex(/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u)).min(1).max(5).describe("Added (in Shopify too); never removed") }),
+  z.strictObject({ action: z.literal("confirm"), orderIds: OrderIds }),
+  z.strictObject({ action: z.literal("cancel"), orderIds: OrderIds, reason: z.enum(CANCEL_REASONS) }),
+]);
+export const BulkActionSchema = z.object({
+  id: z.uuid(), action: z.enum(BULK_ACTIONS), status: z.enum(["running", "done"]),
+  total: z.number().int(), done: z.number().int(), skipped: z.number().int(), failed: z.number().int(),
+  createdAt: z.iso.datetime(), finishedAt: z.iso.datetime().nullable(),
+  issues: z.array(z.object({
+    orderId: z.uuid(), number: z.string(), status: z.enum(["skipped", "failed"]),
+    reason: z.string().describe("cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, error…"),
+  })).describe("Orders skipped or failed and why (200 at most)"),
 });

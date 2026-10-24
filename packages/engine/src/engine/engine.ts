@@ -8,7 +8,7 @@ import { DriftMonitor } from "../adapt/drift.js";
 import { ShapeWatch } from "../adapt/shape.js";
 import { shouldApplyStatus } from "../adapt/status.js";
 import { BostaConnector, type BostaConfig, type BostaLearned } from "../connectors/bosta/connector.js";
-import { ShopifyConnector, type ShopifyLearned } from "../connectors/shopify/connector.js";
+import { ShopifyConnector, type CancelReason, type ShopifyLearned } from "../connectors/shopify/connector.js";
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
@@ -55,6 +55,8 @@ export interface EngineOptions {
     onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
     /** A store day was reconciled (E5-8): what the store had, and how many the engine recovered. */
     onReconciled?: (result: ReconcileResult) => Promise<void>;
+    /** The store's order was cancelled (E5-4), already was, or could not be (final). Must be idempotent. */
+    onCancelResult?: (orderId: string, result: CancelOutcome) => Promise<void>;
   };
 }
 
@@ -65,6 +67,10 @@ export type OfferOutcome = { ok: true; outcome: "added" | "already_added" } | { 
 export interface ReconcileJob { day: string; from: string; to: string }
 /** What the store had that day, and how many of those the engine had never recorded (now ingested). */
 export interface ReconcileResult { day: string; from: string; to: string; seen: number; recovered: number }
+
+/** Cancel the store's order (E5-4): no refund, restocked, the customer not emailed. */
+export interface CancelJob { orderId: string; reason: CancelReason; note?: string | undefined }
+export type CancelOutcome = { ok: true; outcome: "cancelled" | "already_cancelled" } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string };
 
 export interface OfferJob { offerId: string; orderId: string; variantId: string; qty: number; discountPct: string; note: string }
 
@@ -316,6 +322,11 @@ export class MizanEngine {
     return { kind: "shopify.reconcile", connection: "shopify", payload: p, idempotencyKey: `shopify:reconcile:${p.day}` };
   }
 
+  /** Cancel a store order (E5-4): one job per order; the order is read again afterwards (fat fetch). */
+  static shopifyCancelJob(p: CancelJob): NewJob<CancelJob> {
+    return { kind: "shopify.cancelOrder", connection: "shopify", payload: p, idempotencyKey: `shopify:cancel:${p.orderId}` };
+  }
+
   /** Tag a store order (Mizan's decisions the merchant should see in Shopify, e.g. mizan-duplicate); tags are idempotent. */
   static shopifyTagJob(orderId: string, tags: string[], key: string): NewJob<{ id: string; tags: string[] }> {
     return { kind: "shopify.addTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `tag:${orderId}:${tags.join(",")}:${key}` };
@@ -452,6 +463,7 @@ export class MizanEngine {
       "bosta.checkAccess": () => this.checkBostaAccess(),
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.reconcile": (j) => this.reconcile(j.payload),
+      "shopify.cancelOrder": (j) => this.cancelOrder(j.payload),
     };
   }
 
@@ -473,6 +485,23 @@ export class MizanEngine {
     await this.ingestOrder(p.orderId);
     await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, outcome));
     this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
+  }
+
+  private async cancelOrder(p: CancelJob) {
+    let outcome: CancelOutcome;
+    try {
+      outcome = { ok: true, outcome: await this.shopify.cancelOrder(p) };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason, message: e.message }));
+      this.emit("order.cancel_failed", { orderId: p.orderId, reason });
+      if (reason === "permission") throw e; // the store must approve write_orders again: surfaces as needs attention
+      return;
+    }
+    await this.ingestOrder(p.orderId);
+    await this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, outcome));
+    this.emit("order.cancelled_in_store", { orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
   }
 
   private async checkBostaAccess() {
@@ -719,6 +748,11 @@ export class MizanEngine {
       const kind = o.error instanceof IntegrationError ? o.error.kind : "permanent";
       this.emit("job.dead", { jobId: o.job.id, job: o.job.kind, errorKind: kind, error: o.error.message, payload: o.job.payload as Record<string, unknown> });
       if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
+      if (o.job.kind === "shopify.cancelOrder" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as CancelJob;
+        this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "cancel result hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
+      }
       // An offer that never made it into the store's order: the team adds it by hand.
       if (o.job.kind === "shopify.addOffer" && kind !== "auth" && kind !== "permission") {
         const p = o.job.payload as OfferJob;

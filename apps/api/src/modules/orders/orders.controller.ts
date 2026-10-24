@@ -7,10 +7,11 @@ import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/h
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
+  BulkActionSchema, BulkRequestSchema, DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
   RevealedCustomerSchema, type ListOrdersQuery,
 } from "./orders.dto.js";
 import { ManualOrdersService } from "./manual-orders.service.js";
+import { BulkActionsService } from "./bulk.service.js";
 import { DuplicatesService, OrderSettingsSchema, type OrderSettings } from "./duplicates.service.js";
 import { OrdersService } from "./orders.service.js";
 
@@ -21,6 +22,7 @@ export class OrdersController {
     @Inject(OrdersService) private readonly orders: OrdersService,
     @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
     @Inject(ManualOrdersService) private readonly manual: ManualOrdersService,
+    @Inject(BulkActionsService) private readonly bulk: BulkActionsService,
   ) {}
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
@@ -42,6 +44,25 @@ export class OrdersController {
   @ApiProblems(422)
   create(@Auth() auth: AuthContext, @Body(new ZodPipe(NewOrderSchema)) body: z.output<typeof NewOrderSchema>) {
     return this.manual.create(auth, body);
+  }
+
+  /** E5-4: assign, tag, confirm or cancel many orders; follow it with GET /orders/bulk/{id}. */
+  @Post("bulk")
+  @HttpCode(202)
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("BulkRequest", BulkRequestSchema)
+  @ApiJson(202, "BulkAction", BulkActionSchema, "Accepted: the worker applies it in chunks; audited")
+  @ApiProblems(422)
+  bulkRequest(@Auth() auth: AuthContext, @Body(new ZodPipe(BulkRequestSchema)) body: z.output<typeof BulkRequestSchema>) {
+    return this.bulk.request(auth, body);
+  }
+
+  @Get("bulk/:bulkId")
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJson(200, "BulkAction", BulkActionSchema, "Progress: done, skipped and failed so far, and why each order was skipped or failed")
+  @ApiProblems(404)
+  bulkProgress(@Auth() auth: AuthContext, @Param("bulkId", new ParseUUIDPipe()) id: string) {
+    return this.bulk.get(auth.tenant!.id, id);
   }
 
   @Get("products")
