@@ -67,6 +67,15 @@ describe("Shopify connector", () => {
     expect(engine.drift.report().some((d) => d.field === "product.variant.barcode")).toBe(false); // optional: not drift
   });
 
+  it("reads where each variant is stocked; none is not drift", async () => {
+    const { shop, engine } = setup();
+    const p = shop.addProduct({ title: "Tote", price: "300.00", sku: "BAG-1", location: "gid://shopify/Location/9" });
+    expect((await engine.shopify.getProduct(p.productId)).variants[0]!.locationIds).toEqual(["gid://shopify/Location/9"]);
+    shop.inventory.clear();
+    expect((await engine.shopify.getProduct(p.productId)).variants[0]!.locationIds).toEqual([]);
+    expect(engine.drift.report().some((d) => d.field === "product.variant.locationIds")).toBe(false);
+  });
+
   it("rejects webhooks with a bad signature and processes duplicates once", async () => {
     const { shop, engine, store, clock } = setup();
     const o = shop.addOrder();

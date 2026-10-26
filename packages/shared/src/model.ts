@@ -101,6 +101,8 @@ export interface CanonicalVariant {
   price: Money;
   compareAtPrice?: Money | null;
   inventoryItemId?: string;
+  /** Store locations that stock this variant (where Mizan's count is sent, E8-5). */
+  locationIds?: string[];
   available?: number;
 }
 

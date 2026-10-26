@@ -151,14 +151,16 @@ Conventions: `docs/05-api.md`.
 - **Never under reserved.** A count or adjustment that would take on hand under what confirmed orders hold is refused (`below_reserved`).
 - **Ledger first.** Each change is a `stock_movements` row; the level is updated in the same transaction and equals the sum of its rows (tested).
 - **Offline phones (E8-3).** The ops app queues operations with its own `opId` and sends them to `POST /v1/ops/sync` when online. Each runs once in the order it happened; a replay returns the first outcome; a count under what orders hold is a conflict the app shows (server wins).
-- One warehouse for now (the store's default); transfers, pick lists, pack scans and low-stock alerts are E8-4 and E8-5.
+- **Alerts (E8-5).** Each counted item can have a threshold (`lowStockAt`). `stock.low` fires once when available falls to it or under, `stock.out` when it reaches zero; the Stock screen has a "Low stock" tab. Push notifications come with the ops app.
+- **The store's number (E8-5).** Off by default (Settings on the Stock screen, managers only). When on, Mizan owns the stock of counted items: their available count is sent to Shopify on every change, to the location that stocks the item (the first one when several do; one warehouse until E2-7 / multi-location). Uncounted items stay the store's. Mizan's push goes through the outbox and always sends the latest number; Shopify's own sales lower its number until the next change sends Mizan's.
+- One warehouse for now (the store's default); transfers, pick lists and pack scans are E8-4.
 
 ## Field ownership with the store (E8-1)
 
 | Field | Owner | On a store sync |
 | --- | --- | --- |
 | Title, price, compare-at price, SKU, status | Store | Follows the store; changed in the store |
-| Stock (`available`) | Store, until E8-2 | Follows the store; E8-5 pushes Mizan's counts back |
+| Stock (`available`) | Store until the item is counted in Mizan (E8-2) | Shown as "store says"; with "send Mizan's stock to my store" on, Mizan's count goes to Shopify (E8-5) |
 | Cost (`cogs_minor`, `cogs_set_at`) | Mizan | Never touched |
 | Barcode | Store until set in Mizan (`barcode_set_at`) | Follows the store while the store owns it; left alone once set in Mizan; "use the store's barcode" gives it back |
 

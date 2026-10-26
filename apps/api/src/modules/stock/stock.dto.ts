@@ -67,3 +67,9 @@ export const StockHistorySchema = z.object({
     order: z.object({ id: z.uuid(), number: z.string() }).nullable(),
   })),
 });
+
+export const ThresholdSchema = z.strictObject({
+  lowStockAt: z.number().int().min(0).max(100_000).nullable().describe("Alert (stock.low) when available falls to this or under; null: no alert"),
+});
+
+export const ThresholdSetSchema = z.object({ variantId: z.uuid(), lowStockAt: z.number().int().nullable(), available: z.number().int() });

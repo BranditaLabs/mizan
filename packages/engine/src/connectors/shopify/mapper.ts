@@ -180,6 +180,8 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
         price: { amount: price, currency: "" },
         compareAtPrice: cap ? { amount: cap, currency: "" } : null,
         inventoryItemId: vr.str("inventoryItemId", ["inventoryItem.id", "inventory_item_id"]),
+        locationIds: vr.arr<{ location?: { id?: unknown } }>("locationIds", ["inventoryItem.inventoryLevels.nodes"])
+          .map((n) => n?.location?.id).filter((id): id is string => typeof id === "string"),
         available: vr.num("available", ["inventoryQuantity", "inventory_quantity"]),
       };
     }),

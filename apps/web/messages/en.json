@@ -1811,7 +1811,8 @@
       "all": "All",
       "counted": "Counted",
       "not_counted": "Not counted yet",
-      "out": "Out of stock"
+      "out": "Out of stock",
+      "low": "Low stock"
     },
     "search": "Search by name, SKU or barcode",
     "loading": "Loading stock…",
@@ -1906,6 +1907,20 @@
         "correction": "Correction",
         "other": "Other"
       }
+    },
+    "threshold": {
+      "label": "Warn me at",
+      "hint": "An alert when available falls to this number or under. Empty: no alert.",
+      "invalid": "Write a whole number",
+      "save": "Save alert",
+      "saved": "You'll be warned when {sku} falls to {n}.",
+      "cleared": "No alert for {sku}."
+    },
+    "sync": {
+      "label": "Send Mizan's stock to my store",
+      "description": "Items counted here show their available number in Shopify (on hand minus what confirmed orders hold), so the store never sells what's gone. Items not counted stay as the store has them.",
+      "on": "Your store now gets Mizan's numbers.",
+      "off": "Your store keeps its own numbers."
     }
   }
 }

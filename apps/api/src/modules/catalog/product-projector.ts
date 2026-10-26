@@ -50,10 +50,10 @@ export class ProductProjector {
         await trx.insertInto("external_variants").values({
           tenant_id: tenantId, connection_id: connectionId, external_id: v.externalId, external_product_id: product.externalId,
           inventory_item_id: v.inventoryItemId ?? null, variant_id: variantId,
-          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, barcode: v.barcode ?? null, updatedAt: product.updatedAt }),
+          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, barcode: v.barcode ?? null, locations: v.locationIds ?? [], updatedAt: product.updatedAt }),
         }).onConflict((oc) => oc.columns(["connection_id", "external_id"]).doUpdateSet({
           variant_id: variantId, external_product_id: product.externalId, inventory_item_id: v.inventoryItemId ?? null,
-          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, barcode: v.barcode ?? null, updatedAt: product.updatedAt }),
+          last_seen: JSON.stringify({ price: v.price.amount, sku: v.sku ?? null, barcode: v.barcode ?? null, locations: v.locationIds ?? [], updatedAt: product.updatedAt }),
         })).execute();
         // Lines of orders that arrived before this product now learn what they are.
         const lines = await trx.updateTable("order_lines").set({ variant_id: variantId })

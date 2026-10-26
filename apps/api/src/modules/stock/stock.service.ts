@@ -9,6 +9,7 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import type { RecordMovementsBody } from "./stock.dto.js";
 import { planOrder, type OrderState } from "./plan.js";
+import { inventorySettings, type InventorySettings } from "./stock.settings.js";
 
 type Trx = Transaction<DB>;
 type Filter = "all" | "counted" | "not_counted" | "out" | "low";
@@ -134,6 +135,8 @@ export class StockService {
     if (received.length) await this.events.emit(trx, { type: "stock.received", tenantId, entity, actor, data: { items: Object.fromEntries(received.map((m) => [m.variant, m.delta])) } });
     if (adjusted.length || fresh.length) await this.events.emit(trx, { type: "stock.adjusted", tenantId, entity, actor, data: { items: Object.fromEntries(adjusted.map((m) => [m.variant, m.delta])), counted: fresh } });
 
+    const unmoved = fresh.filter((v) => !moves.some((m) => m.variant === v));
+    if (unmoved.length) await this.changed(trx, tenantId, warehouse.id, unmoved, actor);
     // Newly counted variants: confirmed orders start holding them; more stock: waiting orders get theirs.
     const up = moves.filter((m) => m.delta > 0).map((m) => m.variant);
     let reserved = 0;
@@ -207,6 +210,43 @@ export class StockService {
     });
   }
 
+  /** One item's low-stock threshold; only items counted here have one. */
+  async setThreshold(auth: AuthContext, variantId: string, lowStockAt: number | null) {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const warehouse = await this.warehouse(trx, tenantId);
+      const row = await trx.updateTable("stock_levels").set({ low_stock_at: lowStockAt, updated_at: new Date() })
+        .where("warehouse_id", "=", warehouse.id).where("variant_id", "=", variantId).returning(["on_hand", "reserved"]).executeTakeFirst();
+      if (!row) {
+        const exists = await trx.selectFrom("variants").select("id").where("id", "=", variantId).executeTakeFirst();
+        throw exists ? new ProblemError(409, "not_counted", "count this item in Mizan before setting its alert") : new ProblemError(404, "not_found", "this variant does not exist in this store");
+      }
+      await this.audit.record(trx, { action: "stock.threshold_set", tenantId, entity: { type: "variant", id: variantId }, after: { lowStockAt }, ...auditActor(auth) });
+      return { variantId, lowStockAt, available: row.on_hand - row.reserved };
+    });
+  }
+
+  async getSettings(tenantId: string): Promise<InventorySettings> {
+    return this.db.tenant(tenantId, async (trx) => inventorySettings((await trx.selectFrom("tenants").select("settings").where("id", "=", tenantId).executeTakeFirstOrThrow()).settings));
+  }
+
+  /** Turning store sync on sends every counted item's number at once (in batches of 200). */
+  async putSettings(auth: AuthContext, body: InventorySettings): Promise<InventorySettings> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const t = await trx.selectFrom("tenants").select("settings").where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
+      const before = inventorySettings(t.settings);
+      await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...(t.settings as object), inventory: body }) }).where("id", "=", tenantId).execute();
+      await this.audit.record(trx, { action: "stock.settings_updated", tenantId, entity: { type: "tenant", id: tenantId }, before, after: body, ...auditActor(auth) });
+      if (body.pushToStore && !before.pushToStore) {
+        const warehouse = await this.warehouse(trx, tenantId);
+        const counted = await trx.selectFrom("stock_levels").select("variant_id").where("warehouse_id", "=", warehouse.id).orderBy("variant_id").execute();
+        await this.changed(trx, tenantId, warehouse.id, counted.map((c) => c.variant_id), { type: "user", id: auth.user.id });
+      }
+      return body;
+    });
+  }
+
   /** Waiting orders with these variants, oldest first: each one held now if the stock is there. */
   private async retryWaiting(trx: Trx, tenantId: string, variantIds: string[], statuses: Array<"short" | "untracked">): Promise<number> {
     const orders = await trx.selectFrom("orders as o").select("o.id")
@@ -245,6 +285,28 @@ export class StockService {
       const reserved = m.reason === "reserve" || m.reason === "release" ? m.delta : 0;
       await trx.updateTable("stock_levels").set((eb) => ({ on_hand: eb("on_hand", "+", onHand), reserved: eb("reserved", "+", reserved), updated_at: now }))
         .where("warehouse_id", "=", warehouseId).where("variant_id", "=", m.variant).execute();
+    }
+    // Available before and after, per item: crossing the threshold or reaching zero is an alert.
+    const change = new Map<string, number>();
+    for (const m of moves) change.set(m.variant, (change.get(m.variant) ?? 0) + (m.reason === "reserve" || m.reason === "release" ? -m.delta : m.delta));
+    const levels = await trx.selectFrom("stock_levels").select(["variant_id", "on_hand", "reserved", "low_stock_at"])
+      .where("warehouse_id", "=", warehouseId).where("variant_id", "in", [...change.keys()]).execute();
+    for (const l of levels) {
+      const after = l.on_hand - l.reserved;
+      const before = after - change.get(l.variant_id)!;
+      const entity = { type: "variant", id: l.variant_id };
+      if (before > 0 && after <= 0) await this.events.emit(trx, { type: "stock.out", tenantId, entity, actor, data: { warehouseId, available: after } });
+      else if (l.low_stock_at !== null && before > l.low_stock_at && after <= l.low_stock_at) {
+        await this.events.emit(trx, { type: "stock.low", tenantId, entity, actor, data: { warehouseId, available: after, threshold: l.low_stock_at } });
+      }
+    }
+    await this.changed(trx, tenantId, warehouseId, [...change.keys()], actor);
+  }
+
+  /** What is available changed for these items: the store gets Mizan's number (E8-5, when on). */
+  private async changed(trx: Trx, tenantId: string, warehouseId: string, variantIds: string[], actor: EventActor) {
+    for (let i = 0; i < variantIds.length; i += 200) {
+      await this.events.emit(trx, { type: "stock.changed", tenantId, entity: { type: "warehouse", id: warehouseId }, actor, data: { variantIds: variantIds.slice(i, i + 200) } });
     }
   }
 }

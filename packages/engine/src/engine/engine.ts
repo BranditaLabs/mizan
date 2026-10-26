@@ -277,7 +277,16 @@ export class MizanEngine {
    * Identical desired states collapse into one job.
    */
   async updateProduct(patch: ProductPatch) {
-    const state = (await this.store.get<ProductState>("product-state", patch.productExternalId)) ?? { productId: patch.productExternalId, desired: { variants: {}, inventory: {} } };
+    return this.store.enqueue(await MizanEngine.stageProductPatch(this.store, patch, this.now()), this.now());
+  }
+
+  /**
+   * Record a patch as Mizan's desired state and return the push job, on any store (the platform
+   * passes one bound to its own transaction, so the state and the job commit with its change).
+   * The job always pushes the latest desired values, so jobs that run out of order end right.
+   */
+  static async stageProductPatch(store: Store, patch: ProductPatch, now: number): Promise<NewJob<{ patch: ProductPatch }>> {
+    const state = (await store.get<ProductState>("product-state", patch.productExternalId)) ?? { productId: patch.productExternalId, desired: { variants: {}, inventory: {} } };
     for (const v of patch.variants ?? []) {
       const cur = state.desired.variants[v.externalId] ?? {};
       if (v.price) cur.price = v.price.amount;
@@ -285,8 +294,8 @@ export class MizanEngine {
       state.desired.variants[v.externalId] = cur;
     }
     for (const inv of patch.inventory ?? []) state.desired.inventory[`${inv.inventoryItemId}|${inv.locationId}`] = inv.available;
-    await this.store.put("product-state", patch.productExternalId, state, this.now());
-    return this.enqueue("shopify.pushProduct", { patch }, `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}`);
+    await store.put("product-state", patch.productExternalId, state, now);
+    return { kind: "shopify.pushProduct", connection: "shopify", payload: { patch }, idempotencyKey: `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}` };
   }
 
   /**

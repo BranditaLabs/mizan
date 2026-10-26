@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
+import { Switch } from "@/components/ui/Choice";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
@@ -21,14 +22,15 @@ import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
 type Row = Schemas["StockPage"]["data"][number];
-type Filter = "all" | "counted" | "not_counted" | "out";
+type Filter = "all" | "counted" | "not_counted" | "low" | "out";
 type Kind = "receive" | "count" | "adjust";
 type Reason = "damaged" | "lost" | "found" | "correction" | "other";
-const FILTERS: readonly Filter[] = ["all", "counted", "not_counted", "out"];
+const FILTERS: readonly Filter[] = ["all", "counted", "not_counted", "low", "out"];
 const KINDS: readonly Kind[] = ["receive", "count", "adjust"];
 const REASONS: readonly Reason[] = ["damaged", "lost", "found", "correction", "other"];
 const READERS = new Set(["owner", "admin", "ops_manager", "warehouse", "finance"]);
 const WRITERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
+const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
 
 /**
  * Stock (M4, E8-2): on hand, reserved for confirmed orders, and available, in the main warehouse.
@@ -82,7 +84,8 @@ export function StockScreen() {
     {
       id: "available", header: t("col.available"), numeric: true, sortValue: (r) => r.available ?? -1,
       cell: (r) => !r.counted ? <Badge tone="neutral" dot={false}>{t("notCounted")}</Badge>
-        : r.available! <= 0 ? <Badge tone="danger"><Bdi>{r.available!}</Bdi></Badge> : <Bdi>{r.available!}</Bdi>,
+        : r.available! <= 0 ? <Badge tone="danger"><Bdi>{r.available!}</Bdi></Badge>
+        : r.lowStockAt !== null && r.available! <= r.lowStockAt ? <Badge tone="warning"><Bdi>{r.available!}</Bdi></Badge> : <Bdi>{r.available!}</Bdi>,
     },
     { id: "store", header: t("col.store"), numeric: true, cell: (r) => num(r.storeAvailable) },
     {
@@ -115,6 +118,7 @@ export function StockScreen() {
           </span>
         </Alert>
       ) : null}
+      {MANAGERS.has(store?.role ?? "") ? <StoreSync /> : null}
       <Tabs label={t("filterLabel")} value={filter} onChange={setFilter} items={FILTERS.map((f) => ({ value: f, label: t(`filter.${f}`) }))}>
         <div className="flex flex-col gap-3">
           <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-80" />
@@ -184,8 +188,50 @@ function UpdateStock({ row, onClose }: { row: Row; onClose(): void }) {
           </Select>
         ) : null}
         <Field label={t("note")} value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} />
+        {row.counted ? <Threshold row={row} /> : null}
       </div>
     </Dialog>
+  );
+}
+
+/** When to warn about this item: an alert (stock.low) fires once when available falls to it. */
+function Threshold({ row }: { row: Row }) {
+  const t = useTranslations("stock.threshold");
+  const { api } = useSession();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const [value, setValue] = useState(row.lowStockAt === null ? "" : String(row.lowStockAt));
+  const ascii = toAsciiDigits(value.trim());
+  const n = ascii === "" ? null : /^\d{1,6}$/.test(ascii) ? Number(ascii) : undefined;
+  const save = useMutation({
+    mutationFn: () => ok(api.PATCH("/v1/stock/{variantId}", { params: { path: { variantId: row.variantId } }, body: { lowStockAt: n ?? null } })),
+    onSuccess: () => { toast({ message: n === null ? t("cleared", { sku: row.sku }) : t("saved", { sku: row.sku, n: n ?? 0 }) }); void qc.invalidateQueries({ queryKey: ["stock"] }); },
+  });
+  return (
+    <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3" data-testid="stock-threshold">
+      <Field label={t("label")} hint={t("hint")} inputMode="numeric" ltr value={value} onChange={(e) => setValue(e.target.value)} error={n === undefined ? t("invalid") : null} className="grow" />
+      <Button variant="secondary" busy={save.isPending} disabled={n === undefined || n === row.lowStockAt} onClick={() => save.mutate()}>{t("save")}</Button>
+    </div>
+  );
+}
+
+/** Send Mizan's count to the store (Shopify), so it never sells what's reserved or gone. */
+function StoreSync() {
+  const t = useTranslations("stock.sync");
+  const { api, user, store } = useSession();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const key = ["inventorySettings", user?.uid ?? "", store?.tenantId ?? ""];
+  const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/settings/inventory")) });
+  const save = useMutation({
+    mutationFn: (pushToStore: boolean) => ok(api.PUT("/v1/settings/inventory", { body: { pushToStore } })),
+    onSuccess: (r) => { qc.setQueryData(key, r); toast({ message: r.pushToStore ? t("on") : t("off") }); },
+  });
+  return (
+    <div className="mz-card p-4" data-testid="stock-sync">
+      <Switch label={t("label")} description={t("description")} checked={q.data?.pushToStore ?? false} disabled={!q.data || save.isPending}
+        onChange={(e) => save.mutate(e.target.checked)} />
+    </div>
   );
 }
 

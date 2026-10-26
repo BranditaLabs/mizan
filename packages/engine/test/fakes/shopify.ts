@@ -300,7 +300,7 @@ export class FakeShopify {
   private gqlProduct(p: Product) {
     return {
       id: p.id, title: p.title, status: p.status, vendor: p.vendor, productType: p.productType, tags: p.tags, descriptionHtml: p.descriptionHtml, updatedAt: p.updatedAt,
-      variants: { nodes: p.variants.map((v) => ({ id: v.id, sku: v.sku, barcode: v.barcode ?? null, title: v.title, price: v.price, compareAtPrice: v.compareAtPrice, inventoryQuantity: [...this.inventory.entries()].filter(([k]) => k.startsWith(v.inventoryItemId)).reduce((n, [, q]) => n + q, 0), inventoryItem: { id: v.inventoryItemId } })) },
+      variants: { nodes: p.variants.map((v) => ({ id: v.id, sku: v.sku, barcode: v.barcode ?? null, title: v.title, price: v.price, compareAtPrice: v.compareAtPrice, inventoryQuantity: [...this.inventory.entries()].filter(([k]) => k.startsWith(v.inventoryItemId)).reduce((n, [, q]) => n + q, 0), inventoryItem: { id: v.inventoryItemId, inventoryLevels: { nodes: [...this.inventory.keys()].filter((k) => k.startsWith(`${v.inventoryItemId}|`)).map((k) => ({ location: { id: k.split("|")[1] } })) } } })) },
     };
   }
 

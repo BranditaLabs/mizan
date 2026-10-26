@@ -257,6 +257,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/stock/{variantId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["StockController_threshold"];
+        trace?: never;
+    };
+    "/v1/settings/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["InventorySettingsController_get"];
+        put: operations["InventorySettingsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -1750,6 +1782,10 @@ export interface components {
             /** @description Shopify history import progress, or null */
             backfill?: unknown;
         };
+        InventorySettings: {
+            /** @description Send Mizan's available count of counted items to the store (Shopify), so the store never sells what Mizan has reserved or doesn't have */
+            pushToStore: boolean;
+        };
         Invitation: {
             /** Format: uuid */
             id: string;
@@ -3143,6 +3179,16 @@ export interface components {
                 waitingOrders: number;
             };
         };
+        StockThreshold: {
+            /** @description Alert (stock.low) when available falls to this or under; null: no alert */
+            lowStockAt: number | null;
+        };
+        StockThresholdSet: {
+            /** Format: uuid */
+            variantId: string;
+            lowStockAt: number | null;
+            available: number;
+        };
         Team: {
             members: {
                 /** Format: uuid */
@@ -4140,6 +4186,133 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StockController_threshold: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                variantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StockThreshold"];
+            };
+        };
+        responses: {
+            /** @description Saved; stock.low fires when available falls to it or under */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockThresholdSet"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    InventorySettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description How stock is shared with the store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventorySettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    InventorySettingsController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InventorySettings"];
+            };
+        };
+        responses: {
+            /** @description Saved; turning it on sends every counted item's number to the store */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventorySettings"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

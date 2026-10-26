@@ -47,7 +47,7 @@ test("owner in Arabic: sees orders waiting for stock, receives stock, reads an i
   const editor = page.getByRole("dialog", { name: "حدّث ABY-1" });
   await expect(editor).toContainText("دلوقتي: 5 موجود، 2 محجوز، 3 متاح.");
   await editor.getByLabel("عدد القطع اللي وصلت").fill("٢");
-  await editor.getByRole("button", { name: "احفظ" }).click();
+  await editor.getByRole("button", { name: "احفظ", exact: true }).click();
   await expect(page.locator(".mz-toast", { hasText: "أوردر واحد مستني اتحجز دلوقتي" })).toBeVisible();
   expect(posted).toEqual([{ items: [{ variantId: ABAYA, kind: "receive", quantity: 2 }] }]);
   await expect(main.getByText("أوردر متأكد واحد مستني مخزون")).toHaveCount(0);
@@ -67,4 +67,44 @@ test("an agent cannot open stock", async ({ page }) => {
   await expect(page.getByTestId("store-name")).toHaveText("Agents Stock Store");
   await page.goto("/en/stock");
   await expect(page.getByRole("main").getByText("Not available for your role")).toBeVisible();
+});
+
+test("manager in Arabic: turns on sending stock to the store and sets a low-stock alert", async ({ page }) => {
+  const owner = await ownerWithStore("متجر التنبيهات");
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
+
+  let push = false;
+  const thresholds: unknown[] = [];
+  await page.route("**/v1/settings/inventory", async (route) => {
+    if (route.request().method() === "PUT") push = (route.request().postDataJSON() as { pushToStore: boolean }).pushToStore;
+    return route.fulfill({ json: { pushToStore: push } });
+  });
+  await page.route("**/v1/stock?*", (route) => route.fulfill({ json: {
+    data: [{ variantId: ABAYA, productTitle: "عباية سادة", variantTitle: null, sku: "ABY-1", barcode: null, counted: true, onHand: 4, reserved: 0, available: 4, storeAvailable: 9, lowStockAt: 5 }],
+    nextCursor: null, warehouse: { id: "88888888-8888-4888-8888-888888888888", name: "المخزن الرئيسي" },
+    counts: { variants: 1, counted: 1, out: 0, low: 1, waitingOrders: 0 },
+  } }));
+  await page.route(`**/v1/stock/${ABAYA}`, (route) => {
+    thresholds.push(route.request().postDataJSON());
+    return route.fulfill({ json: { variantId: ABAYA, lowStockAt: 3, available: 4 } });
+  });
+
+  await page.goto("/ar/stock");
+  const main = page.getByRole("main");
+  const sync = main.getByRole("switch", { name: /ابعت مخزون ميزان لمتجري/ });
+  await expect(sync).not.toBeChecked();
+  await sync.click(); // saved first, then shown on
+  await expect(page.locator(".mz-toast", { hasText: "متجرك بقى بياخد أرقام ميزان" })).toBeVisible();
+  expect(push).toBe(true);
+  await expect(sync).toBeChecked();
+  await expect(main.getByRole("tab", { name: "قرب يخلص" })).toBeVisible();
+
+  await main.getByRole("button", { name: "حدّث ABY-1" }).click();
+  const editor = page.getByRole("dialog", { name: "حدّث ABY-1" });
+  await editor.getByLabel("نبّهني عند").fill("٣");
+  await editor.getByRole("button", { name: "احفظ التنبيه" }).click();
+  await expect(page.locator(".mz-toast", { hasText: "هننبّهك لما ABY-1 يوصل لـ 3" })).toBeVisible();
+  expect(thresholds).toEqual([{ lowStockAt: 3 }]);
 });
