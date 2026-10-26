@@ -168,8 +168,9 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/automations/recipes` | Built-in recipes |
-| GET / POST / PATCH | `/automations` | Create from recipe or custom; enable/disable |
-| GET | `/automations/{id}/runs` | Run log |
+| GET / POST | `/automations` | ✅ E11-1. `{ name, description?, trigger, conditions: { all \| any: [rule \| group] }, steps: [{ action, params }] (1–10), enabled }`; rules `{ field: event.data.… \| order.… \| item.…, op: eq\|ne\|gt\|gte\|lt\|lte\|in\|not_in\|contains\|exists\|not_exists, value }`, groups nested one level. Checked against `GET /catalog`: 422 `automation_invalid` naming each problem (`field_not_in_context`, `unknown_field`, `needs_order`, `invalid_params`). Owner, admin, ops manager; audited |
+| GET / PUT / PATCH / DELETE | `/automations/{id}` | ✅ E11-1. GET: the automation, stats `{ runs, failures, lastRunAt }`, `pausedReason` and its last 50 runs `{ event, entityId, status: skipped\|succeeded\|failed, reason, version, depth, steps[] }`. PUT saves a new version (runs keep theirs; clears an error pause); PATCH `{ enabled }`; DELETE removes it and its runs |
+| POST | `/automations/{id}/test` | ✅ E11-1. Dry run `{ eventId }` (a past event of its trigger) or `{ orderId }` (its trigger imagined for the order): `{ matched, rules: [{ field, op, value, actual, pass }], steps: [{ action, params (messages filled in), note }] }`. Nothing is done |
 | GET / POST / PATCH | `/scripts` | Draft, edit blocks |
 | POST | `/scripts/{id}/preview` | Render with a real order |
 | POST | `/scripts/{id}/publish` | Version + submit WhatsApp templates if needed |
@@ -206,7 +207,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST · GET | `/reports/query` · `/metrics` | Run reports on the semantic layer |
 | GET / POST | `/webhook-subscriptions` · `/webhook-deliveries` | Webhooks out |
 | POST | `/pos/sales` · `/pos/returns` · `/pos/shifts` | POS (V3) |
-| GET | `/catalog` | Automation triggers, conditions and actions |
+| GET | `/catalog` | ✅ E11-3. Automation triggers (every domain event except plumbing, with the context each loads: order, stock item or none), fields per context (no personal data), operators, actions with their params' JSON Schema, guards. One registry in code (`modules/automations/catalog.ts`) |
+| GET / POST | `/notifications` · `/notifications/read` | ✅ E11-1. The caller's team notifications (addressed to roles; `notify.team` and alerts), newest first, with `unread`; `POST /notifications/read { ids } \| { all: true }` marks them read for the caller. Every member |
 
 ### Webhooks in (public, no user auth)
 

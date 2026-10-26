@@ -79,6 +79,11 @@ export interface AutomationRuns {
   status: string;
   log: Json | null;
   created_at: Generated<Timestamp>;
+  version: Generated<number>;
+  event_type: Generated<string>;
+  entity_id: string | null;
+  depth: Generated<number>;
+  reason: string | null;
 }
 
 export interface Automations {
@@ -93,6 +98,12 @@ export interface Automations {
   version: Generated<number>;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  description: string | null;
+  paused_reason: string | null;
+  created_by: string | null;
+  runs: Generated<number>;
+  failures: Generated<number>;
+  last_run_at: Timestamp | null;
 }
 
 export interface BulkActionItems {
@@ -429,6 +440,25 @@ export interface MzRecords {
   value: Json;
   updated_at: Int8;
   scope: Generated<string>;
+}
+
+export interface NotificationReads {
+  tenant_id: string;
+  notification_id: string;
+  user_id: string;
+  read_at: Generated<Timestamp>;
+}
+
+export interface Notifications {
+  id: Generated<string>;
+  tenant_id: string;
+  roles: ArrayType<string>;
+  text: string;
+  entity_type: string | null;
+  entity_id: string | null;
+  source: string;
+  dedupe_key: string | null;
+  created_at: Generated<Timestamp>;
 }
 
 export interface OfferRules {
@@ -1068,6 +1098,8 @@ export interface DB {
   mz_inbound_events: MzInboundEvents;
   mz_outbox: MzOutbox;
   mz_records: MzRecords;
+  notification_reads: NotificationReads;
+  notifications: Notifications;
   offer_rules: OfferRules;
   ops_operations: OpsOperations;
   order_events: OrderEvents;

@@ -82,7 +82,7 @@ erDiagram
 | M6 Returns | `tickets` |
 | M7 Attribution | `ad_spend`, `orders.utm`, `orders.click_ids` |
 | M8 Reconciliation | `settlements` (`source_type`: courier, gateway, bnpl, bank, marketplace), `settlement_lines` (`line_kind`, `payment_id`) |
-| M13 / M14 | `automations`, `automation_runs`, `scripts` |
+| M13 / M14 | `automations`, `automation_runs`, `scripts`. ✅ 0033 (E11-1): automations add `description`, `paused_reason` (errors), `created_by`, `runs`, `failures`, `last_run_at`, index on enabled triggers; runs add `version`, `event_type`, `entity_id`, `depth`, `reason`; `notifications` (roles, text, entity, source, dedupe key) and `notification_reads` (per person), RLS |
 | M15 Payments | `payments` (signed ledger), `payment_links`, `refunds`, `disputes`, `store_credit_ledger` |
 | M16 Purchasing | `suppliers`, `purchase_orders`, `purchase_order_lines`, `landed_costs` |
 | M17 Inbox | `conversations`, `messages` |

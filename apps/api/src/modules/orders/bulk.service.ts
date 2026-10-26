@@ -8,6 +8,7 @@ import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { ORDER_ANSWERS, type OrderAnswers } from "./ports.js";
+import { OrderActions } from "./order-actions.js";
 
 export const BULK_ACTIONS = ["assign", "tag", "confirm", "cancel"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
@@ -43,6 +44,7 @@ export class BulkActionsService {
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ORDER_ANSWERS) private readonly confirmations: OrderAnswers,
+    @Inject(OrderActions) private readonly actions: OrderActions,
   ) {}
 
   async request(auth: AuthContext, body: BulkParams & { orderIds: string[] }) {
@@ -134,21 +136,13 @@ export class BulkActionsService {
 
     switch (p.action) {
       case "assign": {
-        if (o.status === "cancelled") throw new Skip("cancelled");
-        if (o.assigned_to === p.userId) throw new Skip("unchanged");
-        await trx.updateTable("orders").set({ assigned_to: p.userId, updated_at: now }).where("id", "=", o.id).execute();
-        await event("assigned", { to: p.userId });
-        await this.events.emit(trx, { type: "order.assigned", tenantId, entity: { type: "order", id: o.id }, actor, data: { number: o.number, assignedTo: p.userId } });
+        const r = await this.actions.assign(trx, tenantId, o.id, p.userId, actor, { bulk: bulkId }, now);
+        if (r !== "done") throw new Skip(r);
         return;
       }
       case "tag": {
-        const add = p.tags.filter((t) => !o.tags.includes(t));
-        if (!add.length) throw new Skip("unchanged");
-        await trx.updateTable("orders").set({ tags: [...o.tags, ...add], updated_at: now }).where("id", "=", o.id).execute();
-        await event("tagged", { tags: add });
-        await this.events.emit(trx, { type: "order.tagged", tenantId, entity: { type: "order", id: o.id }, actor, data: { number: o.number, tags: add } });
-        // The merchant sees the tags in Shopify too, and the next sync keeps them (rule 3: an outbox job).
-        await store()?.enqueue(MizanEngine.shopifyTagJob(o.external_id!, add, bulkId), now.getTime());
+        const r = await this.actions.tag(trx, tenantId, o.id, p.tags, actor, { bulk: bulkId }, now);
+        if (r !== "done") throw new Skip(r);
         return;
       }
       case "confirm": {

@@ -305,6 +305,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/automations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_list"];
+        put?: never;
+        post: operations["AutomationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/automations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_get"];
+        put: operations["AutomationsController_update"];
+        post?: never;
+        delete: operations["AutomationsController_remove"];
+        options?: never;
+        head?: never;
+        patch: operations["AutomationsController_patch"];
+        trace?: never;
+    };
+    "/v1/automations/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_test"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CatalogController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["NotificationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/notifications/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["NotificationsController_markRead"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/profit/home": {
         parameters: {
             query?: never;
@@ -1190,6 +1286,223 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        Automation: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description: string | null;
+            trigger: string;
+            /** @description As saved (see AutomationInput.conditions) */
+            conditions: unknown;
+            steps: {
+                action: string;
+                params: {
+                    [key: string]: unknown;
+                };
+            }[];
+            enabled: boolean;
+            /**
+             * @description errors: too many recent runs failed; fix and turn it on again
+             * @enum {string|null}
+             */
+            pausedReason: "errors" | null;
+            version: number;
+            stats: {
+                runs: number;
+                failures: number;
+                /** Format: date-time */
+                lastRunAt: string | null;
+            };
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AutomationCatalog: {
+            triggers: {
+                event: string;
+                /** @enum {string} */
+                context: "order" | "item" | "none";
+            }[];
+            fields: {
+                event: {
+                    field: string;
+                    type: string;
+                }[];
+                order: {
+                    field: string;
+                    type: string;
+                }[];
+                item: {
+                    field: string;
+                    type: string;
+                }[];
+            };
+            operators: string[];
+            actions: {
+                action: string;
+                /** @enum {string} */
+                needs: "order" | "none";
+                params: unknown;
+            }[];
+            guards: {
+                maxDepth: number;
+                errorPause: {
+                    minRuns: number;
+                    rate: number;
+                };
+            };
+        };
+        AutomationDetail: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description: string | null;
+            trigger: string;
+            /** @description As saved (see AutomationInput.conditions) */
+            conditions: unknown;
+            steps: {
+                action: string;
+                params: {
+                    [key: string]: unknown;
+                };
+            }[];
+            enabled: boolean;
+            /**
+             * @description errors: too many recent runs failed; fix and turn it on again
+             * @enum {string|null}
+             */
+            pausedReason: "errors" | null;
+            version: number;
+            stats: {
+                runs: number;
+                failures: number;
+                /** Format: date-time */
+                lastRunAt: string | null;
+            };
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description The last 50 runs, newest first */
+            runs: {
+                /** Format: uuid */
+                id: string;
+                /** Format: date-time */
+                at: string;
+                event: string;
+                /** Format: uuid */
+                entityId: string | null;
+                /** @enum {string} */
+                status: "skipped" | "succeeded" | "failed";
+                /** @description skipped: conditions, loop_guard, invalid_conditions; failed: the step's error */
+                reason: string | null;
+                version: number;
+                depth: number;
+                steps: {
+                    action: string;
+                    result: string;
+                    detail?: string;
+                }[];
+            }[];
+        };
+        AutomationInput: {
+            name: string;
+            description?: string;
+            /** @description An event from GET /v1/catalog, e.g. order.scored */
+            trigger: string;
+            /**
+             * @description ALL of / ANY of rules { field, op, value }, nested one level
+             * @default {
+             *       "all": []
+             *     }
+             */
+            conditions: {
+                all: ({
+                    field: string;
+                    /** @enum {string} */
+                    op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                    value?: (string | number | boolean) | (string | number | boolean)[];
+                } | ({
+                    all: {
+                        field: string;
+                        /** @enum {string} */
+                        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                        value?: (string | number | boolean) | (string | number | boolean)[];
+                    }[];
+                } | {
+                    any: {
+                        field: string;
+                        /** @enum {string} */
+                        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                        value?: (string | number | boolean) | (string | number | boolean)[];
+                    }[];
+                }))[];
+            } | {
+                any: ({
+                    field: string;
+                    /** @enum {string} */
+                    op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                    value?: (string | number | boolean) | (string | number | boolean)[];
+                } | ({
+                    all: {
+                        field: string;
+                        /** @enum {string} */
+                        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                        value?: (string | number | boolean) | (string | number | boolean)[];
+                    }[];
+                } | {
+                    any: {
+                        field: string;
+                        /** @enum {string} */
+                        op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                        value?: (string | number | boolean) | (string | number | boolean)[];
+                    }[];
+                }))[];
+            };
+            /** @description Actions run in order; one failing stops the rest */
+            steps: {
+                /** @enum {string} */
+                action: "order.add_tag" | "order.assign" | "notify.team";
+                /** @default {} */
+                params: {
+                    [key: string]: unknown;
+                };
+            }[];
+            /** @default false */
+            enabled: boolean;
+        };
+        AutomationList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                description: string | null;
+                trigger: string;
+                /** @description As saved (see AutomationInput.conditions) */
+                conditions: unknown;
+                steps: {
+                    action: string;
+                    params: {
+                        [key: string]: unknown;
+                    };
+                }[];
+                enabled: boolean;
+                /**
+                 * @description errors: too many recent runs failed; fix and turn it on again
+                 * @enum {string|null}
+                 */
+                pausedReason: "errors" | null;
+                version: number;
+                stats: {
+                    runs: number;
+                    failures: number;
+                    /** Format: date-time */
+                    lastRunAt: string | null;
+                };
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+        };
+        AutomationPatch: {
+            enabled: boolean;
+        };
         BostaKey: {
             /** @description From Bosta's dashboard (Settings → API integration); stored encrypted, never shown again */
             apiKey: string;
@@ -1685,6 +1998,38 @@ export interface components {
                 failedAt: string;
             }[];
         };
+        DryRun: {
+            /**
+             * Format: uuid
+             * @description A past event of this trigger
+             */
+            eventId?: string;
+            /**
+             * Format: uuid
+             * @description Or an order: the trigger's event is imagined for it
+             */
+            orderId?: string;
+        };
+        DryRunResult: {
+            /** @description The conditions pass */
+            matched: boolean;
+            rules: {
+                field: string;
+                /** @enum {string} */
+                op: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "not_in" | "contains" | "exists" | "not_exists";
+                value: unknown;
+                actual: unknown;
+                pass: boolean;
+            }[];
+            /** @description What would run; nothing is done */
+            steps: {
+                action: string;
+                params: {
+                    [key: string]: unknown;
+                };
+                note: string | null;
+            }[];
+        };
         DuplicateResolved: {
             /** @enum {string} */
             status: "kept" | "merged";
@@ -1811,6 +2156,14 @@ export interface components {
             phone?: string;
             /** @enum {string} */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
+        };
+        Marked: {
+            marked: number;
+        };
+        MarkRead: {
+            ids?: string[];
+            /** @enum {boolean} */
+            all?: true;
         };
         Me: {
             user: {
@@ -1947,6 +2300,23 @@ export interface components {
              */
             after: string | null;
             unreachable: boolean;
+        };
+        NotificationList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** Format: date-time */
+                at: string;
+                text: string;
+                source: string;
+                entity: {
+                    type: string;
+                    /** Format: uuid */
+                    id: string;
+                } | null;
+                read: boolean;
+            }[];
+            unread: number;
         };
         OfferDecided: {
             /** @enum {string} */
@@ -4359,6 +4729,438 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_list: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every automation of the store, oldest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationInput"];
+            };
+        };
+        responses: {
+            /** @description Saved (off unless enabled is true) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Automation"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The automation and its last 50 runs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationInput"];
+            };
+        };
+        responses: {
+            /** @description Saved as a new version */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Automation"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_remove: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted with its run log */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AutomationPatch"];
+            };
+        };
+        responses: {
+            /** @description Turned on or off */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Automation"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_test: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DryRun"];
+            };
+        };
+        responses: {
+            /** @description Each rule with its actual value, and the steps that would run; nothing is done */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DryRunResult"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CatalogController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One registry in code; automations are checked against it */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AutomationCatalog"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    NotificationsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first, with how many are unread */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    NotificationsController_markRead: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkRead"];
+            };
+        };
+        responses: {
+            /** @description Marked read for the caller */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Marked"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */
