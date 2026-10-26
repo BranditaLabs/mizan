@@ -142,8 +142,10 @@ Every return or exchange settles money through M15. The ticket stays open until 
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/v1/tickets` | Open a ticket |
-| PATCH | `/v1/tickets/{id}` | Status, reason, assignee |
+| GET | `/v1/tickets` | List with status groups, late, search ✅ E10-1 |
+| POST | `/v1/tickets` | Open a ticket ✅ E10-1 |
+| GET | `/v1/tickets/{id}` | One ticket and its history ✅ E10-1 |
+| PATCH | `/v1/tickets/{id}` | Status, type, reason, assignee, note ✅ E10-1 |
 | POST | `/v1/returns/{id}/inspect` | Record inspection outcome |
 | POST | `/v1/exchanges` | Create linked replacement order |
 | POST | `/v1/refunds` | Request or issue a refund |
@@ -154,6 +156,14 @@ Conventions: `docs/05-api.md`.
 ## Entities
 
 `Ticket`, `Return`, `Inspection`, `Exchange`, `Refund`, `ReasonCode` — tables in `packages/db/migrations/`, mapping in `docs/04-data-model.md`.
+
+## Built (E10-1)
+
+- Tickets numbered per store (T-1001), types complaint, exchange, refund, delivery issue, return and **refused at the door** (open-box), the fixed reason codes above, where the case came from, an assignee and a 24-hour deadline (the default SLA; per-store setting later).
+- Statuses: open, waiting for customer, waiting for courier, in inspection, resolved, closed. Any working status to any other; resolved can be reopened; closed is final (notes still go on).
+- One open case of a kind per order: a second one points to the first (this covers "Duplicate ticket from same customer" for the same order).
+- History per ticket (`ticket_events`): opened, status, assigned, changed fields, notes. The description and notes stay on the ticket, never in events or the audit log.
+- Web: Tickets in the menu (tabs: open now, late, new, waiting, inspection, resolved, closed, all; search by ticket or order number), the ticket page (work on it, add a note, history), and the order's tickets card with "Open ticket".
 
 ## Open questions
 

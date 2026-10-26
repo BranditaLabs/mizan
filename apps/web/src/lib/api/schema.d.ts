@@ -305,6 +305,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TicketsController_list"];
+        put?: never;
+        post: operations["TicketsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TicketsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["TicketsController_update"];
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -2415,6 +2447,29 @@ export interface components {
                 paid?: string;
             };
         };
+        NewTicket: {
+            /** @enum {string} */
+            type: "complaint" | "exchange" | "refund" | "delivery_issue" | "return" | "refused";
+            /** @enum {string} */
+            reason?: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other";
+            /**
+             * Format: uuid
+             * @description The order it is about
+             */
+            orderId?: string;
+            /** @description Or the order's number as the team sees it (#1042, M-1001) */
+            orderNumber?: string;
+            /** @description What happened, in the team's words */
+            description?: string;
+            /**
+             * @description Where the case came from
+             * @default team
+             * @enum {string}
+             */
+            source: "team" | "whatsapp" | "phone" | "courier" | "automation";
+            /** Format: uuid */
+            assignedTo?: string;
+        };
         NoAnswer: {
             /** @description Team calls tried so far */
             attempts: number;
@@ -3784,6 +3839,121 @@ export interface components {
              */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
         };
+        Ticket: {
+            /** Format: uuid */
+            id: string;
+            /** @description T-1001 */
+            number: string;
+            /** @enum {string} */
+            type: "complaint" | "exchange" | "refund" | "delivery_issue" | "return" | "refused";
+            /** @enum {string|null} */
+            reason: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other" | null;
+            /** @enum {string} */
+            status: "open" | "waiting_customer" | "waiting_courier" | "in_inspection" | "resolved" | "closed";
+            /** @enum {string} */
+            source: "team" | "whatsapp" | "phone" | "courier" | "automation";
+            order: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                status: string;
+            } | null;
+            assignee: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            } | null;
+            /** Format: date-time */
+            dueAt: string | null;
+            /** @description Still open past its deadline */
+            late: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            description: string | null;
+            createdBy: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            } | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description Whether the caller may change status, type, reason and assignee (anyone who sees it may add a note) */
+            canEdit: boolean;
+            /** @description Who the caller may assign it to */
+            assignees: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+                role: string;
+            }[];
+            history: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                type: "created" | "status" | "assigned" | "updated" | "note";
+                /** Format: date-time */
+                at: string;
+                actor: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                } | null;
+                /** @description status: from, to; assigned: to; updated: changed fields */
+                data: {
+                    [key: string]: unknown;
+                };
+                note: string | null;
+            }[];
+        };
+        TicketPage: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** @description T-1001 */
+                number: string;
+                /** @enum {string} */
+                type: "complaint" | "exchange" | "refund" | "delivery_issue" | "return" | "refused";
+                /** @enum {string|null} */
+                reason: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other" | null;
+                /** @enum {string} */
+                status: "open" | "waiting_customer" | "waiting_courier" | "in_inspection" | "resolved" | "closed";
+                /** @enum {string} */
+                source: "team" | "whatsapp" | "phone" | "courier" | "automation";
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                    status: string;
+                } | null;
+                assignee: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                } | null;
+                /** Format: date-time */
+                dueAt: string | null;
+                /** @description Still open past its deadline */
+                late: boolean;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            counts: {
+                active: number;
+                open: number;
+                waiting: number;
+                inspection: number;
+                resolved: number;
+                closed: number;
+                late: number;
+            };
+            nextCursor: string | null;
+        };
         UpdateMember: {
             /** @enum {string} */
             role?: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
@@ -3796,6 +3966,21 @@ export interface components {
                 costs?: boolean;
             };
             dismissed?: boolean;
+        };
+        UpdateTicket: {
+            /** @enum {string} */
+            status?: "open" | "waiting_customer" | "waiting_courier" | "in_inspection" | "resolved" | "closed";
+            /** @enum {string} */
+            type?: "complaint" | "exchange" | "refund" | "delivery_issue" | "return" | "refused";
+            /** @enum {string|null} */
+            reason?: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other" | null;
+            /**
+             * Format: uuid
+             * @description null to unassign
+             */
+            assignedTo?: string | null;
+            /** @description A note on the ticket's history */
+            note?: string;
         };
         UpdateVariant: {
             /** @description In the variant's currency */
@@ -4957,6 +5142,233 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InventorySettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TicketsController_list: {
+        parameters: {
+            query?: {
+                /** @description active: still being worked on (default); late: past their deadline; all */
+                view?: "active" | "open" | "waiting" | "inspection" | "resolved" | "closed" | "late" | "all";
+                type?: "complaint" | "exchange" | "refund" | "delivery_issue" | "return" | "refused";
+                orderId?: string;
+                /** @description Only tickets assigned to the caller */
+                mine?: "true" | "false";
+                /** @description Ticket number (T-1001, 1001) or the order's number */
+                q?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first, with counts per status group; agents see theirs, those they opened and the unassigned queue */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TicketPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TicketsController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewTicket"];
+            };
+        };
+        responses: {
+            /** @description Numbered T-1001, T-1002… per store; due in 24 hours; an agent's ticket is assigned to them; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TicketsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The ticket, its order and its history (newest first) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TicketsController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTicket"];
+            };
+        };
+        responses: {
+            /** @description Status, type, reason, assignee and a note; warehouse adds notes only; a closed ticket only takes notes; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

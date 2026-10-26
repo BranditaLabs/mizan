@@ -149,7 +149,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E10 · M6 Returns and tickets
 
-- [ ] **E10-1** `M` Tickets CRUD + types + statuses; order link.
+- [x] **E10-1** `M` Tickets CRUD + types + statuses; order link. ✅ Migration 0035 (numbers per store, fixed reasons, `refused` type, source, deadline, `ticket_events` history); `GET/POST /v1/tickets`, `GET/PATCH /v1/tickets/{id}`; agents work their own and the unassigned queue, warehouse adds notes; one open case of a kind per order; events `ticket.created`, `ticket.status_changed`, `ticket.assigned` (automation triggers); Tickets screen, ticket page and the order's tickets card (AR/EN).
 - [ ] **E10-2** `M` Exchange creates linked order + return shipment; partial delivery; open-box (المعاينة) outcome.
 - [ ] **E10-3** `S` Inspection (restock / damaged / write-off) in web + ops app → stock movement + P&L update.
 

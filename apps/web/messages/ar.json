@@ -19,7 +19,8 @@
       "profit": "الأرباح",
       "settings": "الإعدادات",
       "products": "المنتجات",
-      "automations": "الأتمتة"
+      "automations": "الأتمتة",
+      "tickets": "التذاكر"
     },
     "language": {
       "label": "اللغة",
@@ -958,7 +959,7 @@
         "over_payment": "المبلغ أكبر من الباقي على العميل.",
         "over_refund": "المبلغ أكبر من اللي معاك من الأوردر ده."
       },
-      "by": "بواسطة {name}",
+      "by": "بواسطة <b>{name}</b>",
       "source": {
         "store": "المتجر",
         "gateway": "بوابة الدفع",
@@ -2016,7 +2017,10 @@
       "stock_out": "منتج يخلص",
       "connection_needs_attention": "ربط يحتاج انتباه",
       "offer_accepted": "عميل يقبل عرض",
-      "payment_received": "توصل فلوس"
+      "payment_received": "توصل فلوس",
+      "ticket_created": "تتفتح تذكرة",
+      "ticket_status_changed": "تتغيّر حالة تذكرة",
+      "ticket_assigned": "تتسلّم تذكرة لحد"
     },
     "action": {
       "order_add_tag": "حط تاج على الأوردر",
@@ -2047,5 +2051,130 @@
     "labelUnread": "التنبيهات، {count} جديدة",
     "empty": "مفيش جديد.",
     "paused": "الأتمتة \"{name}\" وقّفت نفسها: تشغيلات كتير فشلت."
+  },
+  "tickets": {
+    "title": "التذاكر",
+    "subtitle": "الشكاوى والاستبدال والاسترجاع والمرتجعات، كل حالة لحد ما تخلص.",
+    "search": "رقم التذكرة أو الأوردر",
+    "newTicket": "تذكرة جديدة",
+    "openOne": "افتح تذكرة",
+    "tabsLabel": "عرض التذاكر",
+    "loading": "بنحمّل التذاكر…",
+    "more": "اعرض أكتر",
+    "noOrder": "من غير أوردر",
+    "noReason": "لسه من غير سبب",
+    "unassigned": "مش متسلّمة لحد",
+    "member": "حد من الفريق",
+    "late": "متأخرة",
+    "back": "التذاكر",
+    "notFound": "التذكرة دي مش موجودة، أو مش من حقك تشوفها.",
+    "details": "التفاصيل",
+    "workOn": "اشتغل عليها",
+    "save": "احفظ",
+    "saved": "اتحفظت",
+    "cancel": "إلغاء",
+    "closedHint": "التذكرة دي اتقفلت. ممكن تضيف ملاحظات، ولو في حاجة جديدة افتح تذكرة جديدة.",
+    "noteLabel": "ضيف ملاحظة",
+    "noteHint": "عملت إيه أو عرفت إيه. ممنوع أرقام الكروت.",
+    "addNote": "ضيف الملاحظة",
+    "created": "اتفتحت التذكرة {number}",
+    "alreadyOpen": "فيه تذكرة من النوع ده مفتوحة للأوردر ده. كمّل عليها.",
+    "noneForOrder": "مفيش تذاكر للأوردر ده.",
+    "new": {
+      "title": "تذكرة جديدة",
+      "forOrder": "للأوردر {number}",
+      "save": "افتح التذكرة",
+      "orderHint": "اختياري: رقم الأوردر، زي #1042 أو M-1001",
+      "orderMissing": "مفيش أوردر بالرقم ده في المتجر",
+      "descriptionHint": "إيه اللي حصل، بكلامك"
+    },
+    "columns": {
+      "ticket": "التذكرة",
+      "order": "الأوردر",
+      "type": "النوع",
+      "status": "الحالة",
+      "assignee": "مع مين",
+      "due": "الميعاد"
+    },
+    "fields": {
+      "type": "النوع",
+      "reason": "السبب",
+      "order": "الأوردر",
+      "source": "جت منين",
+      "description": "الوصف",
+      "status": "الحالة",
+      "assignedTo": "متسلّمة لـ",
+      "createdBy": "فتحها",
+      "due": "الميعاد",
+      "resolvedAt": "اتحلّت"
+    },
+    "view": {
+      "active": "شغّالة",
+      "late": "متأخرة",
+      "open": "جديدة",
+      "waiting": "مستنية",
+      "inspection": "فحص",
+      "resolved": "اتحلّت",
+      "closed": "اتقفلت",
+      "all": "الكل"
+    },
+    "status": {
+      "open": "مفتوحة",
+      "waiting_customer": "مستنية العميل",
+      "waiting_courier": "مستنية شركة الشحن",
+      "in_inspection": "في الفحص",
+      "resolved": "اتحلّت",
+      "closed": "اتقفلت"
+    },
+    "type": {
+      "complaint": "شكوى",
+      "exchange": "استبدال",
+      "refund": "استرجاع فلوس",
+      "delivery_issue": "مشكلة توصيل",
+      "return": "مرتجع",
+      "refused": "اترفض عند الباب"
+    },
+    "reason": {
+      "wrong_size": "مقاس غلط",
+      "wrong_item": "منتج غلط",
+      "damaged": "تالف",
+      "missing_item": "ناقص منتج",
+      "not_as_described": "مش زي الوصف",
+      "quality": "الجودة",
+      "changed_mind": "غيّر رأيه",
+      "late_delivery": "التوصيل اتأخر",
+      "courier_behaviour": "تعامل المندوب",
+      "not_delivered": "موصلش",
+      "price": "السعر",
+      "other": "حاجة تانية"
+    },
+    "source": {
+      "team": "الفريق",
+      "whatsapp": "واتساب",
+      "phone": "تليفون",
+      "courier": "شركة الشحن",
+      "automation": "أتمتة"
+    },
+    "history": {
+      "title": "السجل",
+      "created": "اتفتحت",
+      "status": "من {from} لـ {to}",
+      "assigned": "اتسلّمت لـ {name}",
+      "unassigned": "اتشالت من على حد",
+      "updated": "اتغيّر: {fields}",
+      "note": "ملاحظة"
+    },
+    "empty": {
+      "title": "مفيش حاجة مفتوحة",
+      "body": "الشكاوى والاستبدال والمرتجعات بتظهر هنا لما الفريق يفتحها."
+    },
+    "emptyLate": {
+      "title": "مفيش حاجة متأخرة",
+      "body": "كل التذاكر المفتوحة لسه في الـ 24 ساعة بتاعتها."
+    },
+    "noMatch": {
+      "title": "مفيش تذكرة بالرقم ده",
+      "body": "جرّب رقم التذكرة (T-1001) أو رقم الأوردر."
+    }
   }
 }

@@ -3,7 +3,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Tag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -74,9 +73,9 @@ export function LedgerCard({ orderId, fallback }: { orderId: string; fallback: R
                         <Tag>{t(`source.${p.source}`)}</Tag>
                         {p.status === "succeeded" ? null : <Tag>{t(`status.${p.status as "pending"}`)}</Tag>}
                         <DateText value={p.occurredAt} />
-                        {p.recordedBy ? <span>{t("by", { name: p.recordedBy })}</span> : null}
+                        {p.recordedBy ? <span>{t.rich("by", { name: p.recordedBy, b: (c) => <bdi>{c}</bdi> })}</span> : null}
                       </span>
-                      {p.note ? <span className="text-caption text-text-2"><Bdi>{p.note}</Bdi></span> : null}
+                      {p.note ? <span dir="auto" className="text-caption text-text-2">{p.note}</span> : null}
                     </span>
                     <MoneyText money={p.amount} />
                   </li>

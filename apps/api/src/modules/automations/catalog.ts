@@ -16,7 +16,7 @@ const INTERNAL: ReadonlySet<DomainEventType> = new Set(["orders.bulk_continue", 
 
 /** The entity an event's context loads: the order (orders, confirmation, offers, payments), the stock item, or nothing. */
 export function contextOf(type: string): ContextEntity {
-  if (/^(order|offer|confirmation|payment|refund|dispute)\./.test(type)) return "order";
+  if (/^(order|offer|confirmation|payment|refund|dispute|ticket)\./.test(type)) return "order"; // a ticket's order, when it has one
   if (type === "stock.short" || type === "stock.reserved" || type === "stock.released") return "order"; // about an order's items
   if (type === "stock.low" || type === "stock.out") return "item";
   return "none";

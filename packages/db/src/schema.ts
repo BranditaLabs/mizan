@@ -976,6 +976,18 @@ export interface Tenants {
   updated_at: Generated<Timestamp>;
 }
 
+export interface TicketEvents {
+  id: Generated<string>;
+  tenant_id: string;
+  ticket_id: string;
+  type: string;
+  actor_id: string | null;
+  data: Generated<Json>;
+  note: string | null;
+  seq: Generated<Int8>;
+  created_at: Generated<Timestamp>;
+}
+
 export interface Tickets {
   id: Generated<string>;
   tenant_id: string;
@@ -989,6 +1001,13 @@ export interface Tickets {
   assigned_to: string | null;
   created_at: Generated<Timestamp>;
   resolved_at: Timestamp | null;
+  number: number;
+  description: string | null;
+  source: Generated<string>;
+  created_by: string | null;
+  due_at: Timestamp | null;
+  closed_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Users {
@@ -1135,6 +1154,7 @@ export interface DB {
   suppliers: Suppliers;
   tax_documents: TaxDocuments;
   tenants: Tenants;
+  ticket_events: TicketEvents;
   tickets: Tickets;
   users: Users;
   variants: Variants;

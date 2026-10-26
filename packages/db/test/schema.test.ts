@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -141,6 +141,18 @@ describe("schema", () => {
     await line("sale", 100, null); // lines without a reference are not deduplicated by it
     await expect(asTenant(T1, () => db.query(`INSERT INTO payments (tenant_id, order_id, method, kind, status, source, amount_minor, currency) VALUES ($1, $2, 'card', 'sale', 'succeeded', 'bank', 1, 'EGP')`, [T1, order])))
       .rejects.toThrow(/source_check/);
+  });
+
+  it("numbers tickets once per store, with a fixed type and reason (E10-1)", async () => {
+    const add = (tenant: string, number: number, extra = "") => asTenant(tenant, () => db.query(`INSERT INTO tickets (tenant_id, number, type${extra ? ", reason" : ""}) VALUES ($1, $2, 'refused'${extra ? `, '${extra}'` : ""}) RETURNING id`, [tenant, number]));
+    const t = (await add(T1, 1001, "changed_mind")).rows[0] as { id: string };
+    await add(T2, 1001); // each store has its own numbers
+    await expect(add(T1, 1001)).rejects.toThrow(/tickets_number/);
+    await expect(add(T1, 1002, "too_slow")).rejects.toThrow(/tickets_reason_check/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO tickets (tenant_id, number, type) VALUES ($1, 1003, 'praise')`, [T1]))).rejects.toThrow(/tickets_type_check/);
+    await asTenant(T1, () => db.query(`INSERT INTO ticket_events (tenant_id, ticket_id, type, note) VALUES ($1, $2, 'note', 'checked the box')`, [T1, t.id]));
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM ticket_events`))).rows).toEqual([]);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO ticket_events (tenant_id, ticket_id, type) VALUES ($1, $2, 'deleted')`, [T1, t.id]))).rejects.toThrow(/ticket_events_type_check/);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {

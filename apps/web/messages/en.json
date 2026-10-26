@@ -19,7 +19,8 @@
       "profit": "Profit",
       "settings": "Settings",
       "products": "Products",
-      "automations": "Automations"
+      "automations": "Automations",
+      "tickets": "Tickets"
     },
     "language": {
       "label": "Language",
@@ -958,7 +959,7 @@
         "over_payment": "That's more than the customer still owes.",
         "over_refund": "That's more than this order holds."
       },
-      "by": "by {name}",
+      "by": "by <b>{name}</b>",
       "source": {
         "store": "Store",
         "gateway": "Gateway",
@@ -2016,7 +2017,10 @@
       "stock_out": "an item runs out",
       "connection_needs_attention": "a connection needs attention",
       "offer_accepted": "a customer accepts an offer",
-      "payment_received": "a payment arrives"
+      "payment_received": "a payment arrives",
+      "ticket_created": "a ticket is opened",
+      "ticket_status_changed": "a ticket's status changes",
+      "ticket_assigned": "a ticket is assigned"
     },
     "action": {
       "order_add_tag": "tag the order",
@@ -2047,5 +2051,130 @@
     "labelUnread": "Notifications, {count} unread",
     "empty": "Nothing new.",
     "paused": "Automation \"{name}\" paused itself: too many runs failed."
+  },
+  "tickets": {
+    "title": "Tickets",
+    "subtitle": "Complaints, exchanges, refunds and returns, each to its end.",
+    "search": "Ticket or order number",
+    "newTicket": "New ticket",
+    "openOne": "Open ticket",
+    "tabsLabel": "Ticket views",
+    "loading": "Loading tickets…",
+    "more": "Show more",
+    "noOrder": "No order",
+    "noReason": "No reason yet",
+    "unassigned": "Unassigned",
+    "member": "Team member",
+    "late": "Late",
+    "back": "Tickets",
+    "notFound": "This ticket isn't here, or isn't yours to see.",
+    "details": "Details",
+    "workOn": "Work on it",
+    "save": "Save",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "closedHint": "This ticket is closed. Notes still go on its history; for anything new, open a new ticket.",
+    "noteLabel": "Add a note",
+    "noteHint": "What you did or learned. Never card numbers.",
+    "addNote": "Add note",
+    "created": "Ticket {number} opened",
+    "alreadyOpen": "A ticket of this kind is already open for this order. Work on that one.",
+    "noneForOrder": "No tickets for this order.",
+    "new": {
+      "title": "New ticket",
+      "forOrder": "For order {number}",
+      "save": "Open ticket",
+      "orderHint": "Optional: the order number, like #1042 or M-1001",
+      "orderMissing": "No order with this number in this store",
+      "descriptionHint": "What happened, in your words"
+    },
+    "columns": {
+      "ticket": "Ticket",
+      "order": "Order",
+      "type": "Type",
+      "status": "Status",
+      "assignee": "With",
+      "due": "Due"
+    },
+    "fields": {
+      "type": "Type",
+      "reason": "Reason",
+      "order": "Order",
+      "source": "Came from",
+      "description": "Description",
+      "status": "Status",
+      "assignedTo": "Assigned to",
+      "createdBy": "Opened by",
+      "due": "Due",
+      "resolvedAt": "Resolved"
+    },
+    "view": {
+      "active": "Open now",
+      "late": "Late",
+      "open": "New",
+      "waiting": "Waiting",
+      "inspection": "Inspection",
+      "resolved": "Resolved",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "status": {
+      "open": "Open",
+      "waiting_customer": "Waiting for customer",
+      "waiting_courier": "Waiting for courier",
+      "in_inspection": "In inspection",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "type": {
+      "complaint": "Complaint",
+      "exchange": "Exchange",
+      "refund": "Refund",
+      "delivery_issue": "Delivery issue",
+      "return": "Return",
+      "refused": "Refused at the door"
+    },
+    "reason": {
+      "wrong_size": "Wrong size",
+      "wrong_item": "Wrong item",
+      "damaged": "Damaged",
+      "missing_item": "Missing item",
+      "not_as_described": "Not as described",
+      "quality": "Quality",
+      "changed_mind": "Changed their mind",
+      "late_delivery": "Late delivery",
+      "courier_behaviour": "Courier's behaviour",
+      "not_delivered": "Not delivered",
+      "price": "Price",
+      "other": "Other"
+    },
+    "source": {
+      "team": "Team",
+      "whatsapp": "WhatsApp",
+      "phone": "Phone",
+      "courier": "Courier",
+      "automation": "Automation"
+    },
+    "history": {
+      "title": "History",
+      "created": "Opened",
+      "status": "{from} → {to}",
+      "assigned": "Assigned to {name}",
+      "unassigned": "Unassigned",
+      "updated": "Changed: {fields}",
+      "note": "Note"
+    },
+    "empty": {
+      "title": "Nothing open",
+      "body": "Complaints, exchanges and returns show up here when the team opens them."
+    },
+    "emptyLate": {
+      "title": "Nothing late",
+      "body": "Every open ticket is within its 24 hours."
+    },
+    "noMatch": {
+      "title": "No ticket matches",
+      "body": "Try the ticket number (T-1001) or the order's number."
+    }
   }
 }
