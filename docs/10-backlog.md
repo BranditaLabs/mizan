@@ -156,7 +156,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 ### E11 · M13 Automation core
 
 - [x] **E11-1** `M` Automation runtime: subscribe to domain events, evaluate conditions (JSON rules), run actions (`order.set_status`, `order.assign`, `order.add_tag`, `whatsapp.send_script`, `notify`), one run per event. ✅ Runtime, conditions, `order.add_tag` / `order.assign` / `notify.team` (team notifications), loop and error guards, versions, dry run, CRUD API (migration 0033). `order.set_status` waits for a safe status model; `whatsapp.send_script` for scripts (E6-5).
-- [ ] **E11-2** `M` Built-in recipes for orders, verification, payments and fulfilment (see `docs/13-automation-platform.md` §3), recipe gallery UI with enable switch, run log.
+- [x] **E11-2** `M` Built-in recipes for orders, verification, payments and fulfilment (see `docs/13-automation-platform.md` §3), recipe gallery UI with enable switch, run log. ✅ 8 recipes possible with today's actions (install once, off until on), `/automations` screen (switches, run log), notification bell in the header; payment and message recipes join with their actions.
 - [x] **E11-3** `S` One catalogue registry in code for triggers, conditions and actions; served at `GET /v1/catalog`. ✅
 
 ### E14 · M15 Payments and refunds

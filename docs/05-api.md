@@ -167,7 +167,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/automations/recipes` | Built-in recipes |
+| GET | `/automations/recipes` | ✅ E11-2. `?lang=ar\|en`: the built-in recipes (`modules/automations/recipes.ts`) with name, domain, trigger, conditions, steps and `installed` (the store's copy) |
+| POST | `/automations/recipes/{key}/install` | ✅ E11-2. `{ language? }` (default: the store's): the recipe becomes the store's own automation, off until turned on; 409 `recipe_installed`, 404 unknown recipe |
 | GET / POST | `/automations` | ✅ E11-1. `{ name, description?, trigger, conditions: { all \| any: [rule \| group] }, steps: [{ action, params }] (1–10), enabled }`; rules `{ field: event.data.… \| order.… \| item.…, op: eq\|ne\|gt\|gte\|lt\|lte\|in\|not_in\|contains\|exists\|not_exists, value }`, groups nested one level. Checked against `GET /catalog`: 422 `automation_invalid` naming each problem (`field_not_in_context`, `unknown_field`, `needs_order`, `invalid_params`). Owner, admin, ops manager; audited |
 | GET / PUT / PATCH / DELETE | `/automations/{id}` | ✅ E11-1. GET: the automation, stats `{ runs, failures, lastRunAt }`, `pausedReason` and its last 50 runs `{ event, entityId, status: skipped\|succeeded\|failed, reason, version, depth, steps[] }`. PUT saves a new version (runs keep theirs; clears an error pause); PATCH `{ enabled }`; DELETE removes it and its runs |
 | POST | `/automations/{id}/test` | ✅ E11-1. Dry run `{ eventId }` (a past event of its trigger) or `{ orderId }` (its trigger imagined for the order): `{ matched, rules: [{ field, op, value, actual, pass }], steps: [{ action, params (messages filled in), note }] }`. Nothing is done |

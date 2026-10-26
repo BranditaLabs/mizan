@@ -18,7 +18,8 @@
       "warehouse": "المخزن",
       "profit": "الأرباح",
       "settings": "الإعدادات",
-      "products": "المنتجات"
+      "products": "المنتجات",
+      "automations": "الأتمتة"
     },
     "language": {
       "label": "اللغة",
@@ -1923,5 +1924,83 @@
       "on": "متجرك بقى بياخد أرقام ميزان.",
       "off": "متجرك هيفضل بأرقامه."
     }
+  },
+  "automations": {
+    "title": "الأتمتة",
+    "subtitle": "خلّي ميزان يعمل الحاجات المتكررة: لما حاجة تحصل، يشوف الشروط اللي انت عايزها، وبعدين ينفّذ. ابدأ من وصفة جاهزة؛ كل أتمتة بتشتغل مرة واحدة لكل حدث، وبتوقّف نفسها لو فضلت تفشل.",
+    "notAllowed": {
+      "title": "مش متاح لدورك",
+      "body": "المالك والأدمن ومدير العمليات بس اللي يديروا الأتمتة."
+    },
+    "mine": "الأتمتة بتاعتك",
+    "loading": "بنحمّل…",
+    "empty": {
+      "title": "لسه مفيش أتمتة",
+      "body": "ثبّت وصفة من تحت، وبعدين شغّلها."
+    },
+    "when": "لما {trigger}",
+    "then": "ساعتها: {action}",
+    "stats": "{runs, plural, one {تشغيلة واحدة} two {تشغيلتين} few {# تشغيلات} other {# تشغيلة}} · {failures, plural, one {فشلت مرة} two {فشلت مرتين} few {فشلت # مرات} other {فشلت # مرة}}",
+    "lastRun": "آخر مرة",
+    "runLog": "سجل التشغيل",
+    "paused": "متوقفة: تشغيلات كتير فشلت مؤخرًا. شوف السجل، وبعدين شغّلها تاني.",
+    "recipes": "وصفات جاهزة",
+    "recipesHint": "التثبيت بيعمل نسخة بتاعتك، مقفولة لحد ما تشغّلها.",
+    "install": "ثبّت",
+    "isInstalled": "متثبّتة",
+    "installed": "اتثبّتت \"{name}\". شغّلها لما تكون جاهز.",
+    "on": "\"{name}\" اشتغلت.",
+    "off": "\"{name}\" اتقفلت.",
+    "domain": {
+      "orders": "الأوردرات",
+      "verification": "التأكيد",
+      "fulfilment": "التجهيز والشحن",
+      "platform": "المنصة"
+    },
+    "trigger": {
+      "order_created": "يوصل أوردر جديد",
+      "order_scored": "تتحسب درجة خطر أوردر",
+      "order_duplicate_found": "أوردر شكله مكرر",
+      "order_store_cancel_failed": "إلغاء ماوصلش للمتجر",
+      "order_assigned": "أوردر يتسلّم لحد",
+      "order_tagged": "أوردر ياخد تاج",
+      "order_confirmed": "أوردر يتأكد",
+      "order_cancelled": "أوردر يتلغي",
+      "stock_short": "أوردر متأكد يستنى مخزون",
+      "stock_low": "منتج يقرب يخلص",
+      "stock_out": "منتج يخلص",
+      "connection_needs_attention": "ربط يحتاج انتباه",
+      "offer_accepted": "عميل يقبل عرض",
+      "payment_received": "توصل فلوس"
+    },
+    "action": {
+      "order_add_tag": "حط تاج على الأوردر",
+      "order_assign": "سلّم الأوردر لحد",
+      "notify_team": "بلّغ الفريق"
+    },
+    "log": {
+      "title": "سجل التشغيل · {name}",
+      "loading": "بنحمّل…",
+      "empty": "لسه مفيش تشغيلات.",
+      "close": "اقفل",
+      "order": "افتح الأوردر",
+      "status": {
+        "succeeded": "اشتغلت",
+        "skipped": "اتعدّت",
+        "failed": "فشلت"
+      },
+      "reason": {
+        "conditions": "الشروط ماانطبقتش",
+        "loop_guard": "اتوقفت: أتمتة ورا أتمتة كتير",
+        "invalid_conditions": "الشروط مش مقروءة"
+      }
+    }
+  },
+  "notifications": {
+    "title": "التنبيهات",
+    "label": "التنبيهات",
+    "labelUnread": "التنبيهات، {count} جديدة",
+    "empty": "مفيش جديد.",
+    "paused": "الأتمتة \"{name}\" وقّفت نفسها: تشغيلات كتير فشلت."
   }
 }

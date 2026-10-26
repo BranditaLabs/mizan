@@ -51,11 +51,11 @@ Each module spec lists its own events and actions in section 05. The catalogue i
 | Growth | Win-back | VIP with no order for 2× usual gap | Win-back offer; tag |
 | Growth | Refuser guard | Customer refused 2+ times | Require prepaid; ad exclusion audience |
 
-Source of truth for the PDF and these docs: `RECIPES_ALL` in the content file used to build the module library; in code, recipes live in `apps/api/src/modules/automations/recipes/` (one file each, with a test).
+Source of truth for the PDF and these docs: `RECIPES_ALL` in the content file used to build the module library. ✅ In code (E11-2): `apps/api/src/modules/automations/recipes.ts`, each recipe tested against the catalogue in Arabic and English. Built so far with today's actions: big COD orders, review risky orders, duplicate guard, orders waiting for stock, low stock alert, out of stock alert, cancel didn't reach the store, connection needs attention. The recipes above that need waits, payment links or customer messages arrive with those actions.
 
 ## 4. Runtime guarantees
 
-✅ Built (E11-1, E11-3): the catalogue in code (`apps/api/src/modules/automations/catalog.ts`, `GET /v1/catalog`); conditions (`conditions.ts`, ALL/ANY one level, no personal-data fields); the runtime as the event consumer `automations.run` (every event, exactly once per automation and event); actions `order.add_tag`, `order.assign`, `notify.team` (team notifications by role); loop guard (depth 3, carried as `automationDepth` in the events a run causes); error guard (more than 20 % of the last 20 runs failed, at least 5 → paused, `automation.paused`, team told); versions on every save; dry run. Not yet: waits, retries per action (a failed step fails the run; the next event runs again), schedules, message caps and quiet hours (with the first messaging action), recipes and the builder UI (E11-2).
+✅ Built (E11-1, E11-3): the catalogue in code (`apps/api/src/modules/automations/catalog.ts`, `GET /v1/catalog`); conditions (`conditions.ts`, ALL/ANY one level, no personal-data fields); the runtime as the event consumer `automations.run` (every event, exactly once per automation and event); actions `order.add_tag`, `order.assign`, `notify.team` (team notifications by role); loop guard (depth 3, carried as `automationDepth` in the events a run causes); error guard (more than 20 % of the last 20 runs failed, at least 5 → paused, `automation.paused`, team told); versions on every save; dry run. Not yet: waits, retries per action (a failed step fails the run; the next event runs again), schedules, message caps and quiet hours (with the first messaging action), the When → If → Then builder UI (recipes, switches, run log and the notification bell ✅ E11-2).
 
 | Guarantee | How |
 | --- | --- |

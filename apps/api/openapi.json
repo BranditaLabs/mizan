@@ -2069,6 +2069,165 @@
         ]
       }
     },
+    "/v1/automations/recipes": {
+      "get": {
+        "operationId": "AutomationsController_recipes",
+        "parameters": [
+          {
+            "name": "lang",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "ar",
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Built-in recipes and whether the store installed each",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
+    "/v1/automations/recipes/{key}/install": {
+      "post": {
+        "operationId": "AutomationsController_install",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InstallRecipe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Installed as the store's own automation, off until turned on",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Automation"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "automations"
+        ]
+      }
+    },
     "/v1/automations/{id}": {
       "get": {
         "operationId": "AutomationsController_get",
@@ -7136,6 +7295,11 @@
             "nullable": true,
             "type": "string"
           },
+          "recipe": {
+            "nullable": true,
+            "description": "The built-in recipe it was installed from",
+            "type": "string"
+          },
           "trigger": {
             "type": "string"
           },
@@ -7215,6 +7379,7 @@
           "id",
           "name",
           "description",
+          "recipe",
           "trigger",
           "conditions",
           "steps",
@@ -7410,6 +7575,11 @@
             "nullable": true,
             "type": "string"
           },
+          "recipe": {
+            "nullable": true,
+            "description": "The built-in recipe it was installed from",
+            "type": "string"
+          },
           "trigger": {
             "type": "string"
           },
@@ -7574,6 +7744,7 @@
           "id",
           "name",
           "description",
+          "recipe",
           "trigger",
           "conditions",
           "steps",
@@ -8160,6 +8331,11 @@
                   "nullable": true,
                   "type": "string"
                 },
+                "recipe": {
+                  "nullable": true,
+                  "description": "The built-in recipe it was installed from",
+                  "type": "string"
+                },
                 "trigger": {
                   "type": "string"
                 },
@@ -8239,6 +8415,7 @@
                 "id",
                 "name",
                 "description",
+                "recipe",
                 "trigger",
                 "conditions",
                 "steps",
@@ -10423,6 +10600,20 @@
         "required": [
           "csv"
         ],
+        "additionalProperties": false
+      },
+      "InstallRecipe": {
+        "type": "object",
+        "properties": {
+          "language": {
+            "description": "Messages in this language (default: the store's)",
+            "type": "string",
+            "enum": [
+              "ar",
+              "en"
+            ]
+          }
+        },
         "additionalProperties": false
       },
       "IntegrationsHealth": {
@@ -15475,6 +15666,79 @@
         "required": [
           "recomputed",
           "truncated"
+        ],
+        "additionalProperties": false
+      },
+      "RecipeList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "domain": {
+                  "type": "string",
+                  "enum": [
+                    "orders",
+                    "verification",
+                    "fulfilment",
+                    "platform"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "trigger": {
+                  "type": "string"
+                },
+                "conditions": {},
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "type": "string"
+                      },
+                      "params": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": [
+                      "action",
+                      "params"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "installed": {
+                  "nullable": true,
+                  "description": "The store's copy, if installed",
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": [
+                "key",
+                "domain",
+                "name",
+                "trigger",
+                "conditions",
+                "steps",
+                "installed"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "data"
         ],
         "additionalProperties": false
       },

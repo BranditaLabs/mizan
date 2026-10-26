@@ -321,6 +321,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/automations/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AutomationsController_recipes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/automations/recipes/{key}/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AutomationsController_install"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/automations/{id}": {
         parameters: {
             query?: never;
@@ -1291,6 +1323,8 @@ export interface components {
             id: string;
             name: string;
             description: string | null;
+            /** @description The built-in recipe it was installed from */
+            recipe: string | null;
             trigger: string;
             /** @description As saved (see AutomationInput.conditions) */
             conditions: unknown;
@@ -1356,6 +1390,8 @@ export interface components {
             id: string;
             name: string;
             description: string | null;
+            /** @description The built-in recipe it was installed from */
+            recipe: string | null;
             trigger: string;
             /** @description As saved (see AutomationInput.conditions) */
             conditions: unknown;
@@ -1474,6 +1510,8 @@ export interface components {
                 id: string;
                 name: string;
                 description: string | null;
+                /** @description The built-in recipe it was installed from */
+                recipe: string | null;
                 trigger: string;
                 /** @description As saved (see AutomationInput.conditions) */
                 conditions: unknown;
@@ -2093,6 +2131,13 @@ export interface components {
         ImportCosts: {
             /** @description The file's text: a header row with SKU and cost and/or barcode; other columns are ignored */
             csv: string;
+        };
+        InstallRecipe: {
+            /**
+             * @description Messages in this language (default: the store's)
+             * @enum {string}
+             */
+            language?: "ar" | "en";
         };
         IntegrationsHealth: {
             connected: boolean;
@@ -3393,6 +3438,27 @@ export interface components {
             recomputed: number;
             /** @description More provisional orders remain: call again */
             truncated: boolean;
+        };
+        RecipeList: {
+            data: {
+                key: string;
+                /** @enum {string} */
+                domain: "orders" | "verification" | "fulfilment" | "platform";
+                name: string;
+                trigger: string;
+                conditions: unknown;
+                steps: {
+                    action: string;
+                    params: {
+                        [key: string]: unknown;
+                    };
+                }[];
+                /**
+                 * Format: uuid
+                 * @description The store's copy, if installed
+                 */
+                installed: string | null;
+            }[];
         };
         RecordMovements: {
             items: {
@@ -4803,6 +4869,98 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_recipes: {
+        parameters: {
+            query?: {
+                lang?: "ar" | "en";
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Built-in recipes and whether the store installed each */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AutomationsController_install: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallRecipe"];
+            };
+        };
+        responses: {
+            /** @description Installed as the store's own automation, off until turned on */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Automation"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

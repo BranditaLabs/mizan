@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { NavLinks } from "./NavLinks";
+import { NotificationBell } from "./NotificationBell";
 import { ShellCommands } from "./ShellCommands";
 import { StoreSwitcher, UserMenu } from "./StoreSwitcher";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -33,6 +34,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
           <span className="flex-1" />
+          <NotificationBell />
           <LocaleSwitch />
           <span className="hidden md:contents"><ThemeSwitch initial={theme} /></span>
           <UserMenu />

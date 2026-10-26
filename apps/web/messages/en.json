@@ -18,7 +18,8 @@
       "warehouse": "Warehouse",
       "profit": "Profit",
       "settings": "Settings",
-      "products": "Products"
+      "products": "Products",
+      "automations": "Automations"
     },
     "language": {
       "label": "Language",
@@ -1923,5 +1924,83 @@
       "on": "Your store now gets Mizan's numbers.",
       "off": "Your store keeps its own numbers."
     }
+  },
+  "automations": {
+    "title": "Automations",
+    "subtitle": "Let Mizan handle the routine: when something happens, check what you want, then act. Start from a ready recipe; every automation runs once per event and stops itself if it keeps failing.",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and operations managers manage automations."
+    },
+    "mine": "Your automations",
+    "loading": "Loading…",
+    "empty": {
+      "title": "No automations yet",
+      "body": "Install a recipe below, then turn it on."
+    },
+    "when": "When {trigger}",
+    "then": "Then: {action}",
+    "stats": "{runs, plural, one {# run} other {# runs}} · {failures, plural, one {# failed} other {# failed}}",
+    "lastRun": "last",
+    "runLog": "Run log",
+    "paused": "Paused: too many recent runs failed. Check the run log, then turn it on again.",
+    "recipes": "Recipes",
+    "recipesHint": "Installing makes your own copy, off until you turn it on.",
+    "install": "Install",
+    "isInstalled": "Installed",
+    "installed": "Installed \"{name}\". Turn it on when you're ready.",
+    "on": "\"{name}\" is on.",
+    "off": "\"{name}\" is off.",
+    "domain": {
+      "orders": "Orders",
+      "verification": "Verification",
+      "fulfilment": "Fulfilment",
+      "platform": "Platform"
+    },
+    "trigger": {
+      "order_created": "a new order arrives",
+      "order_scored": "an order's risk is scored",
+      "order_duplicate_found": "an order looks like a duplicate",
+      "order_store_cancel_failed": "a cancel didn't reach the store",
+      "order_assigned": "an order is assigned",
+      "order_tagged": "an order is tagged",
+      "order_confirmed": "an order is confirmed",
+      "order_cancelled": "an order is cancelled",
+      "stock_short": "a confirmed order waits for stock",
+      "stock_low": "an item runs low",
+      "stock_out": "an item runs out",
+      "connection_needs_attention": "a connection needs attention",
+      "offer_accepted": "a customer accepts an offer",
+      "payment_received": "a payment arrives"
+    },
+    "action": {
+      "order_add_tag": "tag the order",
+      "order_assign": "assign the order",
+      "notify_team": "notify the team"
+    },
+    "log": {
+      "title": "Run log · {name}",
+      "loading": "Loading…",
+      "empty": "No runs yet.",
+      "close": "Close",
+      "order": "Open the order",
+      "status": {
+        "succeeded": "Ran",
+        "skipped": "Skipped",
+        "failed": "Failed"
+      },
+      "reason": {
+        "conditions": "The conditions didn't match",
+        "loop_guard": "Stopped: too many automations in a chain",
+        "invalid_conditions": "The conditions can't be read"
+      }
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "label": "Notifications",
+    "labelUnread": "Notifications, {count} unread",
+    "empty": "Nothing new.",
+    "paused": "Automation \"{name}\" paused itself: too many runs failed."
   }
 }

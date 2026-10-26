@@ -152,7 +152,7 @@ export class AutomationRuntime {
     await trx.updateTable("automations").set({ enabled: false, paused_reason: "errors", updated_at: new Date() }).where("id", "=", automationId).execute();
     await this.events.emit(trx, { type: "automation.paused", tenantId, entity: { type: "automation", id: automationId }, actor: { type: "system" }, data: { failures, runs: recent.length } });
     await trx.insertInto("notifications").values({
-      tenant_id: tenantId, roles: ["owner", "admin", "ops_manager"], text: `⚠️ ${name}`.slice(0, 400), entity_type: "automation", entity_id: automationId,
+      tenant_id: tenantId, roles: ["owner", "admin", "ops_manager"], text: name.slice(0, 400), entity_type: "automation", entity_id: automationId,
       source: "automation.paused", dedupe_key: `automation.paused:${runId}`,
     }).onConflict((oc) => oc.columns(["tenant_id", "dedupe_key"]).where("dedupe_key", "is not", null).doNothing()).execute();
   }

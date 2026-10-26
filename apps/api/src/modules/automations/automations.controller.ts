@@ -6,7 +6,7 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AutomationDetailSchema, AutomationInputSchema, AutomationListSchema, AutomationPatchSchema, AutomationSchema, CatalogSchema, DryRunResultSchema, DryRunSchema,
+  AutomationDetailSchema, AutomationInputSchema, InstallRecipeSchema, RecipeListSchema, RecipeQuerySchema, AutomationListSchema, AutomationPatchSchema, AutomationSchema, CatalogSchema, DryRunResultSchema, DryRunSchema,
   MarkedSchema, MarkReadSchema, NotificationListSchema, NotificationsQuerySchema,
 } from "./automations.dto.js";
 import { AutomationsService } from "./automations.service.js";
@@ -32,6 +32,21 @@ export class AutomationsController {
   @ApiProblems(422)
   create(@Auth() auth: AuthContext, @Body(new ZodPipe(AutomationInputSchema)) body: z.infer<typeof AutomationInputSchema>) {
     return this.automations.create(auth, body);
+  }
+
+  @Get("recipes")
+  @ApiQueryZod(RecipeQuerySchema)
+  @ApiJson(200, "RecipeList", RecipeListSchema, "Built-in recipes and whether the store installed each")
+  recipes(@Auth() auth: AuthContext, @Query(new ZodPipe(RecipeQuerySchema)) q: z.output<typeof RecipeQuerySchema>) {
+    return this.automations.recipes(auth.tenant!.id, q.lang);
+  }
+
+  @Post("recipes/:key/install")
+  @ApiJsonBody("InstallRecipe", InstallRecipeSchema)
+  @ApiJson(201, "Automation", AutomationSchema, "Installed as the store's own automation, off until turned on")
+  @ApiProblems(404, 409)
+  install(@Auth() auth: AuthContext, @Param("key") key: string, @Body(new ZodPipe(InstallRecipeSchema)) body: z.infer<typeof InstallRecipeSchema>) {
+    return this.automations.install(auth, key, body.language);
   }
 
   @Get(":id")

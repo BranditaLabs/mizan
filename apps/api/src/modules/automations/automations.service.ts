@@ -9,6 +9,7 @@ import { ACTIONS, contextOf, FIELDS, parseStep, type ActionName } from "./catalo
 import { check, ConditionsSchema, evaluate, fieldsOf, type Rule } from "./conditions.js";
 import type { AutomationInput } from "./automations.dto.js";
 import { AutomationRuntime, fill } from "./runtime.js";
+import { RECIPES, recipe } from "./recipes.js";
 
 type Row = Selectable<DB["automations"]>;
 
@@ -93,6 +94,33 @@ export class AutomationsService {
     });
   }
 
+  /** The recipe gallery: each recipe with the store's installed copy, if any. */
+  async recipes(tenantId: string, lang: "ar" | "en") {
+    return this.db.tenant(tenantId, async (trx) => {
+      const installed = new Map((await trx.selectFrom("automations").select(["id", "recipe"]).where("recipe", "is not", null).execute()).map((a) => [a.recipe!, a.id]));
+      return { data: RECIPES.map((r) => ({ key: r.key, domain: r.domain, name: r.name[lang], trigger: r.trigger, conditions: r.conditions, steps: r.steps(lang), installed: installed.get(r.key) ?? null })) };
+    });
+  }
+
+  /** Install a recipe as the store's own automation (off, editable). Once per store. */
+  async install(auth: AuthContext, key: string, language?: "ar" | "en") {
+    const r = recipe(key);
+    if (!r) throw new ProblemError(404, "not_found", "no such recipe");
+    const tenantId = auth.tenant!.id;
+    const lang = language ?? ((await this.db.tenant(tenantId, (trx) => trx.selectFrom("tenants").select("locale").where("id", "=", tenantId).executeTakeFirstOrThrow())).locale.startsWith("en") ? "en" : "ar");
+    const body: AutomationInput = { name: r.name[lang], trigger: r.trigger, conditions: r.conditions, steps: r.steps(lang), enabled: false };
+    const steps = validate(body);
+    return this.db.tenant(tenantId, async (trx) => {
+      const existing = await trx.selectFrom("automations").select("id").where("recipe", "=", key).executeTakeFirst();
+      if (existing) throw new ProblemError(409, "recipe_installed", "this recipe is already installed", [{ path: "recipe", code: "installed", message: existing.id }]);
+      const a = await trx.insertInto("automations").values({
+        tenant_id: tenantId, name: body.name, recipe: key, trigger_event: body.trigger, conditions: JSON.stringify(body.conditions), actions: JSON.stringify(steps), enabled: false, created_by: auth.user.id,
+      }).returningAll().executeTakeFirstOrThrow();
+      await this.audit.record(trx, { action: "automation.created", tenantId, entity: { type: "automation", id: a.id }, after: { recipe: key, trigger: a.trigger_event, enabled: false }, ...auditActor(auth) });
+      return view(a);
+    });
+  }
+
   /** What the automation would do for a past event, or for an order as if its trigger happened now. Nothing is done. */
   async dryRun(tenantId: string, id: string, body: { eventId?: string | undefined; orderId?: string | undefined }) {
     return this.db.tenant(tenantId, async (trx) => {
@@ -135,7 +163,7 @@ function flatten(c: unknown): Rule[] {
 }
 
 /** Check a definition against the catalogue; returns its steps with parsed params, or a 422 naming each problem. */
-function validate(body: AutomationInput) {
+export function validate(body: AutomationInput) {
   const problems: Array<{ path: string; code: string; message: string }> = [];
   const ctx = contextOf(body.trigger);
   for (const field of fieldsOf(body.conditions)) {
@@ -156,7 +184,7 @@ function validate(body: AutomationInput) {
 
 function view(a: Row) {
   return {
-    id: a.id, name: a.name, description: a.description, trigger: a.trigger_event, conditions: a.conditions,
+    id: a.id, name: a.name, description: a.description, recipe: a.recipe, trigger: a.trigger_event, conditions: a.conditions,
     steps: (a.actions ?? []) as Array<{ action: string; params: Record<string, unknown> }>,
     enabled: a.enabled, pausedReason: (a.paused_reason as "errors" | null) ?? null, version: a.version,
     stats: { runs: a.runs, failures: a.failures, lastRunAt: a.last_run_at?.toISOString() ?? null }, updatedAt: a.updated_at.toISOString(),

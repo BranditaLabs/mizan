@@ -21,6 +21,7 @@ export const AutomationSchema = z.object({
   id: z.uuid(),
   name: z.string(),
   description: z.string().nullable(),
+  recipe: z.string().nullable().describe("The built-in recipe it was installed from"),
   trigger: z.string(),
   conditions: ConditionsOut,
   steps: z.array(z.object({ action: z.string(), params: z.record(z.string(), z.unknown()) })),
@@ -80,3 +81,13 @@ export const NotificationsQuerySchema = z.object({ limit: z.coerce.number().int(
 export const MarkReadSchema = z.strictObject({ ids: z.array(z.uuid()).min(1).max(100).optional(), all: z.literal(true).optional() })
   .refine((b) => Boolean(b.ids) !== Boolean(b.all), { message: "give ids or all" });
 export const MarkedSchema = z.object({ marked: z.number().int() });
+
+export const RecipeListSchema = z.object({
+  data: z.array(z.object({
+    key: z.string(), domain: z.enum(["orders", "verification", "fulfilment", "platform"]), name: z.string(), trigger: z.string(),
+    conditions: z.unknown(), steps: z.array(z.object({ action: z.string(), params: z.record(z.string(), z.unknown()) })),
+    installed: z.uuid().nullable().describe("The store's copy, if installed"),
+  })),
+});
+export const RecipeQuerySchema = z.object({ lang: z.enum(["ar", "en"]).default("ar") });
+export const InstallRecipeSchema = z.strictObject({ language: z.enum(["ar", "en"]).optional().describe("Messages in this language (default: the store's)") });

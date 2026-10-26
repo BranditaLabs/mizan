@@ -149,6 +149,28 @@ describe("automation core (E11-1, E11-3)", () => {
     expect((await http().post(`/v1/automations/${a.id}/test`).set(as("owner")).send({ eventId: scored.id }).expect(422)).body.code).toBe("wrong_trigger");
   });
 
+  it("recipes install once as the store's own copy, off until turned on; the low stock alert reaches the warehouse", async () => {
+    const list = (await http().get("/v1/automations/recipes?lang=en").set(as("owner")).expect(200)).body.data;
+    expect(list.map((r: { key: string }) => r.key)).toEqual(expect.arrayContaining(["big_cod_order", "low_stock_alert", "waiting_for_stock"]));
+    const a = (await http().post("/v1/automations/recipes/low_stock_alert/install").set(as("owner")).send({ language: "en" }).expect(201)).body;
+    expect(a).toMatchObject({ recipe: "low_stock_alert", enabled: false, trigger: "stock.low", name: "Low stock alert" });
+    expect((await http().post("/v1/automations/recipes/low_stock_alert/install").set(as("owner")).send({}).expect(409)).body.code).toBe("recipe_installed");
+    await http().post("/v1/automations/recipes/nope/install").set(as("owner")).send({}).expect(404);
+    expect((await http().get("/v1/automations/recipes?lang=ar").set(as("owner")).expect(200)).body.data.find((r: { key: string }) => r.key === "low_stock_alert")).toMatchObject({ installed: a.id, name: "تنبيه المخزون القليل" });
+
+    await http().patch(`/v1/automations/${a.id}`).set(as("owner")).send({ enabled: true }).expect(200);
+    const variantId = await db.tenant(store, async (trx) => {
+      const p = await trx.insertInto("products").values({ tenant_id: store, title: "Tote bag" }).returning("id").executeTakeFirstOrThrow();
+      return (await trx.insertInto("variants").values({ tenant_id: store, product_id: p.id, sku: "BAG-TT", currency: "EGP" }).returning("id").executeTakeFirstOrThrow()).id;
+    });
+    await http().post("/v1/stock/movements").set(as("owner")).send({ items: [{ variantId, kind: "count", quantity: 10 }] }).expect(200);
+    await http().patch(`/v1/stock/${variantId}`).set(as("owner")).send({ lowStockAt: 5 }).expect(200);
+    await http().post("/v1/stock/movements").set(as("owner")).send({ items: [{ variantId, kind: "adjust", quantity: -6, reason: "damaged" }] }).expect(200);
+    await drain();
+    const notes = (await http().get("/v1/notifications").set(as("owner")).expect(200)).body.data;
+    expect(notes[0]).toMatchObject({ text: "BAG-TT is running low: 4 left", entity: { type: "variant", id: variantId } });
+  });
+
   it("is for managers", async () => {
     await http().get("/v1/automations").set(as("agent")).expect(403);
     await http().get("/v1/catalog").set(as("agent")).expect(403);
