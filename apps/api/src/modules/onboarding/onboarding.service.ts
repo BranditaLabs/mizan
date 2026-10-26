@@ -40,7 +40,7 @@ export class OnboardingService {
     let imported: Onboarding["steps"]["store"]["import"] = null;
     if (state.store) {
       try {
-        const b = await (await this.engines.get(tenantId)).engine.backfillStatus();
+        const b = await (await this.engines.get(tenantId, state.store.id)).engine.backfillStatus();
         if (b) imported = { status: b.status, phase: b.phase, orders: b.orders, products: b.products };
       } catch {
         /* not buildable yet (credentials being replaced): show no progress */

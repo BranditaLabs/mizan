@@ -18,7 +18,7 @@ const conn: Record<string, string> = {};
 beforeAll(async () => {
   await migrate(pgliteMigrationClient(pglite));
   await db.insertInto("tenants").values([{ id: A, name: "A", slug: "a" }, { id: B, name: "B", slug: "b" }]).execute();
-  for (const [t, label] of [[A, "a"], [B, "b"]] as const) {
+  for (const [t, label] of [[A, "a"], [B, "b"], [A, "a2"], [A, "a3"]] as const) {
     for (const provider of ["shopify", "bosta"] as const) {
       const row = await db.insertInto("connections").values({
         tenant_id: t, kind: provider === "shopify" ? "store" : "courier", provider, external_account: `${label}-${provider}`,
@@ -80,5 +80,35 @@ describe("engine on the platform schema", () => {
     expect(await storeFor(A, "a").markInbound("shopify:evt-1", 1)).toBe(true);
     expect(await storeFor(B, "b").markInbound("shopify:evt-1", 1)).toBe(true);
     expect(await storeFor(A, "a").markInbound("shopify:evt-1", 2)).toBe(false);
+  });
+
+  it("two stores of one tenant: same order ids, separate records, cursors, dedupe keys and jobs (E2-7)", async () => {
+    // Two fresh stores (store "a" already synced order 1 above).
+    const one = setup({}, storeFor(A, "a2"));
+    const two = setup({}, storeFor(A, "a3"));
+    // Fresh fakes hand out ids from 1 again: the second store's order has the first store's id.
+    const o1 = one.shop.addOrder({ tags: ["mizan-confirmed"] });
+    const o2 = two.shop.addOrder({ tags: ["mizan-confirmed"] });
+    expect(o1.id).toBe(o2.id);
+    for (const ctx of [one, two]) {
+      const o = [...ctx.shop.orders.values()].at(-1)!;
+      const wh = ctx.shop.webhook("orders/create", o, "evt-same-id");
+      await ctx.engine.handleShopifyWebhook(wh.headers, wh.body);
+    }
+    await settle(one.engine, one.store, one.clock);
+    await settle(two.engine, two.store, two.clock);
+    for (const ctx of [one, two]) {
+      expect([...ctx.shop.orders.values()].at(-1)!.fulfillments).toHaveLength(1);
+      expect(await ctx.store.jobs({ status: "dead" })).toEqual([]);
+    }
+    // Each store's engine sees only its own jobs and records.
+    const scopes = await tenantQueryClient(db, A).query<{ scope: string; n: string }>("SELECT scope, count(*)::text AS n FROM mz_outbox GROUP BY scope ORDER BY scope");
+    expect(scopes.rows.map((r) => r.scope).sort()).toEqual([conn["a:shopify"], conn["a2:shopify"], conn["a3:shopify"]].sort());
+    await storeFor(A, "a").put("cursor", "orders", { at: 1 }, 1);
+    await storeFor(A, "a2").put("cursor", "orders", { at: 2 }, 1);
+    expect(await storeFor(A, "a").get("cursor", "orders")).toEqual({ at: 1 });
+    expect(await storeFor(A, "a2").get("cursor", "orders")).toEqual({ at: 2 });
+    expect(await storeFor(A, "a2").markInbound("shopify:evt-shared", 1)).toBe(true);
+    expect(await storeFor(A, "a").markInbound("shopify:evt-shared", 1)).toBe(true);
   });
 });

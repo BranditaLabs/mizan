@@ -29,7 +29,21 @@ export function StoreStep({ o }: { o: Onboarding }) {
     // Shopify's consent screen; it sends the browser back to /integrations/shopify/connect.
     onSuccess: ({ authorizeUrl }) => window.location.assign(authorizeUrl),
   });
+  const [another, setAnother] = useState(false);
   const s = o.steps.store;
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const domain = shopDomain(shop);
+    setInvalid(!domain);
+    if (domain) install.mutate(domain);
+  };
+  const form = (
+    <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      <Field label={t("field")} hint={t.rich("hint", { n })} error={invalid ? t("invalid") : null} ltr autoComplete="off" spellCheck={false}
+        placeholder="nile-abayas.myshopify.com" value={shop} onChange={(e) => setShop(e.target.value)} name="shop" />
+      <div><Button type="submit" icon="channels" busy={install.isPending || install.isSuccess}>{t("submit")}</Button></div>
+    </form>
+  );
 
   if (s.status === "done") {
     const imp = s.import;
@@ -49,23 +63,13 @@ export function StoreStep({ o }: { o: Onboarding }) {
             {t(imp.status === "running" ? "importing" : "imported", { orders: imp.orders, products: imp.products })}
           </p>
         ) : null}
+        {/* Several stores per account (E2-7): each one syncs on its own. */}
+        {another ? form : <div><Button variant="ghost" size="sm" icon="add" onClick={() => setAnother(true)}>{t("another")}</Button></div>}
       </div>
     );
   }
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const domain = shopDomain(shop);
-    setInvalid(!domain);
-    if (domain) install.mutate(domain);
-  };
-  return (
-    <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-      <Field label={t("field")} hint={t.rich("hint", { n })} error={invalid ? t("invalid") : null} ltr autoComplete="off" spellCheck={false}
-        placeholder="nile-abayas.myshopify.com" value={shop} onChange={(e) => setShop(e.target.value)} name="shop" />
-      <div><Button type="submit" icon="channels" busy={install.isPending || install.isSuccess}>{t("submit")}</Button></div>
-    </form>
-  );
+  return form;
 }
 
 export function CourierStep({ o }: { o: Onboarding }) {

@@ -54,10 +54,11 @@ export function engineLogger(tenantId: string): Runtime["logger"] {
 }
 
 /**
- * One MizanEngine per tenant, built from that tenant's connections and decrypted
- * credentials. Each engine owns its connectors, so circuit breakers and rate
- * buckets are per connection: one store being throttled or down never slows another.
- * Its SqlStore runs every query under the tenant's RLS context.
+ * One MizanEngine per store (a tenant's Shopify connection, E2-7), built from that store's
+ * connection, the tenant's Bosta account and decrypted credentials. Each engine owns its
+ * connectors, so circuit breakers and rate buckets are per store: one store being throttled or
+ * down never slows another. Its SqlStore runs every query under the tenant's RLS context and
+ * keeps the store's rows (records, cursors, jobs, dedupe keys) apart from its other stores'.
  */
 @Injectable()
 export class EngineRegistry {
@@ -86,19 +87,31 @@ export class EngineRegistry {
     try { return this.moduleRef.get<OfferResultSink>(OFFER_RESULTS, { strict: false }); } catch { return undefined; }
   }
 
-  async get(tenantId: string): Promise<TenantEngine> {
-    const hit = this.cache.get(tenantId);
+  /**
+   * The engine of one of the tenant's stores (E2-7: one engine per Shopify connection).
+   * Without `storeId`, the tenant's first store: right for one-store tenants and for calls
+   * that are not about a store (Bosta access checks, admin views of the first store).
+   */
+  async get(tenantId: string, storeId?: string): Promise<TenantEngine> {
+    const store = storeId ?? (await this.resolver.stores(tenantId))[0] ?? "";
+    const key = `${tenantId}|${store}`;
+    const hit = this.cache.get(key);
     if (hit && Date.now() - hit.builtAt < ENGINE_TTL_MS) return hit;
-    const pending = this.building.get(tenantId);
+    const pending = this.building.get(key);
     if (pending) return pending;
-    const build = this.build(tenantId).finally(() => this.building.delete(tenantId));
-    this.building.set(tenantId, build);
+    const build = this.build(tenantId, store || undefined).then((e) => { this.cache.set(key, e); return e; }).finally(() => this.building.delete(key));
+    this.building.set(key, build);
     return build;
   }
 
-  /** Drop a tenant's engine (connection added, removed or rotated). */
+  /** Every store engine of a tenant (Bosta webhooks find the store that owns a shipment). */
+  async forTenant(tenantId: string): Promise<TenantEngine[]> {
+    return Promise.all((await this.resolver.stores(tenantId)).map((id) => this.get(tenantId, id)));
+  }
+
+  /** Drop a tenant's engines (connection added, removed or rotated). */
   invalidate(tenantId: string): void {
-    this.cache.delete(tenantId);
+    for (const key of [...this.cache.keys()]) if (key.startsWith(`${tenantId}|`)) this.cache.delete(key);
   }
 
   /** Engines built on this instance (metrics). */
@@ -107,11 +120,11 @@ export class EngineRegistry {
   }
 
   cached(tenantId: string): TenantEngine | undefined {
-    return this.cache.get(tenantId);
+    return [...this.cache.entries()].find(([k]) => k.startsWith(`${tenantId}|`))?.[1];
   }
 
-  private async build(tenantId: string): Promise<TenantEngine> {
-    const c = await this.resolver.resolve(tenantId);
+  private async build(tenantId: string, storeId?: string): Promise<TenantEngine> {
+    const c = await this.resolver.resolve(tenantId, storeId);
     const connections: Record<string, string> = { shopify: c.shopify.connectionId };
     if (c.bosta) connections.bosta = c.bosta.connectionId;
     const store = new SqlStore(tenantQueryClient(this.db.kysely, tenantId), { tenantId, connections });
@@ -177,9 +190,7 @@ export class EngineRegistry {
     const engine = new MizanEngine(store, this.runtime(tenantId, c), options);
     engine.on((event, data) => this.sink(tenantId, event, data));
     await engine.init();
-    const entry: TenantEngine = { tenantId, engine, store, connections: c, builtAt: Date.now() };
-    this.cache.set(tenantId, entry);
-    return entry;
+    return { tenantId, engine, store, connections: c, builtAt: Date.now() };
   }
 }
 

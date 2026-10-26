@@ -49,6 +49,7 @@ beforeAll(async () => {
   const config = loadConfig({
     NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000",
     SHOPIFY_API_KEY: shop.clientId, SHOPIFY_API_SECRET: shop.secret,
+    MAX_SHOPIFY_STORES: "1", // the limit itself is tested here; two stores run in multi-store.e2e
   });
   app = await createApp(config, {
     logDestination: new Writable({ write: (_c, _e, d) => d() }), tokenVerifier: fake,
@@ -189,7 +190,7 @@ describe("attacks and failures", () => {
     expect(await installFlow("omar", shop2)).toEqual({ error: "shopify_unavailable" });
   });
 
-  it("a store connected to another account, a second store, and an expired link are refused", async () => {
+  it("a store connected to another account, a store over the account's limit, and an expired link are refused", async () => {
     const taken = await installFlow("layla", shop);
     expect((await http().post("/v1/connections/shopify/claim").set(as("layla")).send({ install: taken.install }).expect(409)).body.code).toBe("shop_connected_elsewhere");
 

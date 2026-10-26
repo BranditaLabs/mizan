@@ -30,8 +30,9 @@ export class NotConnectedError extends ProblemError {
  * Loads a tenant's provider connections and decrypts their credentials, in
  * one tenant transaction. Decrypted values stay in memory as SecretValue.
  *
- * Today one Shopify store (and optionally one Bosta account) per tenant;
- * several stores per tenant is backlog E2-7.
+ * A tenant can run several Shopify stores (E2-7): each gets its own engine, so
+ * `resolve` takes the store's connection id (the oldest store when omitted).
+ * The tenant's Bosta account, when connected, serves all of its stores.
  */
 @Injectable()
 export class ConnectionResolver {
@@ -40,17 +41,23 @@ export class ConnectionResolver {
     @Inject(SecretsService) private readonly secrets: SecretsService,
   ) {}
 
-  async resolve(tenantId: string): Promise<ResolvedConnections> {
+  /** The tenant's Shopify stores that can run (not disconnected), oldest first. */
+  async stores(tenantId: string): Promise<string[]> {
+    return this.db.tenant(tenantId, async (trx) => (await trx.selectFrom("connections").select("id")
+      .where("provider", "=", "shopify").where("status", "!=", "disconnected").orderBy("created_at").orderBy("id").execute()).map((r) => r.id));
+  }
+
+  async resolve(tenantId: string, storeId?: string): Promise<ResolvedConnections> {
     return this.db.tenant(tenantId, async (trx) => {
       const rows = await trx.selectFrom("connections")
         .select(["id", "provider", "external_account", "secret_ref", "config", "status", "learned"])
         .where("provider", "in", ["shopify", "bosta"]).where("status", "!=", "disconnected")
-        .orderBy("created_at").execute();
+        .orderBy("created_at").orderBy("id").execute();
       const shopify = rows.filter((r) => r.provider === "shopify");
       const bosta = rows.find((r) => r.provider === "bosta");
       if (shopify.length === 0) throw new NotConnectedError("no Shopify store is connected");
-      if (shopify.length > 1) throw new NotConnectedError("several Shopify stores per account are not supported yet");
-      const store = shopify[0]!;
+      const store = storeId ? shopify.find((r) => r.id === storeId) : shopify[0];
+      if (!store) throw new NotConnectedError("this Shopify store is not connected");
       if (!store.secret_ref || !store.external_account) throw new NotConnectedError("the Shopify connection has no credentials");
 
       const read = async <S extends keyof typeof ProviderSecretSchemas>(provider: S, ref: string) => {

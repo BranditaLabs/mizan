@@ -95,6 +95,8 @@ export const ConfigSchema = z.object({
   SHOPIFY_API_SECRET: optionalString,
   /** Access scopes requested on install (docs/06 §3). Comma-separated. */
   SHOPIFY_SCOPES: z.string().regex(/^[a-z_]+(,[a-z_]+)*$/, "must be comma-separated scope names").default(SHOPIFY_DEFAULT_SCOPES),
+  /** Shopify stores one account can connect (E2-7) until plan limits (E12-1) decide it per plan. */
+  MAX_SHOPIFY_STORES: z.coerce.number().int().min(1).max(50).default(3),
   BOSTA_BASE_URL: url.optional(),
   BOSTA_TRACKING_URL_TEMPLATE: z.string().includes("{tn}", { error: "must contain {tn}" }).optional(),
 

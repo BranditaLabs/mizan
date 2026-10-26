@@ -6421,7 +6421,10 @@ export interface operations {
     };
     IntegrationsAdminController_health: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Which Shopify store (default: the first) */
+                connectionId?: string;
+            };
             header?: {
                 "Accept-Language"?: "ar" | "en";
                 /** @description Store id; required on store routes */
@@ -6432,7 +6435,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Connections, engine queues, dead letters and drift */
+            /** @description Connections, and one store's engine queues, dead letters and drift */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -6467,7 +6470,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Jobs that need a person, newest first */
+            /** @description Jobs that need a person, newest first (every store) */
             200: {
                 headers: {
                     [name: string]: unknown;

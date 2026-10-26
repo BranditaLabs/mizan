@@ -42,7 +42,7 @@ const PROBLEM_TITLES = {
   install_expired: { en: "Install link expired", ar: "رابط التثبيت انتهى، ثبّت التطبيق تاني" },
   install_not_yours: { en: "This install was started by someone else", ar: "التثبيت ده بدأه شخص تاني" },
   shop_connected_elsewhere: { en: "This Shopify store is connected to another account", ar: "متجر شوبيفاي ده مربوط بحساب تاني" },
-  store_limit_reached: { en: "One Shopify store per account for now", ar: "حاليًا متجر شوبيفاي واحد بس لكل حساب" },
+  store_limit_reached: { en: "This account has as many Shopify stores as it can", ar: "الحساب ده وصل لأقصى عدد متاجر شوبيفاي" },
   no_store: { en: "Connect a store first", ar: "اربط متجرك الأول" },
   store_required: { en: "Choose which store", ar: "اختار المتجر" },
   csv_invalid: { en: "Some lines of the file couldn't be read", ar: "في سطور في الملف ماتقريتش" },

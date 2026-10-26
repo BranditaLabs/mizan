@@ -169,11 +169,13 @@ export class ShopifyInstallService {
     return { connection: { id: result.id, provider: "shopify", account: install.shop, status: "active", scopes }, reconnected: result.reconnected };
   }
 
-  /** One Shopify store per account until E2-7. */
+  /** Several Shopify stores per account (E2-7), up to MAX_SHOPIFY_STORES; reconnecting one already counted is always fine. */
   private async otherStore(trx: Parameters<Parameters<Database["tenant"]>[1]>[0], shop: string): Promise<void> {
-    const other = await trx.selectFrom("connections").select("id").where("provider", "=", "shopify")
-      .where("status", "!=", "disconnected").where("external_account", "!=", shop).executeTakeFirst();
-    if (other) throw new ProblemError(409, "store_limit_reached", "disconnect the current Shopify store first; several stores per account come later");
+    const others = await trx.selectFrom("connections").select("id").where("provider", "=", "shopify")
+      .where("status", "!=", "disconnected").where("external_account", "!=", shop).execute();
+    if (others.length >= this.config.MAX_SHOPIFY_STORES) {
+      throw new ProblemError(409, "store_limit_reached", `up to ${this.config.MAX_SHOPIFY_STORES} Shopify stores per account; disconnect one first`);
+    }
   }
 
   private app() {

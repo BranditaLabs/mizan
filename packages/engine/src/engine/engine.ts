@@ -264,6 +264,21 @@ export class MizanEngine {
     return { status: 200, body: { accepted: true } };
   }
 
+  /**
+   * The tracking number a Bosta webhook is about, without recording or queueing anything (null
+   * when the token is wrong or the body unreadable). A platform running one engine per store
+   * uses it to hand the webhook to the store that owns the shipment.
+   */
+  peekBostaWebhook(query: Record<string, string | undefined>, headers: Record<string, string | undefined>, rawBody: string): string | null {
+    const token = query.token ?? headers["x-mizan-token"] ?? headers["authorization"];
+    if (!this.bosta.verifyWebhook(token)) return null;
+    try {
+      return this.bosta.parseWebhook(JSON.parse(rawBody)).trackingNumber;
+    } catch {
+      return null;
+    }
+  }
+
   // ═════════════ commands ═════════════
 
   /** Ship an order with Bosta (normally called by the confirmation module). */

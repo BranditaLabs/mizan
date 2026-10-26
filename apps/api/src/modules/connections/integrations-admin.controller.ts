@@ -24,6 +24,7 @@ const ResolveCitySchema = z.strictObject({
 });
 
 const ListSchema = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) });
+const HealthQuerySchema = z.object({ connectionId: z.uuid().optional().describe("Which Shopify store (default: the first)") });
 
 const ConnectionSummarySchema = z.object({
   id: z.uuid(), kind: z.string(), provider: z.string(), account: z.string().nullable(),
@@ -66,15 +67,16 @@ export class IntegrationsAdminController {
   ) {}
 
   @Get("health")
-  @ApiJson(200, "IntegrationsHealth", IntegrationsHealthSchema, "Connections, engine queues, dead letters and drift")
-  async health(@Auth() auth: AuthContext): Promise<IntegrationsHealth> {
+  @ApiQueryZod(HealthQuerySchema)
+  @ApiJson(200, "IntegrationsHealth", IntegrationsHealthSchema, "Connections, and one store's engine queues, dead letters and drift")
+  async health(@Auth() auth: AuthContext, @Query(new ZodPipe(HealthQuerySchema)) q: z.infer<typeof HealthQuerySchema>): Promise<IntegrationsHealth> {
     const connections = await this.db.tenant(auth.tenant!.id, (trx) => trx.selectFrom("connections")
       .select(["id", "kind", "provider", "external_account", "status", "status_reason", "updated_at"]).orderBy("created_at").orderBy("provider").execute());
     const list = connections.map((c) => ({
       id: c.id, kind: c.kind, provider: c.provider, account: c.external_account, status: c.status, reason: c.status_reason, updatedAt: c.updated_at.toISOString(),
     }));
     try {
-      const { engine } = await this.registry.get(auth.tenant!.id);
+      const { engine } = await this.registry.get(auth.tenant!.id, q.connectionId);
       const h = await engine.health();
       return {
         connected: true,
@@ -94,10 +96,10 @@ export class IntegrationsAdminController {
 
   @Get("dead-letters")
   @ApiQueryZod(ListSchema)
-  @ApiJson(200, "DeadLetters", DeadLettersSchema, "Jobs that need a person, newest first")
+  @ApiJson(200, "DeadLetters", DeadLettersSchema, "Jobs that need a person, newest first (every store)")
   async deadLetters(@Auth() auth: AuthContext, @Query(new ZodPipe(ListSchema)) q: z.infer<typeof ListSchema>) {
-    const { store } = await this.engineFor(auth);
-    const dead = await store.jobs({ status: "dead" });
+    const dead = (await Promise.all((await this.registry.forTenant(auth.tenant!.id)).map((e) => e.store.jobs({ status: "dead" }))))
+      .flat().sort((a, b) => a.updatedAt - b.updatedAt);
     return {
       data: dead.slice(-q.limit).reverse().map((j) => ({
         id: j.id, kind: j.kind, provider: j.connection, attempts: j.attempts,
@@ -113,7 +115,7 @@ export class IntegrationsAdminController {
   @ApiProblems(404)
   async replay(@Auth() auth: AuthContext, @Param("id") id: string) {
     if (!UUID.test(id)) throw new ProblemError(404, "job_not_found", "no dead-lettered job with this id");
-    const { engine } = await this.engineFor(auth);
+    const { engine } = await this.engineFor(auth, id);
     if (!(await engine.replay(id))) throw new ProblemError(404, "job_not_found", "no dead-lettered job with this id");
     await this.db.tenant(auth.tenant!.id, (trx) => this.audit.record(trx, {
       action: "integration.job_replayed", tenantId: auth.tenant!.id, ...auditActor(auth), entity: { type: "engine_job", id },
@@ -127,8 +129,9 @@ export class IntegrationsAdminController {
   @ApiJson(200, "CityResolved", CityResolvedSchema, "Saved, and the job replayed when one was given")
   @ApiProblems(404)
   async resolveCity(@Auth() auth: AuthContext, @Body(new ZodPipe(ResolveCitySchema)) body: z.infer<typeof ResolveCitySchema>) {
-    const { engine } = await this.engineFor(auth);
+    const { engine } = await this.engineFor(auth, body.jobId);
     const replayed = await engine.resolveCity(body.text, body.cityId, body.jobId);
+    this.registry.invalidate(auth.tenant!.id); // the alias belongs to the Bosta account: every store's engine learns it
     if (body.jobId && !replayed) throw new ProblemError(404, "job_not_found", "the city was saved, but no dead-lettered job has this id");
     await this.db.tenant(auth.tenant!.id, (trx) => this.audit.record(trx, {
       action: "integration.city_resolved", tenantId: auth.tenant!.id, ...auditActor(auth),
@@ -137,7 +140,12 @@ export class IntegrationsAdminController {
     return { saved: true as const, replayed: Boolean(body.jobId) };
   }
 
-  private async engineFor(auth: AuthContext) {
-    return this.registry.get(auth.tenant!.id);
+  /** The engine of the store a job belongs to (jobs are per store, E2-7); the first store otherwise. */
+  private async engineFor(auth: AuthContext, jobId?: string) {
+    const tenantId = auth.tenant!.id;
+    const scope = jobId && UUID.test(jobId)
+      ? (await this.db.tenant(tenantId, (trx) => trx.selectFrom("mz_outbox").select("scope").where("id", "=", jobId).executeTakeFirst()))?.scope
+      : undefined;
+    return this.registry.get(tenantId, scope || undefined);
   }
 }

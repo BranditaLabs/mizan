@@ -75,8 +75,8 @@ export class RetentionService implements OnApplicationBootstrap, OnApplicationSh
     const result: RetentionResult = {
       doneJobs: await prune((n) => sql`DELETE FROM mz_outbox WHERE id IN (
         SELECT id FROM mz_outbox WHERE status = 'done' AND updated_at < ${now - c.RETENTION_JOBS_DAYS * DAY} LIMIT ${n})`),
-      webhookKeys: await prune((n) => sql`DELETE FROM mz_inbound_events WHERE (tenant_id, key) IN (
-        SELECT tenant_id, key FROM mz_inbound_events WHERE received_at < ${now - c.RETENTION_WEBHOOK_KEYS_DAYS * DAY} LIMIT ${n})`),
+      webhookKeys: await prune((n) => sql`DELETE FROM mz_inbound_events WHERE (tenant_id, scope, key) IN (
+        SELECT tenant_id, scope, key FROM mz_inbound_events WHERE received_at < ${now - c.RETENTION_WEBHOOK_KEYS_DAYS * DAY} LIMIT ${n})`),
       dispatchedEvents: await prune((n) => sql`DELETE FROM domain_events WHERE id IN (
         SELECT id FROM domain_events WHERE dispatched_at < ${new Date(now - c.RETENTION_EVENTS_DAYS * DAY)} LIMIT ${n})`),
       idempotencyKeys: await prune((n) => sql`DELETE FROM idempotency_keys WHERE (actor_id, key) IN (

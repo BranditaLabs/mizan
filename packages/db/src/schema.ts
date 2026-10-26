@@ -401,6 +401,7 @@ export interface MzInboundEvents {
   key: string;
   tenant_id: string;
   received_at: Int8;
+  scope: Generated<string>;
 }
 
 export interface MzOutbox {
@@ -418,6 +419,7 @@ export interface MzOutbox {
   created_at: Int8;
   updated_at: Int8;
   connection_id: string | null;
+  scope: Generated<string>;
 }
 
 export interface MzRecords {
@@ -426,6 +428,7 @@ export interface MzRecords {
   tenant_id: string;
   value: Json;
   updated_at: Int8;
+  scope: Generated<string>;
 }
 
 export interface OfferRules {

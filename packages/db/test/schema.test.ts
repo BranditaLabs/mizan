@@ -91,9 +91,9 @@ describe("schema", () => {
     const r = await db.query<{ indexname: string }>(`SELECT indexname FROM pg_indexes WHERE schemaname = 'public'`);
     const have = new Set(r.rows.map((x) => x.indexname));
     for (const ix of [
-      "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
+      "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -198,6 +198,17 @@ describe("schema", () => {
     await expect(op(T1, "short")).rejects.toThrow(/check/);
     await expect(op(T1, "op-0000002", "maybe")).rejects.toThrow(/check/);
     expect((await asTenant(T2, () => db.query(`SELECT op_id FROM ops_operations`))).rows).toEqual([{ op_id: "op-0000001" }]);
+  });
+
+  it("keeps engine rows apart per store of a tenant (E2-7)", async () => {
+    const rec = (scope: string) => asTenant(T1, () => db.query(`INSERT INTO mz_records (tenant_id, scope, type, key, value, updated_at) VALUES ($1, $2, 'cursor', 'orders', '{}', 1)`, [T1, scope]));
+    await rec("store-a");
+    await rec("store-b"); // the same key in another store
+    await expect(rec("store-a")).rejects.toThrow(/duplicate key/);
+    const job = (scope: string) => asTenant(T1, () => db.query(`INSERT INTO mz_outbox (id, tenant_id, scope, kind, connection, payload, idempotency_key, status, next_attempt_at, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, 'shopify.ingestOrder', 'shopify', '{}', 'shopify:order:1', 'pending', 1, 1, 1)`, [T1, scope]));
+    await job("store-a");
+    await job("store-b");
+    await expect(job("store-b")).rejects.toThrow(/duplicate key/);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {

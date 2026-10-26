@@ -25,7 +25,7 @@ The source of truth is the SQL in **`packages/db/migrations/`** (`0001_core.sql`
 | Platform scope | `withoutTenant` / `Database.platform()` | App role, no tenant: tenant tables return nothing; for tenants/users lookups. With `setActingUser(trx, userId, { email?, phone? })` the `member_self_read` policy (0004) shows that user's own memberships, and `invitee_read` (0005) their pending invitations by verified email / phone (read-only) |
 | Owner access | `Database.kysely` | Migrations and signup bootstrap only |
 | Migrations | `mizan-db migrate` (`DATABASE_URL_MIGRATOR`) | One transaction per file, checksums, advisory lock; PGlite dev/test databases migrate at boot |
-| Engine state | `mz_inbound_events`, `mz_outbox`, `mz_records` (0001, tenant-scoped by 0008; no personal data since 0025, E2-8) | Engine `SqlStore` with `tenantQueryClient`: every key unique per tenant; jobs carry `connection_id` |
+| Engine state | `mz_inbound_events`, `mz_outbox`, `mz_records` (0001, tenant-scoped by 0008; no personal data since 0025, E2-8; ✅ store-scoped by 0032, E2-7) | Engine `SqlStore` with `tenantQueryClient`: every key unique per tenant and store (`scope` = the Shopify connection id; rows written before belong to the tenant's first store); jobs carry `connection_id` |
 | BIGINT | Parsed to JS `bigint` (pg and PGlite) | Never `number`: KWD amounts in fils pass 2^53 sooner than you think |
 
 Canonical (engine) money is a decimal **string** (`"1150.00"`). Convert at the boundary: `toMinor("1150.00", "EGP") = 115000`. The helpers live in `packages/shared/src/money.ts` (`toMinor`, `fromMinor`, `currencyDecimals`, `addMoney` …), tested for 0, 2, 3 and 4 decimal currencies. They never round: an amount with more decimals than its currency allows is rejected.

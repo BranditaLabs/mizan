@@ -5366,6 +5366,18 @@
         "operationId": "IntegrationsAdminController_health",
         "parameters": [
           {
+            "name": "connectionId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Which Shopify store (default: the first)",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "description": "Which Shopify store (default: the first)"
+          },
+          {
             "name": "Accept-Language",
             "in": "header",
             "required": false,
@@ -5390,7 +5402,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Connections, engine queues, dead letters and drift",
+            "description": "Connections, and one store's engine queues, dead letters and drift",
             "content": {
               "application/json": {
                 "schema": {
@@ -5455,7 +5467,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Jobs that need a person, newest first",
+            "description": "Jobs that need a person, newest first (every store)",
             "content": {
               "application/json": {
                 "schema": {

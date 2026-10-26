@@ -19,11 +19,11 @@ export const ENGINE_RUN = {
 /**
  * Runs engine outbox jobs for every tenant.
  *
- * Each cycle finds tenants with due jobs (as mizan_worker, across tenants) and
- * starts one engine tick per tenant, without waiting for slow ones: a tenant
+ * Each cycle finds stores with due jobs (as mizan_worker, across tenants) and
+ * starts one engine tick per store, without waiting for slow ones: a store
  * whose provider is throttling or hanging keeps its own tick in flight while
- * other tenants keep moving. Within a tenant, the engine's own worker claims
- * jobs (leases, retries, dead letters) through its RLS-scoped store.
+ * the others keep moving. Within a store, the engine's own worker claims
+ * jobs (leases, retries, dead letters) through its RLS- and store-scoped store.
  */
 @Injectable()
 export class EngineJobRunner implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -49,29 +49,36 @@ export class EngineJobRunner implements OnApplicationBootstrap, OnApplicationShu
   }
 
   /**
-   * Tenants with jobs due now (pending, or running with an expired lease), oldest first.
-   * Tenants skipped for now (store not connected) or already ticking are left out in SQL:
-   * otherwise their old jobs would fill every slot of the LIMIT and starve active stores.
+   * Stores with jobs due now (pending, or running with an expired lease), oldest first: one
+   * engine per store (E2-7), keyed "tenant|store" ('' = rows written before stores were scoped).
+   * Stores skipped for now (not connected) or already ticking are left out in SQL: otherwise
+   * their old jobs would fill every slot of the LIMIT and starve active stores.
    */
-  async dueTenants(now = Date.now(), limit: number = ENGINE_RUN.tenantsPerCycle): Promise<string[]> {
+  async dueStores(now = Date.now(), limit: number = ENGINE_RUN.tenantsPerCycle): Promise<Array<{ tenantId: string; store: string }>> {
     for (const [t, until] of this.skipUntil) if (until <= now) this.skipUntil.delete(t);
     const exclude = [...this.skipUntil.keys(), ...this.inFlight.keys()];
-    const rows = await asWorker(this.db.kysely, (trx) => sql<{ tenant_id: string }>`
-      SELECT tenant_id FROM mz_outbox
+    const rows = await asWorker(this.db.kysely, (trx) => sql<{ tenant_id: string; scope: string }>`
+      SELECT tenant_id, scope FROM mz_outbox
       WHERE next_attempt_at <= ${now} AND (status = 'pending' OR (status = 'running' AND locked_until < ${now}))
-        AND NOT (tenant_id = ANY(${exclude}::uuid[]))
-      GROUP BY tenant_id ORDER BY min(next_attempt_at) LIMIT ${limit}`.execute(trx));
-    return rows.rows.map((r) => r.tenant_id);
+        AND NOT ((tenant_id::text || '|' || scope) = ANY(${exclude}::text[]))
+      GROUP BY tenant_id, scope ORDER BY min(next_attempt_at) LIMIT ${limit}`.execute(trx));
+    return rows.rows.map((r) => ({ tenantId: r.tenant_id, store: r.scope }));
   }
 
-  /** Start ticks for due tenants that are not already ticking. Returns how many started. */
+  /** Tenants with jobs due now (metrics and tests); see dueStores. */
+  async dueTenants(now = Date.now(), limit: number = ENGINE_RUN.tenantsPerCycle): Promise<string[]> {
+    return [...new Set((await this.dueStores(now, limit)).map((s) => s.tenantId))];
+  }
+
+  /** Start ticks for due stores that are not already ticking. Returns how many started. */
   async cycle(now = Date.now()): Promise<number> {
     let started = 0;
-    for (const tenantId of await this.dueTenants(now)) {
+    for (const { tenantId, store } of await this.dueStores(now)) {
+      const key = `${tenantId}|${store}`;
       if (this.inFlight.size >= ENGINE_RUN.concurrency) break;
-      if (this.inFlight.has(tenantId) || (this.skipUntil.get(tenantId) ?? 0) > now) continue;
-      const tick = this.tick(tenantId).finally(() => this.inFlight.delete(tenantId));
-      this.inFlight.set(tenantId, tick);
+      if (this.inFlight.has(key) || (this.skipUntil.get(key) ?? 0) > now) continue;
+      const tick = this.tick(tenantId, store).finally(() => this.inFlight.delete(key));
+      this.inFlight.set(key, tick);
       started++;
     }
     return started;
@@ -83,19 +90,19 @@ export class EngineJobRunner implements OnApplicationBootstrap, OnApplicationShu
   }
 
   isTicking(tenantId: string): boolean {
-    return this.inFlight.has(tenantId);
+    return [...this.inFlight.keys()].some((k) => k.startsWith(`${tenantId}|`));
   }
 
-  private async tick(tenantId: string): Promise<void> {
+  private async tick(tenantId: string, store: string): Promise<void> {
     try {
-      const { engine } = await this.registry.get(tenantId);
+      const { engine } = await this.registry.get(tenantId, store || undefined);
       await engine.worker.tick();
     } catch (err) {
       if (err instanceof NotConnectedError) {
-        this.skipUntil.set(tenantId, Date.now() + ENGINE_RUN.notConnectedBackoffMs);
-        this.logger.warn({ tenantId, reason: err.detail }, "engine jobs waiting: store not connected");
+        this.skipUntil.set(`${tenantId}|${store}`, Date.now() + ENGINE_RUN.notConnectedBackoffMs);
+        this.logger.warn({ tenantId, store, reason: err.detail }, "engine jobs waiting: store not connected");
       } else {
-        this.logger.error({ err, tenantId }, "engine tick failed");
+        this.logger.error({ err, tenantId, store }, "engine tick failed");
       }
     }
   }

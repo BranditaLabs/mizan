@@ -61,7 +61,7 @@ export class WebhooksController {
     const route = await this.router.route(connectionId);
     if (!route || route.provider !== "shopify") return res.status(404).json({ error: "unknown connection" });
     if (route.status === "disconnected") return res.status(200).json({ ignored: "disconnected" });
-    const { engine } = await this.registry.get(route.tenantId);
+    const { engine } = await this.registry.get(route.tenantId, connectionId);
     const headers = headersOf(req);
     const result = await engine.handleShopifyWebhook(headers, rawBody(req));
     // Verified and new (not a redelivery): an uninstall ends the connection now (E3-4).
@@ -77,8 +77,18 @@ export class WebhooksController {
     const route = await this.router.route(connectionId);
     if (!route || route.provider !== "bosta") return res.status(404).json({ error: "unknown connection" });
     if (route.status === "disconnected") return res.status(200).json({ ignored: "disconnected" });
-    const { engine } = await this.registry.get(route.tenantId);
-    const result = await engine.handleBostaWebhook(query, headersOf(req), rawBody(req));
+    // One Bosta account serves all of a tenant's stores (E2-7): the store that booked the
+    // shipment takes its updates; a shipment no store knows goes to the first (orphan check).
+    const engines = await this.registry.forTenant(route.tenantId);
+    const headers = headersOf(req);
+    const body = rawBody(req);
+    let owner = engines[0];
+    const tracking = engines.length > 1 ? engines[0]!.engine.peekBostaWebhook(query, headers, body) : null;
+    if (tracking) {
+      for (const e of engines) if (await e.store.get("shipment", tracking)) { owner = e; break; }
+    }
+    if (!owner) return res.status(200).json({ ignored: "no store connected" });
+    const result = await owner.engine.handleBostaWebhook(query, headers, body);
     return res.status(result.status).json(result.body);
   }
 }
