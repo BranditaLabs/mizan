@@ -180,7 +180,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/orders/{id}/payments` | Payment ledger |
+| GET | `/orders/{id}/payments` | ✅ E14-1. The order's ledger `{ orderId, currency, status, total, paid, refunded, chargedBack, net, balance, canRecord, lines[{ id, kind, method, status, source: store\|gateway\|courier\|manual, amount (signed), fee, feeIsActual, note, recordedBy, occurredAt }] }`, newest first. Owner, admin, ops manager, finance |
+| POST | `/orders/{id}/payments` | ✅ E14-1. The team records money that moved outside any gateway: `{ type: received\|refunded, method: bank_transfer\|instapay\|wallet\|cash_pos\|store_credit, amount: "250.50" (Arabic digits accepted), note?, occurredAt? }` → 201 the ledger. The order's paid, refunded, status and cash to collect follow in the same transaction. 409 `over_payment` (more than still owed), `over_refund` (more than held); 422 `validation_failed`, `currency_mismatch`. Owner, admin, finance; audited `payment.recorded` (the note stays out of the audit log); safe to retry with `Idempotency-Key` |
 | POST | `/orders/{id}/payment-links` | `{ purpose: full\|deposit\|balance\|convert_cod, amount?, discountPct? }` |
 | POST | `/orders/{id}/refunds` | `{ amount, destination, reason }` (approval rules apply) |
 | GET | `/payments` · `/disputes` | Lists and filters |

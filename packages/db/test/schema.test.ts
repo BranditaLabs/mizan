@@ -64,7 +64,7 @@ describe("schema", () => {
     const r = await asTenant(T1, async () => {
       const gw = await db.query<{ id: string }>(`INSERT INTO connections (tenant_id, kind, provider, external_account) VALUES ($1, 'payment', 'paymob', 'acct-1') RETURNING id`, [T1]);
       const o = await db.query<{ id: string }>(`INSERT INTO orders (tenant_id, number, currency, total_minor, payment_mode, placed_at) VALUES ($1, '#A-2', 'EGP', 210000, 'partial', now()) RETURNING id`, [T1]);
-      await db.query(`INSERT INTO payments (tenant_id, order_id, connection_id, method, kind, status, amount_minor, currency, external_ref) VALUES ($1, $2, $3, 'card', 'sale', 'succeeded', 30000, 'EGP', 'txn-1')`, [T1, o.rows[0].id, gw.rows[0].id]);
+      await db.query(`INSERT INTO payments (tenant_id, order_id, connection_id, method, kind, status, source, amount_minor, currency, external_ref) VALUES ($1, $2, $3, 'card', 'sale', 'succeeded', 'gateway', 30000, 'EGP', 'txn-1')`, [T1, o.rows[0].id, gw.rows[0].id]);
       await db.query(`UPDATE orders SET paid_minor = (SELECT sum(amount_minor) FROM payments WHERE order_id = $1 AND status = 'succeeded'), payment_status = 'partially_paid' WHERE id = $1`, [o.rows[0].id]);
       return db.query<{ balance_minor: string; payment_status: string }>(`SELECT balance_minor, payment_status FROM orders WHERE id = $1`, [o.rows[0].id]);
     });
@@ -75,7 +75,7 @@ describe("schema", () => {
   it("rejects a duplicate gateway transaction", async () => {
     await expect(asTenant(T1, async () => {
       const o = await db.query<{ id: string; c: string }>(`SELECT o.id, p.connection_id AS c FROM orders o JOIN payments p ON p.order_id = o.id LIMIT 1`);
-      await db.query(`INSERT INTO payments (tenant_id, order_id, connection_id, method, kind, status, amount_minor, currency, external_ref) VALUES ($1, $2, $3, 'card', 'sale', 'succeeded', 30000, 'EGP', 'txn-1')`, [T1, o.rows[0].id, o.rows[0].c]);
+      await db.query(`INSERT INTO payments (tenant_id, order_id, connection_id, method, kind, status, source, amount_minor, currency, external_ref) VALUES ($1, $2, $3, 'card', 'sale', 'succeeded', 'gateway', 30000, 'EGP', 'txn-1')`, [T1, o.rows[0].id, o.rows[0].c]);
     })).rejects.toThrow(/duplicate key/);
   });
 
@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -125,6 +125,22 @@ describe("schema", () => {
     await expect(add("google", -1)).rejects.toThrow(/ad_spend_shape/);
     await expect(add("Meta Ads", 1)).rejects.toThrow(/ad_spend_shape/);
     expect((await asTenant(T2, () => db.query(`SELECT * FROM ad_spend`))).rows).toEqual([]);
+  });
+
+  it("keeps ledger lines signed by kind and one per reference, with or without a connection (E14-1)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, external_id, number, currency, total_minor, placed_at) VALUES ($1, 'ledger-1', '#L1', 'EGP', 100000, now()) RETURNING id`, [T1]))).rows[0]!.id;
+    const line = (kind: string, amount: number, ref: string | null) => asTenant(T1, () => db.query(
+      `INSERT INTO payments (tenant_id, order_id, method, kind, status, source, amount_minor, currency, external_ref) VALUES ($1, $2, 'bank_transfer', $3, 'succeeded', 'manual', $4, 'EGP', $5)`, [T1, order, kind, amount, ref]));
+    await line("sale", 40000, "manual:a");
+    await line("refund", -1000, "manual:b");
+    await expect(line("sale", -1, "manual:c")).rejects.toThrow(/payments_sign/);
+    await expect(line("refund", 1, "manual:d")).rejects.toThrow(/payments_sign/);
+    await expect(line("sale", 0, "manual:e")).rejects.toThrow(/payments_sign/);
+    await expect(line("sale", 40000, "manual:a")).rejects.toThrow(/payments_ref/); // no connection is still one reference
+    await line("sale", 100, null);
+    await line("sale", 100, null); // lines without a reference are not deduplicated by it
+    await expect(asTenant(T1, () => db.query(`INSERT INTO payments (tenant_id, order_id, method, kind, status, source, amount_minor, currency) VALUES ($1, $2, 'card', 'sale', 'succeeded', 'bank', 1, 'EGP')`, [T1, order])))
+      .rejects.toThrow(/source_check/);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {

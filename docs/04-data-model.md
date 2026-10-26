@@ -100,7 +100,9 @@ erDiagram
 - **Net profit is derived:** `order_pnl.net_minor` is a generated column. The profit service writes components only.
 - **One automation run per event:** `automation_runs UNIQUE (automation_id, event_id)`.
 - **Outbox idempotency:** `mz_outbox.idempotency_key UNIQUE`.
-- **One ledger line per gateway transaction:** `payments UNIQUE (connection_id, external_ref, kind)`.
+- **One ledger line per reference:** ✅ 0034 (E14-1) `payments_ref UNIQUE (tenant_id, kind, external_ref, connection_id) NULLS NOT DISTINCT WHERE external_ref IS NOT NULL`, so a gateway transaction, a store total and a team entry (`manual:<uuid>`) are each written once, with or without a connection (replaces 0002's key, under which lines without a connection could repeat).
+- **Ledger lines are signed by kind** (`payments_sign`): authorization, capture, sale, cod_collection and chargeback_reversal positive; refund, chargeback and void negative; never zero. Each line has a `source` (`store`, `gateway`, `courier`, `manual`), an optional `note` and `recorded_by`.
+- **The order's money is the ledger's sums** (E14-1, `apps/api/src/modules/payments/ledger.ts`): `paid_minor` = Σ succeeded sale + capture + cod_collection + void; `refunded_minor` = −Σ refunds; written by `LedgerService` in the transaction that adds the line, the order row locked. While an order has only store lines its payment status and `cod_minor` are the store's; once it has others, they follow the sums (a COD or deposit order then collects `total − paid`).
 - **Balance is derived:** `orders.balance_minor = max(total − paid, 0)`, what the customer still owes (COD due, deposit balance).
 
 ## 5. Profit computation (M5)

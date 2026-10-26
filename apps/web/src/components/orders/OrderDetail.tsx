@@ -17,6 +17,7 @@ import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { DuplicateBanner } from "./DuplicateBanner";
+import { LedgerCard } from "./LedgerCard";
 import { ProfitCard } from "./ProfitCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
@@ -134,22 +135,24 @@ export function OrderDetail({ id }: { id: string }) {
           </Card>
           <Card title={t("detail.money.title")}><KeyValue items={money} /></Card>
           <ProfitCard orderId={o.id} moving={["new", "pending_confirmation", "confirmed", "shipped"].includes(o.status)} />
-          <Card title={t("detail.payments.title")}>
-            {o.payments.length === 0 ? <p className="text-body-sm text-text-2">{t("detail.payments.empty")}</p> : (
-              <ul className="flex flex-col divide-y divide-line">
-                {o.payments.map((p) => (
-                  <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                    <span>
-                      <span className="font-medium">{LEDGER_KINDS.has(p.kind) ? t(`detail.kind.${p.kind as "sale"}`) : p.kind}</span>
-                      <span className="text-text-2">{" · "}{LEDGER_METHODS.has(p.method) ? t(`detail.method.${p.method as "cod"}`) : p.method}</span>
-                      <span className="block text-caption text-text-3"><DateText value={p.occurredAt} /></span>
-                    </span>
-                    <MoneyText money={p.amount} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          <LedgerCard orderId={o.id} fallback={(
+            <Card title={t("detail.payments.title")}>
+              {o.payments.length === 0 ? <p className="text-body-sm text-text-2">{t("detail.payments.empty")}</p> : (
+                <ul className="flex flex-col divide-y divide-line">
+                  {o.payments.map((p) => (
+                    <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                      <span>
+                        <span className="font-medium">{LEDGER_KINDS.has(p.kind) ? t(`detail.kind.${p.kind as "sale"}`) : p.kind}</span>
+                        <span className="text-text-2">{" · "}{LEDGER_METHODS.has(p.method) ? t(`detail.method.${p.method as "cod"}`) : p.method}</span>
+                        <span className="block text-caption text-text-3"><DateText value={p.occurredAt} /></span>
+                      </span>
+                      <MoneyText money={p.amount} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )} />
           {o.shipments.length ? (
             <Card title={t("detail.shipments.title")}>
               <ul className="flex flex-col gap-2">

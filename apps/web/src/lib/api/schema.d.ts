@@ -1,6 +1,22 @@
 /* Generated from apps/api/openapi.json by `npm run gen:api -w @mizan/web`. Do not edit. */
 
 export interface paths {
+    "/v1/orders/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentsController_get"];
+        put?: never;
+        post: operations["PaymentsController_record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders": {
         parameters: {
             query?: never;
@@ -2202,6 +2218,70 @@ export interface components {
             /** @enum {string} */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
         };
+        Ledger: {
+            /** Format: uuid */
+            orderId: string;
+            currency: string;
+            /** @description The order's payment status */
+            status: string;
+            total: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Σ money-in lines (sale, capture, cash collected) less voids */
+            paid: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Σ refunds */
+            refunded: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Chargebacks less reversals */
+            chargedBack: {
+                amount: string;
+                currency: string;
+            };
+            /** @description What the merchant holds: paid − refunded − charged back */
+            net: {
+                amount: string;
+                currency: string;
+            };
+            /** @description What the customer still owes */
+            balance: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Whether the caller may record a payment or refund */
+            canRecord: boolean;
+            lines: {
+                /** Format: uuid */
+                id: string;
+                /** @description authorization, capture, sale, cod_collection, refund, chargeback, chargeback_reversal, void */
+                kind: string;
+                method: string;
+                /** @description pending, succeeded, failed, cancelled; only succeeded lines count */
+                status: string;
+                /** @enum {string} */
+                source: "store" | "gateway" | "courier" | "manual";
+                /** @description Signed: money in positive, money out negative */
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                fee: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                feeIsActual: boolean;
+                note: string | null;
+                /** @description The team member's name, for lines they recorded */
+                recordedBy: string | null;
+                /** Format: date-time */
+                occurredAt: string;
+            }[];
+        };
         Marked: {
             marked: number;
         };
@@ -3479,6 +3559,24 @@ export interface components {
             }[];
             note?: string;
         };
+        RecordPayment: {
+            /**
+             * @description Money the customer paid, or money given back to them
+             * @enum {string}
+             */
+            type: "received" | "refunded";
+            /** @enum {string} */
+            method: "bank_transfer" | "instapay" | "wallet" | "cash_pos" | "store_credit";
+            /** @description In the order's currency, e.g. "250.00"; Arabic digits accepted */
+            amount: string;
+            /** @description A transfer reference or why; no card numbers */
+            note?: string;
+            /**
+             * Format: date-time
+             * @description When the money moved; now if absent
+             */
+            occurredAt?: string;
+        };
         Replayed: {
             /** @enum {boolean} */
             replayed: true;
@@ -3745,6 +3843,116 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    PaymentsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every money movement on the order, newest first, and its totals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ledger"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PaymentsController_record: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPayment"];
+            };
+        };
+        responses: {
+            /** @description Recorded and audited; the ledger as it is now */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ledger"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     OrdersController_list: {
         parameters: {
             query?: {

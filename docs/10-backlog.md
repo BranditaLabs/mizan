@@ -161,7 +161,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E14 · M15 Payments and refunds
 
-- [ ] **E14-1** `M` Payment ledger service over `payments` (signed lines, invariants, `paid_minor`/`refunded_minor` maintained in the same transaction); ledger panel on order detail. *Accept:* property tests prove ledger lines always sum to the order balance.
+- [x] **E14-1** `M` Payment ledger service over `payments` (signed lines, invariants, `paid_minor`/`refunded_minor` maintained in the same transaction); ledger panel on order detail. *Accept:* property tests prove ledger lines always sum to the order balance. ✅ Migration 0034 (source, note, signs, one line per reference), `LedgerService` (checked posts; store syncs keep the team's lines), `GET/POST /v1/orders/{id}/payments`, ledger panel with "Record payment" (owner, admin, finance); property tests in the pure ledger and through Postgres.
 - [ ] **E14-2** `L` Paymob connector (via `/new-connector`): payment links (full, deposit, balance), webhook signature, transaction re-read, refunds, transaction report. Fake + chaos suite. Split before starting.
 - [ ] **E14-3** `M` COD-to-prepaid conversion: link from verification queue and automation action `order.convert_to_prepaid`; shipment COD amount updated or re-booked.
 - [ ] **E14-4** `M` Refunds: approval thresholds, destinations (original method, store credit, bank transfer), audit; ticket integration (M6).

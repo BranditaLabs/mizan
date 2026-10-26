@@ -667,6 +667,9 @@ export interface Payments {
   failure_reason: string | null;
   occurred_at: Generated<Timestamp>;
   created_at: Generated<Timestamp>;
+  source: string;
+  note: string | null;
+  recorded_by: string | null;
 }
 
 export interface PosShifts {

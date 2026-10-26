@@ -932,6 +932,51 @@
     "stock": {
       "short": "Waiting for stock",
       "reserved": "Stock reserved"
+    },
+    "ledger": {
+      "title": "Payments",
+      "loading": "Loading payments…",
+      "empty": "No money has moved on this order yet.",
+      "record": "Record payment",
+      "dialogTitle": "Record a payment",
+      "type": {
+        "label": "Money",
+        "received": "Received",
+        "refunded": "Given back"
+      },
+      "method": "Method",
+      "amount": "Amount ({currency})",
+      "owed": "Still owed: <n>{amount}</n>",
+      "held": "Held on this order: <n>{amount}</n>",
+      "note": "Note",
+      "noteHint": "A transfer reference or the reason. Never a card number.",
+      "save": "Record",
+      "cancel": "Cancel",
+      "recorded": "Recorded in the payments",
+      "invalidAmount": "Enter an amount like 250 or 250.50",
+      "refused": {
+        "over_payment": "That's more than the customer still owes.",
+        "over_refund": "That's more than this order holds."
+      },
+      "by": "by {name}",
+      "source": {
+        "store": "Store",
+        "gateway": "Gateway",
+        "courier": "Courier",
+        "manual": "Team"
+      },
+      "status": {
+        "pending": "Pending",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "totals": {
+        "paid": "Paid",
+        "refunded": "Refunded",
+        "chargedBack": "Charged back",
+        "net": "Held",
+        "balance": "Still owed"
+      }
     }
   },
   "costs": {

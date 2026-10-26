@@ -123,7 +123,7 @@ _Sample data. Full visual in `design/prototype.html`._
 
 ## Acceptance criteria
 
-- [ ] Every order shows a ledger whose lines sum to its balance.
+- [x] Every order shows a ledger whose lines sum to its balance. ✅ E14-1: ledger panel on the order screen; property tests in `apps/api/test/ledger.test.ts`.
 - [ ] A COD order converts to prepaid with one link; the shipment COD amount updates.
 - [ ] Refunds reach the gateway and are confirmed back, or flagged within 24 h.
 - [ ] Chargebacks appear within one sync and reduce provisional profit.
@@ -133,7 +133,8 @@ _Sample data. Full visual in `design/prototype.html`._
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/orders/{id}/payments` | Payment ledger |
+| GET | `/v1/orders/{id}/payments` | Payment ledger ✅ E14-1 |
+| POST | `/v1/orders/{id}/payments` | Record money received or given back outside a gateway ✅ E14-1 |
 | POST | `/v1/orders/{id}/payment-links` | Create a link |
 | POST | `/v1/orders/{id}/refunds` | Refund |
 | GET | `/v1/payments` | List and filter |
