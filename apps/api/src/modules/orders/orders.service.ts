@@ -60,7 +60,7 @@ export class OrdersService {
       const scope = await this.scope(trx, auth, q);
       let rows = trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id")
         .select(["o.id", "o.number", "o.status", "o.channel", "o.connection_id", "c.provider", "o.customer_label", "o.phone_last4", "o.total_minor", "o.cod_minor",
-          "o.currency", "o.payment_mode", "o.payment_status", "o.risk_score", "o.tags", "o.placed_at", "o.duplicate_status"])
+          "o.currency", "o.payment_mode", "o.payment_status", "o.risk_score", "o.tags", "o.placed_at", "o.duplicate_status", "o.stock_status"])
         .where(scope).orderBy("o.placed_at", "desc").orderBy("o.id", "desc").limit(q.limit + 1);
       if (q.status) rows = rows.where("o.status", "=", q.status);
       // Waiting for the team's call now: escalated confirmation whose retry time has come (E6-10).
@@ -68,11 +68,13 @@ export class OrdersService {
         .where("r.status", "=", "needs_agent").where((x) => x.or([x("r.call_after", "is", null), x("r.call_after", "<=", sql<Date>`now()`)])));
       if (q.confirmation === "needs_call") rows = rows.where((eb) => needsCall(eb as never));
       if (q.duplicate) rows = rows.where("o.duplicate_status", "=", q.duplicate);
+      if (q.stock) rows = rows.where("o.stock_status", "=", q.stock);
       if (after) rows = rows.where((eb) => eb.or([eb("o.placed_at", "<", after.at), eb.and([eb("o.placed_at", "=", after.at), eb("o.id", "<", after.id)])]));
       const found = await rows.execute();
       const counts = await trx.selectFrom("orders as o").where(scope).select(["o.status", sql<string>`count(*)`.as("n")]).groupBy("o.status").execute();
       const calls = await trx.selectFrom("orders as o").where(scope).where((eb) => needsCall(eb as never)).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
       const dupes = await trx.selectFrom("orders as o").where(scope).where("o.duplicate_status", "=", "suspected").select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
+      const waiting = await trx.selectFrom("orders as o").where(scope).where("o.stock_status", "=", "short").select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
 
       const page = found.slice(0, q.limit);
       const pii = page.some((r) => r.customer_label) ? await this.cipher.forTenant(trx, tenantId) : null;
@@ -88,11 +90,13 @@ export class OrdersService {
           total: fromMinor(BigInt(r.total_minor), r.currency), cod: fromMinor(BigInt(r.cod_minor), r.currency),
           paymentMode: r.payment_mode as OrderSummary["paymentMode"], paymentStatus: r.payment_status as OrderSummary["paymentStatus"],
           risk: r.risk_score, tags: r.tags, placedAt: r.placed_at.toISOString(), duplicate: r.duplicate_status as OrderSummary["duplicate"],
+          stock: r.stock_status as OrderSummary["stock"],
         })),
         nextCursor: found.length > q.limit && last ? encode(last.placed_at, last.id) : null,
         counts: { all: Object.values(byStatus).reduce((a, b) => a + b, 0), ...byStatus },
         needsCall: Number(calls.n),
         duplicates: Number(dupes.n),
+        waitingStock: Number(waiting.n),
       };
     });
   }
@@ -125,6 +129,7 @@ export class OrdersService {
         paymentMode: o.payment_mode as OrderDetail["paymentMode"], paymentStatus: o.payment_status as OrderDetail["paymentStatus"],
         risk: o.risk_score, riskReasons: reasonCodes(o.risk_reasons), tags: o.tags, assignedTo: o.assigned_to,
         duplicate: o.duplicate_status as OrderDetail["duplicate"],
+        stock: o.stock_status as OrderDetail["stock"],
         duplicateOf: twin ? { id: twin.id, number: twin.number, status: twin.status as OrderDetail["status"], items: why.items ?? [], minutesApart: why.minutesApart ?? 0 } : null,
         area: { city: o.ship_city, province: o.ship_province, country: o.ship_country },
         hasLocation: o.ship_lat !== null && o.ship_lng !== null,

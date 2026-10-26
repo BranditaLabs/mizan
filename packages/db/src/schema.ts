@@ -585,6 +585,7 @@ export interface Orders {
   phone_last4: string | null;
   duplicate_status: string | null;
   duplicate_reason: Json | null;
+  stock_status: string | null;
 }
 
 export interface PaymentLinks {
@@ -867,6 +868,9 @@ export interface StockMovements {
   device_op_id: string | null;
   actor_id: string | null;
   created_at: Generated<Timestamp>;
+  detail: string | null;
+  note: string | null;
+  seq: Generated<Int8>;
 }
 
 export interface StoreCreditLedger {

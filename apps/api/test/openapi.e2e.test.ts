@@ -71,7 +71,7 @@ describe("openapi.json", () => {
     const bodies = new Set([
       "post /v1/tenants", "post /v1/members/invite", "patch /v1/members/{userId}", "post /v1/admin/integrations/cities/resolve", "post /v1/connections/shopify/claim",
       "post /v1/connections/bosta", "put /v1/products/variants/costs", "patch /v1/onboarding", "post /v1/cost-rules", "put /v1/fx-rates/{day}/{quote}",
-      "post /v1/orders/{id}/confirmation", "put /v1/settings/confirmation", "post /v1/public/confirm/{token}", "post /v1/profit/recalculate", "post /v1/connections/whatsapp", "put /v1/settings/offers", "post /v1/offer-rules", "patch /v1/offer-rules/{id}", "post /v1/orders/{id}/offer", "put /v1/ad-spend", "post /v1/ad-spend/import", "post /v1/orders/{id}/duplicate", "put /v1/settings/orders", "post /v1/orders", "post /v1/orders/bulk", "patch /v1/products/variants/{id}", "post /v1/products/costs/import",
+      "post /v1/orders/{id}/confirmation", "put /v1/settings/confirmation", "post /v1/public/confirm/{token}", "post /v1/profit/recalculate", "post /v1/connections/whatsapp", "put /v1/settings/offers", "post /v1/offer-rules", "patch /v1/offer-rules/{id}", "post /v1/orders/{id}/offer", "put /v1/ad-spend", "post /v1/ad-spend/import", "post /v1/orders/{id}/duplicate", "put /v1/settings/orders", "post /v1/orders", "post /v1/orders/bulk", "patch /v1/products/variants/{id}", "post /v1/products/costs/import", "post /v1/stock/movements",
     ]);
     for (const [path, item] of Object.entries(doc.paths)) {
       for (const [method, op] of Object.entries(item)) {

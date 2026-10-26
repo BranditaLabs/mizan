@@ -18,10 +18,10 @@ import { MODE_ICON, STATUS_TONE, maskedLast4 } from "./order-ui";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
-export type StatusTab = Status | "all" | "needs_call" | "duplicates";
+export type StatusTab = Status | "all" | "needs_call" | "duplicates" | "waiting_stock";
 
 /** Tab order: the work first (components.md §1 "queues, not reports"), then the record. "needs_call": the team's call list (E6-10). */
-const TABS: readonly StatusTab[] = ["all", "needs_call", "duplicates", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
+const TABS: readonly StatusTab[] = ["all", "needs_call", "duplicates", "waiting_stock", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
 const isTab = (v: string | null): v is StatusTab => v !== null && (TABS as readonly string[]).includes(v);
 
 /**
@@ -57,7 +57,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const orders = useInfiniteQuery({
     queryKey: ["orders", user?.uid ?? "", store?.tenantId ?? "", status, q],
     queryFn: ({ pageParam }) => ok(api.GET("/v1/orders", { params: { query: {
-      ...(status === "all" ? {} : status === "needs_call" ? { confirmation: "needs_call" as const } : status === "duplicates" ? { duplicate: "suspected" as const } : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
+      ...(status === "all" ? {} : status === "needs_call" ? { confirmation: "needs_call" as const } : status === "duplicates" ? { duplicate: "suspected" as const } : status === "waiting_stock" ? { stock: "short" as const } : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
     } } })),
     initialPageParam: "",
     getNextPageParam: (last) => last.nextCursor ?? undefined,
@@ -99,6 +99,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
         action={canSetUp ? <Link href="/onboarding" className={buttonClass("primary")}>{t("empty.cta")}</Link> : undefined} />
     ) : status === "needs_call" ? <EmptyState icon="confirm" title={t("emptyCalls.title")} body={t("emptyCalls.body")} />
     : status === "duplicates" ? <EmptyState icon="orders" title={t("emptyDuplicates.title")} body={t("emptyDuplicates.body")} />
+    : status === "waiting_stock" ? <EmptyState icon="stock" title={t("emptyWaitingStock.title")} body={t("emptyWaitingStock.body")} />
     : <EmptyState icon="orders" title={t("emptyTab.title")} body={t("emptyTab.body")} />;
 
   return (
@@ -116,8 +117,8 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
 
       <Tabs label={t("tabsLabel")} value={status} onChange={setStatus}
         items={TABS.map((s) => ({
-          value: s, label: s === "all" ? t("all") : s === "needs_call" ? t("needsCall") : s === "duplicates" ? t("duplicates") : t(`status.${s}`),
-          ...(counts ? { count: s === "needs_call" ? (orders.data?.pages[0]?.needsCall ?? 0) : s === "duplicates" ? (orders.data?.pages[0]?.duplicates ?? 0) : counts[s] } : {}),
+          value: s, label: s === "all" ? t("all") : s === "needs_call" ? t("needsCall") : s === "duplicates" ? t("duplicates") : s === "waiting_stock" ? t("waitingStock") : t(`status.${s}`),
+          ...(counts ? { count: s === "needs_call" ? (orders.data?.pages[0]?.needsCall ?? 0) : s === "duplicates" ? (orders.data?.pages[0]?.duplicates ?? 0) : s === "waiting_stock" ? (orders.data?.pages[0]?.waitingStock ?? 0) : counts[s] } : {}),
         }))}>
         {orders.isPending ? (
           <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>

@@ -921,6 +921,15 @@
         "error": "something went wrong"
       },
       "failedHint": "Some orders failed. Try them again in a moment."
+    },
+    "waitingStock": "Waiting for stock",
+    "emptyWaitingStock": {
+      "title": "No order is waiting for stock",
+      "body": "Confirmed orders that couldn't be reserved show here until stock arrives."
+    },
+    "stock": {
+      "short": "Waiting for stock",
+      "reserved": "Stock reserved"
     }
   },
   "costs": {
@@ -1775,6 +1784,127 @@
         "unknown_sku": "No product with this SKU",
         "barcode_taken": "Another product has this barcode",
         "other": "Couldn't read it"
+      }
+    }
+  },
+  "stock": {
+    "title": "Stock",
+    "subtitle": "On hand, reserved for confirmed orders, and available, in your main warehouse. Count an item once and Mizan keeps it right: confirmed orders reserve it, cancelled ones give it back, shipped ones take it off the shelf.",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, operations, warehouse and finance can see stock."
+    },
+    "count": {
+      "counted": "Counted in Mizan",
+      "out": "Out of stock",
+      "low": "Low stock",
+      "waiting": "Orders waiting for stock"
+    },
+    "countedOf": "{counted} of {variants}",
+    "waiting": {
+      "title": "{count, plural, one {# confirmed order is} other {# confirmed orders are}} waiting for stock",
+      "body": "They weren't reserved so nothing is sold twice. Receive stock and they're reserved automatically, oldest first.",
+      "cta": "See the orders"
+    },
+    "filterLabel": "Show",
+    "filter": {
+      "all": "All",
+      "counted": "Counted",
+      "not_counted": "Not counted yet",
+      "out": "Out of stock"
+    },
+    "search": "Search by name, SKU or barcode",
+    "loading": "Loading stock…",
+    "loadFailed": "Couldn't load stock. Try again.",
+    "label": "Stock by item",
+    "more": "Show more",
+    "col": {
+      "product": "Product",
+      "sku": "SKU",
+      "onHand": "On hand",
+      "reserved": "Reserved",
+      "available": "Available",
+      "store": "Store says",
+      "actions": "Actions"
+    },
+    "none": "Not set",
+    "notCounted": "Not counted",
+    "update": "Update",
+    "updateLabel": "Update {sku}",
+    "history": "History",
+    "historyLabel": "History of {sku}",
+    "noMatch": {
+      "title": "No items match",
+      "body": "Try part of the name, the SKU or the barcode."
+    },
+    "empty": {
+      "title": "No products yet",
+      "body": "Products appear here once your store is connected and synced."
+    },
+    "emptyTab": {
+      "title": "Nothing here",
+      "body": "No item fits this filter right now."
+    },
+    "rule": "Until an item is counted here, the store's number is shown and orders don't reserve it.",
+    "editor": {
+      "title": "Update {sku}",
+      "now": "Now: <b>{onHand}</b> on hand, <b>{reserved}</b> reserved, <b>{available}</b> available.",
+      "first": "Not counted in Mizan yet. Count what's on the shelf to start.",
+      "kind": "What happened",
+      "kinds": {
+        "receive": "Stock arrived",
+        "count": "I counted the shelf",
+        "adjust": "Add or remove (with a reason)"
+      },
+      "quantity": {
+        "receive": "Pieces that arrived",
+        "count": "Pieces on the shelf",
+        "adjust": "Change (e.g. -2 or 3)"
+      },
+      "hint": {
+        "receive": "Added to on hand.",
+        "count": "On hand becomes this number.",
+        "adjust": "A minus removes pieces, a plus adds them."
+      },
+      "invalid": "Write a whole number",
+      "belowReserved": "That's under the {reserved} reserved for confirmed orders",
+      "reason": "Reason",
+      "choose": "Choose",
+      "reasons": {
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "found": "Found",
+        "correction": "Correction",
+        "other": "Other"
+      },
+      "note": "Note (optional)",
+      "save": "Save",
+      "close": "Close",
+      "saved": "Saved {sku}.",
+      "savedWithOrders": "Saved {sku}. {count, plural, one {# waiting order is} other {# waiting orders are}} reserved now."
+    },
+    "historyDialog": {
+      "title": "History of {sku}",
+      "loading": "Loading…",
+      "close": "Close",
+      "kind": {
+        "receive": "Received",
+        "count": "Counted",
+        "adjust": "Adjusted",
+        "reserve": "Reserved for an order",
+        "release": "Released",
+        "pick": "Shipped",
+        "return_restock": "Returned to stock",
+        "transfer_in": "Transferred in",
+        "transfer_out": "Transferred out",
+        "write_off": "Written off"
+      },
+      "reason": {
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "found": "Found",
+        "correction": "Correction",
+        "other": "Other"
       }
     }
   }

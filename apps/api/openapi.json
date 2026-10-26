@@ -49,6 +49,19 @@
             "description": "suspected: likely duplicates waiting for the team (keep or merge)"
           },
           {
+            "name": "stock",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "short: confirmed orders waiting for stock (oversell blocked, E8-2)",
+              "type": "string",
+              "enum": [
+                "short"
+              ]
+            },
+            "description": "short: confirmed orders waiting for stock (oversell blocked, E8-2)"
+          },
+          {
             "name": "q",
             "required": false,
             "in": "query",
@@ -1386,6 +1399,265 @@
         },
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/v1/stock": {
+      "get": {
+        "operationId": "StockController_list",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Product title, SKU or barcode (part of it)",
+              "type": "string",
+              "maxLength": 100
+            },
+            "description": "Product title, SKU or barcode (part of it)"
+          },
+          {
+            "name": "filter",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "all",
+              "description": "counted: stock kept in Mizan; out: counted with nothing available; low: at or under its threshold",
+              "type": "string",
+              "enum": [
+                "all",
+                "counted",
+                "not_counted",
+                "out",
+                "low"
+              ]
+            },
+            "description": "counted: stock kept in Mizan; out: counted with nothing available; low: at or under its threshold"
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Variants by SKU with on hand, reserved and available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockPage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/v1/stock/movements": {
+      "post": {
+        "operationId": "StockController_record",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordMovements"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "All applied, or none (422 below_reserved naming each item)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementsRecorded"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "stock"
+        ]
+      }
+    },
+    "/v1/stock/{variantId}/movements": {
+      "get": {
+        "operationId": "StockController_history",
+        "parameters": [
+          {
+            "name": "variantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The last 100 movements, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockHistory"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "stock"
         ]
       }
     },
@@ -8382,6 +8654,64 @@
         ],
         "additionalProperties": false
       },
+      "MovementsRecorded": {
+        "type": "object",
+        "properties": {
+          "applied": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Items whose stock changed"
+          },
+          "levels": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "onHand": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "reserved": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "available": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "variantId",
+                "onHand",
+                "reserved",
+                "available"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "ordersReserved": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Orders waiting for stock that are now reserved"
+          }
+        },
+        "required": [
+          "applied",
+          "levels",
+          "ordersReserved"
+        ],
+        "additionalProperties": false
+      },
       "NewOrder": {
         "type": "object",
         "properties": {
@@ -9792,6 +10122,16 @@
               "merged"
             ]
           },
+          "stock": {
+            "nullable": true,
+            "description": "Confirmed orders: reserved, short (waiting for stock) or untracked (no item counted in Mizan); null otherwise (E8-2)",
+            "type": "string",
+            "enum": [
+              "reserved",
+              "short",
+              "untracked"
+            ]
+          },
           "externalId": {
             "nullable": true,
             "type": "string"
@@ -10307,6 +10647,7 @@
           "tags",
           "placedAt",
           "duplicate",
+          "stock",
           "externalId",
           "currency",
           "subtotal",
@@ -10485,6 +10826,16 @@
                     "kept",
                     "merged"
                   ]
+                },
+                "stock": {
+                  "nullable": true,
+                  "description": "Confirmed orders: reserved, short (waiting for stock) or untracked (no item counted in Mizan); null otherwise (E8-2)",
+                  "type": "string",
+                  "enum": [
+                    "reserved",
+                    "short",
+                    "untracked"
+                  ]
                 }
               },
               "required": [
@@ -10501,7 +10852,8 @@
                 "risk",
                 "tags",
                 "placedAt",
-                "duplicate"
+                "duplicate",
+                "stock"
               ],
               "additionalProperties": false
             }
@@ -10575,6 +10927,11 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "waitingStock": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           }
         },
         "required": [
@@ -10582,7 +10939,8 @@
           "nextCursor",
           "counts",
           "needsCall",
-          "duplicates"
+          "duplicates",
+          "waitingStock"
         ],
         "additionalProperties": false
       },
@@ -12630,6 +12988,66 @@
         ],
         "additionalProperties": false
       },
+      "RecordMovements": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "receive",
+                    "count",
+                    "adjust"
+                  ],
+                  "description": "receive: add arrived stock; count: set on hand to what was counted; adjust: add or remove with a reason"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": -100000,
+                  "maximum": 100000,
+                  "description": "receive: > 0; count: ≥ 0 (the number on the shelf); adjust: ≠ 0"
+                },
+                "reason": {
+                  "description": "Required for adjust",
+                  "type": "string",
+                  "enum": [
+                    "damaged",
+                    "lost",
+                    "found",
+                    "correction",
+                    "other"
+                  ]
+                }
+              },
+              "required": [
+                "variantId",
+                "kind",
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "Replayed": {
         "type": "object",
         "properties": {
@@ -12922,6 +13340,241 @@
         },
         "required": [
           "authorizeUrl"
+        ],
+        "additionalProperties": false
+      },
+      "StockHistory": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "receive",
+                    "count",
+                    "adjust",
+                    "reserve",
+                    "release",
+                    "pick",
+                    "return_restock",
+                    "transfer_in",
+                    "transfer_out",
+                    "write_off"
+                  ]
+                },
+                "delta": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Change to on hand (receive, count, adjust, pick) or to reserved (reserve, release)"
+                },
+                "reason": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "note": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "order": {
+                  "nullable": true,
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "number": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "at",
+                "kind",
+                "delta",
+                "reason",
+                "note",
+                "order"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "StockPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "productTitle": {
+                  "type": "string"
+                },
+                "variantTitle": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "barcode": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "counted": {
+                  "type": "boolean",
+                  "description": "true once received or counted in Mizan; then confirmed orders reserve it"
+                },
+                "onHand": {
+                  "nullable": true,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "reserved": {
+                  "nullable": true,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "available": {
+                  "nullable": true,
+                  "description": "On hand − reserved; null when not counted",
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "storeAvailable": {
+                  "nullable": true,
+                  "description": "What the store last reported (information only once counted here)",
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "lowStockAt": {
+                  "nullable": true,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "variantId",
+                "productTitle",
+                "variantTitle",
+                "sku",
+                "barcode",
+                "counted",
+                "onHand",
+                "reserved",
+                "available",
+                "storeAvailable",
+                "lowStockAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "nullable": true,
+            "type": "string"
+          },
+          "warehouse": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "variants": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "counted": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "out": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "low": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "waitingOrders": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Confirmed orders waiting for stock (oversell blocked)"
+              }
+            },
+            "required": [
+              "variants",
+              "counted",
+              "out",
+              "low",
+              "waitingOrders"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor",
+          "warehouse",
+          "counts"
         ],
         "additionalProperties": false
       },

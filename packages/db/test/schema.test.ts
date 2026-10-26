@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -177,6 +177,17 @@ describe("schema", () => {
     await variant(T1, p1, "BC-3", null);
     await variant(T1, p1, "BC-4", null); // many variants without a barcode
     await variant(T2, p2, "BC-1", "6221234567890"); // another store may use the same code
+  });
+
+  it("records what an order holds, and movements in the order they were written (E8-2)", async () => {
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET stock_status = 'maybe' WHERE tenant_id = $1`, [T1]))).rejects.toThrow(/check/);
+    await asTenant(T1, () => db.query(`UPDATE orders SET stock_status = 'short' WHERE tenant_id = $1`, [T1]));
+    const wh = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO warehouses (tenant_id, name) VALUES ($1, 'Main') RETURNING id`, [T1]))).rows[0]!.id;
+    const p = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Tote') RETURNING id`, [T1]))).rows[0]!.id;
+    const v = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO variants (tenant_id, product_id, sku, currency) VALUES ($1, $2, 'TOTE-1', 'EGP') RETURNING id`, [T1, p]))).rows[0]!.id;
+    const seq = (await asTenant(T1, () => db.query<{ seq: string }>(`INSERT INTO stock_movements (tenant_id, warehouse_id, variant_id, delta, reason, detail) VALUES ($1, $2, $3, 5, 'adjust', 'count'), ($1, $2, $3, 2, 'reserve', NULL) RETURNING seq`, [T1, wh, v]))).rows;
+    expect(Number(seq[1]!.seq)).toBeGreaterThan(Number(seq[0]!.seq));
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM stock_movements`))).rows).toEqual([]);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {

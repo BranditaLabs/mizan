@@ -12,6 +12,7 @@ export const ListOrdersQuerySchema = z.object({
   /** needs_call: waiting for the team's call (confirmation escalated, retry time reached). */
   confirmation: z.enum(["needs_call"]).optional().describe("needs_call: orders the team should call now"),
   duplicate: z.enum(["suspected"]).optional().describe("suspected: likely duplicates waiting for the team (keep or merge)"),
+  stock: z.enum(["short"]).optional().describe("short: confirmed orders waiting for stock (oversell blocked, E8-2)"),
   /** Order number ("#1042", "1042"), the store's order id, or the customer's phone in any form. */
   q: z.string().trim().min(1).max(64).optional().describe("Order number, store order id, or the customer's phone"),
   paymentMode: z.enum(PAYMENT_MODES).optional(),
@@ -42,6 +43,7 @@ export const OrderSummarySchema = z.object({
   tags: z.array(z.string()),
   placedAt: z.iso.datetime(),
   duplicate: z.enum(["suspected", "kept", "merged"]).nullable().describe("A likely duplicate of an earlier order of the same customer (E5-3)"),
+  stock: z.enum(["reserved", "short", "untracked"]).nullable().describe("Confirmed orders: reserved, short (waiting for stock) or untracked (no item counted in Mizan); null otherwise (E8-2)"),
 });
 export type OrderSummary = z.infer<typeof OrderSummarySchema>;
 
@@ -54,6 +56,8 @@ export const OrderPageSchema = z.object({
   needsCall: z.number().int(),
   /** Likely duplicates waiting for the team (the "Duplicates" tab). */
   duplicates: z.number().int(),
+  /** Confirmed orders waiting for stock (the "Waiting for stock" tab). */
+  waitingStock: z.number().int(),
 });
 
 export const OrderIdParamSchema = z.uuid();

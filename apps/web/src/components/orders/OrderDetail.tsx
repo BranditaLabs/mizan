@@ -118,6 +118,7 @@ export function OrderDetail({ id }: { id: string }) {
         <Badge tone={STATUS_TONE[o.status]}>{t(`status.${o.status}`)}</Badge>
         <Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>
         <Badge tone="neutral" dot={false}>{tp(o.paymentStatus)}</Badge>
+        {o.stock === "short" ? <Badge tone="danger">{t("stock.short")}</Badge> : o.stock === "reserved" ? <Badge tone="success">{t("stock.reserved")}</Badge> : null}
         <p className="w-full text-body-sm text-text-2">
           {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{o.store.provider ? sourceName(o.store.provider) : t("manual")}
         </p>

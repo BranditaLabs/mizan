@@ -131,16 +131,26 @@ _Sample data. Full visual in `design/prototype.html`._
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/stock` | Levels by SKU and warehouse |
-| POST | `/v1/stock/movements` | Receive, adjust, transfer |
 | POST | `/v1/picklists` | Create a pick list |
 | POST | `/v1/scans/batch` | Sync offline scans |
 | GET | `/v1/stock/ledger` | Movement history |
+| ✅ GET | `/v1/stock` | On hand, reserved, available per item; counted / not counted / out filters (E8-2) |
+| ✅ POST | `/v1/stock/movements` | Receive, count, adjust with a reason; all or none (E8-2) |
+| ✅ GET | `/v1/stock/{variantId}/movements` | The item's ledger (E8-2) |
 | ✅ GET | `/v1/products` | Products and variants with cost, barcode, stock; search and "missing cost / barcode" filters (E8-1) |
 | ✅ PATCH | `/v1/products/variants/{id}` | Cost and barcode (E8-1); threshold with E8-5 |
 | ✅ POST | `/v1/products/costs/import` | Costs and barcodes from a sheet, all lines or none (E8-1) |
 
 Conventions: `docs/05-api.md`.
+
+## How stock works today (E8-2)
+
+- **Counted or not.** An item is counted by Mizan once it is received or counted on the Stock screen. Until then the store's number is shown and orders don't reserve it (`untracked`).
+- **Orders hold stock.** Confirmed → reserve; cancelled or back to waiting → release; shipped, delivered or returned → release and pick (leaves on hand). Lines that change (an accepted offer, a store edit) reserve or release the difference. Every event re-reads the order, so repeats change nothing.
+- **Oversell blocked.** If any counted item of a confirmed order isn't available, nothing new is reserved for it: the order is `short` (tab "Waiting for stock", event `stock.short`). Stock that arrives, or that another order releases, reserves waiting orders oldest first (25 per change).
+- **Never under reserved.** A count or adjustment that would take on hand under what confirmed orders hold is refused (`below_reserved`).
+- **Ledger first.** Each change is a `stock_movements` row; the level is updated in the same transaction and equals the sum of its rows (tested).
+- One warehouse for now (the store's default); transfers, pick lists, scans and low-stock alerts are E8-3 … E8-5.
 
 ## Field ownership with the store (E8-1)
 

@@ -19,7 +19,7 @@ export const DOMAIN_EVENT_TYPES = [
   // M3 Shipping
   "shipment.created", "shipment.status_changed", "shipment.delivered", "shipment.returned",
   // M4 Warehouse
-  "stock.reserved", "stock.low", "stock.adjusted",
+  "stock.reserved", "stock.released", "stock.short", "stock.received", "stock.low", "stock.adjusted",
   // M5 Profit, M6 Returns, M8 Reconciliation
   "pnl.recomputed", "costs.changed", "fx.rate_overridden", "ads.spend_changed", "return.inspected", "settlement.matched", "settlement.gap_found",
   // M15 Payments

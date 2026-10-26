@@ -209,6 +209,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/stock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StockController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StockController_record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/stock/{variantId}/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StockController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/profit/home": {
         parameters: {
             query?: never;
@@ -1777,6 +1825,19 @@ export interface components {
             amount: string;
             currency: string;
         };
+        MovementsRecorded: {
+            /** @description Items whose stock changed */
+            applied: number;
+            levels: {
+                /** Format: uuid */
+                variantId: string;
+                onHand: number;
+                reserved: number;
+                available: number;
+            }[];
+            /** @description Orders waiting for stock that are now reserved */
+            ordersReserved: number;
+        };
         NewOrder: {
             /**
              * @description Where the customer ordered
@@ -2150,6 +2211,11 @@ export interface components {
              * @enum {string|null}
              */
             duplicate: "suspected" | "kept" | "merged" | null;
+            /**
+             * @description Confirmed orders: reserved, short (waiting for stock) or untracked (no item counted in Mizan); null otherwise (E8-2)
+             * @enum {string|null}
+             */
+            stock: "reserved" | "short" | "untracked" | null;
             externalId: string | null;
             currency: string;
             subtotal: {
@@ -2319,6 +2385,11 @@ export interface components {
                  * @enum {string|null}
                  */
                 duplicate: "suspected" | "kept" | "merged" | null;
+                /**
+                 * @description Confirmed orders: reserved, short (waiting for stock) or untracked (no item counted in Mizan); null otherwise (E8-2)
+                 * @enum {string|null}
+                 */
+                stock: "reserved" | "short" | "untracked" | null;
             }[];
             nextCursor: string | null;
             counts: {
@@ -2333,6 +2404,7 @@ export interface components {
             };
             needsCall: number;
             duplicates: number;
+            waitingStock: number;
         };
         OrderPnl: {
             currency: string;
@@ -2857,6 +2929,25 @@ export interface components {
             /** @description More provisional orders remain: call again */
             truncated: boolean;
         };
+        RecordMovements: {
+            items: {
+                /** Format: uuid */
+                variantId: string;
+                /**
+                 * @description receive: add arrived stock; count: set on hand to what was counted; adjust: add or remove with a reason
+                 * @enum {string}
+                 */
+                kind: "receive" | "count" | "adjust";
+                /** @description receive: > 0; count: ≥ 0 (the number on the shelf); adjust: ≠ 0 */
+                quantity: number;
+                /**
+                 * @description Required for adjust
+                 * @enum {string}
+                 */
+                reason?: "damaged" | "lost" | "found" | "correction" | "other";
+            }[];
+            note?: string;
+        };
         Replayed: {
             /** @enum {boolean} */
             replayed: true;
@@ -2940,6 +3031,58 @@ export interface components {
              * @description Send the browser here (Shopify's consent screen)
              */
             authorizeUrl: string;
+        };
+        StockHistory: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** Format: date-time */
+                at: string;
+                /** @enum {string} */
+                kind: "receive" | "count" | "adjust" | "reserve" | "release" | "pick" | "return_restock" | "transfer_in" | "transfer_out" | "write_off";
+                /** @description Change to on hand (receive, count, adjust, pick) or to reserved (reserve, release) */
+                delta: number;
+                reason: string | null;
+                note: string | null;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                } | null;
+            }[];
+        };
+        StockPage: {
+            data: {
+                /** Format: uuid */
+                variantId: string;
+                productTitle: string;
+                variantTitle: string | null;
+                sku: string;
+                barcode: string | null;
+                /** @description true once received or counted in Mizan; then confirmed orders reserve it */
+                counted: boolean;
+                onHand: number | null;
+                reserved: number | null;
+                /** @description On hand − reserved; null when not counted */
+                available: number | null;
+                /** @description What the store last reported (information only once counted here) */
+                storeAvailable: number | null;
+                lowStockAt: number | null;
+            }[];
+            nextCursor: string | null;
+            warehouse: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            counts: {
+                variants: number;
+                counted: number;
+                out: number;
+                low: number;
+                /** @description Confirmed orders waiting for stock (oversell blocked) */
+                waitingOrders: number;
+            };
         };
         Team: {
             members: {
@@ -3069,6 +3212,8 @@ export interface operations {
                 confirmation?: "needs_call";
                 /** @description suspected: likely duplicates waiting for the team (keep or merge) */
                 duplicate?: "suspected";
+                /** @description short: confirmed orders waiting for stock (oversell blocked, E8-2) */
+                stock?: "short";
                 /** @description Order number, store order id, or the customer's phone */
                 q?: string;
                 paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
@@ -3792,6 +3937,145 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StockController_list: {
+        parameters: {
+            query?: {
+                /** @description Product title, SKU or barcode (part of it) */
+                search?: string;
+                /** @description counted: stock kept in Mizan; out: counted with nothing available; low: at or under its threshold */
+                filter?: "all" | "counted" | "not_counted" | "out" | "low";
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Variants by SKU with on hand, reserved and available */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StockController_record: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordMovements"];
+            };
+        };
+        responses: {
+            /** @description All applied, or none (422 below_reserved naming each item) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementsRecorded"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StockController_history: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                variantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The last 100 movements, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockHistory"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
