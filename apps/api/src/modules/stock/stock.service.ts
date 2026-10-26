@@ -89,54 +89,62 @@ export class StockService {
   async record(auth: AuthContext, body: RecordMovementsBody) {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
-      const warehouse = await this.warehouse(trx, tenantId);
-      const ids = [...new Set(body.items.map((i) => i.variantId))].sort();
-      const known = await trx.selectFrom("variants").select(["id", "sku"]).where("id", "in", ids).execute();
-      const skuOf = new Map(known.map((v) => [v.id, v.sku]));
-      const unknown = ids.filter((id) => !skuOf.has(id));
-      if (unknown.length) throw new ProblemError(404, "not_found", "some variants do not exist in this store", unknown.map((id) => ({ path: "items.variantId", code: "not_found", message: id })));
-      const before = await this.lock(trx, warehouse.id, ids);
-      const fresh = ids.filter((id) => !before.has(id));
-      if (fresh.length) {
-        await trx.insertInto("stock_levels").values(fresh.map((variant_id) => ({ tenant_id: tenantId, warehouse_id: warehouse.id, variant_id }))).onConflict((oc) => oc.doNothing()).execute();
-      }
-      const levels = await this.lock(trx, warehouse.id, ids);
-
-      const moves: Array<{ variant: string; reason: "receive" | "adjust"; delta: number; detail: string | null }> = [];
-      const problems: Array<{ path: string; code: string; message: string }> = [];
-      body.items.forEach((i, n) => {
-        const l = levels.get(i.variantId)!;
-        const delta = i.kind === "count" ? i.quantity - l.on_hand : i.quantity;
-        if (l.on_hand + delta < l.reserved) {
-          problems.push({ path: `items.${n}.quantity`, code: "below_reserved", message: `${skuOf.get(i.variantId)}: ${l.reserved} reserved for confirmed orders` });
-          return;
-        }
-        l.on_hand += delta;
-        if (delta !== 0) moves.push({ variant: i.variantId, reason: i.kind === "receive" ? "receive" : "adjust", delta, detail: i.kind === "count" ? "count" : (i.reason ?? null) });
-      });
-      if (problems.length) throw new ProblemError(422, "below_reserved", "stock cannot go under what confirmed orders hold", problems);
-
-      const actor: EventActor = { type: "user", id: auth.user.id };
-      await this.write(trx, tenantId, warehouse.id, moves.map((m) => ({ ...m, note: body.note ?? null })), actor);
-      const received = moves.filter((m) => m.reason === "receive");
-      const adjusted = moves.filter((m) => m.reason === "adjust");
-      const entity = { type: "warehouse", id: warehouse.id };
-      if (received.length) await this.events.emit(trx, { type: "stock.received", tenantId, entity, actor, data: { items: Object.fromEntries(received.map((m) => [m.variant, m.delta])) } });
-      if (adjusted.length || fresh.length) await this.events.emit(trx, { type: "stock.adjusted", tenantId, entity, actor, data: { items: Object.fromEntries(adjusted.map((m) => [m.variant, m.delta])), counted: fresh } });
-      await this.audit.record(trx, { action: "stock.recorded", tenantId, entity, after: { items: body.items.length, changed: moves.length, newlyCounted: fresh.length }, ...auditActor(auth) });
-
-      // Newly counted variants: confirmed orders start holding them; more stock: waiting orders get theirs.
-      const up = moves.filter((m) => m.delta > 0).map((m) => m.variant);
-      let reserved = 0;
-      if (fresh.length) reserved += await this.retryWaiting(trx, tenantId, fresh, ["short", "untracked"]);
-      if (up.length) reserved += await this.retryWaiting(trx, tenantId, up, ["short"]);
-      const after = await this.lock(trx, warehouse.id, ids);
-      return {
-        applied: moves.length,
-        levels: ids.map((id) => { const l = after.get(id)!; return { variantId: id, onHand: l.on_hand, reserved: l.reserved, available: l.on_hand - l.reserved }; }),
-        ordersReserved: reserved,
-      };
+      const r = await this.apply(trx, tenantId, { type: "user", id: auth.user.id }, body);
+      await this.audit.record(trx, { action: "stock.recorded", tenantId, entity: { type: "warehouse", id: r.warehouseId }, after: { items: body.items.length, changed: r.applied, newlyCounted: r.newlyCounted }, ...auditActor(auth) });
+      return { applied: r.applied, levels: r.levels, ordersReserved: r.ordersReserved };
     });
+  }
+
+  /**
+   * The same movements inside a caller's transaction (the ops app's sync, E8-3). Throws a 404 or
+   * 422 problem without writing anything; `deviceOpId` marks the ledger rows with the app's op id.
+   */
+  async apply(trx: Trx, tenantId: string, actor: EventActor, body: RecordMovementsBody, deviceOpId?: string) {
+    const warehouse = await this.warehouse(trx, tenantId);
+    const ids = [...new Set(body.items.map((i) => i.variantId))].sort();
+    const known = await trx.selectFrom("variants").select(["id", "sku"]).where("id", "in", ids).execute();
+    const skuOf = new Map(known.map((v) => [v.id, v.sku]));
+    const unknown = ids.filter((id) => !skuOf.has(id));
+    if (unknown.length) throw new ProblemError(404, "not_found", "some variants do not exist in this store", unknown.map((id) => ({ path: "items.variantId", code: "not_found", message: id })));
+    const before = await this.lock(trx, warehouse.id, ids);
+    const fresh = ids.filter((id) => !before.has(id));
+    if (fresh.length) {
+      await trx.insertInto("stock_levels").values(fresh.map((variant_id) => ({ tenant_id: tenantId, warehouse_id: warehouse.id, variant_id }))).onConflict((oc) => oc.doNothing()).execute();
+    }
+    const levels = await this.lock(trx, warehouse.id, ids);
+
+    const moves: Array<{ variant: string; reason: "receive" | "adjust"; delta: number; detail: string | null }> = [];
+    const problems: Array<{ path: string; code: string; message: string }> = [];
+    body.items.forEach((i, n) => {
+      const l = levels.get(i.variantId)!;
+      const delta = i.kind === "count" ? i.quantity - l.on_hand : i.quantity;
+      if (l.on_hand + delta < l.reserved) {
+        problems.push({ path: `items.${n}.quantity`, code: "below_reserved", message: `${skuOf.get(i.variantId)}: ${l.reserved} reserved for confirmed orders` });
+        return;
+      }
+      l.on_hand += delta;
+      if (delta !== 0) moves.push({ variant: i.variantId, reason: i.kind === "receive" ? "receive" : "adjust", delta, detail: i.kind === "count" ? "count" : (i.reason ?? null) });
+    });
+    if (problems.length) throw new ProblemError(422, "below_reserved", "stock cannot go under what confirmed orders hold", problems);
+
+    await this.write(trx, tenantId, warehouse.id, moves.map((m) => ({ ...m, note: body.note ?? null, deviceOpId: deviceOpId ?? null })), actor);
+    const received = moves.filter((m) => m.reason === "receive");
+    const adjusted = moves.filter((m) => m.reason === "adjust");
+    const entity = { type: "warehouse", id: warehouse.id };
+    if (received.length) await this.events.emit(trx, { type: "stock.received", tenantId, entity, actor, data: { items: Object.fromEntries(received.map((m) => [m.variant, m.delta])) } });
+    if (adjusted.length || fresh.length) await this.events.emit(trx, { type: "stock.adjusted", tenantId, entity, actor, data: { items: Object.fromEntries(adjusted.map((m) => [m.variant, m.delta])), counted: fresh } });
+
+    // Newly counted variants: confirmed orders start holding them; more stock: waiting orders get theirs.
+    const up = moves.filter((m) => m.delta > 0).map((m) => m.variant);
+    let reserved = 0;
+    if (fresh.length) reserved += await this.retryWaiting(trx, tenantId, fresh, ["short", "untracked"]);
+    if (up.length) reserved += await this.retryWaiting(trx, tenantId, up, ["short"]);
+    const after = await this.lock(trx, warehouse.id, ids);
+    return {
+      warehouseId: warehouse.id, applied: moves.length, newlyCounted: fresh.length,
+      levels: ids.map((id) => { const l = after.get(id)!; return { variantId: id, onHand: l.on_hand, reserved: l.reserved, available: l.on_hand - l.reserved }; }),
+      ordersReserved: reserved,
+    };
   }
 
   async list(tenantId: string, q: { search?: string | undefined; filter: Filter; limit: number; cursor?: string | undefined }) {
@@ -223,11 +231,12 @@ export class StockService {
   }
 
   /** Ledger rows and the levels they sum to, in one go. */
-  private async write(trx: Trx, tenantId: string, warehouseId: string, moves: Array<{ variant: string; reason: string; delta: number; ref?: string; detail?: string | null; note?: string | null }>, actor: EventActor) {
+  private async write(trx: Trx, tenantId: string, warehouseId: string, moves: Array<{ variant: string; reason: string; delta: number; ref?: string; detail?: string | null; note?: string | null; deviceOpId?: string | null }>, actor: EventActor) {
     if (!moves.length) return;
     await trx.insertInto("stock_movements").values(moves.map((m) => ({
       tenant_id: tenantId, warehouse_id: warehouseId, variant_id: m.variant, delta: m.delta, reason: m.reason,
       ref_type: m.ref ? "order" : null, ref_id: m.ref ?? null, detail: m.detail ?? null, note: m.note ?? null,
+      device_op_id: m.deviceOpId ? (moves.length > 1 ? `${m.deviceOpId}:${m.variant}` : m.deviceOpId) : null,
       actor_id: actor.type === "user" ? (actor.id ?? null) : null,
     }))).execute();
     const now = new Date();

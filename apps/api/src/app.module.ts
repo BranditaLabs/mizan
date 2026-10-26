@@ -9,6 +9,7 @@ import { CatalogModule } from "./modules/catalog/catalog.module.js";
 import { OnboardingModule } from "./modules/onboarding/onboarding.module.js";
 import { ProfitModule } from "./modules/profit/profit.module.js";
 import { StockModule } from "./modules/stock/stock.module.js";
+import { OpsModule } from "./modules/ops/ops.module.js";
 import { ConfirmationModule } from "./modules/confirmation/confirmation.module.js";
 import { ConnectionsModule } from "./modules/connections/connections.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
@@ -49,7 +50,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, OnboardingModule, CatalogModule, StockModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), OrdersModule, OnboardingModule, CatalogModule, StockModule, OpsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
     };
   }

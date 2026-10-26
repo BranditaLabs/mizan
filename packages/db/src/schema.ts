@@ -443,6 +443,19 @@ export interface OfferRules {
   updated_at: Generated<Timestamp>;
 }
 
+export interface OpsOperations {
+  tenant_id: string;
+  op_id: string;
+  device_id: string;
+  user_id: string | null;
+  type: string;
+  status: string;
+  code: string | null;
+  result: Json | null;
+  client_at: Timestamp;
+  received_at: Generated<Timestamp>;
+}
+
 export interface OrderEvents {
   id: Generated<string>;
   tenant_id: string;
@@ -1053,6 +1066,7 @@ export interface DB {
   mz_outbox: MzOutbox;
   mz_records: MzRecords;
   offer_rules: OfferRules;
+  ops_operations: OpsOperations;
   order_events: OrderEvents;
   order_lines: OrderLines;
   order_offers: OrderOffers;

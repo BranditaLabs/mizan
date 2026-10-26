@@ -1661,6 +1661,80 @@
         ]
       }
     },
+    "/v1/ops/sync": {
+      "post": {
+        "operationId": "OpsController_sync",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpsSync"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "One result per op, in the order sent; a replayed opId returns its first outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpsSyncResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "ops"
+        ]
+      }
+    },
     "/v1/profit/home": {
       "get": {
         "operationId": "ProfitController_home",
@@ -9525,6 +9599,130 @@
           "timeToFirstValueS",
           "complete",
           "dismissed"
+        ],
+        "additionalProperties": false
+      },
+      "OpsSync": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,64}$",
+            "description": "The phone's install id, as the app made it"
+          },
+          "ops": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "opId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{8,64}$",
+                  "description": "Made by the app once per operation (a UUID or ULID); a replay with the same opId changes nothing"
+                },
+                "type": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40,
+                  "description": "One of: stock.receive, stock.count, stock.adjust"
+                },
+                "payload": {
+                  "type": "object",
+                  "additionalProperties": {}
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                  "description": "When it happened on the phone; ops are applied in this order"
+                }
+              },
+              "required": [
+                "opId",
+                "type",
+                "payload",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "deviceId",
+          "ops"
+        ],
+        "additionalProperties": false
+      },
+      "OpsSyncResult": {
+        "type": "object",
+        "properties": {
+          "serverTime": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "opId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "applied",
+                    "duplicate",
+                    "rejected",
+                    "conflict"
+                  ],
+                  "description": "applied now; duplicate: already synced (see original); rejected: can never apply (fix and send a new op); conflict: the server's stock wins, tell the user"
+                },
+                "original": {
+                  "nullable": true,
+                  "description": "For a duplicate: what happened the first time",
+                  "type": "string",
+                  "enum": [
+                    "applied",
+                    "rejected",
+                    "conflict"
+                  ]
+                },
+                "code": {
+                  "nullable": true,
+                  "description": "unknown_type, invalid_payload, unknown_item, below_reserved…",
+                  "type": "string"
+                },
+                "message": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "result": {
+                  "nullable": true,
+                  "description": "For applied stock ops: the item's levels after it",
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "opId",
+                "status",
+                "original",
+                "code",
+                "message",
+                "result"
+              ],
+              "additionalProperties": false
+            },
+            "description": "In the order the ops were sent"
+          }
+        },
+        "required": [
+          "serverTime",
+          "results"
         ],
         "additionalProperties": false
       },

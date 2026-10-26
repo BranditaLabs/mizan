@@ -257,6 +257,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/ops/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OpsController_sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/profit/home": {
         parameters: {
             query?: never;
@@ -2059,6 +2075,49 @@ export interface components {
             timeToFirstValueS: number | null;
             complete: boolean;
             dismissed: boolean;
+        };
+        OpsSync: {
+            /** @description The phone's install id, as the app made it */
+            deviceId: string;
+            ops: {
+                /** @description Made by the app once per operation (a UUID or ULID); a replay with the same opId changes nothing */
+                opId: string;
+                /** @description One of: stock.receive, stock.count, stock.adjust */
+                type: string;
+                payload: {
+                    [key: string]: unknown;
+                };
+                /**
+                 * Format: date-time
+                 * @description When it happened on the phone; ops are applied in this order
+                 */
+                at: string;
+            }[];
+        };
+        OpsSyncResult: {
+            /** Format: date-time */
+            serverTime: string;
+            /** @description In the order the ops were sent */
+            results: {
+                opId: string;
+                /**
+                 * @description applied now; duplicate: already synced (see original); rejected: can never apply (fix and send a new op); conflict: the server's stock wins, tell the user
+                 * @enum {string}
+                 */
+                status: "applied" | "duplicate" | "rejected" | "conflict";
+                /**
+                 * @description For a duplicate: what happened the first time
+                 * @enum {string|null}
+                 */
+                original: "applied" | "rejected" | "conflict" | null;
+                /** @description unknown_type, invalid_payload, unknown_item, below_reserved… */
+                code: string | null;
+                message: string | null;
+                /** @description For applied stock ops: the item's levels after it */
+                result: {
+                    [key: string]: unknown;
+                } | null;
+            }[];
         };
         OrderConfirmation: {
             run: {
@@ -4076,6 +4135,52 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OpsController_sync: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpsSync"];
+            };
+        };
+        responses: {
+            /** @description One result per op, in the order sent; a replayed opId returns its first outcome */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsSyncResult"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -95,7 +95,7 @@ erDiagram
 
 - **One order per store order:** `UNIQUE (tenant_id, connection_id, external_id)` on `orders`. Webhooks received twice cannot create two orders.
 - **One shipment per tracking number per courier account:** `UNIQUE (connection_id, tracking_number)`.
-- **Exactly-once offline scans:** `stock_movements UNIQUE (tenant_id, device_op_id)`. The ops app generates `device_op_id` per scan; replays are ignored.
+- **Exactly-once offline scans:** `stock_movements UNIQUE (tenant_id, device_op_id)`. The ops app generates `device_op_id` per scan; replays are ignored. ✅ 0031 (E8-3): `ops_operations` (PK tenant + `op_id`, device, user, type, `status` applied/rejected/conflict, code, result, client and received times) stores each op's first outcome, so a replay returns it unchanged; RLS like every tenant table.
 - **Available stock is derived:** `stock_levels.available = on_hand − reserved` (generated column). Never write it.
 - **Net profit is derived:** `order_pnl.net_minor` is a generated column. The profit service writes components only.
 - **One automation run per event:** `automation_runs UNIQUE (automation_id, event_id)`.

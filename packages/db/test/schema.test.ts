@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_tenant_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -188,6 +188,16 @@ describe("schema", () => {
     const seq = (await asTenant(T1, () => db.query<{ seq: string }>(`INSERT INTO stock_movements (tenant_id, warehouse_id, variant_id, delta, reason, detail) VALUES ($1, $2, $3, 5, 'adjust', 'count'), ($1, $2, $3, 2, 'reserve', NULL) RETURNING seq`, [T1, wh, v]))).rows;
     expect(Number(seq[1]!.seq)).toBeGreaterThan(Number(seq[0]!.seq));
     expect((await asTenant(T2, () => db.query(`SELECT * FROM stock_movements`))).rows).toEqual([]);
+  });
+
+  it("keeps each ops-app operation once per store (E8-3)", async () => {
+    const op = (t: string, id: string, status = "applied") => asTenant(t, () => db.query(`INSERT INTO ops_operations (tenant_id, op_id, device_id, type, status, client_at) VALUES ($1, $2, 'pixel-1', 'stock.count', $3, now())`, [t, id, status]));
+    await op(T1, "op-0000001");
+    await expect(op(T1, "op-0000001")).rejects.toThrow(/duplicate key/);
+    await op(T2, "op-0000001"); // another store's phone may use the same id
+    await expect(op(T1, "short")).rejects.toThrow(/check/);
+    await expect(op(T1, "op-0000002", "maybe")).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT op_id FROM ops_operations`))).rows).toEqual([{ op_id: "op-0000001" }]);
   });
 
   it("keeps one live confirmation run per order and unique step keys (E6-7)", async () => {
