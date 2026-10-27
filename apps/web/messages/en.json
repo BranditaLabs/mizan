@@ -667,7 +667,9 @@
       "ship_failed": "The courier booking failed",
       "shipment_status": "Courier: {status}",
       "exchanged_into": "Exchanged: replacement {number}",
-      "exchange_of": "Replacement for {number}"
+      "exchange_of": "Replacement for {number}",
+      "partially_delivered": "Delivered in part: the rest comes back",
+      "refused": "Refused at the door"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -2645,6 +2647,38 @@
       "other": "Another item (not in the catalogue)",
       "itemTitle": "Item",
       "unitPrice": "Unit price"
+    }
+  },
+  "door": {
+    "title": "At the door",
+    "none": "Record what happened if the customer kept only part, or refused.",
+    "partial": {
+      "open": "Kept part",
+      "title": "The customer kept part of the order",
+      "body": "Pick what they kept. They owe for that (plus shipping); the courier's cash goes in the ledger and the rest comes back for inspection.",
+      "kept": "Kept",
+      "of": "of {n}",
+      "keptQty": "Units of {title} kept",
+      "all": "They kept everything: that is a full delivery.",
+      "note": "Note",
+      "save": "Record",
+      "cancel": "Cancel",
+      "saved": "Partial delivery recorded",
+      "done": "Delivered in part: {n} kept, owes <m></m>"
+    },
+    "refusal": {
+      "open": "Refused",
+      "correct": "Correct the refusal",
+      "title": "Refused at the door",
+      "body": "Why the customer refused, and whether they opened the parcel first.",
+      "reason": "Reason",
+      "openBoxLabel": "They opened the box to inspect it first",
+      "note": "Note",
+      "save": "Record",
+      "cancel": "Cancel",
+      "saved": "Refusal recorded",
+      "done": "Refused: {reason}",
+      "openBox": "Opened the box"
     }
   }
 }

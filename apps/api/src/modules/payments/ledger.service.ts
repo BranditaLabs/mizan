@@ -94,7 +94,7 @@ export class LedgerService {
 
   /** One line from a gateway, the courier or the team: checked, written once per reference, then the order follows. */
   async post(trx: Trx, tenantId: string, orderId: string, line: PostLine, actor: EventActor): Promise<{ id: string; duplicate: boolean; totals: LedgerTotals }> {
-    const o = await trx.selectFrom("orders").select(["id", "number", "currency", "total_minor", "payment_mode", "payment_status", "paid_minor", "refunded_minor", "cod_minor"])
+    const o = await trx.selectFrom("orders").select(["id", "number", "currency", "total_minor", "partial_due_minor", "payment_mode", "payment_status", "paid_minor", "refunded_minor", "cod_minor"])
       .where("id", "=", orderId).forUpdate().executeTakeFirst();
     if (!o) throw new ProblemError(404, "not_found", "order not found");
     const known = line.externalRef
@@ -106,7 +106,9 @@ export class LedgerService {
     if (line.currency !== o.currency) throw new ProblemError(422, "currency_mismatch", `this order is in ${o.currency}`);
     const status = line.status ?? "succeeded";
     const before = totals(rows.map(asLine));
-    const rejected = status === "succeeded" ? check(before, BigInt(o.total_minor), { kind: line.kind, amountMinor: line.amountMinor }) : null;
+    // After a partial delivery (E10-4) the customer owes for what they kept, not the whole order.
+    const due = BigInt(o.partial_due_minor ?? o.total_minor);
+    const rejected = status === "succeeded" ? check(before, due, { kind: line.kind, amountMinor: line.amountMinor }) : null;
     if (rejected) throw new ProblemError(409, rejected, REJECTIONS[rejected]);
 
     const row = await trx.insertInto("payments").values({
@@ -117,7 +119,7 @@ export class LedgerService {
     const all = [...rows, row].map(asLine);
     const next = money(all, {
       paid_minor: BigInt(o.paid_minor), refunded_minor: BigInt(o.refunded_minor), payment_status: o.payment_status, cod_minor: BigInt(o.cod_minor),
-      total_minor: BigInt(o.total_minor), payment_mode: o.payment_mode, previous_status: o.payment_status,
+      total_minor: due, payment_mode: o.payment_mode, previous_status: o.payment_status,
     });
     const changed = next.paid_minor !== BigInt(o.paid_minor) || next.refunded_minor !== BigInt(o.refunded_minor) || next.payment_status !== o.payment_status || next.cod_minor !== BigInt(o.cod_minor);
     if (changed) await trx.updateTable("orders").set({ ...next, updated_at: new Date() }).where("id", "=", orderId).execute();

@@ -545,6 +545,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/partial-delivery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DoorController_partial"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/refusal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DoorController_refusal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/{id}/ship": {
         parameters: {
             query?: never;
@@ -3649,6 +3681,25 @@ export interface components {
                 errorCode: string | null;
                 trackingUrl: string | null;
             }[];
+            partialDelivery: {
+                due: {
+                    amount: string;
+                    currency: string;
+                };
+                items: {
+                    /** Format: uuid */
+                    lineId: string;
+                    quantity: number;
+                }[];
+                /** Format: date-time */
+                at: string;
+            } | null;
+            refusal: {
+                reason: string;
+                openBox: boolean;
+                /** Format: date-time */
+                at: string;
+            } | null;
             duplicateOf: {
                 /** Format: uuid */
                 id: string;
@@ -3949,6 +4000,50 @@ export interface components {
         OrderSettings: {
             /** @description An order of the same customer with the same product within this many hours of another is a likely duplicate; 0 turns detection off (at most 7 days) */
             duplicateWindowHours: number;
+        };
+        PartialDelivered: {
+            /** Format: uuid */
+            orderId: string;
+            status: string;
+            /** @description What the customer owes now: the kept items, plus shipping, less discount */
+            due: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Cash the courier collected (in the ledger) */
+            collected: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Paid beforehand beyond what they kept */
+            refundDue: {
+                amount: string;
+                currency: string;
+            };
+            kept: {
+                /** Format: uuid */
+                lineId: string;
+                title: string;
+                quantity: number;
+            }[];
+            /** @description Inspect these when they arrive (return inspection) */
+            comingBack: {
+                /** Format: uuid */
+                lineId: string;
+                title: string;
+                quantity: number;
+            }[];
+        };
+        PartialDelivery: {
+            /** @description What the customer kept; the rest comes back */
+            kept: {
+                /** Format: uuid */
+                lineId: string;
+                quantity: number;
+            }[];
+            /** @description Cash the courier collected (default: what the kept items still owe) */
+            collected?: string;
+            note?: string;
         };
         PaymentMix: {
             days: number;
@@ -4665,6 +4760,22 @@ export interface components {
         RefundSettingsView: {
             /** @description Decimal in the store's base currency, e.g. "1000.00" */
             approveOver: string;
+        };
+        Refusal: {
+            /** @enum {string} */
+            reason: "changed_mind" | "wrong_item" | "wrong_size" | "damaged" | "not_as_described" | "quality" | "price" | "late_delivery" | "courier_behaviour" | "other";
+            /** @description The customer opened the parcel to inspect it before refusing (المعاينة) */
+            openBox: boolean;
+            note?: string;
+        };
+        RefusalRecorded: {
+            /** Format: uuid */
+            orderId: string;
+            /** @enum {string} */
+            reason: "changed_mind" | "wrong_item" | "wrong_size" | "damaged" | "not_as_described" | "quality" | "price" | "late_delivery" | "courier_behaviour" | "other";
+            openBox: boolean;
+            /** Format: date-time */
+            at: string;
         };
         RejectRefund: {
             reason: string;
@@ -7310,6 +7421,138 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DoorController_partial: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PartialDelivery"];
+            };
+        };
+        responses: {
+            /** @description Delivered in part: what the customer owes now, the cash collected (in the ledger), any refund due, and what comes back; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PartialDelivered"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DoorController_refusal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Refusal"];
+            };
+        };
+        responses: {
+            /** @description Why the customer refused at the door, and whether they opened the box (a later call corrects it); audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefusalRecorded"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

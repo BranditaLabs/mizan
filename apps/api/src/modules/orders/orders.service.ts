@@ -140,6 +140,9 @@ export class OrdersService {
           id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPrice: money(l.unit_price_minor), total: money(BigInt(l.unit_price_minor) * BigInt(l.quantity)), variantId: l.variant_id,
         })),
         payments: payments.map((p) => ({ id: p.id, kind: p.kind, method: p.method, status: p.status, amount: money(p.amount_minor, p.currency), occurredAt: p.occurred_at.toISOString() })),
+        partialDelivery: o.partial_items && o.partial_due_minor !== null && o.partial_at
+          ? { due: money(o.partial_due_minor), items: o.partial_items as Array<{ lineId: string; quantity: number }>, at: o.partial_at.toISOString() } : null,
+        refusal: o.refusal_reason && o.refused_at ? { reason: o.refusal_reason, openBox: o.refusal_open_box ?? false, at: o.refused_at.toISOString() } : null,
         shipments: shipments.map((x) => ({ id: x.id, provider: x.provider, trackingNumber: x.tracking_number, status: x.status, statusAt: iso(x.status_at), cod: money(x.cod_minor, x.currency),
           booking: x.booking as OrderDetail["shipments"][number]["booking"], errorCode: x.error_code, trackingUrl: x.tracking_url })),
         events: events.map((e) => ({

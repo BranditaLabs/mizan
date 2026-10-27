@@ -212,6 +212,15 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT * FROM exchanges`))).rows).toEqual([]);
   });
 
+  it("keeps a partial delivery's items and amount due together, and a refusal with its time (E10-4)", async () => {
+    const id = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, number, currency, total_minor, placed_at, status) VALUES ($1, '#PD1', 'EGP', 100000, now(), 'shipped') RETURNING id`, [T1]))).rows[0]!.id;
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET partial_items = '[]' WHERE id = $1`, [id]))).rejects.toThrow(/orders_partial_whole/);
+    await asTenant(T1, () => db.query(`UPDATE orders SET partial_items = '[]', partial_due_minor = 50000 WHERE id = $1`, [id]));
+    expect(Number((await asTenant(T1, () => db.query<{ balance_minor: string }>(`SELECT balance_minor FROM orders WHERE id = $1`, [id]))).rows[0]!.balance_minor)).toBe(50000); // owed: what they kept
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET refusal_reason = 'price' WHERE id = $1`, [id]))).rejects.toThrow(/orders_refusal_whole/);
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET partial_due_minor = -1 WHERE id = $1`, [id]))).rejects.toThrow(/partial_due_minor_check/);
+  });
+
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {
     const sql = (await import("node:fs")).readFileSync(new URL("../migrations/0025_engine_records_without_pii.sql", import.meta.url), "utf8");
     const order = { externalId: "gid://shopify/Order/9", total: { amount: "1150.00", currency: "EGP" }, customer: { name: "Mona Adel", phone: "+201001234821", email: "mona@example.com" },

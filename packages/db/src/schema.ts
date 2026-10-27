@@ -643,7 +643,6 @@ export interface Orders {
   payment_status: Generated<string>;
   paid_minor: Generated<Int8>;
   refunded_minor: Generated<Int8>;
-  balance_minor: GeneratedAlways<Int8 | null>;
   location_id: string | null;
   pii_redacted_at: Timestamp | null;
   customer_label: string | null;
@@ -651,6 +650,13 @@ export interface Orders {
   duplicate_status: string | null;
   duplicate_reason: Json | null;
   stock_status: string | null;
+  partial_items: Json | null;
+  partial_due_minor: Int8 | null;
+  partial_at: Timestamp | null;
+  refusal_reason: string | null;
+  refusal_open_box: boolean | null;
+  refused_at: Timestamp | null;
+  balance_minor: GeneratedAlways<Int8 | null>;
 }
 
 export interface PaymentLinks {

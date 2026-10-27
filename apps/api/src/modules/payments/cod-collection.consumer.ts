@@ -24,8 +24,9 @@ export class CodCollectionConsumer implements EventHandler {
     const d = event.data as Delivered;
     const cod = BigInt(d.codMinor ?? "0");
     if (!d.orderId || cod <= 0n || !d.currency) return;
-    const o = await trx.selectFrom("orders").select(["connection_id", "payment_mode"]).where("id", "=", d.orderId).executeTakeFirst();
+    const o = await trx.selectFrom("orders").select(["connection_id", "payment_mode", "partial_items"]).where("id", "=", d.orderId).executeTakeFirst();
     if (!o || o.connection_id !== null || !["cod", "partial"].includes(o.payment_mode)) return;
+    if (o.partial_items !== null) return; // a partial delivery recorded what the courier collected (E10-4)
     try {
       await this.ledger.post(trx, event.tenantId, d.orderId, {
         kind: "cod_collection", method: "cod", source: "courier", amountMinor: cod, currency: d.currency,

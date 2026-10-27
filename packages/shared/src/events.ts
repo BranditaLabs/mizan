@@ -23,7 +23,7 @@ export const DOMAIN_EVENT_TYPES = [
   "stock.reserved", "stock.released", "stock.short", "stock.received", "stock.low", "stock.out", "stock.adjusted", "stock.changed",
   // M5 Profit, M6 Returns, M8 Reconciliation
   "pnl.recomputed", "costs.changed", "fx.rate_overridden", "ads.spend_changed",
-  "ticket.created", "ticket.status_changed", "ticket.assigned", "return.inspected", "exchange.created", "exchange.returned", "settlement.matched", "settlement.gap_found",
+  "ticket.created", "ticket.status_changed", "ticket.assigned", "return.inspected", "exchange.created", "exchange.returned", "order.partially_delivered", "order.refused", "settlement.matched", "settlement.gap_found",
   // M15 Payments
   "payment.received", "payment.failed", "refund.created", "refund.approved", "refund.rejected", "refund.completed", "dispute.opened",
   "order.awaiting_payment", "order.payment_changed",

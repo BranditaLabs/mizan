@@ -118,6 +118,10 @@ export const OrderDetailSchema = OrderSummarySchema.extend({
     errorCode: z.string().nullable().describe("Why the booking failed: city_unknown, address_invalid, payment_blocks, cancelled, not_found, courier_refused_key, courier_failed"),
     trackingUrl: z.string().nullable(),
   })),
+  /** E10-4: the customer kept part of it; what they owe now. */
+  partialDelivery: z.object({ due: MoneyLine, items: z.array(z.object({ lineId: z.uuid(), quantity: z.number().int() })), at: z.iso.datetime() }).nullable(),
+  /** E10-4: refused at the door, why, and whether they opened the box first. */
+  refusal: z.object({ reason: z.string(), openBox: z.boolean(), at: z.iso.datetime() }).nullable(),
   /** The earlier order this one likely repeats, and what matched (E5-3). */
   duplicateOf: z.object({
     id: z.uuid(), number: z.string(), status: z.enum(ORDER_STATUSES),
