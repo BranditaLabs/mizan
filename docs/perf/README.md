@@ -14,6 +14,9 @@ PostgreSQL 16.15 on the same host (TCP localhost), Node 22, pool of 10. Cloud nu
 | --- | --- | --- | --- |
 | 2026-10-20 | Before: `SET LOCAL ROLE` + `set_config` (2 setup statements) | 0.63–0.75 | 3,560–4,532 |
 | 2026-10-20 | H-1: role + tenant in one `set_config` statement | 0.59–0.67 | 4,171–4,903 |
+| 2026-10-27 | H-12: `begin; select set_config(…)` as one simple query (node-postgres) | — | — |
+
+H-12 removes one more round-trip: a scoped transaction's opening (role, tenant) travels with BEGIN in one simple query, so a two-query tenant read is 4 round-trips (was 5) and a one-query read 3 (tested in `packages/db/test/postgres.test.ts`). Locally (loopback) this barely moves CPU or throughput; in the cloud it saves one Cloud Run → Cloud SQL round-trip (~0.3–1 ms) on every tenant, platform, staff and worker transaction. PGlite keeps two statements.
 
 Locally the saving is ~0.05 ms; in the cloud it is one network round-trip (~0.3–1 ms) on every tenant, platform and worker transaction.
 

@@ -1,9 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
-import { Kysely, PostgresDialect } from "kysely";
+import { CompiledQuery, Kysely, PostgresDialect, type DatabaseConnection, type Driver, type TransactionSettings } from "kysely";
 import pg from "pg";
 import type { MigrationClient } from "./migrate.js";
 import { PGliteDialect } from "./pglite-dialect.js";
 import type { DB } from "./schema.js";
+import { txOpening } from "./tenant.js";
 
 /** Postgres type OIDs we parse ourselves. */
 const INT8 = 20;
@@ -37,6 +38,25 @@ export interface PgDbOptions {
 
 const pools = new WeakMap<Kysely<DB>, pg.Pool>();
 
+/**
+ * H-12: node-postgres with BEGIN and a scoped transaction's opening statement (role, tenant) in one
+ * simple query: `begin; select set_config(…)`. One round-trip fewer on every tenant, platform and
+ * worker transaction (5 → 4 for a two-query read). Plain transactions open as before.
+ */
+class MergedBeginDialect extends PostgresDialect {
+  override createDriver(): Driver {
+    const driver = super.createDriver();
+    const begin = driver.beginTransaction.bind(driver);
+    driver.beginTransaction = async (connection: DatabaseConnection, settings: TransactionSettings) => {
+      const opening = txOpening.getStore();
+      if (!opening || opening.sent || settings.isolationLevel || settings.accessMode) return begin(connection, settings);
+      opening.sent = true;
+      await connection.executeQuery(CompiledQuery.raw(`begin; ${opening.sql}`));
+    };
+    return driver;
+  }
+}
+
 /** Pool counters for metrics (undefined for PGlite). */
 export function poolStats(db: Kysely<DB>): { total: number; idle: number; waiting: number } | undefined {
   const pool = pools.get(db);
@@ -60,7 +80,7 @@ export function createPgDb(connectionString: string, options: PgDbOptions = {}):
   pool.on("error", (err) => options.onIdleError?.(err));
   const slowMs = options.slowQueryMs ?? 500;
   const db = new Kysely<DB>({
-    dialect: new PostgresDialect({ pool }),
+    dialect: new MergedBeginDialect({ pool }),
     ...(options.onSlowQuery
       ? {
           log: (event) => {

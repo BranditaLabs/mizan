@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { CompiledQuery, sql, type Kysely, type Transaction } from "kysely";
 import type { DB } from "./schema.js";
 
@@ -9,6 +10,26 @@ export const WORKER_ROLE = "mizan_worker";
 export const PLATFORM_ROLE = "mizan_platform";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * H-12: the statement that opens a scoped transaction (role, tenant), handed to the driver so it
+ * can travel with BEGIN in one round-trip. The node-postgres driver (createPgDb) sends
+ * `begin; <sql>` as one simple query and marks it sent; any other driver (PGlite) leaves it, and
+ * the transaction runs it itself. The text holds only constants and a validated UUID: no parameters.
+ */
+export interface TxOpening { sql: string; sent: boolean }
+export const txOpening = new AsyncLocalStorage<TxOpening>();
+
+/** Open a transaction whose first statement is `opening` (one round-trip where the driver can). */
+function scoped<T>(db: Kysely<DB>, opening: string, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
+  const o: TxOpening = { sql: opening, sent: false };
+  return txOpening.run(o, () => db.transaction().execute(async (trx) => {
+    if (!o.sent) await trx.executeQuery(CompiledQuery.raw(opening));
+    // Only this transaction's BEGIN may carry it: a transaction started inside `fn` opens normally.
+    o.sent = true;
+    return fn(trx);
+  }));
+}
 
 export class InvalidTenantError extends Error {
   constructor() {
@@ -27,11 +48,8 @@ export class InvalidTenantError extends Error {
  */
 export async function withTenant<T>(db: Kysely<DB>, tenantId: string, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
   if (!UUID.test(tenantId)) throw new InvalidTenantError();
-  return db.transaction().execute(async (trx) => {
-    // One round-trip: set_config('role', …, true) is SET LOCAL ROLE.
-    await sql`SELECT set_config('role', ${APP_ROLE}, true), set_config('app.tenant_id', ${tenantId}, true)`.execute(trx);
-    return fn(trx);
-  });
+  // set_config('role', …, true) is SET LOCAL ROLE; with BEGIN, one round-trip on node-postgres (H-12).
+  return scoped(db, `SELECT set_config('role', '${APP_ROLE}', true), set_config('app.tenant_id', '${tenantId.toLowerCase()}', true)`, fn);
 }
 
 /**
@@ -39,10 +57,7 @@ export async function withTenant<T>(db: Kysely<DB>, tenantId: string, fn: (trx: 
  * For platform lookups (tenants, users, memberships by user) before a tenant is chosen.
  */
 export async function withoutTenant<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
-  return db.transaction().execute(async (trx) => {
-    await sql`SELECT set_config('role', ${APP_ROLE}, true)`.execute(trx);
-    return fn(trx);
-  });
+  return scoped(db, `SELECT set_config('role', '${APP_ROLE}', true)`, fn);
 }
 
 /**
@@ -64,10 +79,7 @@ export async function setActingUser(
 
 /** Run `fn` as the dispatcher role (cross-tenant access to domain_events only). */
 export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
-  return db.transaction().execute(async (trx) => {
-    await sql`SELECT set_config('role', ${WORKER_ROLE}, true)`.execute(trx);
-    return fn(trx);
-  });
+  return scoped(db, `SELECT set_config('role', '${WORKER_ROLE}', true)`, fn);
 }
 
 /**
@@ -75,10 +87,7 @@ export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => 
  * grants it, across tenants, read-only for store data. Only PlatformGuard-checked staff routes use it.
  */
 export async function asPlatformStaff<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
-  return db.transaction().execute(async (trx) => {
-    await sql`SELECT set_config('role', ${PLATFORM_ROLE}, true)`.execute(trx);
-    return fn(trx);
-  });
+  return scoped(db, `SELECT set_config('role', '${PLATFORM_ROLE}', true)`, fn);
 }
 
 /** A `query(text, params)` client on an open transaction (e.g. an event consumer's), so engine writes commit with it. */

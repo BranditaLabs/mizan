@@ -131,6 +131,35 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
       // Outside withTenant the login role sees no tenant rows at all.
       expect(await db.selectFrom("orders").selectAll().execute()).toEqual([]);
 
+      // H-12: BEGIN and the tenant's settings travel together: a one-query read is 3 round-trips.
+      const query = pg.Client.prototype.query;
+      const sent: string[] = [];
+      pg.Client.prototype.query = function (this: pg.Client, ...args: Parameters<typeof query>) {
+        if (typeof args[0] === "string") sent.push(args[0]);
+        return (query as (...a: unknown[]) => unknown).apply(this, args);
+      } as typeof query;
+      try {
+        await withTenant(db, A, (trx) => trx.selectFrom("orders").select("id").execute());
+      } finally {
+        pg.Client.prototype.query = query;
+      }
+      expect(sent).toHaveLength(3);
+      expect(sent[0]).toMatch(/^begin; SELECT set_config\('role', 'mizan_app', true\), set_config\('app.tenant_id', 'aaaaaaaa-/);
+      expect(sent[2]).toBe("commit");
+      // A plain transaction started inside one opens normally (no tenant), and nothing outlives a rolled-back one.
+      await withTenant(db, A, async () => {
+        const inner = await db.transaction().execute((trx) => sql<{ t: string | null }>`SELECT current_setting('app.tenant_id', true) AS t`.execute(trx));
+        expect(inner.rows[0]!.t ?? "").toBe("");
+      });
+      const one = createPgDb(appUrl, { max: 1 });
+      try {
+        await expect(withTenant(one, A, async () => { throw new Error("boom"); })).rejects.toThrow("boom");
+        const after = await sql<{ t: string | null; r: string }>`SELECT current_setting('app.tenant_id', true) AS t, current_user AS r`.execute(one);
+        expect([after.rows[0]!.t ?? "", after.rows[0]!.r]).toEqual(["", loginRole]);
+      } finally {
+        await one.destroy();
+      }
+
       // The dispatcher role reads domain_events across tenants, and nothing else.
       for (const t of [A, B]) {
         await withTenant(db, t, (trx) => trx.insertInto("domain_events").values({ tenant_id: t, type: "order.created", entity_type: "order", entity_id: t }).execute());
