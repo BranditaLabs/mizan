@@ -328,6 +328,13 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT * FROM order_reconciliations`))).rows).toEqual([]);
   });
 
+  it("keeps a WhatsApp opt-out apart from an opt-in (E6-4b)", async () => {
+    const c = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO customers (tenant_id, phone_hash, whatsapp_opt_in, opt_in_source, opt_in_at) VALUES ($1, 'hash-consent', true, 'whatsapp_reply', now()) RETURNING id`, [T1]))).rows[0]!.id;
+    await expect(asTenant(T1, () => db.query(`UPDATE customers SET whatsapp_opt_out_at = now() WHERE id = $1`, [c]))).rejects.toThrow(/customers_opt_out_not_in/);
+    await asTenant(T1, () => db.query(`UPDATE customers SET whatsapp_opt_in = false, whatsapp_opt_out_at = now() WHERE id = $1`, [c]));
+    await expect(asTenant(T1, () => db.query(`UPDATE customers SET opt_in_source = 'sms' WHERE id = $1`, [c]))).rejects.toThrow(/check/);
+  });
+
   it("keeps bulk actions consistent and per store (E5-4)", async () => {
     const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
     const bulk = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO bulk_actions (tenant_id, action, total) VALUES ($1, 'cancel', 1) RETURNING id`, [T1]))).rows[0]!.id;

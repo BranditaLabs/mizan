@@ -181,7 +181,7 @@ export class PrivacyService {
         .whereRef("o.customer_id", "=", "c.id").where("o.connection_id", "!=", connectionId))))
       .execute()).map((r) => r.id) : [];
     if (onlyHere.length) {
-      await trx.updateTable("customers").set({ name: null, phone_e164: null, email: null, phone_hash: null, whatsapp_opt_in: false, redacted_at: sql`coalesce(redacted_at, now())` })
+      await trx.updateTable("customers").set({ name: null, phone_e164: null, email: null, phone_hash: null, whatsapp_opt_in: false, opt_in_source: null, opt_in_at: null, redacted_at: sql`coalesce(redacted_at, now())` })
         .where("id", "in", onlyHere).execute();
     }
 
@@ -218,7 +218,7 @@ export class PrivacyService {
       shop: p.shop, shopifyCustomerId: p.customerId ?? null, shopifyDataRequestId: p.dataRequestId ?? null, compiledAt: new Date().toISOString(),
       customers: customers.map((c) => ({
         name: pii.decrypt(c.name, "customers.name"), phone: pii.decrypt(c.phone_e164, "customers.phone_e164"), email: pii.decrypt(c.email, "customers.email"),
-        whatsappOptIn: c.whatsapp_opt_in, firstSeen: c.created_at.toISOString(),
+        whatsappOptIn: c.whatsapp_opt_in, whatsappOptInSource: c.opt_in_source, whatsappOptOutAt: c.whatsapp_opt_out_at?.toISOString() ?? null, firstSeen: c.created_at.toISOString(),
       })),
       orders: rows.map((o) => ({
         number: o.number, externalId: o.external_id, placedAt: o.placed_at.toISOString(), status: o.status,

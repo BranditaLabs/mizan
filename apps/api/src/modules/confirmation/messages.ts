@@ -70,8 +70,8 @@ const REASON_TITLE: Record<"ar" | "en", Record<CancelReason | "keep", string>> =
 };
 
 /** Follow-up messages inside the chat, after the customer taps (free-form, no template). */
-export type ChatMessage = "confirmed" | "confirmed_offer" | "offer_added" | "offer_declined" | "offer_expired" | "offer_failed" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already";
-export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "offer_failed", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already"];
+export type ChatMessage = "confirmed" | "confirmed_offer" | "offer_added" | "offer_declined" | "offer_expired" | "offer_failed" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already" | "opted_out" | "opted_in";
+export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "offer_failed", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already", "opted_out", "opted_in"];
 
 export type ChatContent =
   | { type: "text"; text: string }
@@ -129,6 +129,10 @@ export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
       };
     case "cancelled":
       return { type: "text", text: own("cancelled") ?? (ar ? `اتلغى أوردرك ${f.number}. لو غيّرت رأيك ابعتلنا في أي وقت.` : `Your order ${f.number} is cancelled. If you change your mind, message us anytime.`) };
+    case "opted_out":
+      return { type: "text", text: ar ? `تمام، مش هنبعتلك رسايل تاني هنا من ${f.store}. لو حبيت ترجع اكتب «ابدأ».` : `Done, ${f.store} won't message you here again. To start again, write START.` };
+    case "opted_in":
+      return { type: "text", text: ar ? `أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من ${f.store} هنا.` : `Welcome back 👋 ${f.store} will send your order updates here.` };
     case "already":
       return { type: "text", text: ar ? `أوردرك ${f.number} متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.` : `Your order ${f.number} is already recorded. If you need anything, write to us here and our team will help.` };
   }
@@ -163,4 +167,14 @@ export function linkText(f: MessageFacts): string {
   return f.lang === "ar"
     ? `${hello(f)}، أوردرك ${f.number} من ${f.store} بـ ${money(due(f), f.lang)}. أكّده أو عدّله من هنا: ${f.link}`
     : `${hello(f)}, your order ${f.number} from ${f.store} is ${money(due(f), f.lang)}. Confirm or change it here: ${f.link}`;
+}
+
+/** STOP / START typed alone in the chat (Meta's policy: honour an opt-out). Anything longer is a message to the team. */
+const OPT_OUT = new Set(["stop", "unsubscribe", "ايقاف", "وقف", "وقف الرسايل", "وقف الرسائل", "الغاء الاشتراك", "متبعتليش تاني"]);
+const OPT_IN = new Set(["start", "subscribe", "ابدا"]);
+export function consentKeyword(text: string): "opt_out" | "opt_in" | null {
+  const t = text.normalize("NFKC").replace(/[\u064B-\u0652\u0640]/g, "").replace(/[إأآ]/g, "ا").replace(/[.!؟?\s]+$/u, "").replace(/\s+/g, " ").trim().toLowerCase();
+  if (OPT_OUT.has(t)) return "opt_out";
+  if (OPT_IN.has(t)) return "opt_in";
+  return null;
 }

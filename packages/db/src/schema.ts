@@ -266,6 +266,8 @@ export interface Customers {
   opt_in_at: Timestamp | null;
   created_at: Generated<Timestamp>;
   redacted_at: Timestamp | null;
+  opt_in_source: string | null;
+  whatsapp_opt_out_at: Timestamp | null;
 }
 
 export interface Disputes {

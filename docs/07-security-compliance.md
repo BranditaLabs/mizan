@@ -43,7 +43,7 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | **KSA — PDPL** | Saudi merchants | DPA; data residency assessment (host in KSA when required); cross-border transfer rules `[CONFIRM]` |
 | UAE PDPL and others | Before launch there | Map before launch |
 | **Shopify** protected customer data | Shopify merchants | Level 2 approval; minimum fields; encryption; access logs; incident policy; **mandatory compliance webhooks** |
-| **WhatsApp Business** policy | All confirmation and campaigns | Opt-in recorded (`customers.whatsapp_opt_in`, `opt_in_at`, source); approved templates; opt-out on every marketing message |
+| **WhatsApp Business** policy | All confirmation and campaigns | Opt-in recorded (`customers.whatsapp_opt_in`, `opt_in_at`, `opt_in_source`) ✅ E6-4b from a reply or tap in the chat; STOP/«إيقاف» opts out (`whatsapp_opt_out_at`), honoured by every later confirmation until START (docs/modules/M02); approved templates; opt-out on every marketing message |
 | **ZATCA** e-invoicing | KSA merchants (V2) | Phase 2 integration per merchant; private keys in KMS |
 | Egypt ETA e-receipt | Obligated merchants | Decision-based; per-merchant onboarding |
 

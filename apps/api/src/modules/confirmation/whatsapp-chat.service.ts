@@ -8,7 +8,7 @@ import { ProblemError } from "../../platform/http/problem.js";
 import { PiiCipher, type TenantPii } from "../../platform/pii/pii-cipher.js";
 import { parseActionId, type ChatAction } from "./confirmation-link.js";
 import { ConfirmationService, type RunRow } from "./confirmation.service.js";
-import { CANCEL_REASONS, type CancelReason, type ChatMessage } from "./messages.js";
+import { CANCEL_REASONS, consentKeyword, type CancelReason, type ChatMessage } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
 
@@ -126,6 +126,11 @@ export class WhatsAppChat {
   }
 
   private async handle(trx: Transaction<DB>, tenantId: string, m: InboundMessage, hash: string, pii: TenantPii, now: Date): Promise<{ run: RunRow | null; action: string }> {
+    const consent = m.kind === "text" && m.text ? consentKeyword(m.text) : null;
+    if (consent) return this.onConsent(trx, tenantId, m, hash, pii, consent, now);
+    // Replying or tapping in the chat is consent to hear about their orders here (not after an opt-out).
+    await trx.updateTable("customers").set((eb) => ({ whatsapp_opt_in: true, opt_in_at: eb.fn.coalesce("opt_in_at", eb.val(now)), opt_in_source: eb.fn.coalesce("opt_in_source", eb.val("whatsapp_reply")) }))
+      .where("phone_hash", "=", hash).where("whatsapp_opt_out_at", "is", null).execute();
     if (m.reply) {
       const tap = parseActionId(this.config.LINK_SIGNING_KEY, m.reply);
       if (!tap) return { run: null, action: "ignored" };
@@ -223,6 +228,24 @@ export class WhatsAppChat {
       default:
         return "ignored";
     }
+  }
+
+  /**
+   * STOP or START typed alone (E6-4b). The opt-out is kept on the customer (created for a number
+   * that never ordered), a running confirmation goes to the team's calls, and later ones skip
+   * WhatsApp; START clears it. The chat is open (they just wrote), so the answer is free-form.
+   */
+  private async onConsent(trx: Transaction<DB>, tenantId: string, m: InboundMessage, hash: string, pii: TenantPii, consent: "opt_out" | "opt_in", now: Date): Promise<{ run: RunRow | null; action: string }> {
+    const out = consent === "opt_out";
+    const set = out ? { whatsapp_opt_in: false, whatsapp_opt_out_at: now } : { whatsapp_opt_in: true, whatsapp_opt_out_at: null, opt_in_at: now, opt_in_source: "whatsapp_reply" };
+    await trx.insertInto("customers").values({ tenant_id: tenantId, phone_hash: hash, phone_e164: pii.encrypt(`+${m.from}`, "customers.phone_e164"), ...set })
+      .onConflict((oc) => oc.columns(["tenant_id", "phone_hash"]).doUpdateSet(set)).execute();
+    const run = await this.recentRun(trx, hash, now);
+    if (!run) return { run: null, action: consent };
+    await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: run.order_id, type: out ? "whatsapp_opted_out" : "whatsapp_opted_in", actor_type: "customer", data: JSON.stringify({ channel: "whatsapp" }) }).execute();
+    if (out && run.status === "running") await this.confirmations.escalate(trx, tenantId, run, "opted_out", now);
+    await this.reply(trx, tenantId, run, out ? "opted_out" : "opted_in", m.id, now);
+    return { run, action: consent };
   }
 
   private reply(trx: Transaction<DB>, tenantId: string, run: RunRow, message: ChatMessage, inbound: string, now: Date) {

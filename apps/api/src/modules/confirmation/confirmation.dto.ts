@@ -86,11 +86,13 @@ export const OrderConfirmationSchema = z.object({
   whatsapp: z.array(z.object({
     direction: z.enum(["in", "out"]),
     kind: z.string().describe("out: template, list, text; in: quick_reply, button_reply, list_reply, text, location"),
-    action: z.string().nullable().describe("out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored"),
+    action: z.string().nullable().describe("out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored, opt_out, opt_in"),
     status: z.string(),
     errorCode: z.number().int().nullable(),
     at: z.iso.datetime(),
   })),
+  /** The customer wrote STOP in the chat (E6-4b): WhatsApp is skipped for them until they write START. */
+  optedOut: z.boolean(),
   /** Lines for the team to read on the call while the order is open. */
   script: z.array(z.string()),
   /** The run's offer (E6-11), whatever its status. */

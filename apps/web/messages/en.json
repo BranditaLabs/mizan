@@ -691,7 +691,8 @@
         "unreachable": "Called several times with no answer. Decide whether to keep or cancel.",
         "manual": "The link was sent by hand. Waiting for the customer.",
         "high_risk": "High risk score: call the customer before anything is sent.",
-        "hold": "Very high risk score: review this order before confirming it."
+        "hold": "Very high risk score: review this order before confirming it.",
+        "opted_out": "The customer asked for no WhatsApp messages (STOP). Call them."
       },
       "nextSend": "Next: {channel}",
       "waiting": "Waiting for an answer to {channel}, until",
@@ -736,7 +737,9 @@
           "confirmed_offer": "Sent: order confirmed + the offer",
           "offer_added": "Sent: offer will be added",
           "offer_declined": "Sent: no problem",
-          "offer_expired": "Sent: offer ended"
+          "offer_expired": "Sent: offer ended",
+          "opted_out": "Sent: no more messages here",
+          "opted_in": "Sent: welcome back"
         },
         "in": {
           "confirm": "Customer tapped: Confirm",
@@ -750,7 +753,9 @@
           "late": "Tap after the order was recorded",
           "ignored": "Message not understood",
           "offer_yes": "Customer tapped: Add it",
-          "offer_no": "Customer tapped: No thanks"
+          "offer_no": "Customer tapped: No thanks",
+          "opt_out": "Customer wrote STOP",
+          "opt_in": "Customer wrote START"
         },
         "status": {
           "accepted": "Sent",
@@ -804,7 +809,8 @@
           "expired": "This offer has ended"
         },
         "qty": "(qty <n>{qty}</n>)"
-      }
+      },
+      "optedOut": "This customer wrote STOP: WhatsApp is skipped for them until they write START."
     },
     "answerChannel": {
       "link": "the customer's link",

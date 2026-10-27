@@ -110,17 +110,24 @@ export class ConfirmationService {
   async advance(trx: Transaction<DB>, tenantId: string, run: RunRow, from: number, now: Date): Promise<void> {
     const plan = planOf(run);
     const channels = await this.messaging.channels(tenantId, trx);
+    let optedOut = false;
     for (let idx = from; idx < plan.length; idx++) {
       const step = plan[idx]!;
       if (step.channel === "call_team") {
         // The automatic part ends here: the order goes on the team's call list.
         await trx.updateTable("confirmation_runs").set({ step: idx }).where("id", "=", run.id).execute();
         await this.insertStep(trx, tenantId, run.id, idx, step.channel, "send", now, "done");
-        await this.escalate(trx, tenantId, run, "team_call", now);
+        await this.escalate(trx, tenantId, run, optedOut ? "opted_out" : "team_call", now);
         return;
       }
       if (step.channel === "sms" || !channels[step.channel]) {
         await this.insertStep(trx, tenantId, run.id, idx, step.channel, "send", now, "skipped", "channel not connected");
+        continue;
+      }
+      if (step.channel === "whatsapp" && (await this.optedOut(trx, run.order_id))) {
+        // The customer wrote STOP (E6-4b): no message, the next channel (usually the team's call).
+        await this.insertStep(trx, tenantId, run.id, idx, step.channel, "send", now, "skipped", "customer opted out");
+        optedOut = true;
         continue;
       }
       let at = now;
@@ -133,7 +140,7 @@ export class ConfirmationService {
       return;
     }
     // Nothing could be tried at all → no channel; something was tried and nobody answered → no reply.
-    await this.escalate(trx, tenantId, run, from === 0 ? "no_channel" : "no_reply", now);
+    await this.escalate(trx, tenantId, run, optedOut ? "opted_out" : from === 0 ? "no_channel" : "no_reply", now);
   }
 
   async escalate(trx: Transaction<DB>, tenantId: string, run: RunRow, reason: string, now: Date): Promise<void> {
@@ -343,6 +350,7 @@ export class ConfirmationService {
         steps: steps.filter((s) => s.kind === "send").map((s) => ({ idx: s.idx, channel: s.channel, status: s.status, at: s.run_at.toISOString() })),
         attempts: attempts.map((x) => ({ channel: x.channel, outcome: x.outcome, at: x.started_at.toISOString() })),
         whatsapp: chat.map((m) => ({ direction: m.direction as "in", kind: m.kind, action: m.action, status: m.status, errorCode: m.error_code, at: m.created_at.toISOString() })),
+        optedOut: await this.optedOut(trx, orderId),
         script: f ? callScript(f.facts) : [],
         offer: offerRow ? this.offers.view(offerRow) : null,
         channels: await this.messaging.channels(tenantId, trx),
@@ -459,6 +467,12 @@ export class ConfirmationService {
     await trx.insertInto("confirmation_steps").values({
       tenant_id: tenantId, run_id: run.id, idx: run.step, channel: "whatsapp", kind: "reply", run_at: now, payload: JSON.stringify({ message }), idempotency_key: `${run.id}:reply:${inReplyTo}`,
     }).onConflict((oc) => oc.columns(["tenant_id", "idempotency_key"]).doNothing()).execute();
+  }
+
+  /** The order's customer wrote STOP in the chat (E6-4b). */
+  async optedOut(trx: Transaction<DB>, orderId: string): Promise<boolean> {
+    const c = await trx.selectFrom("orders as o").innerJoin("customers as c", "c.id", "o.customer_id").select("c.whatsapp_opt_out_at").where("o.id", "=", orderId).executeTakeFirst();
+    return Boolean(c?.whatsapp_opt_out_at);
   }
 
   /** Cancels the run's waiting sends and waits; replies already queued in the chat still go out. */

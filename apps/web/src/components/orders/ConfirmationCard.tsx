@@ -19,9 +19,9 @@ type RunStatus = NonNullable<Summary["run"]>["status"];
 type ChatLine = Summary["whatsapp"][number];
 const TONE: Record<RunStatus, BadgeTone> = { running: "info", needs_agent: "warning", confirmed: "success", cancelled: "neutral", stopped: "neutral" };
 const CHANNEL_ICON: Record<string, IconProps["name"]> = { whatsapp: "message", call_auto: "call", voice: "call", call_team: "customer", sms: "sms", agent: "customer" };
-const REASONS = ["team_call", "no_reply", "no_channel", "change_requested", "customer_message", "unreachable", "manual"] as const;
-const OUT = new Set(["ask", "confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already"]);
-const IN = new Set(["confirm", "change", "cancel", "reason", "keep", "note", "message", "location", "late", "ignored", "offer_yes", "offer_no"]);
+const REASONS = ["team_call", "no_reply", "no_channel", "change_requested", "customer_message", "unreachable", "manual", "high_risk", "hold", "opted_out"] as const;
+const OUT = new Set(["ask", "confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already", "opted_out", "opted_in"]);
+const IN = new Set(["confirm", "change", "cancel", "reason", "keep", "note", "message", "location", "late", "ignored", "offer_yes", "offer_no", "opt_out", "opt_in"]);
 const OFFER_TONE: Record<string, BadgeTone> = { proposed: "info", accepted: "success", applying: "info", applied: "success", declined: "neutral", expired: "neutral", failed: "danger" };
 const CAN_ACT = new Set(["owner", "admin", "ops_manager", "agent"]);
 
@@ -85,6 +85,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
         ) : (
           <>
             {run.status === "needs_agent" ? <p className="text-body-sm">{t(`reason.${reason}`)}</p> : null}
+            {s.optedOut && reason !== "opted_out" ? <p className="text-body-sm text-text-2" data-testid="opted-out">{t("optedOut")}</p> : null}
             {run.next && run.status === "running" ? (
               <p className="text-body-sm text-text-2">{t(run.next.kind === "send" ? "nextSend" : "waiting", { channel: t(`channel.${channelKey(run.next.channel)}`) })}{" "}<DateText relative value={run.next.at} /></p>
             ) : null}

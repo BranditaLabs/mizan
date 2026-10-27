@@ -77,6 +77,10 @@ Parameters: 1 greeting with first name, 2 store name, 3 order number, 4 amount (
 
 Settings → Confirmation → the store's WhatsApp number (owner, admin): Phone number ID, WhatsApp Business Account ID and a permanent system-user token (stored encrypted). Checked in the background: active, or needs attention (`token_refused`, `token_lacks_permission`, `template_pending`, `template_rejected`, `template_missing`) with what to do. Embedded Signup (one click, E6-4b) replaces the form once Meta approves Mizan as a Tech Provider. Everything to set up at Meta: `docs/needed-from-you.md` §1.
 
+### Consent: STOP and START (E6-4b)
+
+Meta's policy: message customers who agreed, and honour an opt-out. A customer who replies or taps in the chat has opted in (`customers.whatsapp_opt_in`, `opt_in_at`, `opt_in_source = whatsapp_reply`). One who writes **STOP** alone (also `unsubscribe`, «إيقاف», «وقف», «وقف الرسايل», «إلغاء الاشتراك»; spelling, hamza and diacritics don't matter) has opted out (`whatsapp_opt_out_at`): the running confirmation goes to the team's calls (reason `opted_out`), they get one free-form answer in the open chat, and every later confirmation skips WhatsApp for them (step `skipped`, "customer opted out") and goes to the next channel, usually the team's call. **START** («ابدأ») clears it. A longer message containing "stop" is a message to the team, not an opt-out. The opt-out is kept for a number that never ordered, so it holds when they do. The order screen says when the customer has opted out; the customer export (privacy) includes it. Consent collected at checkout (`opt_in_source = checkout`) waits for a store setting and Meta's guidance on wording.
+
 The **link page** (`/c/{token}`) stays for stores without a WhatsApp number: the team sends it by hand (wa.me, prefilled) or copies it. Every channel answers through one service (`applyAnswer`): the order becomes Confirmed or Cancelled, the timeline and attempts log record who and how, a second answer is refused.
 
 ### Offers: upsell and cross-sell (E6-11)

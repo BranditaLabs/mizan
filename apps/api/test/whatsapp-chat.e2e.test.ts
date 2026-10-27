@@ -240,6 +240,54 @@ describe("the conversation", () => {
     await deliver();
     expect((await orderRow(id)).ship_lat).toBe(30.0561);
   });
+
+  it("STOP: the customer is opted out, the team calls instead, and later orders skip WhatsApp until START (E6-4b)", async () => {
+    const PHONE = "201001239999";
+    const mine = () => newOrder({ customer: { name: "Sara Nabil", phone: `+${PHONE}` }, shippingAddress: { name: "Sara Nabil", phone: `+${PHONE}`, line1: "5 Makram Ebeid St", city: "Nasr City", countryCode: "EG" } });
+    const customer = () => db.tenant(store, (trx) => trx.selectFrom("customers as c").innerJoin("orders as o", "o.customer_id", "c.id").where("o.id", "=", first)
+      .select(["c.whatsapp_opt_in", "c.whatsapp_opt_out_at", "c.opt_in_source", "c.opt_in_at"]).executeTakeFirstOrThrow());
+    const first = await mine();
+    await run();
+    const t = await templateFor(first);
+    expect(t.message.to).toBe(PHONE);
+    const before = wa.accepted.length;
+    wa.writes(PHONE, " إيقاف ");
+    await deliver();
+    expect(await runOf(first)).toMatchObject({ status: "needs_agent", reason: "opted_out" });
+    await run();
+    expect(sentAfter(before).map((m) => m.body.text?.body)).toEqual(["تمام، مش هنبعتلك رسايل تاني هنا من Nile Abayas. لو حبيت ترجع اكتب «ابدأ»."]);
+    expect(await customer()).toMatchObject({ whatsapp_opt_in: false, whatsapp_opt_out_at: expect.any(Date) });
+    const summary = (await http().get(`/v1/orders/${first}/confirmation`).set(as("owner")).expect(200)).body;
+    expect(summary.whatsapp.map((m: { direction: string; action: string }) => `${m.direction}:${m.action}`)).toEqual(["out:ask", "in:opt_out", "out:opted_out"]);
+    expect(summary.optedOut).toBe(true);
+
+    // The next order: no message at all, straight to the team's calls.
+    const quiet = wa.accepted.length;
+    const second = await mine();
+    await run();
+    expect(sentAfter(quiet)).toHaveLength(0);
+    expect(await runOf(second)).toMatchObject({ status: "needs_agent", reason: "opted_out" });
+
+    // START: back in; the next order is asked in the chat again.
+    wa.writes(PHONE, "ابدأ");
+    await deliver();
+    await run();
+    expect(sentAfter(quiet).map((m) => m.body.text?.body)).toEqual(["أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من Nile Abayas هنا."]);
+    expect(await customer()).toMatchObject({ whatsapp_opt_in: true, whatsapp_opt_out_at: null, opt_in_source: "whatsapp_reply" });
+    const third = await mine();
+    await run();
+    expect((await templateFor(third)).message.to).toBe(PHONE);
+  });
+
+  it("a tap or a reply records consent to hear about orders here; a longer message with 'stop' in it is just a message", async () => {
+    const consent = () => db.tenant(store, (trx) => trx.selectFrom("customers").select(["whatsapp_opt_in", "opt_in_source"]).where("whatsapp_opt_in", "=", true).where("opt_in_source", "=", "whatsapp_reply").execute());
+    expect((await consent()).length).toBeGreaterThan(0); // CUSTOMER tapped in the tests above
+    const id = await newOrder();
+    await run();
+    wa.writes(CUSTOMER, "please stop calling me at work, call after 5");
+    await deliver();
+    expect(await runOf(id)).toMatchObject({ status: "needs_agent", reason: "customer_message" });
+  });
 });
 
 describe("Meta misbehaving, and forgeries", () => {

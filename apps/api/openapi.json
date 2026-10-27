@@ -20645,7 +20645,7 @@
                 },
                 "action": {
                   "nullable": true,
-                  "description": "out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored",
+                  "description": "out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored, opt_out, opt_in",
                   "type": "string"
                 },
                 "status": {
@@ -20673,6 +20673,9 @@
               ],
               "additionalProperties": false
             }
+          },
+          "optedOut": {
+            "type": "boolean"
           },
           "script": {
             "type": "array",
@@ -20822,6 +20825,7 @@
           "steps",
           "attempts",
           "whatsapp",
+          "optedOut",
           "script",
           "offer",
           "channels"

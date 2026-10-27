@@ -4093,13 +4093,14 @@ export interface components {
                 direction: "in" | "out";
                 /** @description out: template, list, text; in: quick_reply, button_reply, list_reply, text, location */
                 kind: string;
-                /** @description out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored */
+                /** @description out: ask or the reply sent; in: confirm, change, cancel, reason, keep, note, message, late, ignored, opt_out, opt_in */
                 action: string | null;
                 status: string;
                 errorCode: number | null;
                 /** Format: date-time */
                 at: string;
             }[];
+            optedOut: boolean;
             script: string[];
             offer: {
                 /** Format: uuid */
