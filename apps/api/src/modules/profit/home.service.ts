@@ -8,6 +8,7 @@ import { AdSpendService } from "./ads/ad-spend.service.js";
 import { daysOf, fixedCostsFor, percent } from "./home.js";
 import type { HOME_LEAKS } from "./profit.dto.js";
 import { addDays, asDate, dayText, localDay, storeClock } from "./store-day.js";
+import { deliveredRate } from "../reports/metrics.js";
 
 /** Periods the home offers (days ending yesterday's store day … today). */
 export const HOME_PERIODS = [7, 30, 90] as const;
@@ -85,7 +86,6 @@ export class ProfitHomeService {
     const prevUnallocated = toMinor(prevAds.unallocated);
     const kept = p.net - result.fixed - unallocated;
     const prevKept = prev.net - result.prevFixed - prevUnallocated;
-    const ended = p.delivered + p.returned;
     const counts = new Map(result.flags.map((f) => [f.flag, Number(f.n)]));
 
     const leaks: Array<{ kind: (typeof HOME_LEAKS)[number]; count: number; amount: ReturnType<typeof m> | null }> = [];
@@ -105,7 +105,7 @@ export class ProfitHomeService {
         fixedCosts: m(result.fixed), unallocatedAds: m(unallocated), kept: m(kept), expectedKept: m(p.expected_net - result.fixed - unallocated),
         margin: percent(kept, p.revenue - p.refund), keptPer100: p.revenue - p.refund > 0n ? m((kept * 10000n) / (p.revenue - p.refund)) : null,
         previousKept: m(prevKept), change: percent(kept - prevKept, prevKept < 0n ? -prevKept : prevKept),
-        delivered: Number(p.delivered), returned: Number(p.returned), deliveryRate: percent(p.delivered, ended), refusalLoss: m(p.returnedNet < 0n ? -p.returnedNet : 0n),
+        delivered: Number(p.delivered), returned: Number(p.returned), deliveryRate: deliveredRate(p.delivered, p.returned), refusalLoss: m(p.returnedNet < 0n ? -p.returnedNet : 0n),
         adSpend: ads.total,
         breakdown: {
           revenue: m(p.revenue - p.refund), productCost: m(p.cogs), shippingAndCod: m(p.shipping + p.cod_fee), ads: m(p.ads + unallocated), returns: m(p.rto),

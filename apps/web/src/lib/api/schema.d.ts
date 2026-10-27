@@ -545,6 +545,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/metrics/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_catalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/metrics/values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReportsController_values"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -2616,6 +2648,40 @@ export interface components {
             status: "active" | "invited" | "disabled";
             /** Format: date-time */
             joinedAt: string;
+        };
+        MetricCatalogue: {
+            /** @description The metrics the caller may see, in their language */
+            data: {
+                key: string;
+                version: number;
+                /** @enum {string} */
+                unit: "count" | "percent" | "money" | "days";
+                module: string;
+                name: string;
+                definition: string;
+            }[];
+        };
+        MetricValues: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            /** @description The store's base currency, for money metrics */
+            currency: string;
+            data: {
+                key: string;
+                version: number;
+                /** @enum {string} */
+                unit: "count" | "percent" | "money" | "days";
+                /** @description Decimal string: a count, a percentage with one decimal ("82.4"), an amount, or days; null when it cannot be computed (nothing to divide by) */
+                value: string | null;
+                money?: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                numerator?: string;
+                denominator?: string;
+            }[];
         };
         Money: {
             amount: string;
@@ -6622,6 +6688,89 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UpgradeRequested"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReportsController_catalogue: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The semantic metric catalogue the caller may see (name and definition in their language) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricCatalogue"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReportsController_values: {
+        parameters: {
+            query?: {
+                /** @description Comma-separated metric keys; every metric the caller may see if absent */
+                keys?: string;
+                /** @description The last 7, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Values for a period of store days; metrics the caller may not see are left out, never zero */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetricValues"];
                 };
             };
             /** @description Understood but refused (a business rule) */

@@ -76,6 +76,8 @@ _Sample data. Full visual in `design/prototype.html`._
 
 > New metrics are added to the semantic layer in code with tests, never as ad-hoc SQL in a screen.
 
+✅ Built (E15-1, `apps/api/src/modules/reports/metrics.ts`): orders, delivered rate, RTO rate, prepaid share, COD share, net profit, average order value, days of cover; each versioned, in Arabic and English, with the roles that see it; one set of facts per period of store days (the profit home's rows and filters, so its delivered rate and net profit are the same numbers, tested). First response time waits for the inbox (M17).
+
 ## Events emitted
 
 | Event | Meaning |
@@ -127,7 +129,7 @@ _Sample data. Full visual in `design/prototype.html`._
 | GET | `/v1/reports` | Saved reports |
 | POST | `/v1/reports/query` | Run a query |
 | POST | `/v1/reports/{id}/schedules` | Schedule |
-| GET | `/v1/metrics` | Semantic metric catalogue |
+| GET | `/v1/metrics/catalogue` · `/v1/metrics/values` | Semantic metric catalogue and values ✅ E15-1 (`/metrics` itself is the Prometheus endpoint) |
 | GET | `/v1/dashboards/{id}` | Dashboard with tiles |
 
 Conventions: `docs/05-api.md`.

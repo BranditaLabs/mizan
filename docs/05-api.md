@@ -222,6 +222,13 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | GET | `/catalog` | ✅ E11-3. Automation triggers (every domain event except plumbing, with the context each loads: order, stock item or none), fields per context (no personal data), operators, actions with their params' JSON Schema, guards. One registry in code (`modules/automations/catalog.ts`) |
 | GET / POST | `/notifications` · `/notifications/read` | ✅ E11-1. The caller's team notifications (addressed to roles; `notify.team` and alerts), newest first, with `unread`; `POST /notifications/read { ids } \| { all: true }` marks them read for the caller. Every member |
 
+### Reports (M20)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/metrics/catalogue` | ✅ E15-1. The semantic metric catalogue the caller may see: `{ data[{ key, version, unit: count\|percent\|money\|days, module, name, definition }] }` in the reader's language. (Not `/metrics`: that path is Prometheus, outside the v1 prefix.) Every role, each seeing its own metrics |
+| GET | `/metrics/values` | ✅ E15-1. `?keys=a,b` (default: all the caller may see), `days=7\|30\|90` (default 30, store days ending today) or `from`/`to` (≤ 366) → `{ from, to, currency, data[{ key, version, unit, value (decimal string; percent with one decimal; null when nothing to divide by), money?, numerator?, denominator? }] }`. Metrics a role may not see are left out, never zero; unknown keys 422 |
+
 ### Billing (E12)
 
 | Method | Path | Purpose |
