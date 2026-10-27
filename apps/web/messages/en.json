@@ -1150,7 +1150,10 @@
       "ads": "Ad spend",
       "refunds": "Refunds",
       "usage": "Plan and usage",
-      "storeSync": "Store sync"
+      "storeSync": "Store sync",
+      "team": "Team",
+      "integrations": "Integrations",
+      "audit": "Audit log"
     }
   },
   "confirmationSettings": {
@@ -2751,6 +2754,173 @@
     "none": {
       "title": "No Shopify store connected",
       "body": "Connect a store first; its switches show here."
+    }
+  },
+  "team": {
+    "title": "Team",
+    "subtitle": "Who works in your store and what each can do. An invitation link only works for the email or phone it was sent to.",
+    "loading": "Loading the team…",
+    "inviteBy": "Invite by",
+    "via": {
+      "phone": "Phone",
+      "email": "Email"
+    },
+    "phoneHint": "Egyptian, Saudi or Emirati mobile: 010…, +966…, +971…",
+    "role": "Role",
+    "invite": "Send invitation",
+    "invited": "Invitation created. Share its link with them.",
+    "saved": "Saved",
+    "removed": "Removed from the store",
+    "revoked": "Invitation revoked",
+    "col": {
+      "person": "Person",
+      "role": "Role",
+      "status": "Status",
+      "joined": "Joined"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited",
+      "disabled": "Disabled"
+    },
+    "you": "You",
+    "disable": "Disable",
+    "enable": "Enable",
+    "remove": "Remove",
+    "pending": "Pending invitations",
+    "noPending": "No pending invitations.",
+    "expires": "Expires <date></date>",
+    "copyLink": "Copy link",
+    "copied": "Link copied",
+    "revoke": "Revoke",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners and admins manage the team."
+    }
+  },
+  "integrationsSettings": {
+    "title": "Integrations",
+    "subtitle": "Your store, courier and WhatsApp connections, and anything that needs you.",
+    "loading": "Loading…",
+    "updated": "Updated",
+    "fix": "Fix it",
+    "missingScopes": "Shopify needs your approval for:",
+    "replayed": "Queued again",
+    "providers": {
+      "shopify": "Shopify",
+      "bosta": "Bosta",
+      "meta_whatsapp": "WhatsApp",
+      "whatsapp": "WhatsApp"
+    },
+    "status": {
+      "active": "Connected",
+      "pending": "Checking",
+      "needs_attention": "Needs attention",
+      "disconnected": "Disconnected"
+    },
+    "reasons": {
+      "key_refused": "The courier refused the key. Paste a new one.",
+      "key_lacks_permission": "The key lacks a permission Mizan needs.",
+      "app_uninstalled": "The Mizan app was removed from Shopify. Connect again.",
+      "scopes_changed": "Mizan needs new permissions in Shopify. Connect again to approve them."
+    },
+    "none": {
+      "title": "Nothing connected yet",
+      "body": "Connect your Shopify store and your courier to start.",
+      "action": "Go to setup"
+    },
+    "dead": {
+      "title": "Jobs that need you",
+      "subtitle": "Work that failed after its retries (for example a city the courier didn't know). Fix the cause, then send it again.",
+      "none": "Nothing waiting.",
+      "replay": "Send again"
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and ops managers see integrations."
+    }
+  },
+  "auditLog": {
+    "title": "Audit log",
+    "subtitle": "Who did what in your store, newest first, including anything Mizan's team did.",
+    "loading": "Loading…",
+    "filter": "Show",
+    "all": "Everything",
+    "more": "Older",
+    "families": {
+      "member": "Team",
+      "connection": "Integrations",
+      "customer": "Customer data",
+      "order": "Orders",
+      "refund": "Refunds",
+      "payment": "Payments",
+      "shipment": "Shipping",
+      "store": "Store and plan",
+      "support": "Mizan support access",
+      "user": "Sign-in"
+    },
+    "col": {
+      "when": "When",
+      "who": "Who",
+      "what": "What",
+      "on": "On"
+    },
+    "actor": {
+      "mizan": "Mizan team",
+      "someone": "A team member",
+      "system": "Mizan",
+      "api_key": "API key",
+      "automation": "Automation"
+    },
+    "actions": {
+      "member": {
+        "invited": "Invited someone",
+        "invitation_revoked": "Revoked an invitation",
+        "joined": "Joined the store",
+        "updated": "Changed a member",
+        "removed": "Removed a member"
+      },
+      "connection": {
+        "connected": "Connected an integration",
+        "disconnected": "Disconnected an integration",
+        "needs_attention": "An integration needs attention",
+        "sync_updated": "Changed store sync",
+        "key_saved": "Saved a key",
+        "secret_rotated": "Rotated a key"
+      },
+      "customer": {
+        "pii_viewed": "Viewed a customer's contact"
+      },
+      "store": {
+        "suspended": "Suspended the store",
+        "reactivated": "Reactivated the store",
+        "plan_changed": "Changed the plan"
+      },
+      "support": {
+        "access_started": "Opened support access",
+        "access_ended": "Ended support access"
+      },
+      "user": {
+        "sign_in_disabled": "Stopped someone's sign-in",
+        "sign_in_enabled": "Allowed someone's sign-in again"
+      },
+      "refund": {
+        "requested": "Requested a refund",
+        "approved": "Approved a refund",
+        "rejected": "Rejected a refund",
+        "completed": "Completed a refund"
+      },
+      "export": {
+        "created": "Exported data"
+      }
+    },
+    "empty": {
+      "title": "Nothing yet",
+      "body": "Changes to your store show here."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners and admins see the audit log."
     }
   }
 }
