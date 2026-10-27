@@ -83,7 +83,19 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | GET | `/platform/users/{id}` | ✅ A-5. The person plus `memberships[{ storeId, storeName, storeStatus, role, status, joinedAt }]` |
 | POST | `/platform/users/{id}/disable` | ✅ A-5. `{ reason }`: every request they make gets 403 `user_disabled` (this API instance at once, others within the user cache TTL); written to the audit log of each store they belong to (`user.sign_in_disabled`, `mizan_staff`). 409 `user_is_staff` (disable their staff access first), `not_yourself`. Super admin |
 | POST | `/platform/users/{id}/enable` | ✅ A-5. They can sign in again (`user.sign_in_enabled` in their stores' logs). Super admin |
+| GET | `/platform/flags` | ✅ A-6. Every flag `{ key, description, enabled (for everyone), stores[{ storeId, storeName, enabled }], updatedAt }`. Super admin, engineer, support |
+| PUT / DELETE | `/platform/flags/{key}` | ✅ A-6. `{ enabled, description? }` creates or changes a flag for every store without its own setting; DELETE removes it (code reads it as off). Keys `a-z0-9_.`. Super admin, engineer |
+| PUT / DELETE | `/platform/flags/{key}/stores/{storeId}` | ✅ A-6. `{ enabled }`: the store's own setting, which wins; DELETE clears it. 404 `flag_not_found`. Super admin, engineer |
+| GET / POST | `/platform/announcements` | ✅ A-6. List (`?live=true`); post `{ level: info\|warning\|critical, titleAr, titleEn, bodyAr?, bodyEn?, link? (https), plans?, countries?, startsAt?, endsAt }`. Post: super admin, support |
+| POST | `/platform/announcements/{id}/end` | ✅ A-6. Ends it now (kept for the record) |
 | GET | `/platform/audit` | ✅ A-1. The staff trail newest first: `?limit≤200&before=<id>` → `{ data[{ id, staffId, email, action, outcome, status, target, storeId, at }], nextBefore }`. Super admin, engineer |
+
+### Flags and announcements, store side (✅ A-6)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/flags` | Any member: `{ flags: { key: boolean } }`, every flag as it applies to this store (its own setting, else everyone's; unknown keys are off). apps/web: `useFlag(key)`; API modules: `FlagsService.isEnabled(tenantId, key)` (30 s cache) |
+| GET | `/announcements` | Any member: live announcements for this store's plan and country, most serious first, both languages `{ id, level, titleAr, titleEn, bodyAr, bodyEn, link, endsAt }`. Shown across the dashboard; info and warnings can be hidden per device, critical ones cannot |
 
 ### Support access, store side (✅ A-3)
 

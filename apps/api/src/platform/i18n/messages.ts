@@ -50,6 +50,7 @@ const PROBLEM_TITLES = {
   user_disabled: { en: "Sign-in to Mizan is disabled for this account", ar: "الدخول لميزان متوقف للحساب ده" },
   user_is_staff: { en: "Disable their staff access first", ar: "اوقف صلاحيته كموظف الأول" },
   not_yourself: { en: "You cannot do this to your own account", ar: "مينفعش تعمل كده لحسابك" },
+  flag_not_found: { en: "No flag with this key", ar: "مفيش فلاج بالاسم ده" },
   not_confirmed: { en: "Only a confirmed order ships", ar: "الأوردر لازم يتأكّد الأول قبل الشحن" },
   address_missing: { en: "The order has no delivery address or phone", ar: "الأوردر مفيهوش عنوان أو موبايل للتوصيل" },
   payment_blocks_shipping: { en: "The payment doesn't allow shipping yet", ar: "الدفع لسه ميسمحش بالشحن" },

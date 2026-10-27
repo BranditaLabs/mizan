@@ -45,6 +45,22 @@ export interface AdSpend {
   updated_by: string | null;
 }
 
+export interface Announcements {
+  id: Generated<string>;
+  level: Generated<string>;
+  title_ar: string;
+  title_en: string;
+  body_ar: Generated<string>;
+  body_en: Generated<string>;
+  link: string | null;
+  plans: ArrayType<string> | null;
+  countries: ArrayType<string> | null;
+  starts_at: Generated<Timestamp>;
+  ends_at: Timestamp;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+}
+
 export interface ApiKeys {
   id: Generated<string>;
   tenant_id: string;
@@ -336,6 +352,23 @@ export interface ExternalVariants {
   variant_id: string | null;
   field_owner: Generated<Json>;
   last_seen: Json | null;
+}
+
+export interface FeatureFlagStores {
+  flag_key: string;
+  tenant_id: string;
+  enabled: boolean;
+  updated_by: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface FeatureFlags {
+  key: string;
+  description: Generated<string>;
+  enabled: Generated<boolean>;
+  updated_by: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface FxRateOverrides {
@@ -1207,6 +1240,7 @@ export interface WhatsappMessages {
 export interface DB {
   accounting_periods: AccountingPeriods;
   ad_spend: AdSpend;
+  announcements: Announcements;
   api_keys: ApiKeys;
   audit_log: AuditLog;
   automation_runs: AutomationRuns;
@@ -1226,6 +1260,8 @@ export interface DB {
   exchanges: Exchanges;
   expenses: Expenses;
   external_variants: ExternalVariants;
+  feature_flag_stores: FeatureFlagStores;
+  feature_flags: FeatureFlags;
   fx_rate_overrides: FxRateOverrides;
   fx_rates: FxRates;
   idempotency_keys: IdempotencyKeys;
