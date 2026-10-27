@@ -165,6 +165,11 @@ Conventions: `docs/05-api.md`.
 - History per ticket (`ticket_events`): opened, status, assigned, changed fields, notes. The description and notes stay on the ticket, never in events or the audit log.
 - Web: Tickets in the menu (tabs: open now, late, new, waiting, inspection, resolved, closed, all; search by ticket or order number), the ticket page (work on it, add a note, history), and the order's tickets card with "Open ticket".
 
+## Built (E10-3)
+
+- Inspection per order line (sellable, damaged, written off), never past what was shipped, from the order screen or the ops app (scan the item). Sellable units go back into stock; lost units' product cost lands on the order's profit; a returned order shows "awaiting inspection" until every unit is inspected; a delivered order's units sent back sellable come off its cost.
+- Damaged and written off both count as lost for now: B-grade stock is still an open question below.
+
 ## Open questions
 
 - Refunds through which providers per country?

@@ -481,6 +481,38 @@ export interface paths {
         patch: operations["TicketsController_update"];
         trace?: never;
     };
+    "/v1/orders/{id}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReturnsController_state"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/returns/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReturnsController_inspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -2329,6 +2361,27 @@ export interface components {
             /** @description The file's text: a header row with SKU and cost and/or barcode; other columns are ignored */
             csv: string;
         };
+        Inspect: {
+            items: {
+                /**
+                 * Format: uuid
+                 * @description The order line that came back
+                 */
+                lineId: string;
+                quantity: number;
+                /**
+                 * @description restock: sellable, back into stock; damaged; write_off: thrown away
+                 * @enum {string}
+                 */
+                outcome: "restock" | "damaged" | "write_off";
+            }[];
+            note?: string;
+            /**
+             * Format: uuid
+             * @description The return or exchange ticket it settles; it must be on the same order
+             */
+            ticketId?: string;
+        };
         InstallRecipe: {
             /**
              * @description Messages in this language (default: the store's)
@@ -2832,7 +2885,7 @@ export interface components {
             ops: {
                 /** @description Made by the app once per operation (a UUID or ULID); a replay with the same opId changes nothing */
                 opId: string;
-                /** @description One of: stock.receive, stock.count, stock.adjust */
+                /** @description One of: stock.receive, stock.count, stock.adjust, return.inspect */
                 type: string;
                 payload: {
                     [key: string]: unknown;
@@ -4042,6 +4095,43 @@ export interface components {
              * @enum {string}
              */
             action: "keep" | "merge";
+        };
+        ReturnState: {
+            /** Format: uuid */
+            orderId: string;
+            /** @description Returned, or delivered and sent back by the customer */
+            eligible: boolean;
+            /** @description Whether the caller may record an inspection */
+            canInspect: boolean;
+            lines: {
+                /** Format: uuid */
+                lineId: string;
+                title: string;
+                sku: string | null;
+                /** Format: uuid */
+                variantId: string | null;
+                quantity: number;
+                restock: number;
+                damaged: number;
+                writeOff: number;
+                /** @description Units not inspected yet */
+                remaining: number;
+            }[];
+            /** @description Newest first */
+            inspections: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                lineId: string;
+                title: string;
+                quantity: number;
+                /** @enum {string} */
+                outcome: "restock" | "damaged" | "write_off";
+                note: string | null;
+                by: string | null;
+                /** Format: date-time */
+                at: string;
+            }[];
         };
         RevealedCustomer: {
             name: string | null;
@@ -6216,6 +6306,116 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReturnsController_state: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Each line: how many units came back sellable, damaged or written off, and how many are left */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnState"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReturnsController_inspect: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["Inspect"];
+            };
+        };
+        responses: {
+            /** @description Recorded: restocked units go back into stock, lost units count on the order's profit; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnState"];
                 };
             };
             /** @description Not found */

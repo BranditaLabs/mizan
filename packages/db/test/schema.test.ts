@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -166,6 +166,16 @@ describe("schema", () => {
     await step();
     await step();
     expect((await asTenant(T1, () => db.query(`SELECT * FROM ticket_events WHERE ticket_id = $1`, [ticket]))).rows).toHaveLength(1);
+  });
+
+  it("keeps return inspections per store, a positive count with a known outcome (E10-3)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, external_id, number, currency, total_minor, placed_at, status) VALUES ($1, 'ret-1', '#RET1', 'EGP', 100000, now(), 'returned') RETURNING id`, [T1]))).rows[0]!.id;
+    const line = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO order_lines (tenant_id, order_id, title, quantity, unit_price_minor) VALUES ($1, $2, 'Abaya', 2, 100000) RETURNING id`, [T1, order]))).rows[0]!.id;
+    const add = (q: number, outcome: string) => asTenant(T1, () => db.query(`INSERT INTO return_inspections (tenant_id, order_id, order_line_id, quantity, outcome) VALUES ($1, $2, $3, $4, $5)`, [T1, order, line, q, outcome]));
+    await add(1, "restock");
+    await expect(add(0, "restock")).rejects.toThrow(/quantity_check/);
+    await expect(add(1, "lost")).rejects.toThrow(/outcome_check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM return_inspections`))).rows).toEqual([]);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {

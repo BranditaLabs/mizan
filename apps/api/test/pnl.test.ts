@@ -29,7 +29,14 @@ function gen(r: () => number): PnlInput {
   const paid = mode === "cod" ? 0n : mode === "partial" ? total / 4n : r() < 0.8 ? total : 0n;
   const foreign = r() < 0.2;
   const currency = foreign ? "USD" : "EGP";
-  const lines = Array.from({ length: 1 + Math.floor(r() * 3) }, () => ({ quantity: 1 + Math.floor(r() * 4), unitCostMinor: r() < 0.15 ? null : int(100_000) }));
+  // After a return is inspected (E10-3): some units back in stock, some lost, never more than the line.
+  const inspect = (stage === "returned" || stage === "delivered") && r() < 0.6;
+  const lines = Array.from({ length: 1 + Math.floor(r() * 3) }, () => {
+    const quantity = 1 + Math.floor(r() * 4);
+    const restocked = inspect ? Math.floor(r() * (quantity + 1)) : 0;
+    const lost = inspect ? Math.floor(r() * (quantity - restocked + 1)) : 0;
+    return { quantity, unitCostMinor: r() < 0.15 ? null : int(100_000), ...(inspect ? { restocked, lost } : {}) };
+  });
   const has = () => r() < 0.8;
   return {
     stage, paymentMode: mode, currency, totalMinor: total, codMinor: mode === "cod" || mode === "partial" ? total - paid : 0n,
@@ -122,6 +129,24 @@ describe("profit properties (5,000 generated orders)", () => {
     expect(spreadShare(100n, 3, 2)).toBe(33n);
     expect(spreadShare(100n, 0, 0)).toBe(0n);
     expect(spreadShare(100n, 3, 3)).toBe(0n); // not one of the day's orders
+  });
+
+  it("returned goods cost only the units inspection lost; a delivered order's units sent back sellable come off its cost (E10-3)", () => {
+    let seen = 0;
+    for (const c of cases) {
+      const p = computePnl(c);
+      const known = c.rateToBase !== null;
+      const cost = (f: (l: PnlInput["lines"][number]) => number) => (known ? c.lines.reduce((a, l) => a + (l.unitCostMinor ?? 0n) * BigInt(f(l)), 0n) : 0n);
+      if (c.stage === "returned") {
+        expect(p.cogs).toBe(cost((l) => l.lost ?? 0));
+        const left = c.lines.reduce((a, l) => a + l.quantity - (l.restocked ?? 0) - (l.lost ?? 0), 0);
+        expect(p.flags.includes("awaiting_inspection")).toBe(left > 0);
+        seen++;
+      }
+      if (c.stage === "delivered" && c.confirmed) expect(p.cogs).toBe(cost((l) => l.quantity - (l.restocked ?? 0)));
+      if (c.stage !== "returned") expect(p.flags).not.toContain("awaiting_inspection");
+    }
+    expect(seen).toBeGreaterThan(300);
   });
 
   it("is deterministic", () => {

@@ -34,8 +34,11 @@ export interface PnlInput {
   /** 1 order-currency unit = rate base units; null = no rate for the day. */
   rateToBase: string | null;
   base: string;
-  /** Unit cost in base minor units; null when the product has no cost yet. */
-  lines: Array<{ quantity: number; unitCostMinor: bigint | null }>;
+  /**
+   * Unit cost in base minor units; null when the product has no cost yet. After a return is
+   * inspected (E10-3): units back in stock (`restocked`) and units lost, damaged or written off.
+   */
+  lines: Array<{ quantity: number; unitCostMinor: bigint | null; restocked?: number; lost?: number }>;
   confirmed: boolean;
   /** Succeeded money movements in order currency. */
   payments: Array<{ kind: string; method: string; amountMinor: bigint; feeMinor: bigint; feeIsActual: boolean }>;
@@ -99,15 +102,29 @@ export function computePnl(i: PnlInput): Pnl {
   const refund = conv(i.refundedMinor);
   const chargeback = conv(i.payments.filter((p) => p.kind === "chargeback").reduce((a, p) => a + p.amountMinor, 0n));
 
-  // Product cost, from confirmation on; returned goods are back in stock.
+  // Product cost, from confirmation on. A returned order's goods are back in stock except the
+  // units inspection found damaged or wrote off (E10-3); a delivered order's units the customer
+  // sent back sellable come off its cost.
   const countsCogs = i.confirmed && !cancelled && i.stage !== "returned" && i.stage !== "open";
   let cogsAll = 0n;
+  let restockedCost = 0n;
+  let lostCost = 0n;
+  let inspected = 0;
+  let units = 0;
   for (const l of i.lines) {
-    if (l.unitCostMinor === null) { if (!cancelled && i.stage !== "returned") flags.add("cost_missing"); continue; }
+    units += l.quantity;
+    inspected += (l.restocked ?? 0) + (l.lost ?? 0);
+    if (l.unitCostMinor === null) {
+      if ((!cancelled && i.stage !== "returned") || (i.stage === "returned" && (l.lost ?? 0) > 0)) flags.add("cost_missing");
+      continue;
+    }
     cogsAll += l.unitCostMinor * BigInt(l.quantity);
+    restockedCost += l.unitCostMinor * BigInt(Math.min(l.restocked ?? 0, l.quantity));
+    lostCost += l.unitCostMinor * BigInt(Math.min(l.lost ?? 0, l.quantity));
   }
-  if (!known) cogsAll = 0n;
-  const cogs = countsCogs ? cogsAll : 0n;
+  if (!known) { cogsAll = 0n; restockedCost = 0n; lostCost = 0n; }
+  const cogs = countsCogs ? cogsAll - restockedCost : i.stage === "returned" ? lostCost : 0n;
+  if (i.stage === "returned" && inspected < units) flags.add("awaiting_inspection");
 
   const courierAmount = (actual: bigint | undefined, m: Money | null | undefined) => (actual !== undefined ? actual : rule(m, "shipping_rate_missing"));
   const shipping = shipped ? courierAmount(i.actual?.shipping, i.rules.courier?.amount) : 0n;

@@ -151,7 +151,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 - [x] **E10-1** `M` Tickets CRUD + types + statuses; order link. ✅ Migration 0035 (numbers per store, fixed reasons, `refused` type, source, deadline, `ticket_events` history); `GET/POST /v1/tickets`, `GET/PATCH /v1/tickets/{id}`; agents work their own and the unassigned queue, warehouse adds notes; one open case of a kind per order; events `ticket.created`, `ticket.status_changed`, `ticket.assigned` (automation triggers); Tickets screen, ticket page and the order's tickets card (AR/EN).
 - [ ] **E10-2** `M` Exchange creates linked order + return shipment; partial delivery; open-box (المعاينة) outcome.
-- [ ] **E10-3** `S` Inspection (restock / damaged / write-off) in web + ops app → stock movement + P&L update.
+- [x] **E10-3** `S` Inspection (restock / damaged / write-off) in web + ops app → stock movement + P&L update. ✅ Migration 0037 (`return_inspections` per order line); `GET /v1/orders/{id}/returns`, `POST …/returns/inspect`, ops-app op `return.inspect` (by barcode or SKU, once per op); `return.inspected` → stock puts sellable units back (once per inspection), profit counts lost units on a returned order and takes restocked units off a delivered one, `awaiting_inspection` until every unit is inspected (property-tested); returned goods card on the order (AR/EN). B-grade stock as its own SKU stays an open question (M6).
 
 ### E11 · M13 Automation core
 

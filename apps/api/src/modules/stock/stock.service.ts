@@ -271,11 +271,28 @@ export class StockService {
   }
 
   /** Ledger rows and the levels they sum to, in one go. */
-  private async write(trx: Trx, tenantId: string, warehouseId: string, moves: Array<{ variant: string; reason: string; delta: number; ref?: string; detail?: string | null; note?: string | null; deviceOpId?: string | null }>, actor: EventActor) {
+  /**
+   * Units inspected as sellable come back into stock (E10-3): one return_restock movement per
+   * inspection, at the order's warehouse, written once however often the event arrives. Items
+   * Mizan doesn't count are left alone.
+   */
+  async restockReturn(trx: Trx, tenantId: string, r: { inspectionId: string; orderId: string; variantId: string; quantity: number }, actor: EventActor): Promise<boolean> {
+    const done = await trx.selectFrom("stock_movements").select("id").where("ref_type", "=", "return").where("ref_id", "=", r.inspectionId).executeTakeFirst();
+    if (done) return false;
+    const order = await trx.selectFrom("orders").select("location_id").where("id", "=", r.orderId).executeTakeFirst();
+    const warehouseId = order?.location_id ?? (await this.warehouse(trx, tenantId)).id;
+    const levels = await this.lock(trx, warehouseId, [r.variantId]);
+    if (!levels.has(r.variantId)) return false;
+    await this.write(trx, tenantId, warehouseId, [{ variant: r.variantId, reason: "return_restock", delta: r.quantity, ref: r.inspectionId, refType: "return" }], actor);
+    await this.retryWaiting(trx, tenantId, [r.variantId], ["short"]);
+    return true;
+  }
+
+  private async write(trx: Trx, tenantId: string, warehouseId: string, moves: Array<{ variant: string; reason: string; delta: number; ref?: string; refType?: string; detail?: string | null; note?: string | null; deviceOpId?: string | null }>, actor: EventActor) {
     if (!moves.length) return;
     await trx.insertInto("stock_movements").values(moves.map((m) => ({
       tenant_id: tenantId, warehouse_id: warehouseId, variant_id: m.variant, delta: m.delta, reason: m.reason,
-      ref_type: m.ref ? "order" : null, ref_id: m.ref ?? null, detail: m.detail ?? null, note: m.note ?? null,
+      ref_type: m.ref ? (m.refType ?? "order") : null, ref_id: m.ref ?? null, detail: m.detail ?? null, note: m.note ?? null,
       device_op_id: m.deviceOpId ? (moves.length > 1 ? `${m.deviceOpId}:${m.variant}` : m.deviceOpId) : null,
       actor_id: actor.type === "user" ? (actor.id ?? null) : null,
     }))).execute();

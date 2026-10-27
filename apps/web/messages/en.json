@@ -2325,5 +2325,26 @@
       "title": "Not available for your role",
       "body": "Owners, admins, finance and ops managers see refund settings."
     }
+  },
+  "returns": {
+    "title": "Returned goods",
+    "inspect": "Inspect",
+    "inspectTitle": "Inspect returned goods",
+    "inspectHint": "How many units of each item came back sellable, damaged or to throw away.",
+    "left": "{count, plural, one {# unit still to inspect} other {# units still to inspect}}",
+    "done": "Everything that came back is inspected.",
+    "counts": "{restock} sellable · {damaged} damaged · {writeOff} written off · {remaining} left",
+    "record": "{quantity} × {title}: {outcome}",
+    "ofRemaining": "{remaining} to inspect",
+    "note": "Note",
+    "save": "Save inspection",
+    "cancel": "Cancel",
+    "saved": "Inspection saved",
+    "over": "That's more units than are left to inspect.",
+    "outcome": {
+      "restock": "Sellable",
+      "damaged": "Damaged",
+      "write_off": "Written off"
+    }
   }
 }

@@ -58,6 +58,16 @@ export class ProfitService {
       }
     }
 
+    // What came back and what inspection found (E10-3).
+    const inspections = await trx.selectFrom("return_inspections").select(["order_line_id", "outcome", sql<string>`sum(quantity)`.as("n")])
+      .where("order_id", "=", orderId).groupBy(["order_line_id", "outcome"]).execute();
+    const back = new Map<string, { restocked: number; lost: number }>();
+    for (const r of inspections) {
+      const b = back.get(r.order_line_id) ?? { restocked: 0, lost: 0 };
+      if (r.outcome === "restock") b.restocked += Number(r.n); else b.lost += Number(r.n);
+      back.set(r.order_line_id, b);
+    }
+
     const payments = await trx.selectFrom("payments").select(["kind", "method", "amount_minor", "fee_minor", "fee_is_actual"])
       .where("order_id", "=", orderId).where("status", "=", "succeeded").execute();
     const shipment = await trx.selectFrom("shipments").select("provider").where("order_id", "=", orderId).where("is_return_leg", "=", false)
@@ -85,7 +95,10 @@ export class ProfitService {
     const pnl = computePnl({
       stage: stageOf(o.status, Boolean(o.shipped_at)), paymentMode: o.payment_mode, currency, base, rateToBase,
       totalMinor: BigInt(o.total_minor), codMinor: BigInt(o.cod_minor), refundedMinor: BigInt(o.refunded_minor), confirmed,
-      lines: lines.map((l) => ({ quantity: l.quantity, unitCostMinor: locked.get(l.id) ?? (l.cogs_set_at ? BigInt(String(l.cogs_minor ?? 0)) : null) })),
+      lines: lines.map((l) => ({
+        quantity: l.quantity, unitCostMinor: locked.get(l.id) ?? (l.cogs_set_at ? BigInt(String(l.cogs_minor ?? 0)) : null),
+        restocked: back.get(l.id)?.restocked ?? 0, lost: back.get(l.id)?.lost ?? 0,
+      })),
       payments: payments.map((p) => ({ kind: p.kind, method: p.method, amountMinor: BigInt(p.amount_minor), feeMinor: BigInt(p.fee_minor ?? 0), feeIsActual: p.fee_is_actual })),
       rules: {
         packaging: packaging?.amount ?? null, agent: agent?.amount ?? null, codPct: cod?.pct ?? null,

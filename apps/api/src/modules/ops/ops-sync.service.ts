@@ -6,7 +6,8 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { StockService } from "../stock/stock.service.js";
-import { OP_TYPES, StockOpPayloadSchema, type OpsSyncBody } from "./ops.dto.js";
+import { ReturnsService } from "../returns/returns.service.js";
+import { OP_TYPES, ReturnInspectPayloadSchema, StockOpPayloadSchema, type OpsSyncBody } from "./ops.dto.js";
 
 type Trx = Transaction<DB>;
 type Stored = "applied" | "rejected" | "conflict";
@@ -27,6 +28,7 @@ export class OpsSyncService {
     @Inject(Database) private readonly db: Database,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(StockService) private readonly stock: StockService,
+    @Inject(ReturnsService) private readonly returns: ReturnsService,
   ) {}
 
   async sync(auth: AuthContext, body: OpsSyncBody) {
@@ -52,10 +54,10 @@ export class OpsSyncService {
           await trx.updateTable("ops_operations").set({ result: JSON.stringify(result) }).where("op_id", "=", op.opId).execute();
           await sql`release savepoint ops_op`.execute(trx);
         } catch (e) {
-          if (!(e instanceof Refused) && !(e instanceof ProblemError && (e.status === 404 || e.status === 422))) throw e;
+          if (!(e instanceof Refused) && !(e instanceof ProblemError && (e.status === 404 || e.status === 422 || e.code === "over_quantity" || e.code === "not_returned"))) throw e;
           await sql`rollback to savepoint ops_op`.execute(trx);
           outcome = e instanceof Refused ? e.outcome
-            : e.code === "below_reserved" ? { status: "conflict", code: e.code, message: e.errors?.[0]?.message ?? e.detail ?? null, result: null }
+            : e.code === "below_reserved" || e.code === "over_quantity" || e.code === "not_returned" ? { status: "conflict", code: e.code, message: e.errors?.[0]?.message ?? e.detail ?? null, result: null }
             : { status: "rejected", code: e.status === 404 ? "unknown_item" : e.code, message: e.detail ?? null, result: null };
           await trx.insertInto("ops_operations").values({
             tenant_id: tenantId, op_id: op.opId, device_id: body.deviceId, user_id: auth.user.id, type: op.type,
@@ -75,6 +77,7 @@ export class OpsSyncService {
 
   private async apply(trx: Trx, tenantId: string, auth: AuthContext, op: OpsSyncBody["ops"][number], deviceId: string): Promise<Record<string, unknown>> {
     if (!(OP_TYPES as readonly string[]).includes(op.type)) throw new Refused("rejected", "unknown_type", `no operation called ${op.type}`);
+    if (op.type === "return.inspect") return this.inspect(trx, tenantId, auth, op);
     const parsed = StockOpPayloadSchema.safeParse(op.payload);
     if (!parsed.success) throw new Refused("rejected", "invalid_payload", parsed.error.issues.map((x) => `${x.path.join(".") || "payload"}: ${x.message}`).join("; ").slice(0, 300));
     const p = parsed.data;
@@ -89,6 +92,24 @@ export class OpsSyncService {
     }, op.opId);
     const level = r.levels[0]!;
     return { variantId, onHand: level.onHand, reserved: level.reserved, available: level.available, ordersReserved: r.ordersReserved };
+  }
+
+  /** A returned order's items, scanned at the warehouse (E10-3): the same rules as the web. */
+  private async inspect(trx: Trx, tenantId: string, auth: AuthContext, op: OpsSyncBody["ops"][number]): Promise<Record<string, unknown>> {
+    const parsed = ReturnInspectPayloadSchema.safeParse(op.payload);
+    if (!parsed.success) throw new Refused("rejected", "invalid_payload", parsed.error.issues.map((x) => `${x.path.join(".") || "payload"}: ${x.message}`).join("; ").slice(0, 300));
+    const p = parsed.data;
+    const n = p.orderNumber?.replace(/^#/, "");
+    const order = await (p.orderId ? trx.selectFrom("orders").select("id").where("id", "=", p.orderId) : trx.selectFrom("orders").select("id").where("number", "in", [n!, `#${n}`]).orderBy("placed_at", "desc")).executeTakeFirst();
+    if (!order) throw new Refused("rejected", "unknown_order", `no order ${p.orderNumber ?? p.orderId}`);
+    const lines = await trx.selectFrom("order_lines as l").leftJoin("variants as v", "v.id", "l.variant_id").select(["l.id", "v.sku", "v.barcode"]).where("l.order_id", "=", order.id).orderBy("l.external_line_id").execute();
+    const items = p.items.map((i) => {
+      const line = i.lineId ? lines.find((l) => l.id === i.lineId) : i.barcode ? lines.find((l) => l.barcode === i.barcode) : lines.find((l) => l.sku === i.sku);
+      if (!line) throw new Refused("rejected", "unknown_item", i.barcode ? `no item with barcode ${i.barcode} on this order` : i.sku ? `no item with SKU ${i.sku} on this order` : "no such line on this order");
+      return { lineId: line.id, quantity: i.quantity, outcome: i.outcome };
+    });
+    const r = await this.returns.record(trx, tenantId, order.id, { items, ...(p.note ? { note: p.note } : {}) }, { type: "user", id: auth.user.id }, op.opId);
+    return { orderId: order.id, inspected: r.items.length, complete: r.complete };
   }
 
   /** The item by id, else by barcode (what a scan reads), else by SKU. */

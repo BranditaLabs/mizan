@@ -18,7 +18,7 @@ const MAX_DAYS_PER_EVENT = 400;
 @Injectable()
 @EventConsumer({
   name: "profit.recompute",
-  events: ["order.created", "order.updated", "order.cancelled", "order.confirmed", "order.payment_changed", "costs.changed", "fx.rate_overridden", "ads.spend_changed"],
+  events: ["order.created", "order.updated", "order.cancelled", "order.confirmed", "order.payment_changed", "costs.changed", "fx.rate_overridden", "ads.spend_changed", "return.inspected"],
 })
 export class ProfitConsumer implements EventHandler {
   constructor(@Inject(ProfitService) private readonly profit: ProfitService) {}

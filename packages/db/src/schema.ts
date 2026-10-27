@@ -785,6 +785,21 @@ export interface Reports {
   created_at: Generated<Timestamp>;
 }
 
+export interface ReturnInspections {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  order_line_id: string;
+  variant_id: string | null;
+  ticket_id: string | null;
+  quantity: number;
+  outcome: string;
+  note: string | null;
+  inspected_by: string | null;
+  device_op_id: string | null;
+  created_at: Generated<Timestamp>;
+}
+
 export interface SchemaMigrations {
   version: string;
   name: string;
@@ -1149,6 +1164,7 @@ export interface DB {
   purchase_orders: PurchaseOrders;
   refunds: Refunds;
   reports: Reports;
+  return_inspections: ReturnInspections;
   schema_migrations: SchemaMigrations;
   scripts: Scripts;
   secrets: Secrets;

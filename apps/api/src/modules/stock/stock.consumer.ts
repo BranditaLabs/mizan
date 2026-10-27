@@ -19,3 +19,19 @@ export class StockConsumer implements EventHandler {
     if (event.entity.type === "order") await this.stock.syncOrder(trx, event.tenantId, event.entity.id, event.actor ?? { type: "system" });
   }
 }
+
+type Inspected = { inspectionId: string; variantId: string | null; quantity: number; outcome: string };
+
+/** Returns inspected as sellable go back into stock (E10-3). */
+@Injectable()
+@EventConsumer({ name: "stock.returns", events: ["return.inspected"] })
+export class StockReturnsConsumer implements EventHandler {
+  constructor(@Inject(StockService) private readonly stock: StockService) {}
+
+  async handle(event: DomainEvent, trx: Transaction<DB>): Promise<void> {
+    const items = ((event.data as { items?: Inspected[] }).items ?? []).filter((i) => i.outcome === "restock" && i.variantId);
+    for (const i of items) {
+      await this.stock.restockReturn(trx, event.tenantId, { inspectionId: i.inspectionId, orderId: event.entity.id, variantId: i.variantId!, quantity: i.quantity }, event.actor ?? { type: "system" });
+    }
+  }
+}
