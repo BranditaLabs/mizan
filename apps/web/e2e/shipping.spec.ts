@@ -46,6 +46,10 @@ test("owner in Arabic: a confirmed order offers shipping, and says to connect a 
   await expect(page.locator(".mz-toast", { hasText: "اتحدّث 1" })).toBeVisible();
   await page.getByRole("tablist", { name: "الشحنات" }).getByRole("tab", { name: /اتسلّمت/ }).click();
   await expect(page.getByTestId("shipments")).toContainText("JT-5001");
+  // E7-4: the courier's scorecard by zone.
+  const score = page.getByTestId("scorecard");
+  await expect(score).toContainText("J&T");
+  await expect(score).toContainText("1 شحنة · 100.0٪ اتسلّمت");
   await page.goto(`/ar/orders/${o.id}`);
   await expect(page.getByRole("heading", { level: 1 }).locator("..")).toContainText("اتسلّم");
 });

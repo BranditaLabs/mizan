@@ -609,6 +609,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/couriers/scorecard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ScorecardController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -2363,6 +2379,41 @@ export interface components {
         CostsUpdated: {
             updated: number;
             missingCost: number;
+        };
+        CourierScorecard: {
+            days: number;
+            couriers: {
+                /** @description Booked in the period */
+                shipments: number;
+                delivered: number;
+                /** @description Returned or on the way back */
+                returned: number;
+                /** @description Still with the courier */
+                inFlight: number;
+                /** @description delivered ÷ (delivered + returned), one decimal: the metric layer's formula; null until one ended */
+                deliveredRate: string | null;
+                rtoRate: string | null;
+                /** @description Booked → delivered, in days, one decimal */
+                avgDaysToDeliver: string | null;
+                courier: string;
+                /** @description Most shipments first */
+                zones: {
+                    /** @description Booked in the period */
+                    shipments: number;
+                    delivered: number;
+                    /** @description Returned or on the way back */
+                    returned: number;
+                    /** @description Still with the courier */
+                    inFlight: number;
+                    /** @description delivered ÷ (delivered + returned), one decimal: the metric layer's formula; null until one ended */
+                    deliveredRate: string | null;
+                    rtoRate: string | null;
+                    /** @description Booked → delivered, in days, one decimal */
+                    avgDaysToDeliver: string | null;
+                    /** @description The governorate (or city when there is none); null when unknown */
+                    zone: string | null;
+                }[];
+            }[];
         };
         CreateCostRule: {
             /** @enum {string} */
@@ -7238,6 +7289,51 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ScorecardController_get: {
+        parameters: {
+            query?: {
+                /** @description Shipments booked in the last 30, 90 or 180 days */
+                days?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per courier and zone: delivered, returned, still out, delivered rate (the metric layer's formula), days to deliver */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourierScorecard"];
                 };
             };
             /** @description Understood but refused (a business rule) */

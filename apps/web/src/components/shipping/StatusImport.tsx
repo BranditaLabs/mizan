@@ -31,6 +31,7 @@ export function StatusImport({ open, onClose }: { open: boolean; onClose(): void
       setCsv("");
       toast({ message: t("done", { changed: r.changed, unchanged: r.unchanged }) });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
+      void qc.invalidateQueries({ queryKey: ["scorecard"] });
       onClose();
     },
     onError: (e) => { if (!(e instanceof ApiError && e.code === "csv_invalid")) toast({ message: e instanceof ApiError && e.title ? e.title : t("failed") }); },

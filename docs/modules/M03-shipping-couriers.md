@@ -101,6 +101,8 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 ✅ **E7-6 — couriers without an API.** The team records the handover on the order (courier name + tracking number; the courier is remembered by name), and the courier's daily report updates the shipments as a CSV import on the Shipping screen (tracking number + status in Arabic or English, date and note optional; all or nothing, each line that can't be applied is named; each row is an audited person's update). The same import works as a fallback for Bosta when its webhooks are down.
 
+✅ **E7-4 — courier scorecard by zone** (`GET /v1/couriers/scorecard`, "Couriers by zone" on the Shipping screen): per courier and governorate (or city), shipments booked in the last 30/90/180 days, delivered rate (the metric layer's formula), returns, still out, and days from booking to delivery. Days to remit come with settlements (M8).
+
 ## Events emitted
 
 | Event | Meaning |
@@ -161,7 +163,7 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 | GET | `/v1/shipments` | List and filter |
 | POST | `/v1/couriers/{code}/webhook` | Inbound courier status |
 | DELETE | `/v1/shipments/{id}` | Cancel before pickup |
-| GET | `/v1/couriers/scorecard` | Rates by zone |
+| GET | `/v1/couriers/scorecard` | Rates by zone ✅ E7-4 |
 
 Conventions: `docs/05-api.md`.
 

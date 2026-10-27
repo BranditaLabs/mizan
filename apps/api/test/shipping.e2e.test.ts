@@ -245,4 +245,17 @@ describe("shipping (E7-1)", () => {
     const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select("action").where("action", "in", ["shipment.statuses_imported", "shipment.recorded"]).execute());
     expect(audit.map((x) => x.action).sort()).toEqual(["shipment.recorded", "shipment.recorded", "shipment.statuses_imported", "shipment.statuses_imported"]);
   });
+
+  it("the courier scorecard by zone: delivered rate as everywhere, returns and days to deliver (E7-4)", async () => {
+    const card = (await http().get("/v1/couriers/scorecard?days=30").set(as("owner")).expect(200)).body;
+    expect(card.days).toBe(30);
+    const jt = card.couriers.find((c: { courier: string }) => c.courier === "J&T Express");
+    expect(jt).toMatchObject({ shipments: 2, delivered: 1, returned: 1, inFlight: 0, deliveredRate: "50.0", rtoRate: "50.0", avgDaysToDeliver: "0.0" });
+    expect(jt.zones).toEqual([expect.objectContaining({ zone: "Cairo", shipments: 2, deliveredRate: "50.0" })]);
+    const b = card.couriers.find((c: { courier: string }) => c.courier === "bosta");
+    expect(b.shipments).toBeGreaterThanOrEqual(3);
+    expect(b.zones.reduce((n: number, z: { shipments: number }) => n + z.shipments, 0)).toBe(b.shipments);
+    await http().get("/v1/couriers/scorecard?days=7").set(as("owner")).expect(422);
+    await http().get("/v1/couriers/scorecard").set(as("agent")).expect(403);
+  });
 });

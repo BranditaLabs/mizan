@@ -2589,6 +2589,25 @@
         "not_booked": "the shipment isn't booked yet",
         "other": "can't be applied"
       }
+    },
+    "scorecard": {
+      "title": "Couriers by zone",
+      "hint": "Shipments booked in the period: delivered rate (delivered of those that ended), returns, still out and days to deliver.",
+      "period": "Period",
+      "lastDays": "{days} days",
+      "zone": "Zone",
+      "unknownZone": "No zone",
+      "shipments": "Shipments",
+      "deliveredRate": "Delivered",
+      "inFlight": "Still out",
+      "days": "Days to deliver",
+      "pct": "{v}%",
+      "counts": "{delivered} delivered · {returned} back",
+      "summary": "{shipments} shipments · {rate} delivered · {rto} back",
+      "empty": {
+        "title": "No shipments in this period",
+        "body": "The scorecard fills as couriers deliver."
+      }
     }
   }
 }

@@ -15,6 +15,7 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { Scorecard } from "./Scorecard";
 import { StatusImport } from "./StatusImport";
 
 type Row = Schemas["ShipmentPage"]["data"][number];
@@ -98,6 +99,7 @@ export function ShipmentsScreen() {
           </div>
         )}
       </Tabs>
+      <Scorecard />
       {editing ? <SetStatusDialog row={editing} onClose={() => setEditing(null)} /> : null}
       <StatusImport open={importing} onClose={() => setImporting(false)} />
     </div>
@@ -117,6 +119,7 @@ function SetStatusDialog({ row, onClose }: { row: Row; onClose(): void }) {
     onSuccess: () => {
       toast({ message: t("saved") });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
+      void qc.invalidateQueries({ queryKey: ["scorecard"] });
       onClose();
     },
   });

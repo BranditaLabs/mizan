@@ -129,7 +129,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/shipments/{id}/cancel` | Cancel with courier |
 | GET | `/shipments/{id}/label` | PDF label (A6/A4) |
 | POST | `/pickups` | Request pickup |
-| GET | `/couriers/scorecard` | Delivery rate, RTO, days-to-remit by courier and zone |
+| GET | `/couriers/scorecard` | ✅ E7-4. `days=30\|90\|180` (default 90; shipments booked in the period) → `{ days, couriers[{ courier, shipments, delivered, returned, inFlight, deliveredRate, rtoRate, avgDaysToDeliver, zones[{ zone, …same }] }] }`. Zone = the governorate, or the city when there is none. `deliveredRate` is the metric layer's formula (delivered ÷ ended); days booked → delivered. Days to remit wait for settlements (M8). Owner, admin, ops manager, finance |
 
 ### Warehouse (M4)
 

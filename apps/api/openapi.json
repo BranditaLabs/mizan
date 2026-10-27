@@ -4039,6 +4039,83 @@
         ]
       }
     },
+    "/v1/couriers/scorecard": {
+      "get": {
+        "operationId": "ScorecardController_get",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 90,
+              "description": "Shipments booked in the last 30, 90 or 180 days",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Shipments booked in the last 30, 90 or 180 days"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Per courier and zone: delivered, returned, still out, delivered rate (the metric layer's formula), days to deliver",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourierScorecard"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "shipping"
+        ]
+      }
+    },
     "/v1/usage": {
       "get": {
         "operationId": "BillingController_get",
@@ -12734,6 +12811,143 @@
         "required": [
           "updated",
           "missingCost"
+        ],
+        "additionalProperties": false
+      },
+      "CourierScorecard": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "couriers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "shipments": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Booked in the period"
+                },
+                "delivered": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "returned": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Returned or on the way back"
+                },
+                "inFlight": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Still with the courier"
+                },
+                "deliveredRate": {
+                  "nullable": true,
+                  "description": "delivered ÷ (delivered + returned), one decimal: the metric layer's formula; null until one ended",
+                  "type": "string"
+                },
+                "rtoRate": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "avgDaysToDeliver": {
+                  "nullable": true,
+                  "description": "Booked → delivered, in days, one decimal",
+                  "type": "string"
+                },
+                "courier": {
+                  "type": "string"
+                },
+                "zones": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "shipments": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Booked in the period"
+                      },
+                      "delivered": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "returned": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Returned or on the way back"
+                      },
+                      "inFlight": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "Still with the courier"
+                      },
+                      "deliveredRate": {
+                        "nullable": true,
+                        "description": "delivered ÷ (delivered + returned), one decimal: the metric layer's formula; null until one ended",
+                        "type": "string"
+                      },
+                      "rtoRate": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "avgDaysToDeliver": {
+                        "nullable": true,
+                        "description": "Booked → delivered, in days, one decimal",
+                        "type": "string"
+                      },
+                      "zone": {
+                        "nullable": true,
+                        "description": "The governorate (or city when there is none); null when unknown",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "shipments",
+                      "delivered",
+                      "returned",
+                      "inFlight",
+                      "deliveredRate",
+                      "rtoRate",
+                      "avgDaysToDeliver",
+                      "zone"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Most shipments first"
+                }
+              },
+              "required": [
+                "shipments",
+                "delivered",
+                "returned",
+                "inFlight",
+                "deliveredRate",
+                "rtoRate",
+                "avgDaysToDeliver",
+                "courier",
+                "zones"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "days",
+          "couriers"
         ],
         "additionalProperties": false
       },
