@@ -5,10 +5,11 @@ import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch,
 import { TERMINAL_STATUSES } from "@mizan/shared";
 import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
+import { fulfillmentEventFor } from "./progress.js";
 import { ShapeWatch } from "../adapt/shape.js";
 import { shouldApplyStatus } from "../adapt/status.js";
 import { BostaConnector, type BostaConfig, type BostaLearned } from "../connectors/bosta/connector.js";
-import { ShopifyConnector, type CancelReason, type ShopifyLearned } from "../connectors/shopify/connector.js";
+import { ShopifyConnector, type CancelReason, type FulfillmentEventStatus, type ShopifyLearned } from "../connectors/shopify/connector.js";
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
@@ -27,7 +28,12 @@ export interface EngineOptions {
   /** Ship automatically when an order carries this tag (set by Mizan's confirmation module). */
   autoShipTag?: string | null;
   markCodPaidOnDelivery?: boolean;
-  tagOnReturn?: string;
+  /** Tag on the store's order when the parcel is back (null: no tag). */
+  tagOnReturn?: string | null;
+  /** Tag on the store's order when the courier lost the parcel (null: no tag). */
+  tagOnLost?: string | null;
+  /** Courier steps as Shopify fulfillment events (E7-7): picked up, in transit, out for delivery, attempts, delivered, failures. */
+  fulfillmentEvents?: boolean;
   trackingCompany?: string;
   /** Overlap when polling, to cover clock skew and late writes. */
   pollOverlapMs?: number;
@@ -201,6 +207,8 @@ export class MizanEngine {
       autoShipTag: "mizan-confirmed",
       markCodPaidOnDelivery: true,
       tagOnReturn: "mizan-returned",
+      tagOnLost: "mizan-lost",
+      fulfillmentEvents: true,
       trackingCompany: "Bosta",
       pollOverlapMs: 10 * 60_000,
       echoWindowMs: 2 * 60_000,
@@ -523,6 +531,7 @@ export class MizanEngine {
       "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber),
       "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber, j.payload.hint ? "webhook" : "poll"),
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
+      "shopify.fulfillmentEvent": (j) => this.fulfillmentEvent(j.payload),
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
@@ -753,17 +762,28 @@ export class MizanEngine {
     await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: fresh.status, ...(current ? { previous: current } : {}), raw: fresh.rawStatus, at, needsReview: false, source }));
     await this.store.put<ShipmentRecord>("shipment", trackingNumber, { shipment: { ...fresh, raw: undefined }, orderId, statusAt: freshAt }, this.now());
     this.emit("shipment.status", { trackingNumber, orderId, from: current, to: fresh.status, raw: fresh.rawStatus });
-    await this.afterStatusChange(orderId, fresh.status, trackingNumber);
+    await this.afterStatusChange(orderId, fresh.status, trackingNumber, at);
   }
 
-  private async afterStatusChange(orderId: string, status: ShipmentStatus, trackingNumber: string) {
+  /** What a new courier status changes in the store's order. Only orders that came from the store (manual orders have none). */
+  private async afterStatusChange(orderId: string, status: ShipmentStatus, trackingNumber: string, at: string) {
     const rec = await this.store.get<OrderRecord>("order", orderId);
-    if (status === "delivered" && this.opts.markCodPaidOnDelivery && rec && deliveryCompletesPayment(rec.order)) {
+    if (!rec) return;
+    const event = this.opts.fulfillmentEvents ? fulfillmentEventFor(status) : null;
+    if (event) {
+      await this.enqueue("shopify.fulfillmentEvent", { orderId, trackingNumber, status: event.status, happenedAt: at, ...(event.message ? { message: event.message } : {}) },
+        `event:${orderId}:${trackingNumber}:${status}`);
+    }
+    if (status === "delivered" && this.opts.markCodPaidOnDelivery && deliveryCompletesPayment(rec.order)) {
       await this.enqueue("shopify.markPaid", { orderId }, `paid:${orderId}`);
     }
-    if (status === "returned" && this.opts.tagOnReturn) {
-      await this.enqueue("shopify.addTags", { id: orderId, tags: [this.opts.tagOnReturn] }, `tag:${orderId}:${this.opts.tagOnReturn}:${trackingNumber}`);
-    }
+    const tag = status === "returned" ? this.opts.tagOnReturn : status === "lost" ? this.opts.tagOnLost : null;
+    if (tag) await this.enqueue("shopify.addTags", { id: orderId, tags: [tag] }, `tag:${orderId}:${tag}:${trackingNumber}`);
+  }
+
+  private async fulfillmentEvent(p: { orderId: string; trackingNumber: string; status: FulfillmentEventStatus; happenedAt: string; message?: string }) {
+    const result = await this.shopify.addFulfillmentEvent(p);
+    this.emit("order.progress", { orderId: p.orderId, trackingNumber: p.trackingNumber, status: p.status, result });
   }
 
   private async markPaid(orderId: string) {

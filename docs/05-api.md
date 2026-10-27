@@ -122,6 +122,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/connections/shopify/claim` | ✅ Owner/admin: `{ install }` → `{ connection, reconnected }`. Errors: `install_not_found` (404, unknown or used), `install_expired` (410, 1 h), `install_not_yours` (403, started by another user or store), `shop_connected_elsewhere` (409), `store_limit_reached` (409, more than `MAX_SHOPIFY_STORES` stores, default 3, until plan limits E12-1). ✅ E2-7: several stores per account, each syncing on its own |
 | POST | `/connections/bosta` | ✅ Owner/admin: `{ apiKey }` → connection `pending`; the key is stored encrypted with a generated webhook token and checked in the background (engine job `bosta.checkAccess`, a harmless authenticated delivery search): `active` + `connection.connected`, or `needs_attention` (`key_refused`, `key_lacks_permission`) + `connection.needs_attention`. Posting again replaces the key. `409 store_not_connected` before the store |
 | POST | `/connections/{provider}` | Key-based connect for the next providers (EasyOrders, WooCommerce keys) |
+| GET / PUT | `/connections/{id}/sync` | ✅ E7-7. Owner/admin: a Shopify store's write-back switches `{ progressEvents, markPaidOnDelivery, tagReturned, tagLost }` (all on by default; PUT takes any of them). Audited `connection.sync_updated`; the store's engine picks them up on its next job. 404 for other providers |
 | POST | `/connections/{id}/test` | Live credential check |
 | DELETE | `/connections/{id}` | Disconnect, revoke webhooks, delete secret |
 

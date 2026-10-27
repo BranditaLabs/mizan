@@ -11,7 +11,7 @@ import { redactDeep } from "../logging/redact.js";
 export const AUDIT_ACTIONS = [
   "tenant.created",
   "member.invited", "member.invitation_revoked", "member.joined", "member.updated", "member.removed",
-  "connection.connected", "connection.disconnected", "connection.secret_rotated", "connection.key_saved", "connection.needs_attention",
+  "connection.connected", "connection.disconnected", "connection.secret_rotated", "connection.key_saved", "connection.needs_attention", "connection.sync_updated",
   "catalog.costs_updated", "catalog.variant_updated", "catalog.costs_imported", "stock.recorded", "stock.threshold_set", "stock.settings_updated", "ops.synced", "automation.created", "automation.updated", "automation.enabled", "automation.disabled", "automation.deleted", "onboarding.updated", "cost_rule.changed", "fx.rate_overridden", "ad_spend.changed", "order.duplicate_resolved", "orders.settings_updated", "order.created_manually", "orders.bulk_requested", "payment.recorded", "ticket.created", "ticket.updated", "refund.requested", "refund.approved", "refund.rejected", "refund.completed", "refunds.settings_updated", "return.inspected", "plan.upgrade_requested", "shipment.requested", "shipment.recorded", "shipment.status_set", "shipment.statuses_imported", "exchange.created", "order.partial_delivery_recorded", "order.refusal_recorded",
   "confirmation.link_created", "confirmation.settings_updated", "confirmation.answered_by_agent", "confirmation.call_no_answer",
   "offer.decided", "offer_rule.changed", "offers.settings_updated",

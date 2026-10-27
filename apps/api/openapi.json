@@ -12948,6 +12948,168 @@
         ]
       }
     },
+    "/v1/connections/{id}/sync": {
+      "get": {
+        "operationId": "StoreSyncController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What Mizan writes back to this Shopify store as the courier reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSync"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      },
+      "put": {
+        "operationId": "StoreSyncController_put",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PutStoreSync"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Changed; audited (connection.sync_updated)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSync"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/v1/privacy-requests": {
       "get": {
         "operationId": "PrivacyController_list",
@@ -25766,6 +25928,28 @@
         ],
         "additionalProperties": false
       },
+      "PutStoreSync": {
+        "type": "object",
+        "properties": {
+          "progressEvents": {
+            "type": "boolean",
+            "description": "Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures"
+          },
+          "markPaidOnDelivery": {
+            "type": "boolean",
+            "description": "Mark cash-on-delivery orders paid in Shopify when delivered"
+          },
+          "tagReturned": {
+            "type": "boolean",
+            "description": "Tag mizan-returned when the parcel is back"
+          },
+          "tagLost": {
+            "type": "boolean",
+            "description": "Tag mizan-lost when the courier lost it"
+          }
+        },
+        "additionalProperties": false
+      },
       "ReactivateStore": {
         "type": "object",
         "properties": {
@@ -28395,6 +28579,34 @@
         },
         "required": [
           "data"
+        ],
+        "additionalProperties": false
+      },
+      "StoreSync": {
+        "type": "object",
+        "properties": {
+          "progressEvents": {
+            "type": "boolean",
+            "description": "Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures"
+          },
+          "markPaidOnDelivery": {
+            "type": "boolean",
+            "description": "Mark cash-on-delivery orders paid in Shopify when delivered"
+          },
+          "tagReturned": {
+            "type": "boolean",
+            "description": "Tag mizan-returned when the parcel is back"
+          },
+          "tagLost": {
+            "type": "boolean",
+            "description": "Tag mizan-lost when the courier lost it"
+          }
+        },
+        "required": [
+          "progressEvents",
+          "markPaidOnDelivery",
+          "tagReturned",
+          "tagLost"
         ],
         "additionalProperties": false
       },

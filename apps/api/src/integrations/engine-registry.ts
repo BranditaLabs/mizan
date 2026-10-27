@@ -1,3 +1,4 @@
+import { engineSyncOptions, storeSyncOf } from "./store-sync-options.js";
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
@@ -152,6 +153,8 @@ export class EngineRegistry {
         ...(this.config.BOSTA_TRACKING_URL_TEMPLATE ? { trackingUrlTemplate: this.config.BOSTA_TRACKING_URL_TEMPLATE } : {}),
         ...(typeof bostaConfig.cityField === "string" ? { cityField: bostaConfig.cityField as "city" | "cityCode" | "cityId" } : {}),
       },
+      // What Mizan writes back to the store as the courier reports (E7-7, Settings → Integrations).
+      ...engineSyncOptions(storeSyncOf(c.shopify.config)),
       learned: {
         shopify: c.shopify.learned,
         ...(c.bosta ? { bosta: c.bosta.learned } : {}),

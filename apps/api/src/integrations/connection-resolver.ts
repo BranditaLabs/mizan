@@ -13,7 +13,7 @@ export const ProviderSecretSchemas = {
 
 export interface ResolvedConnections {
   tenantId: string;
-  shopify: { connectionId: string; shop: string; accessToken: SecretValue; learned: Record<string, unknown> };
+  shopify: { connectionId: string; shop: string; accessToken: SecretValue; config: Record<string, unknown>; learned: Record<string, unknown> };
   bosta?: { connectionId: string; apiKey: SecretValue; webhookToken: SecretValue; config: Record<string, unknown>; learned: Record<string, unknown> };
 }
 
@@ -76,7 +76,7 @@ export class ConnectionResolver {
       const s = await read("shopify", store.secret_ref);
       const resolved: ResolvedConnections = {
         tenantId,
-        shopify: { connectionId: store.id, shop: store.external_account, accessToken: new SecretValue(s.accessToken), learned: json(store.learned) },
+        shopify: { connectionId: store.id, shop: store.external_account, accessToken: new SecretValue(s.accessToken), config: json(store.config), learned: json(store.learned) },
       };
       if (bosta?.secret_ref) {
         const b = await read("bosta", bosta.secret_ref);

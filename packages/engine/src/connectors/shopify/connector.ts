@@ -30,6 +30,9 @@ export interface ShopifyLearned {
 }
 
 /** Shopify's OrderCancelReason. */
+/** Shopify's FulfillmentEventStatus values Mizan sends (E7-7). */
+export type FulfillmentEventStatus = "CARRIER_PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "ATTEMPTED_DELIVERY" | "DELIVERED" | "FAILURE" | "DELAYED";
+
 export type CancelReason = "CUSTOMER" | "DECLINED" | "FRAUD" | "INVENTORY" | "OTHER" | "STAFF";
 
 export class ShopifyConnector {
@@ -199,6 +202,52 @@ export class ShopifyConnector {
     }, { idempotent: false });
     assertNoUserErrors("fulfillmentCreate", d.fulfillmentCreate?.userErrors);
     return "created";
+  }
+
+  /**
+   * One courier step on the order's fulfillment (E7-7): the fulfillment carrying this tracking number
+   * gets the event once. The write is not idempotent, so the fulfillment's events are read first (same
+   * status at the same time, or any DELIVERED, means it is there) and a timeout is verified by reading
+   * again. No fulfillment yet (its own job still running) is transient: the job waits for it. A store
+   * whose API version does not know CARRIER_PICKED_UP gets IN_TRANSIT instead, recorded as drift.
+   */
+  async addFulfillmentEvent(e: { orderId: string; trackingNumber: string; status: FulfillmentEventStatus; happenedAt: string; message?: string }): Promise<"created" | "already_recorded"> {
+    const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: e.orderId }, { idempotent: true });
+    if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${e.orderId} not found` });
+    const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+    const fulfillment = r.arr<{ id?: string; trackingInfo?: Array<{ number?: string }> }>("fulfillments", ["fulfillments"])
+      .find((f) => (f.trackingInfo ?? []).some((t) => t.number === e.trackingNumber));
+    if (!fulfillment?.id) {
+      throw new IntegrationError({ kind: "transient", connector: "shopify", message: `order ${e.orderId} has no fulfillment for ${e.trackingNumber} yet` });
+    }
+    const at = Date.parse(e.happenedAt);
+    const recorded = async (status: FulfillmentEventStatus) => {
+      const d = await this.gql.run<{ fulfillment: Record<string, unknown> | null }>(Q.FULFILLMENT_EVENTS, { id: fulfillment.id }, { idempotent: true });
+      if (!d.fulfillment) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `fulfillment ${fulfillment.id} not found` });
+      const fr = new Resolver(d.fulfillment, { connector: "shopify", entity: "fulfillment", drift: this.drift, now: () => this.rt.clock.now() });
+      const events = fr.arr<{ status?: string; happenedAt?: string }>("events", ["events.nodes", "events"]);
+      return events.some((x) => x.status === status && (status === "DELIVERED" || Math.abs(Date.parse(x.happenedAt ?? "") - at) < 1_000));
+    };
+    let status = e.status;
+    for (;;) {
+      if (await recorded(status)) return "already_recorded";
+      try {
+        const d = await this.gql.run<{ fulfillmentEventCreate: { userErrors: UserErrors } }>(Q.FULFILLMENT_EVENT_CREATE, {
+          fulfillmentEvent: { fulfillmentId: fulfillment.id, status, happenedAt: new Date(at).toISOString(), ...(e.message ? { message: e.message } : {}) },
+        }, { idempotent: false });
+        assertNoUserErrors("fulfillmentEventCreate", d.fulfillmentEventCreate?.userErrors);
+        return "created";
+      } catch (err) {
+        if (err instanceof IntegrationError && status === "CARRIER_PICKED_UP" && (err.kind === "validation" || err.kind === "schema_drift") && /CARRIER_PICKED_UP/.test(err.message)) {
+          this.drift.record({ connector: "shopify", entity: "fulfillmentEvent", kind: "fallback_field", field: "status", detail: "CARRIER_PICKED_UP not accepted; sent IN_TRANSIT", at: this.rt.clock.now() });
+          status = "IN_TRANSIT";
+          continue;
+        }
+        if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+        if (await recorded(status)) return "created";
+        throw new IntegrationError({ kind: "transient", connector: "shopify", message: "fulfillmentEventCreate timed out and the event is not there: will try again", cause: err });
+      }
+    }
   }
 
   async markPaid(orderId: string): Promise<"marked" | "already_paid"> {

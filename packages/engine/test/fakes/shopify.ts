@@ -21,7 +21,7 @@ interface Order {
   total: string; received: string; refunded: string; shippingAddress: Record<string, unknown> | null; customer: Record<string, unknown>;
   lines: Array<{ id: string; title: string; sku: string; quantity: number; price: string }>;
   fulfillmentOrders: Array<{ id: string; status: string }>;
-  fulfillments: Array<{ id: string; status: string; trackingInfo: Array<{ company: string; number: string; url?: string }> }>;
+  fulfillments: Array<{ id: string; status: string; trackingInfo: Array<{ company: string; number: string; url?: string }>; events?: Array<{ id: string; status: string; happenedAt: string; message?: string }> }>;
 }
 
 export class FakeShopify {
@@ -51,6 +51,8 @@ export class FakeShopify {
   costPerCall = 10;
   rejectFields = new Set<string>();
   dropPaths = new Set<string>();
+  /** FulfillmentEventStatus values this API version accepts (an older one lacks CARRIER_PICKED_UP). */
+  eventStatuses = new Set(["CONFIRMED", "LABEL_PRINTED", "CARRIER_PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "ATTEMPTED_DELIVERY", "DELIVERED", "FAILURE", "DELAYED", "READY_FOR_PICKUP"]);
   /** Simulate someone changing stock between our read and our write. */
   concurrentStockChanges = 0;
   private idempotency = new Map<string, unknown>();
@@ -255,7 +257,14 @@ export class FakeShopify {
     }
     this.bucket.available -= this.costPerCall;
     this.calls.push({ op, variables });
-    const data = this.execute(op, variables);
+    let data: unknown;
+    try {
+      data = this.execute(op, variables);
+    } catch (err) {
+      const errors = (err as { graphqlErrors?: unknown[] }).graphqlErrors;
+      if (errors) return json(200, { errors, extensions: this.cost() }, headers);
+      throw err;
+    }
     if (fault === "lost") return hang(init);
     return json(200, { data: this.drop(data), extensions: this.cost() }, headers);
   };
@@ -385,6 +394,23 @@ export class FakeShopify {
         order.fulfillments.push(f);
         order.updatedAt = this.touch();
         return { fulfillmentCreate: { fulfillment: f, userErrors: [] } };
+      }
+      case "MizanFulfillmentEvents": {
+        const f = [...this.orders.values()].flatMap((o) => o.fulfillments).find((x) => x.id === v.id);
+        return { fulfillment: f ? { id: f.id, status: f.status, events: { nodes: (f.events ?? []).map(({ id, status, happenedAt }) => ({ id, status, happenedAt })) } } : null };
+      }
+      case "MizanFulfillmentEventCreate": {
+        const e = v.fulfillmentEvent as { fulfillmentId: string; status: string; happenedAt: string; message?: string };
+        if (!this.eventStatuses.has(e.status)) {
+          throw Object.assign(new Error("invalid variable"), { graphqlErrors: [{ message: `Variable $fulfillmentEvent of type FulfillmentEventInput! was provided invalid value for status (Expected "${e.status}" to be one of: ${[...this.eventStatuses].join(", ")})`, extensions: { code: "INVALID_VARIABLE" } }] });
+        }
+        const order = [...this.orders.values()].find((o) => o.fulfillments.some((x) => x.id === e.fulfillmentId));
+        const f = order?.fulfillments.find((x) => x.id === e.fulfillmentId);
+        if (!order || !f) return { fulfillmentEventCreate: { fulfillmentEvent: null, userErrors: [{ field: ["fulfillmentEvent", "fulfillmentId"], message: "Fulfillment does not exist" }] } };
+        const event = { id: this.nextId("FulfillmentEvent"), status: e.status, happenedAt: e.happenedAt, ...(e.message ? { message: e.message } : {}) };
+        (f.events ??= []).push(event);
+        order.updatedAt = this.touch();
+        return { fulfillmentEventCreate: { fulfillmentEvent: event, userErrors: [] } };
       }
       case "MizanOrderMarkPaid": {
         const o = this.orders.get(v.input.id);

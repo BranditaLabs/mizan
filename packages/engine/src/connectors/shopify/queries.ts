@@ -149,6 +149,31 @@ export const FULFILLMENT_CREATE: GqlOperation = {
   ],
 };
 
+/** A fulfillment's tracking events (E7-7): read before writing one, so a retried write never doubles it. */
+export const FULFILLMENT_EVENTS: GqlOperation = {
+  name: "MizanFulfillmentEvents",
+  cost: 5,
+  variants: [
+    `query MizanFulfillmentEvents($id: ID!) {
+      fulfillment(id: $id) { id status events(first: 100) { nodes { id status happenedAt } } }
+    }`,
+  ],
+};
+
+/** One courier step on the customer's order page in Shopify (E7-7). Not idempotent: read first. */
+export const FULFILLMENT_EVENT_CREATE: GqlOperation = {
+  name: "MizanFulfillmentEventCreate",
+  cost: 10,
+  variants: [
+    `mutation MizanFulfillmentEventCreate($fulfillmentEvent: FulfillmentEventInput!) {
+      fulfillmentEventCreate(fulfillmentEvent: $fulfillmentEvent) {
+        fulfillmentEvent { id status happenedAt }
+        userErrors { field message }
+      }
+    }`,
+  ],
+};
+
 export const ORDER_MARK_PAID: GqlOperation = {
   name: "MizanOrderMarkPaid",
   cost: 10,

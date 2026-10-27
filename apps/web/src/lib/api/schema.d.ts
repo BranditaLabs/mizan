@@ -2161,6 +2161,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/{id}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StoreSyncController_get"];
+        put: operations["StoreSyncController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/privacy-requests": {
         parameters: {
             query?: never;
@@ -5421,6 +5437,16 @@ export interface components {
         PutStoreFlag: {
             enabled: boolean;
         };
+        PutStoreSync: {
+            /** @description Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures */
+            progressEvents?: boolean;
+            /** @description Mark cash-on-delivery orders paid in Shopify when delivered */
+            markPaidOnDelivery?: boolean;
+            /** @description Tag mizan-returned when the parcel is back */
+            tagReturned?: boolean;
+            /** @description Tag mizan-lost when the courier lost it */
+            tagLost?: boolean;
+        };
         ReactivateStore: {
             reason?: string;
         };
@@ -6101,6 +6127,16 @@ export interface components {
                 /** Format: date-time */
                 expiresAt: string;
             }[];
+        };
+        StoreSync: {
+            /** @description Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures */
+            progressEvents: boolean;
+            /** @description Mark cash-on-delivery orders paid in Shopify when delivered */
+            markPaidOnDelivery: boolean;
+            /** @description Tag mizan-returned when the parcel is back */
+            tagReturned: boolean;
+            /** @description Tag mizan-lost when the courier lost it */
+            tagLost: boolean;
         };
         SupportAccessEnded: {
             /** @description Grants ended */
@@ -14170,6 +14206,107 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreSyncController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What Mizan writes back to this Shopify store as the courier reports */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreSync"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreSyncController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutStoreSync"];
+            };
+        };
+        responses: {
+            /** @description Changed; audited (connection.sync_updated) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreSync"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

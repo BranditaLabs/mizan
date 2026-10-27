@@ -1149,7 +1149,8 @@
       "offers": "Offers",
       "ads": "Ad spend",
       "refunds": "Refunds",
-      "usage": "Plan and usage"
+      "usage": "Plan and usage",
+      "storeSync": "Store sync"
     }
   },
   "confirmationSettings": {
@@ -2721,5 +2722,35 @@
   "announcements": {
     "more": "Read more",
     "hide": "Hide"
+  },
+  "storeSync": {
+    "title": "Store sync",
+    "subtitle": "What Mizan writes back to each Shopify store as the courier reports. The customer sees it on their order page and in Shopify's shipping emails.",
+    "loading": "Loading…",
+    "saved": "Saved",
+    "progressEvents": {
+      "label": "Courier progress on the order",
+      "hint": "Picked up, in transit, out for delivery, delivery attempts, delivered, and failures (refused, lost)."
+    },
+    "markPaidOnDelivery": {
+      "label": "Mark cash on delivery orders paid",
+      "hint": "When the courier delivers and collects the cash."
+    },
+    "tagReturned": {
+      "label": "Tag returned orders",
+      "hint": "Adds the tag mizan-returned when the parcel is back."
+    },
+    "tagLost": {
+      "label": "Tag lost orders",
+      "hint": "Adds the tag mizan-lost when the courier loses the parcel."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners and admins manage store sync."
+    },
+    "none": {
+      "title": "No Shopify store connected",
+      "body": "Connect a store first; its switches show here."
+    }
   }
 }
