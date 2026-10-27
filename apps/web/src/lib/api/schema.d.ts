@@ -577,6 +577,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dashboards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dashboards/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DashboardsController_export"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -2316,6 +2364,49 @@ export interface components {
              * @enum {string}
              */
             language: "ar" | "en";
+        };
+        Dashboard: {
+            /** @enum {string} */
+            id: "home" | "operations" | "profit" | "payments" | "stock";
+            name: string;
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            currency: string;
+            /** @description The dashboard's metrics the caller may see, from the metric layer */
+            tiles: {
+                key: string;
+                name: string;
+                definition: string;
+                /** @enum {string} */
+                unit: "count" | "percent" | "money" | "days";
+                value: string | null;
+                money?: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
+            /** @description Daily values, every day of the period */
+            series: {
+                /** @enum {string} */
+                key: "orders" | "net_profit";
+                name: string;
+                /** @enum {string} */
+                unit: "count" | "money";
+                points: {
+                    /** Format: date */
+                    day: string;
+                    value: string;
+                }[];
+            }[];
+        };
+        DashboardList: {
+            data: {
+                /** @enum {string} */
+                id: "home" | "operations" | "profit" | "payments" | "stock";
+                name: string;
+            }[];
         };
         DeadLetters: {
             data: {
@@ -6771,6 +6862,160 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetricValues"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DashboardsController_list: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The dashboards the caller has at least one metric on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DashboardsController_get: {
+        parameters: {
+            query?: {
+                /** @description The last 7, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tiles and daily series for a period of store days, in the caller's language */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dashboard"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DashboardsController_export: {
+        parameters: {
+            query?: {
+                /** @description The last 7, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+                /** @description Excel (default) or CSV (UTF-8 with BOM) */
+                format?: "csv" | "xlsx";
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The dashboard as an Excel or CSV file (attachment) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    "text/csv": string;
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Understood but refused (a business rule) */

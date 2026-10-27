@@ -20,7 +20,7 @@ import { FakeVerifier } from "./support/fake-auth.js";
 // Fake credential, assembled at runtime so secret scanners do not flag the fixture.
 const FAKE_KEY = ["bosta", "key", "1234"].join("-");
 const SNAPSHOT = new URL("../openapi.json", import.meta.url);
-type Op = { requestBody?: unknown; responses: Record<string, { content?: Record<string, { schema?: { $ref?: string } }> }> };
+type Op = { requestBody?: unknown; responses: Record<string, { content?: Record<string, { schema?: { $ref?: string; format?: string } }> }> };
 type Doc = { paths: Record<string, Record<string, Op>>; components: { schemas: Record<string, unknown> } };
 
 const fake = new FakeVerifier();
@@ -73,12 +73,18 @@ describe("openapi.json", () => {
       "post /v1/connections/bosta", "put /v1/products/variants/costs", "patch /v1/onboarding", "post /v1/cost-rules", "put /v1/fx-rates/{day}/{quote}",
       "post /v1/orders/{id}/confirmation", "put /v1/settings/confirmation", "post /v1/public/confirm/{token}", "post /v1/profit/recalculate", "post /v1/connections/whatsapp", "put /v1/settings/offers", "post /v1/offer-rules", "patch /v1/offer-rules/{id}", "post /v1/orders/{id}/offer", "put /v1/ad-spend", "post /v1/ad-spend/import", "post /v1/orders/{id}/duplicate", "put /v1/settings/orders", "post /v1/orders", "post /v1/orders/bulk", "patch /v1/products/variants/{id}", "post /v1/products/costs/import", "post /v1/stock/movements", "post /v1/ops/sync", "patch /v1/stock/{variantId}", "put /v1/settings/inventory", "post /v1/automations", "put /v1/automations/{id}", "patch /v1/automations/{id}", "post /v1/automations/{id}/test", "post /v1/notifications/read", "post /v1/automations/recipes/{key}/install",
     ]);
+    const files = new Set(["get /v1/dashboards/{id}/export"]);
     for (const [path, item] of Object.entries(doc.paths)) {
       for (const [method, op] of Object.entries(item)) {
         const key = `${method} ${path}`;
         const ok = Object.entries(op.responses).filter(([s]) => s.startsWith("2"));
         expect(ok.length, `${key} documents a success`).toBeGreaterThan(0);
-        for (const [status, r] of ok) if (status !== "204") expect(r.content?.["application/json"]?.schema?.$ref, `${key} ${status}`).toMatch(/^#\/components\/schemas\//);
+        for (const [status, r] of ok) {
+          if (status === "204") continue;
+          // File downloads (dashboard exports) are binary, never untyped JSON.
+          if (files.has(key)) expect(Object.values(r.content ?? {}).every((c) => c.schema?.format === "binary"), `${key} ${status} binary`).toBe(true);
+          else expect(r.content?.["application/json"]?.schema?.$ref, `${key} ${status}`).toMatch(/^#\/components\/schemas\//);
+        }
         expect(op.responses.default?.content?.["application/problem+json"], `${key} default problem`).toBeDefined();
         expect(Boolean(op.requestBody), `${key} request body`).toBe(bodies.has(key));
       }

@@ -21,7 +21,8 @@
       "products": "المنتجات",
       "automations": "الأتمتة",
       "tickets": "التذاكر",
-      "payments": "المدفوعات"
+      "payments": "المدفوعات",
+      "reports": "التقارير"
     },
     "language": {
       "label": "اللغة",
@@ -2428,5 +2429,28 @@
       "scale": "التوسّع",
       "enterprise": "الشركات"
     }
+  },
+  "reports": {
+    "title": "التقارير",
+    "subtitle": "لوحات جاهزة بنفس الأرقام اللي في كل الشاشات. نزّل أي واحدة Excel أو CSV.",
+    "loading": "بيحمّل",
+    "loadFailed": "التقرير ما اتحمّلش. جرّب تاني.",
+    "tabsLabel": "اللوحات",
+    "period": {
+      "label": "الفترة",
+      "days": "آخر {days} يوم"
+    },
+    "range": "من <from></from> لـ <to></to>",
+    "none": {
+      "title": "مفيش تقارير لدورك",
+      "body": "اسأل صاحب المتجر لو محتاج تشوف التقارير."
+    },
+    "pct": "{v}٪",
+    "days": "{v} يوم",
+    "total": "الإجمالي {n}",
+    "day": "اليوم",
+    "excel": "ملف Excel",
+    "csv": "ملف CSV",
+    "tip": "يوم {day}: {value}"
   }
 }

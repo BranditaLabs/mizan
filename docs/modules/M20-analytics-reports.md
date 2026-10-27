@@ -78,6 +78,8 @@ _Sample data. Full visual in `design/prototype.html`._
 
 ✅ Built (E15-1, `apps/api/src/modules/reports/metrics.ts`): orders, delivered rate, RTO rate, prepaid share, COD share, net profit, average order value, days of cover; each versioned, in Arabic and English, with the roles that see it; one set of facts per period of store days (the profit home's rows and filters, so its delivered rate and net profit are the same numbers, tested). First response time waits for the inbox (M17).
 
+✅ Built (E15-2, `apps/api/src/modules/reports/dashboards.ts`, web `/reports`): five built-in dashboards (overview, operations, profit, payments, stock) whose tiles are metric-layer values, plus daily series (orders per day, net profit per day). A role sees a dashboard only when it may see at least one of its metrics, and inside it only those tiles; the profit series is for money readers. Periods: the last 7, 30 or 90 store days, or a range. Every dashboard downloads as Excel (one sheet, right-to-left for Arabic readers, numbers as numbers) or CSV (UTF-8 with BOM so Excel reads Arabic; cells starting with `= + - @` are defused). The files are written in-process (`platform/xlsx.ts`, no dependency). The team dashboard waits for agent performance (M10); PDF export and saved reports are V2.
+
 ## Events emitted
 
 | Event | Meaning |
@@ -130,7 +132,8 @@ _Sample data. Full visual in `design/prototype.html`._
 | POST | `/v1/reports/query` | Run a query |
 | POST | `/v1/reports/{id}/schedules` | Schedule |
 | GET | `/v1/metrics/catalogue` · `/v1/metrics/values` | Semantic metric catalogue and values ✅ E15-1 (`/metrics` itself is the Prometheus endpoint) |
-| GET | `/v1/dashboards/{id}` | Dashboard with tiles |
+| GET | `/v1/dashboards` · `/v1/dashboards/{id}` | Built-in dashboards the caller may see, with tiles and daily series ✅ E15-2 |
+| GET | `/v1/dashboards/{id}/export?format=xlsx\|csv` | The dashboard as an Excel or CSV file ✅ E15-2 |
 
 Conventions: `docs/05-api.md`.
 

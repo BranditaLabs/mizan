@@ -33,16 +33,7 @@ export class MetricsService {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
       const { base, timezone } = await storeClock(trx, tenantId);
-      let from: string;
-      let to: string;
-      if (q.from && q.to) {
-        from = q.from; to = q.to;
-        const span = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
-        if (span < 1 || span > 366) throw new ProblemError(422, "validation_failed", "from must be before to, at most 366 days", [{ path: "to", code: "range" }]);
-      } else {
-        to = localDay(now, timezone);
-        from = addDays(to, -((q.days ?? 30) - 1));
-      }
+      const { from, to } = this.period(q, timezone, now);
       const f = await this.facts(trx, base, timezone, from, to);
       return {
         from, to, currency: base,
@@ -77,6 +68,35 @@ export class MetricsService {
       delivered: BigInt(p.delivered), returned: BigInt(p.returned), net: BigInt(p.net), revenue: BigInt(p.revenue),
       available: BigInt(stock.n), unitsShipped: BigInt(shipped.n),
     };
+  }
+
+  /** Orders (placed, not cancelled) and net profit per store day, every day of the period present. */
+  async daily(trx: Transaction<DB>, base: string, timezone: string, from: string, to: string): Promise<Array<{ day: string; orders: bigint; net: bigint }>> {
+    const local = sql`(o.placed_at AT TIME ZONE ${timezone})::date`;
+    const orders = await trx.selectFrom("orders as o").select([sql<string>`to_char(${local}, 'YYYY-MM-DD')`.as("day"), sql<string>`count(*)`.as("n")])
+      .where(sql<boolean>`${local} between ${asDate(from)} and ${asDate(to)}`).where("o.status", "!=", "cancelled").groupBy(sql`1`).execute();
+    const net = await trx.selectFrom("order_pnl as p").select([sql<string>`to_char(p.day, 'YYYY-MM-DD')`.as("day"), sql<string>`coalesce(sum(p.net_minor), 0)`.as("n")])
+      .where("p.day", ">=", asDate(from)).where("p.day", "<=", asDate(to)).where("p.currency", "=", base).groupBy("p.day").execute();
+    const o = new Map(orders.map((r) => [r.day, BigInt(r.n)]));
+    const n = new Map(net.map((r) => [r.day, BigInt(r.n)]));
+    const out: Array<{ day: string; orders: bigint; net: bigint }> = [];
+    for (let d = from; d <= to; d = addDays(d, 1)) out.push({ day: d, orders: o.get(d) ?? 0n, net: n.get(d) ?? 0n });
+    return out;
+  }
+
+  /** The period a query asks for, in store days. */
+  period(q: { days?: number; from?: string; to?: string }, timezone: string, now = new Date()): { from: string; to: string } {
+    if (q.from && q.to) {
+      const span = (Date.parse(`${q.to}T00:00:00Z`) - Date.parse(`${q.from}T00:00:00Z`)) / 86_400_000 + 1;
+      if (span < 1 || span > 366) throw new ProblemError(422, "validation_failed", "from must be before to, at most 366 days", [{ path: "to", code: "range" }]);
+      return { from: q.from, to: q.to };
+    }
+    const to = localDay(now, timezone);
+    return { from: addDays(to, -((q.days ?? 30) - 1)), to };
+  }
+
+  visibleKeys(auth: AuthContext): Set<string> {
+    return new Set(this.visible(auth).map((m) => m.key));
   }
 
   private visible(auth: AuthContext) {

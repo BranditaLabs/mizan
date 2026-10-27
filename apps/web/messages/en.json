@@ -21,7 +21,8 @@
       "products": "Products",
       "automations": "Automations",
       "tickets": "Tickets",
-      "payments": "Payments"
+      "payments": "Payments",
+      "reports": "Reports"
     },
     "language": {
       "label": "Language",
@@ -2428,5 +2429,28 @@
       "scale": "Scale",
       "enterprise": "Enterprise"
     }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Ready dashboards with the same numbers as every other screen. Download any of them as Excel or CSV.",
+    "loading": "Loading",
+    "loadFailed": "The report didn't load. Try again.",
+    "tabsLabel": "Dashboards",
+    "period": {
+      "label": "Period",
+      "days": "Last {days} days"
+    },
+    "range": "From <from></from> to <to></to>",
+    "none": {
+      "title": "No reports for your role",
+      "body": "Ask the store owner if you need to see reports."
+    },
+    "pct": "{v}%",
+    "days": "{v} days",
+    "total": "Total {n}",
+    "day": "Day",
+    "excel": "Excel",
+    "csv": "CSV",
+    "tip": "{day}: {value}"
   }
 }

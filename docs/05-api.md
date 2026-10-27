@@ -228,6 +228,9 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | --- | --- | --- |
 | GET | `/metrics/catalogue` | ✅ E15-1. The semantic metric catalogue the caller may see: `{ data[{ key, version, unit: count\|percent\|money\|days, module, name, definition }] }` in the reader's language. (Not `/metrics`: that path is Prometheus, outside the v1 prefix.) Every role, each seeing its own metrics |
 | GET | `/metrics/values` | ✅ E15-1. `?keys=a,b` (default: all the caller may see), `days=7\|30\|90` (default 30, store days ending today) or `from`/`to` (≤ 366) → `{ from, to, currency, data[{ key, version, unit, value (decimal string; percent with one decimal; null when nothing to divide by), money?, numerator?, denominator? }] }`. Metrics a role may not see are left out, never zero; unknown keys 422 |
+| GET | `/dashboards` | ✅ E15-2. Built-in dashboards the caller may see (at least one of its metrics): `{ data[{ id: home\|operations\|profit\|payments\|stock, name }] }` |
+| GET | `/dashboards/{id}` | ✅ E15-2. `days=7\|30\|90` or `from`/`to` → `{ id, name, from, to, currency, tiles[{ key, name, definition, unit, value, money? }], series[{ key: orders\|net_profit, name, unit, points[{ day, value }] }] }`. Tiles are metric-layer values (the same as `/metrics/values`); tiles and series the caller may not see are left out; a dashboard with none is 404 |
+| GET | `/dashboards/{id}/export` | ✅ E15-2. Same query plus `format=xlsx` (default) `\|csv` → the file as an attachment (`mizan-{id}-{from}-{to}.xlsx`), `Cache-Control: no-store`. Labels in the reader's language; xlsx right-to-left for Arabic; CSV is UTF-8 with BOM, formula-like cells defused |
 
 ### Billing (E12)
 

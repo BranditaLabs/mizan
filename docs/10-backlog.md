@@ -171,7 +171,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 ### E15 · M20 Reports core
 
 - [x] **E15-1** `M` Semantic metric layer in code (`delivered rate`, `prepaid share`, `net profit`, `days of cover` …) with tests; `GET /v1/metrics`. ✅ `reports/metrics.ts`: 8 metrics (orders, delivered and RTO rate, prepaid and COD share, net profit, average order value, days of cover), versioned, AR/EN, per-role (hidden, not zero); `GET /v1/metrics/catalogue` and `/v1/metrics/values` (moved off `/v1/metrics`, which the Prometheus `/metrics` exclusion would take); the profit home's delivered rate now comes from the same formula, and the e2e checks both screens show the same values.
-- [ ] **E15-2** `M` Built-in dashboards: home, operations, profit, payments, stock (AR/EN); CSV/Excel export.
+- [x] **E15-2** `M` Built-in dashboards: home, operations, profit, payments, stock (AR/EN); CSV/Excel export. ✅ `reports/dashboards.ts`: five dashboards of metric-layer tiles plus daily orders and net profit; per-role (a dashboard with no visible metric is 404); `GET /v1/dashboards`, `/v1/dashboards/{id}`, `/v1/dashboards/{id}/export?format=xlsx|csv` (xlsx written in-process, RTL for Arabic; CSV with BOM, formulas defused); web `/reports` with period tabs, bars and Excel/CSV downloads; e2e (API + browser).
 
 ### E12 · Billing and plans
 
