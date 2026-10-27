@@ -57,7 +57,7 @@ FIREBASE_PROJECT_ID, GOOGLE_APPLICATION_CREDENTIALS (local only), FIREBASE_AUTH_
 KMS_KEY_NAME (required in production; SECRETS_DEV_KEY = base64 32 bytes for local dev only)
 LINK_SIGNING_KEY (required in production: base64 of 32 random bytes, signs customer confirmation links; rotating it breaks links already sent)
 MESSAGING_PROVIDER (none = confirmation links sent by hand; log = development only)
-PUBLIC_URL, WEB_URL
+PUBLIC_URL, WEB_URL, ADMIN_URL (the back office, apps/admin: allowed by CORS), PLATFORM_BOOTSTRAP_EMAILS (first super admin)
 SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
 PAYMOB_* (platform-level config only; merchant keys live in the secrets table)
 BOSTA_BASE_URL, BOSTA_TRACKING_URL_TEMPLATE, WORKER_IN_PROCESS (dev only)

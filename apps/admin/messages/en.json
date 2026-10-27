@@ -1,0 +1,310 @@
+{
+  "meta": {
+    "title": "Mizan back office"
+  },
+  "ui": {
+    "dismiss": "Dismiss"
+  },
+  "problems": {
+    "network": "No connection to the server. Check the internet and try again.",
+    "generic": "Something went wrong and we couldn't finish. Try again."
+  },
+  "auth": {
+    "title": "Sign in to the back office",
+    "subtitle": "Mizan staff only. Use your Mizan account; two-step verification is required.",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign in",
+    "code": "Code",
+    "notConfigured": "Sign-in is not configured for this build (NEXT_PUBLIC_FIREBASE_*).",
+    "mfa": {
+      "title": "Two-step verification",
+      "body": "Enter the code we sent to the number ending in <n>{hint}</n>.",
+      "submit": "Verify"
+    },
+    "errors": {
+      "invalidCredential": "Wrong email or password.",
+      "emailInUse": "This email already has an account.",
+      "weakPassword": "Choose a stronger password.",
+      "invalidEmail": "Check the email address.",
+      "invalidPhone": "Check the phone number.",
+      "invalidCode": "That code is not right.",
+      "codeExpired": "The code expired. Start again.",
+      "tooMany": "Too many attempts. Wait a little and try again.",
+      "network": "No connection. Check the internet and try again.",
+      "generic": "Sign-in failed. Try again."
+    }
+  },
+  "shell": {
+    "logoAlt": "Mizan",
+    "backOffice": "Back office",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "signOut": "Sign out",
+    "navLabel": "Back office",
+    "nav": {
+      "stores": "Stores",
+      "access": "My support access",
+      "health": "System health",
+      "users": "Users",
+      "flags": "Feature flags",
+      "announcements": "Announcements",
+      "staff": "Staff",
+      "audit": "Staff trail"
+    },
+    "roles": {
+      "super_admin": "Super admin",
+      "support": "Support",
+      "finance": "Finance",
+      "engineer": "Engineer"
+    },
+    "refused": {
+      "not_staff": "This account is not on the Mizan staff. Ask a super admin to add you.",
+      "mfa_required": "The back office needs two-step verification. Turn it on in the Mizan dashboard (Security), then sign in again.",
+      "staff_disabled": "Your staff access is disabled.",
+      "user_disabled": "Sign-in is disabled for this account.",
+      "unavailable": "We couldn't reach Mizan. Check the connection and try again."
+    }
+  },
+  "stores": {
+    "title": "Stores",
+    "subtitle": "Every store on Mizan: find one, see its health, act on it.",
+    "search": "Name, slug or store id",
+    "plan": "Plan",
+    "statusLabel": "Status",
+    "country": "Country",
+    "any": "Any",
+    "anyOpen": "Any but deleted",
+    "sort": "Sort",
+    "sortNewest": "Newest first",
+    "sortOrders": "Most orders last month",
+    "count": "<b>{n}</b> stores",
+    "loadFailed": "We couldn't load the stores.",
+    "empty": "No store matches.",
+    "previous": "Previous",
+    "next": "Next",
+    "attention": "{n} of {total} need attention",
+    "col": {
+      "name": "Store",
+      "country": "Country",
+      "plan": "Plan",
+      "status": "Status",
+      "members": "Team",
+      "integrations": "Integrations",
+      "orders": "Orders last month",
+      "created": "Signed up"
+    },
+    "plans": {
+      "free": "Free",
+      "growth": "Growth",
+      "scale": "Scale",
+      "enterprise": "Enterprise"
+    },
+    "status": {
+      "trial": "Trial",
+      "active": "Active",
+      "suspended": "Suspended",
+      "deleted": "Deleted"
+    }
+  },
+  "store": {
+    "loadFailed": "We couldn't load this store.",
+    "loading": "Loading the store…",
+    "back": "All stores",
+    "summary": "Summary",
+    "plan": "Plan",
+    "country": "Country",
+    "currency": "Currency",
+    "timezone": "Time zone",
+    "created": "Signed up",
+    "members": "Active team",
+    "actions": "Actions",
+    "reason": "Reason",
+    "reasonHint": "Required to suspend; shown to the store in its audit log.",
+    "suspend": "Suspend store",
+    "reactivate": "Reactivate store",
+    "changePlan": "Change plan",
+    "choosePlan": "Choose a plan",
+    "applyPlan": "Change plan",
+    "visibleToStore": "The store sees every change here in its audit log, as Mizan staff.",
+    "access": {
+      "title": "Support access",
+      "reason": "Why you need access (shown to the store)",
+      "duration": "For",
+      "minutes": "{n} minutes",
+      "mode": "Access",
+      "read": "Read only",
+      "write": "Read and change (super admin)",
+      "open": "Open access",
+      "hint": "Then open the dashboard and choose this store. The store sees a banner while access is open and can end it.",
+      "opened": "Access is open until <b>{until}</b> (UTC)."
+    },
+    "team": "Team",
+    "integrations": "Integrations",
+    "noIntegrations": "Nothing connected yet.",
+    "integrationStatus": "{status} · reason: {reason}",
+    "jobs": "Jobs",
+    "outbox": "Waiting <b>{pending}</b> · running <b>{running}</b> · dead <b>{dead}</b>",
+    "dead": {
+      "kind": "Job",
+      "attempts": "Attempts",
+      "error": "Error",
+      "at": "Failed"
+    },
+    "usage": "Usage (closed months)",
+    "usageLine": "{orders} orders · {messages} messages",
+    "noUsage": "No closed month yet.",
+    "notes": "Internal notes",
+    "addNote": "Add a note",
+    "saveNote": "Save note",
+    "notesHint": "Only Mizan staff see notes."
+  },
+  "access": {
+    "title": "My support access",
+    "subtitle": "Stores you can open right now, and until when.",
+    "none": "You have no open support access.",
+    "until": "Ends at <b>{when}</b> UTC",
+    "mode": {
+      "read": "Read only",
+      "write": "Read and change"
+    },
+    "end": "End now",
+    "howTo": "Open access from a store's page. Work inside the store from the Mizan dashboard."
+  },
+  "health": {
+    "title": "System health",
+    "subtitle": "The same numbers as /metrics, across stores. Refreshes every 30 seconds.",
+    "loading": "Loading…",
+    "jobsPending": "Jobs waiting",
+    "jobsDead": "Dead jobs",
+    "jobsLag": "Oldest due job",
+    "eventsPending": "Events waiting",
+    "eventsDead": "Dead events",
+    "eventsLag": "Oldest event",
+    "dbSize": "Database size",
+    "pool": "Connections in use",
+    "circuits": "Provider circuits",
+    "open": "{n} open",
+    "halfOpen": "{n} testing",
+    "perInstance": "Circuits and drift cover the store engines on the API instance that answered.",
+    "storesInTrouble": "Stores with the most trouble",
+    "storeLine": "{pending} waiting · {dead} dead",
+    "allClear": "No store has jobs waiting or dead.",
+    "drift": "Provider drift",
+    "noDrift": "No provider changed shape.",
+    "driftCol": {
+      "where": "Where",
+      "kind": "Kind",
+      "detail": "Detail",
+      "count": "Times",
+      "last": "Last seen"
+    },
+    "deadLetters": "Dead letters",
+    "noDead": "No dead jobs.",
+    "replay": "Replay",
+    "deadCol": {
+      "store": "Store",
+      "kind": "Job",
+      "attempts": "Attempts",
+      "error": "Error",
+      "at": "Failed"
+    }
+  },
+  "users": {
+    "title": "Users",
+    "subtitle": "Everyone with a Mizan account: their stores, and whether they can sign in.",
+    "search": "Email, phone, name or user id",
+    "col": {
+      "person": "Person",
+      "stores": "Stores",
+      "status": "Status",
+      "joined": "Joined"
+    },
+    "active": "Can sign in",
+    "disabled": "Sign-in disabled",
+    "staff": "Staff",
+    "pick": "Choose a person to see their stores.",
+    "memberships": "Stores",
+    "noStores": "Not in any store.",
+    "disabledSince": "Sign-in disabled: <b>{reason}</b>",
+    "reason": "Reason",
+    "reasonHint": "Shown to every store they belong to.",
+    "disable": "Disable sign-in",
+    "enable": "Allow sign-in again"
+  },
+  "flags": {
+    "title": "Feature flags",
+    "subtitle": "Off until turned on for everyone or for a store; a store's own setting wins.",
+    "key": "Key",
+    "keyHint": "a-z, 0-9, dot and underscore, like new.returns_screen",
+    "description": "What it turns on",
+    "create": "Add flag",
+    "everyone": "On for everyone",
+    "delete": "Delete",
+    "storeOn": "{store}: on",
+    "storeOff": "{store}: off",
+    "clear": "Clear",
+    "storeId": "Store id",
+    "onForStore": "On for this store",
+    "offForStore": "Off for this store",
+    "none": "No flags yet."
+  },
+  "announcements": {
+    "title": "Announcements",
+    "subtitle": "A line across the merchants' dashboard, in their language, until it ends.",
+    "titleAr": "Title in Arabic",
+    "titleEn": "Title in English",
+    "bodyAr": "Text in Arabic",
+    "bodyEn": "Text in English",
+    "level": "Level",
+    "levels": {
+      "info": "Info",
+      "warning": "Warning",
+      "critical": "Critical"
+    },
+    "duration": "Shown for",
+    "hours": "{n} hours",
+    "link": "Link (https)",
+    "countries": "Only these countries",
+    "countriesHint": "Like EG, SA. Empty: every country.",
+    "post": "Post announcement",
+    "end": "End now"
+  },
+  "staff": {
+    "title": "Staff",
+    "subtitle": "Who works on Mizan's side, and what each can do. Mizan always keeps an active super admin.",
+    "email": "Email",
+    "emailHint": "They must have signed in to Mizan once.",
+    "role": "Role",
+    "add": "Add to staff",
+    "col": {
+      "person": "Person",
+      "role": "Role",
+      "status": "Status"
+    },
+    "status": {
+      "active": "Active",
+      "disabled": "Disabled"
+    },
+    "disable": "Disable",
+    "enable": "Enable"
+  },
+  "audit": {
+    "title": "Staff trail",
+    "subtitle": "Every back-office call, refusals included, newest first.",
+    "col": {
+      "at": "When",
+      "who": "Who",
+      "action": "Call",
+      "outcome": "Outcome",
+      "store": "Store"
+    },
+    "outcome": {
+      "ok": "Done",
+      "denied": "Refused",
+      "failed": "Failed"
+    },
+    "open": "Open store",
+    "more": "Older"
+  }
+}

@@ -77,6 +77,41 @@ jobs:
             apps/web/playwright-report
           if-no-files-found: ignore
 
+  admin-e2e:
+    name: Back office end to end (staff sign-in, stores, health, flags)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.34.0
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/admin
+      # The real API (PGlite, with a bootstrap super admin) and the back office built against the emulator stack (apps/admin/e2e/env.mjs)
+      - run: npm run build:api && npm run build:e2e -w @mizan/admin
+      - run: npm run e2e -w @mizan/admin
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-e2e
+          path: |
+            apps/admin/test-results
+            apps/admin/playwright-report
+          if-no-files-found: ignore
+
   image:
     name: Production image smoke test
     runs-on: ubuntu-latest

@@ -9,7 +9,7 @@
     "perf"
   ],
   "scripts": {
-    "build": "npm run build:api && npm run build -w @mizan/web",
+    "build": "npm run build:api && npm run build -w @mizan/web && npm run build -w @mizan/admin",
     "build:api": "npm run build -w @mizan/shared -w @mizan/db -w @mizan/engine -w @mizan/api",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

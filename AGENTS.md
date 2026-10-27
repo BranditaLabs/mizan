@@ -24,6 +24,7 @@ packages/db/            SQL migrations with RLS, migration runner, generated Kys
 packages/design-system/ tokens, fonts, icons, logo (source of truth for UI)
 apps/api/               NestJS modular monolith (one module per M-number)
 apps/web/               Next.js App Router dashboard, next-intl AR (default) / EN, RTL
+apps/admin/             back office for Mizan staff (same stack as apps/web, /v1/platform only)
 docs/                   product, architecture, data model, API, integrations, backlog, ADRs
 ```
 
