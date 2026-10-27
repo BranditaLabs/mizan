@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import type { Response } from "express";
+import type { HttpReply as Response } from "../../platform/http/http.types.js";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
@@ -23,7 +23,7 @@ export class ShippingController {
   @ApiProblems(404, 409)
   async ship(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Res({ passthrough: true }) res: Response) {
     const r = await this.shipping.ship(auth, id);
-    if (!r.created) res.status(200);
+    if (!r.created) void res.code(200);
     return r.shipment;
   }
 

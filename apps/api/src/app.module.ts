@@ -37,6 +37,7 @@ import { IntegrationsModule } from "./integrations/integrations.module.js";
 import type { RuntimeFactory } from "./integrations/engine-registry.js";
 import { PrivacyModule } from "./modules/privacy/privacy.module.js";
 import { AuditLogModule } from "./modules/audit/audit-log.module.js";
+import { FastifyReady } from "./platform/http/fastify-ready.js";
 import { ProblemFilter } from "./platform/http/problem.filter.js";
 import { LoggingModule } from "./platform/logging/logger.module.js";
 import { HealthModule } from "./modules/health/health.module.js";
@@ -60,7 +61,7 @@ export class AppModule {
     return {
       module: AppModule,
       imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, BillingModule, ReportsModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
-      providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
+      providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }, FastifyReady],
     };
   }
 }

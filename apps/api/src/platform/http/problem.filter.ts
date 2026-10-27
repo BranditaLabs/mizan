@@ -1,5 +1,5 @@
 import { Catch, HttpException, HttpStatus, Logger, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
-import type { Request, Response } from "express";
+import { requestIdOf, type HttpReply, type HttpRequest } from "./http.types.js";
 import { ZodError } from "zod";
 import { localeFrom, problemTitle } from "../i18n/messages.js";
 import { scrubText } from "../logging/redact.js";
@@ -32,8 +32,9 @@ export class ProblemFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const http = host.switchToHttp();
-    const req = http.getRequest<Request & { id?: string }>();
-    const res = http.getResponse<Response>();
+    const req = http.getRequest<HttpRequest>();
+    const res = http.getResponse<HttpReply>();
+    const requestId = requestIdOf(req);
     const locale = localeFrom(req.headers["accept-language"]);
 
     const problem = this.toProblem(exception);
@@ -44,12 +45,12 @@ export class ProblemFilter implements ExceptionFilter {
       code: problem.code,
       ...(problem.detail ? { detail: problem.detail } : {}),
       ...(problem.errors?.length ? { errors: problem.errors } : {}),
-      ...(req.id ? { requestId: String(req.id) } : {}),
+      ...(requestId ? { requestId } : {}),
     };
 
-    if (problem.status >= 500) this.logger.error({ err: exception, requestId: req.id }, "unhandled error");
+    if (problem.status >= 500) this.logger.error({ err: exception, requestId }, "unhandled error");
 
-    res.status(problem.status).type(PROBLEM_CONTENT_TYPE).send(JSON.stringify(body));
+    void res.code(problem.status).type(PROBLEM_CONTENT_TYPE).send(JSON.stringify(body));
   }
 
   private toProblem(exception: unknown): Pick<ProblemDetails, "status" | "code" | "detail" | "errors"> {
@@ -69,6 +70,13 @@ export class ProblemFilter implements ExceptionFilter {
       // personal data) and scrubbed; 5xx details are never shown.
       const detail = status < 500 ? scrubText(exception.message.replace(/\?\S*/, "")) : undefined;
       return { status, code: codeForStatus(status), detail };
+    }
+    // Fastify's own request errors (body too large, unreadable body): 4xx with a stable FST_ code.
+    const fst = exception as { code?: unknown; statusCode?: unknown } | null;
+    if (fst && typeof fst.code === "string" && fst.code.startsWith("FST_") && typeof fst.statusCode === "number" && fst.statusCode >= 400 && fst.statusCode < 500) {
+      return fst.statusCode === 413
+        ? { status: 413, code: "payload_too_large", detail: "the body is too large" }
+        : { status: 400, code: "bad_request", detail: "the body could not be read" };
     }
     return { status: HttpStatus.INTERNAL_SERVER_ERROR, code: "internal_error" };
   }

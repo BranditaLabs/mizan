@@ -30,9 +30,14 @@ export function bufferedDestination(dest: number | string = 1): DestinationStrea
   return pinoDestination({ dest, sync: false, minLength: 4096, periodicFlush: 250 } as Parameters<typeof pinoDestination>[0]);
 }
 
+/** The caller's X-Request-Id when well-formed, else a new one. */
+export const requestIdFrom = (incoming: string | string[] | undefined): string =>
+  typeof incoming === "string" && REQUEST_ID.test(incoming) ? incoming : `req_${randomUUID().replaceAll("-", "")}`;
+
+/** pino-http's id (the HTTP adapter usually set one already on the raw request), echoed as X-Request-Id. */
 export function requestIdFor(req: IncomingMessage, res: ServerResponse): string {
-  const incoming = req.headers["x-request-id"];
-  const id = typeof incoming === "string" && REQUEST_ID.test(incoming) ? incoming : `req_${randomUUID().replaceAll("-", "")}`;
+  const existing = (req as { id?: unknown }).id;
+  const id = typeof existing === "string" ? existing : requestIdFrom(req.headers["x-request-id"]);
   res.setHeader("X-Request-Id", id);
   return id;
 }

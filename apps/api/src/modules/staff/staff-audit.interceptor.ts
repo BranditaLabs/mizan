@@ -1,5 +1,5 @@
 import { HttpException, Inject, Injectable, type CallHandler, type ExecutionContext, type NestInterceptor } from "@nestjs/common";
-import type { Response } from "express";
+import type { HttpReply } from "../../platform/http/http.types.js";
 import { ZodError } from "zod";
 import { catchError, from, mergeMap, throwError, type Observable } from "rxjs";
 import type { AuthedRequest } from "../../platform/auth/auth.types.js";
@@ -14,7 +14,7 @@ export class StaffAuditInterceptor implements NestInterceptor {
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
-    const res = ctx.switchToHttp().getResponse<Response>();
+    const res = ctx.switchToHttp().getResponse<HttpReply>();
     const auth = req.auth!;
     const line = (outcome: "ok" | "failed", status: number) => this.staff.audit({
       staffId: auth.staff?.id ?? null, userId: auth.user.id, action: routeOf(req), outcome, status, ...storeOf(req), ...(auth.ip ? { ip: auth.ip } : {}),

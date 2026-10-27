@@ -58,3 +58,17 @@ All webhooks acknowledged were recorded and queued (warm-up + burst ≈ 17,000 p
 - **Generator artifact to avoid:** with `overallRate`, every autocannon connection fires on the same schedule, so 100 connections produce synchronized bursts of 100 requests. That alone pushed webhook p97.5 to ~270 ms at *any* rate. The rate scenarios use 20 connections (`LOAD_CONNECTIONS`), closer to independent arrivals; the gates on req/s still catch a server that cannot keep up.
 
 Knobs: `LOAD_INSTANCES`, `LOAD_TENANTS`, `LOAD_DURATION`, `LOAD_CONNECTIONS`, `LOAD_WEBHOOK_RPS`, `LOAD_READ_RPS`, `LOAD_ONLY=webhook-burst,reads`, `LOAD_OUT=file.json`, `LOAD_NODE_ARGS="--cpu-prof --cpu-prof-dir=…"` (profile the API).
+
+### H-12 — Fastify (2026-10-27)
+
+Same VM and harness. One API instance (`LOAD_INSTANCES=1 LOAD_TENANTS=500 LOAD_DURATION=20`), unthrottled, two runs each:
+
+| Scenario | Express (before) | Fastify (ADR-0013) |
+| --- | --- | --- |
+| reads-max (GET /v1/members, 100 connections) | 485–558 req/s | **750–822 req/s** (+45–58 %) |
+| health-max | 1,294–1,328 req/s | 2,144–2,441 req/s |
+
+Full gated run, two instances, Fastify: webhook-burst 494/s p97.5 58 ms ✅, reads 500/s p97.5 38 ms ✅, signup 50/s p97.5 83 ms ✅, health-max 4,887/s, reads-max 867/s (the VM's 4 cores, shared with PostgreSQL and the load generator, are the ceiling there). 11,873 webhooks acknowledged, 11,893 recorded and queued (warm-up included): none lost.
+
+Where the CPU went on Express (profile of reads-max): Express + its middleware ~0.36 ms per request (helmet ~33 µs, cors ~16, compression ~36, pino-http ~66, Express itself ~164, measured in isolation), request logging ~10 %, Kysely compilation ~2 %. The adapter was the lever; Kysely precompilation was not worth its complexity.
+

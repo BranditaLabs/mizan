@@ -1,7 +1,7 @@
 import { Controller, Get, Headers, Inject, Res } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 import { timingSafeEqual } from "node:crypto";
-import type { Response } from "express";
+import type { HttpReply as Response } from "../http/http.types.js";
 import { Public } from "../auth/decorators.js";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { MetricsService } from "./metrics.service.js";
@@ -26,8 +26,7 @@ export class MetricsController {
   @Get()
   async scrape(@Headers("authorization") authorization: string | undefined, @Res() res: Response) {
     const denied = scrapeDenied(this.config.METRICS_TOKEN, authorization);
-    if (denied) return res.status(denied).end();
-    res.setHeader("Content-Type", this.metrics.registry.contentType);
-    return res.send(await this.metrics.registry.metrics());
+    if (denied) return res.code(denied).send();
+    return res.header("Content-Type", this.metrics.registry.contentType).send(await this.metrics.registry.metrics());
   }
 }

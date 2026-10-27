@@ -1,6 +1,6 @@
 import { Controller, Get, HttpCode, Inject, Param, Post, Query, Req, Res } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
-import type { Request, Response } from "express";
+import type { HttpReply as Response, HttpRequest as Request } from "../platform/http/http.types.js";
 import { Public } from "../platform/auth/decorators.js";
 import { PrivacyService } from "../modules/privacy/privacy.service.js";
 import { WhatsAppChat } from "../modules/confirmation/whatsapp-chat.service.js";
@@ -37,14 +37,14 @@ export class WebhooksController {
    */
   @Get("whatsapp")
   whatsappVerify(@Query() query: Record<string, string>, @Res() res: Response) {
-    return res.status(200).type("text/plain").send(this.whatsapp.challenge(query));
+    return res.code(200).type("text/plain").send(this.whatsapp.challenge(query));
   }
 
   @Post("whatsapp")
   @HttpCode(200)
   async whatsappEvents(@Req() req: Request, @Res() res: Response) {
     const result = await this.whatsapp.receive(headersOf(req)["x-hub-signature-256"], rawBody(req));
-    return res.status(result.status).json(result.body);
+    return res.code(result.status).send(result.body);
   }
 
   /** Shopify compliance webhooks (one URL for the app, set in its configuration). Declared before the per-connection route. */
@@ -52,15 +52,15 @@ export class WebhooksController {
   @HttpCode(200)
   async shopifyCompliance(@Req() req: Request, @Res() res: Response) {
     const result = await this.privacy.receiveShopify(headersOf(req), rawBody(req));
-    return res.status(result.status).json(result.body);
+    return res.code(result.status).send(result.body);
   }
 
   @Post("shopify/:connectionId")
   @HttpCode(200)
   async shopify(@Param("connectionId") connectionId: string, @Req() req: Request, @Res() res: Response) {
     const route = await this.router.route(connectionId);
-    if (!route || route.provider !== "shopify") return res.status(404).json({ error: "unknown connection" });
-    if (route.status === "disconnected") return res.status(200).json({ ignored: "disconnected" });
+    if (!route || route.provider !== "shopify") return res.code(404).send({ error: "unknown connection" });
+    if (route.status === "disconnected") return res.code(200).send({ ignored: "disconnected" });
     const { engine } = await this.registry.get(route.tenantId, connectionId);
     const headers = headersOf(req);
     const result = await engine.handleShopifyWebhook(headers, rawBody(req));
@@ -68,15 +68,15 @@ export class WebhooksController {
     if (result.status === 200 && result.body.accepted && (headers["x-shopify-topic"] ?? "").toLowerCase() === "app/uninstalled") {
       await this.lifecycle.providerRevoked(route.tenantId, connectionId, "app_uninstalled");
     }
-    return res.status(result.status).json(result.body);
+    return res.code(result.status).send(result.body);
   }
 
   @Post("bosta/:connectionId")
   @HttpCode(200)
   async bosta(@Param("connectionId") connectionId: string, @Query() query: Record<string, string>, @Req() req: Request, @Res() res: Response) {
     const route = await this.router.route(connectionId);
-    if (!route || route.provider !== "bosta") return res.status(404).json({ error: "unknown connection" });
-    if (route.status === "disconnected") return res.status(200).json({ ignored: "disconnected" });
+    if (!route || route.provider !== "bosta") return res.code(404).send({ error: "unknown connection" });
+    if (route.status === "disconnected") return res.code(200).send({ ignored: "disconnected" });
     // One Bosta account serves all of a tenant's stores (E2-7): the store that booked the
     // shipment takes its updates; a shipment no store knows goes to the first (orphan check).
     const engines = await this.registry.forTenant(route.tenantId);
@@ -87,8 +87,8 @@ export class WebhooksController {
     if (tracking) {
       for (const e of engines) if (await e.store.get("shipment", tracking)) { owner = e; break; }
     }
-    if (!owner) return res.status(200).json({ ignored: "no store connected" });
+    if (!owner) return res.code(200).send({ ignored: "no store connected" });
     const result = await owner.engine.handleBostaWebhook(query, headers, body);
-    return res.status(result.status).json(result.body);
+    return res.code(result.status).send(result.body);
   }
 }

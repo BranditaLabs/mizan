@@ -1,6 +1,7 @@
 import { Inject, Injectable, SetMetadata, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { AuthedRequest, StaffRole } from "../../platform/auth/auth.types.js";
+import { routeTemplate } from "../../platform/http/http.types.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { StaffService } from "./staff.service.js";
 
@@ -9,12 +10,12 @@ export const STAFF_ROLES_KEY = "mizan:staff-roles";
 export const StaffRoles = (...roles: StaffRole[]) => SetMetadata(STAFF_ROLES_KEY, roles);
 
 /** "GET /v1/platform/staff/:id": the route, never ids or query strings. */
-export const routeOf = (req: AuthedRequest) => `${req.method} ${(req.baseUrl ?? "") + ((req.route as { path?: string } | undefined)?.path ?? req.path)}`;
+export const routeOf = (req: AuthedRequest) => `${req.method} ${routeTemplate(req)}`;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** The store a back-office call is about (its :storeId), when that is a real id. */
 export const storeOf = (req: AuthedRequest): { storeId?: string } => {
-  const id = req.params?.storeId;
+  const id = (req.params as Record<string, string | undefined> | undefined)?.storeId;
   return typeof id === "string" && UUID.test(id) ? { storeId: id.toLowerCase() } : {};
 };
 

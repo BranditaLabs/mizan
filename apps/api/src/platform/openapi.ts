@@ -48,5 +48,5 @@ export function buildOpenApi(app: INestApplication): OpenAPIObject {
 export function mountOpenApi(app: INestApplication): void {
   const doc = buildOpenApi(app);
   const http = app.getHttpAdapter();
-  http.get("/v1/openapi.json", (_req: unknown, res: { json: (body: unknown) => void }) => res.json(doc));
+  http.get("/v1/openapi.json", (_req: unknown, reply: { send: (body: unknown) => void }) => reply.send(doc));
 }

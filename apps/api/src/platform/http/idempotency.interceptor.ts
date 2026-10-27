@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable, SetMetadata, type CallHandler, type ExecutionContext, type NestInterceptor } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import type { Response } from "express";
+import type { HttpReply } from "./http.types.js";
 import { setActingUser } from "@mizan/db";
 import { from, mergeMap, Observable, of, throwError, catchError } from "rxjs";
 import type { AuthedRequest } from "../auth/auth.types.js";
@@ -37,16 +37,16 @@ export class IdempotencyInterceptor implements NestInterceptor {
     if (typeof key !== "string" || !KEY.test(key)) {
       return throwError(() => new ProblemError(400, "invalid_idempotency_key", "Idempotency-Key must be 1–255 visible ASCII characters"));
     }
-    const res = ctx.switchToHttp().getResponse<Response>();
+    const res = ctx.switchToHttp().getResponse<HttpReply>();
     const actorId = req.auth.user.id;
     const tenantId = req.auth.tenant?.id ?? null;
-    const hash = createHash("sha256").update(JSON.stringify([req.method, req.originalUrl, tenantId, req.body ?? null])).digest("hex");
+    const hash = createHash("sha256").update(JSON.stringify([req.method, req.url, tenantId, req.body ?? null])).digest("hex");
 
     return from(this.claim(actorId, key, tenantId, hash)).pipe(
       mergeMap((claim) => {
         if (claim.replay) {
-          res.setHeader("Idempotency-Replayed", "true");
-          res.status(claim.replay.status);
+          void res.header("Idempotency-Replayed", "true");
+          void res.code(claim.replay.status);
           return of(claim.replay.body ?? undefined);
         }
         return next.handle().pipe(

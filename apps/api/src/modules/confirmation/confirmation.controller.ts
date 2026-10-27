@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query, Req, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import type { Request, Response } from "express";
+import type { HttpReply as Response, HttpRequest as Request } from "../../platform/http/http.types.js";
 import type { z } from "zod";
 import { Auth, Public, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";

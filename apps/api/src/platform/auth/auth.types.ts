@@ -1,5 +1,5 @@
 import type { MemberRole } from "@mizan/shared";
-import type { Request } from "express";
+import type { HttpRequest } from "../http/http.types.js";
 import type { VerifiedIdentity } from "./token-verifier.js";
 
 export interface AuthUser {
@@ -35,4 +35,4 @@ export interface SupportGrant { grantId: string; staffId: string; mode: "read" |
 export const STAFF_ROLES = ["super_admin", "support", "finance", "engineer"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
-export type AuthedRequest = Request & { auth?: AuthContext };
+export type AuthedRequest = HttpRequest & { auth?: AuthContext };

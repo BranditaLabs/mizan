@@ -1,5 +1,5 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
-import type { Response } from "express";
+import { routeTemplate, type HttpReply } from "../http/http.types.js";
 import { Reflector } from "@nestjs/core";
 import { MFA_REQUIRED_ROLES, type MemberRole } from "@mizan/shared";
 import { APP_CONFIG, type AppConfig } from "../config.js";
@@ -43,7 +43,7 @@ export class AuthGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(IS_PUBLIC, targets)) return true;
 
     const req = ctx.switchToHttp().getRequest<AuthedRequest>();
-    const res = ctx.switchToHttp().getResponse<Response>();
+    const res = ctx.switchToHttp().getResponse<HttpReply>();
     // Cheap per-IP check first: floods of bad tokens are refused before any verification work.
     this.limits.checkIp(req.ip, res);
     const token = BEARER.exec(req.headers.authorization ?? "")?.[1];
@@ -104,7 +104,7 @@ export class AuthGuard implements CanActivate {
       throw new ProblemError(403, "insufficient_role", `this action needs one of: ${allowed.join(", ")}`);
     }
     const { tenantStatus: _, ...support } = grant;
-    await this.auth.recordSupportCall(support, auth.user.id, tenantId, `${req.method} ${(req.baseUrl ?? "") + ((req.route as { path?: string } | undefined)?.path ?? req.path)}`, auth.ip);
+    await this.auth.recordSupportCall(support, auth.user.id, tenantId, `${req.method} ${routeTemplate(req)}`, auth.ip);
     auth.support = support;
     auth.tenant = { id: tenantId, role: SUPPORT_ROLE };
     return true;

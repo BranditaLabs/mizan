@@ -71,7 +71,7 @@ Node 22+. TypeScript strict everywhere. Tests use vitest.
 | Layer | Choice |
 | --- | --- |
 | Language | TypeScript (strict) for backend and web; Dart for the ops app |
-| API | NestJS modular monolith, one deployable, modules map to M1–M22 |
+| API | NestJS modular monolith on Fastify (ADR-0013), one deployable, modules map to M1–M22 |
 | Web | Next.js (App Router) + Tailwind CSS; RTL first-class; next-intl for AR/EN |
 | Mobile ops app | Flutter, offline-first (local queue, sync on reconnect) |
 | Database | PostgreSQL with row-level security per tenant |

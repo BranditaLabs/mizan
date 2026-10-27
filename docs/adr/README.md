@@ -16,3 +16,4 @@ Record every significant technical decision here. Copy `template.md`, number it,
 | [0010](0010-firebase-authentication-for-users.md) | Firebase Authentication for users | Accepted |
 | [0011](0011-collect-only-what-is-owed-never-guess-payment.md) | Collect only what is owed; never guess the payment method | Accepted |
 | [0012](0012-kysely-for-database-access.md) | Kysely for database access; SQL migrations stay the source of truth | Accepted |
+| [0013](0013-fastify-http-adapter-for-the-api.md) | Fastify as the API's HTTP adapter | Accepted |

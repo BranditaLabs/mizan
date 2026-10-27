@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Post, Query, Res } from "@nestjs/common";
 import { ApiExcludeEndpoint, ApiQuery, ApiTags } from "@nestjs/swagger";
-import type { Response } from "express";
+import type { HttpReply as Response } from "../../../platform/http/http.types.js";
 import { z } from "zod";
 import { Auth, Public, Roles } from "../../../platform/auth/decorators.js";
 import type { AuthContext } from "../../../platform/auth/auth.types.js";
@@ -17,7 +17,7 @@ const ClaimResultSchema = z.object({
 });
 
 /** No referrer on our redirects: callback and claim URLs carry one-time values. */
-const redirect = (res: Response, url: string) => res.setHeader("Referrer-Policy", "no-referrer").redirect(302, url);
+const redirect = (res: Response, url: string) => res.header("Referrer-Policy", "no-referrer").redirect(url, 302);
 
 /** Shopify app install (E3-1). See ShopifyInstallService for the flow and why it has a claim step. */
 @ApiTags("connections")
@@ -40,7 +40,7 @@ export class ShopifyConnectController {
   @Get("entry")
   @ApiExcludeEndpoint()
   entry(@Query() query: Record<string, unknown>, @Res() res: Response) {
-    redirect(res, this.installs.entry(query));
+    return redirect(res, this.installs.entry(query));
   }
 
   /** Allowed redirection URL in the Partner Dashboard. */
@@ -48,7 +48,7 @@ export class ShopifyConnectController {
   @Get("callback")
   @ApiExcludeEndpoint()
   async callback(@Query() query: Record<string, unknown>, @Res() res: Response) {
-    redirect(res, await this.installs.callback(query));
+    return redirect(res, await this.installs.callback(query));
   }
 
   /** Attach the approved install to the current store. */

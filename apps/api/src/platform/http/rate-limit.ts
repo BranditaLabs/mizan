@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { Response } from "express";
+import type { HttpReply } from "./http.types.js";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { ProblemError } from "./problem.js";
 
@@ -63,22 +63,22 @@ export class RateLimiter {
     if (config.RATE_LIMIT_USER_PER_MIN > 0) this.user = new TokenBuckets(config.RATE_LIMIT_USER_PER_MIN);
   }
 
-  checkIp(ip: string | undefined, res: Response): void {
+  checkIp(ip: string | undefined, res: HttpReply): void {
     if (this.ip) this.apply(this.ip.take(`ip:${ip ?? "unknown"}`), res, "ip");
   }
 
-  checkUser(userId: string, res: Response): void {
+  checkUser(userId: string, res: HttpReply): void {
     if (this.user) this.apply(this.user.take(`user:${userId}`), res, "user");
   }
 
-  private apply(r: LimitResult, res: Response, policy: string): void {
+  private apply(r: LimitResult, res: HttpReply, policy: string): void {
     // The user policy is the one a client can act on; the IP check only speaks when it refuses.
     if (policy === "user" || !r.allowed) {
-      res.setHeader("RateLimit-Policy", `${r.limit};w=60;policy="${policy}"`);
-      res.setHeader("RateLimit", `limit=${r.limit}, remaining=${r.remaining}, reset=${r.resetS}`);
+      res.header("RateLimit-Policy", `${r.limit};w=60;policy="${policy}"`);
+      res.header("RateLimit", `limit=${r.limit}, remaining=${r.remaining}, reset=${r.resetS}`);
     }
     if (!r.allowed) {
-      res.setHeader("Retry-After", String(Math.max(1, r.resetS)));
+      res.header("Retry-After", String(Math.max(1, r.resetS)));
       throw new ProblemError(429, "rate_limited", `too many requests; retry in ${Math.max(1, r.resetS)} s`);
     }
   }
