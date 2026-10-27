@@ -10,7 +10,7 @@ import { EngineRegistry } from "../../integrations/engine-registry.js";
  * (/v1/members/:userId), never raw paths; nothing is labelled per tenant.
  * Queue gauges are computed at scrape time (one cheap indexed query each).
  */
-interface QueueSnapshot {
+export interface QueueSnapshot {
   jobs: (readonly [string, number])[];
   oldestDueS: number;
   events: { pending: number; dead: number; oldestS: number };
@@ -109,15 +109,27 @@ export class MetricsService {
     new Gauge({
       name: "mizan_engine_circuits_open", help: "Open provider circuits across this instance's tenant engines", labelNames: ["provider"] as const, registers: [this.registry],
       collect() {
-        const open = { shopify: 0, bosta: 0 };
-        for (const e of self.engines.all()) {
-          if (e.engine.shopify.health().circuit.state === "open") open.shopify++;
-          if (e.engine.bosta.health().circuit.state === "open") open.bosta++;
-        }
-        this.set({ provider: "shopify" }, open.shopify);
-        this.set({ provider: "bosta" }, open.bosta);
+        for (const c of self.circuits()) this.set({ provider: c.provider }, c.open);
       },
     });
+  }
+
+  /** Circuit states per provider across this instance's store engines (the back office's health view reads the same). */
+  circuits(): { provider: "shopify" | "bosta"; open: number; halfOpen: number; closed: number }[] {
+    const out = { shopify: { open: 0, halfOpen: 0, closed: 0 }, bosta: { open: 0, halfOpen: 0, closed: 0 } };
+    const bump = (c: { open: number; halfOpen: number; closed: number }, state: string) => {
+      if (state === "open") c.open++; else if (state === "half_open") c.halfOpen++; else c.closed++;
+    };
+    for (const e of this.engines.all()) {
+      bump(out.shopify, e.engine.shopify.health().circuit.state);
+      bump(out.bosta, e.engine.bosta.health().circuit.state);
+    }
+    return [{ provider: "shopify", ...out.shopify }, { provider: "bosta", ...out.bosta }];
+  }
+
+  /** The queue numbers behind the outbox and domain-event gauges (A-4 shows exactly these). */
+  snapshot(): Promise<QueueSnapshot> {
+    return this.queues();
   }
 
   private inFlight?: Promise<QueueSnapshot>;

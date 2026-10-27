@@ -929,6 +929,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HealthController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/health/dead-letters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["HealthController_deadLetters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/health/dead-letters/{id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["HealthController_replay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -4480,6 +4528,28 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        PlatformDeadLetters: {
+            /** @description Newest first; payloads stay with the store */
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                storeId: string;
+                storeName: string;
+                kind: string;
+                provider: string;
+                attempts: number;
+                error: string | null;
+                /** Format: date-time */
+                failedAt: string;
+            }[];
+        };
+        PlatformReplayed: {
+            /** @enum {boolean} */
+            replayed: true;
+            /** Format: uuid */
+            storeId: string;
+        };
         PlatformStore: {
             /** Format: uuid */
             id: string;
@@ -5715,6 +5785,74 @@ export interface components {
         SuspendStore: {
             /** @description Shown to the store in its audit log */
             reason: string;
+        };
+        SystemHealth: {
+            /** Format: date-time */
+            at: string;
+            /** @description mizan_outbox_jobs, every store */
+            outbox: {
+                pending: number;
+                running: number;
+                dead: number;
+                /** @description mizan_outbox_oldest_due_seconds */
+                oldestDueSeconds: number;
+            };
+            /** @description mizan_domain_events */
+            events: {
+                pending: number;
+                dead: number;
+                oldestPendingSeconds: number;
+            };
+            /** @description Dead domain events by type, most first */
+            deadEvents: {
+                type: string;
+                count: number;
+            }[];
+            /** @description mizan_engine_circuits_open: store engines built on this API instance */
+            circuits: {
+                /** @enum {string} */
+                provider: "shopify" | "bosta";
+                open: number;
+                halfOpen: number;
+                closed: number;
+            }[];
+            /** @description Stores with the most jobs waiting or dead (up to 20) */
+            stores: {
+                /** Format: uuid */
+                storeId: string;
+                storeName: string;
+                pending: number;
+                running: number;
+                dead: number;
+                oldestDueSeconds: number;
+            }[];
+            /** @description Provider fields and statuses that changed shape, across this instance's engines, most frequent first (no samples) */
+            drift: {
+                connector: string;
+                entity: string;
+                kind: string;
+                field: string | null;
+                detail: string;
+                count: number;
+                stores: number;
+                /** Format: date-time */
+                lastAt: string;
+            }[];
+            db: {
+                /** @description mizan_db_pool_connections */
+                pool: {
+                    total: number;
+                    idle: number;
+                    waiting: number;
+                } | null;
+                sizeBytes: number | null;
+                connections: number | null;
+            };
+            process: {
+                uptimeSeconds: number;
+                rssBytes: number;
+                heapUsedBytes: number;
+            };
         };
         Team: {
             members: {
@@ -9518,6 +9656,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportAccessEnded"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HealthController_overview: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Jobs, events, circuits, drift, database and process, across stores; the same numbers as /metrics */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SystemHealth"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HealthController_deadLetters: {
+        parameters: {
+            query?: {
+                storeId?: string;
+                kind?: string;
+                limit?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dead-lettered engine jobs across stores, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformDeadLetters"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    HealthController_replay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued again in its store; written to the store's audit log */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformReplayed"];
                 };
             };
             /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
