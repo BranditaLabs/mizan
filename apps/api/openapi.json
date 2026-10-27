@@ -1091,6 +1091,19 @@
             "description": "short: confirmed orders waiting for stock (oversell blocked, E8-2)"
           },
           {
+            "name": "shipping",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2)",
+              "type": "string",
+              "enum": [
+                "ready"
+              ]
+            },
+            "description": "ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2)"
+          },
+          {
             "name": "q",
             "required": false,
             "in": "query",
@@ -1336,6 +1349,26 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BulkAction"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -15047,7 +15080,8 @@
               "assign",
               "tag",
               "confirm",
-              "cancel"
+              "cancel",
+              "ship"
             ]
           },
           "status": {
@@ -15110,7 +15144,7 @@
                 },
                 "reason": {
                   "type": "string",
-                  "description": "cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, error…"
+                  "description": "cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, already_shipping, not_confirmed, address_missing, payment_blocks_shipping, error…"
                 }
               },
               "required": [
@@ -15277,6 +15311,34 @@
               "reason"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "ship"
+                ]
+              },
+              "orderIds": {
+                "minItems": 1,
+                "maxItems": 500,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "description": "Up to 500 orders"
+              }
+            },
+            "required": [
+              "action",
+              "orderIds"
+            ],
+            "additionalProperties": false,
+            "description": "Book the courier for each confirmed order (E7-2)"
           }
         ]
       },
@@ -22283,6 +22345,12 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "readyToShip": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Confirmed orders ready for the courier (E7-2)"
           }
         },
         "required": [
@@ -22291,7 +22359,8 @@
           "counts",
           "needsCall",
           "duplicates",
-          "waitingStock"
+          "waitingStock",
+          "readyToShip"
         ],
         "additionalProperties": false
       },

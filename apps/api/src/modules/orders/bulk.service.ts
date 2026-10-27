@@ -7,17 +7,18 @@ import { AuditService, auditActor } from "../../platform/audit/audit.service.js"
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
-import { ORDER_ANSWERS, type OrderAnswers } from "./ports.js";
+import { ORDER_ANSWERS, ORDER_SHIPPING, type OrderAnswers, type OrderShipping } from "./ports.js";
 import { OrderActions } from "./order-actions.js";
 
-export const BULK_ACTIONS = ["assign", "tag", "confirm", "cancel"] as const;
+export const BULK_ACTIONS = ["assign", "tag", "confirm", "cancel", "ship"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 export const CANCEL_REASONS = ["customer_cancelled", "duplicate", "out_of_stock", "fraud", "other"] as const;
 export type BulkParams =
   | { action: "assign"; userId: string | null }
   | { action: "tag"; tags: string[] }
   | { action: "confirm" }
-  | { action: "cancel"; reason: (typeof CANCEL_REASONS)[number] };
+  | { action: "cancel"; reason: (typeof CANCEL_REASONS)[number] }
+  | { action: "ship" };
 
 /** Orders per chunk: each chunk commits on its own, so progress shows and a long list never holds one transaction. */
 export const BULK_CHUNK = 25;
@@ -30,12 +31,13 @@ class Skip extends Error {
 }
 
 /**
- * Bulk actions on orders (M1, E5-4): assign, tag, confirm, cancel up to 500 orders at once. The
+ * Bulk actions on orders (M1, E5-4): assign, tag, confirm, cancel, ship (E7-2) up to 500 orders at once. The
  * request records the action and its orders and returns; the worker applies it in chunks
  * (orders.bulk_requested → orders.bulk_continue …), each order in its own savepoint so one
  * failure never undoes the rest. Every order ends done, skipped (with a reason code) or failed.
  * Cancelling also cancels the store's order (outbox job: no refund, restocked, the customer not
- * emailed); a paid order is skipped, its money goes back through a refund.
+ * emailed); a paid order is skipped, its money goes back through a refund. Shipping books the
+ * courier per order as the order screen does (cashToCollect, once); refusals are skip reasons.
  */
 @Injectable()
 export class BulkActionsService {
@@ -45,15 +47,22 @@ export class BulkActionsService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ORDER_ANSWERS) private readonly confirmations: OrderAnswers,
     @Inject(OrderActions) private readonly actions: OrderActions,
+    @Inject(ORDER_SHIPPING) private readonly shipping: OrderShipping,
   ) {}
 
   async request(auth: AuthContext, body: BulkParams & { orderIds: string[] }) {
     const tenantId = auth.tenant!.id;
     const ids = [...new Set(body.orderIds)];
+    if (auth.tenant!.role === "warehouse" && body.action !== "ship") throw new ProblemError(403, "insufficient_role", "the warehouse ships orders; other bulk actions need a manager");
     return this.db.tenant(tenantId, async (trx) => {
       if (body.action === "assign" && body.userId) {
         const m = await trx.selectFrom("memberships").select("role").where("user_id", "=", body.userId).where("status", "=", "active").executeTakeFirst();
         if (!m || !ASSIGNABLE.has(m.role)) throw new ProblemError(422, "not_assignable", "assign orders to an active member of this store's team");
+      }
+      if (body.action === "ship") {
+        const courier = await this.shipping.courier(trx);
+        if (!courier) throw new ProblemError(409, "no_courier", "connect a courier first");
+        if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
       }
       const found = await trx.selectFrom("orders").select("id").where("id", "in", ids).execute();
       if (found.length !== ids.length) throw new ProblemError(422, "unknown_orders", `${ids.length - found.length} of the orders are not in this store`);
@@ -160,6 +169,12 @@ export class BulkActionsService {
         await event("cancelled", { reason: p.reason }, o.status, "cancelled");
         await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: o.id }, actor, data: { number: o.number, reason: p.reason } });
         await store()?.enqueue(MizanEngine.shopifyCancelJob({ orderId: o.external_id!, reason: SHOPIFY_REASON[p.reason], note: "Mizan: cancelled by the team" }), now.getTime());
+        return;
+      }
+      case "ship": {
+        if (o.duplicate_status === "suspected") throw new Skip("duplicate_suspected");
+        const r = await this.shipping.book(trx, tenantId, o.id, userId, now, { bulk: bulkId });
+        if (!r.created) throw new Skip("already_shipping");
         return;
       }
     }

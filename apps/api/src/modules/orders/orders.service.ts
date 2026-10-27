@@ -69,11 +69,13 @@ export class OrdersService {
       if (q.confirmation === "needs_call") rows = rows.where((eb) => needsCall(eb as never));
       if (q.duplicate) rows = rows.where("o.duplicate_status", "=", q.duplicate);
       if (q.stock) rows = rows.where("o.stock_status", "=", q.stock);
+      if (q.shipping === "ready") rows = rows.where((eb) => readyToShip(eb as never));
       if (after) rows = rows.where((eb) => eb.or([eb("o.placed_at", "<", after.at), eb.and([eb("o.placed_at", "=", after.at), eb("o.id", "<", after.id)])]));
       const found = await rows.execute();
       const counts = await trx.selectFrom("orders as o").where(scope).select(["o.status", sql<string>`count(*)`.as("n")]).groupBy("o.status").execute();
       const calls = await trx.selectFrom("orders as o").where(scope).where((eb) => needsCall(eb as never)).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
       const dupes = await trx.selectFrom("orders as o").where(scope).where("o.duplicate_status", "=", "suspected").select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
+      const ready = await trx.selectFrom("orders as o").where(scope).where((eb) => readyToShip(eb as never)).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
       const waiting = await trx.selectFrom("orders as o").where(scope).where("o.stock_status", "=", "short").select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
 
       const page = found.slice(0, q.limit);
@@ -97,6 +99,7 @@ export class OrdersService {
         needsCall: Number(calls.n),
         duplicates: Number(dupes.n),
         waitingStock: Number(waiting.n),
+        readyToShip: Number(ready.n),
       };
     });
   }
@@ -212,4 +215,15 @@ export function roleScope(eb: Eb, auth: AuthContext) {
   if (role === "agent") return eb("o.assigned_to", "=", auth.user.id);
   if (role === "warehouse") return eb("o.status", "in", ["confirmed", "shipped"]);
   return eb.and([]);
+}
+
+/** Ready for the courier (E7-2): confirmed, no live shipment, not waiting for stock or a duplicate decision. */
+function readyToShip(eb: ExpressionBuilder<DB & { o: DB["orders"] }, "o">) {
+  return eb.and([
+    eb("o.status", "=", "confirmed"),
+    eb.or([eb("o.stock_status", "is", null), eb("o.stock_status", "!=", "short")]),
+    eb.or([eb("o.duplicate_status", "is", null), eb("o.duplicate_status", "!=", "suspected")]),
+    eb.not(eb.exists(eb.selectFrom("shipments as s").select("s.id").whereRef("s.order_id", "=", "o.id").where("s.is_return_leg", "=", false)
+      .where("s.booking", "!=", "failed").where("s.status", "!=", "cancelled"))),
+  ]);
 }

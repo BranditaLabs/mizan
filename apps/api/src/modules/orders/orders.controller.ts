@@ -46,19 +46,19 @@ export class OrdersController {
     return this.manual.create(auth, body);
   }
 
-  /** E5-4: assign, tag, confirm or cancel many orders; follow it with GET /orders/bulk/{id}. */
+  /** E5-4: assign, tag, confirm or cancel many orders; ship them (E7-2, warehouse too); follow it with GET /orders/bulk/{id}. */
   @Post("bulk")
   @HttpCode(202)
-  @Roles("owner", "admin", "ops_manager")
+  @Roles("owner", "admin", "ops_manager", "warehouse")
   @ApiJsonBody("BulkRequest", BulkRequestSchema)
   @ApiJson(202, "BulkAction", BulkActionSchema, "Accepted: the worker applies it in chunks; audited")
-  @ApiProblems(422)
+  @ApiProblems(403, 409, 422)
   bulkRequest(@Auth() auth: AuthContext, @Body(new ZodPipe(BulkRequestSchema)) body: z.output<typeof BulkRequestSchema>) {
     return this.bulk.request(auth, body);
   }
 
   @Get("bulk/:bulkId")
-  @Roles("owner", "admin", "ops_manager")
+  @Roles("owner", "admin", "ops_manager", "warehouse")
   @ApiJson(200, "BulkAction", BulkActionSchema, "Progress: done, skipped and failed so far, and why each order was skipped or failed")
   @ApiProblems(404)
   bulkProgress(@Auth() auth: AuthContext, @Param("bulkId", new ParseUUIDPipe()) id: string) {

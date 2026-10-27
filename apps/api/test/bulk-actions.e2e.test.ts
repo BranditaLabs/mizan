@@ -157,7 +157,8 @@ describe("bulk actions (E5-4)", () => {
     expect(await code({ action: "assign", orderIds: [x], userId: "00000000-0000-4000-8000-000000000000" })).toBe("not_assignable");
     expect(await code({ action: "cancel", orderIds: [x, "11111111-1111-4111-8111-111111111111"], reason: "other" })).toBe("unknown_orders");
     expect(await code({ action: "cancel", orderIds: [x] })).toBe("validation_failed");
-    expect(await code({ action: "ship", orderIds: [x] })).toBe("validation_failed");
+    expect(await code({ action: "refund", orderIds: [x] })).toBe("validation_failed");
+    expect(await code({ action: "ship", orderIds: [x] }, 409)).toBe("no_courier"); // E7-2: refused before anything is queued
     await http().post("/v1/orders/bulk").set(as("agent")).send({ action: "confirm", orderIds: [x] }).expect(403);
     await http().get("/v1/orders/bulk/22222222-2222-4222-8222-222222222222").set(as("owner")).expect(404);
     expect(connectionId).toBeTruthy();

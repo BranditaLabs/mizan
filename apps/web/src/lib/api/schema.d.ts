@@ -2569,7 +2569,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            action: "assign" | "tag" | "confirm" | "cancel";
+            action: "assign" | "tag" | "confirm" | "cancel" | "ship";
             /** @enum {string} */
             status: "running" | "done";
             total: number;
@@ -2587,7 +2587,7 @@ export interface components {
                 number: string;
                 /** @enum {string} */
                 status: "skipped" | "failed";
-                /** @description cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, error… */
+                /** @description cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, already_shipping, not_confirmed, address_missing, payment_blocks_shipping, error… */
                 reason: string;
             }[];
         };
@@ -2620,6 +2620,11 @@ export interface components {
             orderIds: string[];
             /** @enum {string} */
             reason: "customer_cancelled" | "duplicate" | "out_of_stock" | "fraud" | "other";
+        } | {
+            /** @enum {string} */
+            action: "ship";
+            /** @description Up to 500 orders */
+            orderIds: string[];
         };
         CallQueue: {
             /** @description Due now: mine and nobody's */
@@ -4516,6 +4521,8 @@ export interface components {
             needsCall: number;
             duplicates: number;
             waitingStock: number;
+            /** @description Confirmed orders ready for the courier (E7-2) */
+            readyToShip: number;
         };
         OrderPnl: {
             currency: string;
@@ -7179,6 +7186,8 @@ export interface operations {
                 duplicate?: "suspected";
                 /** @description short: confirmed orders waiting for stock (oversell blocked, E8-2) */
                 stock?: "short";
+                /** @description ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2) */
+                shipping?: "ready";
                 /** @description Order number, store order id, or the customer's phone */
                 q?: string;
                 paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
@@ -7288,6 +7297,24 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkAction"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Understood but refused (a business rule) */

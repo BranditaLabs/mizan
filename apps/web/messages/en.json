@@ -914,7 +914,8 @@
         "assign": "Assigning",
         "tag": "Tagging",
         "confirm": "Confirming",
-        "cancel": "Cancelling"
+        "cancel": "Cancelling",
+        "ship": "Shipping"
       },
       "running": "{action} orders…",
       "finished": "{action} done",
@@ -928,7 +929,14 @@
         "already_confirmed": "already confirmed",
         "duplicate_suspected": "a possible duplicate: decide it first",
         "not_found": "not found",
-        "error": "something went wrong"
+        "error": "something went wrong",
+        "already_shipping": "already with the courier",
+        "not_confirmed": "not confirmed",
+        "address_missing": "no address or phone",
+        "payment_blocks_shipping": "the payment doesn't allow shipping yet",
+        "store_not_connected": "connect the store first",
+        "courier_needs_attention": "the courier connection needs attention",
+        "no_courier": "connect a courier first"
       },
       "failedHint": "Some orders failed. Try them again in a moment."
     },
@@ -2551,6 +2559,7 @@
     "openOrder": "Open the order",
     "courierSaid": "The courier said:",
     "view": {
+      "ready": "Ready to ship",
       "active": "With the courier",
       "review": "Needs review",
       "delivered": "Delivered",
@@ -2649,6 +2658,21 @@
         "title": "No shipments in this period",
         "body": "The scorecard fills as couriers deliver."
       }
+    },
+    "ready": {
+      "title": "Ready to ship",
+      "loading": "Loading orders ready to ship",
+      "cod": "To collect",
+      "ship": "Ship with the courier",
+      "more": "Show more",
+      "empty": {
+        "title": "Nothing waiting to ship",
+        "body": "Confirmed orders with stock show here, ready for the courier."
+      },
+      "askTitle": "Ship {count, plural, one {# order} other {# orders}}?",
+      "askBody": "Mizan books the courier for each order with the cash it should collect. Orders that can't ship yet are skipped, and you'll see why.",
+      "go": "Ship them",
+      "close": "Not now"
     }
   },
   "exchanges": {

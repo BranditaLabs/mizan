@@ -95,7 +95,10 @@ export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
     queryKey: ["bulk", user?.uid ?? "", store?.tenantId ?? "", id],
     queryFn: async () => {
       const b = await ok(api.GET("/v1/orders/bulk/{bulkId}", { params: { path: { bulkId: id } } }));
-      if (b.status === "done") void qc.invalidateQueries({ queryKey: ["orders"] });
+      if (b.status === "done") {
+        void qc.invalidateQueries({ queryKey: ["orders"] });
+        if (b.action === "ship") void qc.invalidateQueries({ queryKey: ["shipments"] });
+      }
       return b;
     },
     refetchInterval: (query) => (query.state.data?.status === "done" ? false : 1000),

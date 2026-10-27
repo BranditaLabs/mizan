@@ -50,30 +50,44 @@ export class ShippingService implements ShipmentResultSink {
   async ship(auth: AuthContext, orderId: string, now = new Date()): Promise<{ created: boolean; shipment: ShipmentView }> {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
-      const ready = await this.shippable(trx, orderId, true);
-      if (ready.kind === "live") return { created: false, shipment: ready.live };
-      const { o, cod } = ready;
-
-      // Couriers Mizan books through an API (Bosta for now); others are recorded by hand (shipManual).
-      const courier = await trx.selectFrom("connections").select(["id", "provider", "status"]).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected")
-        .orderBy("created_at").executeTakeFirst();
-      if (!courier) throw new ProblemError(409, "no_courier", "connect a courier first");
-      if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
-      // Jobs run in a store's engine: the order's own store, else the tenant's first (a courier is only connected after a store).
-      const fromStore = o.store_provider === "shopify" && o.store_status !== "disconnected" ? o.connection_id : null;
-      const storeId = fromStore ?? (await trx.selectFrom("connections").select("id").where("provider", "=", "shopify").where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
-      if (!storeId) throw new ProblemError(409, "store_not_connected", "connect the store first");
-
-      const row = await trx.insertInto("shipments").values({
-        tenant_id: tenantId, order_id: orderId, connection_id: courier.id, provider: courier.provider, currency: o.currency, cod_minor: cod,
-        booking: "pending", requested_by: auth.user.id, created_at: now, updated_at: now,
-      }).returning([...SHIPMENT_COLUMNS]).executeTakeFirstOrThrow();
-      const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: storeId, bosta: courier.id } });
-      await store.enqueue(MizanEngine.bostaShipJob({ shipmentId: row.id, orderId, ...(fromStore && o.external_id ? { storeOrderId: o.external_id } : {}) }), this.runtime(tenantId).clock.now());
-      await timeline(trx, tenantId, orderId, "ship_requested", { shipmentId: row.id, provider: courier.provider }, auth.user.id);
-      await this.audit.record(trx, { action: "shipment.requested", tenantId, entity: { type: "order", id: orderId }, after: { shipmentId: row.id, provider: courier.provider, codMinor: String(cod) }, ...auditActor(auth) });
-      return { created: true, shipment: view(row) };
+      const r = await this.book(trx, tenantId, orderId, auth.user.id, now);
+      if (r.created) await this.audit.record(trx, { action: "shipment.requested", tenantId, entity: { type: "order", id: orderId }, after: { shipmentId: r.shipment.id, provider: r.shipment.provider, codMinor: String(toMinor(r.shipment.cod)) }, ...auditActor(auth) });
+      return r;
     });
+  }
+
+  /**
+   * Book the courier inside the caller's transaction (the order screen, and bulk ship from the
+   * shipping screen, E7-2): the shipment row and the courier job commit together. Refusals are
+   * ProblemErrors with a code (not_confirmed, address_missing, payment_blocks_shipping, no_courier…).
+   */
+  async book(trx: Trx, tenantId: string, orderId: string, userId: string | null, now = new Date(), data: Record<string, unknown> = {}): Promise<{ created: boolean; shipment: ShipmentView }> {
+    const ready = await this.shippable(trx, orderId, true);
+    if (ready.kind === "live") return { created: false, shipment: ready.live };
+    const { o, cod } = ready;
+
+    // Couriers Mizan books through an API (Bosta for now); others are recorded by hand (shipManual).
+    const courier = await apiCourier(trx);
+    if (!courier) throw new ProblemError(409, "no_courier", "connect a courier first");
+    if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
+    // Jobs run in a store's engine: the order's own store, else the tenant's first (a courier is only connected after a store).
+    const fromStore = o.store_provider === "shopify" && o.store_status !== "disconnected" ? o.connection_id : null;
+    const storeId = fromStore ?? (await trx.selectFrom("connections").select("id").where("provider", "=", "shopify").where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
+    if (!storeId) throw new ProblemError(409, "store_not_connected", "connect the store first");
+
+    const row = await trx.insertInto("shipments").values({
+      tenant_id: tenantId, order_id: orderId, connection_id: courier.id, provider: courier.provider, currency: o.currency, cod_minor: cod,
+      booking: "pending", requested_by: userId, created_at: now, updated_at: now,
+    }).returning([...SHIPMENT_COLUMNS]).executeTakeFirstOrThrow();
+    const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: storeId, bosta: courier.id } });
+    await store.enqueue(MizanEngine.bostaShipJob({ shipmentId: row.id, orderId, ...(fromStore && o.external_id ? { storeOrderId: o.external_id } : {}) }), this.runtime(tenantId).clock.now());
+    await timeline(trx, tenantId, orderId, "ship_requested", { ...data, shipmentId: row.id, provider: courier.provider }, userId ?? undefined);
+    return { created: true, shipment: view(row) };
+  }
+
+  /** The courier Mizan books through an API, if one is connected (bulk ship checks it before queueing). */
+  courier(trx: Trx) {
+    return apiCourier(trx);
   }
 
   /**
@@ -219,6 +233,11 @@ function view(r: Row): ShipmentView {
     error: r.error_code ? { code: r.error_code as BookingError, message: r.error ?? "" } : null,
     requestedAt: r.created_at.toISOString(), bookedAt: r.booked_at?.toISOString() ?? null,
   };
+}
+
+function apiCourier(trx: Trx) {
+  return trx.selectFrom("connections").select(["id", "provider", "status"]).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected")
+    .orderBy("created_at").executeTakeFirst();
 }
 
 function timeline(trx: Trx, tenantId: string, orderId: string, type: string, data: Record<string, unknown>, userId?: string) {

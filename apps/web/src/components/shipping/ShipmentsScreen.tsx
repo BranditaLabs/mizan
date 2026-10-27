@@ -15,12 +15,14 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { ReadyToShip, useReadyToShip } from "./ReadyToShip";
 import { Scorecard } from "./Scorecard";
 import { StatusImport } from "./StatusImport";
 
 type Row = Schemas["ShipmentPage"]["data"][number];
-type View = "active" | "review" | "delivered" | "returned" | "all";
-const VIEWS: readonly View[] = ["active", "review", "delivered", "returned", "all"];
+type ShipmentView = "active" | "review" | "delivered" | "returned" | "all";
+type View = "ready" | ShipmentView;
+const VIEWS: readonly View[] = ["ready", "active", "review", "delivered", "returned", "all"];
 const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
 const STATUSES = ["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"] as const;
 type Status = (typeof STATUSES)[number];
@@ -31,7 +33,8 @@ const TONE: Partial<Record<Status, "success" | "danger" | "warning" | "info">> =
 const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
- * M3 tracking (E7-3): every shipment with the courier and where it is, and the review queue — a
+ * M3 shipping: what is ready to ship, shipped in one go (E7-2), then every shipment with the
+ * courier and where it is (E7-3), and the review queue — a
  * status the courier sent that Mizan could not map, a final status the courier later contradicted,
  * or a booking it refused. Managers set the status once they know (audited); never guessed.
  */
@@ -39,7 +42,7 @@ export function ShipmentsScreen() {
   const t = useTranslations("shipments");
   const ts = useTranslations("shipping");
   const { api, user, store } = useSession();
-  const [view, setView] = useState<View>("active");
+  const [view, setView] = useState<View>("ready");
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | null>(null);
@@ -50,9 +53,12 @@ export function ShipmentsScreen() {
     const id = setTimeout(() => setQ(text.trim()), 300);
     return () => clearTimeout(id);
   }, [text]);
+  // The ready tab lists orders; the shipments list behind it still gives the other tabs' counts.
+  const shipmentView: ShipmentView = view === "ready" ? "active" : view;
+  const ready = useReadyToShip(q);
   const list = useInfiniteQuery({
-    queryKey: ["shipments", user?.uid ?? "", store?.tenantId ?? "", view, q],
-    queryFn: ({ pageParam }) => ok(api.GET("/v1/shipments", { params: { query: { view, ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}) } } })),
+    queryKey: ["shipments", user?.uid ?? "", store?.tenantId ?? "", shipmentView, q],
+    queryFn: ({ pageParam }) => ok(api.GET("/v1/shipments", { params: { query: { view: shipmentView, ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}) } } })),
     initialPageParam: "",
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: Boolean(store),
@@ -90,11 +96,11 @@ export function ShipmentsScreen() {
           <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-72" />
         </div>
       </header>
-      <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(first ? { count: first.counts[v] } : {}) }))}>
-        {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
+      <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(v === "ready" ? (ready.data ? { count: ready.data.pages[0]!.readyToShip } : {}) : first ? { count: first.counts[v] } : {}) }))}>
+        {view === "ready" ? <ReadyToShip q={q} now={now} /> : list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
           <div className="flex flex-col gap-3">
             <DataTable label={t("title")} columns={columns} rows={rows} rowKey={(r) => r.id} rowLabel={(r) => r.order.number}
-              empty={q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} /> : <EmptyState icon="shipping" title={t(`empty.${view}.title`)} body={t(`empty.${view}.body`)} />} />
+              empty={q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} /> : <EmptyState icon="shipping" title={t(`empty.${shipmentView}.title`)} body={t(`empty.${shipmentView}.body`)} />} />
             {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
           </div>
         )}

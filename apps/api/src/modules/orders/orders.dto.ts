@@ -13,6 +13,7 @@ export const ListOrdersQuerySchema = z.object({
   confirmation: z.enum(["needs_call"]).optional().describe("needs_call: orders the team should call now"),
   duplicate: z.enum(["suspected"]).optional().describe("suspected: likely duplicates waiting for the team (keep or merge)"),
   stock: z.enum(["short"]).optional().describe("short: confirmed orders waiting for stock (oversell blocked, E8-2)"),
+  shipping: z.enum(["ready"]).optional().describe("ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2)"),
   /** Order number ("#1042", "1042"), the store's order id, or the customer's phone in any form. */
   q: z.string().trim().min(1).max(64).optional().describe("Order number, store order id, or the customer's phone"),
   paymentMode: z.enum(PAYMENT_MODES).optional(),
@@ -58,6 +59,7 @@ export const OrderPageSchema = z.object({
   duplicates: z.number().int(),
   /** Confirmed orders waiting for stock (the "Waiting for stock" tab). */
   waitingStock: z.number().int(),
+  readyToShip: z.number().int().describe("Confirmed orders ready for the courier (E7-2)"),
 });
 
 export const OrderIdParamSchema = z.uuid();
@@ -182,6 +184,7 @@ export const BulkRequestSchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("tag"), orderIds: OrderIds, tags: z.array(z.string().trim().toLowerCase().regex(/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u)).min(1).max(5).describe("Added (in Shopify too); never removed") }),
   z.strictObject({ action: z.literal("confirm"), orderIds: OrderIds }),
   z.strictObject({ action: z.literal("cancel"), orderIds: OrderIds, reason: z.enum(CANCEL_REASONS) }),
+  z.strictObject({ action: z.literal("ship"), orderIds: OrderIds }).describe("Book the courier for each confirmed order (E7-2)"),
 ]);
 export const BulkActionSchema = z.object({
   id: z.uuid(), action: z.enum(BULK_ACTIONS), status: z.enum(["running", "done"]),
@@ -189,6 +192,6 @@ export const BulkActionSchema = z.object({
   createdAt: z.iso.datetime(), finishedAt: z.iso.datetime().nullable(),
   issues: z.array(z.object({
     orderId: z.uuid(), number: z.string(), status: z.enum(["skipped", "failed"]),
-    reason: z.string().describe("cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, error…"),
+    reason: z.string().describe("cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, already_shipping, not_confirmed, address_missing, payment_blocks_shipping, error…"),
   })).describe("Orders skipped or failed and why (200 at most)"),
 });

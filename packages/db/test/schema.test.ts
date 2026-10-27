@@ -334,7 +334,9 @@ describe("schema", () => {
     await asTenant(T1, () => db.query(`INSERT INTO bulk_action_items (bulk_id, tenant_id, order_id) VALUES ($1, $2, $3)`, [bulk, T1, order]));
     await expect(asTenant(T1, () => db.query(`INSERT INTO bulk_action_items (bulk_id, tenant_id, order_id) VALUES ($1, $2, $3)`, [bulk, T1, order]))).rejects.toThrow(/duplicate key/);
     await expect(asTenant(T1, () => db.query(`UPDATE bulk_actions SET done = 2 WHERE id = $1`, [bulk]))).rejects.toThrow(/bulk_actions_counts/);
-    await expect(asTenant(T1, () => db.query(`INSERT INTO bulk_actions (tenant_id, action, total) VALUES ($1, 'ship', 1)`, [T1]))).rejects.toThrow(/check/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO bulk_actions (tenant_id, action, total) VALUES ($1, 'refund', 1)`, [T1]))).rejects.toThrow(/check/);
+    // E7-2: bulk ship (migration 0048).
+    await asTenant(T1, () => db.query(`INSERT INTO bulk_actions (tenant_id, action, total) VALUES ($1, 'ship', 1)`, [T1]));
     expect((await asTenant(T2, () => db.query(`SELECT * FROM bulk_action_items`))).rows).toEqual([]);
   });
 

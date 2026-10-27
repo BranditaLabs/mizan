@@ -39,9 +39,9 @@ async function runJobs(rounds = 80) {
     clock.advance(60_000);
   }
 }
-async function manual(payment: object, city = "Cairo") {
+async function manual(payment: object, city = "Cairo", phone = "01001234821") {
   const r = await http().post("/v1/orders").set(as("owner")).send({
-    source: "phone", customer: { name: "Mona Adel", phone: "01001234821" }, address: { line1: "12 Abbas El Akkad St", city },
+    source: "phone", customer: { name: "Mona Adel", phone }, address: { line1: "12 Abbas El Akkad St", city },
     lines: [{ title: "Abaya", quantity: 1, unitPrice: "1250" }], shipping: "0", payment,
   }).expect(201);
   await drainEvents();
@@ -263,5 +263,43 @@ describe("shipping (E7-1)", () => {
     expect(b.zones.reduce((n: number, z: { shipments: number }) => n + z.shipments, 0)).toBe(b.shipments);
     await http().get("/v1/couriers/scorecard?days=7").set(as("owner")).expect(422);
     await http().get("/v1/couriers/scorecard").set(as("agent")).expect(403);
+  });
+
+  it("ships many orders from the shipping screen: the ready list, one booking each, skips say why (E7-2)", async () => {
+    // Different customers: the same phone again would wait as a likely duplicate (E5-3).
+    const [a, b, open, booked] = [await manual({ mode: "cod" }, "Cairo", "01001239001"), await manual({ mode: "prepaid", method: "card" }, "Cairo", "01001239002"),
+      await manual({ mode: "cod" }, "Cairo", "01001239003"), await manual({ mode: "cod" }, "Cairo", "01001239004")];
+    for (const id of [a, b, booked]) await confirm(id);
+    await ship(booked).expect(202);
+    const ready = (await http().get("/v1/orders?shipping=ready&limit=100").set(as("wh")).expect(200)).body;
+    const readyIds = ready.data.map((o: { id: string }) => o.id);
+    expect(readyIds).toEqual(expect.arrayContaining([a, b]));
+    expect(readyIds).not.toContain(open);
+    expect(readyIds).not.toContain(booked);
+    expect(ready.readyToShip).toBe(ready.data.length);
+
+    await http().post("/v1/orders/bulk").set(as("wh")).send({ action: "cancel", orderIds: [a], reason: "other" }).expect(403);
+    await http().post("/v1/orders/bulk").set(as("agent")).send({ action: "ship", orderIds: [a] }).expect(403);
+    const req = (await http().post("/v1/orders/bulk").set(as("wh")).send({ action: "ship", orderIds: [a, b, open, booked] }).expect(202)).body;
+    await drainEvents();
+    const done = (await http().get(`/v1/orders/bulk/${req.id}`).set(as("wh")).expect(200)).body;
+    expect(done).toMatchObject({ action: "ship", status: "done", total: 4, done: 2, skipped: 2, failed: 0 });
+    expect(Object.fromEntries(done.issues.map((i: { orderId: string; reason: string }) => [i.orderId, i.reason]))).toEqual({ [open]: "not_confirmed", [booked]: "already_shipping" });
+
+    // Asked again: nothing is booked twice.
+    const again = (await http().post("/v1/orders/bulk").set(as("owner")).send({ action: "ship", orderIds: [a, b] }).expect(202)).body;
+    await drainEvents();
+    expect((await http().get(`/v1/orders/bulk/${again.id}`).set(as("owner")).expect(200)).body).toMatchObject({ done: 0, skipped: 2 });
+    await runJobs();
+    for (const id of [a, b]) {
+      const o = await detail(id);
+      expect(o.status).toBe("shipped");
+      expect(o.shipments).toEqual([expect.objectContaining({ booking: "booked", trackingNumber: expect.any(String) })]);
+    }
+    expect((await detail(b)).shipments[0].cod).toEqual({ amount: "0.00", currency: "EGP" });
+    const refs = await db.tenant(store, (trx) => trx.selectFrom("shipments").select("id").where("order_id", "in", [a, b]).execute());
+    expect([...bosta.deliveries.values()].filter((d) => refs.some((r) => r.id === d.businessReference))).toHaveLength(2);
+    const after = (await http().get("/v1/orders?shipping=ready&limit=100").set(as("wh")).expect(200)).body.data.map((o: { id: string }) => o.id);
+    expect(after).not.toContain(a);
   });
 });

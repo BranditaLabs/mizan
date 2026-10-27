@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { mizan, ownerWithStore, signInOwner } from "./stack";
 
 /**
- * E7-1 in the browser: a confirmed order offers "Ship it"; without a courier connected the API
+ * E7-1 and E7-2 in the browser: a confirmed order is ready to ship (its page, and the shipping
+ * screen's ready tab for many at once); without a courier connected the API
  * refuses and the screen says what to do. Booking through the courier (fake Bosta, the worker,
  * the tracking number) runs in the API's shipping e2e.
  */
@@ -20,6 +21,14 @@ test("owner in Arabic: a confirmed order offers shipping, and says to connect a 
   await page.goto("/ar/sign-in");
   await signInOwner(page, owner, "ar");
   await expect(page).toHaveURL(/\/ar$/);
+  // E7-2: the confirmed order waits in the shipping screen's ready tab; shipping it without a courier says what to do.
+  await page.goto("/ar/shipping");
+  const ready = page.getByTestId("ready-to-ship");
+  await expect(ready).toContainText(o.number);
+  await ready.getByLabel(`اختار ${o.number}`).check();
+  await ready.getByRole("button", { name: "اشحن مع شركة الشحن" }).click();
+  await page.getByRole("dialog", { name: "نشحن 1 أوردر؟" }).getByRole("button", { name: "اشحنهم" }).click();
+  await expect(page.locator(".mz-toast", { hasText: "اربط شركة شحن الأول" })).toBeVisible();
   await page.goto(`/ar/orders/${o.id}`);
   const card = page.getByTestId("shipping");
   await expect(card).toContainText("الأوردر متأكّد وجاهز: احجز الشحن.");
@@ -64,7 +73,8 @@ test("owner in English: the shipping screen lists views and an empty review queu
   await expect(page).toHaveURL(/\/en\/shipping$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Shipping");
   const tabs = page.getByRole("tablist", { name: "Shipments" });
-  await expect(tabs.getByRole("tab")).toHaveCount(5);
+  await expect(tabs.getByRole("tab")).toHaveCount(6);
+  await expect(page.getByTestId("ready-to-ship")).toContainText("Nothing waiting to ship");
   await tabs.getByRole("tab", { name: /Needs review/ }).click();
   await expect(page.getByTestId("shipments")).toContainText("Nothing to review");
 });
