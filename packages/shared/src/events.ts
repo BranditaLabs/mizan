@@ -25,7 +25,7 @@ export const DOMAIN_EVENT_TYPES = [
   "pnl.recomputed", "costs.changed", "fx.rate_overridden", "ads.spend_changed",
   "ticket.created", "ticket.status_changed", "ticket.assigned", "return.inspected", "settlement.matched", "settlement.gap_found",
   // M15 Payments
-  "payment.received", "payment.failed", "refund.completed", "dispute.opened",
+  "payment.received", "payment.failed", "refund.created", "refund.approved", "refund.rejected", "refund.completed", "dispute.opened",
   "order.awaiting_payment", "order.payment_changed",
   // M16–M20
   "po.received", "stock.reorder_suggested", "conversation.created", "conversation.sla_breached",

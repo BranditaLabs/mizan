@@ -137,6 +137,7 @@ _Sample data. Full visual in `design/prototype.html`._
 | --- | --- | --- |
 | GET | `/v1/orders/{id}/payments` | Payment ledger ✅ E14-1 |
 | POST | `/v1/orders/{id}/payments` | Record money received or given back outside a gateway ✅ E14-1 |
+| POST | `/v1/orders/{id}/refunds` · `/v1/refunds/{id}/approve\|reject\|complete` | Refunds with the approval threshold ✅ E14-4 |
 | POST | `/v1/orders/{id}/payment-links` | Create a link |
 | POST | `/v1/orders/{id}/refunds` | Refund |
 | GET | `/v1/payments` | List and filter |

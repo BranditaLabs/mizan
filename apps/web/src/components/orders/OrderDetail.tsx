@@ -18,6 +18,7 @@ import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { DuplicateBanner } from "./DuplicateBanner";
 import { LedgerCard } from "./LedgerCard";
+import { RefundsCard } from "@/components/payments/Refunds";
 import { ProfitCard } from "./ProfitCard";
 import { TicketsCard } from "./TicketsCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
@@ -154,6 +155,7 @@ export function OrderDetail({ id }: { id: string }) {
               )}
             </Card>
           )} />
+          <RefundsCard orderId={o.id} />
           {o.shipments.length ? (
             <Card title={t("detail.shipments.title")}>
               <ul className="flex flex-col gap-2">

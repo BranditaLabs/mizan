@@ -28,6 +28,7 @@ type Patch = Schemas["UpdateTicket"];
 export function TicketDetail({ id }: { id: string }) {
   const t = useTranslations("tickets");
   const tpr = useTranslations("problem");
+  const tr = useTranslations("refunds");
   const { api, user, store } = useSession();
   const key = ["ticket", user?.uid ?? "", store?.tenantId ?? "", id];
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/tickets/{id}", { params: { path: { id } } })), enabled: Boolean(store), meta: { toast: false } });
@@ -52,6 +53,7 @@ export function TicketDetail({ id }: { id: string }) {
       case "assigned": return d.to ? t("history.assigned", { name: nameOf(d.to) }) : t("history.unassigned");
       case "updated": return t("history.updated", { fields: Object.keys(d).map((f) => t(`fields.${f as "type"}`)).join("، ") });
       case "note": return t("history.note");
+      case "refund": return t("history.refund", { refund: String(d.refund ?? ""), step: tr(`status.${(d.step === "requested" || d.step === "approved" || d.step === "rejected" ? d.step : "completed") as "completed"}`) });
     }
   };
   return frame(

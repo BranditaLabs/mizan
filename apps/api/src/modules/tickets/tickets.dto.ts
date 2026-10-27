@@ -67,7 +67,7 @@ export const TicketSchema = TicketSummarySchema.extend({
   assignees: z.array(Person.extend({ role: z.string() })).describe("Who the caller may assign it to"),
   history: z.array(z.object({
     id: z.uuid(),
-    type: z.enum(["created", "status", "assigned", "updated", "note"]),
+    type: z.enum(["created", "status", "assigned", "updated", "note", "refund"]),
     at: z.iso.datetime(),
     actor: Person.nullable(),
     data: z.record(z.string(), z.unknown()).describe("status: from, to; assigned: to; updated: changed fields"),

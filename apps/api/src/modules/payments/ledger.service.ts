@@ -28,6 +28,8 @@ export interface PostLine {
   note?: string | null;
   recordedBy?: string | null;
   occurredAt?: Date;
+  /** Added to the line's event (a refund's id and number). */
+  eventData?: Record<string, unknown>;
 }
 
 /** What the order row holds about money once its ledger is summed. */
@@ -83,8 +85,9 @@ export class LedgerService {
       const inserted = await trx.insertInto("payments").values({
         tenant_id: tenantId, order_id: orderId, connection_id: connectionId, method: l.method, kind: l.kind, status: "succeeded", source: "store",
         amount_minor: l.amount, currency: store.currency, external_ref: l.ref, occurred_at: store.at,
-      }).onConflict((oc) => oc.doNothing()).returning(["kind", "status", "amount_minor", "source"]).executeTakeFirst();
+      }).onConflict((oc) => oc.doNothing()).returning(["id", "kind", "status", "amount_minor", "source"]).executeTakeFirst();
       if (inserted) rows.push(inserted);
+      if (inserted && l.kind === "refund") await this.storeRefunded(trx, tenantId, orderId, inserted.id, -l.amount);
     }
     return money(rows.map(asLine), after);
   }
@@ -120,7 +123,7 @@ export class LedgerService {
     if (changed) await trx.updateTable("orders").set({ ...next, updated_at: new Date() }).where("id", "=", orderId).execute();
 
     const entity = { type: "order", id: orderId };
-    const data = { number: o.number, paymentId: row.id, kind: line.kind, method: line.method, source: line.source, amountMinor: String(line.amountMinor), currency: o.currency };
+    const data = { number: o.number, paymentId: row.id, kind: line.kind, method: line.method, source: line.source, amountMinor: String(line.amountMinor), currency: o.currency, ...line.eventData };
     if (status === "failed") await this.events.emit(trx, { type: "payment.failed", tenantId, entity, actor, data });
     else if (status === "succeeded") {
       const type = MONEY_IN.has(line.kind) ? "payment.received" : line.kind === "refund" ? "refund.completed" : line.kind === "chargeback" ? "dispute.opened" : null;
@@ -167,6 +170,28 @@ export class LedgerService {
       });
       return this.read(trx, orderId, auth);
     });
+  }
+
+  /**
+   * The store refunded money (E14-4): approved refunds to the original method on this order,
+   * oldest first, are completed by it while it covers them. Money back through the store's own
+   * checkout is done in the store, so Mizan never books it twice.
+   */
+  private async storeRefunded(trx: Trx, tenantId: string, orderId: string, paymentId: string, amount: bigint) {
+    const open = await trx.selectFrom("refunds").select(["id", "number", "amount_minor", "currency", "ticket_id"])
+      .where("order_id", "=", orderId).where("status", "=", "approved").where("destination", "=", "original_method")
+      .orderBy("approved_at").orderBy("number").forUpdate().execute();
+    let left = amount;
+    for (const r of open) {
+      const a = BigInt(r.amount_minor);
+      if (a > left) break;
+      left -= a;
+      await trx.updateTable("refunds").set({ status: "completed", completed_at: new Date(), refund_payment_id: paymentId, updated_at: new Date() }).where("id", "=", r.id).execute();
+      await this.events.emit(trx, {
+        type: "refund.completed", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
+        data: { refundId: r.id, refund: `R-${r.number}`, paymentId, amountMinor: String(-a), currency: r.currency, source: "store", ticketId: r.ticket_id },
+      });
+    }
   }
 
   private rows(trx: Trx, orderId: string): Promise<Row[]> {

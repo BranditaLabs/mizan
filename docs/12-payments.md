@@ -74,6 +74,8 @@ Order placed with bank transfer → held, reminders at 12 h and 36 h → payment
 
 Return inspected or refund approved → `refund.create` → to original method through the gateway or BNPL provider; or store credit; or bank transfer for COD orders → `refund.completed` on provider confirmation → profit and stock updated. Approval above a threshold (finance or owner). Every refund audited.
 
+✅ Built (E14-4, `apps/api/src/modules/payments/refunds.*`): a refund (R-1001…) never exceeds what the order holds less refunds still open. Under the store's threshold (Settings → Refunds, default EGP 1,000) it is approved at once; over it, or in another currency, owner, admin or finance approve, never whoever asked unless the owner. Then: **store credit** is credited (`store_credit_ledger`) and completes on approval; **the original method on a store order** is done in the store and completes when the store's refunded total rises (the ledger's store sync matches approved refunds oldest first), so it is booked once; **a transfer, cash, or the original method on Mizan's own orders** completes when the team records it sent, with its reference. Each completed refund is one refund line in the ledger. A refund can settle a ticket; its steps show in the ticket's history. The gateway refund call itself (Paymob) arrives with E14-2.
+
 ### 5.4 Chargebacks
 
 Gateway reports dispute → `dispute.opened` → evidence pack generated (order, shipment tracking and proof of delivery, chat history, address, IP if available) → finance submits before `respond_by` → won (reversal) or lost (cost in M5).

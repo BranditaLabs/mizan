@@ -1,6 +1,7 @@
 import { MoneySchema, PAYMENT_MODES, PAYMENT_STATUSES } from "@mizan/shared";
 import { z } from "zod";
 import { plainDecimal } from "../../platform/csv.js";
+import { REFUND_DESTINATIONS, REFUND_STATUSES } from "./refunds.rules.js";
 
 /** Methods the team records by hand: money that moved outside any gateway Mizan reads. */
 export const MANUAL_METHODS = ["bank_transfer", "instapay", "wallet", "cash_pos", "store_credit"] as const;
@@ -88,4 +89,69 @@ export const PaymentMixSchema = z.object({
   orders: z.number().int().describe("Orders placed in the period, cancelled ones left out"),
   modes: z.array(z.object({ mode: z.enum(PAYMENT_MODES), orders: z.number().int(), pct: z.number().describe("Share of the period's orders, one decimal") })),
   received: z.array(z.object({ method: z.string(), amount: MoneySchema })).describe("Money in during the period by method, net of voids, per currency"),
+});
+
+const RefundAmount = z.string().transform((v, ctx) => {
+  const d = plainDecimal(v);
+  if (!d || !/[1-9]/.test(d)) {
+    ctx.addIssue({ code: "custom", message: "a positive amount like 250 or 250.50" });
+    return z.NEVER;
+  }
+  return d;
+});
+
+export const NewRefundSchema = z.object({
+  amount: RefundAmount.describe("In the order's currency; Arabic digits accepted"),
+  destination: z.enum(REFUND_DESTINATIONS).describe("original_method: back the way it came (online payments only); store_credit: to the customer's credit; bank_transfer; cash"),
+  reason: z.string().trim().min(1).max(300).optional(),
+  ticketId: z.uuid().optional().describe("The ticket this refund settles; it must be on the same order"),
+}).strict();
+export type NewRefund = z.output<typeof NewRefundSchema>;
+
+export const RejectRefundSchema = z.object({ reason: z.string().trim().min(1).max(300) }).strict();
+export const CompleteRefundSchema = z.object({
+  reference: z.string().trim().min(1).max(100).optional().describe("The transfer or gateway reference"),
+  note: z.string().trim().min(1).max(300).optional(),
+}).strict();
+export type CompleteRefund = z.output<typeof CompleteRefundSchema>;
+
+export const ListRefundsQuerySchema = z.object({
+  status: z.enum([...REFUND_STATUSES, "open", "all"]).default("open").describe("open: requested or approved, still to do (default)"),
+  orderId: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+});
+export type ListRefundsQuery = z.output<typeof ListRefundsQuerySchema>;
+
+const Person = z.object({ id: z.uuid(), name: z.string().nullable() });
+export const RefundSchema = z.object({
+  id: z.uuid(),
+  number: z.string().describe("R-1001"),
+  order: z.object({ id: z.uuid(), number: z.string() }),
+  ticket: z.object({ id: z.uuid(), number: z.string() }).nullable(),
+  amount: MoneySchema,
+  destination: z.enum(REFUND_DESTINATIONS),
+  status: z.enum(REFUND_STATUSES),
+  reason: z.string().nullable(),
+  requestedBy: Person.nullable(),
+  approvedBy: Person.nullable(),
+  rejectionReason: z.string().nullable(),
+  reference: z.string().nullable(),
+  needsApproval: z.boolean().describe("Over the store's threshold (or in another currency)"),
+  can: z.object({ approve: z.boolean(), reject: z.boolean(), complete: z.boolean() }).describe("What the caller may do with it now"),
+  completesFromStore: z.boolean().describe("Back to the original method on a store order: do it in the store; it completes when the store reports it"),
+  createdAt: z.iso.datetime(),
+  approvedAt: z.iso.datetime().nullable(),
+  completedAt: z.iso.datetime().nullable(),
+});
+export type Refund = z.output<typeof RefundSchema>;
+
+export const RefundListSchema = z.object({
+  data: z.array(RefundSchema),
+  counts: z.object({ requested: z.number().int(), approved: z.number().int(), completed: z.number().int(), rejected: z.number().int() }),
+});
+
+export const RefundOptionsSchema = z.object({
+  refundable: MoneySchema.describe("What the order holds less refunds still open"),
+  destinations: z.array(z.enum(REFUND_DESTINATIONS)),
+  approveOver: MoneySchema.describe("The store's threshold; above it a refund needs approval"),
 });

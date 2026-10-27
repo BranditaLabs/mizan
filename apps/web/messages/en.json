@@ -1141,7 +1141,8 @@
       "costs": "Costs",
       "confirmation": "Confirmation",
       "offers": "Offers",
-      "ads": "Ad spend"
+      "ads": "Ad spend",
+      "refunds": "Refunds"
     }
   },
   "confirmationSettings": {
@@ -2163,7 +2164,8 @@
       "assigned": "Assigned to {name}",
       "unassigned": "Unassigned",
       "updated": "Changed: {fields}",
-      "note": "Note"
+      "note": "Note",
+      "refund": "Refund {refund}: {step}"
     },
     "empty": {
       "title": "Nothing open",
@@ -2249,6 +2251,79 @@
       "open": "All payments",
       "share": "<n>{pct}%</n> · {orders, plural, one {# order} other {# orders}}",
       "received": "Money in by method"
+    }
+  },
+  "refunds": {
+    "title": "Refunds",
+    "none": "No refunds on this order.",
+    "request": "Refund",
+    "requestTitle": "Refund money",
+    "loading": "Loading…",
+    "amount": "Amount ({currency})",
+    "refundable": "Up to <n>{amount}</n> can go back",
+    "destinationLabel": "Back to",
+    "reasonLabel": "Reason",
+    "threshold": "Over <n>{amount} {currency}</n> needs owner, admin or finance to approve.",
+    "nothingToRefund": "Nothing was paid on this order, so nothing can go back.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "markSent": "Mark as sent",
+    "cancel": "Cancel",
+    "rejectTitle": "Reject {number}",
+    "sentTitle": "{number} sent",
+    "rejectReason": "Why",
+    "referenceLabel": "Reference",
+    "referenceHint": "The transfer or gateway reference, if there is one",
+    "reference": "Ref.",
+    "rejectedBecause": "Rejected: {reason}",
+    "waitsForApproval": "Waiting for approval by someone other than who asked.",
+    "fromStore": "Refund it in the store; it completes here when the store reports it.",
+    "queueTitle": "Refunds to handle · {count}",
+    "status": {
+      "requested": "Waiting for approval",
+      "approved": "Approved",
+      "completed": "Money back",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "destination": {
+      "original_method": "Same way it was paid",
+      "store_credit": "Store credit",
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash"
+    },
+    "toast": {
+      "requested": "{number} is waiting for approval",
+      "approved": "{number} approved",
+      "rejected": "{number} rejected",
+      "completed": "{number}: money back"
+    },
+    "errors": {
+      "over_refund": "That's more than this order holds, less refunds still open.",
+      "own_refund": "Someone other than who asked approves a refund.",
+      "destination_unavailable": "The money can't go back that way for this order.",
+      "completes_from_store": "Refund it in the store; it completes here when the store reports it.",
+      "refund_not_pending": "This refund isn't waiting for approval any more.",
+      "refund_not_approved": "Only an approved refund can be marked as sent."
+    }
+  },
+  "refundSettings": {
+    "title": "Refunds",
+    "subtitle": "Who approves money going back to customers.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "approveOver": "Approval needed over (store currency)",
+    "approveOverHint": "0 means every refund needs approval",
+    "rules": {
+      "under": "Under it, a refund is approved as soon as it's asked for.",
+      "over": "Over it (or in another currency), owner, admin or finance approve.",
+      "fourEyes": "Whoever asked doesn't approve their own, except the owner.",
+      "store": "Money back to the card or wallet of a store order is done in the store; Mizan completes it when the store reports it."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, finance and ops managers see refund settings."
     }
   }
 }

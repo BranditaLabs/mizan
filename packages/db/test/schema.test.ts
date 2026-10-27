@@ -93,7 +93,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -153,6 +153,19 @@ describe("schema", () => {
     await asTenant(T1, () => db.query(`INSERT INTO ticket_events (tenant_id, ticket_id, type, note) VALUES ($1, $2, 'note', 'checked the box')`, [T1, t.id]));
     expect((await asTenant(T2, () => db.query(`SELECT * FROM ticket_events`))).rows).toEqual([]);
     await expect(asTenant(T1, () => db.query(`INSERT INTO ticket_events (tenant_id, ticket_id, type) VALUES ($1, $2, 'deleted')`, [T1, t.id]))).rejects.toThrow(/ticket_events_type_check/);
+  });
+
+  it("numbers refunds once per store; a refund step shows once in a ticket's history (E14-4)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, external_id, number, currency, total_minor, placed_at) VALUES ($1, 'refund-1', '#R1', 'EGP', 100000, now()) RETURNING id`, [T1]))).rows[0]!.id;
+    const add = (number: number) => asTenant(T1, () => db.query(`INSERT INTO refunds (tenant_id, order_id, destination, amount_minor, currency, number) VALUES ($1, $2, 'cash', 100, 'EGP', $3)`, [T1, order, number]));
+    await add(1001);
+    await expect(add(1001)).rejects.toThrow(/refunds_number/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO refunds (tenant_id, order_id, destination, amount_minor, currency, number) VALUES ($1, $2, 'cash', 0, 'EGP', 1002)`, [T1, order]))).rejects.toThrow(/amount_minor_check/);
+    const ticket = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO tickets (tenant_id, number, type, order_id) VALUES ($1, 2001, 'refund', $2) RETURNING id`, [T1, order]))).rows[0]!.id;
+    const step = () => asTenant(T1, () => db.query(`INSERT INTO ticket_events (tenant_id, ticket_id, type, dedupe_key) VALUES ($1, $2, 'refund', 'r1:approved') ON CONFLICT DO NOTHING`, [T1, ticket]));
+    await step();
+    await step();
+    expect((await asTenant(T1, () => db.query(`SELECT * FROM ticket_events WHERE ticket_id = $1`, [ticket]))).rows).toHaveLength(1);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {

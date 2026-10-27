@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { MODE_ICON } from "@/components/orders/order-ui";
+import { RefundQueue } from "./Refunds";
 
 type Row = Schemas["PaymentPage"]["data"][number];
 type View = "all" | "unpaid" | "paid" | "cod_due" | "refunds" | "disputes";
@@ -78,6 +79,8 @@ export function PaymentsScreen() {
   ];
   const empty = q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} /> : <EmptyState icon="payments" title={t(`empty.${view}.title`)} body={t(`empty.${view}.body`)} />;
   return frame(
+    <>
+    <RefundQueue />
     <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(first ? { count: first.counts[v] } : {}) }))}>
       {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
         <div className="flex flex-col gap-3">
@@ -100,6 +103,7 @@ export function PaymentsScreen() {
           {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
         </div>
       )}
-    </Tabs>,
+    </Tabs>
+    </>,
   );
 }

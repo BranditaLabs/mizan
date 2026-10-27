@@ -49,6 +49,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/refunds/options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrderRefundsController_options"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrderRefundsController_request"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["RefundsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refunds/{refundId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RefundsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refunds/{refundId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RefundsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refunds/{refundId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RefundsController_complete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/refunds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["RefundSettingsController_get"];
+        put: operations["RefundSettingsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders": {
         parameters: {
             query?: never;
@@ -1738,6 +1850,11 @@ export interface components {
             saved: true;
             replayed: boolean;
         };
+        CompleteRefund: {
+            /** @description The transfer or gateway reference */
+            reference?: string;
+            note?: string;
+        };
         ConfirmationLink: {
             /** @description The customer's confirm link */
             url: string;
@@ -2478,6 +2595,21 @@ export interface components {
                 /** @description partial: the deposit; prepaid: the total (optional); bank_transfer: the total once it arrived */
                 paid?: string;
             };
+        };
+        NewRefund: {
+            /** @description In the order's currency; Arabic digits accepted */
+            amount: string;
+            /**
+             * @description original_method: back the way it came (online payments only); store_credit: to the customer's credit; bank_transfer; cash
+             * @enum {string}
+             */
+            destination: "original_method" | "store_credit" | "bank_transfer" | "cash";
+            reason?: string;
+            /**
+             * Format: uuid
+             * @description The ticket this refund settles; it must be on the same order
+             */
+            ticketId?: string;
         };
         NewTicket: {
             /** @enum {string} */
@@ -3757,6 +3889,144 @@ export interface components {
              */
             occurredAt?: string;
         };
+        Refund: {
+            /** Format: uuid */
+            id: string;
+            /** @description R-1001 */
+            number: string;
+            order: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+            };
+            ticket: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+            } | null;
+            amount: {
+                amount: string;
+                currency: string;
+            };
+            /** @enum {string} */
+            destination: "original_method" | "store_credit" | "bank_transfer" | "cash";
+            /** @enum {string} */
+            status: "requested" | "approved" | "completed" | "rejected" | "failed";
+            reason: string | null;
+            requestedBy: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            } | null;
+            approvedBy: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            } | null;
+            rejectionReason: string | null;
+            reference: string | null;
+            /** @description Over the store's threshold (or in another currency) */
+            needsApproval: boolean;
+            /** @description What the caller may do with it now */
+            can: {
+                approve: boolean;
+                reject: boolean;
+                complete: boolean;
+            };
+            /** @description Back to the original method on a store order: do it in the store; it completes when the store reports it */
+            completesFromStore: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            approvedAt: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+        };
+        RefundList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** @description R-1001 */
+                number: string;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                };
+                ticket: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                } | null;
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @enum {string} */
+                destination: "original_method" | "store_credit" | "bank_transfer" | "cash";
+                /** @enum {string} */
+                status: "requested" | "approved" | "completed" | "rejected" | "failed";
+                reason: string | null;
+                requestedBy: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                } | null;
+                approvedBy: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                } | null;
+                rejectionReason: string | null;
+                reference: string | null;
+                /** @description Over the store's threshold (or in another currency) */
+                needsApproval: boolean;
+                /** @description What the caller may do with it now */
+                can: {
+                    approve: boolean;
+                    reject: boolean;
+                    complete: boolean;
+                };
+                /** @description Back to the original method on a store order: do it in the store; it completes when the store reports it */
+                completesFromStore: boolean;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                approvedAt: string | null;
+                /** Format: date-time */
+                completedAt: string | null;
+            }[];
+            counts: {
+                requested: number;
+                approved: number;
+                completed: number;
+                rejected: number;
+            };
+        };
+        RefundOptions: {
+            /** @description What the order holds less refunds still open */
+            refundable: {
+                amount: string;
+                currency: string;
+            };
+            destinations: ("original_method" | "store_credit" | "bank_transfer" | "cash")[];
+            /** @description The store's threshold; above it a refund needs approval */
+            approveOver: {
+                amount: string;
+                currency: string;
+            };
+        };
+        RefundSettings: {
+            /** @description Refunds above this amount, in the store's base currency, need owner, admin or finance to approve; 0 means every refund does */
+            approveOver: string;
+        };
+        RefundSettingsView: {
+            /** @description Decimal in the store's base currency, e.g. "1000.00" */
+            approveOver: string;
+        };
+        RejectRefund: {
+            reason: string;
+        };
         Replayed: {
             /** @enum {boolean} */
             replayed: true;
@@ -4019,7 +4289,7 @@ export interface components {
                 /** Format: uuid */
                 id: string;
                 /** @enum {string} */
-                type: "created" | "status" | "assigned" | "updated" | "note";
+                type: "created" | "status" | "assigned" | "updated" | "note" | "refund";
                 /** Format: date-time */
                 at: string;
                 actor: {
@@ -4326,6 +4596,409 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentMix"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderRefundsController_options: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What can still go back on this order, where to, and the approval threshold */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundOptions"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderRefundsController_request: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewRefund"];
+            };
+        };
+        responses: {
+            /** @description Numbered R-1001…; approved at once under the store's threshold (store credit then completes); audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundsController_list: {
+        parameters: {
+            query?: {
+                /** @description open: requested or approved, still to do (default) */
+                status?: "requested" | "approved" | "completed" | "rejected" | "failed" | "open" | "all";
+                orderId?: string;
+                limit?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first; open (default) is what still needs approving or sending */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundsController_approve: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                refundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved; never by whoever asked unless the owner; store credit completes at once; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundsController_reject: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                refundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRefund"];
+            };
+        };
+        responses: {
+            /** @description Rejected with a reason; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundsController_complete: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                refundId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteRefund"];
+            };
+        };
+        responses: {
+            /** @description The money went back (a transfer, cash, or a gateway refund on Mizan's own orders): a refund line in the ledger; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Refund"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refunds above approveOver (base currency) need owner, admin or finance */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundSettingsView"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RefundSettingsController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefundSettings"];
+            };
+        };
+        responses: {
+            /** @description Saved for refunds asked from now on; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundSettingsView"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

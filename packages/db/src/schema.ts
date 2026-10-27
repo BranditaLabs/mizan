@@ -764,6 +764,14 @@ export interface Refunds {
   external_ref: string | null;
   created_at: Generated<Timestamp>;
   completed_at: Timestamp | null;
+  number: number;
+  requested_by: string | null;
+  approved_at: Timestamp | null;
+  rejected_at: Timestamp | null;
+  rejection_reason: string | null;
+  note: string | null;
+  refund_payment_id: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface Reports {
@@ -986,6 +994,7 @@ export interface TicketEvents {
   note: string | null;
   seq: Generated<Int8>;
   created_at: Generated<Timestamp>;
+  dedupe_key: string | null;
 }
 
 export interface Tickets {
