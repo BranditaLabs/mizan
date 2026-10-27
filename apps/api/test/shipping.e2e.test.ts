@@ -185,6 +185,8 @@ describe("shipping (E7-1)", () => {
     expect(o).toMatchObject({ paymentStatus: "paid", paid: { amount: "1250.00" } });
     const cash = await db.tenant(store, (trx) => trx.selectFrom("payments").select(["kind", "source", "amount_minor"]).where("order_id", "=", id).execute());
     expect(cash).toEqual([{ kind: "cod_collection", source: "courier", amount_minor: 125000n }]);
+    // …and profit still counts the 1,250 as revenue (the order owes nothing now).
+    expect((await http().get(`/v1/orders/${id}/pnl`).set(as("owner")).expect(200)).body).toMatchObject({ revenue: { amount: "1250.00" } });
     expect(o.shipments[0]).toMatchObject({ status: "delivered" });
     r = (await list("delivered")).data.find((x: { id: string }) => x.id === shipped.id);
     expect(r).toMatchObject({ needsReview: false });

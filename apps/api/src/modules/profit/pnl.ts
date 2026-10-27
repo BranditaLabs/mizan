@@ -97,7 +97,10 @@ export function computePnl(i: PnlInput): Pnl {
 
   // Revenue: prepaid money when paid; COD cash when delivered.
   const prepaidIn = i.payments.filter((p) => PREPAID_IN.has(p.kind)).reduce((a, p) => a + p.amountMinor, 0n);
-  const codIn = collects && i.stage === "delivered" ? i.codMinor : 0n;
+  // Once delivered, the cash is what the courier collected (ledger cod_collection lines: the courier's,
+  // or the store's "marked paid") plus what is still recorded as owed (the order's cod).
+  const codCollected = i.payments.filter((p) => p.kind === "cod_collection").reduce((a, p) => a + p.amountMinor, 0n);
+  const codIn = collects && i.stage === "delivered" ? codCollected + i.codMinor : 0n;
   const revenue = conv(prepaidIn + codIn);
   const refund = conv(i.refundedMinor);
   const chargeback = conv(i.payments.filter((p) => p.kind === "chargeback").reduce((a, p) => a + p.amountMinor, 0n));
@@ -136,7 +139,7 @@ export function computePnl(i: PnlInput): Pnl {
     flags.add("estimated");
     return toMinor(percentOf(fromMinor(conv(cash), i.base), i.rules.codPct));
   };
-  const codFee = collects && i.stage === "delivered" && i.codMinor > 0n ? codFeeOf(i.codMinor) : 0n;
+  const codFee = codIn > 0n ? codFeeOf(codIn) : 0n;
 
   let paymentFee = 0n;
   for (const p of i.payments) {

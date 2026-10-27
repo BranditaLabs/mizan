@@ -172,6 +172,13 @@ describe("worked examples", () => {
     expect(p).toMatchObject({ revenue: 0n, cogs: 0n, shipping: 6000n, rto: 3000n, codFee: 0n, agent: 1200n, packaging: 750n, net: -10950n });
   });
 
+  it("the courier's cash in the ledger (the order owes nothing any more) is the same 1,250 of revenue", () => {
+    const p = computePnl({ ...base, codMinor: 0n, payments: [{ kind: "cod_collection", method: "cod", amountMinor: 125000n, feeMinor: 0n, feeIsActual: false }] });
+    expect(p).toMatchObject({ revenue: 125000n, codFee: 1875n, net: 35175n });
+    // Before delivery it earns nothing, whatever the ledger says.
+    expect(computePnl({ ...base, stage: "shipped", codMinor: 0n, payments: [{ kind: "cod_collection", method: "cod", amountMinor: 125000n, feeMinor: 0n, feeIsActual: false }] }).revenue).toBe(0n);
+  });
+
   it("while it waits for confirmation it is expected to make the same 351.75", () => {
     const p = computePnl({ ...base, stage: "open", confirmed: false });
     expect(p).toMatchObject({ revenue: 0n, net: 0n, expectedRevenue: 125000n, expectedNet: 35175n });
