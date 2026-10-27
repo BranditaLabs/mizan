@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems } from "../../platform/http/api-schema.js";
-import { Auth, NoTenant, Roles } from "../../platform/auth/decorators.js";
+import { Auth, NoSupport, NoTenant, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
@@ -23,6 +23,7 @@ export class MembersController {
   }
 
   @Post("members/invite")
+  @NoSupport()
   @Roles("owner", "admin")
   @HttpCode(201)
   @ApiJsonBody("Invite", InviteSchema)
@@ -33,6 +34,7 @@ export class MembersController {
   }
 
   @Patch("members/:userId")
+  @NoSupport()
   @Roles("owner", "admin")
   @ApiJsonBody("UpdateMember", UpdateMemberSchema)
   @ApiJson(200, "Member", MemberViewSchema, "The member after the change")
@@ -42,6 +44,7 @@ export class MembersController {
   }
 
   @Delete("members/:userId")
+  @NoSupport()
   @Roles("owner", "admin")
   @HttpCode(204)
   @ApiNoContent("Removed from the store")
@@ -51,6 +54,7 @@ export class MembersController {
   }
 
   @Delete("invitations/:id")
+  @NoSupport()
   @Roles("owner", "admin")
   @HttpCode(204)
   @ApiNoContent("Invitation revoked")

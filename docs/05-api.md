@@ -73,7 +73,17 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/platform/stores/{storeId}/reactivate` | ✅ A-2. `{ reason? }` → active again; 409 `not_suspended`. Super admin |
 | PUT | `/platform/stores/{storeId}/plan` | ✅ A-2. `{ plan, reason? }`; plan limits follow at once; the same plan changes nothing. Super admin, finance |
 | POST | `/platform/stores/{storeId}/notes` | ✅ A-2. `{ body ≤ 2000 }` → 201 note; internal, the store never sees it. Any staff role |
+| POST | `/platform/stores/{storeId}/access` | ✅ A-3. `{ reason, minutes: 5–480 (default 60), mode: read\|write }` → 201 `{ id, storeId, storeName, mode, reason, startedAt, expiresAt }`. Then call the store's own routes with its `X-Tenant-Id`: you act as an admin (owner-only routes stay closed), `GET`/`HEAD` only unless `write` (403 `support_read_only`), never team management or customer exports (403 `support_not_allowed`), a second factor always; every call is in the staff trail. 409 `access_open`. Super admin, support, engineer; `write` needs a super admin. Written to the store's audit log (`support.access_started`) |
+| POST | `/platform/stores/{storeId}/access/end` | ✅ A-3. Ends your open access now → `{ ended }`; 404 when none |
+| GET | `/platform/access` | ✅ A-3. Your open support access, soonest to end first |
 | GET | `/platform/audit` | ✅ A-1. The staff trail newest first: `?limit≤200&before=<id>` → `{ data[{ id, staffId, email, action, outcome, status, target, storeId, at }], nextBefore }`. Super admin, engineer |
+
+### Support access, store side (✅ A-3)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/support-access` | Any member: Mizan support open in this store right now `{ data[{ id, mode, reason, startedAt, expiresAt }] }` (the dashboard banner; never which staff member). History is in `/audit-log` |
+| POST | `/support-access/{id}/end` | Owner/admin: ends it now → `{ ended: 1 }` (0 when it already ended); `support.access_ended` in the audit log |
 
 ### Privacy (✅ E3-3)
 

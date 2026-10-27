@@ -1036,6 +1036,19 @@ export interface Suppliers {
   created_at: Generated<Timestamp>;
 }
 
+export interface SupportAccess {
+  id: Generated<string>;
+  tenant_id: string;
+  staff_id: string | null;
+  mode: Generated<string>;
+  reason: string;
+  expires_at: Timestamp;
+  ended_at: Timestamp | null;
+  ended_by: string | null;
+  ended_by_user: string | null;
+  created_at: Generated<Timestamp>;
+}
+
 export interface TaxDocuments {
   id: Generated<string>;
   tenant_id: string;
@@ -1258,6 +1271,7 @@ export interface DB {
   stock_movements: StockMovements;
   store_credit_ledger: StoreCreditLedger;
   suppliers: Suppliers;
+  support_access: SupportAccess;
   tax_documents: TaxDocuments;
   tenants: Tenants;
   ticket_events: TicketEvents;

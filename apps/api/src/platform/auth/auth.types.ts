@@ -25,7 +25,12 @@ export interface AuthContext {
   ip?: string;
   /** Set by PlatformGuard on /v1/platform routes (A-1). */
   staff?: { id: string; role: StaffRole };
+  /** Set by AuthGuard when Mizan staff reach a store through a support grant (A-3) instead of a membership. */
+  support?: SupportGrant;
 }
+
+/** An open support grant: the staff member acts in the store as an admin, read-only unless mode is write. */
+export interface SupportGrant { grantId: string; staffId: string; mode: "read" | "write"; expiresAt: string }
 
 export const STAFF_ROLES = ["super_admin", "support", "finance", "engineer"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];

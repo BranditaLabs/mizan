@@ -5,7 +5,7 @@ import type { MembershipView } from "./membership.schema.js";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { TtlCache } from "../cache.js";
 import { Database } from "../db/database.js";
-import type { AuthUser } from "./auth.types.js";
+import type { AuthUser, SupportGrant } from "./auth.types.js";
 import type { VerifiedIdentity } from "./token-verifier.js";
 
 export type { MembershipView } from "./membership.schema.js";
@@ -99,6 +99,29 @@ export class AuthService {
         .executeTakeFirst());
     if (!row || !isMemberRole(row.role)) return undefined;
     return { role: row.role, status: row.status as MembershipStatus, tenantStatus: row.tenant_status };
+  }
+
+  /**
+   * The open support grant of an active staff member in this store (A-3), write before read. Never
+   * cached: a grant ends at its expiry, or when staff or the store end it, on the very next request.
+   */
+  async supportGrant(tenantId: string, userId: string): Promise<(SupportGrant & { tenantStatus: string }) | undefined> {
+    const row = await this.db.staff((trx) => trx.selectFrom("support_access as a")
+      .innerJoin("platform_staff as s", "s.id", "a.staff_id").innerJoin("tenants as t", "t.id", "a.tenant_id")
+      .select(["a.id", "a.staff_id", "a.mode", "a.expires_at", "t.status"])
+      .where("a.tenant_id", "=", tenantId).where("s.user_id", "=", userId).where("s.status", "=", "active")
+      .where("a.ended_at", "is", null).where("a.expires_at", ">", new Date())
+      .orderBy("a.mode", "desc").limit(1).executeTakeFirst());
+    if (!row?.staff_id) return undefined;
+    return { grantId: row.id, staffId: row.staff_id, mode: row.mode as "read" | "write", expiresAt: row.expires_at.toISOString(), tenantStatus: row.status };
+  }
+
+  /** One request made under a support grant, in the staff trail (the route, never ids or query strings). */
+  async recordSupportCall(grant: SupportGrant, userId: string, tenantId: string, action: string, ip?: string): Promise<void> {
+    await this.db.staff((trx) => trx.insertInto("platform_audit").values({
+      staff_id: grant.staffId, user_id: userId, action: action.slice(0, 200), outcome: "ok", target_type: "support_access", target_id: grant.grantId,
+      store_id: tenantId, ip: ip ?? null, data: JSON.stringify({ mode: grant.mode }),
+    }).execute());
   }
 
   /** Every membership of the user across tenants (GET /me). */

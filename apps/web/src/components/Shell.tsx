@@ -6,6 +6,7 @@ import { NavLinks } from "./NavLinks";
 import { NotificationBell } from "./NotificationBell";
 import { PlanBanner } from "./PlanBanner";
 import { ShellCommands } from "./ShellCommands";
+import { SupportBanner } from "./SupportBanner";
 import { StoreSwitcher, UserMenu } from "./StoreSwitcher";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { ThemedWordmark, Wordmark } from "./Wordmark";
@@ -40,6 +41,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <span className="hidden md:contents"><ThemeSwitch initial={theme} /></span>
           <UserMenu />
         </header>
+        <SupportBanner />
         <PlanBanner />
         <main id="main" className="min-h-0 flex-1 overflow-y-auto">{children}</main>
       </div>

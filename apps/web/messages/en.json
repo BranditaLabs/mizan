@@ -2712,5 +2712,10 @@
       "done": "Refused: {reason}",
       "openBox": "Opened the box"
     }
+  },
+  "supportBanner": {
+    "read": "Mizan support can view your store until <n>{until}</n> (read only): <r>{reason}</r>",
+    "write": "Mizan support can view and change your store until <n>{until}</n>: <r>{reason}</r>",
+    "end": "End access"
   }
 }

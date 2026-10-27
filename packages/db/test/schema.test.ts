@@ -98,7 +98,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "whatsapp_messages_out",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "whatsapp_messages_out",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -257,6 +257,23 @@ describe("schema", () => {
     await asRole("mizan_platform", () => db.query(`INSERT INTO platform_store_notes (store_id, body) VALUES ($1, 'called the owner')`, [t]));
     await expect(asRole("mizan_platform", () => db.query(`INSERT INTO platform_store_notes (store_id, body) VALUES ($1, '')`, [t]))).rejects.toThrow(/body_check/);
     await expect(asRole("mizan_app", () => db.query(`SELECT * FROM platform_store_notes`))).rejects.toThrow(/permission denied/);
+  });
+
+  it("support access is time-limited, opened only by the back office, and visible to the store, which may end it (A-3)", async () => {
+    const user = (await db.query<{ id: string }>(`INSERT INTO users (firebase_uid, email) VALUES ('fb-support-a3', 'support@mizan.test') RETURNING id`)).rows[0]!.id;
+    const staff = (await asRole("mizan_platform", () => db.query<{ id: string }>(`INSERT INTO platform_staff (user_id, role) VALUES ($1, 'support') RETURNING id`, [user]))).rows[0]!.id;
+    const open = (mode: string, hours: number) => asRole("mizan_platform", () => db.query<{ id: string }>(
+      `INSERT INTO support_access (tenant_id, staff_id, mode, reason, expires_at) VALUES ($1, $2, $3, 'courier sync stuck', now() + make_interval(hours => $4)) RETURNING id`, [T1, staff, mode, hours]));
+    const id = (await open("read", 1)).rows[0]!.id;
+    await expect(open("read", 9)).rejects.toThrow(/support_access_window/);
+    await expect(open("admin", 1)).rejects.toThrow(/mode_check/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO support_access (tenant_id, reason, expires_at) VALUES ($1, 'let me in', now() + interval '1 hour')`, [T1]))).rejects.toThrow(/permission denied/);
+    expect((await asTenant(T2, () => db.query(`SELECT id FROM support_access`))).rows).toEqual([]);
+    expect((await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM support_access`))).rows.map((r) => r.id)).toEqual([id]);
+    await expect(asTenant(T1, () => db.query(`UPDATE support_access SET expires_at = now() + interval '8 hours' WHERE id = $1`, [id]))).rejects.toThrow(/permission denied/);
+    await expect(asTenant(T1, () => db.query(`UPDATE support_access SET ended_at = now() WHERE id = $1`, [id]))).rejects.toThrow(/support_access_end_whole/);
+    await asTenant(T1, () => db.query(`UPDATE support_access SET ended_at = now(), ended_by = 'store' WHERE id = $1`, [id]));
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE support_access SET mode = 'write' WHERE id = $1`, [id]))).rejects.toThrow(/permission denied/);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {
