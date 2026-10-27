@@ -9,7 +9,7 @@ import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { RateLimiter } from "../../platform/http/rate-limit.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, WhatsAppConnectSchema,
+  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, ScriptPreviewRequestSchema, ScriptPreviewSchema, WhatsAppConnectSchema,
 } from "./confirmation.dto.js";
 import { ConnectionViewSchema } from "../connections/connections.dto.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
@@ -115,6 +115,16 @@ export class ConfirmationController {
   @ApiJson(200, "ConfirmationSettingsView", ConfirmationSettingsViewSchema, "The store's cascade, waits, calling hours, and which channels are connected")
   settings(@Auth() auth: AuthContext) {
     return this.confirmations.getSettings(auth.tenant!.id);
+  }
+
+  @Post("settings/confirmation/preview")
+  @HttpCode(200)
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("ScriptPreviewRequest", ScriptPreviewRequestSchema)
+  @ApiJson(200, "ScriptPreview", ScriptPreviewSchema, "E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script")
+  @ApiProblems(404, 422)
+  preview(@Auth() auth: AuthContext, @Body(new ZodPipe(ScriptPreviewRequestSchema)) body: z.output<typeof ScriptPreviewRequestSchema>) {
+    return this.confirmations.previewScript(auth.tenant!.id, body.script, body.orderId);
   }
 
   @Put("settings/confirmation")

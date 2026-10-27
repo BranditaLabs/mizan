@@ -7798,6 +7798,90 @@
         ]
       }
     },
+    "/v1/settings/confirmation/preview": {
+      "post": {
+        "operationId": "ConfirmationController_preview",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScriptPreviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScriptPreview"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
     "/v1/public/confirm/{token}": {
       "get": {
         "operationId": "PublicConfirmationController_view",
@@ -12257,6 +12341,104 @@
             "maximum": 168,
             "description": "How long a hand-sent confirm link works"
           },
+          "script": {
+            "description": "The store's own wording for the chat replies and the call script (E6-5)",
+            "type": "object",
+            "properties": {
+              "pack": {
+                "type": "string",
+                "enum": [
+                  "egyptian",
+                  "formal"
+                ],
+                "description": "The starting wording: egyptian (default) or formal Arabic"
+              },
+              "texts": {
+                "type": "object",
+                "properties": {
+                  "ar": {
+                    "type": "object",
+                    "properties": {
+                      "confirmed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_received": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancel_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancelled": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "call": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    }
+                  },
+                  "en": {
+                    "type": "object",
+                    "properties": {
+                      "confirmed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_received": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancel_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancelled": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "call": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "ar",
+                  "en"
+                ],
+                "description": "The owner's own wording per message and language; empty = the pack's"
+              }
+            },
+            "required": [
+              "pack",
+              "texts"
+            ]
+          },
           "routing": {
             "type": "object",
             "properties": {
@@ -12384,6 +12566,108 @@
                 "minimum": 6,
                 "maximum": 168,
                 "description": "How long a hand-sent confirm link works"
+              },
+              "script": {
+                "description": "The store's own wording for the chat replies and the call script (E6-5)",
+                "type": "object",
+                "properties": {
+                  "pack": {
+                    "type": "string",
+                    "enum": [
+                      "egyptian",
+                      "formal"
+                    ],
+                    "description": "The starting wording: egyptian (default) or formal Arabic"
+                  },
+                  "texts": {
+                    "type": "object",
+                    "properties": {
+                      "ar": {
+                        "type": "object",
+                        "properties": {
+                          "confirmed": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "change_prompt": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "change_received": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "cancel_prompt": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "cancelled": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "call": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "en": {
+                        "type": "object",
+                        "properties": {
+                          "confirmed": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "change_prompt": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "change_received": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "cancel_prompt": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "cancelled": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000
+                          },
+                          "call": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "ar",
+                      "en"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The owner's own wording per message and language; empty = the pack's"
+                  }
+                },
+                "required": [
+                  "pack",
+                  "texts"
+                ],
+                "additionalProperties": false
               },
               "routing": {
                 "type": "object",
@@ -22311,6 +22595,184 @@
           "phone",
           "address",
           "location"
+        ],
+        "additionalProperties": false
+      },
+      "ScriptPreview": {
+        "type": "object",
+        "properties": {
+          "lang": {
+            "type": "string",
+            "enum": [
+              "ar",
+              "en"
+            ]
+          },
+          "sample": {
+            "type": "boolean"
+          },
+          "replies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "branch": {
+                  "type": "string",
+                  "enum": [
+                    "confirm",
+                    "change",
+                    "cancel"
+                  ]
+                },
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "confirmed",
+                    "change_prompt",
+                    "change_received",
+                    "cancel_prompt",
+                    "cancelled",
+                    "call"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "branch",
+                "key",
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "description": "What the customer reads after each button"
+          },
+          "call": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The team's call script, line by line"
+          }
+        },
+        "required": [
+          "lang",
+          "sample",
+          "replies",
+          "call"
+        ],
+        "additionalProperties": false
+      },
+      "ScriptPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "script": {
+            "type": "object",
+            "properties": {
+              "pack": {
+                "type": "string",
+                "enum": [
+                  "egyptian",
+                  "formal"
+                ],
+                "description": "The starting wording: egyptian (default) or formal Arabic"
+              },
+              "texts": {
+                "type": "object",
+                "properties": {
+                  "ar": {
+                    "type": "object",
+                    "properties": {
+                      "confirmed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_received": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancel_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancelled": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "call": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    }
+                  },
+                  "en": {
+                    "type": "object",
+                    "properties": {
+                      "confirmed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "change_received": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancel_prompt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "cancelled": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "call": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "ar",
+                  "en"
+                ],
+                "description": "The owner's own wording per message and language; empty = the pack's"
+              }
+            },
+            "required": [
+              "pack",
+              "texts"
+            ]
+          },
+          "orderId": {
+            "description": "One of the store's orders; a sample order when absent",
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "script"
         ],
         "additionalProperties": false
       },

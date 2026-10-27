@@ -1265,6 +1265,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/settings/confirmation/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/confirm/{token}": {
         parameters: {
             query?: never;
@@ -2204,6 +2220,33 @@ export interface components {
             };
             /** @description How long a hand-sent confirm link works */
             linkHours: number;
+            /** @description The store's own wording for the chat replies and the call script (E6-5) */
+            script?: {
+                /**
+                 * @description The starting wording: egyptian (default) or formal Arabic
+                 * @enum {string}
+                 */
+                pack: "egyptian" | "formal";
+                /** @description The owner's own wording per message and language; empty = the pack's */
+                texts: {
+                    ar: {
+                        confirmed?: string;
+                        change_prompt?: string;
+                        change_received?: string;
+                        cancel_prompt?: string;
+                        cancelled?: string;
+                        call?: string;
+                    };
+                    en: {
+                        confirmed?: string;
+                        change_prompt?: string;
+                        change_received?: string;
+                        cancel_prompt?: string;
+                        cancelled?: string;
+                        call?: string;
+                    };
+                };
+            };
             routing: {
                 /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
                 enabled: boolean;
@@ -2237,6 +2280,33 @@ export interface components {
                 };
                 /** @description How long a hand-sent confirm link works */
                 linkHours: number;
+                /** @description The store's own wording for the chat replies and the call script (E6-5) */
+                script?: {
+                    /**
+                     * @description The starting wording: egyptian (default) or formal Arabic
+                     * @enum {string}
+                     */
+                    pack: "egyptian" | "formal";
+                    /** @description The owner's own wording per message and language; empty = the pack's */
+                    texts: {
+                        ar: {
+                            confirmed?: string;
+                            change_prompt?: string;
+                            change_received?: string;
+                            cancel_prompt?: string;
+                            cancelled?: string;
+                            call?: string;
+                        };
+                        en: {
+                            confirmed?: string;
+                            change_prompt?: string;
+                            change_received?: string;
+                            cancel_prompt?: string;
+                            cancelled?: string;
+                            call?: string;
+                        };
+                    };
+                };
                 routing: {
                     /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
                     enabled: boolean;
@@ -4848,6 +4918,54 @@ export interface components {
                 lat: number;
                 lng: number;
             } | null;
+        };
+        ScriptPreview: {
+            /** @enum {string} */
+            lang: "ar" | "en";
+            sample: boolean;
+            /** @description What the customer reads after each button */
+            replies: {
+                /** @enum {string} */
+                branch: "confirm" | "change" | "cancel";
+                /** @enum {string} */
+                key: "confirmed" | "change_prompt" | "change_received" | "cancel_prompt" | "cancelled" | "call";
+                text: string;
+            }[];
+            /** @description The team's call script, line by line */
+            call: string[];
+        };
+        ScriptPreviewRequest: {
+            script: {
+                /**
+                 * @description The starting wording: egyptian (default) or formal Arabic
+                 * @enum {string}
+                 */
+                pack: "egyptian" | "formal";
+                /** @description The owner's own wording per message and language; empty = the pack's */
+                texts: {
+                    ar: {
+                        confirmed?: string;
+                        change_prompt?: string;
+                        change_received?: string;
+                        cancel_prompt?: string;
+                        cancelled?: string;
+                        call?: string;
+                    };
+                    en: {
+                        confirmed?: string;
+                        change_prompt?: string;
+                        change_received?: string;
+                        cancel_prompt?: string;
+                        cancelled?: string;
+                        call?: string;
+                    };
+                };
+            };
+            /**
+             * Format: uuid
+             * @description One of the store's orders; a sample order when absent
+             */
+            orderId?: string;
         };
         SetAdSpend: {
             /**
@@ -9854,6 +9972,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfirmationSettingsView"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_preview: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScriptPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptPreview"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

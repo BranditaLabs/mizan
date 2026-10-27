@@ -334,3 +334,35 @@ describe("messages", () => {
       .toBe("Hi, your order #1 from Nile is EGP 100. Confirm or change it here: https://x/c/t");
   });
 });
+
+describe("the store's script (E6-5)", () => {
+  it("is saved with the settings, previewed with a real order or a sample, and refuses unknown variables", async () => {
+    const script = { pack: "egyptian", texts: { ar: { confirmed: "تمام يا {{customer.first_name}} ✅ {{order.number}} اتأكّد" }, en: { confirmed: "All set {{customer.first_name}} ✅ {{order.number}} is confirmed", call: "Hi {{customer.first_name}}\nConfirming {{order.number}} for {{order.cod}}" } } };
+    const saved = (await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" }, script }).expect(200)).body;
+    expect(saved.settings.script).toEqual(script);
+    expect((await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body.settings.script).toEqual(script);
+
+    const sample = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script }).expect(200)).body;
+    expect(sample.sample).toBe(true);
+    expect(sample.replies.find((r: { key: string }) => r.key === "confirmed")).toMatchObject({ branch: "confirm" });
+    expect(sample.replies.map((r: { branch: string }) => r.branch)).toEqual(["confirm", "change", "change", "cancel", "cancel"]);
+
+    const o = await http().post("/v1/orders").set(as("owner")).send({
+      source: "phone", customer: { name: "Mona Adel", phone: "01001234821" }, address: { line1: "12 Abbas El Akkad St", city: "Nasr City" },
+      lines: [{ title: "Abaya", quantity: 1, unitPrice: "1250" }], shipping: "0", payment: { mode: "cod" },
+    }).expect(201);
+    const real = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: o.body.id }).expect(200)).body;
+    const lang = real.lang as "ar" | "en";
+    const confirmed = real.replies.find((r: { key: string }) => r.key === "confirmed").text as string;
+    expect(confirmed).toBe(lang === "ar" ? `تمام يا Mona ✅ ${o.body.number} اتأكّد` : `All set Mona ✅ ${o.body.number} is confirmed`);
+    expect(JSON.stringify(real)).not.toMatch(/0100|Abbas/); // the first name, never the phone or address
+
+    const bad = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: { ...script, texts: { ar: { confirmed: "{{customer.phone}}" }, en: {} } } }).expect(422)).body;
+    expect(JSON.stringify(bad)).toContain("customer.phone");
+    await http().post("/v1/settings/confirmation/preview").set(as("finance")).send({ script }).expect(403);
+    await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: "00000000-0000-4000-8000-000000000000" }).expect(404);
+    // Back to the built-in wording for the other tests.
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+  });
+});
+

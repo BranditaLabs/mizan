@@ -3,6 +3,7 @@ import { z } from "zod";
 import { OfferViewSchema } from "./offers/offers.dto.js";
 import { AUTOMATED_CHANNELS, ConfirmationSettingsSchema } from "./confirmation.settings.js";
 import { ANSWER_CHANNELS, ROUTES } from "./analytics.js";
+import { SCRIPT_KEYS, ScriptSchema } from "./script.js";
 
 export const ChannelsSchema = z.object({
   whatsapp: z.boolean().describe("The store's WhatsApp number is connected and its template approved"),
@@ -130,3 +131,16 @@ export const CallQueueSchema = z.object({
 export const CallQueueNextSchema = z.object({
   order: z.object({ id: z.uuid(), number: z.string(), attempts: z.number().int(), unreachable: z.boolean() }).nullable().describe("Claimed for the caller (assigned to them); null when nothing is due"),
 });
+
+/** E6-5: preview a script (saved or not) with one of the store's orders, or a sample. */
+export const ScriptPreviewRequestSchema = z.strictObject({
+  script: ScriptSchema,
+  orderId: z.uuid().optional().describe("One of the store's orders; a sample order when absent"),
+});
+export const ScriptPreviewSchema = z.object({
+  lang: z.enum(["ar", "en"]),
+  sample: z.boolean(),
+  replies: z.array(z.object({ branch: z.enum(["confirm", "change", "cancel"]), key: z.enum(SCRIPT_KEYS), text: z.string() })).describe("What the customer reads after each button"),
+  call: z.array(z.string()).describe("The team's call script, line by line"),
+});
+export type ScriptPreview = z.output<typeof ScriptPreviewSchema>;

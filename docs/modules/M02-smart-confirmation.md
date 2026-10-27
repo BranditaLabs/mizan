@@ -111,6 +111,10 @@ No customer name, phone or address is ever sent. Metrics: `mizan_ai_offer_total{
 
 **Next:** automated calls (E6-8), then an **AI voice agent** (E6-9, V2).
 
+## The store's script (built, E6-5)
+
+Settings → Confirmation → **Script**: the store's own wording for what the customer reads after each button — Confirm (the confirmed reply, before any offer), Change (the prompt and the "received"), Cancel (the question before the reasons list, and the cancelled reply) — and for the team's call script (a line per line; the offer is still added at the end). Variables come from the order and never include the address or phone: `{{customer.first_name}}`, `{{order.number}}`, `{{order.total}}`, `{{order.cod}}` (what they pay on delivery, else the total), `{{order.items}}`, `{{order.city}}`, `{{store.name}}`; an unknown one is refused. A language pack gives the starting wording — **Egyptian Arabic** (the built-in messages) or **formal Arabic** — and a box left empty keeps the pack's. **Preview** fills the draft from a sample order (or one of the store's orders through the API) before saving. The first WhatsApp message stays the Meta-approved template.
+
 ## Main screen — Confirmation queue
 
 Filters: `My queue · 38` · `Bot waiting · 112` · `Retry due · 14` · `On hold · 9` · `Done today · 287`  

@@ -1295,6 +1295,38 @@
       },
       "channelCounts": "{confirmed} confirmed · {cancelled} cancelled",
       "channelShare": "{pct}% confirmed"
+    },
+    "script": {
+      "title": "Script",
+      "body": "Your own words for what the customer reads after each button, and for the team's call. Leave a box empty to keep the pack's wording. The WhatsApp template itself stays the one Meta approved.",
+      "pack": "Language pack",
+      "packs": {
+        "egyptian": "Egyptian Arabic",
+        "formal": "Formal Arabic"
+      },
+      "language": "Language",
+      "lang": {
+        "ar": "Arabic",
+        "en": "English"
+      },
+      "variables": "Variables:",
+      "keepPack": "Empty: the pack's wording",
+      "preview": "Preview",
+      "previewTitle": "With a sample order",
+      "branch": {
+        "confirm": "When they tap Confirm",
+        "change": "When they tap Change",
+        "cancel": "When they tap Cancel",
+        "call": "The team's call script"
+      },
+      "keys": {
+        "confirmed": "Confirmed",
+        "change_prompt": "Ask for the change",
+        "change_received": "Change received",
+        "cancel_prompt": "Ask why (reasons follow)",
+        "cancelled": "Cancelled",
+        "call": "Lines to read, one per line"
+      }
     }
   },
   "offersSettings": {

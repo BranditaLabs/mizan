@@ -13,7 +13,9 @@ import { roleScope } from "../orders/orders.service.js";
 import { linkToken, runIdOf } from "./confirmation-link.js";
 import { routeFor } from "./routing.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
-import { callScript, linkText, type MessageFacts } from "./messages.js";
+import { callScript, chatContent, linkText, type MessageFacts } from "./messages.js";
+import type { Script } from "./script.js";
+import type { ScriptPreview } from "./confirmation.dto.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
 
@@ -207,7 +209,7 @@ export class ConfirmationService {
     if (!to) return null;
     // The number's hash finds this run when the customer types instead of tapping (E6-10).
     if (!run.customer_hash) await trx.updateTable("confirmation_runs").set({ customer_hash: pii.phoneHash(to) }).where("id", "=", run.id).execute();
-    const { name, lang } = await this.store(trx, tenantId);
+    const { name, lang, settings } = await this.store(trx, tenantId);
     const label = pii.decrypt(o.customer_label, "orders.customer_label");
     const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
     const due = BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor);
@@ -224,9 +226,47 @@ export class ConfirmationService {
       facts: {
         lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number,
         total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: this.linkFor(run.id, lang),
-        items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city, offer,
+        items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city, offer, ...(settings.script ? { script: settings.script } : {}),
       },
     };
+  }
+
+  /**
+   * E6-5: what a script says, filled from one of the store's orders (or a sample one): each chat
+   * reply by the button it answers, and the team's call script. Only the first name, number, items,
+   * amounts and city — what the messages show anyway.
+   */
+  async previewScript(tenantId: string, script: Script, orderId?: string): Promise<ScriptPreview> {
+    return this.db.tenant(tenantId, async (trx) => {
+      const { name, lang } = await this.store(trx, tenantId);
+      let f: MessageFacts;
+      if (orderId) {
+        const o = await trx.selectFrom("orders").select(["number", "customer_label", "currency", "total_minor", "cod_minor", "ship_city"]).where("id", "=", orderId).executeTakeFirst();
+        if (!o) throw new ProblemError(404, "not_found", "order not found");
+        const label = (await this.cipher.forTenant(trx, tenantId)).decrypt(o.customer_label, "orders.customer_label");
+        const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", orderId).orderBy("id").limit(10).execute();
+        f = { lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number, total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: "", items, city: o.ship_city };
+      } else {
+        const t = await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow();
+        const cur = t.base_currency.trim();
+        f = lang === "ar"
+          ? { lang, store: name, firstName: "منى", number: "#1001", total: fromMinor(125000n, cur), cod: fromMinor(125000n, cur), link: "", items: [{ title: "عباية سادة", quantity: 1 }], city: "مدينة نصر" }
+          : { lang, store: name, firstName: "Mona", number: "#1001", total: fromMinor(125000n, cur), cod: fromMinor(125000n, cur), link: "", items: [{ title: "Plain abaya", quantity: 1 }], city: "Nasr City" };
+      }
+      f.script = script;
+      const text = (c: ReturnType<typeof chatContent>) => (c.type === "text" ? c.text : c.body);
+      return {
+        lang, sample: !orderId,
+        replies: [
+          { branch: "confirm", key: "confirmed", text: text(chatContent("confirmed", f)) },
+          { branch: "change", key: "change_prompt", text: text(chatContent("change_prompt", f)) },
+          { branch: "change", key: "change_received", text: text(chatContent("change_received", f)) },
+          { branch: "cancel", key: "cancel_prompt", text: text(chatContent("cancel_reasons", f)) },
+          { branch: "cancel", key: "cancelled", text: text(chatContent("cancelled", f)) },
+        ],
+        call: callScript(f),
+      };
+    });
   }
 
   // ───────────── public link page ─────────────

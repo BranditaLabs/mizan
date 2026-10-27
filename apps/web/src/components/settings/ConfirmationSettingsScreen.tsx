@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { ConfirmationResults } from "./ConfirmationResults";
+import { ScriptEditor } from "./ScriptEditor";
 import { SettingsTabs } from "./SettingsTabs";
 
 type Settings = Schemas["ConfirmationSettings"];
@@ -138,6 +139,8 @@ export function ConfirmationSettingsScreen() {
           ) : null}
         </div>
       </Card>
+
+      <ScriptEditor value={s.script} onChange={(script) => edit({ script })} />
 
       <Card title={t("team.title")}>
         <p className="mb-3 text-body-sm text-text-2">{t("team.body")}</p>

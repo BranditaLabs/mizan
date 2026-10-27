@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_ROUTING } from "./routing.js";
+import { ScriptSchema } from "./script.js";
 
 /**
  * whatsapp: the customer answers with buttons in the chat. call_auto: an automated call (needs a
@@ -32,6 +33,7 @@ export const ConfirmationSettingsSchema = z.object({
     retryMinutes: z.number().int().min(10).max(24 * 60).describe("After \"no answer\", when the order comes back on the list"),
   }),
   linkHours: z.number().int().min(6).max(7 * 24).describe("How long a hand-sent confirm link works"),
+  script: ScriptSchema.optional().describe("The store's own wording for the chat replies and the call script (E6-5)"),
   routing: z.object({
     enabled: z.boolean().describe("Route each order by its risk score (E6-2); off: every cash order walks the steps above"),
     autoMax: z.number().int().min(0).max(100).describe("Cash orders scored at or below: confirmed without asking"),

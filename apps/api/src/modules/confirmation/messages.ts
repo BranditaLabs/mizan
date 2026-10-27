@@ -1,4 +1,5 @@
 import type { Money } from "@mizan/shared";
+import { render, scriptText, type Script, type ScriptKey } from "./script.js";
 
 /**
  * What the customer receives (E6-7, E6-10), in Egyptian Arabic or English (the store's language).
@@ -20,6 +21,8 @@ export interface MessageFacts {
   city?: string | null;
   /** The run's offer while it is open (E6-11). */
   offer?: OfferFacts | null;
+  /** The store's script (E6-5): its wording wins over the built-in messages. */
+  script?: Script;
 }
 
 export interface OfferFacts {
@@ -87,16 +90,18 @@ export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
 
 export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
   const ar = f.lang === "ar";
+  const own = (key: ScriptKey) => { const t = scriptText(f.script, f.lang, key); return t ? render(t, f) : null; };
   switch (m) {
     case "confirmed":
-      return { type: "text", text: ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!` };
+      return { type: "text", text: own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!`) };
     case "confirmed_offer": {
       const o = f.offer;
       if (!o) return chatContent("confirmed", f);
       const pitch = o.message ?? (ar ? `🎁 عرض ليك: ${stop(offerLine(o, "ar"))}` : `🎁 An offer for you: ${stop(offerLine(o, "en"))}`);
+      const head = own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`);
       return {
         type: "buttons",
-        body: ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `Done ✅ your order ${f.number} is confirmed.\n\n${pitch}\nShall we add it to the same order?`,
+        body: ar ? `${head}\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `${head}\n\n${pitch}\nShall we add it to the same order?`,
         buttons: [{ action: "offer_yes", arg: o.id, title: ar ? "ضيفه" : "Add it" }, { action: "offer_no", arg: o.id, title: ar ? "لا شكراً" : "No, thanks" }],
       };
     }
@@ -113,17 +118,17 @@ export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
     case "offer_expired":
       return { type: "text", text: ar ? "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏" : "This offer has ended, but your order goes ahead as it is 🙏" };
     case "change_prompt":
-      return { type: "text", text: ar ? "اكتب لنا التعديل اللي عايزه في رسالة (المقاس، اللون، العنوان أو المعاد)، وفريقنا هيكلّمك." : "Write the change you need in a message (size, colour, address or time) and our team will call you." };
+      return { type: "text", text: own("change_prompt") ?? (ar ? "اكتب لنا التعديل اللي عايزه في رسالة (المقاس، اللون، العنوان أو المعاد)، وفريقنا هيكلّمك." : "Write the change you need in a message (size, colour, address or time) and our team will call you.") };
     case "change_received":
     case "noted":
-      return { type: "text", text: ar ? `وصلنا ✍️ فريق ${f.store} هيكلّمك قريب.` : `Got it ✍️ the ${f.store} team will call you shortly.` };
+      return { type: "text", text: own("change_received") ?? (ar ? `وصلنا ✍️ فريق ${f.store} هيكلّمك قريب.` : `Got it ✍️ the ${f.store} team will call you shortly.`) };
     case "cancel_reasons":
       return {
-        type: "list", body: ar ? "خسارة 😔 ممكن تقولنا ليه عايز تلغي؟" : "Sorry to hear that 😔 why do you want to cancel?", button: ar ? "اختار السبب" : "Choose a reason",
+        type: "list", body: own("cancel_prompt") ?? (ar ? "خسارة 😔 ممكن تقولنا ليه عايز تلغي؟" : "Sorry to hear that 😔 why do you want to cancel?"), button: ar ? "اختار السبب" : "Choose a reason",
         rows: [...CANCEL_REASONS.map((r) => ({ action: "reason" as const, arg: r, title: REASON_TITLE[f.lang][r] })), { action: "keep" as const, title: REASON_TITLE[f.lang].keep }],
       };
     case "cancelled":
-      return { type: "text", text: ar ? `اتلغى أوردرك ${f.number}. لو غيّرت رأيك ابعتلنا في أي وقت.` : `Your order ${f.number} is cancelled. If you change your mind, message us anytime.` };
+      return { type: "text", text: own("cancelled") ?? (ar ? `اتلغى أوردرك ${f.number}. لو غيّرت رأيك ابعتلنا في أي وقت.` : `Your order ${f.number} is cancelled. If you change your mind, message us anytime.`) };
     case "already":
       return { type: "text", text: ar ? `أوردرك ${f.number} متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.` : `Your order ${f.number} is already recorded. If you need anything, write to us here and our team will help.` };
   }
@@ -139,6 +144,11 @@ export const CALL_DIGITS = { "1": "confirm", "2": "change", "3": "cancel" } as c
 
 /** What the store's team says on the phone (E6-10): the same facts, as lines to read. */
 export function callScript(f: MessageFacts): string[] {
+  const own = scriptText(f.script, f.lang, "call");
+  if (own) {
+    const offer = f.offer ? [f.lang === "ar" ? `🎁 وبعد ما يأكّد اعرض عليه: ${stop(offerLine(f.offer, "ar"))} تحب نضيفه لنفس الأوردر؟` : `🎁 Once confirmed, offer: ${stop(offerLine(f.offer, "en"))} Shall we add it to the same order?`] : [];
+    return [...render(own, f).split("\n").map((l) => l.trim()).filter(Boolean), ...offer];
+  }
   const items = (f.items ?? []).map((i) => (f.lang === "ar" ? `${i.title} × ${i.quantity}` : `${i.quantity} × ${i.title}`)).join(f.lang === "ar" ? "، " : ", ");
   const amount = `${money(due(f), f.lang)}${payNote(f)}`;
   return f.lang === "ar"
