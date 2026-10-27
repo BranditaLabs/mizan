@@ -181,6 +181,10 @@ describe("shipping (E7-1)", () => {
     const o = await detail(id);
     expect(o).toMatchObject({ status: "delivered" });
     expect(o.timestamps.deliveredAt).toEqual(expect.any(String));
+    // The courier collected the cash: one courier line in the ledger, the order paid.
+    expect(o).toMatchObject({ paymentStatus: "paid", paid: { amount: "1250.00" } });
+    const cash = await db.tenant(store, (trx) => trx.selectFrom("payments").select(["kind", "source", "amount_minor"]).where("order_id", "=", id).execute());
+    expect(cash).toEqual([{ kind: "cod_collection", source: "courier", amount_minor: 125000n }]);
     expect(o.shipments[0]).toMatchObject({ status: "delivered" });
     r = (await list("delivered")).data.find((x: { id: string }) => x.id === shipped.id);
     expect(r).toMatchObject({ needsReview: false });

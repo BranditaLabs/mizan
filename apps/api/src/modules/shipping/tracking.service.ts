@@ -146,7 +146,7 @@ export class TrackingService {
 
   private base(trx: Trx) {
     return trx.selectFrom("shipments as s").innerJoin("orders as o", "o.id", "s.order_id")
-      .select(["s.id", "s.order_id", "s.status", "s.status_raw", "s.needs_review", "s.booking", "s.tracking_number", "s.provider", "o.number", "o.status as order_status"]);
+      .select(["s.id", "s.order_id", "s.status", "s.status_raw", "s.needs_review", "s.booking", "s.tracking_number", "s.provider", "s.cod_minor", "s.currency", "s.connection_id", "o.number", "o.status as order_status"]);
   }
 
   private async apply(trx: Trx, tenantId: string, s: NonNullable<Awaited<ReturnType<TrackingService["lock"]>>>, c: Change, actor: EventActor): Promise<"changed" | "unchanged" | "review"> {
@@ -171,7 +171,8 @@ export class TrackingService {
     await trx.updateTable("shipments").set({ status: c.status, status_raw: c.raw, status_at: c.at, needs_review: false, updated_at: new Date() }).where("id", "=", s.id).execute();
     await this.event(trx, tenantId, s.id, c.status, c);
     await this.events.emit(trx, { type: "shipment.status_changed", tenantId, entity: { type: "shipment", id: s.id }, actor, data: { ...ref, from: current, to: c.status, source: c.source } });
-    if (c.status === "delivered") await this.events.emit(trx, { type: "shipment.delivered", tenantId, entity: { type: "shipment", id: s.id }, actor, data: ref });
+    // The courier collected the cash (M15 posts it to the ledger for orders Mizan holds the money of).
+    if (c.status === "delivered") await this.events.emit(trx, { type: "shipment.delivered", tenantId, entity: { type: "shipment", id: s.id }, actor, data: { ...ref, codMinor: String(s.cod_minor), currency: s.currency.trim(), connectionId: s.connection_id } });
     if (c.status === "returned") await this.events.emit(trx, { type: "shipment.returned", tenantId, entity: { type: "shipment", id: s.id }, actor, data: ref });
 
     // The order follows the parcel's end: delivered, or back with the merchant.

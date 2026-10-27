@@ -665,7 +665,9 @@
       "ship_requested": "Sent to the courier",
       "shipped": "Shipped: the courier has it",
       "ship_failed": "The courier booking failed",
-      "shipment_status": "Courier: {status}"
+      "shipment_status": "Courier: {status}",
+      "exchanged_into": "Exchanged: replacement {number}",
+      "exchange_of": "Replacement for {number}"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -2608,6 +2610,41 @@
         "title": "No shipments in this period",
         "body": "The scorecard fills as couriers deliver."
       }
+    }
+  },
+  "exchanges": {
+    "title": "Exchanges",
+    "new": "Exchange",
+    "none": "Nothing exchanged from this order.",
+    "replacementOf": "Replacement in an exchange for <link></link>",
+    "to": "Exchanged for <link></link>",
+    "credit": "Credit moved <m></m>",
+    "collect": "to collect <m></m>",
+    "refundDue": "refund due <m></m>",
+    "status": {
+      "awaiting_return": "Waiting for the items",
+      "returned": "Items back"
+    },
+    "form": {
+      "title": "Exchange from {number}",
+      "body": "What comes back, and what the customer gets instead. What they already paid moves as credit; the difference is collected on delivery.",
+      "back": "Coming back",
+      "of": "of {n}",
+      "backQty": "Units of {title} coming back",
+      "instead": "Instead",
+      "pick": "Pick a product",
+      "qty": "Qty",
+      "shipping": "Shipping the customer pays",
+      "shippingHint": "0 when the store pays",
+      "reason": "Reason",
+      "note": "Note",
+      "money": "The replacement is a new confirmed order linked to",
+      "save": "Create the exchange",
+      "cancel": "Cancel",
+      "created": "Replacement {number} created",
+      "other": "Another item (not in the catalogue)",
+      "itemTitle": "Item",
+      "unitPrice": "Unit price"
     }
   }
 }

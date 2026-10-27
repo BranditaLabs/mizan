@@ -170,6 +170,10 @@ Conventions: `docs/05-api.md`.
 - Inspection per order line (sellable, damaged, written off), never past what was shipped, from the order screen or the ops app (scan the item). Sellable units go back into stock; lost units' product cost lands on the order's profit; a returned order shows "awaiting inspection" until every unit is inspected; a delivered order's units sent back sellable come off its cost.
 - Damaged and written off both count as lost for now: B-grade stock is still an open question below.
 
+## Built (E10-2)
+
+Exchanges from a delivered order (`POST /v1/exchanges`, the order's Exchanges card): what comes back (never more than the order has left), what the customer gets instead (catalogue products or an item typed with its price), shipping they pay, a reason and a note. The replacement is a confirmed order linked both ways (`{original}-X1`), with the same customer and address; stock reserves it and it ships like any order. What the customer already paid for the returned items moves as store credit (a refund line on the original, a sale line on the replacement), so revenue is counted once; the difference is collected on delivery and a cheaper replacement shows the refund due. The exchange waits for the items until the return inspection on the original covers them (earlier exchanges first). Partial delivery and the open-box outcome follow as E10-4.
+
 ## Open questions
 
 - Refunds through which providers per country?

@@ -513,6 +513,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/exchanges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ExchangesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/exchanges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ExchangesController_forOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/{id}/ship": {
         parameters: {
             query?: never;
@@ -2603,6 +2635,59 @@ export interface components {
             /** @enum {string} */
             status: "kept" | "merged";
         };
+        Exchange: {
+            /** Format: uuid */
+            id: string;
+            original: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+            };
+            replacement: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                status: string;
+            };
+            /** @enum {string} */
+            reason: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other";
+            note: string | null;
+            /**
+             * @description awaiting_return until the return inspection on the original covers every item
+             * @enum {string}
+             */
+            status: "awaiting_return" | "returned";
+            items: {
+                /** Format: uuid */
+                lineId: string;
+                title: string;
+                quantity: number;
+            }[];
+            /** @description What the returned items cost the customer */
+            returnedValue: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Moved to the replacement as store credit (money the customer already paid) */
+            credit: {
+                amount: string;
+                currency: string;
+            };
+            /** @description The difference the courier collects on the replacement */
+            toCollect: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Credit left over when the replacement costs less: refund it from the original */
+            refundDue: {
+                amount: string;
+                currency: string;
+            };
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            returnedAt: string | null;
+        };
         FxRate: {
             quote: string;
             /** @description 1 base = rate quote; null when missing */
@@ -2947,6 +3032,44 @@ export interface components {
             }[];
             /** @description Orders waiting for stock that are now reserved */
             ordersReserved: number;
+        };
+        NewExchange: {
+            /**
+             * Format: uuid
+             * @description The delivered order the items come back from
+             */
+            orderId: string;
+            /** @description What comes back */
+            items: {
+                /** Format: uuid */
+                lineId: string;
+                quantity: number;
+            }[];
+            /** @description What the customer gets instead (catalogue products or titled items with a price) */
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description A product from the catalogue (its price unless unitPrice is given)
+                 */
+                variantId?: string;
+                /** @description An item not in the catalogue (needs unitPrice) */
+                title?: string;
+                quantity: number;
+                unitPrice?: string;
+            }[];
+            /**
+             * @description What the customer pays for the exchange's shipping (0 when the store pays)
+             * @default 0
+             */
+            shipping: string;
+            /** @enum {string} */
+            reason: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other";
+            note?: string;
+            /**
+             * Format: uuid
+             * @description The case this exchange settles
+             */
+            ticketId?: string;
         };
         NewOrder: {
             /**
@@ -3562,6 +3685,116 @@ export interface components {
                     status?: string;
                 };
             }[];
+        };
+        OrderExchanges: {
+            /** @description Exchanges made from this order */
+            outgoing: {
+                /** Format: uuid */
+                id: string;
+                original: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                };
+                replacement: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                    status: string;
+                };
+                /** @enum {string} */
+                reason: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other";
+                note: string | null;
+                /**
+                 * @description awaiting_return until the return inspection on the original covers every item
+                 * @enum {string}
+                 */
+                status: "awaiting_return" | "returned";
+                items: {
+                    /** Format: uuid */
+                    lineId: string;
+                    title: string;
+                    quantity: number;
+                }[];
+                /** @description What the returned items cost the customer */
+                returnedValue: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Moved to the replacement as store credit (money the customer already paid) */
+                credit: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description The difference the courier collects on the replacement */
+                toCollect: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Credit left over when the replacement costs less: refund it from the original */
+                refundDue: {
+                    amount: string;
+                    currency: string;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                returnedAt: string | null;
+            }[];
+            /** @description When this order is a replacement: the exchange it settles */
+            exchangeOf: {
+                /** Format: uuid */
+                id: string;
+                original: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                };
+                replacement: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                    status: string;
+                };
+                /** @enum {string} */
+                reason: "wrong_size" | "wrong_item" | "damaged" | "missing_item" | "not_as_described" | "quality" | "changed_mind" | "late_delivery" | "courier_behaviour" | "not_delivered" | "price" | "other";
+                note: string | null;
+                /**
+                 * @description awaiting_return until the return inspection on the original covers every item
+                 * @enum {string}
+                 */
+                status: "awaiting_return" | "returned";
+                items: {
+                    /** Format: uuid */
+                    lineId: string;
+                    title: string;
+                    quantity: number;
+                }[];
+                /** @description What the returned items cost the customer */
+                returnedValue: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Moved to the replacement as store credit (money the customer already paid) */
+                credit: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description The difference the courier collects on the replacement */
+                toCollect: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Credit left over when the replacement costs less: refund it from the original */
+                refundDue: {
+                    amount: string;
+                    currency: string;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                returnedAt: string | null;
+            } | null;
         };
         OrderPage: {
             data: {
@@ -6969,6 +7202,114 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ExchangesController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewExchange"];
+            };
+        };
+        responses: {
+            /** @description The replacement order (confirmed), the credit moved from the original, what the courier collects or the refund due; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Exchange"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ExchangesController_forOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exchanges made from this order, and the one it is the replacement of */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderExchanges"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

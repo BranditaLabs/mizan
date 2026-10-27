@@ -294,6 +294,25 @@ export interface EventDeliveries {
   delivered_at: Generated<Timestamp>;
 }
 
+export interface Exchanges {
+  id: Generated<string>;
+  tenant_id: string;
+  original_order_id: string;
+  replacement_order_id: string;
+  ticket_id: string | null;
+  reason: string;
+  note: string | null;
+  items: Json;
+  status: Generated<string>;
+  currency: string;
+  returned_value_minor: Int8;
+  credit_minor: Int8;
+  refund_due_minor: Generated<Int8>;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+  returned_at: Timestamp | null;
+}
+
 export interface Expenses {
   id: Generated<string>;
   tenant_id: string;
@@ -1150,6 +1169,7 @@ export interface DB {
   disputes: Disputes;
   domain_events: DomainEvents;
   event_deliveries: EventDeliveries;
+  exchanges: Exchanges;
   expenses: Expenses;
   external_variants: ExternalVariants;
   fx_rate_overrides: FxRateOverrides;

@@ -21,6 +21,7 @@ import { LedgerCard } from "./LedgerCard";
 import { RefundsCard } from "@/components/payments/Refunds";
 import { ReturnsCard } from "./ReturnsCard";
 import { ShippingCard } from "./ShippingCard";
+import { ExchangeCard } from "./ExchangeCard";
 import { ProfitCard } from "./ProfitCard";
 import { TicketsCard } from "./TicketsCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
@@ -101,6 +102,7 @@ export function OrderDetail({ id }: { id: string }) {
       case "ship_requested": return t("events.ship_requested");
       case "shipped": return t("events.shipped");
       case "ship_failed": return t("events.ship_failed");
+      case "exchange_created": return e.data.into ? t("events.exchanged_into", { number: e.data.into }) : t("events.exchange_of", { number: e.data.of ?? "" });
       case "shipment_status": return t("events.shipment_status", { status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "" });
       default: return t("events.other");
     }
@@ -167,6 +169,7 @@ export function OrderDetail({ id }: { id: string }) {
           )} />
           <ShippingCard order={o} />
           <ReturnsCard orderId={o.id} />
+          <ExchangeCard order={o} />
           <RefundsCard orderId={o.id} />
         </div>
 

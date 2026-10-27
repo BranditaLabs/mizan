@@ -76,6 +76,11 @@ Return inspected or refund approved → `refund.create` → to original method t
 
 ✅ Built (E14-4, `apps/api/src/modules/payments/refunds.*`): a refund (R-1001…) never exceeds what the order holds less refunds still open. Under the store's threshold (Settings → Refunds, default EGP 1,000) it is approved at once; over it, or in another currency, owner, admin or finance approve, never whoever asked unless the owner. Then: **store credit** is credited (`store_credit_ledger`) and completes on approval; **the original method on a store order** is done in the store and completes when the store's refunded total rises (the ledger's store sync matches approved refunds oldest first), so it is booked once; **a transfer, cash, or the original method on Mizan's own orders** completes when the team records it sent, with its reference. Each completed refund is one refund line in the ledger. A refund can settle a ticket; its steps show in the ticket's history. The gateway refund call itself (Paymob) arrives with E14-2.
 
+### 5.3b Courier cash and exchanges (E10-2)
+
+- **Courier cash on delivery.** When a shipment of an order the team entered (no store connection) is delivered, the courier's collection is a `cod_collection` line (source `courier`, once per shipment). A store's order takes its payment from the store, so it is never counted twice; settlements (M8) reconcile both.
+- **Exchanges.** What the customer paid for the returned items moves to the replacement as store credit: a `refund` line (method `store_credit`) on the original and a `sale` line on the replacement, both keyed by the exchange. Revenue is counted once; the replacement's COD is the difference; a cheaper replacement leaves a refund due (refunded through §5.3).
+
 ### 5.4 Chargebacks
 
 Gateway reports dispute → `dispute.opened` → evidence pack generated (order, shipment tracking and proof of delivery, chat history, address, IP if available) → finance submits before `respond_by` → won (reversal) or lost (cost in M5).
