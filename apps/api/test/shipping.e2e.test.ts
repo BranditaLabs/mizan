@@ -149,4 +149,58 @@ describe("shipping (E7-1)", () => {
     await ship(open, "agent").expect(403);
     await http().post("/v1/orders/00000000-0000-4000-8000-000000000000/ship").set(as("owner")).expect(404);
   });
+
+  it("the courier's statuses move the shipment and the order; an unmapped one waits for a person (E7-3)", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const shipped = (await ship(id).expect(202)).body;
+    await runJobs();
+    const tn = (await detail(id)).shipments[0].trackingNumber as string;
+    const courier = await db.tenant(store, (trx) => trx.selectFrom("connections").select(["id", "secret_ref"]).where("provider", "=", "bosta").executeTakeFirstOrThrow());
+    const token = (JSON.parse((await db.tenant(store, (trx) => app.get(SecretsService).read(trx, store, courier.secret_ref!))).reveal()) as { webhookToken: string }).webhookToken;
+    const courierSays = async (code: number, label: string) => {
+      clock.advance(60_000);
+      bosta.setState(tn, code, label);
+      await http().post(`/webhooks/bosta/${courier.id}?token=${encodeURIComponent(token)}`).set("Content-Type", "application/json").send(bosta.webhook(tn, { withLabel: true })).expect(200);
+      await runJobs();
+    };
+    const list = async (view: string, as_ = "owner") => (await http().get(`/v1/shipments?view=${view}`).set(as(as_)).expect(200)).body;
+
+    await courierSays(24, "In transit");
+    expect((await detail(id)).shipments[0]).toMatchObject({ status: "in_transit" });
+    const active = await list("active", "agent");
+    expect(active.data.find((r: { id: string }) => r.id === shipped.id)).toMatchObject({ status: "in_transit", trackingNumber: tn, needsReview: false, area: { city: "Cairo" }, order: { id } });
+    expect(JSON.stringify(active)).not.toMatch(/Abbas|0100/); // the area, never the address
+
+    await courierSays(77, "Parcel on a camel");
+    let r = (await list("review")).data.find((x: { id: string }) => x.id === shipped.id);
+    expect(r).toMatchObject({ needsReview: true, status: "in_transit", statusRaw: "Parcel on a camel" });
+    expect((await list("review")).counts.review).toBeGreaterThanOrEqual(2); // and the Atlantis booking
+
+    await courierSays(45, "Delivered");
+    const o = await detail(id);
+    expect(o).toMatchObject({ status: "delivered" });
+    expect(o.timestamps.deliveredAt).toEqual(expect.any(String));
+    expect(o.shipments[0]).toMatchObject({ status: "delivered" });
+    r = (await list("delivered")).data.find((x: { id: string }) => x.id === shipped.id);
+    expect(r).toMatchObject({ needsReview: false });
+    const types = (await db.tenant(store, (trx) => trx.selectFrom("domain_events").select("type").where("entity_id", "=", shipped.id).execute())).map((e) => e.type);
+    expect(types).toEqual(expect.arrayContaining(["shipment.status_changed", "shipment.needs_review", "shipment.delivered"]));
+
+    // Final: a later courier status that disagrees goes to review; a person corrects it (audited).
+    await courierSays(46, "Returned to business");
+    expect((await detail(id)).status).toBe("delivered");
+    expect((await list("review")).data.some((x: { id: string }) => x.id === shipped.id)).toBe(true);
+    await http().post(`/v1/shipments/${shipped.id}/status`).set(as("wh")).send({ status: "returned" }).expect(403);
+    await http().post(`/v1/shipments/${shipped.id}/status`).set(as("owner")).send({ status: "unknown" }).expect(422);
+    await http().post(`/v1/shipments/${shipped.id}/status`).set(as("owner")).send({ status: "returned", note: "Bosta confirmed on the phone" }).expect(200);
+    await drainEvents();
+    expect((await detail(id)).status).toBe("returned");
+    expect((await list("review")).data.some((x: { id: string }) => x.id === shipped.id)).toBe(false);
+    const history = (await http().get(`/v1/shipments/${shipped.id}/events`).set(as("owner")).expect(200)).body.data;
+    expect(history[0]).toMatchObject({ status: "returned", source: "ops", note: "Bosta confirmed on the phone" });
+    expect(history.map((h: { source: string }) => h.source)).toContain("webhook");
+    const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select("action").where("entity_id", "=", shipped.id).execute());
+    expect(audit.map((a) => a.action)).toEqual(["shipment.status_set"]);
+  });
 });

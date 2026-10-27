@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import { trxQueryClient, type DB } from "@mizan/db";
-import { cashToCollect, MizanEngine, ShipBlockedError, SqlStore, type ShipOutcome } from "@mizan/engine";
+import { cashToCollect, MizanEngine, ShipBlockedError, SqlStore, type ShipmentStatusUpdate, type ShipOutcome } from "@mizan/engine";
 import { fromMinor, SHIPMENT_STATUSES, toMinor, type CanonicalOrder, type PaymentMode, type PaymentStatus } from "@mizan/shared";
 import { ENGINE_RUNTIME, type RuntimeFactory } from "../../integrations/engine-registry.js";
 import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
@@ -10,6 +10,7 @@ import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { PiiCipher } from "../../platform/pii/pii-cipher.js";
+import { TrackingService } from "./tracking.service.js";
 import type { ShipmentResultSink } from "./ports.js";
 import type { BOOKING_ERRORS, ShipmentView } from "./shipping.dto.js";
 
@@ -37,7 +38,13 @@ export class ShippingService implements ShipmentResultSink {
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(PiiCipher) private readonly cipher: PiiCipher,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
+    @Inject(TrackingService) private readonly tracking: TrackingService,
   ) {}
+
+  /** The courier's status for a booked shipment (E7-3). */
+  recordStatus(tenantId: string, connectionId: string, update: ShipmentStatusUpdate): Promise<void> {
+    return this.tracking.recordStatus(tenantId, connectionId, update);
+  }
 
   /** Ship an order: idempotent — while a booking is pending or booked, asking again returns it. */
   async ship(auth: AuthContext, orderId: string, now = new Date()): Promise<{ created: boolean; shipment: ShipmentView }> {
@@ -51,7 +58,8 @@ export class ShippingService implements ShipmentResultSink {
       const live = await trx.selectFrom("shipments").select([...SHIPMENT_COLUMNS]).where("order_id", "=", orderId).where("is_return_leg", "=", false)
         .where("booking", "!=", "failed").where("status", "!=", "cancelled").executeTakeFirst();
       if (live) return { created: false, shipment: view(live) };
-      if (o.status !== "confirmed") throw new ProblemError(409, "not_confirmed", o.status === "cancelled" ? "the order is cancelled" : "only a confirmed order ships");
+      // A confirmed order, or a shipped one whose delivery the courier cancelled (booked again).
+      if (o.status !== "confirmed" && o.status !== "shipped") throw new ProblemError(409, "not_confirmed", o.status === "cancelled" ? "the order is cancelled" : "only a confirmed order ships");
       if (!o.ship_line1 || !o.ship_city || !o.ship_phone) throw new ProblemError(409, "address_missing", "the order has no delivery address or phone");
       let cod: bigint;
       try {

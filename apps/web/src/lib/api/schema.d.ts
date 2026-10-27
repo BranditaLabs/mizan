@@ -529,6 +529,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shipments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TrackingController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shipments/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TrackingController_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shipments/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TrackingController_setStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -3417,6 +3465,8 @@ export interface components {
                     of?: string;
                     /** @description duplicate_merged: the order it was merged into */
                     into?: string;
+                    /** @description shipment_status: the courier's status (canonical) */
+                    status?: string;
                 };
             }[];
         };
@@ -4391,6 +4441,12 @@ export interface components {
             /** @description 1 unit of the store's base currency = rate units of the quote currency */
             rate: string;
         };
+        SetShipmentStatus: {
+            /** @enum {string} */
+            status: "created" | "pickup_requested" | "picked_up" | "in_transit" | "out_for_delivery" | "delivered" | "failed_attempt" | "returning" | "returned" | "cancelled" | "lost";
+            /** @description Why (what the courier said on the phone, the label seen) */
+            note?: string;
+        };
         Shipment: {
             /** Format: uuid */
             id: string;
@@ -4420,6 +4476,64 @@ export interface components {
             requestedAt: string;
             /** Format: date-time */
             bookedAt: string | null;
+        };
+        ShipmentHistory: {
+            data: {
+                status: string;
+                statusRaw: string | null;
+                /** @enum {string} */
+                source: "webhook" | "poll" | "ops";
+                /** Format: date-time */
+                at: string;
+                note: string | null;
+            }[];
+        };
+        ShipmentPage: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                    status: string;
+                };
+                provider: string;
+                /** @enum {string} */
+                booking: "pending" | "booked" | "failed";
+                status: string;
+                /** @description What the courier sent, verbatim */
+                statusRaw: string | null;
+                /** Format: date-time */
+                statusAt: string | null;
+                needsReview: boolean;
+                errorCode: string | null;
+                trackingNumber: string | null;
+                trackingUrl: string | null;
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+                area: {
+                    city: string | null;
+                    province: string | null;
+                };
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            counts: {
+                active: number;
+                review: number;
+                delivered: number;
+                returned: number;
+                all: number;
+            };
+            nextCursor: string | null;
+        };
+        ShipmentStatusSet: {
+            /** Format: uuid */
+            id: string;
+            status: string;
         };
         ShopifyClaim: {
             install: string;
@@ -6808,6 +6922,165 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TrackingController_list: {
+        parameters: {
+            query?: {
+                /** @description active: with the courier; review: an unmapped status or a refused booking; delivered; returned (and returning); all */
+                view?: "active" | "review" | "delivered" | "returned" | "all";
+                /** @description A tracking number or an order number */
+                q?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shipments newest first in a view, with counts per view; the area, never the address */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentPage"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TrackingController_history: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every status the shipment had, newest first: from a webhook, a poll, or a person */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentHistory"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TrackingController_setStatus: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetShipmentStatus"];
+            };
+        };
+        responses: {
+            /** @description Set by a person (rule 7: the override for a status Mizan could not map, or a final one); audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentStatusSet"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

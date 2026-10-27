@@ -95,7 +95,9 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 ## Built
 
-✅ **E7-1 — booking the courier.** A confirmed order with a delivery address is shipped from the order screen (`POST /v1/orders/{id}/ship`, owner, admin, ops manager, warehouse). The shipment row (`booking = pending`) and the engine job `bosta.ship` are written in one transaction; the job carries ids only and the engine reads the order (address, phone) from the platform when it runs. Bosta is called once per shipment: the shipment id is the courier reference, so a booking whose answer was lost is found and adopted, never made twice. The courier collects `cashToCollect(order)` (0 when prepaid, the balance after a deposit; an unpaid transfer is refused before anything is queued). Booked → tracking number, the order `shipped` with `shipped_at` (stock picks, profit moves to shipped), a Shopify order fulfilled with the number. Refused → `failed` with a reason the screen explains (unknown city, address or phone, payment, the courier key), and the team ships again once fixed. Labels wait for Bosta's AWB endpoint to be confirmed (E7-2); status updates from the courier land with E7-3.
+✅ **E7-1 — booking the courier.** A confirmed order with a delivery address is shipped from the order screen (`POST /v1/orders/{id}/ship`, owner, admin, ops manager, warehouse). The shipment row (`booking = pending`) and the engine job `bosta.ship` are written in one transaction; the job carries ids only and the engine reads the order (address, phone) from the platform when it runs. Bosta is called once per shipment: the shipment id is the courier reference, so a booking whose answer was lost is found and adopted, never made twice. The courier collects `cashToCollect(order)` (0 when prepaid, the balance after a deposit; an unpaid transfer is refused before anything is queued). Booked → tracking number, the order `shipped` with `shipped_at` (stock picks, profit moves to shipped), a Shopify order fulfilled with the number. Refused → `failed` with a reason the screen explains (unknown city, address or phone, payment, the courier key), and the team ships again once fixed. Labels wait for Bosta's AWB endpoint to be confirmed (E7-2).
+
+✅ **E7-3 — tracking and the review queue.** The courier's statuses (webhook hints re-read from Bosta, and the poll of active shipments) reach the shipment through the engine's `onShipmentStatus` hook, called before the engine records them so a platform failure retries the job. A mapped status moves the shipment (`shipment_events` row, `shipment.status_changed`); delivered → the order `delivered` with `delivered_at` (`shipment.delivered`), returned → the order `returned` (`shipment.returned`, return inspection opens). A status Mizan cannot map keeps the last good one and flags the shipment (`shipment.needs_review`); once a shipment is final, a courier status that disagrees is not applied but goes to review. A person sets the status from the review queue (audited, rule 7). The Shipping screen (`/shipping`) lists shipments by view with counts and search; the order's timeline shows each courier status. A delivery the courier cancelled can be booked again from the order.
 
 ## Events emitted
 
@@ -103,7 +105,8 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 | --- | --- |
 | `shipment.created` | Courier booked, tracking number issued ✅ E7-1 |
 | `shipment.booking_failed` | The courier or the order refused the booking (`code`: city_unknown, address_invalid, payment_blocks …) ✅ E7-1 |
-| `shipment.status_changed` | Mapped status changed |
+| `shipment.status_changed` | Mapped status changed ✅ E7-3 |
+| `shipment.needs_review` | A status Mizan could not map, or one contradicting a final status ✅ E7-3 |
 | `shipment.stuck` | No update past the threshold |
 | `shipment.delivered` | Final delivered status |
 | `shipment.refused` | Customer refused or returned |

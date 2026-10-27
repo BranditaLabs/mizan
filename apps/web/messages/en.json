@@ -664,7 +664,8 @@
       "confirmation_escalated": "Handed to an agent",
       "ship_requested": "Sent to the courier",
       "shipped": "Shipped: the courier has it",
-      "ship_failed": "The courier booking failed"
+      "ship_failed": "The courier booking failed",
+      "shipment_status": "Courier: {status}"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -2487,6 +2488,70 @@
       "not_found": "The order wasn't found.",
       "courier_refused_key": "The courier refused the account key: check Settings → Integrations.",
       "courier_failed": "The courier refused the booking. Try again."
+    }
+  },
+  "shipments": {
+    "title": "Shipping",
+    "subtitle": "Every shipment with the courier and where it is. Statuses Mizan can't read wait for review: a delivery is never guessed.",
+    "search": "Tracking or order number",
+    "tabsLabel": "Shipments",
+    "loading": "Loading",
+    "more": "Show more",
+    "openOrder": "Open the order",
+    "courierSaid": "The courier said:",
+    "view": {
+      "active": "With the courier",
+      "review": "Needs review",
+      "delivered": "Delivered",
+      "returned": "Returned",
+      "all": "All"
+    },
+    "columns": {
+      "order": "Order",
+      "tracking": "Tracking",
+      "area": "Area",
+      "status": "Status",
+      "cod": "To collect",
+      "action": "Action"
+    },
+    "noMatch": {
+      "title": "No shipment matches",
+      "body": "Check the tracking or order number."
+    },
+    "empty": {
+      "active": {
+        "title": "Nothing with the courier",
+        "body": "Ship a confirmed order from its page."
+      },
+      "review": {
+        "title": "Nothing to review",
+        "body": "Statuses Mizan couldn't read and refused bookings show here."
+      },
+      "delivered": {
+        "title": "No deliveries yet",
+        "body": "Delivered shipments show here."
+      },
+      "returned": {
+        "title": "No returns",
+        "body": "Shipments coming back or returned show here."
+      },
+      "all": {
+        "title": "No shipments yet",
+        "body": "Ship a confirmed order from its page."
+      }
+    },
+    "set": {
+      "open": "Set status",
+      "title": "Status of {number}",
+      "body": "Set it once you know: what the courier said on the phone, or the label you saw. It's recorded with your name.",
+      "courierSaid": "The courier sent:",
+      "status": "Status",
+      "pick": "Pick a status",
+      "note": "Note",
+      "noteHint": "Optional: how you know",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Status saved"
     }
   }
 }

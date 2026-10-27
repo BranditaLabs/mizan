@@ -64,6 +64,13 @@ export interface EngineOptions {
     loadOrder?: (orderId: string) => Promise<CanonicalOrder | undefined>;
     /** A ship job booked the delivery (now, or found it booked by an earlier attempt), or could not (final). Must be idempotent. */
     onShipment?: (shipmentId: string, result: ShipOutcome) => Promise<void>;
+    /**
+     * The courier reported a shipment's status (E7-3): applied (`needsReview` false, before the
+     * engine records it, so a failing hook retries the job), one it could not map (`needsReview`
+     * true, the last known status kept), or one contradicting a final status (`previous` final:
+     * not applied, for a person to decide). Must be idempotent.
+     */
+    onShipmentStatus?: (update: ShipmentStatusUpdate) => Promise<void>;
   };
 }
 
@@ -80,6 +87,18 @@ export interface ShipJob { shipmentId: string; orderId: string; storeOrderId?: s
 export type ShipOutcome =
   | { ok: true; shipment: CanonicalShipment; adopted: boolean }
   | { ok: false; reason: "validation" | "blocked" | "not_found" | "permission" | "failed"; message: string; blockReason?: ShipBlockReason; details?: Record<string, unknown> };
+
+/** A courier status for a shipment (E7-3), mapped to Mizan's lifecycle, with what the courier sent. */
+export interface ShipmentStatusUpdate {
+  trackingNumber: string;
+  status: ShipmentStatus;
+  previous?: ShipmentStatus;
+  raw: { code?: string | number; label?: string };
+  at: string;
+  needsReview: boolean;
+  /** A webhook hint, or the engine's own poll of active shipments. */
+  source: "webhook" | "poll";
+}
 
 /** One store day to reconcile (E5-8): orders created in [from, to). */
 export interface ReconcileJob { day: string; from: string; to: string }
@@ -502,7 +521,7 @@ export class MizanEngine {
       "bosta.createShipment": (j) => this.createShipment(j.payload.orderId, j.attempts),
       "bosta.ship": (j) => this.ship(j.payload as ShipJob, j.attempts),
       "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber),
-      "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber),
+      "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber, j.payload.hint ? "webhook" : "poll"),
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
@@ -706,7 +725,7 @@ export class MizanEngine {
     this.emit("order.fulfilled", { orderId, trackingNumber, result });
   }
 
-  private async ingestShipmentStatus(trackingNumber: string) {
+  private async ingestShipmentStatus(trackingNumber: string, source: "webhook" | "poll" = "poll") {
     const rec = await this.store.get<ShipmentRecord>("shipment", trackingNumber);
     const fresh = await this.bosta.getShipment(trackingNumber); // fat fetch: never trust the webhook body alone
     await this.saveLearned();
@@ -717,13 +736,21 @@ export class MizanEngine {
       return;
     }
     const current = rec?.shipment.status;
+    const at = new Date(freshAt).toISOString();
     if (fresh.status === "unknown") {
+      await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: current ?? "unknown", ...(current ? { previous: current } : {}), raw: fresh.rawStatus, at, needsReview: true, source }));
       this.emit("shipment.needs_review", { trackingNumber, orderId, rawStatus: fresh.rawStatus });
     }
     if (!shouldApplyStatus(current, fresh.status, rec?.statusAt, freshAt)) {
+      // A courier contradicting a final status is not applied, but a person must see it.
+      if (current && TERMINAL_STATUSES.has(current) && fresh.status !== current && fresh.status !== "unknown") {
+        await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: fresh.status, previous: current, raw: fresh.rawStatus, at, needsReview: false, source }));
+      }
       if (current !== fresh.status) this.emit("shipment.status_ignored", { trackingNumber, current, received: fresh.status });
       return;
     }
+    // The platform first: if it fails, the job retries and finds the status still new.
+    await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: fresh.status, ...(current ? { previous: current } : {}), raw: fresh.rawStatus, at, needsReview: false, source }));
     await this.store.put<ShipmentRecord>("shipment", trackingNumber, { shipment: { ...fresh, raw: undefined }, orderId, statusAt: freshAt }, this.now());
     this.emit("shipment.status", { trackingNumber, orderId, from: current, to: fresh.status, raw: fresh.rawStatus });
     await this.afterStatusChange(orderId, fresh.status, trackingNumber);

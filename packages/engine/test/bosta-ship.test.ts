@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { CanonicalOrder } from "@mizan/shared";
-import { MizanEngine, type ShipOutcome } from "../src/engine/engine.js";
+import { MizanEngine, type ShipmentStatusUpdate, type ShipOutcome } from "../src/engine/engine.js";
 import { settle, setup } from "./fakes/setup.js";
 
 /**
@@ -25,14 +25,20 @@ function order(id: string, over: Partial<CanonicalOrder> = {}): CanonicalOrder {
 function world(rate = 0) {
   const orders = new Map<string, CanonicalOrder>();
   const results = new Map<string, ShipOutcome[]>();
+  const updates: ShipmentStatusUpdate[] = [];
+  let failNextUpdate = 0;
   const ctx = setup({ hooks: {
+    onShipmentStatus: async (u) => {
+      if (failNextUpdate > 0) { failNextUpdate--; throw new Error("database briefly unavailable"); }
+      updates.push(u);
+    },
     loadOrder: async (id) => orders.get(id),
     onShipment: async (shipmentId, r) => { results.set(shipmentId, [...(results.get(shipmentId) ?? []), r]); },
   } });
   ctx.bosta.randomFaultRate = rate;
   const ship = (shipmentId: string, orderId: string, storeOrderId?: string) =>
     ctx.store.enqueue(MizanEngine.bostaShipJob({ shipmentId, orderId, ...(storeOrderId ? { storeOrderId } : {}) }), ctx.clock.now());
-  return { ...ctx, orders, results, ship };
+  return { ...ctx, orders, results, updates, ship, failUpdates: (n: number) => { failNextUpdate = n; } };
 }
 
 describe("shipping a Mizan order (E7-1)", () => {
@@ -108,5 +114,35 @@ describe("shipping a Mizan order (E7-1)", () => {
     expect(refs).toEqual(Array.from({ length: 10 }, (_, i) => `s${i}`).sort());
     for (let i = 0; i < 10; i++) expect(w.results.get(`s${i}`)?.[0]?.ok, `s${i}`).toBe(true);
     expect(await w.store.jobs({ status: "dead" })).toHaveLength(0);
+  });
+
+  it("courier statuses reach the platform once each, in order; an unknown one asks for review (E7-3)", async () => {
+    const w = world();
+    w.orders.set("o1", order("o1"));
+    await w.ship("s1", "o1");
+    await settle(w.engine, w.store, w.clock);
+    const tn = [...w.bosta.deliveries.keys()][0]!;
+    const hook = async (code: number, label: string) => {
+      w.clock.advance(60_000);
+      w.bosta.setState(tn, code, label);
+      await w.engine.handleBostaWebhook({ token: "whsec-bosta" }, {}, w.bosta.webhook(tn, { withLabel: true }));
+      await settle(w.engine, w.store, w.clock);
+    };
+    await hook(24, "In transit");
+    w.failUpdates(2); // the platform fails twice: the job retries, the status still arrives once
+    await hook(41, "Out for delivery");
+    await hook(99, "Teleported to the moon");
+    await hook(45, "Delivered");
+    await hook(45, "Delivered"); // repeated: nothing new
+    await hook(46, "Returned to business"); // contradicts a final status: reported, not applied
+    expect(w.updates.map((u) => [u.status, u.needsReview, u.previous ?? null])).toEqual([
+      ["in_transit", false, "pickup_requested"],
+      ["out_for_delivery", false, "in_transit"],
+      ["out_for_delivery", true, "out_for_delivery"],
+      ["delivered", false, "out_for_delivery"],
+      ["returned", false, "delivered"],
+    ]);
+    expect(w.updates[2]!.raw).toMatchObject({ code: 99, label: "Teleported to the moon" });
+    expect(w.updates.every((u) => u.trackingNumber === tn)).toBe(true);
   });
 });

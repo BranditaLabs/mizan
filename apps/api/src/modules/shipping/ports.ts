@@ -1,5 +1,5 @@
 import type { CanonicalOrder } from "@mizan/shared";
-import type { ShipOutcome } from "@mizan/engine";
+import type { ShipmentStatusUpdate, ShipOutcome } from "@mizan/engine";
 
 /**
  * Between the engine registry and M3 shipping (each would otherwise import the other): the engine
@@ -9,4 +9,5 @@ export const SHIPMENT_RESULTS = Symbol("SHIPMENT_RESULTS");
 export interface ShipmentResultSink {
   loadOrder(tenantId: string, orderId: string): Promise<CanonicalOrder | undefined>;
   recordResult(tenantId: string, shipmentId: string, result: ShipOutcome): Promise<void>;
+  recordStatus(tenantId: string, connectionId: string, update: ShipmentStatusUpdate): Promise<void>;
 }

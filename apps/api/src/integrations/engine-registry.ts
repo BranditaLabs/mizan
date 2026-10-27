@@ -188,6 +188,10 @@ export class EngineRegistry {
         onShipment: async (shipmentId, result) => {
           await this.shipmentResults?.recordResult(tenantId, shipmentId, result);
         },
+        // E7-3: the courier's statuses on the shipment and the order (or the review queue).
+        onShipmentStatus: async (update) => {
+          if (c.bosta) await this.shipmentResults?.recordStatus(tenantId, c.bosta.connectionId, update);
+        },
         // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
         onLearned: async (provider, state) => {
           const connectionId = provider === "shopify" ? c.shopify.connectionId : c.bosta?.connectionId;

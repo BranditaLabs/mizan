@@ -876,6 +876,7 @@ export interface ShipmentEvents {
   occurred_at: Timestamp;
   data: Json | null;
   created_at: Generated<Timestamp>;
+  actor_id: string | null;
 }
 
 export interface Shipments {

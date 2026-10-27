@@ -30,7 +30,7 @@ function eventData(raw: unknown): OrderDetail["events"][number]["data"] {
   const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const text = (k: string) => (typeof d[k] === "string" ? { [k]: d[k] as string } : {});
   const changed = Array.isArray(d.changed) ? { changed: d.changed.filter((x): x is string => typeof x === "string") } : {};
-  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...text("of"), ...text("into"), ...changed };
+  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...text("of"), ...text("into"), ...text("status"), ...changed };
 }
 /** Risk reasons as codes (E6-1 writes them; strings or { code }). */
 const reasonCodes = (raw: unknown): string[] =>

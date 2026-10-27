@@ -80,6 +80,7 @@ export const OrderEventSchema = z.object({
     to: z.string().optional(),
     of: z.string().optional().describe("duplicate_found / duplicate_kept: the earlier order's number"),
     into: z.string().optional().describe("duplicate_merged: the order it was merged into"),
+    status: z.string().optional().describe("shipment_status: the courier's status (canonical)"),
   }),
 });
 

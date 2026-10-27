@@ -26,3 +26,18 @@ test("owner in Arabic: a confirmed order offers shipping, and says to connect a 
   await page.getByRole("button", { name: "اشحن الأوردر" }).click();
   await expect(page.locator(".mz-toast", { hasText: "اربط شركة شحن الأول" })).toBeVisible();
 });
+
+/** E7-3: the shipping screen from the menu, its views and the empty review queue. */
+test("owner in English: the shipping screen lists views and an empty review queue", async ({ page }) => {
+  const owner = await ownerWithStore("Shipping Views");
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
+  await page.getByRole("link", { name: "Shipping" }).click();
+  await expect(page).toHaveURL(/\/en\/shipping$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Shipping");
+  const tabs = page.getByRole("tablist", { name: "Shipments" });
+  await expect(tabs.getByRole("tab")).toHaveCount(5);
+  await tabs.getByRole("tab", { name: /Needs review/ }).click();
+  await expect(page.getByTestId("shipments")).toContainText("Nothing to review");
+});

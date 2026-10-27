@@ -8,7 +8,7 @@ type Key = "home" | "orders" | "confirmation" | "tickets" | "payments" | "produc
 const NAV: ReadonlyArray<{ key: Key; icon: IconProps["name"]; href?: string; section?: string }> = [
   { key: "home", icon: "home", href: "/" }, { key: "orders", icon: "orders", href: "/orders" }, { key: "confirmation", icon: "verification", href: "/confirmation" },
   { key: "tickets", icon: "returns", href: "/tickets" }, { key: "payments", icon: "payments", href: "/payments" },
-  { key: "products", icon: "product", href: "/products" },  { key: "shipping", icon: "shipping" }, { key: "warehouse", icon: "warehouse", href: "/stock" }, { key: "profit", icon: "profit", href: "/profit" },
+  { key: "products", icon: "product", href: "/products" },  { key: "shipping", icon: "shipping", href: "/shipping" }, { key: "warehouse", icon: "warehouse", href: "/stock" }, { key: "profit", icon: "profit", href: "/profit" },
   { key: "reports", icon: "reports", href: "/reports" },  { key: "automations", icon: "automations", href: "/automations" },
   { key: "settings", icon: "settings", href: "/settings/costs", section: "/settings" },
 ];

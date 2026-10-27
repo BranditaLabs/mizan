@@ -36,6 +36,7 @@ type Revealed = Schemas["RevealedCustomer"];
 const PAYMENT_STATUSES = new Set(["unpaid", "authorized", "partially_paid", "paid", "partially_refunded", "refunded", "disputed", "failed", "voided"]);
 const LEDGER_KINDS = new Set(["authorization", "capture", "sale", "cod_collection", "refund", "chargeback", "chargeback_reversal", "void"]);
 const LEDGER_METHODS = new Set(["cod", "card", "wallet", "apple_pay", "bnpl", "bank_transfer", "instapay", "fawry_ref", "store_credit", "cash_pos", "marketplace"]);
+const SHIPMENT_STATUSES = new Set(["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"]);
 const ANSWER_CHANNELS = new Set(["link", "whatsapp", "sms", "voice_ivr", "voice_ai", "agent"]);
 const sourceName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const mapsUrl = (l: { lat: number; lng: number }) => `https://www.google.com/maps?q=${l.lat},${l.lng}`;
@@ -51,6 +52,7 @@ export function OrderDetail({ id }: { id: string }) {
   const tm = useTranslations("payments.mode");
   const tp = useTranslations("payments.status");
   const tpr = useTranslations("problems");
+  const ts = useTranslations("shipping");
   const { api, user, store } = useSession();
   const order = useQuery({
     queryKey: ["order", user?.uid ?? "", store?.tenantId ?? "", id],
@@ -99,6 +101,7 @@ export function OrderDetail({ id }: { id: string }) {
       case "ship_requested": return t("events.ship_requested");
       case "shipped": return t("events.shipped");
       case "ship_failed": return t("events.ship_failed");
+      case "shipment_status": return t("events.shipment_status", { status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "" });
       default: return t("events.other");
     }
   };
