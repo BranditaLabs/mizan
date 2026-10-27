@@ -1,5 +1,5 @@
 import { sql, type Kysely, type Transaction } from "kysely";
-import { asWorker, withoutTenant, withTenant, type DB } from "@mizan/db";
+import { asPlatformStaff, asWorker, withoutTenant, withTenant, type DB } from "@mizan/db";
 
 /**
  * The API's handle on PostgreSQL. Inject it; never build Kysely instances in modules.
@@ -23,6 +23,11 @@ export class Database {
 
   worker<T>(fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
     return asWorker(this.kysely, fn);
+  }
+
+  /** The back office's role (A-1): staff tables and read-only store metadata across stores. Staff routes only. */
+  staff<T>(fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
+    return asPlatformStaff(this.kysely, fn);
   }
 
   async ping(): Promise<void> {

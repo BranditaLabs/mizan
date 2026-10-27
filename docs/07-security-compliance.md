@@ -85,6 +85,13 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 - [ ] Dependency audit in CI.
 - [ ] Penetration test before public launch.
 
+### Mizan staff (A-1)
+
+- Staff are Mizan users listed in `platform_staff` (roles `super_admin`, `support`, `finance`, `engineer`); the back office (`/v1/platform/*`) is behind `PlatformGuard`: a second factor always (no switch), active staff, the route's role. Merchants get 403 on every platform route.
+- The staff tables are invisible to the app role (`mizan_app`); the back office runs as `mizan_platform`, which reads across stores only store metadata (stores, users, memberships, connections, jobs, events, usage) — never orders, customers, secrets or money lines. A store's own data is reached through that store's context with time-limited support access (A-3).
+- Every staff call is recorded in `platform_audit` (append-only for the platform role: no update or delete), including every refusal; routes are recorded without ids or query strings.
+- The first super admin comes from `PLATFORM_BOOTSTRAP_EMAILS` (verified email + second factor), recorded as `staff.bootstrapped`; later staff are added by a super admin; Mizan always keeps one active super admin.
+
 ## 6. Operations
 
 - Daily backups + point-in-time recovery; restore drill monthly.

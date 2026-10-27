@@ -697,6 +697,31 @@ export interface Payments {
   recorded_by: string | null;
 }
 
+export interface PlatformAudit {
+  id: Generated<Int8>;
+  staff_id: string | null;
+  user_id: string | null;
+  action: string;
+  outcome: string;
+  status: number | null;
+  target_type: string | null;
+  target_id: string | null;
+  store_id: string | null;
+  ip: string | null;
+  data: Json | null;
+  created_at: Generated<Timestamp>;
+}
+
+export interface PlatformStaff {
+  id: Generated<string>;
+  user_id: string;
+  role: string;
+  status: Generated<string>;
+  added_by: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface PosShifts {
   id: Generated<string>;
   tenant_id: string;
@@ -1201,6 +1226,8 @@ export interface DB {
   orders: Orders;
   payment_links: PaymentLinks;
   payments: Payments;
+  platform_audit: PlatformAudit;
+  platform_staff: PlatformStaff;
   pos_shifts: PosShifts;
   privacy_requests: PrivacyRequests;
   product_events: ProductEvents;

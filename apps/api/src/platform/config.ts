@@ -84,6 +84,11 @@ export const ConfigSchema = z.object({
   FIREBASE_AUTH_EMULATOR_HOST: z.string().regex(/^[\w.-]+:\d+$/, "must be host:port").optional(),
   // Owners/admins must use a second factor. Unset = on in production, off elsewhere.
   AUTH_REQUIRE_MFA: z.stringbool({ error: "must be true or false" }).optional(),
+  /**
+   * A-1: verified emails that become the first Mizan staff (super_admin) on their first back-office
+   * call, so a fresh install has someone to add the rest. Comma-separated; empty = nobody.
+   */
+  PLATFORM_BOOTSTRAP_EMAILS: z.string().optional(),
 
   // Run the background loops (domain events, engine jobs) inside the API process. Unset = on only
   // in development with PGlite (one process, no separate worker); production runs `node dist/worker.js`.

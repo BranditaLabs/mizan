@@ -126,6 +126,7 @@ Scopes Mizan asks for (already in the code): `read_orders, write_orders, write_o
 | 5 | 🚧 **Firebase**: project `mizan-8f906` created and web config received (Oct 2026). Still to do: on the same project as hosting: Authentication → Email/Password + Phone; upgrade to **Identity Platform** for SMS second factor (owners); add the dashboard domain to **Authorized domains**; allow SMS only to +20/+966/+971 (Authentication → Settings → SMS region policy); restrict the web API key to the dashboard domains and the Identity Toolkit API (Google Cloud → APIs & Services → Credentials). No Google Analytics (consent rules; Mizan keeps its own product events) | console.firebase.google.com | `FIREBASE_PROJECT_ID` and the web config (`NEXT_PUBLIC_FIREBASE_API_KEY`, `…_AUTH_DOMAIN`, `…_PROJECT_ID`; these are public) |
 | 6 | **Domain + DNS**: e.g. `app.<domain>` (dashboard) and `api.<domain>` (API) | Your registrar | The domains (`WEB_URL`, `PUBLIC_URL`) |
 | 7 | A **Google Maps Platform** key restricted to the dashboard domain 🟡 | APIs & Services | Secret Manager |
+| 8 | The **email of the first Mizan staff super admin** (the back office, A-1). That person signs in with the email verified and a second factor; they then add the rest of the staff | — | `PLATFORM_BOOTSTRAP_EMAILS` (not a secret: a Cloud Run environment variable) |
 
 ### Values to create (Secret Manager, never in git)
 

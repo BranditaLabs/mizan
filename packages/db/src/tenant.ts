@@ -5,6 +5,8 @@ import type { DB } from "./schema.js";
 export const APP_ROLE = "mizan_app";
 /** The event dispatcher's role: domain_events across tenants, nothing else (migration 0006). */
 export const WORKER_ROLE = "mizan_worker";
+/** The back office's role (A-1, migration 0043): staff, their audit trail, and read-only store metadata across tenants. */
+export const PLATFORM_ROLE = "mizan_platform";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -64,6 +66,17 @@ export async function setActingUser(
 export async function asWorker<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
   return db.transaction().execute(async (trx) => {
     await sql`SELECT set_config('role', ${WORKER_ROLE}, true)`.execute(trx);
+    return fn(trx);
+  });
+}
+
+/**
+ * Run `fn` as the back office's role (A-1): the staff tables and the store metadata migration 0043
+ * grants it, across tenants, read-only for store data. Only PlatformGuard-checked staff routes use it.
+ */
+export async function asPlatformStaff<T>(db: Kysely<DB>, fn: (trx: Transaction<DB>) => Promise<T>): Promise<T> {
+  return db.transaction().execute(async (trx) => {
+    await sql`SELECT set_config('role', ${PLATFORM_ROLE}, true)`.execute(trx);
     return fn(trx);
   });
 }

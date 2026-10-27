@@ -23,6 +23,11 @@ export interface AuthContext {
   tenant?: AuthTenant;
   /** Client IP (behind the load balancer: X-Forwarded-For, trust proxy). */
   ip?: string;
+  /** Set by PlatformGuard on /v1/platform routes (A-1). */
+  staff?: { id: string; role: StaffRole };
 }
+
+export const STAFF_ROLES = ["super_admin", "support", "finance", "engineer"] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
 
 export type AuthedRequest = Request & { auth?: AuthContext };

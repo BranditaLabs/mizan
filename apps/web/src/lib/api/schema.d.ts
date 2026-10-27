@@ -689,6 +689,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffController_list"];
+        put?: never;
+        post: operations["StaffController_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/staff/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["StaffController_update"];
+        trace?: never;
+    };
+    "/v1/platform/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StaffController_trail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -1738,6 +1802,15 @@ export interface components {
             tenantId: string;
             /** @enum {string} */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
+        };
+        AddStaff: {
+            /**
+             * Format: email
+             * @description A Mizan user who has signed in once
+             */
+            email: string;
+            /** @enum {string} */
+            role: "super_admin" | "support" | "finance" | "engineer";
         };
         AdSpendImported: {
             rows: number;
@@ -5120,6 +5193,66 @@ export interface components {
              */
             authorizeUrl: string;
         };
+        Staff: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            userId: string;
+            email: string | null;
+            name: string | null;
+            /** @enum {string} */
+            role: "super_admin" | "support" | "finance" | "engineer";
+            /** @enum {string} */
+            status: "active" | "disabled";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        StaffList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                userId: string;
+                email: string | null;
+                name: string | null;
+                /** @enum {string} */
+                role: "super_admin" | "support" | "finance" | "engineer";
+                /** @enum {string} */
+                status: "active" | "disabled";
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        StaffMe: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            role: "super_admin" | "support" | "finance" | "engineer";
+            email: string | null;
+        };
+        StaffTrail: {
+            data: {
+                id: number;
+                /** Format: uuid */
+                staffId: string | null;
+                /** @description Who called: staff, or a non-staff user who was refused */
+                email: string | null;
+                /** @description The route called, or what was done */
+                action: string;
+                /** @enum {string} */
+                outcome: "ok" | "denied" | "failed";
+                status: number | null;
+                target: {
+                    type: string;
+                    id: string | null;
+                } | null;
+                /** Format: uuid */
+                storeId: string | null;
+                /** Format: date-time */
+                at: string;
+            }[];
+            nextBefore: number | null;
+        };
         StockHistory: {
             data: {
                 /** Format: uuid */
@@ -5370,6 +5503,12 @@ export interface components {
                 costs?: boolean;
             };
             dismissed?: boolean;
+        };
+        UpdateStaff: {
+            /** @enum {string} */
+            role?: "super_admin" | "support" | "finance" | "engineer";
+            /** @enum {string} */
+            status?: "active" | "disabled";
         };
         UpdateTicket: {
             /** @enum {string} */
@@ -8036,6 +8175,293 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CourierScorecard"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffController_me: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller as Mizan staff (the first super admin is created from PLATFORM_BOOTSTRAP_EMAILS) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMe"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffController_list: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Everyone on the staff */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffList"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffController_add: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddStaff"];
+            };
+        };
+        responses: {
+            /** @description Added (they must have signed in to Mizan once) */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Staff"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStaff"];
+            };
+        };
+        responses: {
+            /** @description Role or status changed; there is always an active super admin */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Staff"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StaffController_trail: {
+        parameters: {
+            query?: {
+                limit?: number;
+                /** @description Older than this line id (the previous page's nextBefore) */
+                before?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The staff trail, newest first: every back-office call, refusals included */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffTrail"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Understood but refused (a business rule) */

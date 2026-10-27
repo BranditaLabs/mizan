@@ -17,6 +17,11 @@ async function asTenant<T>(tenant: string, fn: () => Promise<T>): Promise<T> {
   try { return await fn(); } finally { await db.exec("COMMIT;"); }
 }
 
+async function asRole<T>(role: string, fn: () => Promise<T>): Promise<T> {
+  await db.exec(`BEGIN; SET LOCAL ROLE ${role};`);
+  try { return await fn(); } finally { await db.exec("COMMIT;"); }
+}
+
 describe("schema", () => {
   it("applies all migrations", async () => {
     const r = await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM information_schema.tables WHERE table_schema = 'public'`);
@@ -93,7 +98,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "whatsapp_messages_out",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "whatsapp_messages_out",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -219,6 +224,24 @@ describe("schema", () => {
     expect(Number((await asTenant(T1, () => db.query<{ balance_minor: string }>(`SELECT balance_minor FROM orders WHERE id = $1`, [id]))).rows[0]!.balance_minor)).toBe(50000); // owed: what they kept
     await expect(asTenant(T1, () => db.query(`UPDATE orders SET refusal_reason = 'price' WHERE id = $1`, [id]))).rejects.toThrow(/orders_refusal_whole/);
     await expect(asTenant(T1, () => db.query(`UPDATE orders SET partial_due_minor = -1 WHERE id = $1`, [id]))).rejects.toThrow(/partial_due_minor_check/);
+  });
+
+  it("keeps staff to the back office: the app never sees them; the back office reads store metadata, never orders or secrets (A-1)", async () => {
+    const user = (await db.query<{ id: string }>(`INSERT INTO users (firebase_uid, email) VALUES ('fb-staff-1', 'ops@mizan.test') RETURNING id`)).rows[0]!.id;
+    await asRole("mizan_platform", () => db.query(`INSERT INTO platform_staff (user_id, role) VALUES ($1, 'super_admin')`, [user]));
+    await expect(asRole("mizan_app", () => db.query(`SELECT * FROM platform_staff`))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_app", () => db.query(`SELECT * FROM platform_audit`))).rejects.toThrow(/permission denied/);
+    await asRole("mizan_platform", () => db.query(`INSERT INTO platform_audit (user_id, action, outcome) VALUES ($1, 'GET /v1/platform/me', 'ok')`, [user]));
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE platform_audit SET action = 'x'`))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_platform", () => db.query(`DELETE FROM platform_audit`))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_platform", () => db.query(`INSERT INTO platform_staff (user_id, role) VALUES ($1, 'god')`, [user]))).rejects.toThrow(/role_check|duplicate/);
+    // Across stores: tenants and their connections, read-only; never orders or secrets.
+    const stores = await asRole("mizan_platform", () => db.query<{ id: string }>(`SELECT id FROM tenants WHERE id IN ($1, $2) ORDER BY id`, [T1, T2]));
+    expect(stores.rows.map((r) => r.id)).toEqual([T1, T2]);
+    await asRole("mizan_platform", () => db.query(`SELECT id FROM connections`));
+    await expect(asRole("mizan_platform", () => db.query(`SELECT * FROM orders`))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_platform", () => db.query(`SELECT * FROM secrets`))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE connections SET status = 'disconnected'`))).rejects.toThrow(/permission denied/);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {

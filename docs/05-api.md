@@ -58,6 +58,17 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | GET / PUT | `/products/variants/costs` | ✅ Owner/admin/ops/finance: variants with price and cost (`null` until entered), `?missingCost=true&limit&cursor`, counts; PUT `{ items: [{ variantId, cost: "250.50" }] }` (≤ 500, decimal strings, variant currency) → `{ updated, missingCost }`. Store syncs never overwrite a cost |
 | GET | `/audit-log` | ✅ Who did what in this store, newest first (owner/admin). `?limit≤200&cursor=&action=member.` (exact or prefix) |
 
+### Back office (Mizan staff, E17)
+
+`/platform/*` is for Mizan staff only (A-1): signed in, no `X-Tenant-Id`, **always** with a second factor (403 `mfa_required` before anything else), active staff (403 `not_staff`, `staff_disabled`), and the route's staff role (403 `insufficient_role`). Every call — refusals included, merchants probing the routes too — is a line in the staff trail (`platform_audit`: the route, never ids or query strings; outcome ok/denied/failed; status). The first super admin is created from `PLATFORM_BOOTSTRAP_EMAILS` (a verified email, with a second factor).
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/platform/me` | ✅ A-1. `{ id, role, email }`: the caller as staff. Any staff role |
+| GET / POST | `/platform/staff` | ✅ A-1. List; add `{ email, role: super_admin\|support\|finance\|engineer }` (a Mizan user who has signed in once: 404 `user_not_found`; 409 `already_staff`). Super admin |
+| PATCH | `/platform/staff/{id}` | ✅ A-1. `{ role?, status?: active\|disabled }`; 409 `last_super_admin` (Mizan always keeps an active super admin). Super admin |
+| GET | `/platform/audit` | ✅ A-1. The staff trail newest first: `?limit≤200&before=<id>` → `{ data[{ id, staffId, email, action, outcome, status, target, storeId, at }], nextBefore }`. Super admin, engineer |
+
 ### Privacy (✅ E3-3)
 
 | Method | Path | Purpose |
