@@ -99,6 +99,8 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 ✅ **E7-3 — tracking and the review queue.** The courier's statuses (webhook hints re-read from Bosta, and the poll of active shipments) reach the shipment through the engine's `onShipmentStatus` hook, called before the engine records them so a platform failure retries the job. A mapped status moves the shipment (`shipment_events` row, `shipment.status_changed`); delivered → the order `delivered` with `delivered_at` (`shipment.delivered`), returned → the order `returned` (`shipment.returned`, return inspection opens). A status Mizan cannot map keeps the last good one and flags the shipment (`shipment.needs_review`); once a shipment is final, a courier status that disagrees is not applied but goes to review. A person sets the status from the review queue (audited, rule 7). The Shipping screen (`/shipping`) lists shipments by view with counts and search; the order's timeline shows each courier status. A delivery the courier cancelled can be booked again from the order.
 
+✅ **E7-6 — couriers without an API.** The team records the handover on the order (courier name + tracking number; the courier is remembered by name), and the courier's daily report updates the shipments as a CSV import on the Shipping screen (tracking number + status in Arabic or English, date and note optional; all or nothing, each line that can't be applied is named; each row is an audited person's update). The same import works as a fallback for Bosta when its webhooks are down.
+
 ## Events emitted
 
 | Event | Meaning |

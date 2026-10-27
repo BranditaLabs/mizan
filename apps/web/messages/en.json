@@ -2488,6 +2488,16 @@
       "not_found": "The order wasn't found.",
       "courier_refused_key": "The courier refused the account key: check Settings → Integrations.",
       "courier_failed": "The courier refused the booking. Try again."
+    },
+    "manual": {
+      "open": "Record by hand",
+      "title": "Record a shipment",
+      "body": "For a courier Mizan doesn't book itself: record who has the parcel and its tracking number. Its statuses come from the courier's report.",
+      "courier": "Courier",
+      "courierHint": "As your team calls it: J&T, Aramex, our driver…",
+      "tracking": "Tracking number",
+      "save": "Record",
+      "cancel": "Cancel"
     }
   },
   "shipments": {
@@ -2552,6 +2562,33 @@
       "cancel": "Cancel",
       "save": "Save",
       "saved": "Status saved"
+    },
+    "import": {
+      "open": "Import statuses",
+      "title": "Import the courier's statuses",
+      "body": "A CSV with the tracking number and the status (Arabic or English), date and note optional. Every row is recorded with your name; if any line can't be read, nothing is saved.",
+      "file": "CSV file",
+      "paste": "Or paste it",
+      "pasteHint": "First row: the column names (tracking, status)",
+      "run": "Import",
+      "close": "Close",
+      "done": "{changed} updated, {unchanged} already up to date",
+      "failed": "The import didn't go through",
+      "invalid": "{count, plural, one {# line} other {# lines}} couldn't be applied; nothing was saved",
+      "line": "Line <n>{line}</n>",
+      "problem": {
+        "header": "the header needs tracking and status columns",
+        "columns": "missing cells",
+        "tracking": "not a tracking number",
+        "status": "status not understood",
+        "date": "date not understood (YYYY-MM-DD) or in the future",
+        "duplicate": "the same tracking number twice",
+        "too_many": "too many rows (5,000 at most)",
+        "empty": "no rows",
+        "unknown_tracking": "no shipment with this number",
+        "not_booked": "the shipment isn't booked yet",
+        "other": "can't be applied"
+      }
     }
   }
 }

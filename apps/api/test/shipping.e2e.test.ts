@@ -203,4 +203,46 @@ describe("shipping (E7-1)", () => {
     const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select("action").where("entity_id", "=", shipped.id).execute());
     expect(audit.map((a) => a.action)).toEqual(["shipment.status_set"]);
   });
+
+  it("a courier without an API: the team records the handover, then the courier's report updates it (E7-6)", async () => {
+    const a = await manual({ mode: "cod" });
+    const b = await manual({ mode: "prepaid", method: "wallet" });
+    await confirm(a);
+    await confirm(b);
+    const record = (id: string, body: object, token = "wh") => http().post(`/v1/orders/${id}/ship/manual`).set(as(token)).send(body);
+    const sa = (await record(a, { courier: "J&T Express", trackingNumber: "JT-1001" }).expect(201)).body;
+    expect(sa).toMatchObject({ provider: "J&T Express", booking: "booked", status: "created", trackingNumber: "JT-1001", cod: { amount: "1250.00" } });
+    await record(b, { courier: "j&t   express", trackingNumber: "JT-1002" }).expect(201); // the same courier, however it's typed
+    expect((await record(b, { courier: "J&T Express", trackingNumber: "JT-1003" }).expect(409)).body.code).toBe("already_shipping");
+    const c = await manual({ mode: "cod" });
+    await confirm(c);
+    expect((await record(c, { courier: "J&T Express", trackingNumber: "JT-1001" }).expect(409)).body.code).toBe("tracking_taken");
+    await record(c, { courier: "J&T Express", trackingNumber: "bad number!" }).expect(422);
+    await record(c, { courier: "J&T Express", trackingNumber: "JT-1009" }, "agent").expect(403);
+    await drainEvents();
+    expect((await detail(a)).status).toBe("shipped");
+    const couriers = await db.tenant(store, (trx) => trx.selectFrom("connections").select(["provider", "display_name"]).where("provider", "=", "manual").execute());
+    expect(couriers).toEqual([{ provider: "manual", display_name: "J&T Express" }]);
+
+    const importCsv = (csv: string, token = "owner") => http().post("/v1/shipments/statuses/import").set(as(token)).send({ csv });
+    // All or nothing: one unknown tracking number and nothing moves.
+    const bad = (await importCsv("رقم الشحنة,الحالة\nJT-1001,تم التسليم\nJT-9999,مرتجع\n").expect(422)).body;
+    expect(bad).toMatchObject({ code: "csv_invalid", errors: [{ path: "line:3", code: "unknown_tracking", message: "JT-9999" }] });
+    expect((await detail(a)).status).toBe("shipped");
+    await importCsv("Tracking,Status\nJT-1001,Delivered\n", "wh").expect(403);
+
+    const ok = (await importCsv("رقم الشحنة,الحالة,التاريخ,ملاحظات\nJT-1001,تم التسليم,2026-10-26,\nJT-1002,مرتجع,,رفض الاستلام\n").expect(200)).body;
+    expect(ok).toEqual({ rows: 2, changed: 2, unchanged: 0, review: 0 });
+    await drainEvents();
+    const da = await detail(a);
+    expect(da).toMatchObject({ status: "delivered" });
+    expect(da.shipments[0]).toMatchObject({ status: "delivered" });
+    expect((await detail(b)).status).toBe("returned");
+    const history = (await http().get(`/v1/shipments/${sa.id}/events`).set(as("owner")).expect(200)).body.data;
+    expect(history[0]).toMatchObject({ status: "delivered", source: "ops", at: "2026-10-26T12:00:00.000Z", note: "CSV" });
+    // The same file again changes nothing.
+    expect((await importCsv("Tracking,Status\nJT-1001,Delivered\n").expect(200)).body).toMatchObject({ changed: 0, unchanged: 1 });
+    const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select("action").where("action", "in", ["shipment.statuses_imported", "shipment.recorded"]).execute());
+    expect(audit.map((x) => x.action).sort()).toEqual(["shipment.recorded", "shipment.recorded", "shipment.statuses_imported", "shipment.statuses_imported"]);
+  });
 });

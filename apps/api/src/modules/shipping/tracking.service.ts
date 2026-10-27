@@ -8,6 +8,7 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
+import { parseStatusCsv, type StatusCsvProblem } from "./status-csv.js";
 import { SHIPMENT_VIEWS, type ListShipmentsQuery, type SetStatusBody, type ShipmentListView, type ShipmentPage } from "./tracking.dto.js";
 
 type Trx = Transaction<DB>;
@@ -29,6 +30,9 @@ function decode(cursor: string) {
   if (!id || !/^[0-9a-f-]{36}$/i.test(id) || Number.isNaN(d.getTime())) throw new ProblemError(422, "validation_failed", "cursor is not valid", [{ path: "cursor", code: "invalid" }]);
   return { at: d, id };
 }
+
+const invalid = (problems: StatusCsvProblem[]) => new ProblemError(422, "csv_invalid", `${problems.length} line(s) could not be applied; nothing was saved`,
+  problems.slice(0, 50).map((p) => ({ path: `line:${p.line}`, code: p.problem, ...(p.value !== undefined ? { message: p.value.slice(0, 64) } : {}) })));
 
 /**
  * M3 tracking (E7-3): the courier's statuses on Mizan's shipments and orders. A mapped status moves
@@ -65,6 +69,37 @@ export class TrackingService {
       await this.apply(trx, tenantId, s, { status: body.status as ShipmentStatus, raw: null, at: now, source: "ops", needsReview: false, note: body.note, userId: auth.user.id }, { type: "user", id: auth.user.id });
       await this.audit.record(trx, { action: "shipment.status_set", tenantId, entity: { type: "shipment", id }, before, after: { status: body.status, note: body.note ?? null }, ...auditActor(auth) });
       return { id, status: body.status };
+    });
+  }
+
+  /**
+   * E7-6: the courier's status report as CSV (couriers without an API, or when one is down). Each
+   * row is a person's update (source ops, audited once for the file); all or nothing: any line
+   * that can't be read or names an unknown shipment is reported and nothing is applied.
+   */
+  async importStatuses(auth: AuthContext, csv: string, now = new Date()) {
+    const tenantId = auth.tenant!.id;
+    const { rows, problems } = parseStatusCsv(csv, now);
+    if (problems.length) throw invalid(problems);
+    return this.db.tenant(tenantId, async (trx) => {
+      const found = await this.base(trx).where("s.tracking_number", "in", rows.map((r) => r.tracking)).where("s.is_return_leg", "=", false)
+        .orderBy("s.id").forUpdate("s").execute();
+      const byTracking = new Map<string, typeof found>();
+      for (const f of found) byTracking.set(f.tracking_number!, [...(byTracking.get(f.tracking_number!) ?? []), f]);
+      const missing: StatusCsvProblem[] = [];
+      for (const r of rows) {
+        const hits = byTracking.get(r.tracking) ?? [];
+        if (hits.length !== 1) missing.push({ line: r.line, problem: hits.length ? "duplicate" : "unknown_tracking", value: r.tracking });
+        else if (hits[0]!.booking !== "booked") missing.push({ line: r.line, problem: "not_booked", value: r.tracking });
+      }
+      if (missing.length) throw invalid(missing);
+      const result = { rows: rows.length, changed: 0, unchanged: 0, review: 0 };
+      for (const r of rows) {
+        const outcome = await this.apply(trx, tenantId, byTracking.get(r.tracking)![0]!, { status: r.status, raw: null, at: r.at ?? now, source: "ops", needsReview: false, note: r.note ?? "CSV", userId: auth.user.id }, { type: "user", id: auth.user.id });
+        result[outcome]++;
+      }
+      await this.audit.record(trx, { action: "shipment.statuses_imported", tenantId, after: result, ...auditActor(auth) });
+      return result;
     });
   }
 
@@ -114,14 +149,15 @@ export class TrackingService {
       .select(["s.id", "s.order_id", "s.status", "s.status_raw", "s.needs_review", "s.booking", "s.tracking_number", "s.provider", "o.number", "o.status as order_status"]);
   }
 
-  private async apply(trx: Trx, tenantId: string, s: NonNullable<Awaited<ReturnType<TrackingService["lock"]>>>, c: Change, actor: EventActor) {
+  private async apply(trx: Trx, tenantId: string, s: NonNullable<Awaited<ReturnType<TrackingService["lock"]>>>, c: Change, actor: EventActor): Promise<"changed" | "unchanged" | "review"> {
     const current = s.status as ShipmentStatus;
     const ref = { orderId: s.order_id, number: s.number, provider: s.provider, trackingNumber: s.tracking_number };
-    const review = async (conflict: boolean) => {
-      if (s.needs_review && s.status_raw === c.raw) return; // already waiting for a person
+    const review = async (conflict: boolean): Promise<"review"> => {
+      if (s.needs_review && s.status_raw === c.raw) return "review"; // already waiting for a person
       await trx.updateTable("shipments").set({ needs_review: true, status_raw: c.raw, updated_at: new Date() }).where("id", "=", s.id).execute();
       await this.event(trx, tenantId, s.id, conflict ? c.status : "unknown", c);
       await this.events.emit(trx, { type: "shipment.needs_review", tenantId, entity: { type: "shipment", id: s.id }, actor, data: { ...ref, raw: c.raw, current, ...(conflict ? { received: c.status } : {}) } });
+      return "review";
     };
     if (c.needsReview) return review(false);
     if (c.source !== "ops" && TERMINAL_STATUSES.has(current) && c.status !== current) return review(true); // final: a person decides
@@ -130,7 +166,7 @@ export class TrackingService {
         await trx.updateTable("shipments").set({ needs_review: false, updated_at: new Date() }).where("id", "=", s.id).execute();
         await this.event(trx, tenantId, s.id, c.status, c);
       }
-      return;
+      return "unchanged";
     }
     await trx.updateTable("shipments").set({ status: c.status, status_raw: c.raw, status_at: c.at, needs_review: false, updated_at: new Date() }).where("id", "=", s.id).execute();
     await this.event(trx, tenantId, s.id, c.status, c);
@@ -149,6 +185,7 @@ export class TrackingService {
       await trx.updateTable("orders").set({ status: next, ...(next === "delivered" ? { delivered_at: c.at } : {}), updated_at: new Date() }).where("id", "=", s.order_id).execute();
       await this.events.emit(trx, { type: "order.updated", tenantId, entity: { type: "order", id: s.order_id }, actor, data: { number: s.number, status: next, changed: ["status"] } });
     }
+    return "changed";
   }
 
   private event(trx: Trx, tenantId: string, shipmentId: string, status: string, c: Change) {

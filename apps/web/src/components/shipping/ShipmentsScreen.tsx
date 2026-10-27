@@ -15,6 +15,7 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { StatusImport } from "./StatusImport";
 
 type Row = Schemas["ShipmentPage"]["data"][number];
 type View = "active" | "review" | "delivered" | "returned" | "all";
@@ -41,6 +42,7 @@ export function ShipmentsScreen() {
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | null>(null);
+  const [importing, setImporting] = useState(false);
   const [now] = useState(() => Date.now());
   const manager = MANAGERS.has(store?.role ?? "");
   useEffect(() => {
@@ -82,7 +84,10 @@ export function ShipmentsScreen() {
           <h1 className="font-display text-heading-lg">{t("title")}</h1>
           <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
         </div>
-        <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-72" />
+        <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
+          {manager ? <Button variant="secondary" icon="upload" onClick={() => setImporting(true)}>{t("import.open")}</Button> : null}
+          <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-72" />
+        </div>
       </header>
       <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(first ? { count: first.counts[v] } : {}) }))}>
         {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
@@ -94,6 +99,7 @@ export function ShipmentsScreen() {
         )}
       </Tabs>
       {editing ? <SetStatusDialog row={editing} onClose={() => setEditing(null)} /> : null}
+      <StatusImport open={importing} onClose={() => setImporting(false)} />
     </div>
   );
 }

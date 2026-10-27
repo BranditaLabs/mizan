@@ -46,3 +46,15 @@ export type SetStatusBody = z.output<typeof SetStatusSchema>;
 export const ShipmentHistorySchema = z.object({
   data: z.array(z.object({ status: z.string(), statusRaw: z.string().nullable(), source: z.enum(["webhook", "poll", "ops"]), at: z.iso.datetime(), note: z.string().nullable() })),
 });
+
+export const ImportStatusesSchema = z.strictObject({
+  csv: z.string().min(1).max(2_000_000).describe("The courier's report: a header row with the tracking number and the status (canonical, or what couriers write in Arabic or English); date and note optional"),
+});
+export const StatusesImportedSchema = z.object({
+  rows: z.number().int(), changed: z.number().int(), unchanged: z.number().int().describe("Already at that status"), review: z.number().int(),
+});
+
+export const ManualShipmentSchema = z.strictObject({
+  courier: z.string().trim().min(2).max(60).describe("The courier's name as the team calls it (J&T, Aramex, our own driver…)"),
+  trackingNumber: z.string().trim().regex(/^[\w-]{3,64}$/, "letters, digits, - or _").describe("The courier's tracking or waybill number"),
+});

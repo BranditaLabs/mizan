@@ -529,6 +529,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/ship/manual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ShippingController_manual"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shipments": {
         parameters: {
             query?: never;
@@ -539,6 +555,22 @@ export interface paths {
         get: operations["TrackingController_list"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shipments/statuses/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TrackingController_importStatuses"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2580,6 +2612,10 @@ export interface components {
             /** @description The file's text: a header row with SKU and cost and/or barcode; other columns are ignored */
             csv: string;
         };
+        ImportShipmentStatuses: {
+            /** @description The courier's report: a header row with the tracking number and the status (canonical, or what couriers write in Arabic or English); date and note optional */
+            csv: string;
+        };
         Inspect: {
             items: {
                 /**
@@ -2734,6 +2770,12 @@ export interface components {
                 /** Format: date-time */
                 occurredAt: string;
             }[];
+        };
+        ManualShipment: {
+            /** @description The courier's name as the team calls it (J&T, Aramex, our own driver…) */
+            courier: string;
+            /** @description The courier's tracking or waybill number */
+            trackingNumber: string;
         };
         Marked: {
             marked: number;
@@ -4529,6 +4571,13 @@ export interface components {
                 all: number;
             };
             nextCursor: string | null;
+        };
+        ShipmentStatusesImported: {
+            rows: number;
+            changed: number;
+            /** @description Already at that status */
+            unchanged: number;
+            review: number;
         };
         ShipmentStatusSet: {
             /** Format: uuid */
@@ -6940,6 +6989,72 @@ export interface operations {
             };
         };
     };
+    ShippingController_manual: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualShipment"];
+            };
+        };
+        responses: {
+            /** @description E7-6: a courier without an API — the parcel handed over, recorded with its tracking number; the order is shipped; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shipment"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     TrackingController_list: {
         parameters: {
             query?: {
@@ -6967,6 +7082,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShipmentPage"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TrackingController_importStatuses: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportShipmentStatuses"];
+            };
+        };
+        responses: {
+            /** @description Every row applied as a person's update (audited); any bad line or unknown tracking number: 422 csv_invalid naming each line, nothing saved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShipmentStatusesImported"];
                 };
             };
             /** @description Understood but refused (a business rule) */

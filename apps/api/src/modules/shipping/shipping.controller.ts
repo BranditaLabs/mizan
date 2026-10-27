@@ -1,9 +1,12 @@
-import { Controller, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
+import { Body, Controller, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
-import { ApiJson, ApiProblems } from "../../platform/http/api-schema.js";
+import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
+import { ZodPipe } from "../../platform/http/zod.pipe.js";
+import { ManualShipmentSchema } from "./tracking.dto.js";
+import type { z } from "zod";
 import { ShipmentSchema } from "./shipping.dto.js";
 import { ShippingService } from "./shipping.service.js";
 
@@ -22,5 +25,14 @@ export class ShippingController {
     const r = await this.shipping.ship(auth, id);
     if (!r.created) res.status(200);
     return r.shipment;
+  }
+
+  @Post("manual")
+  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @ApiJsonBody("ManualShipment", ManualShipmentSchema)
+  @ApiJson(201, "Shipment", ShipmentSchema, "E7-6: a courier without an API — the parcel handed over, recorded with its tracking number; the order is shipped; audited")
+  @ApiProblems(404, 409, 422)
+  manual(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(ManualShipmentSchema)) body: z.output<typeof ManualShipmentSchema>) {
+    return this.shipping.shipManual(auth, id, body);
   }
 }

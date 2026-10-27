@@ -2,9 +2,12 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, ButtonGroup } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
+import { Field } from "@/components/ui/Field";
 import { IdCell } from "@/components/ui/DataTable";
 import { Card } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
@@ -30,15 +33,20 @@ export function ShippingCard({ order: o }: { order: Order }) {
   const qc = useQueryClient();
   const canShip = SHIPPERS.has(store?.role ?? "");
   const live = o.shipments.find(isLive);
+  const [manual, setManual] = useState(false);
   const ship = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/ship", { params: { path: { id: o.id } } })),
     onSettled: () => qc.invalidateQueries({ queryKey: ["order"] }),
   });
-  const offer = canShip && o.status === "confirmed" && !live;
+  // Confirmed, or shipped with a delivery the courier cancelled: it can be booked (again).
+  const offer = canShip && (o.status === "confirmed" || o.status === "shipped") && !live;
   if (!o.shipments.length && !offer) return null;
   return (
     <Card title={t("title")} actions={offer ? (
-      <Button size="sm" icon="shipping" busy={ship.isPending} onClick={() => ship.mutate()}>{o.shipments.length ? t("again") : t("ship")}</Button>
+      <ButtonGroup>
+        <Button size="sm" variant="secondary" onClick={() => setManual(true)}>{t("manual.open")}</Button>
+        <Button size="sm" icon="shipping" busy={ship.isPending} onClick={() => ship.mutate()}>{o.shipments.length ? t("again") : t("ship")}</Button>
+      </ButtonGroup>
     ) : null}>
       <div className="flex flex-col gap-3" data-testid="shipping">
         {!o.shipments.length ? <p className="text-body-sm text-text-2">{t("ready")}</p> : null}
@@ -66,6 +74,33 @@ export function ShippingCard({ order: o }: { order: Order }) {
           ))}
         </ul>
       </div>
+      {manual ? <ManualShipment orderId={o.id} onClose={() => setManual(false)} /> : null}
     </Card>
+  );
+}
+
+/** A courier without an API (E7-6): the team hands the parcel over and records it here. */
+function ManualShipment({ orderId, onClose }: { orderId: string; onClose(): void }) {
+  const t = useTranslations("shipping.manual");
+  const { api } = useSession();
+  const qc = useQueryClient();
+  const [courier, setCourier] = useState("");
+  const [tracking, setTracking] = useState("");
+  const save = useMutation({
+    mutationFn: () => ok(api.POST("/v1/orders/{id}/ship/manual", { params: { path: { id: orderId } }, body: { courier: courier.trim(), trackingNumber: tracking.trim() } })),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["order"] }); onClose(); },
+  });
+  return (
+    <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(
+      <ButtonGroup>
+        <Button busy={save.isPending} disabled={courier.trim().length < 2 || tracking.trim().length < 3} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
+      </ButtonGroup>
+    )}>
+      <div className="flex flex-col gap-3">
+        <Field label={t("courier")} hint={t("courierHint")} value={courier} maxLength={60} onChange={(e) => setCourier(e.target.value)} dir="auto" />
+        <Field label={t("tracking")} value={tracking} maxLength={64} ltr onChange={(e) => setTracking(e.target.value)} />
+      </div>
+    </Dialog>
   );
 }

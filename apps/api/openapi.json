@@ -3575,6 +3575,108 @@
         ]
       }
     },
+    "/v1/orders/{id}/ship/manual": {
+      "post": {
+        "operationId": "ShippingController_manual",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualShipment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "E7-6: a courier without an API — the parcel handed over, recorded with its tracking number; the order is shipped; audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "shipping"
+        ]
+      }
+    },
     "/v1/shipments": {
       "get": {
         "operationId": "TrackingController_list",
@@ -3659,6 +3761,80 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ShipmentPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "shipping"
+        ]
+      }
+    },
+    "/v1/shipments/statuses/import": {
+      "post": {
+        "operationId": "TrackingController_importStatuses",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportShipmentStatuses"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Every row applied as a person's update (audited); any bad line or unknown tracking number: 422 csv_invalid naming each line, nothing saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShipmentStatusesImported"
                 }
               }
             }
@@ -13409,6 +13585,21 @@
         ],
         "additionalProperties": false
       },
+      "ImportShipmentStatuses": {
+        "type": "object",
+        "properties": {
+          "csv": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000000,
+            "description": "The courier's report: a header row with the tracking number and the status (canonical, or what couriers write in Arabic or English); date and note optional"
+          }
+        },
+        "required": [
+          "csv"
+        ],
+        "additionalProperties": false
+      },
       "Inspect": {
         "type": "object",
         "properties": {
@@ -13943,6 +14134,27 @@
           "balance",
           "canRecord",
           "lines"
+        ],
+        "additionalProperties": false
+      },
+      "ManualShipment": {
+        "type": "object",
+        "properties": {
+          "courier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 60,
+            "description": "The courier's name as the team calls it (J&T, Aramex, our own driver…)"
+          },
+          "trackingNumber": {
+            "type": "string",
+            "pattern": "^[\\w-]{3,64}$",
+            "description": "The courier's tracking or waybill number"
+          }
+        },
+        "required": [
+          "courier",
+          "trackingNumber"
         ],
         "additionalProperties": false
       },
@@ -20912,6 +21124,39 @@
           "data",
           "counts",
           "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "ShipmentStatusesImported": {
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "changed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "unchanged": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Already at that status"
+          },
+          "review": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "rows",
+          "changed",
+          "unchanged",
+          "review"
         ],
         "additionalProperties": false
       },

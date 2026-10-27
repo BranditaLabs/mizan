@@ -102,7 +102,8 @@ export class OnboardingService {
     return {
       settings,
       store: connections.find((c) => c.kind === "store") ?? null,
-      courier: connections.find((c) => c.kind === "courier") ?? null,
+      // A courier Mizan books through an API first; one recorded by hand (E7-6) counts too.
+      courier: connections.find((c) => c.kind === "courier" && c.provider !== "manual") ?? connections.find((c) => c.kind === "courier") ?? null,
       variants: Number(counts.variants), missingCost: Number(counts.missing),
       firstOrder: firstOrder ?? null,
       milestones: await this.productEvents.milestones(trx),

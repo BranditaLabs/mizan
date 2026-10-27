@@ -25,6 +25,29 @@ test("owner in Arabic: a confirmed order offers shipping, and says to connect a 
   await expect(card).toContainText("الأوردر متأكّد وجاهز: احجز الشحن.");
   await page.getByRole("button", { name: "اشحن الأوردر" }).click();
   await expect(page.locator(".mz-toast", { hasText: "اربط شركة شحن الأول" })).toBeVisible();
+
+  // E7-6: a courier without an API — recorded by hand, then its report delivers it.
+  await page.getByRole("button", { name: "سجّل يدوي" }).click();
+  const dialog = page.getByRole("dialog", { name: "سجّل شحنة" });
+  await dialog.getByLabel("شركة الشحن").fill("J&T");
+  await dialog.getByLabel("رقم الشحنة").fill("JT-5001");
+  await dialog.getByRole("button", { name: "سجّل", exact: true }).click();
+  await expect(card).toContainText("JT-5001");
+  await expect(card).toContainText("J&T");
+
+  await page.goto("/ar/shipping");
+  await page.getByRole("button", { name: "استورد الحالات" }).click();
+  const imp = page.getByRole("dialog", { name: "استورد حالات شركة الشحن" });
+  await imp.getByLabel("أو الصقه هنا").fill("رقم الشحنة,الحالة\nJT-5001,تم التسليم\nJT-0000,مرتجع");
+  await imp.getByRole("button", { name: "استورد" }).click();
+  await expect(imp.getByTestId("status-import-errors")).toContainText("مفيش شحنة بالرقم ده");
+  await imp.getByLabel("أو الصقه هنا").fill("رقم الشحنة,الحالة\nJT-5001,تم التسليم");
+  await imp.getByRole("button", { name: "استورد" }).click();
+  await expect(page.locator(".mz-toast", { hasText: "اتحدّث 1" })).toBeVisible();
+  await page.getByRole("tablist", { name: "الشحنات" }).getByRole("tab", { name: /اتسلّمت/ }).click();
+  await expect(page.getByTestId("shipments")).toContainText("JT-5001");
+  await page.goto(`/ar/orders/${o.id}`);
+  await expect(page.getByRole("heading", { level: 1 }).locator("..")).toContainText("اتسلّم");
 });
 
 /** E7-3: the shipping screen from the menu, its views and the empty review queue. */
