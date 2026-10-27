@@ -3558,6 +3558,80 @@
         ]
       }
     },
+    "/v1/usage/upgrade": {
+      "post": {
+        "operationId": "BillingController_upgrade",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpgradeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Recorded; Brandita follows up (event plan.upgrade_requested); audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpgradeRequested"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/v1/ops/sync": {
       "post": {
         "operationId": "OpsController_sync",
@@ -20475,6 +20549,49 @@
         },
         "additionalProperties": false
       },
+      "UpgradeRequest": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": [
+              "free",
+              "growth",
+              "scale",
+              "enterprise"
+            ],
+            "description": "A plan above the current one"
+          }
+        },
+        "required": [
+          "plan"
+        ],
+        "additionalProperties": false
+      },
+      "UpgradeRequested": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": [
+              "free",
+              "growth",
+              "scale",
+              "enterprise"
+            ]
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "plan",
+          "at"
+        ],
+        "additionalProperties": false
+      },
       "Usage": {
         "type": "object",
         "properties": {
@@ -20571,6 +20688,123 @@
             "additionalProperties": false,
             "description": "The plan's limits; null = none"
           },
+          "alerts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "metric": {
+                  "type": "string",
+                  "enum": [
+                    "orders",
+                    "stores",
+                    "users"
+                  ]
+                },
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "near",
+                    "over"
+                  ]
+                },
+                "used": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "metric",
+                "level",
+                "used",
+                "limit"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Limits this month is near (80%) or past; nothing is blocked"
+          },
+          "nextPlan": {
+            "nullable": true,
+            "description": "The plan to upgrade to; null on the top plan",
+            "type": "object",
+            "properties": {
+              "plan": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "growth",
+                  "scale",
+                  "enterprise"
+                ]
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "ordersPerMonth": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "stores": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "users": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "ordersPerMonth",
+                  "stores",
+                  "users"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "plan",
+              "limits"
+            ],
+            "additionalProperties": false
+          },
+          "upgradeRequest": {
+            "nullable": true,
+            "description": "An upgrade the store asked for and that is not done yet",
+            "type": "object",
+            "properties": {
+              "plan": {
+                "type": "string",
+                "enum": [
+                  "free",
+                  "growth",
+                  "scale",
+                  "enterprise"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "plan",
+              "at"
+            ],
+            "additionalProperties": false
+          },
           "history": {
             "type": "array",
             "items": {
@@ -20617,6 +20851,9 @@
           "closed",
           "usage",
           "limits",
+          "alerts",
+          "nextPlan",
+          "upgradeRequest",
           "history"
         ],
         "additionalProperties": false

@@ -19,6 +19,7 @@ function hrefOf(n: Note): string | null {
   if (n.entity.type === "order") return `/orders/${n.entity.id}`;
   if (n.entity.type === "variant") return "/stock";
   if (n.entity.type === "automation") return "/automations";
+  if (n.entity.type === "plan") return "/settings/usage";
   return null;
 }
 
@@ -54,7 +55,15 @@ export function NotificationBell() {
   if (!store) return null;
   const unread = q.data?.unread ?? 0;
   const label = unread ? t("labelUnread", { count: unread }) : t("label");
-  const text = (n: Note) => (n.source === "automation.paused" ? t("paused", { name: n.text }) : n.text);
+  const text = (n: Note) => {
+    if (n.source === "automation.paused") return t("paused", { name: n.text });
+    if (n.source === "plan.limit") {
+      // "orders|near|240|300|free": the store's plan limit (E12-1), told in the reader's language.
+      const [metric, level, used, limit] = n.text.split("|");
+      if ((metric === "orders" || metric === "stores" || metric === "users") && (level === "near" || level === "over")) return t(`plan.${metric}_${level}`, { used: used ?? "", limit: limit ?? "" });
+    }
+    return n.text;
+  };
   return (
     <div className="relative" ref={box}>
       <button ref={button} type="button" aria-label={label} title={label} aria-expanded={open} aria-controls={id}

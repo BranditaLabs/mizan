@@ -529,6 +529,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/usage/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["BillingController_upgrade"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -4489,6 +4505,19 @@ export interface components {
             /** @description Set here (Mizan owns it from then); null gives it back to the store's barcode */
             barcode?: string | null;
         };
+        UpgradeRequest: {
+            /**
+             * @description A plan above the current one
+             * @enum {string}
+             */
+            plan: "free" | "growth" | "scale" | "enterprise";
+        };
+        UpgradeRequested: {
+            /** @enum {string} */
+            plan: "free" | "growth" | "scale" | "enterprise";
+            /** Format: date-time */
+            at: string;
+        };
         Usage: {
             /** @description YYYY-MM */
             month: string;
@@ -4515,6 +4544,32 @@ export interface components {
                 stores: number | null;
                 users: number | null;
             };
+            /** @description Limits this month is near (80%) or past; nothing is blocked */
+            alerts: {
+                /** @enum {string} */
+                metric: "orders" | "stores" | "users";
+                /** @enum {string} */
+                level: "near" | "over";
+                used: number;
+                limit: number;
+            }[];
+            /** @description The plan to upgrade to; null on the top plan */
+            nextPlan: {
+                /** @enum {string} */
+                plan: "free" | "growth" | "scale" | "enterprise";
+                limits: {
+                    ordersPerMonth: number | null;
+                    stores: number | null;
+                    users: number | null;
+                };
+            } | null;
+            /** @description An upgrade the store asked for and that is not done yet */
+            upgradeRequest: {
+                /** @enum {string} */
+                plan: "free" | "growth" | "scale" | "enterprise";
+                /** Format: date-time */
+                at: string;
+            } | null;
             /** @description This month and the five before, newest first */
             history: {
                 month: string;
@@ -6530,6 +6585,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Usage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    BillingController_upgrade: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpgradeRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded; Brandita follows up (event plan.upgrade_requested); audited */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpgradeRequested"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

@@ -2053,7 +2053,15 @@
     "label": "Notifications",
     "labelUnread": "Notifications, {count} unread",
     "empty": "Nothing new.",
-    "paused": "Automation \"{name}\" paused itself: too many runs failed."
+    "paused": "Automation \"{name}\" paused itself: too many runs failed.",
+    "plan": {
+      "orders_near": "This month's orders are near the plan's limit: {used} of {limit}",
+      "orders_over": "This month's orders passed the plan's limit: {used} of {limit}",
+      "stores_near": "Stores are at the plan's limit: {used} of {limit}",
+      "stores_over": "Stores passed the plan's limit: {used} of {limit}",
+      "users_near": "Team members are at the plan's limit: {used} of {limit}",
+      "users_over": "Team members passed the plan's limit: {used} of {limit}"
+    }
   },
   "tickets": {
     "title": "Tickets",
@@ -2380,6 +2388,45 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners, admins and finance see the plan and usage."
+    },
+    "alert": {
+      "orders_near": "This month's orders are near the plan's limit: {used} of {limit}",
+      "orders_over": "This month's orders passed the plan's limit: {used} of {limit}",
+      "stores_near": "Stores are at the plan's limit: {used} of {limit}",
+      "stores_over": "Stores passed the plan's limit: {used} of {limit}",
+      "users_near": "Team members are at the plan's limit: {used} of {limit}",
+      "users_over": "Team members passed the plan's limit: {used} of {limit}"
+    },
+    "upgrade": {
+      "title": "Move up to {plan}",
+      "limits": "{orders} orders a month · {stores} stores · {users} team members",
+      "noLimit": "unlimited",
+      "ask": "Ask to move to {plan}",
+      "sent": "Request sent. We'll contact you.",
+      "requested": "You asked to move to {plan} on",
+      "ownerOnly": "The owner or an admin can ask for a bigger plan."
+    }
+  },
+  "planBanner": {
+    "orders": {
+      "near": "This month's orders: <n>{used}</n> of <n>{limit}</n> on {plan}. Nothing stops when you pass it.",
+      "over": "This month's orders passed your {plan} plan: <n>{used}</n> of <n>{limit}</n>. Orders keep coming in."
+    },
+    "stores": {
+      "near": "Stores: <n>{used}</n> of <n>{limit}</n> on {plan}.",
+      "over": "Stores passed your {plan} plan: <n>{used}</n> of <n>{limit}</n>."
+    },
+    "users": {
+      "near": "Team members: <n>{used}</n> of <n>{limit}</n> on {plan}.",
+      "over": "Team members passed your {plan} plan: <n>{used}</n> of <n>{limit}</n>."
+    },
+    "see": "See plan",
+    "hide": "Hide",
+    "plan": {
+      "free": "Free",
+      "growth": "Growth",
+      "scale": "Scale",
+      "enterprise": "Enterprise"
     }
   }
 }

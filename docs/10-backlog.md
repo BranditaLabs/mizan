@@ -175,7 +175,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 ### E12 · Billing and plans
 
-- [ ] **E12-1** `M` Plan limits (orders/month, stores, users) enforced with soft warnings + upgrade prompts.
+- [x] **E12-1** `M` Plan limits (orders/month, stores, users) enforced with soft warnings + upgrade prompts. ✅ Soft by design (docs/01 §8: no forced upgrade): `limitAlerts` (near from 80%, over past the limit); on order.created / member.joined / connection.connected the owner and admins get one notification per metric, level and month, plus event `plan.limit_reached`; the dashboard banner (hidden per visit), the bell, and Plan and usage with the next plan and "Ask to move to …" (`POST /v1/usage/upgrade`, event `plan.upgrade_requested`). Store connections still stop at `MAX_SHOPIFY_STORES` (E2-7) until billing (E12-2).
 - [ ] **E12-2** `M` Paymob subscription billing for EGP; invoices.
 - [x] **E12-3** `S` Usage metering (orders, messages) per tenant per month. ✅ The live month counted from the source tables in the store's time zone (orders placed, WhatsApp messages sent, AI offers, stores, users); months frozen in `usage_months` (migration 0038) by an hourly worker job, once; `GET /v1/usage`; plans and limits from docs/01 §8 in `billing/plans.ts`; Settings → Plan and usage with meters and the last six months (AR/EN).
 

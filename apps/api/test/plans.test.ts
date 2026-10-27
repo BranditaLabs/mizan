@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthOf, monthStart, PLAN_LIMITS, previousMonth } from "../src/modules/billing/plans.js";
+import { limitAlerts, monthOf, monthStart, NEXT_PLAN, PLAN_LIMITS, previousMonth } from "../src/modules/billing/plans.js";
 
 /** E12-3: months in the store's time zone, and the plans' limits (docs/01 §8). */
 describe("billing months and plans", () => {
@@ -21,5 +21,17 @@ describe("billing months and plans", () => {
     expect(PLAN_LIMITS.growth).toEqual({ ordersPerMonth: 3000, stores: 3, users: 8 });
     expect(PLAN_LIMITS.scale).toEqual({ ordersPerMonth: 10_000, stores: null, users: 25 });
     expect(PLAN_LIMITS.enterprise).toEqual({ ordersPerMonth: null, stores: null, users: null });
+  });
+
+  it("is near a limit from 80% (all of it used included) and over past it; no limit, no alert (E12-1)", () => {
+    const free = PLAN_LIMITS.free;
+    expect(limitAlerts({ orders: 239, stores: 0, users: 1 }, free)).toEqual([]);
+    expect(limitAlerts({ orders: 240, stores: 1, users: 2 }, free)).toEqual([
+      { metric: "orders", level: "near", used: 240, limit: 300 }, { metric: "stores", level: "near", used: 1, limit: 1 }, { metric: "users", level: "near", used: 2, limit: 2 },
+    ]);
+    expect(limitAlerts({ orders: 301, stores: 2, users: 3 }, free).map((a) => `${a.metric}:${a.level}`)).toEqual(["orders:over", "stores:over", "users:over"]);
+    expect(limitAlerts({ orders: 1_000_000, stores: 50, users: 500 }, PLAN_LIMITS.enterprise)).toEqual([]);
+    expect(limitAlerts({ orders: 1, stores: 40, users: 1 }, PLAN_LIMITS.scale)).toEqual([]); // unlimited stores
+    expect(NEXT_PLAN).toEqual({ free: "growth", growth: "scale", scale: "enterprise", enterprise: null });
   });
 });

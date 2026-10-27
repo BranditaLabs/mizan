@@ -226,7 +226,8 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/usage` | ✅ E12-3. `?month=YYYY-MM` (this month by default, in the store's time zone) → `{ month, timezone, plan, closed, usage{ orders, whatsappMessages, aiOffers, stores, users }, limits{ ordersPerMonth, stores, users } (null = none), history[6]{ month, orders, whatsappMessages, aiOffers, closed } }`. Orders: placed in the month, every channel, cancelled ones too. Messages: WhatsApp sent (failed not counted). AI offers: offers Claude wrote. A month that is over is frozen (`usage_months`, closed hourly by the worker) and never changes. Owner, admin, finance |
+| GET | `/usage` | ✅ E12-3. `?month=YYYY-MM` (this month by default, in the store's time zone) → `{ month, timezone, plan, closed, usage{ orders, whatsappMessages, aiOffers, stores, users }, limits{ ordersPerMonth, stores, users } (null = none), history[6]{ month, orders, whatsappMessages, aiOffers, closed } }`. Orders: placed in the month, every channel, cancelled ones too. Messages: WhatsApp sent (failed not counted). AI offers: offers Claude wrote. A month that is over is frozen (`usage_months`, closed hourly by the worker) and never changes. ✅ E12-1: also `alerts[{ metric: orders\|stores\|users, level: near (from 80%, all used included)\|over, used, limit }]`, `nextPlan{ plan, limits }`, `upgradeRequest{ plan, at }`. Owner, admin, finance |
+| POST | `/usage/upgrade` | ✅ E12-1. `{ plan }` above the current one → 202 `{ plan, at }`; event `plan.upgrade_requested` for Brandita to follow up (payment with E12-2). Owner, admin; audited |
 
 ### Webhooks in (public, no user auth)
 

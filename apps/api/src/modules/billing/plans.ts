@@ -30,3 +30,28 @@ export function monthOf(at: Date, timeZone: string): string {
   const get = (t: string) => parts.find((p) => p.type === t)!.value;
   return `${get("year")}-${get("month")}-01`;
 }
+
+/** The plan to suggest when a limit is near or passed. */
+export const NEXT_PLAN: Record<Plan, Plan | null> = { free: "growth", growth: "scale", scale: "enterprise", enterprise: null };
+export const PLAN_RANK: Record<Plan, number> = { free: 0, growth: 1, scale: 2, enterprise: 3 };
+
+export const LIMIT_METRICS = ["orders", "stores", "users"] as const;
+export type LimitMetric = (typeof LIMIT_METRICS)[number];
+export interface LimitAlert { metric: LimitMetric; level: "near" | "over"; used: number; limit: number }
+/** From this share of a limit, the store is told it is getting close. */
+export const NEAR_SHARE = 0.8;
+
+/**
+ * Where the store stands against its plan (E12-1): `near` from 80% of a limit (all of it used
+ * counts as near: the next one goes over), `over` past it. Soft: nothing is ever blocked.
+ */
+export function limitAlerts(used: { orders: number; stores: number; users: number }, limits: PlanLimits): LimitAlert[] {
+  const pairs: Array<[LimitMetric, number, number | null]> = [["orders", used.orders, limits.ordersPerMonth], ["stores", used.stores, limits.stores], ["users", used.users, limits.users]];
+  const out: LimitAlert[] = [];
+  for (const [metric, n, limit] of pairs) {
+    if (limit === null) continue;
+    if (n > limit) out.push({ metric, level: "over", used: n, limit });
+    else if (n >= Math.ceil(limit * NEAR_SHARE)) out.push({ metric, level: "near", used: n, limit });
+  }
+  return out;
+}

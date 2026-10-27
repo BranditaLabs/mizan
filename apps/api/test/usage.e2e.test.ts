@@ -87,4 +87,50 @@ describe("usage (E12-3)", () => {
     expect((await usage("?month=2026-09")).closed).toBe(true);
     expect(await closer.runOnce(new Date("2026-11-01T00:30:00Z"))).toBe(0);
   });
+
+  it("tells the owner and admins once a month when a limit is near or passed, and records an upgrade request (E12-1)", async () => {
+    // 3 team members on Free (2): over. 240 orders this month: near the 300. (The earlier test froze
+    // October, which may be this month by the clock: start from the live count.)
+    await db.tenant(store, (trx) => trx.deleteFrom("usage_months").execute());
+    const live = (await usage()).usage.orders;
+    const placedNow = new Date();
+    await db.tenant(store, (trx) => trx.insertInto("orders").values(Array.from({ length: 239 - live }, () => ({
+      tenant_id: store, external_id: `bulk-${++n}`, number: `#B${n}`, currency: "SAR", total_minor: 1000, placed_at: placedNow,
+    }))).execute());
+    const place = () => http().post("/v1/orders").set(as("owner")).send({
+      source: "phone", customer: { name: "Mona Adel", phone: "+966501234567" }, address: { line1: "King Fahd Rd 12", city: "Riyadh" },
+      lines: [{ title: "Abaya", quantity: 1, unitPrice: "100" }], shipping: "0", payment: { mode: "cod" },
+    }).expect(201);
+    await place(); // the 240th: its order.created checks the limits
+    const drain = async () => { const { EventDispatcher } = await import("../src/platform/events/dispatcher.js"); const d = app.get(EventDispatcher); while ((await d.runOnce()).claimed > 0) { /* until empty */ } };
+    await drain();
+
+    const u = await usage();
+    expect(u.alerts).toEqual(expect.arrayContaining([
+      { metric: "orders", level: "near", used: 240, limit: 300 }, { metric: "users", level: "over", used: 3, limit: 2 },
+    ]));
+    expect(u.nextPlan).toEqual({ plan: "growth", limits: { ordersPerMonth: 3000, stores: 3, users: 8 } });
+    const notes = async () => db.tenant(store, (trx) => trx.selectFrom("notifications").select(["text", "source", "roles", "entity_type"]).where("source", "=", "plan.limit").orderBy("text").execute());
+    expect(await notes()).toEqual([
+      { text: "orders|near|240|300|free", source: "plan.limit", roles: ["owner", "admin"], entity_type: "plan" },
+      { text: "users|over|3|2|free", source: "plan.limit", roles: ["owner", "admin"], entity_type: "plan" },
+    ]);
+    await place(); // another order: no second note for the same month and level
+    await drain();
+    expect(await notes()).toHaveLength(2);
+    const bell = (await http().get("/v1/notifications?limit=20").set(as("owner")).expect(200)).body;
+    expect(bell.data.filter((x: { source: string }) => x.source === "plan.limit")).toHaveLength(2);
+
+    await http().post("/v1/usage/upgrade").set(as("finance")).send({ plan: "growth" }).expect(403);
+    await http().post("/v1/usage/upgrade").set(as("owner")).send({ plan: "free" }).expect(422);
+    const asked = (await http().post("/v1/usage/upgrade").set(as("owner")).send({ plan: "growth" }).expect(202)).body;
+    expect(asked).toEqual({ plan: "growth", at: expect.any(String) });
+    expect((await usage()).upgradeRequest).toEqual({ plan: "growth", at: asked.at });
+    await drain();
+    const ev = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("type", "in", ["plan.upgrade_requested", "plan.limit_reached"]).orderBy("type").execute());
+    expect(ev.map((e) => e.type)).toEqual(["plan.limit_reached", "plan.limit_reached", "plan.upgrade_requested"]);
+    // Once on Growth, the request is done and the limits move.
+    await db.tenant(store, (trx) => trx.updateTable("tenants").set({ plan: "growth" }).where("id", "=", store).execute());
+    expect(await usage()).toMatchObject({ plan: "growth", upgradeRequest: null, alerts: [], nextPlan: { plan: "scale" } });
+  });
 });

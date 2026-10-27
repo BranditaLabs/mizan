@@ -21,7 +21,14 @@ export const UsageSchema = z.object({
   closed: z.boolean().describe("The month is over and its numbers are frozen"),
   usage: Metrics,
   limits: z.object({ ordersPerMonth: Limit, stores: Limit, users: Limit }).describe("The plan's limits; null = none"),
+  alerts: z.array(z.object({ metric: z.enum(["orders", "stores", "users"]), level: z.enum(["near", "over"]), used: z.number().int(), limit: z.number().int() }))
+    .describe("Limits this month is near (80%) or past; nothing is blocked"),
+  nextPlan: z.object({ plan: z.enum(PLANS), limits: z.object({ ordersPerMonth: Limit, stores: Limit, users: Limit }) }).nullable().describe("The plan to upgrade to; null on the top plan"),
+  upgradeRequest: z.object({ plan: z.enum(PLANS), at: z.iso.datetime() }).nullable().describe("An upgrade the store asked for and that is not done yet"),
   history: z.array(z.object({ month: z.string(), orders: z.number().int(), whatsappMessages: z.number().int(), aiOffers: z.number().int(), closed: z.boolean() }))
     .describe("This month and the five before, newest first"),
 });
 export type Usage = z.output<typeof UsageSchema>;
+
+export const UpgradeRequestSchema = z.object({ plan: z.enum(PLANS).describe("A plan above the current one") }).strict();
+export const UpgradeRequestedSchema = z.object({ plan: z.enum(PLANS), at: z.iso.datetime() });

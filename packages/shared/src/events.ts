@@ -9,7 +9,7 @@ export const DOMAIN_EVENT_TYPES = [
   "member.invited", "member.joined", "member.updated", "member.removed",
   "connection.connected", "connection.disconnected", "connection.needs_attention",
   "privacy.requested", "privacy.completed",
-  "automation.run_failed", "automation.paused",
+  "automation.run_failed", "automation.paused", "plan.limit_reached", "plan.upgrade_requested",
   // M1 Orders
   "order.created", "order.updated", "order.cancelled", "order.duplicate_found", "order.duplicate_resolved", "orders.reconciled", "orders.reconciliation_gap",
   "order.assigned", "order.tagged", "order.store_cancel_failed", "orders.bulk_requested", "orders.bulk_continue", "orders.bulk_finished",

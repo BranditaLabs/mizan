@@ -3,7 +3,10 @@ import { sql, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
-import { monthOf, monthStart, PLAN_LIMITS, previousMonth, type Plan } from "./plans.js";
+import { limitAlerts, monthOf, monthStart, NEXT_PLAN, PLAN_LIMITS, PLAN_RANK, previousMonth, type Plan } from "./plans.js";
+import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
+import { EventsService } from "../../platform/events/events.service.js";
+import { ProblemError } from "../../platform/http/problem.js";
 import type { Usage } from "./usage.dto.js";
 
 type Trx = Transaction<DB>;
@@ -17,12 +20,32 @@ export interface MonthUsage { orders: number; whatsappMessages: number; aiOffers
  */
 @Injectable()
 export class UsageService {
-  constructor(@Inject(Database) private readonly db: Database) {}
+  constructor(
+    @Inject(Database) private readonly db: Database,
+    @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(EventsService) private readonly events: EventsService,
+  ) {}
+
+  /** The owner or an admin asks to move up a plan (E12-1). Billing (E12-2) will take payment; until then Brandita follows up. */
+  async requestUpgrade(auth: AuthContext, plan: Plan): Promise<{ plan: Plan; at: string }> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const t = await trx.selectFrom("tenants").select(["plan", "settings"]).where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
+      if (PLAN_RANK[plan] <= PLAN_RANK[t.plan as Plan]) throw new ProblemError(422, "validation_failed", "choose a plan above the current one", [{ path: "plan", code: "not_higher", message: plan }]);
+      const at = new Date().toISOString();
+      const settings = (t.settings ?? {}) as Record<string, unknown>;
+      await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...settings, billing: { ...(settings.billing as object | undefined), upgradeRequest: { plan, at, by: auth.user.id } } }) }).where("id", "=", tenantId).execute();
+      const data = { from: t.plan, to: plan };
+      await this.events.emit(trx, { type: "plan.upgrade_requested", tenantId, entity: { type: "tenant", id: tenantId }, actor: { type: "user", id: auth.user.id }, data });
+      await this.audit.record(trx, { action: "plan.upgrade_requested", tenantId, entity: { type: "tenant", id: tenantId }, after: data, ...auditActor(auth) });
+      return { plan, at };
+    });
+  }
 
   async get(auth: AuthContext, month?: string): Promise<Usage> {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
-      const t = await trx.selectFrom("tenants").select(["plan", "timezone"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
+      const t = await trx.selectFrom("tenants").select(["plan", "timezone", "settings"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
       const current = monthOf(new Date(), t.timezone);
       const first = (month && monthStart(month)) || current;
       const frozen = await trx.selectFrom("usage_months").selectAll().where("month", "=", new Date(`${first}T00:00:00Z`)).executeTakeFirst();
@@ -35,8 +58,13 @@ export class UsageService {
         .map((r) => [r.month.toISOString().slice(0, 10), r]));
       const live = await this.series(trx, months.at(-1)!, t.timezone);
       const plan = t.plan as Plan;
+      const next = NEXT_PLAN[plan];
+      const asked = ((t.settings as { billing?: { upgradeRequest?: { plan?: string; at?: string } } } | null)?.billing?.upgradeRequest);
       return {
         month: first.slice(0, 7), timezone: t.timezone, plan, closed: Boolean(frozen), usage, limits: PLAN_LIMITS[plan],
+        alerts: limitAlerts(usage, PLAN_LIMITS[plan]),
+        nextPlan: next ? { plan: next, limits: PLAN_LIMITS[next] } : null,
+        upgradeRequest: asked?.plan && asked.at && PLAN_RANK[asked.plan as Plan] > PLAN_RANK[plan] ? { plan: asked.plan as Plan, at: asked.at } : null,
         history: months.map((m) => {
           const c = closed.get(m);
           const l = live.get(m);

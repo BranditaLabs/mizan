@@ -1,11 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
+import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { DateText } from "@/components/ui/Values";
+import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ok, type Schemas } from "@/lib/api/client";
+import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { SettingsTabs } from "./SettingsTabs";
 
@@ -29,6 +34,34 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
       ) : null}
       {limit !== null && used > limit ? <span className="text-caption text-danger-text">{t("over")}</span> : null}
     </div>
+  );
+}
+
+/** The next plan's limits and a way to ask for it (E12-1); payment comes with E12-2. */
+function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
+  const t = useTranslations("usage");
+  const tpr = useTranslations("problem");
+  const { api } = useSession();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const next = usage.nextPlan!;
+  const ask = useMutation({
+    mutationFn: () => ok(api.POST("/v1/usage/upgrade", { body: { plan: next.plan } })),
+    meta: { toast: false },
+    onSuccess: () => { toast({ message: t("upgrade.sent") }); void qc.invalidateQueries({ queryKey: ["usage"] }); },
+  });
+  const limit = (n: number | null) => (n === null ? t("upgrade.noLimit") : String(n));
+  return (
+    <section className="mz-card flex flex-col gap-3 p-5" data-testid="upgrade">
+      <h2 className="text-heading-sm">{t("upgrade.title", { plan: t(`plan.${next.plan}`) })}</h2>
+      <p className="text-body-sm text-text-2">{t("upgrade.limits", { orders: limit(next.limits.ordersPerMonth), stores: limit(next.limits.stores), users: limit(next.limits.users) })}</p>
+      {usage.upgradeRequest ? (
+        <p className="text-body-sm">{t("upgrade.requested", { plan: t(`plan.${usage.upgradeRequest.plan}`) })}{" "}<DateText value={usage.upgradeRequest.at} /></p>
+      ) : canAsk ? (
+        <div><Button busy={ask.isPending} onClick={() => ask.mutate()}>{t("upgrade.ask", { plan: t(`plan.${next.plan}`) })}</Button></div>
+      ) : <p className="text-body-sm text-text-2">{t("upgrade.ownerOnly")}</p>}
+      {ask.isError ? <Alert tone="danger">{problemText(ask.error, tpr)}</Alert> : null}
+    </section>
   );
 }
 
@@ -68,7 +101,11 @@ export function UsageScreen() {
             {t.rich("atCost", { messages: u.usage.whatsappMessages, ai: u.usage.aiOffers, n: (c) => <bdi dir="ltr" className="mz-num">{c}</bdi> })}
           </p>
           <p className="text-caption text-text-3">{t("soft")}</p>
+          {u.alerts.map((a) => (
+            <Alert key={a.metric} tone={a.level === "over" ? "danger" : "warning"}>{t(`alert.${a.metric}_${a.level}`, { used: a.used, limit: a.limit })}</Alert>
+          ))}
         </section>
+        {u.nextPlan ? <Upgrade usage={u} canAsk={store?.role === "owner" || store?.role === "admin"} /> : null}
         <DataTable label={t("history")} columns={columns} rows={u.history} rowKey={(r) => r.month} />
       </>
     );

@@ -45,6 +45,8 @@ beforeAll(async () => {
   app.get(MessagingRegistry).use(null);
   fake.add("owner", { uid: "fb-owner-auto", email: "owner@auto.test", emailVerified: true, secondFactor: "phone" });
   store = (await http().post("/v1/tenants").set({ Authorization: "Bearer owner" }).send({ name: "Nile Auto", country: "EG" }).expect(201)).body.id;
+  // On Growth: a team this size on Free would also hear about its plan's user limit (E12-1).
+  await app.get(Database).tenant(store, (trx) => trx.updateTable("tenants").set({ plan: "growth" }).where("id", "=", store).execute());
   await http().put("/v1/settings/orders").set(as("owner")).send({ duplicateWindowHours: 0 }).expect(200);
   const inv = await http().post("/v1/members/invite").set(as("owner")).send({ phone: "01201114444", role: "agent" }).expect(201);
   fake.add("agent", { uid: "fb-agent-auto", phone: inv.body.phone });
