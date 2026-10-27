@@ -11,6 +11,13 @@ export const StaffRoles = (...roles: StaffRole[]) => SetMetadata(STAFF_ROLES_KEY
 /** "GET /v1/platform/staff/:id": the route, never ids or query strings. */
 export const routeOf = (req: AuthedRequest) => `${req.method} ${(req.baseUrl ?? "") + ((req.route as { path?: string } | undefined)?.path ?? req.path)}`;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** The store a back-office call is about (its :storeId), when that is a real id. */
+export const storeOf = (req: AuthedRequest): { storeId?: string } => {
+  const id = req.params?.storeId;
+  return typeof id === "string" && UUID.test(id) ? { storeId: id.toLowerCase() } : {};
+};
+
 /**
  * PlatformGuard (A-1): /v1/platform/* is for Mizan staff only. After the global guard has verified
  * the user (these routes are @NoTenant), the caller must be active staff, signed in with a second
@@ -26,7 +33,7 @@ export class PlatformGuard implements CanActivate {
     const auth = req.auth;
     if (!auth) throw new ProblemError(401, "unauthorized", "sign in first");
     const deny = async (status: number, code: string, message: string, staffId?: string): Promise<never> => {
-      await this.staff.audit({ staffId: staffId ?? null, userId: auth.user.id, action: routeOf(req), outcome: "denied", status, data: { code }, ...(auth.ip ? { ip: auth.ip } : {}) });
+      await this.staff.audit({ staffId: staffId ?? null, userId: auth.user.id, action: routeOf(req), outcome: "denied", status, data: { code }, ...storeOf(req), ...(auth.ip ? { ip: auth.ip } : {}) });
       throw new ProblemError(status, code, message);
     };
     // Two-step sign-in first: without it nobody is staff, and nobody is bootstrapped.

@@ -722,6 +722,14 @@ export interface PlatformStaff {
   updated_at: Generated<Timestamp>;
 }
 
+export interface PlatformStoreNotes {
+  id: Generated<string>;
+  store_id: string;
+  staff_id: string | null;
+  body: string;
+  created_at: Generated<Timestamp>;
+}
+
 export interface PosShifts {
   id: Generated<string>;
   tenant_id: string;
@@ -1228,6 +1236,7 @@ export interface DB {
   payments: Payments;
   platform_audit: PlatformAudit;
   platform_staff: PlatformStaff;
+  platform_store_notes: PlatformStoreNotes;
   pos_shifts: PosShifts;
   privacy_requests: PrivacyRequests;
   product_events: ProductEvents;

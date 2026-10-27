@@ -60,13 +60,19 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 ### Back office (Mizan staff, E17)
 
-`/platform/*` is for Mizan staff only (A-1): signed in, no `X-Tenant-Id`, **always** with a second factor (403 `mfa_required` before anything else), active staff (403 `not_staff`, `staff_disabled`), and the route's staff role (403 `insufficient_role`). Every call — refusals included, merchants probing the routes too — is a line in the staff trail (`platform_audit`: the route, never ids or query strings; outcome ok/denied/failed; status). The first super admin is created from `PLATFORM_BOOTSTRAP_EMAILS` (a verified email, with a second factor).
+`/platform/*` is for Mizan staff only (A-1): signed in, no `X-Tenant-Id`, **always** with a second factor (403 `mfa_required` before anything else), active staff (403 `not_staff`, `staff_disabled`), and the route's staff role (403 `insufficient_role`). Every call — refusals included, merchants probing the routes too — is a line in the staff trail (`platform_audit`: the route, never ids or query strings; outcome ok/denied/failed; status). The first super admin is created from `PLATFORM_BOOTSTRAP_EMAILS` (a verified email, with a second factor). Every change staff make to a store (A-2) is also written to **that store's** audit log (`GET /audit-log`) as `actor.type = "mizan_staff"` (`store.suspended`, `store.reactivated`, `store.plan_changed`, with before/after and the reason), so the merchant sees what Mizan did.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/platform/me` | ✅ A-1. `{ id, role, email }`: the caller as staff. Any staff role |
 | GET / POST | `/platform/staff` | ✅ A-1. List; add `{ email, role: super_admin\|support\|finance\|engineer }` (a Mizan user who has signed in once: 404 `user_not_found`; 409 `already_staff`). Super admin |
 | PATCH | `/platform/staff/{id}` | ✅ A-1. `{ role?, status?: active\|disabled }`; 409 `last_super_admin` (Mizan always keeps an active super admin). Super admin |
+| GET | `/platform/stores` | ✅ A-2. `?q=<name, slug or id>&plan&status&country&createdFrom&createdTo&sort=newest\|orders&limit≤100&offset` → `{ data[{ id, name, slug, country, plan, status, createdAt, members, connections{ total, needsAttention }, lastMonth }], total, nextOffset }`. `lastMonth` is the last closed month's usage (the open month needs the store's own data). Deleted stores only with `status=deleted`. Any staff role |
+| GET | `/platform/stores/{storeId}` | ✅ A-2. The store plus `team[]` (email, role, status), `integrations[]` (status, reason), `outbox{ pending, running, dead, oldestPendingAt }`, `deadLetters[]` (latest 20, scrubbed errors, no payloads), `usage[]` (closed months, up to 12), `notes[]`. Any staff role |
+| POST | `/platform/stores/{storeId}/suspend` | ✅ A-2. `{ reason }` → `{ id, plan, status, updatedAt }`; members get 403 `tenant_inactive` at once (other API instances within the membership cache TTL); jobs and data are kept. 409 `already_suspended`, `store_deleted`. Super admin |
+| POST | `/platform/stores/{storeId}/reactivate` | ✅ A-2. `{ reason? }` → active again; 409 `not_suspended`. Super admin |
+| PUT | `/platform/stores/{storeId}/plan` | ✅ A-2. `{ plan, reason? }`; plan limits follow at once; the same plan changes nothing. Super admin, finance |
+| POST | `/platform/stores/{storeId}/notes` | ✅ A-2. `{ body ≤ 2000 }` → 201 note; internal, the store never sees it. Any staff role |
 | GET | `/platform/audit` | ✅ A-1. The staff trail newest first: `?limit≤200&before=<id>` → `{ data[{ id, staffId, email, action, outcome, status, target, storeId, at }], nextBefore }`. Super admin, engineer |
 
 ### Privacy (✅ E3-3)

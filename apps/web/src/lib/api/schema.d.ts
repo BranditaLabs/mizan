@@ -753,6 +753,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/platform/stores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StoresController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/stores/{storeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StoresController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/stores/{storeId}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StoresController_suspend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/stores/{storeId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StoresController_reactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/stores/{storeId}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["StoresController_changePlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/stores/{storeId}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StoresController_addNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -1812,6 +1908,9 @@ export interface components {
             /** @enum {string} */
             role: "super_admin" | "support" | "finance" | "engineer";
         };
+        AddStoreNote: {
+            body: string;
+        };
         AdSpendImported: {
             rows: number;
             /** @description Days whose spend was replaced by the file */
@@ -2253,6 +2352,11 @@ export interface components {
             } | null;
             /** @description Stock as the store last reported it; null = not known */
             available: number | null;
+        };
+        ChangePlan: {
+            /** @enum {string} */
+            plan: "free" | "growth" | "scale" | "enterprise";
+            reason?: string;
         };
         CityResolved: {
             /** @enum {boolean} */
@@ -4281,6 +4385,136 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        PlatformStore: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            slug: string;
+            country: string;
+            /** @enum {string} */
+            plan: "free" | "growth" | "scale" | "enterprise";
+            /** @enum {string} */
+            status: "trial" | "active" | "suspended" | "deleted";
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Active members */
+            members: number;
+            connections: {
+                total: number;
+                needsAttention: number;
+            };
+            /** @description The last closed month's usage; the open month needs the store's own data */
+            lastMonth: {
+                /**
+                 * Format: date
+                 * @description First day of a closed month
+                 */
+                month: string;
+                orders: number;
+                whatsappMessages: number;
+                aiOffers: number;
+                plan: string;
+            } | null;
+            currency: string;
+            timezone: string;
+            /** Format: date-time */
+            updatedAt: string;
+            team: {
+                /** Format: uuid */
+                userId: string;
+                email: string | null;
+                name: string | null;
+                role: string;
+                status: string;
+                /** Format: date-time */
+                joinedAt: string;
+            }[];
+            integrations: {
+                /** Format: uuid */
+                id: string;
+                kind: string;
+                provider: string;
+                account: string | null;
+                name: string | null;
+                status: string;
+                reason: string | null;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            outbox: {
+                pending: number;
+                running: number;
+                dead: number;
+                /** Format: date-time */
+                oldestPendingAt: string | null;
+            };
+            /** @description The latest 20; payloads stay with the store (replay from A-4 or the store's own screen) */
+            deadLetters: {
+                id: string;
+                kind: string;
+                provider: string;
+                attempts: number;
+                error: string | null;
+                /** Format: date-time */
+                failedAt: string;
+            }[];
+            /** @description Closed months, newest first (up to 12) */
+            usage: {
+                /**
+                 * Format: date
+                 * @description First day of a closed month
+                 */
+                month: string;
+                orders: number;
+                whatsappMessages: number;
+                aiOffers: number;
+                plan: string;
+            }[];
+            /** @description Internal; the store never sees them */
+            notes: {
+                /** Format: uuid */
+                id: string;
+                body: string;
+                by: string | null;
+                /** Format: date-time */
+                at: string;
+            }[];
+        };
+        PlatformStores: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                slug: string;
+                country: string;
+                /** @enum {string} */
+                plan: "free" | "growth" | "scale" | "enterprise";
+                /** @enum {string} */
+                status: "trial" | "active" | "suspended" | "deleted";
+                /** Format: date-time */
+                createdAt: string;
+                /** @description Active members */
+                members: number;
+                connections: {
+                    total: number;
+                    needsAttention: number;
+                };
+                /** @description The last closed month's usage; the open month needs the store's own data */
+                lastMonth: {
+                    /**
+                     * Format: date
+                     * @description First day of a closed month
+                     */
+                    month: string;
+                    orders: number;
+                    whatsappMessages: number;
+                    aiOffers: number;
+                    plan: string;
+                } | null;
+            }[];
+            total: number;
+            nextOffset: number | null;
+        };
         /** @description The customer's data compiled for a data request (JSON) */
         PrivacyExport: unknown;
         PrivacyRequests: {
@@ -4689,6 +4923,9 @@ export interface components {
             hasLocation: boolean;
             /** Format: date-time */
             expiresAt: string;
+        };
+        ReactivateStore: {
+            reason?: string;
         };
         Ready: {
             /** @enum {string} */
@@ -5314,6 +5551,28 @@ export interface components {
             variantId: string;
             lowStockAt: number | null;
             available: number;
+        };
+        StoreNote: {
+            /** Format: uuid */
+            id: string;
+            body: string;
+            by: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        StoreState: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            plan: "free" | "growth" | "scale" | "enterprise";
+            /** @enum {string} */
+            status: "trial" | "active" | "suspended" | "deleted";
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        SuspendStore: {
+            /** @description Shown to the store in its audit log */
+            reason: string;
         };
         Team: {
             members: {
@@ -8457,6 +8716,414 @@ export interface operations {
             };
             /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoresController_list: {
+        parameters: {
+            query?: {
+                /** @description Name, slug or store id */
+                q?: string;
+                plan?: "free" | "growth" | "scale" | "enterprise";
+                status?: "trial" | "active" | "suspended" | "deleted";
+                country?: string;
+                createdFrom?: string;
+                /** @description Inclusive */
+                createdTo?: string;
+                /** @description orders: the last closed month's orders, most first */
+                sort?: "newest" | "orders";
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Find stores by name, plan, status, country, signup date; sort by last month's orders. Deleted stores only when asked for. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformStores"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoresController_detail: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                storeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One store: team, integrations and their health, jobs and dead letters, usage, internal notes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformStore"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoresController_suspend: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                storeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuspendStore"];
+            };
+        };
+        responses: {
+            /** @description Suspended: its members are refused (tenant_inactive); jobs and data are kept. Written to the store's audit log. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreState"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoresController_reactivate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                storeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReactivateStore"];
+            };
+        };
+        responses: {
+            /** @description Active again. Written to the store's audit log. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreState"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoresController_changePlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                storeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePlan"];
+            };
+        };
+        responses: {
+            /** @description The store's plan (limits follow at once). Written to the store's audit log; the same plan changes nothing. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreState"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoresController_addNote: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                storeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddStoreNote"];
+            };
+        };
+        responses: {
+            /** @description An internal note about the store (support context); the store never sees it */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreNote"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

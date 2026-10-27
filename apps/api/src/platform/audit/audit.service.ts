@@ -20,6 +20,7 @@ export const AUDIT_ACTIONS = [
   "privacy.request_received", "privacy.request_completed", "privacy.export_downloaded",
   "export.created",
   "secret.created", "secret.rotated", "secret.deleted",
+  "store.suspended", "store.reactivated", "store.plan_changed",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
@@ -27,7 +28,8 @@ export interface AuditEntry {
   action: AuditAction;
   /** null for platform-level entries (not tied to a store). */
   tenantId: string | null;
-  actor: { type: "user" | "api_key" | "system"; id?: string };
+  /** mizan_staff: a Mizan staff member acting from the back office (id = their staff id, not a user). */
+  actor: { type: "user" | "api_key" | "system" | "mizan_staff"; id?: string };
   entity?: { type: string; id: string };
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
