@@ -105,3 +105,21 @@ describe("slugify", () => {
     ["x-".repeat(30), "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x".slice(0, 39)],
   ])("%j → %j", (name, slug) => expect(slugify(name)).toBe(slug));
 });
+
+describe("PATCH /v1/tenant (A-8)", () => {
+  it("owners change the name, time zone and locale; audited; country and currency stay", async () => {
+    fake.add("prof-owner", { uid: "fb-prof-owner", email: "prof@example.com", emailVerified: true, secondFactor: "phone" });
+    const t = (await http().post("/v1/tenants").set(as("prof-owner")).send({ name: "Old Name", country: "EG" }).expect(201)).body;
+    const after = (await http().patch("/v1/tenant").set(as("prof-owner", t.id)).send({ name: "  New Name  ", timezone: "Asia/Riyadh", locale: "en-EG" }).expect(200)).body;
+    expect(after).toMatchObject({ name: "New Name", timezone: "Asia/Riyadh", locale: "en-EG", country: "EG", baseCurrency: "EGP" });
+    expect((await http().get("/v1/tenant").set(as("prof-owner", t.id)).expect(200)).body.name).toBe("New Name");
+    const log = (await http().get("/v1/audit-log?action=tenant.updated").set(as("prof-owner", t.id)).expect(200)).body.data;
+    expect(log[0]).toMatchObject({ before: { storeName: "Old Name", timezone: "Africa/Cairo", locale: "ar-EG" }, after: { storeName: "New Name", timezone: "Asia/Riyadh", locale: "en-EG" } });
+
+    await http().patch("/v1/tenant").set(as("prof-owner", t.id)).send({ name: "New Name" }).expect(200); // nothing changed: no new line
+    expect((await http().get("/v1/audit-log?action=tenant.updated").set(as("prof-owner", t.id)).expect(200)).body.data).toHaveLength(1);
+    for (const bad of [{}, { timezone: "Mars/Olympus" }, { locale: "fr" }, { country: "SA" }, { baseCurrency: "USD" }, { name: "x" }]) {
+      await http().patch("/v1/tenant").set(as("prof-owner", t.id)).send(bad).expect(422);
+    }
+  });
+});

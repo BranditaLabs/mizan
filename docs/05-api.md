@@ -48,7 +48,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | --- | --- | --- |
 | GET | `/me` | ✅ Current user (created on first sign-in; profile follows Firebase) and memberships across stores with role, status, country, currency, locale, timezone. No `X-Tenant-Id` |
 | POST | `/tenants` | ✅ Create tenant (signup) — creator becomes owner. Body `{ name, country, slug?, language? }`; country defaults (currency, timezone, locale, week start, phone country) from `@mizan/shared` `COUNTRY_DEFAULTS`; default warehouse; slug derived and de-duplicated. Errors: `slug_taken` (409), `tenant_limit_reached` (422, 10 owned stores), `validation_failed` |
-| GET / PATCH | `/tenant` | Tenant settings (currency, timezone, locale). ✅ GET; PATCH next |
+| GET / PATCH | `/tenant` | Tenant settings (currency, timezone, locale). ✅ GET (any member); ✅ PATCH (A-8, owner/admin) `{ name?, timezone? (IANA), locale? (ar-XX \| en-XX) }`; country and currency never change (money, FX). Audited `tenant.updated` (only what changed; the name as `storeName`) |
 | GET / POST | `/members` · `/members/invite` | ✅ Team (members + pending invitations); invite by email or phone `{ email \| phone, role }` → invitation with `acceptUrl` to share. Owner/admin; only owners invite owners. Re-inviting refreshes. `already_member` (409) |
 | PATCH / DELETE | `/members/{userId}` | ✅ `{ role?, status?: active\|disabled }`, remove. Guards: `cannot_change_self`, owners only by owners, `last_owner`. Disabled members are locked out on their next request |
 | DELETE | `/invitations/{id}` | ✅ Revoke a pending invitation (owner/admin) |

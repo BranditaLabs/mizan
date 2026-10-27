@@ -1153,7 +1153,8 @@
       "storeSync": "Store sync",
       "team": "Team",
       "integrations": "Integrations",
-      "audit": "Audit log"
+      "audit": "Audit log",
+      "store": "Store"
     }
   },
   "confirmationSettings": {
@@ -2921,6 +2922,38 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners and admins see the audit log."
+    }
+  },
+  "storeProfile": {
+    "title": "Store",
+    "subtitle": "Your store's name, time zone and the language of messages to your customers.",
+    "loading": "Loading…",
+    "saved": "Saved",
+    "name": "Store name",
+    "timezone": "Time zone",
+    "timezoneHint": "Where a day starts and ends for reports and plan usage.",
+    "locale": "Customer messages",
+    "localeHint": "The language of WhatsApp confirmations and documents your customers get.",
+    "locales": {
+      "ar": "Arabic",
+      "en": "English"
+    },
+    "save": "Save",
+    "readOnly": "Owners and admins change these.",
+    "country": "Country",
+    "currency": "Currency",
+    "address": "Store address",
+    "fixed": "Country and currency stay as you signed up: prices, costs and profit are kept in this currency.",
+    "zones": {
+      "Africa_Cairo": "Cairo",
+      "Asia_Riyadh": "Riyadh",
+      "Asia_Dubai": "Dubai",
+      "Asia_Kuwait": "Kuwait",
+      "Asia_Qatar": "Doha",
+      "Asia_Bahrain": "Bahrain",
+      "Asia_Muscat": "Muscat",
+      "Asia_Amman": "Amman",
+      "Africa_Casablanca": "Casablanca"
     }
   }
 }

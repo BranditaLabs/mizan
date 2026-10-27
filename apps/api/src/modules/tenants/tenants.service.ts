@@ -4,9 +4,10 @@ import { setActingUser } from "@mizan/db";
 import { COUNTRY_DEFAULTS, type CountryCode, type MemberRole } from "@mizan/shared";
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
-import { AuditService } from "../../platform/audit/audit.service.js";
+import { AuditService, auditActor } from "../../platform/audit/audit.service.js";
+import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ProblemError } from "../../platform/http/problem.js";
-import type { CreateTenantBody, TenantView } from "./tenants.dto.js";
+import type { CreateTenantBody, TenantView, UpdateTenantBody } from "./tenants.dto.js";
 
 /** A user can own this many stores (abuse guard; raise per account on request). */
 export const MAX_OWNED_TENANTS = 10;
@@ -113,6 +114,27 @@ export class TenantsService {
       }
     }
     throw new ProblemError(409, "slug_taken", "could not find a free store address; choose one");
+  }
+
+  /** Change the store's profile (owner, admin); audited with before and after. */
+  async update(auth: AuthContext, body: UpdateTenantBody): Promise<TenantView> {
+    const tenantId = auth.tenant!.id;
+    const row = await this.db.tenant(tenantId, async (trx) => {
+      const before = await trx.selectFrom("tenants").select(["name", "timezone", "locale"]).where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
+      const changed = Object.fromEntries(Object.entries(body).filter(([k, v]) => v !== undefined && before[k as keyof typeof before] !== v));
+      const t = await trx.updateTable("tenants").set({ ...changed, updated_at: new Date() }).where("id", "=", tenantId).returningAll().executeTakeFirstOrThrow();
+      if (Object.keys(changed).length) {
+        // "storeName", not "name": the audit redactor masks `name` keys as personal data; a store's name is not.
+        const label = (k: string) => (k === "name" ? "storeName" : k);
+        await this.audit.record(trx, {
+          action: "tenant.updated", tenantId, ...auditActor(auth), entity: { type: "tenant", id: tenantId },
+          before: Object.fromEntries(Object.keys(changed).map((k) => [label(k), before[k as keyof typeof before]])),
+          after: Object.fromEntries(Object.entries(changed).map(([k, v]) => [label(k), v])),
+        });
+      }
+      return t;
+    });
+    return toView(row, auth.tenant!.role);
   }
 
   async get(tenantId: string, role: MemberRole): Promise<TenantView> {

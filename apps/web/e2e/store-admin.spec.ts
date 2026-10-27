@@ -52,3 +52,21 @@ test("owner in Arabic: integrations say what to connect; tabs are right to left"
   await expect(page.getByTestId("integrations-settings")).toContainText("مفيش حاجة مستنية.");
   await expect(page.getByRole("navigation", { name: "الإعدادات" }).getByRole("link", { name: "سجل التغييرات" })).toBeVisible();
 });
+
+test("owner in Arabic: renames the store and moves its time zone; it stays after a reload", async ({ page }) => {
+  const owner = await ownerWithStore("متجر الاسم القديم");
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
+  await page.goto("/ar/settings/store");
+  const form = page.getByTestId("store-profile");
+  await expect(form.getByLabel("اسم المتجر")).toHaveValue("متجر الاسم القديم");
+  await form.getByLabel("اسم المتجر").fill("متجر الاسم الجديد");
+  await form.getByLabel("المنطقة الزمنية").selectOption("Asia/Riyadh");
+  await form.getByRole("button", { name: "احفظ" }).click();
+  await expect(page.getByText("اتحفظ")).toBeVisible();
+  await page.reload();
+  await expect(form.getByLabel("اسم المتجر")).toHaveValue("متجر الاسم الجديد");
+  await expect(form.getByLabel("المنطقة الزمنية")).toHaveValue("Asia/Riyadh");
+  await expect(form).toContainText("EGP");
+});

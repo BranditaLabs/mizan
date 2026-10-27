@@ -13,6 +13,22 @@ export const CreateTenantSchema = z.strictObject({
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantSchema>;
 
+/** A valid IANA time zone ("Africa/Cairo", "Asia/Riyadh"). */
+const isTimeZone = (tz: string) => {
+  try { new Intl.DateTimeFormat("en", { timeZone: tz }); return true; } catch { return false; }
+};
+
+/**
+ * The store's profile (A-8). Country and currency stay as signed up: money in minor units and
+ * daily FX depend on them. The time zone decides where a day starts for reports and usage.
+ */
+export const UpdateTenantSchema = z.strictObject({
+  name: z.string().trim().min(2).max(80).optional(),
+  timezone: z.string().max(64).refine(isTimeZone, "not a known time zone").optional(),
+  locale: z.string().regex(/^(ar|en)-[A-Z]{2}$/, "like ar-EG or en-SA").optional().describe("Language and region for customer messages and documents"),
+}).refine((b) => Object.keys(b).length > 0, "change at least one field");
+export type UpdateTenantBody = z.infer<typeof UpdateTenantSchema>;
+
 export const TENANT_STATUSES = ["trial", "active", "suspended", "deleted"] as const;
 export const TENANT_PLANS = ["free", "growth", "scale", "enterprise"] as const;
 
