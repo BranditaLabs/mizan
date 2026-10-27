@@ -9,6 +9,10 @@ export { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlo
 export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bosta/connector.js";
 export type { ShopifyLearned } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";
+export type { WooCommerceCredentials } from "./connectors/woocommerce/client.js";
+export { WooCommerceConnector, WOO_WEBHOOK_TOPICS, type WooLearned } from "./connectors/woocommerce/connector.js";
+export { detectWooPayment, mapWooOrder, EG_STATES } from "./connectors/woocommerce/mapper.js";
+export { verifyWooSignature, signWoo, isWooPing, readWooHeaders, type WooWebhookMeta } from "./connectors/woocommerce/webhooks.js";
 export { send, type RequestSpec, type HttpResponse } from "./resilience/http.js";
 export { CircuitBreaker } from "./resilience/circuit.js";
 export { LogMessaging, maskNumber, unreachableNumber, type MessagingChannel, type MessagingProvider, type Sms, type VoiceCall, type WhatsAppTemplate } from "./connectors/messaging/provider.js";

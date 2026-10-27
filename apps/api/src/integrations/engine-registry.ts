@@ -197,7 +197,7 @@ export class EngineRegistry {
         },
         // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
         onLearned: async (provider, state) => {
-          const connectionId = provider === "shopify" ? c.shopify.connectionId : c.bosta?.connectionId;
+          const connectionId = provider === "shopify" ? c.shopify.connectionId : provider === "bosta" ? c.bosta?.connectionId : undefined;
           if (!connectionId) return;
           await this.db.tenant(tenantId, (trx) => trx.updateTable("connections")
             .set({ learned: JSON.stringify(state), updated_at: new Date() }).where("id", "=", connectionId).execute());

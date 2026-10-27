@@ -13,6 +13,10 @@ import { ShopifyConnector, type CancelReason, type FulfillmentEventStatus, type 
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
+import type { WooCommerceCredentials } from "../connectors/woocommerce/client.js";
+import { WooCommerceConnector, type WooLearned } from "../connectors/woocommerce/connector.js";
+import { wooOrderIdFromWebhook } from "../connectors/woocommerce/mapper.js";
+import { isWooPing, readWooHeaders, verifyWooSignature } from "../connectors/woocommerce/webhooks.js";
 import type { NewJob, OutboxJob, Store } from "../sync/store.js";
 import { DEFAULT_WORKER, OutboxWorker, type JobOutcome, type WorkerOptions } from "../sync/worker.js";
 
@@ -21,6 +25,8 @@ export type Owner = "mizan" | "shopify";
 export interface EngineOptions {
   shopify: ShopifyCredentials;
   bosta: BostaConfig;
+  /** A WooCommerce store (E5-7): its orders come in by signed webhook and by polling. */
+  woocommerce?: WooCommerceCredentials;
   /** Shopify location Mizan manages stock for. */
   locationId?: string;
   /** Which system wins when a field differs. Mizan-owned fields edited in Shopify are restored; Shopify-owned ones are accepted. */
@@ -41,7 +47,7 @@ export interface EngineOptions {
   echoWindowMs?: number;
   worker?: Partial<WorkerOptions>;
   /** What the connectors learned before (the platform keeps it in connections.learned). Wins over the store copy. */
-  learned?: { shopify?: Partial<ShopifyLearned>; bosta?: Partial<BostaLearned> };
+  learned?: { shopify?: Partial<ShopifyLearned>; bosta?: Partial<BostaLearned>; woocommerce?: Partial<WooLearned> };
   /**
    * Awaited inside the job, so a failing hook fails (and retries) the job:
    * nothing is acknowledged before the platform has stored it.
@@ -52,7 +58,7 @@ export interface EngineOptions {
     /** A confirmed order cannot ship yet because of its payment (unpaid transfer, failed or unknown method). */
     onAwaitingPayment?: (order: CanonicalOrder, reason: ShipBlockReason) => Promise<void>;
     /** A connector learned something new (status code, city alias, query variant). Called only on change. */
-    onLearned?: (provider: "shopify" | "bosta", state: ShopifyLearned | BostaLearned) => Promise<void>;
+    onLearned?: (provider: "shopify" | "bosta" | "woocommerce", state: ShopifyLearned | BostaLearned | WooLearned) => Promise<void>;
     /** A product read from the store (webhook, refetch or backfill page), without `raw`. Must be idempotent. */
     onProduct?: (product: CanonicalProduct) => Promise<void>;
     /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
@@ -195,11 +201,12 @@ export class MizanEngine {
   readonly shapes = new ShapeWatch();
   readonly shopify: ShopifyConnector;
   readonly bosta: BostaConnector;
+  readonly woo: WooCommerceConnector | undefined;
   readonly worker: OutboxWorker;
   private readonly listeners: Listener[] = [];
-  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId" | "hooks" | "learned">> & Pick<EngineOptions, "locationId" | "hooks" | "learned">;
+  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "woocommerce" | "worker" | "locationId" | "hooks" | "learned">> & Pick<EngineOptions, "locationId" | "hooks" | "learned">;
   /** Last learned state persisted per provider (JSON), to persist only changes. */
-  private readonly learnedSaved: Record<"shopify" | "bosta", string> = { shopify: "", bosta: "" };
+  private readonly learnedSaved: Record<"shopify" | "bosta" | "woocommerce", string> = { shopify: "", bosta: "", woocommerce: "" };
 
   constructor(private readonly store: Store, private readonly rt: Runtime, options: EngineOptions) {
     this.opts = {
@@ -216,6 +223,7 @@ export class MizanEngine {
     };
     this.shopify = new ShopifyConnector(options.shopify, rt, this.drift, this.shapes);
     this.bosta = new BostaConnector(options.bosta, rt, this.drift, this.shapes);
+    this.woo = options.woocommerce ? new WooCommerceConnector({ ...options.woocommerce }, rt, this.drift, this.shapes) : undefined;
     this.worker = new OutboxWorker(store, rt, this.handlers(), { ...DEFAULT_WORKER, ...options.worker });
     this.worker.onOutcome((o) => this.onOutcome(o));
     this.drift.onNew((e) => this.emit("drift", { ...e }));
@@ -241,12 +249,17 @@ export class MizanEngine {
     if (shopify) this.shopify.loadLearned(shopify);
     this.learnedSaved.bosta = JSON.stringify(this.bosta.exportLearned());
     this.learnedSaved.shopify = JSON.stringify(this.shopify.exportLearned());
+    if (this.woo) {
+      this.woo.loadLearned(this.opts.learned?.woocommerce ?? (await this.store.get<WooLearned>("learned", "woocommerce")));
+      this.learnedSaved.woocommerce = JSON.stringify(this.woo.exportLearned());
+    }
   }
 
   /** Persist learned state that changed: in the engine store, and through hooks.onLearned. */
   private async saveLearned() {
-    for (const provider of ["bosta", "shopify"] as const) {
-      const state = provider === "bosta" ? this.bosta.exportLearned() : this.shopify.exportLearned();
+    for (const provider of ["bosta", "shopify", "woocommerce"] as const) {
+      if (provider === "woocommerce" && !this.woo) continue;
+      const state = provider === "bosta" ? this.bosta.exportLearned() : provider === "shopify" ? this.shopify.exportLearned() : this.woo!.exportLearned();
       const json = JSON.stringify(state);
       if (json === this.learnedSaved[provider]) continue;
       await this.store.put("learned", provider, state, this.now());
@@ -292,6 +305,33 @@ export class MizanEngine {
 
   private opts_shopifySecret() {
     return this.shopify.creds.clientSecret;
+  }
+
+  /**
+   * A WooCommerce webhook (E5-7): the save-time ping answered, the signature checked, then a hint
+   * to re-read the order (thin webhook, fat fetch). WooCommerce never retries and may disable a
+   * failing webhook, so polling and the webhook sync cover what is lost.
+   */
+  async handleWooCommerceWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    if (!this.woo) return { status: 404, body: { error: "no WooCommerce store on this connection" } };
+    const signature = headers["X-WC-Webhook-Signature"] ?? headers["x-wc-webhook-signature"];
+    if (!signature && isWooPing(rawBody)) return { status: 200, body: { ping: true } }; // WooCommerce saves the webhook only after a 2xx
+    if (!verifyWooSignature(rawBody, signature, this.woo.creds.webhookSecret)) return { status: 401, body: { error: "invalid signature" } };
+    const meta = readWooHeaders(headers);
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return { status: 200, body: { ignored: "unparseable body" } };
+    }
+    if (meta.resource !== "order" && !meta.topic.startsWith("order.")) return { status: 200, body: { ignored: meta.topic || "unknown topic" } };
+    const id = wooOrderIdFromWebhook(payload);
+    if (!id) return { status: 200, body: { ignored: "no order id" } };
+    // The delivery id is per second, not per event: the order's own modification time tells versions apart.
+    const version = iso(payload.date_modified_gmt as string | undefined) ?? (meta.event === "deleted" ? "deleted" : hash(rawBody));
+    if (!(await this.store.markInbound(`woocommerce:${id}:${version}`, this.now()))) return { status: 200, body: { duplicate: true } };
+    await this.enqueue("woocommerce.ingestOrder", { orderId: id }, `woocommerce:order:${id}:${version}`);
+    return { status: 200, body: { accepted: true } };
   }
 
   async handleBostaWebhook(query: Record<string, string | undefined>, headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
@@ -374,6 +414,11 @@ export class MizanEngine {
    * reference that never exists). Runs as a job, never in a request: network trouble retries,
    * a refused key ends the job and reports through hooks.onAccessChecked.
    */
+  /** Point the WooCommerce store's webhooks at Mizan and turn disabled ones back on (E5-7). */
+  static wooWebhooksJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "woocommerce.syncWebhooks", connection: "woocommerce", payload: {}, idempotencyKey: `woocommerce:webhooks:${runKey}` };
+  }
+
   static bostaAccessCheckJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "bosta.checkAccess", connection: "bosta", payload: {}, idempotencyKey: `bosta:access:${runKey}` };
   }
@@ -460,6 +505,7 @@ export class MizanEngine {
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
     await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+    if (this.woo) await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
     await this.enqueue("bosta.pollActive", {}, `poll:bosta:${slot}`);
   }
 
@@ -540,6 +586,9 @@ export class MizanEngine {
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.reconcile": (j) => this.reconcile(j.payload),
       "shopify.cancelOrder": (j) => this.cancelOrder(j.payload),
+      "woocommerce.ingestOrder": (j) => this.ingestWooOrder(j.payload.orderId),
+      "woocommerce.pollOrders": () => this.pollWooOrders(),
+      "woocommerce.syncWebhooks": () => this.syncWooWebhooks(),
     };
   }
 
@@ -874,6 +923,48 @@ export class MizanEngine {
       }
     }
     await this.store.put("cursor", "shopify.orders", { since: maxSeen }, this.now());
+  }
+
+  private wooConnector(): WooCommerceConnector {
+    if (!this.woo) throw new IntegrationError({ kind: "permanent", connector: "woocommerce", message: "no WooCommerce store on this connection" });
+    return this.woo;
+  }
+
+  private async ingestWooOrder(orderId: string) {
+    try {
+      await this.ingestOrderData(await this.wooConnector().getOrder(orderId));
+    } catch (e) {
+      // Deleted for good (order.deleted, or emptied from the trash): the order is cancelled for Mizan.
+      if (e instanceof IntegrationError && e.kind === "not_found") {
+        const prev = await this.store.get<OrderRecord>("order", orderId);
+        if (prev && !prev.order.cancelled) await this.ingestOrderData({ ...prev.order, cancelled: true, updatedAt: new Date(this.now()).toISOString() });
+        this.emit("order.deleted", { orderId, connector: "woocommerce" });
+        return;
+      }
+      throw e;
+    }
+  }
+
+  /** Orders changed since the cursor (minus an overlap): catches lost webhooks and a webhook WooCommerce disabled. */
+  private async pollWooOrders() {
+    const woo = this.wooConnector();
+    const cursor = (await this.store.get<{ since: string }>("cursor", "woocommerce.orders"))?.since ?? new Date(this.now() - 24 * 3600_000).toISOString();
+    const since = new Date(Date.parse(cursor) - this.opts.pollOverlapMs).toISOString();
+    let maxSeen = cursor;
+    for await (const page of woo.ordersModifiedSince(since)) {
+      for (const o of page) {
+        const known = await this.store.get<OrderRecord>("order", o.externalId);
+        const fp = orderFingerprint(o);
+        if (!known || orderFingerprint(known.order) !== fp) await this.ingestOrderData(o); // the page is the full order: no second read
+        if (Date.parse(o.updatedAt) > Date.parse(maxSeen)) maxSeen = o.updatedAt;
+      }
+    }
+    await this.store.put("cursor", "woocommerce.orders", { since: maxSeen }, this.now());
+  }
+
+  private async syncWooWebhooks() {
+    const r = await this.wooConnector().syncWebhooks();
+    this.emit("woocommerce.webhooks_synced", { created: r.created, reactivated: r.reactivated });
   }
 
   private async pollActiveShipments() {
