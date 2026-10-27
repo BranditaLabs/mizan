@@ -4,13 +4,14 @@ import { isMemberRole, type MemberRole, type MembershipStatus } from "@mizan/sha
 import type { MembershipView } from "./membership.schema.js";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { TtlCache } from "../cache.js";
+import { ProblemError } from "../http/problem.js";
 import { Database } from "../db/database.js";
 import type { AuthUser, SupportGrant } from "./auth.types.js";
 import type { VerifiedIdentity } from "./token-verifier.js";
 
 export type { MembershipView } from "./membership.schema.js";
 
-type UserRow = { id: string; firebase_uid: string; email: string | null; phone_e164: string | null; display_name: string | null; language: string };
+type UserRow = { id: string; firebase_uid: string; email: string | null; phone_e164: string | null; display_name: string | null; language: string; disabled_at: Date | null };
 
 const toUser = (r: UserRow): AuthUser => ({
   id: r.id,
@@ -30,7 +31,7 @@ const profileOf = (i: VerifiedIdentity) => `${i.email ?? ""}|${i.phone ?? ""}|${
 @Injectable()
 export class AuthService {
   /** Firebase uid → user, valid while the token's profile matches (H-6). */
-  private readonly userCache: TtlCache<string, { user: AuthUser; profile: string }>;
+  private readonly userCache: TtlCache<string, { user: AuthUser; profile: string; disabled: boolean }>;
   /** `${tenantId}:${userId}` → membership; null = not a member. */
   private readonly membershipCache: TtlCache<string, MembershipCheck | null>;
 
@@ -55,16 +56,25 @@ export class AuthService {
    */
   async resolveUser(identity: VerifiedIdentity): Promise<AuthUser> {
     const cached = this.userCache.get(identity.uid);
-    if (cached && cached.profile === profileOf(identity)) return cached.user;
-    const user = await this.loadUser(identity);
-    this.userCache.set(identity.uid, { user, profile: profileOf(identity) });
-    return user;
+    let entry = cached && cached.profile === profileOf(identity) ? cached : undefined;
+    if (!entry) {
+      entry = { ...(await this.loadUser(identity)), profile: profileOf(identity) };
+      this.userCache.set(identity.uid, entry);
+    }
+    // A-5: Mizan staff stopped this person signing in; Firebase still knows them, Mizan does not answer.
+    if (entry.disabled) throw new ProblemError(403, "user_disabled", "sign-in to Mizan is disabled for this account");
+    return entry.user;
   }
 
-  private async loadUser(identity: VerifiedIdentity): Promise<AuthUser> {
+  /** Forget a cached user after staff disable or enable them (this instance at once; others within the TTL). */
+  forgetUser(firebaseUid: string): void {
+    this.userCache.delete(firebaseUid);
+  }
+
+  private async loadUser(identity: VerifiedIdentity): Promise<{ user: AuthUser; disabled: boolean }> {
     return this.db.platform(async (trx) => {
       const profile = { email: identity.email ?? null, phone_e164: identity.phone ?? null, display_name: identity.name ?? null };
-      const columns = ["id", "firebase_uid", "email", "phone_e164", "display_name", "language"] as const;
+      const columns = ["id", "firebase_uid", "email", "phone_e164", "display_name", "language", "disabled_at"] as const;
       let row = await trx.selectFrom("users").select(columns).where("firebase_uid", "=", identity.uid).executeTakeFirst();
       if (!row) {
         row = await trx.insertInto("users").values({ firebase_uid: identity.uid, ...profile })
@@ -76,7 +86,7 @@ export class AuthService {
           .set({ email: profile.email, phone_e164: profile.phone_e164, display_name: profile.display_name ?? row.display_name })
           .where("id", "=", row.id).returning(columns).executeTakeFirstOrThrow();
       }
-      return toUser(row);
+      return { user: toUser(row), disabled: row.disabled_at !== null };
     });
   }
 

@@ -20,7 +20,7 @@ export const AUDIT_ACTIONS = [
   "privacy.request_received", "privacy.request_completed", "privacy.export_downloaded",
   "export.created",
   "secret.created", "secret.rotated", "secret.deleted",
-  "store.suspended", "store.reactivated", "store.plan_changed", "support.access_started", "support.access_ended",
+  "store.suspended", "store.reactivated", "store.plan_changed", "support.access_started", "support.access_ended", "user.sign_in_disabled", "user.sign_in_enabled",
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 

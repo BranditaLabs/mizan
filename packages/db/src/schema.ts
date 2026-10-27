@@ -1132,6 +1132,8 @@ export interface Users {
   display_name: string | null;
   language: Generated<string>;
   created_at: Generated<Timestamp>;
+  disabled_at: Timestamp | null;
+  disabled_reason: string | null;
 }
 
 export interface Variants {

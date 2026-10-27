@@ -98,7 +98,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "whatsapp_messages_out",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "whatsapp_messages_out",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -274,6 +274,13 @@ describe("schema", () => {
     await expect(asTenant(T1, () => db.query(`UPDATE support_access SET ended_at = now() WHERE id = $1`, [id]))).rejects.toThrow(/support_access_end_whole/);
     await asTenant(T1, () => db.query(`UPDATE support_access SET ended_at = now(), ended_by = 'store' WHERE id = $1`, [id]));
     await expect(asRole("mizan_platform", () => db.query(`UPDATE support_access SET mode = 'write' WHERE id = $1`, [id]))).rejects.toThrow(/permission denied/);
+  });
+
+  it("only the back office disables sign-in, always with a reason (A-5)", async () => {
+    const user = (await db.query<{ id: string }>(`INSERT INTO users (firebase_uid, email) VALUES ('fb-a5', 'gone@shop.test') RETURNING id`)).rows[0]!.id;
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE users SET disabled_at = now() WHERE id = $1`, [user]))).rejects.toThrow(/users_disabled_whole/);
+    await asRole("mizan_platform", () => db.query(`UPDATE users SET disabled_at = now(), disabled_reason = 'account compromised' WHERE id = $1`, [user]));
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE users SET email = 'x@y.test' WHERE id = $1`, [user]))).rejects.toThrow(/permission denied/);
   });
 
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {
