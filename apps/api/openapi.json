@@ -3493,6 +3493,71 @@
         ]
       }
     },
+    "/v1/usage": {
+      "get": {
+        "operationId": "BillingController_get",
+        "parameters": [
+          {
+            "name": "month",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "YYYY-MM in the store's time zone; this month if absent",
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+            },
+            "description": "YYYY-MM in the store's time zone; this month if absent"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A month's orders, messages and AI offers, the stores and users counted, the plan's limits, and the last six months",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usage"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "billing"
+        ]
+      }
+    },
     "/v1/ops/sync": {
       "post": {
         "operationId": "OpsController_sync",
@@ -20408,6 +20473,152 @@
             "pattern": "^[\\x21-\\x7E]{1,64}$"
           }
         },
+        "additionalProperties": false
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "description": "YYYY-MM"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "string",
+            "enum": [
+              "free",
+              "growth",
+              "scale",
+              "enterprise"
+            ]
+          },
+          "closed": {
+            "type": "boolean",
+            "description": "The month is over and its numbers are frozen"
+          },
+          "usage": {
+            "type": "object",
+            "properties": {
+              "orders": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Orders placed in the month, every channel"
+              },
+              "whatsappMessages": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "WhatsApp messages Mizan sent (failed sends not counted)"
+              },
+              "aiOffers": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Offers Claude wrote"
+              },
+              "stores": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Store connections that are on"
+              },
+              "users": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Active team members"
+              }
+            },
+            "required": [
+              "orders",
+              "whatsappMessages",
+              "aiOffers",
+              "stores",
+              "users"
+            ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "ordersPerMonth": {
+                "nullable": true,
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "stores": {
+                "nullable": true,
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "users": {
+                "nullable": true,
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "ordersPerMonth",
+              "stores",
+              "users"
+            ],
+            "additionalProperties": false,
+            "description": "The plan's limits; null = none"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string"
+                },
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "whatsappMessages": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "aiOffers": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "closed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "month",
+                "orders",
+                "whatsappMessages",
+                "aiOffers",
+                "closed"
+              ],
+              "additionalProperties": false
+            },
+            "description": "This month and the five before, newest first"
+          }
+        },
+        "required": [
+          "month",
+          "timezone",
+          "plan",
+          "closed",
+          "usage",
+          "limits",
+          "history"
+        ],
         "additionalProperties": false
       },
       "VariantCostPage": {

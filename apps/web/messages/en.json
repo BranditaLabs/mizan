@@ -1142,7 +1142,8 @@
       "confirmation": "Confirmation",
       "offers": "Offers",
       "ads": "Ad spend",
-      "refunds": "Refunds"
+      "refunds": "Refunds",
+      "usage": "Plan and usage"
     }
   },
   "confirmationSettings": {
@@ -2345,6 +2346,40 @@
       "restock": "Sellable",
       "damaged": "Damaged",
       "write_off": "Written off"
+    }
+  },
+  "usage": {
+    "title": "Plan and usage",
+    "subtitle": "What your store used this month against its plan.",
+    "loading": "Loading",
+    "thisMonth": "This month · {month}",
+    "ofLimit": "<n>{used}</n> of <n>{limit}</n>",
+    "unlimited": "<n>{used}</n> · no limit",
+    "over": "Over the plan's limit: nothing stops, and we'll suggest a bigger plan.",
+    "atCost": "<n>{messages}</n> WhatsApp messages and <n>{ai}</n> AI offers this month, charged at cost.",
+    "soft": "Limits never stop orders. Past months are frozen once they end.",
+    "history": "Last six months",
+    "closed": "Closed",
+    "columns": {
+      "month": "Month",
+      "orders": "Orders",
+      "messages": "WhatsApp messages",
+      "ai": "AI offers"
+    },
+    "meters": {
+      "orders": "Orders this month",
+      "stores": "Stores",
+      "users": "Team members"
+    },
+    "plan": {
+      "free": "Free",
+      "growth": "Growth",
+      "scale": "Scale",
+      "enterprise": "Enterprise"
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and finance see the plan and usage."
     }
   }
 }

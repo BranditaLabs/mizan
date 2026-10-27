@@ -1034,6 +1034,18 @@ export interface Tickets {
   updated_at: Generated<Timestamp>;
 }
 
+export interface UsageMonths {
+  tenant_id: string;
+  month: Timestamp;
+  orders: number;
+  whatsapp_messages: number;
+  ai_offers: number;
+  stores: number;
+  users: number;
+  plan: string;
+  closed_at: Generated<Timestamp>;
+}
+
 export interface Users {
   id: Generated<string>;
   firebase_uid: string;
@@ -1181,6 +1193,7 @@ export interface DB {
   tenants: Tenants;
   ticket_events: TicketEvents;
   tickets: Tickets;
+  usage_months: UsageMonths;
   users: Users;
   variants: Variants;
   warehouses: Warehouses;

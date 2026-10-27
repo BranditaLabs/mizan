@@ -177,7 +177,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 
 - [ ] **E12-1** `M` Plan limits (orders/month, stores, users) enforced with soft warnings + upgrade prompts.
 - [ ] **E12-2** `M` Paymob subscription billing for EGP; invoices.
-- [ ] **E12-3** `S` Usage metering (orders, messages) per tenant per month.
+- [x] **E12-3** `S` Usage metering (orders, messages) per tenant per month. ✅ The live month counted from the source tables in the store's time zone (orders placed, WhatsApp messages sent, AI offers, stores, users); months frozen in `usage_months` (migration 0038) by an hourly worker job, once; `GET /v1/usage`; plans and limits from docs/01 §8 in `billing/plans.ts`; Settings → Plan and usage with meters and the last six months (AR/EN).
 
 ### E16 · Production hardening and scale
 

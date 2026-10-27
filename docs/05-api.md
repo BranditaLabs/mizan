@@ -222,6 +222,12 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | GET | `/catalog` | ✅ E11-3. Automation triggers (every domain event except plumbing, with the context each loads: order, stock item or none), fields per context (no personal data), operators, actions with their params' JSON Schema, guards. One registry in code (`modules/automations/catalog.ts`) |
 | GET / POST | `/notifications` · `/notifications/read` | ✅ E11-1. The caller's team notifications (addressed to roles; `notify.team` and alerts), newest first, with `unread`; `POST /notifications/read { ids } \| { all: true }` marks them read for the caller. Every member |
 
+### Billing (E12)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/usage` | ✅ E12-3. `?month=YYYY-MM` (this month by default, in the store's time zone) → `{ month, timezone, plan, closed, usage{ orders, whatsappMessages, aiOffers, stores, users }, limits{ ordersPerMonth, stores, users } (null = none), history[6]{ month, orders, whatsappMessages, aiOffers, closed } }`. Orders: placed in the month, every channel, cancelled ones too. Messages: WhatsApp sent (failed not counted). AI offers: offers Claude wrote. A month that is over is frozen (`usage_months`, closed hourly by the worker) and never changes. Owner, admin, finance |
+
 ### Webhooks in (public, no user auth)
 
 | Path | Verification |

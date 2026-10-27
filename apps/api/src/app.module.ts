@@ -12,6 +12,7 @@ import { StockModule } from "./modules/stock/stock.module.js";
 import { PaymentsModule } from "./modules/payments/payments.module.js";
 import { TicketsModule } from "./modules/tickets/tickets.module.js";
 import { ReturnsModule } from "./modules/returns/returns.module.js";
+import { BillingModule } from "./modules/billing/billing.module.js";
 import { OpsModule } from "./modules/ops/ops.module.js";
 import { AutomationsModule } from "./modules/automations/automations.module.js";
 import { ConfirmationModule } from "./modules/confirmation/confirmation.module.js";
@@ -54,7 +55,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, BillingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }],
     };
   }

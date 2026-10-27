@@ -513,6 +513,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["BillingController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -4473,6 +4489,41 @@ export interface components {
             /** @description Set here (Mizan owns it from then); null gives it back to the store's barcode */
             barcode?: string | null;
         };
+        Usage: {
+            /** @description YYYY-MM */
+            month: string;
+            timezone: string;
+            /** @enum {string} */
+            plan: "free" | "growth" | "scale" | "enterprise";
+            /** @description The month is over and its numbers are frozen */
+            closed: boolean;
+            usage: {
+                /** @description Orders placed in the month, every channel */
+                orders: number;
+                /** @description WhatsApp messages Mizan sent (failed sends not counted) */
+                whatsappMessages: number;
+                /** @description Offers Claude wrote */
+                aiOffers: number;
+                /** @description Store connections that are on */
+                stores: number;
+                /** @description Active team members */
+                users: number;
+            };
+            /** @description The plan's limits; null = none */
+            limits: {
+                ordersPerMonth: number | null;
+                stores: number | null;
+                users: number | null;
+            };
+            /** @description This month and the five before, newest first */
+            history: {
+                month: string;
+                orders: number;
+                whatsappMessages: number;
+                aiOffers: number;
+                closed: boolean;
+            }[];
+        };
         VariantCostPage: {
             data: {
                 /** Format: uuid */
@@ -6443,6 +6494,42 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    BillingController_get: {
+        parameters: {
+            query?: {
+                /** @description YYYY-MM in the store's time zone; this month if absent */
+                month?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A month's orders, messages and AI offers, the stores and users counted, the plan's limits, and the last six months */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Usage"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */
