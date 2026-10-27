@@ -900,6 +900,12 @@ export interface Shipments {
   attempts: Generated<number>;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  booking: Generated<string>;
+  error_code: string | null;
+  error: string | null;
+  tracking_url: string | null;
+  requested_by: string | null;
+  booked_at: Timestamp | null;
 }
 
 export interface ShopifyInstalls {

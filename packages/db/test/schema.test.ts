@@ -187,6 +187,20 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT tenant_id FROM usage_months`))).rows).toEqual([{ tenant_id: T2 }]);
   });
 
+  it("keeps one live courier booking per order; a failed or cancelled one can be booked again (E7-1)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, external_id, number, currency, total_minor, placed_at, status) VALUES ($1, 'ship-1', '#SHIP1', 'EGP', 100000, now(), 'confirmed') RETURNING id`, [T1]))).rows[0]!.id;
+    const courier = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO connections (tenant_id, kind, provider, external_account) VALUES ($1, 'courier', 'bosta', 'bosta-ship') RETURNING id`, [T1]))).rows[0]!.id;
+    const book = (booking = "pending") => asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO shipments (tenant_id, order_id, connection_id, provider, currency, booking) VALUES ($1, $2, $3, 'bosta', 'EGP', $4) RETURNING id`, [T1, order, courier, booking]));
+    const first = (await book()).rows[0]!.id;
+    await expect(book()).rejects.toThrow(/shipments_one_live/);
+    await asTenant(T1, () => db.query(`UPDATE shipments SET booking = 'failed', error_code = 'validation' WHERE id = $1`, [first]));
+    const second = (await book()).rows[0]!.id;
+    await asTenant(T1, () => db.query(`UPDATE shipments SET booking = 'booked', status = 'cancelled' WHERE id = $1`, [second]));
+    await book();
+    await expect(book("sent")).rejects.toThrow(/booking_check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM shipments`))).rows).toEqual([]);
+  });
+
   it("engine order records hold no personal data (E2-8, migration 0025 shape)", async () => {
     const sql = (await import("node:fs")).readFileSync(new URL("../migrations/0025_engine_records_without_pii.sql", import.meta.url), "utf8");
     const order = { externalId: "gid://shopify/Order/9", total: { amount: "1150.00", currency: "EGP" }, customer: { name: "Mona Adel", phone: "+201001234821", email: "mona@example.com" },

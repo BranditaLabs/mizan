@@ -120,7 +120,7 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/orders/{id}/ship` | `{ connectionId? }` → enqueues `createShipment` (idempotent per order) |
+| POST | `/orders/{id}/ship` | ✅ E7-1. No body. A confirmed order with a delivery address → `202` `Shipment { id, orderId, provider, booking: pending, status, trackingNumber: null, trackingUrl, cod, error, requestedAt, bookedAt }` and the outbox job `bosta.ship` (ids only; the worker reads the address and phone). While a booking is pending or booked, asking again returns it with `200` (never a second delivery). The courier's answer sets `booking` = `booked` (tracking number; the order becomes `shipped` with `shipped_at`; a Shopify order is fulfilled with the number) or `failed` with `error.code` `city_unknown`\|`address_invalid`\|`payment_blocks`\|`cancelled`\|`not_found`\|`courier_refused_key`\|`courier_failed` (ask again once fixed). `409`: `not_confirmed`, `address_missing`, `payment_blocks_shipping` (`errors[0].code` = the reason), `no_courier`, `courier_needs_attention`, `store_not_connected`. Owner, admin, ops manager, warehouse; audited `shipment.requested`. The order detail's `shipments[]` carries `booking`, `errorCode`, `trackingUrl` |
 | GET | `/shipments` · `/shipments/{id}` | List, detail with events |
 | POST | `/shipments/{id}/cancel` | Cancel with courier |
 | GET | `/shipments/{id}/label` | PDF label (A6/A4) |

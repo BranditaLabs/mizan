@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { CANCEL_RESULTS } from "../modules/orders/ports.js";
+import { SHIPMENT_RESULTS, type ShipmentResultSink } from "../modules/shipping/ports.js";
 import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
 import { APP_CONFIG, type AppConfig } from "../platform/config.js";
@@ -81,6 +82,10 @@ export class EngineRegistry {
   /** M2 depends on the engine and the engine reports back to M2: resolved when first needed. */
   private get cancelResults(): CancelResultSink | undefined {
     try { return this.moduleRef.get<CancelResultSink>(CANCEL_RESULTS, { strict: false }); } catch { return undefined; }
+  }
+
+  private get shipmentResults(): ShipmentResultSink | undefined {
+    try { return this.moduleRef.get<ShipmentResultSink>(SHIPMENT_RESULTS, { strict: false }); } catch { return undefined; }
   }
 
   private get offerResults(): OfferResultSink | undefined {
@@ -177,6 +182,11 @@ export class EngineRegistry {
         // An accepted offer is in the Shopify order now, or could not be added (E6-13).
         onOfferResult: async (offerId, result) => {
           await this.offerResults?.recordResult(tenantId, offerId, result);
+        },
+        // M3 (E7-1): the order a ship job books, read with its delivery contact; and the courier's answer.
+        loadOrder: async (orderId) => this.shipmentResults?.loadOrder(tenantId, orderId),
+        onShipment: async (shipmentId, result) => {
+          await this.shipmentResults?.recordResult(tenantId, shipmentId, result);
         },
         // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
         onLearned: async (provider, state) => {

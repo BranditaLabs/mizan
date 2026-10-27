@@ -113,6 +113,9 @@ export const OrderDetailSchema = OrderSummarySchema.extend({
   })),
   shipments: z.array(z.object({
     id: z.uuid(), provider: z.string(), trackingNumber: z.string().nullable(), status: z.string(), statusAt: z.iso.datetime().nullable(), cod: MoneyLine,
+    booking: z.enum(["pending", "booked", "failed"]).describe("E7-1: pending while the courier is booked; failed with errorCode"),
+    errorCode: z.string().nullable().describe("Why the booking failed: city_unknown, address_invalid, payment_blocks, cancelled, not_found, courier_refused_key, courier_failed"),
+    trackingUrl: z.string().nullable(),
   })),
   /** The earlier order this one likely repeats, and what matched (E5-3). */
   duplicateOf: z.object({

@@ -57,11 +57,29 @@ export interface EngineOptions {
     onReconciled?: (result: ReconcileResult) => Promise<void>;
     /** The store's order was cancelled (E5-4), already was, or could not be (final). Must be idempotent. */
     onCancelResult?: (orderId: string, result: CancelOutcome) => Promise<void>;
+    /**
+     * The order a ship job is for (E7-1), read by the platform with its personal data (the courier
+     * needs the address and phone, which never go into a job). Undefined when it no longer exists.
+     */
+    loadOrder?: (orderId: string) => Promise<CanonicalOrder | undefined>;
+    /** A ship job booked the delivery (now, or found it booked by an earlier attempt), or could not (final). Must be idempotent. */
+    onShipment?: (shipmentId: string, result: ShipOutcome) => Promise<void>;
   };
 }
 
 /** Adding an offer to the store's order: done (now or before), or why not (final; the team adds it by hand). */
 export type OfferOutcome = { ok: true; outcome: "added" | "already_added" } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string };
+
+/**
+ * Hand a Mizan order to the courier (E7-1). `shipmentId` is the platform's shipment row and the
+ * courier's reference (a booking cancelled and booked again gets a new one); `storeOrderId` is
+ * the Shopify order, fulfilled with the tracking number once booked.
+ */
+export interface ShipJob { shipmentId: string; orderId: string; storeOrderId?: string }
+/** Booked (the shipment without `raw`), or why not: the order, its payment or the courier refused it (final). */
+export type ShipOutcome =
+  | { ok: true; shipment: CanonicalShipment; adopted: boolean }
+  | { ok: false; reason: "validation" | "blocked" | "not_found" | "permission" | "failed"; message: string; blockReason?: ShipBlockReason; details?: Record<string, unknown> };
 
 /** One store day to reconcile (E5-8): orders created in [from, to). */
 export interface ReconcileJob { day: string; from: string; to: string }
@@ -333,6 +351,11 @@ export class MizanEngine {
     return { kind: "bosta.checkAccess", connection: "bosta", payload: {}, idempotencyKey: `bosta:access:${runKey}` };
   }
 
+  /** Book the courier for a Mizan order (E7-1): one job per shipment row, whatever happens. */
+  static bostaShipJob(p: ShipJob): NewJob<ShipJob> {
+    return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
+  }
+
   /** Add an accepted offer to the store's order (E6-13): one job per offer, whatever happens. */
   static shopifyOfferJob(p: OfferJob): NewJob<OfferJob> {
     return { kind: "shopify.addOffer", connection: "shopify", payload: p, idempotencyKey: `shopify:offer:${p.offerId}` };
@@ -477,6 +500,7 @@ export class MizanEngine {
       "shopify.pollOrders": () => this.pollOrders(),
       "bosta.pollActive": () => this.pollActiveShipments(),
       "bosta.createShipment": (j) => this.createShipment(j.payload.orderId, j.attempts),
+      "bosta.ship": (j) => this.ship(j.payload as ShipJob, j.attempts),
       "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber),
       "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber),
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
@@ -625,6 +649,52 @@ export class MizanEngine {
     await this.store.put<ShipmentRecord>("shipment", shipment.trackingNumber, { shipment: { ...shipment, raw: undefined }, orderId, statusAt: Date.parse(shipment.updatedAt) || this.now() }, this.now());
     this.emit("shipment.created", { orderId, trackingNumber: shipment.trackingNumber, adopted, cod: shipment.cod.amount });
     await this.enqueue("shopify.fulfill", { orderId, trackingNumber: shipment.trackingNumber }, `fulfill:${orderId}:${shipment.trackingNumber}`);
+  }
+
+  /**
+   * E7-1: book the courier for an order the platform owns (a store's or one the team typed). The
+   * platform reads the order (with the address and phone) through hooks.loadOrder; the courier
+   * collects cashToCollect(order); a retry first looks the reference up, so a booking whose answer
+   * was lost is adopted, never made twice. Final refusals go back through hooks.onShipment.
+   */
+  private async ship(p: ShipJob, attempt: number) {
+    const fail = async (reason: Extract<ShipOutcome, { ok: false }>["reason"], message: string, blockReason?: ShipBlockReason, details?: Record<string, unknown>) => {
+      await this.runHook(() => this.opts.hooks?.onShipment?.(p.shipmentId, { ok: false, reason, message, ...(blockReason ? { blockReason } : {}), ...(details ? { details } : {}) }));
+      this.emit("shipment.failed", { shipmentId: p.shipmentId, orderId: p.orderId, reason, ...(blockReason ? { blockReason } : {}) });
+    };
+    let order: CanonicalOrder | undefined;
+    try {
+      order = await this.opts.hooks?.loadOrder?.(p.orderId);
+    } catch (e) {
+      throw new IntegrationError({ kind: "transient", connector: "platform", message: e instanceof Error ? e.message : String(e), cause: e });
+    }
+    if (!order) return fail("not_found", `order ${p.orderId} not found`);
+    if (order.cancelled) return fail("validation", `order ${order.number} is cancelled`, undefined, { cancelled: true });
+
+    let booked: { shipment: CanonicalShipment; adopted: boolean };
+    try {
+      booked = await this.bosta.createShipmentOnce(order, p.shipmentId, attempt > 1);
+    } catch (e) {
+      if (e instanceof ShipBlockedError) return fail("blocked", e.message, e.reason);
+      // Retryable trouble is retried by the worker; the rest is final.
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await fail(reason, e.message, undefined, e.details as Record<string, unknown> | undefined);
+      if (reason === "permission") throw e; // the courier key was refused: surfaces as needs attention
+      return;
+    }
+    await this.saveLearned();
+    const shipment = { ...booked.shipment, raw: undefined };
+    const tn = shipment.trackingNumber;
+    if (p.storeOrderId) {
+      const rec = await this.store.get<OrderRecord>("order", p.storeOrderId);
+      if (rec) await this.store.put<OrderRecord>("order", p.storeOrderId, { ...rec, trackingNumber: tn }, this.now());
+    }
+    // Status webhooks find the order through this record (the store's order id when there is one).
+    await this.store.put<ShipmentRecord>("shipment", tn, { shipment, orderId: p.storeOrderId ?? p.orderId, statusAt: Date.parse(shipment.updatedAt) || this.now() }, this.now());
+    await this.runHook(() => this.opts.hooks?.onShipment?.(p.shipmentId, { ok: true, shipment, adopted: booked.adopted }));
+    this.emit("shipment.created", { shipmentId: p.shipmentId, orderId: p.orderId, trackingNumber: tn, adopted: booked.adopted, cod: shipment.cod.amount });
+    if (p.storeOrderId) await this.enqueue("shopify.fulfill", { orderId: p.storeOrderId, trackingNumber: tn }, `fulfill:${p.storeOrderId}:${tn}`);
   }
 
   private async fulfill(orderId: string, trackingNumber: string) {

@@ -647,9 +647,6 @@
       "timeline": {
         "title": "Activity",
         "empty": "Nothing yet."
-      },
-      "shipments": {
-        "title": "Shipments"
       }
     },
     "events": {
@@ -664,7 +661,10 @@
       "confirmed": "Confirmed by {channel}",
       "cancelled": "Cancelled by {channel}",
       "change_requested": "Change requested by {channel}",
-      "confirmation_escalated": "Handed to an agent"
+      "confirmation_escalated": "Handed to an agent",
+      "ship_requested": "Sent to the courier",
+      "shipped": "Shipped: the courier has it",
+      "ship_failed": "The courier booking failed"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -2452,5 +2452,41 @@
     "excel": "Excel",
     "csv": "CSV",
     "tip": "{day}: {value}"
+  },
+  "shipping": {
+    "title": "Shipping",
+    "ship": "Ship it",
+    "again": "Try shipping again",
+    "ready": "Confirmed and ready: book the courier.",
+    "track": "Track",
+    "cod": "Courier collects <m></m>",
+    "noCod": "Nothing to collect (paid)",
+    "booking": {
+      "pending": "Booking the courier…",
+      "failed": "Booking failed"
+    },
+    "status": {
+      "created": "Created",
+      "pickup_requested": "Pickup requested",
+      "picked_up": "Picked up",
+      "in_transit": "In transit",
+      "out_for_delivery": "Out for delivery",
+      "failed_attempt": "Delivery attempt failed",
+      "delivered": "Delivered",
+      "returning": "Returning",
+      "returned": "Returned",
+      "cancelled": "Cancelled",
+      "lost": "Lost",
+      "unknown": "Needs review"
+    },
+    "error": {
+      "city_unknown": "The courier doesn't know this city. Fix the city, then try again.",
+      "address_invalid": "The courier refused the address or phone. Fix them, then try again.",
+      "payment_blocks": "The payment doesn't allow shipping yet.",
+      "cancelled": "The order was cancelled.",
+      "not_found": "The order wasn't found.",
+      "courier_refused_key": "The courier refused the account key: check Settings → Integrations.",
+      "courier_failed": "The courier refused the booking. Try again."
+    }
   }
 }

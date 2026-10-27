@@ -93,11 +93,16 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 > Codes shown are illustrative. Each adapter ships with a mapping table confirmed against that courier's API documentation.
 
+## Built
+
+✅ **E7-1 — booking the courier.** A confirmed order with a delivery address is shipped from the order screen (`POST /v1/orders/{id}/ship`, owner, admin, ops manager, warehouse). The shipment row (`booking = pending`) and the engine job `bosta.ship` are written in one transaction; the job carries ids only and the engine reads the order (address, phone) from the platform when it runs. Bosta is called once per shipment: the shipment id is the courier reference, so a booking whose answer was lost is found and adopted, never made twice. The courier collects `cashToCollect(order)` (0 when prepaid, the balance after a deposit; an unpaid transfer is refused before anything is queued). Booked → tracking number, the order `shipped` with `shipped_at` (stock picks, profit moves to shipped), a Shopify order fulfilled with the number. Refused → `failed` with a reason the screen explains (unknown city, address or phone, payment, the courier key), and the team ships again once fixed. Labels wait for Bosta's AWB endpoint to be confirmed (E7-2); status updates from the courier land with E7-3.
+
 ## Events emitted
 
 | Event | Meaning |
 | --- | --- |
-| `shipment.created` | Courier booked, tracking number issued |
+| `shipment.created` | Courier booked, tracking number issued ✅ E7-1 |
+| `shipment.booking_failed` | The courier or the order refused the booking (`code`: city_unknown, address_invalid, payment_blocks …) ✅ E7-1 |
 | `shipment.status_changed` | Mapped status changed |
 | `shipment.stuck` | No update past the threshold |
 | `shipment.delivered` | Final delivered status |
@@ -145,6 +150,7 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| POST | `/v1/orders/{id}/ship` | Book one order ✅ E7-1 (bulk with the shipping screen, E7-2) |
 | POST | `/v1/shipments` | Book one or many shipments |
 | GET | `/v1/shipments/{id}/label` | Label PDF |
 | GET | `/v1/shipments` | List and filter |

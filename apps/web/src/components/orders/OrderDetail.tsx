@@ -20,6 +20,7 @@ import { DuplicateBanner } from "./DuplicateBanner";
 import { LedgerCard } from "./LedgerCard";
 import { RefundsCard } from "@/components/payments/Refunds";
 import { ReturnsCard } from "./ReturnsCard";
+import { ShippingCard } from "./ShippingCard";
 import { ProfitCard } from "./ProfitCard";
 import { TicketsCard } from "./TicketsCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
@@ -56,6 +57,8 @@ export function OrderDetail({ id }: { id: string }) {
     queryFn: () => ok(api.GET("/v1/orders/{id}", { params: { path: { id } } })),
     enabled: Boolean(store),
     meta: { toast: false },
+    // While the courier is being booked (E7-1), look again until it answers.
+    refetchInterval: (q) => (q.state.data?.shipments.some((s) => s.booking === "pending") ? 2000 : false),
   });
 
   const back = (
@@ -93,6 +96,9 @@ export function OrderDetail({ id }: { id: string }) {
       case "cancelled": return t("events.cancelled", { channel: channelLabel(e.data.channel) });
       case "change_requested": return t("events.change_requested", { channel: channelLabel(e.data.channel) });
       case "confirmation_escalated": return t("events.confirmation_escalated");
+      case "ship_requested": return t("events.ship_requested");
+      case "shipped": return t("events.shipped");
+      case "ship_failed": return t("events.ship_failed");
       default: return t("events.other");
     }
   };
@@ -156,15 +162,9 @@ export function OrderDetail({ id }: { id: string }) {
               )}
             </Card>
           )} />
+          <ShippingCard order={o} />
           <ReturnsCard orderId={o.id} />
           <RefundsCard orderId={o.id} />
-          {o.shipments.length ? (
-            <Card title={t("detail.shipments.title")}>
-              <ul className="flex flex-col gap-2">
-                {o.shipments.map((s) => <li key={s.id}><IdCell>{s.trackingNumber ?? s.id}</IdCell>{" · "}{sourceName(s.provider)}{" · "}{s.status}</li>)}
-              </ul>
-            </Card>
-          ) : null}
         </div>
 
         <aside className="flex flex-col gap-4">

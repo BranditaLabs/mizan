@@ -513,6 +513,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ShippingController_ship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -3360,6 +3376,14 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
+                /**
+                 * @description E7-1: pending while the courier is booked; failed with errorCode
+                 * @enum {string}
+                 */
+                booking: "pending" | "booked" | "failed";
+                /** @description Why the booking failed: city_unknown, address_invalid, payment_blocks, cancelled, not_found, courier_refused_key, courier_failed */
+                errorCode: string | null;
+                trackingUrl: string | null;
             }[];
             duplicateOf: {
                 /** Format: uuid */
@@ -4366,6 +4390,36 @@ export interface components {
         SetFxRate: {
             /** @description 1 unit of the store's base currency = rate units of the quote currency */
             rate: string;
+        };
+        Shipment: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            provider: string;
+            /**
+             * @description pending: the courier is being booked; booked: it has a tracking number; failed: see error
+             * @enum {string}
+             */
+            booking: "pending" | "booked" | "failed";
+            /** @description The courier's status, canonical (created, pickup_requested … delivered, returned) */
+            status: string;
+            trackingNumber: string | null;
+            trackingUrl: string | null;
+            /** @description Cash the courier collects (cashToCollect: 0 when prepaid, the balance for a deposit) */
+            cod: {
+                amount: string;
+                currency: string;
+            };
+            error: {
+                /** @enum {string} */
+                code: "city_unknown" | "address_invalid" | "payment_blocks" | "cancelled" | "not_found" | "courier_refused_key" | "courier_failed";
+                message: string;
+            } | null;
+            /** Format: date-time */
+            requestedAt: string;
+            /** Format: date-time */
+            bookedAt: string | null;
         };
         ShopifyClaim: {
             install: string;
@@ -6701,6 +6755,59 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ShippingController_ship: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Booking queued (booking = pending), or the booking already pending or booked for this order (200); audited */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shipment"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

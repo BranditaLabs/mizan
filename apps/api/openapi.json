@@ -3493,6 +3493,88 @@
         ]
       }
     },
+    "/v1/orders/{id}/ship": {
+      "post": {
+        "operationId": "ShippingController_ship",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Booking queued (booking = pending), or the booking already pending or booked for this order (200); audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Shipment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "shipping"
+        ]
+      }
+    },
     "/v1/usage": {
       "get": {
         "operationId": "BillingController_get",
@@ -16141,6 +16223,24 @@
                     "currency"
                   ],
                   "additionalProperties": false
+                },
+                "booking": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "booked",
+                    "failed"
+                  ],
+                  "description": "E7-1: pending while the courier is booked; failed with errorCode"
+                },
+                "errorCode": {
+                  "nullable": true,
+                  "description": "Why the booking failed: city_unknown, address_invalid, payment_blocks, cancelled, not_found, courier_refused_key, courier_failed",
+                  "type": "string"
+                },
+                "trackingUrl": {
+                  "nullable": true,
+                  "type": "string"
                 }
               },
               "required": [
@@ -16149,7 +16249,10 @@
                 "trackingNumber",
                 "status",
                 "statusAt",
-                "cod"
+                "cod",
+                "booking",
+                "errorCode",
+                "trackingUrl"
               ],
               "additionalProperties": false
             }
@@ -20149,6 +20252,113 @@
         "required": [
           "rate"
         ]
+      },
+      "Shipment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "booking": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "booked",
+              "failed"
+            ],
+            "description": "pending: the courier is being booked; booked: it has a tracking number; failed: see error"
+          },
+          "status": {
+            "type": "string",
+            "description": "The courier's status, canonical (created, pickup_requested … delivered, returned)"
+          },
+          "trackingNumber": {
+            "nullable": true,
+            "type": "string"
+          },
+          "trackingUrl": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cod": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false,
+            "description": "Cash the courier collects (cashToCollect: 0 when prepaid, the balance for a deposit)"
+          },
+          "error": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "city_unknown",
+                  "address_invalid",
+                  "payment_blocks",
+                  "cancelled",
+                  "not_found",
+                  "courier_refused_key",
+                  "courier_failed"
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "bookedAt": {
+            "nullable": true,
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "orderId",
+          "provider",
+          "booking",
+          "status",
+          "trackingNumber",
+          "trackingUrl",
+          "cod",
+          "error",
+          "requestedAt",
+          "bookedAt"
+        ],
+        "additionalProperties": false
       },
       "ShopifyClaim": {
         "type": "object",

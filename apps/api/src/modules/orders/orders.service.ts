@@ -111,7 +111,7 @@ export class OrdersService {
       const [lines, payments, shipments, events] = await Promise.all([
         trx.selectFrom("order_lines").select(["id", "sku", "title", "quantity", "unit_price_minor", "variant_id"]).where("order_id", "=", id).orderBy("id").execute(),
         trx.selectFrom("payments").select(["id", "kind", "method", "status", "amount_minor", "currency", "occurred_at"]).where("order_id", "=", id).orderBy("occurred_at", "desc").execute(),
-        trx.selectFrom("shipments").select(["id", "provider", "tracking_number", "status", "status_at", "cod_minor", "currency"]).where("order_id", "=", id).orderBy("created_at", "desc").execute(),
+        trx.selectFrom("shipments").select(["id", "provider", "tracking_number", "status", "status_at", "cod_minor", "currency", "booking", "error_code", "tracking_url"]).where("order_id", "=", id).orderBy("created_at", "desc").execute(),
         trx.selectFrom("order_events").select(["id", "type", "from_status", "to_status", "actor_type", "data", "created_at"]).where("order_id", "=", id)
           .orderBy("created_at", "desc").orderBy("id", "desc").limit(200).execute(),
       ]);
@@ -140,7 +140,8 @@ export class OrdersService {
           id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPrice: money(l.unit_price_minor), total: money(BigInt(l.unit_price_minor) * BigInt(l.quantity)), variantId: l.variant_id,
         })),
         payments: payments.map((p) => ({ id: p.id, kind: p.kind, method: p.method, status: p.status, amount: money(p.amount_minor, p.currency), occurredAt: p.occurred_at.toISOString() })),
-        shipments: shipments.map((x) => ({ id: x.id, provider: x.provider, trackingNumber: x.tracking_number, status: x.status, statusAt: iso(x.status_at), cod: money(x.cod_minor, x.currency) })),
+        shipments: shipments.map((x) => ({ id: x.id, provider: x.provider, trackingNumber: x.tracking_number, status: x.status, statusAt: iso(x.status_at), cod: money(x.cod_minor, x.currency),
+          booking: x.booking as OrderDetail["shipments"][number]["booking"], errorCode: x.error_code, trackingUrl: x.tracking_url })),
         events: events.map((e) => ({
           id: e.id, type: e.type, fromStatus: e.from_status, toStatus: e.to_status, actorType: e.actor_type as OrderDetail["events"][number]["actorType"],
           at: e.created_at.toISOString(), data: eventData(e.data),

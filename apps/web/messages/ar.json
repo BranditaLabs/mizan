@@ -647,9 +647,6 @@
       "timeline": {
         "title": "النشاط",
         "empty": "مفيش حاجة لسه."
-      },
-      "shipments": {
-        "title": "الشحنات"
       }
     },
     "events": {
@@ -664,7 +661,10 @@
       "confirmed": "اتأكّد عن طريق {channel}",
       "cancelled": "اتلغى عن طريق {channel}",
       "change_requested": "طلب تعديل عن طريق {channel}",
-      "confirmation_escalated": "اتحوّل لموظف"
+      "confirmation_escalated": "اتحوّل لموظف",
+      "ship_requested": "اتبعت لشركة الشحن",
+      "shipped": "اتشحن: الأوردر مع شركة الشحن",
+      "ship_failed": "حجز الشحن فشل"
     },
     "confirmation": {
       "title": "التأكيد",
@@ -2452,5 +2452,41 @@
     "excel": "ملف Excel",
     "csv": "ملف CSV",
     "tip": "يوم {day}: {value}"
+  },
+  "shipping": {
+    "title": "الشحن",
+    "ship": "اشحن الأوردر",
+    "again": "جرّب الشحن تاني",
+    "ready": "الأوردر متأكّد وجاهز: احجز الشحن.",
+    "track": "تتبّع الشحنة",
+    "cod": "المندوب هيحصّل <m></m>",
+    "noCod": "مفيش تحصيل (مدفوع)",
+    "booking": {
+      "pending": "بنحجز الشحن…",
+      "failed": "الحجز فشل"
+    },
+    "status": {
+      "created": "اتعملت",
+      "pickup_requested": "مستني الاستلام",
+      "picked_up": "اتستلمت",
+      "in_transit": "في الطريق",
+      "out_for_delivery": "خرجت للتوصيل",
+      "failed_attempt": "محاولة توصيل فشلت",
+      "delivered": "اتسلّمت",
+      "returning": "راجعة",
+      "returned": "رجعت",
+      "cancelled": "اتلغت",
+      "lost": "ضاعت",
+      "unknown": "محتاجة مراجعة"
+    },
+    "error": {
+      "city_unknown": "شركة الشحن مش عارفة المدينة دي. صحّح المدينة وجرّب تاني.",
+      "address_invalid": "شركة الشحن رفضت العنوان أو الموبايل. صحّحهم وجرّب تاني.",
+      "payment_blocks": "الدفع لسه ميسمحش بالشحن.",
+      "cancelled": "الأوردر اتلغى.",
+      "not_found": "الأوردر مش موجود.",
+      "courier_refused_key": "شركة الشحن رفضت مفتاح الحساب: راجع الإعدادات ← الربط.",
+      "courier_failed": "شركة الشحن رفضت الحجز. جرّب تاني."
+    }
   }
 }

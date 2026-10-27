@@ -18,7 +18,7 @@ export const DOMAIN_EVENT_TYPES = [
   "confirmation.started", "confirmation.routed", "confirmation.sent", "confirmation.escalated",
   "offer.proposed", "offer.accepted", "offer.declined", "offer.expired", "offer.applied", "offer.failed",
   // M3 Shipping
-  "shipment.created", "shipment.status_changed", "shipment.delivered", "shipment.returned",
+  "shipment.created", "shipment.booking_failed", "shipment.status_changed", "shipment.delivered", "shipment.returned",
   // M4 Warehouse
   "stock.reserved", "stock.released", "stock.short", "stock.received", "stock.low", "stock.out", "stock.adjusted", "stock.changed",
   // M5 Profit, M6 Returns, M8 Reconciliation
