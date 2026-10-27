@@ -17,6 +17,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentsListController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/mix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PaymentsListController_mix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders": {
         parameters: {
             query?: never;
@@ -3144,6 +3176,99 @@ export interface components {
             /** @description An order of the same customer with the same product within this many hours of another is a likely duplicate; 0 turns detection off (at most 7 days) */
             duplicateWindowHours: number;
         };
+        PaymentMix: {
+            days: number;
+            /** @description Orders placed in the period, cancelled ones left out */
+            orders: number;
+            modes: {
+                /** @enum {string} */
+                mode: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "unknown";
+                orders: number;
+                /** @description Share of the period's orders, one decimal */
+                pct: number;
+            }[];
+            /** @description Money in during the period by method, net of voids, per currency */
+            received: {
+                method: string;
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+        };
+        PaymentPage: {
+            data: {
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                    status: string;
+                    /** Format: date-time */
+                    placedAt: string;
+                };
+                /** @enum {string} */
+                mode: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "unknown";
+                /** @enum {string} */
+                status: "unpaid" | "authorized" | "partially_paid" | "paid" | "partially_refunded" | "refunded" | "voided" | "failed" | "disputed" | "unknown";
+                /** @description Methods in the order's ledger (card, wallet, instapay…) */
+                methods: string[];
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                paid: {
+                    amount: string;
+                    currency: string;
+                };
+                refunded: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description What the customer still owes */
+                balance: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Cash the courier collects */
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+            counts: {
+                all: number;
+                unpaid: number;
+                paid: number;
+                cod_due: number;
+                refunds: number;
+                disputes: number;
+            };
+            /** @description The view's sums, one row per currency (never mixed) */
+            totals: {
+                currency: string;
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                paid: {
+                    amount: string;
+                    currency: string;
+                };
+                refunded: {
+                    amount: string;
+                    currency: string;
+                };
+                balance: {
+                    amount: string;
+                    currency: string;
+                };
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+            nextCursor: string | null;
+        };
         /** @description The customer's data compiled for a data request (JSON) */
         PrivacyExport: unknown;
         PrivacyRequests: {
@@ -4125,6 +4250,82 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PaymentsListController_list: {
+        parameters: {
+            query?: {
+                /** @description unpaid: waiting for money before shipping; cod_due: cash the courier still has to collect; refunds; disputes */
+                view?: "all" | "unpaid" | "paid" | "cod_due" | "refunds" | "disputes";
+                mode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "unknown";
+                /** @description The order's number */
+                q?: string;
+                limit?: number;
+                cursor?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first, with counts per view and the view's sums per currency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PaymentsListController_mix: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Orders by payment mode and money in by method over the last 7, 30 or 90 days */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMix"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

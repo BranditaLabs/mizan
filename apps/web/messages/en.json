@@ -20,7 +20,8 @@
       "settings": "Settings",
       "products": "Products",
       "automations": "Automations",
-      "tickets": "Tickets"
+      "tickets": "Tickets",
+      "payments": "Payments"
     },
     "language": {
       "label": "Language",
@@ -2175,6 +2176,79 @@
     "noMatch": {
       "title": "No ticket matches",
       "body": "Try the ticket number (T-1001) or the order's number."
+    }
+  },
+  "paymentsScreen": {
+    "title": "Payments",
+    "subtitle": "Every order by where its money stands: waiting for money, cash still to collect, paid, refunded, disputed.",
+    "search": "Order number",
+    "tabsLabel": "Payment views",
+    "loading": "Loading payments…",
+    "more": "Show more",
+    "refunded": "<m></m> back",
+    "cod": "courier collects <m></m>",
+    "view": {
+      "all": "All",
+      "unpaid": "Waiting for money",
+      "cod_due": "Cash to collect",
+      "paid": "Paid",
+      "refunds": "Refunds",
+      "disputes": "Disputes"
+    },
+    "columns": {
+      "order": "Order",
+      "method": "Method",
+      "total": "Total",
+      "paid": "Paid",
+      "balance": "Still owed",
+      "status": "Status"
+    },
+    "totals": {
+      "total": "Total",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "balance": "Still owed",
+      "cod": "Cash couriers collect"
+    },
+    "noMatch": {
+      "title": "No order matches",
+      "body": "Try the order's number as the store shows it."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, finance and ops managers see payments."
+    },
+    "empty": {
+      "all": {
+        "title": "No orders yet",
+        "body": "Orders and their payments show up here as they arrive."
+      },
+      "unpaid": {
+        "title": "Nothing waiting for money",
+        "body": "Orders paid by transfer, card or link that haven't paid yet show up here."
+      },
+      "cod_due": {
+        "title": "No cash to collect",
+        "body": "Cash-on-delivery orders before delivery show up here with what the courier collects."
+      },
+      "paid": {
+        "title": "No paid orders",
+        "body": "Fully paid orders show up here."
+      },
+      "refunds": {
+        "title": "No refunds",
+        "body": "Orders with money given back show up here."
+      },
+      "disputes": {
+        "title": "No disputes",
+        "body": "Chargebacks from gateways show up here."
+      }
+    },
+    "mix": {
+      "title": "How customers paid · {days} days",
+      "open": "All payments",
+      "share": "<n>{pct}%</n> · {orders, plural, one {# order} other {# orders}}",
+      "received": "Money in by method"
     }
   }
 }

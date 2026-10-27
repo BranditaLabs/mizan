@@ -4,10 +4,10 @@ import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Key = "home" | "orders" | "confirmation" | "tickets" | "products" | "shipping" | "warehouse" | "profit" | "automations" | "settings";
+type Key = "home" | "orders" | "confirmation" | "tickets" | "payments" | "products" | "shipping" | "warehouse" | "profit" | "automations" | "settings";
 const NAV: ReadonlyArray<{ key: Key; icon: IconProps["name"]; href?: string; section?: string }> = [
   { key: "home", icon: "home", href: "/" }, { key: "orders", icon: "orders", href: "/orders" }, { key: "confirmation", icon: "verification", href: "/confirmation" },
-  { key: "tickets", icon: "returns", href: "/tickets" },
+  { key: "tickets", icon: "returns", href: "/tickets" }, { key: "payments", icon: "payments", href: "/payments" },
   { key: "products", icon: "product", href: "/products" },  { key: "shipping", icon: "shipping" }, { key: "warehouse", icon: "warehouse", href: "/stock" }, { key: "profit", icon: "profit", href: "/profit" },
   { key: "automations", icon: "automations", href: "/automations" },
   { key: "settings", icon: "settings", href: "/settings/costs", section: "/settings" },

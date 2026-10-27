@@ -57,7 +57,7 @@ export type PaymentMode = (typeof PAYMENT_MODES)[number];
 /** Where the money stands, independent of the platform's own enum. */
 export const PAYMENT_STATUSES = [
   "unpaid", "authorized", "partially_paid", "paid",
-  "partially_refunded", "refunded", "voided", "failed", "unknown",
+  "partially_refunded", "refunded", "voided", "failed", "disputed", "unknown",
 ] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 

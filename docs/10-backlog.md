@@ -166,7 +166,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 - [ ] **E14-3** `M` COD-to-prepaid conversion: link from verification queue and automation action `order.convert_to_prepaid`; shipment COD amount updated or re-booked.
 - [ ] **E14-4** `M` Refunds: approval thresholds, destinations (original method, store credit, bank transfer), audit; ticket integration (M6).
 - [ ] **E14-5** `S` Disputes: record chargebacks from gateway webhooks; evidence pack PDF (order, tracking, chat, address).
-- [ ] **E14-6** `S` Payments list screen with filters (unpaid, COD due, refunds, disputes) and payment mix on the home dashboard.
+- [x] **E14-6** `S` Payments list screen with filters (unpaid, COD due, refunds, disputes) and payment mix on the home dashboard. ✅ `GET /v1/payments` (views all, unpaid, cash to collect, paid, refunds, disputes; counts for every view; the view's sums per currency; search by order number; cursor pages), `GET /v1/payments/mix`; Payments in the menu and "How customers paid" on the home (AR/EN). Also: `disputed` added to the shared payment statuses (the ledger sets it on a chargeback; order lists now accept it).
 
 ### E15 · M20 Reports core
 

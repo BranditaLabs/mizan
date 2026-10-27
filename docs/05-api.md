@@ -187,7 +187,9 @@ Error `code` values are stable and documented; UI maps them to AR/EN messages.
 | POST | `/orders/{id}/payments` | ✅ E14-1. The team records money that moved outside any gateway: `{ type: received\|refunded, method: bank_transfer\|instapay\|wallet\|cash_pos\|store_credit, amount: "250.50" (Arabic digits accepted), note?, occurredAt? }` → 201 the ledger. The order's paid, refunded, status and cash to collect follow in the same transaction. 409 `over_payment` (more than still owed), `over_refund` (more than held); 422 `validation_failed`, `currency_mismatch`. Owner, admin, finance; audited `payment.recorded` (the note stays out of the audit log); safe to retry with `Idempotency-Key` |
 | POST | `/orders/{id}/payment-links` | `{ purpose: full\|deposit\|balance\|convert_cod, amount?, discountPct? }` |
 | POST | `/orders/{id}/refunds` | `{ amount, destination, reason }` (approval rules apply) |
-| GET | `/payments` · `/disputes` | Lists and filters |
+| GET | `/payments` | ✅ E14-6. Orders by where their money stands: `?view=all\|unpaid\|paid\|cod_due\|refunds\|disputes`, `mode`, `q` (order number), cursor pages → `{ data[{ order{id, number, status, placedAt}, mode, status, methods[], total, paid, refunded, balance, cod }], counts (every view), totals[{ currency, total, paid, refunded, balance, cod }] (one row per currency), nextCursor }`. unpaid: any method but COD with nothing received (or failed), not cancelled; cod_due: cash the courier still collects before delivery; refunds: money given back; disputes: disputed or a chargeback booked. Owner, admin, ops manager, finance |
+| GET | `/payments/mix` | ✅ E14-6. `?days=7\|30\|90` → `{ days, orders, modes[{ mode, orders, pct }], received[{ method, amount }] }`: the period's orders by payment mode (cancelled left out) and money in by method, net of voids, per currency. For the home screen |
+| GET | `/disputes` | Lists and filters |
 | POST | `/disputes/{id}/evidence` | Submit evidence pack |
 
 ### Reconciliation (M8), purchasing (M16), inbox (M17)

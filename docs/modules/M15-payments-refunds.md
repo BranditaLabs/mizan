@@ -57,6 +57,8 @@ Actions: Export, New payment link
 
 _Sample data. Full visual in `design/prototype.html`._
 
+✅ Built (E14-6): the screen at `/payments` with views All · Waiting for money · Cash to collect · Paid · Refunds · Disputes, counts on each, the view's sums per currency, and the payment mix on the home screen. Export and payment links come with E14-2.
+
 ## Rules — Payment statuses
 
 | Status | Meaning | Next |

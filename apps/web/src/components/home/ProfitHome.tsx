@@ -10,6 +10,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { StoreName } from "@/components/StoreName";
+import { PaymentMix } from "@/components/payments/PaymentMix";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
@@ -113,6 +114,7 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
         <Trend home={h} />
         <Leaks leaks={h.leaks} />
       </div>
+      <PaymentMix days={days} />
     </div>
   );
 }
