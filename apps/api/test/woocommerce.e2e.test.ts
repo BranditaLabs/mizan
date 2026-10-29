@@ -71,7 +71,7 @@ describe("WooCommerce store (E5-7)", () => {
     await runJobs();
     expect(await connection(id)).toMatchObject({ status: "active", status_reason: null });
     const hooks = [...woo.webhooks.values()];
-    expect(hooks.map((w) => w.topic).sort()).toEqual(["order.created", "order.deleted", "order.updated"]);
+    expect(hooks.map((w) => w.topic).sort()).toEqual(["order.created", "order.deleted", "order.updated", "product.created", "product.updated"]);
     expect(new Set(hooks.map((w) => w.delivery_url))).toEqual(new Set([`https://api.mizan.test/webhooks/woocommerce/${id}`]));
     expect(hooks.every((w) => w.secret.length >= 32 && w.secret !== woo.webhookSecret)).toBe(true); // Mizan's own secret
 
@@ -81,6 +81,22 @@ describe("WooCommerce store (E5-7)", () => {
     expect(list.find((x) => x.number === `#${old[2]!.id}`)).toMatchObject({ paymentMode: "bank_transfer", paymentStatus: "unpaid" });
     const audit = (await http().get("/v1/audit-log?action=connection.key_saved").set(as("owner")).expect(200)).body.data;
     expect(JSON.stringify(audit)).not.toMatch(/ck_|cs_/);
+  });
+
+  it("products come in with the history; an order's line links to its product, so costs and profit apply", async () => {
+    const product = woo.addProduct({ name: "عباية كريب", price: "600.00", stock: 5 });
+    const wh = woo.webhook("product.created", product);
+    await http().post(`/webhooks/woocommerce/${id}`).set(wh.headers).set("content-type", "application/json").send(wh.body).expect(200);
+    await runJobs();
+    const products = (await http().get("/v1/products?q=" + encodeURIComponent("كريب")).set(as("owner")).expect(200)).body.data;
+    expect(products).toEqual([expect.objectContaining({ title: "عباية كريب" })]);
+    clock.advance(60_000);
+    const o = woo.addOrder({ payment: "cod", product });
+    const owh = woo.webhook("order.created", o);
+    await http().post(`/webhooks/woocommerce/${id}`).set(owh.headers).set("content-type", "application/json").send(owh.body).expect(200);
+    await runJobs();
+    const line = await db.tenant(store, (trx) => trx.selectFrom("order_lines as l").innerJoin("orders as o", "o.id", "l.order_id").select(["l.variant_id"]).where("o.number", "=", `#${o.id}`).executeTakeFirstOrThrow());
+    expect(line.variant_id).not.toBeNull();
   });
 
   it("a signed webhook brings a new order; the ping is answered; a bad signature or unknown connection is refused", async () => {
@@ -105,7 +121,7 @@ describe("WooCommerce store (E5-7)", () => {
     const again = (await http().post("/v1/connections/woocommerce").set(as("owner")).send(keys).expect(201)).body;
     expect(again.id).toBe(id);
     await runJobs();
-    expect(woo.webhookCreates).toBe(3);
+    expect(woo.webhookCreates).toBe(5);
     expect(await connection(id)).toMatchObject({ status: "active" });
   });
 

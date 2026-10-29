@@ -1,15 +1,15 @@
 import { IntegrationError } from "../../core/errors.js";
-import type { CanonicalOrder } from "@mizan/shared";
+import type { CanonicalOrder, CanonicalProduct } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
 import type { ShapeWatch } from "../../adapt/shape.js";
 import type { PAYMENT_PATTERNS } from "../shopify/mapper.js";
 import { WooRest, type WooCommerceCredentials } from "./client.js";
-import { mapWooOrder } from "./mapper.js";
+import { mapWooOrder, mapWooProduct } from "./mapper.js";
 
 /** Order topics Mizan subscribes to. */
-export const WOO_WEBHOOK_TOPICS = ["order.created", "order.updated", "order.deleted"] as const;
+export const WOO_WEBHOOK_TOPICS = ["order.created", "order.updated", "order.deleted", "product.created", "product.updated"] as const;
 
 export interface WooLearned { queryStringAuth: boolean }
 
@@ -66,8 +66,36 @@ export class WooCommerceConnector {
     }
   }
 
+  /** A product with its variations (a variable product's are read in pages of 100). */
+  async getProduct(id: string): Promise<CanonicalProduct> {
+    const { json } = await this.rest.get<Record<string, unknown>>("getProduct", `/products/${encodeURIComponent(id)}`);
+    if (!json || typeof json !== "object") throw new IntegrationError({ kind: "not_found", connector: "woocommerce", message: `product ${id} not found` });
+    return mapWooProduct(json, await this.variationsOf(json), this.ctx());
+  }
+
+  /** One page of products modified at or after `sinceIso` (all when null), oldest change first. */
+  async productsPage(sinceIso: string | null, page = 1, perPage = 50): Promise<{ nodes: CanonicalProduct[]; next: number | null }> {
+    const { json, totalPages } = await this.rest.get<unknown[]>("listProducts", "/products", {
+      ...(sinceIso ? { modified_after: sinceIso.replace(/(\.\d+)?Z$/, ""), dates_are_gmt: true } : {}), orderby: "modified", order: "asc", status: "any", page, per_page: perPage,
+    });
+    const rows = (Array.isArray(json) ? json : []) as Array<Record<string, unknown>>;
+    const nodes: CanonicalProduct[] = [];
+    for (const p of rows) nodes.push(mapWooProduct(p, await this.variationsOf(p), this.ctx()));
+    return { nodes, next: page < totalPages && rows.length ? page + 1 : null };
+  }
+
+  private async variationsOf(product: Record<string, unknown>): Promise<unknown[]> {
+    if (String(product.type ?? "").toLowerCase() !== "variable") return [];
+    const out: unknown[] = [];
+    for (let page = 1; ; page++) {
+      const { json, totalPages } = await this.rest.get<unknown[]>("listVariations", `/products/${encodeURIComponent(String(product.id))}/variations`, { page, per_page: 100 });
+      out.push(...(Array.isArray(json) ? json : []));
+      if (page >= totalPages) return out;
+    }
+  }
+
   /**
-   * Point the store's order webhooks at Mizan: look up what exists (by delivery URL and topic),
+   * Point the store's order and product webhooks at Mizan: look up what exists (by delivery URL and topic),
    * turn a disabled or paused one back on (WooCommerce disables a webhook after 5 failed
    * deliveries), create what is missing. Safe to repeat; a create that timed out is found by the
    * next run's look-up instead of being sent twice.

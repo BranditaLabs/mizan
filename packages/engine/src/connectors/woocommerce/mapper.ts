@@ -1,4 +1,4 @@
-import type { Address, CanonicalOrder, Money, PaymentMode, PaymentStatus } from "@mizan/shared";
+import type { Address, CanonicalOrder, CanonicalProduct, Money, PaymentMode, PaymentStatus } from "@mizan/shared";
 import { fromMinor, toMinor } from "@mizan/shared";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
@@ -168,3 +168,60 @@ export function wooOrderIdFromWebhook(payload: unknown): string | undefined {
   const id = (payload as Record<string, unknown>).id;
   return typeof id === "number" || (typeof id === "string" && id) ? String(id) : undefined;
 }
+
+const PRODUCT_STATUS: Record<string, CanonicalProduct["status"]> = { publish: "active", draft: "draft", pending: "draft", private: "draft" };
+
+/**
+ * A WooCommerce product → canonical (E5-7). A simple product is its own single variant (its id is
+ * what order lines carry as `product_id`); a variable product's variants are its variations (order
+ * lines carry `variation_id`). `price` is the current price; on sale, `regular_price` is the
+ * compare-at price. Stock counts only when WooCommerce manages it: a variation with
+ * `manage_stock: "parent"` shares the product's count. An unpriced product has `price: ""`.
+ */
+export function mapWooProduct(raw: unknown, variations: unknown[], ctx: WooMapCtx): CanonicalProduct {
+  const r = new Resolver(raw, { connector: "woocommerce", entity: "product", drift: ctx.drift, now: ctx.now });
+  const id = r.str("id", ["id"], { required: true })!;
+  const type = (r.str("type", ["type"]) ?? "simple").toLowerCase();
+  const managed = (x: Resolver) => x.any("manage_stock", ["manage_stock"]);
+  const parentStock = managed(r) === true ? r.num("stock_quantity", ["stock_quantity"]) : undefined;
+  const variant = (x: Resolver, externalId: string, title: string | undefined) => {
+    const price = x.str("price", ["price"]) || x.str("regular_price", ["regular_price"]) || "0";
+    const regular = x.str("regular_price", ["regular_price"]);
+    const onSale = Boolean(x.str("sale_price", ["sale_price"])) && regular !== undefined && regular !== price;
+    const m = managed(x);
+    const available = m === true ? x.num("stock_quantity", ["stock_quantity"]) : m === "parent" ? parentStock : undefined;
+    return {
+      externalId,
+      sku: x.str("sku", ["sku"]) || undefined,
+      barcode: x.str("barcode", ["global_unique_id"])?.trim() || undefined,
+      ...(title ? { title } : {}),
+      price: { amount: price, currency: "" },
+      compareAtPrice: onSale ? { amount: regular!, currency: "" } : null,
+      ...(available !== undefined ? { available } : {}),
+    };
+  };
+  const variants = type === "variable"
+    ? variations.map((v) => {
+      const vr = r.child(v, "product.variation");
+      const attrs = vr.arr<{ option?: unknown }>("attributes", ["attributes"]).map((a) => (a && typeof a.option === "string" ? a.option : "")).filter(Boolean);
+      return variant(vr, vr.str("id", ["id"], { required: true })!, attrs.join(" / ") || undefined);
+    })
+    : [variant(r, id, "Default")];
+  const tags = r.arr<{ name?: unknown }>("tags", ["tags"]).map((t) => (t && typeof t.name === "string" ? t.name : "")).filter(Boolean);
+  const category = r.arr<{ name?: unknown }>("categories", ["categories"]).map((c) => (c && typeof c.name === "string" ? c.name : "")).find(Boolean);
+  return {
+    connector: "woocommerce",
+    externalId: id,
+    title: r.str("name", ["name"]) ?? "",
+    status: PRODUCT_STATUS[(r.str("status", ["status"]) ?? "").toLowerCase()] ?? "unknown",
+    ...(category ? { productType: category } : {}),
+    tags,
+    descriptionHtml: r.str("description", ["description"]),
+    updatedAt: gmt(r.str("date_modified_gmt", ["date_modified_gmt", "date_modified"])) ?? new Date(ctx.now()).toISOString(),
+    variants,
+    raw,
+  };
+}
+
+/** The product id in a webhook body (the full product for created/updated; `{ id }` for deleted). */
+export const wooProductIdFromWebhook = wooOrderIdFromWebhook;

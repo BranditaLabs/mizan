@@ -67,7 +67,7 @@ describe("WooCommerce end to end under chaos", () => {
       if (o.payment_method !== "cod") expect(due).toBe("0.00");
     }
 
-    expect([...woo.webhooks.values()].map((w) => w.topic).sort()).toEqual(["order.created", "order.deleted", "order.updated"]);
+    expect([...woo.webhooks.values()].map((w) => w.topic).sort()).toEqual(["order.created", "order.deleted", "order.updated", "product.created", "product.updated"]);
     expect([...woo.webhooks.values()].every((w) => w.status === "active")).toBe(true);
     expect(Object.values(woo.injected).reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(Math.floor(rate * 30)); // the chaos really happened (≈ rate × calls)
     expect(await store.jobs({ status: "dead" })).toEqual([]);

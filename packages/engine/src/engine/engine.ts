@@ -114,7 +114,8 @@ export interface ShipmentStatusUpdate {
 }
 
 /** One store day to reconcile (E5-8): orders created in [from, to). */
-export interface WooBackfillPage { runKey: string; since: string; page: number }
+/** Orders changed since `since`, then every product (phase defaults to orders for jobs queued before products existed). */
+export interface WooBackfillPage { runKey: string; since: string; page: number; phase?: "orders" | "products" }
 
 export interface ReconcileJob { day: string; from: string; to: string }
 /** What the store had that day, and how many of those the engine had never recorded (now ingested). */
@@ -338,13 +339,16 @@ export class MizanEngine {
     } catch {
       return { status: 200, body: { ignored: "unparseable body" } };
     }
-    if (meta.resource !== "order" && !meta.topic.startsWith("order.")) return { status: 200, body: { ignored: meta.topic || "unknown topic" } };
+    const resource = meta.resource || meta.topic.split(".")[0];
+    if (resource !== "order" && resource !== "product") return { status: 200, body: { ignored: meta.topic || "unknown topic" } };
+    if (resource === "product" && meta.event === "deleted") return { status: 200, body: { ignored: "product deleted" } }; // as for Shopify: kept, never deleted by a hint
     const id = wooOrderIdFromWebhook(payload);
-    if (!id) return { status: 200, body: { ignored: "no order id" } };
-    // The delivery id is per second, not per event: the order's own modification time tells versions apart.
+    if (!id) return { status: 200, body: { ignored: `no ${resource} id` } };
+    // The delivery id is per second, not per event: the resource's own modification time tells versions apart.
     const version = iso(payload.date_modified_gmt as string | undefined) ?? (meta.event === "deleted" ? "deleted" : hash(rawBody));
-    if (!(await this.store.markInbound(`woocommerce:${id}:${version}`, this.now()))) return { status: 200, body: { duplicate: true } };
-    await this.enqueue("woocommerce.ingestOrder", { orderId: id }, `woocommerce:order:${id}:${version}`);
+    if (!(await this.store.markInbound(`woocommerce:${resource}:${id}:${version}`, this.now()))) return { status: 200, body: { duplicate: true } };
+    if (resource === "order") await this.enqueue("woocommerce.ingestOrder", { orderId: id }, `woocommerce:order:${id}:${version}`);
+    else await this.enqueue("woocommerce.ingestProduct", { productId: id }, `woocommerce:product:${id}:${version}`);
     return { status: 200, body: { accepted: true } };
   }
 
@@ -524,7 +528,11 @@ export class MizanEngine {
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
     if (this.shopifyConn) await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
-    if (this.woo) await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
+    if (this.woo) {
+      await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
+      // Hourly: WooCommerce disables a webhook after failed deliveries; the sync turns it back on.
+      await this.enqueue("woocommerce.syncWebhooks", {}, `woocommerce:webhooks:hourly:${Math.floor(this.now() / 3_600_000)}`);
+    }
     await this.enqueue("bosta.pollActive", {}, `poll:bosta:${slot}`);
   }
 
@@ -610,6 +618,7 @@ export class MizanEngine {
       "woocommerce.pollOrders": () => this.pollWooOrders(),
       "woocommerce.syncWebhooks": () => this.syncWooWebhooks(),
       "woocommerce.backfill": (j) => this.wooBackfillPage(j.payload as WooBackfillPage),
+      "woocommerce.ingestProduct": (j) => this.ingestWooProduct(j.payload.productId),
     };
   }
 
@@ -922,7 +931,7 @@ export class MizanEngine {
     await this.store.put<ProductState>("product-state", productId, { ...state, snapshot: { ...product, raw: undefined } }, this.now());
     await this.runHook(() => this.opts.hooks?.onProduct?.({ ...product, raw: undefined }));
     this.emit("product.ingested", { productId, title: product.title, status: product.status });
-    if (restore.length) {
+    if (restore.length && this.shopifyConn) {
       await this.enqueue("shopify.pushProduct", { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
     }
   }
@@ -981,6 +990,19 @@ export class MizanEngine {
       }
     }
     await this.store.put("cursor", "woocommerce.orders", { since: maxSeen }, this.now());
+    // Products the same way: a missed product webhook is caught here.
+    const pCursor = (await this.store.get<{ since: string }>("cursor", "woocommerce.products"))?.since ?? new Date(this.now() - 24 * 3600_000).toISOString();
+    let pMax = pCursor;
+    for (let page: number | null = 1; page;) {
+      const r: { nodes: CanonicalProduct[]; next: number | null } = await woo.productsPage(new Date(Date.parse(pCursor) - this.opts.pollOverlapMs).toISOString(), page, 50);
+      for (const product of r.nodes) {
+        const known = await this.store.get<ProductState>("product-state", product.externalId);
+        if (!known?.snapshot || known.snapshot.updatedAt !== product.updatedAt) await this.ingestProductData(product);
+        if (Date.parse(product.updatedAt) > Date.parse(pMax)) pMax = product.updatedAt;
+      }
+      page = r.next;
+    }
+    await this.store.put("cursor", "woocommerce.products", { since: pMax }, this.now());
   }
 
   /** Also the keys' check (E5-7): it lists and writes webhooks, so it needs read/write keys that work. */
@@ -999,15 +1021,42 @@ export class MizanEngine {
 
   /** History on connect (E5-7): one page of orders changed since `since` per job, the next page queued by this one. */
   private async wooBackfillPage(p: WooBackfillPage) {
-    const r = await this.wooConnector().ordersPage(p.since, p.page, 50);
-    for (const o of r.nodes) {
-      const known = await this.store.get<OrderRecord>("order", o.externalId);
-      if (!known || orderFingerprint(known.order) !== orderFingerprint(o)) await this.ingestOrderData(o);
+    const woo = this.wooConnector();
+    const phase = p.phase ?? "orders";
+    let next: number | null;
+    let count: number;
+    if (phase === "orders") {
+      const r = await woo.ordersPage(p.since, p.page, 50);
+      for (const o of r.nodes) {
+        const known = await this.store.get<OrderRecord>("order", o.externalId);
+        if (!known || orderFingerprint(known.order) !== orderFingerprint(o)) await this.ingestOrderData(o);
+      }
+      next = r.next;
+      count = r.nodes.length;
+    } else {
+      const r = await woo.productsPage(null, p.page, 50);
+      for (const product of r.nodes) await this.ingestProductData(product);
+      next = r.next;
+      count = r.nodes.length;
     }
-    this.emit(r.next ? "backfill.progress" : "backfill.completed", { runKey: p.runKey, connector: "woocommerce", page: p.page, orders: r.nodes.length });
-    if (r.next) await this.enqueue("woocommerce.backfill", { ...p, page: r.next }, `woocommerce:backfill:${p.runKey}:${r.next}`);
-    // The poll starts where the history ends: nothing between them is missed.
-    else if (!(await this.store.get("cursor", "woocommerce.orders"))) await this.store.put("cursor", "woocommerce.orders", { since: new Date(this.now()).toISOString() }, this.now());
+    const done = !next && phase === "products";
+    this.emit(done ? "backfill.completed" : "backfill.progress", { runKey: p.runKey, connector: "woocommerce", phase, page: p.page, items: count });
+    if (next) await this.enqueue("woocommerce.backfill", { ...p, phase, page: next }, `woocommerce:backfill:${p.runKey}:${phase}:${next}`);
+    else if (phase === "orders") await this.enqueue("woocommerce.backfill", { ...p, phase: "products", page: 1 }, `woocommerce:backfill:${p.runKey}:products:1`);
+    if (!next) {
+      // The poll starts where the history ends: nothing between them is missed.
+      const cursor = phase === "orders" ? "woocommerce.orders" : "woocommerce.products";
+      if (!(await this.store.get("cursor", cursor))) await this.store.put("cursor", cursor, { since: new Date(this.now()).toISOString() }, this.now());
+    }
+  }
+
+  private async ingestWooProduct(productId: string) {
+    try {
+      await this.ingestProductData(await this.wooConnector().getProduct(productId));
+    } catch (e) {
+      if (e instanceof IntegrationError && e.kind === "not_found") { this.emit("product.missing", { productId, connector: "woocommerce" }); return; } // deleted meanwhile
+      throw e;
+    }
   }
 
   private async pollActiveShipments() {

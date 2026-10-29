@@ -35,11 +35,24 @@ const PAY: Record<WooPayment, { method: string; title: string }> = {
   fawry: { method: "fawry_pay", title: "Fawry reference" },
 };
 
+export interface WooProduct {
+  id: number; name: string; type: "simple" | "variable"; status: string; sku: string; global_unique_id: string;
+  price: string; regular_price: string; sale_price: string; manage_stock: boolean; stock_quantity: number | null;
+  date_modified: string; date_modified_gmt: string; description: string; tags: Array<{ id: number; name: string }>; categories: Array<{ id: number; name: string }>;
+  variations: number[];
+}
+export interface WooVariation {
+  id: number; sku: string; global_unique_id: string; price: string; regular_price: string; sale_price: string;
+  manage_stock: boolean | "parent"; stock_quantity: number | null; attributes: Array<{ name: string; option: string }>; status: string;
+}
+
 export class FakeWooCommerce {
   readonly consumerKey = "ck_fake_0123456789";
   readonly consumerSecret = "cs_fake_9876543210";
   readonly webhookSecret = "whsec-woo &amp; friends";
   orders = new Map<number, WooOrder>();
+  products = new Map<number, WooProduct>();
+  variationsOf = new Map<number, WooVariation[]>();
   webhooks = new Map<number, { id: number; topic: string; delivery_url: string; status: string; secret: string }>();
   calls: Array<{ method: string; path: string }> = [];
   faults: Array<{ path?: string; fault: Fault }> = [];
@@ -64,7 +77,7 @@ export class FakeWooCommerce {
     return new Date(this.clock.now()).toISOString().slice(0, 19); // WooCommerce: no zone, no milliseconds
   }
 
-  addOrder(o: Partial<{ payment: WooPayment; total: string; city: string; state: string; phone: string; billingOnly: boolean; downloadable: boolean }> = {}) {
+  addOrder(o: Partial<{ payment: WooPayment; total: string; city: string; state: string; phone: string; billingOnly: boolean; downloadable: boolean; product: WooProduct }> = {}) {
     const id = ++this.seq;
     const payment = o.payment ?? "cod";
     const total = payment === "free" ? "0.00" : (o.total ?? "1250.00");
@@ -80,11 +93,42 @@ export class FakeWooCommerce {
       payment_method: PAY[payment].method, payment_method_title: PAY[payment].title, transaction_id: payment === "card" ? `pm_${id}` : "",
       billing: { ...address, email: "mona@example.com", phone: o.phone ?? "01001234821" },
       shipping: o.billingOnly ? { first_name: "", last_name: "", company: "", address_1: "", address_2: "", city: "", state: "", postcode: "", country: "", phone: "" } : { ...address, phone: "" },
-      line_items: [{ id: id * 10 + 1, name: "عباية سادة", product_id: 501, variation_id: 0, quantity: 2, subtotal: "1200.00", total: "1200.00", sku: "AB-1", price: 600 }],
+      line_items: [o.product
+        ? { id: id * 10 + 1, name: o.product.name, product_id: o.product.id, variation_id: 0, quantity: 2, subtotal: "1200.00", total: "1200.00", sku: o.product.sku, price: 600 }
+        : { id: id * 10 + 1, name: "عباية سادة", product_id: 501, variation_id: 0, quantity: 2, subtotal: "1200.00", total: "1200.00", sku: "AB-1", price: 600 }],
       refunds: [], meta_data: [],
     };
     this.orders.set(id, order);
     return order;
+  }
+
+  /** A simple product, or a variable one with sizes (the first shares the product's stock: `manage_stock: "parent"`). */
+  addProduct(p: Partial<{ name: string; price: string; sale: string; sku: string; gtin: string; stock: number | null; sizes: string[]; status: string }> = {}) {
+    const id = ++this.seq;
+    const now = this.stamp();
+    const variable = Boolean(p.sizes?.length);
+    const price = p.price ?? "600.00";
+    const product: WooProduct = {
+      id, name: p.name ?? "عباية سادة", type: variable ? "variable" : "simple", status: p.status ?? "publish", sku: p.sku ?? (variable ? "" : `AB-${id}`), global_unique_id: p.gtin ?? "",
+      price: p.sale ?? price, regular_price: price, sale_price: p.sale ?? "", manage_stock: p.stock !== null, stock_quantity: p.stock === undefined ? 10 : p.stock,
+      date_modified: now, date_modified_gmt: now, description: "<p>قماش كريب</p>", tags: [{ id: 1, name: "abaya" }], categories: [{ id: 2, name: "Abayas" }], variations: [],
+    };
+    if (variable) {
+      const vs = p.sizes!.map((size, i): WooVariation => ({
+        id: ++this.seq, sku: `AB-${id}-${size}`, global_unique_id: i === 0 ? "6221234567890" : "", price, regular_price: price, sale_price: "",
+        manage_stock: i === 0 ? "parent" : true, stock_quantity: i === 0 ? null : 3 + i, attributes: [{ name: "Size", option: size }], status: "publish",
+      }));
+      product.variations = vs.map((v) => v.id);
+      this.variationsOf.set(id, vs);
+    }
+    this.products.set(id, product);
+    return product;
+  }
+
+  updateProduct(id: number, change: Partial<WooProduct>) {
+    const p = this.products.get(id)!;
+    Object.assign(p, change);
+    p.date_modified = p.date_modified_gmt = this.stamp();
   }
 
   private touch(o: WooOrder) {
@@ -123,8 +167,8 @@ export class FakeWooCommerce {
   }
 
   /** A signed delivery for an order, as WooCommerce sends it. */
-  webhook(topic: "order.created" | "order.updated" | "order.deleted", order: WooOrder | { id: number }) {
-    const body = JSON.stringify(topic === "order.deleted" ? { id: order.id } : this.view(order as WooOrder));
+  webhook(topic: "order.created" | "order.updated" | "order.deleted" | "product.created" | "product.updated" | "product.deleted", order: WooOrder | WooProduct | { id: number }) {
+    const body = JSON.stringify(topic.endsWith(".deleted") ? { id: order.id } : topic.startsWith("product.") ? order : this.view(order as WooOrder));
     const [resource, event] = topic.split(".");
     const hook = [...this.webhooks.values()].find((w) => w.topic === topic && w.status === "active");
     const hookId = hook?.id ?? 1;
@@ -205,6 +249,25 @@ export class FakeWooCommerce {
         .sort((a, b) => (a.date_modified_gmt ?? a.date_modified).localeCompare(b.date_modified_gmt ?? b.date_modified) || a.id - b.id);
       const pages = Math.max(1, Math.ceil(all.length / perPage));
       return json(200, all.slice((page - 1) * perPage, page * perPage).map((o) => this.view(o)), { "x-wp-total": String(all.length), "x-wp-totalpages": String(pages) });
+    }
+    if (method === "GET" && (m = path.match(/^\/products\/(\d+)\/variations$/))) {
+      const all = this.variationsOf.get(Number(m[1])) ?? [];
+      const perPage = Math.min(100, Number(url.searchParams.get("per_page") ?? 10));
+      const page = Number(url.searchParams.get("page") ?? 1);
+      return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
+    }
+    if (method === "GET" && (m = path.match(/^\/products\/(\d+)$/))) {
+      const p = this.products.get(Number(m[1]));
+      return p ? json(200, p) : json(404, { code: "woocommerce_rest_product_invalid_id", message: "Invalid ID.", data: { status: 404 } });
+    }
+    if (method === "GET" && path === "/products") {
+      const after = url.searchParams.get("modified_after");
+      const perPage = Math.min(100, Number(url.searchParams.get("per_page") ?? 10));
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const since = after ? Date.parse(`${after}Z`) : -Infinity;
+      const all = [...this.products.values()].filter((p) => Date.parse(`${p.date_modified_gmt}Z`) > since)
+        .sort((a, b) => a.date_modified_gmt.localeCompare(b.date_modified_gmt) || a.id - b.id);
+      return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
     }
     if (method === "GET" && path === "/webhooks") return json(200, [...this.webhooks.values()].map(({ secret: _s, ...w }) => w), { "x-wp-totalpages": "1" });
     if (method === "POST" && path === "/webhooks") {

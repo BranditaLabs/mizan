@@ -191,16 +191,16 @@ describe("WooCommerce webhooks and client (E5-7)", () => {
     woo.faults.push({ path: "/webhooks", fault: "500" });
     await store.enqueue(MizanEngineJob("r1"), clock.now());
     await settle(engine, store, clock);
-    expect([...woo.webhooks.values()].map((w) => w.topic).sort()).toEqual(["order.created", "order.deleted", "order.updated"]);
+    expect([...woo.webhooks.values()].map((w) => w.topic).sort()).toEqual(["order.created", "order.deleted", "order.updated", "product.created", "product.updated"]);
     await store.enqueue(MizanEngineJob("r2"), clock.now());
     await settle(engine, store, clock);
-    expect(woo.webhookCreates).toBe(3);
+    expect(woo.webhookCreates).toBe(5);
 
     woo.disableWebhooks();
     await store.enqueue(MizanEngineJob("r3"), clock.now());
     await settle(engine, store, clock);
     expect([...woo.webhooks.values()].every((w) => w.status === "active" && w.secret === woo.webhookSecret)).toBe(true);
-    expect(woo.webhookCreates).toBe(3);
+    expect(woo.webhookCreates).toBe(5);
   });
 
   it("orders whose webhook never came are found by the poll", async () => {
@@ -247,7 +247,61 @@ describe("WooCommerce connect: the keys' check and the history (E5-7)", () => {
     await store.enqueue(MizanEngine.wooBackfillJob("connect", clock.now() - 60 * 86_400_000), clock.now());
     await settle(engine, store, clock);
     expect(latest().size).toBe(120);
-    expect((await store.jobs({ kind: "woocommerce.backfill" })).length).toBe(3); // 50 + 50 + 20
+    expect((await store.jobs({ kind: "woocommerce.backfill" })).length).toBe(4); // orders 50 + 50 + 20, then products
     expect(await store.get("cursor", "woocommerce.orders")).toEqual({ since: new Date(clock.now()).toISOString() });
+  });
+});
+
+describe("WooCommerce products (E5-7)", () => {
+  it("a simple product on sale, a variable one with a variation sharing the product's stock, an unpriced draft", async () => {
+    const { mapWooProduct } = await import("../src/connectors/woocommerce/mapper.js");
+    const w = fake();
+    const simple = w.addProduct({ price: "600.00", sale: "540.00", gtin: " 6221234500001 ", stock: 7 });
+    expect(mapWooProduct(simple, [], ctx())).toMatchObject({
+      connector: "woocommerce", externalId: String(simple.id), status: "active", productType: "Abayas", tags: ["abaya"],
+      variants: [{ externalId: String(simple.id), sku: `AB-${simple.id}`, barcode: "6221234500001", price: { amount: "540.00" }, compareAtPrice: { amount: "600.00" }, available: 7 }],
+    });
+    const variable = w.addProduct({ sizes: ["S", "M"], stock: 9 });
+    const mapped = mapWooProduct(variable, w.variationsOf.get(variable.id)!, ctx());
+    expect(mapped.variants).toEqual([
+      expect.objectContaining({ title: "S", sku: `AB-${variable.id}-S`, barcode: "6221234567890", available: 9 }), // manage_stock "parent"
+      expect.objectContaining({ title: "M", available: 4, compareAtPrice: null }),
+    ]);
+    const draft = mapWooProduct({ ...w.addProduct({ status: "draft", stock: null }), price: "", regular_price: "" }, [], ctx());
+    expect(draft).toMatchObject({ status: "draft", variants: [expect.objectContaining({ price: { amount: "0", currency: "" } })] });
+    expect(draft.variants[0]).not.toHaveProperty("available"); // stock not managed by WooCommerce: unknown, not zero
+  });
+
+  it("order lines link to the variant the product sync knows: a simple product by its id, a variation by its id", async () => {
+    const { mapWooOrder } = await import("../src/connectors/woocommerce/mapper.js");
+    const w = fake();
+    const o = w.addOrder();
+    o.line_items.push({ id: 99, name: "عباية — M", product_id: 777, variation_id: 778, quantity: 1, subtotal: "600.00", total: "600.00", sku: "AB-777-M", price: 600 });
+    expect(mapWooOrder(o, ctx()).lines.map((l) => l.variantExternalId)).toEqual(["501", "778"]);
+  });
+
+  it("product webhooks bring the product with its variations; the history imports every product; the poll catches a missed change", async () => {
+    const products: Array<{ id: string; title: string; variants: number }> = [];
+    const { woo, engine, store, clock } = setupWoo({ hooks: { onProduct: async (p) => { products.push({ id: p.externalId, title: p.title, variants: p.variants.length }); } } });
+    const a = woo.addProduct({ sizes: ["S", "M", "L"] });
+    const wh = woo.webhook("product.created", a);
+    await engine.handleWooCommerceWebhook(wh.headers, wh.body);
+    const del = woo.webhook("product.deleted", { id: a.id });
+    expect((await engine.handleWooCommerceWebhook(del.headers, del.body)).body).toEqual({ ignored: "product deleted" });
+    await settle(engine, store, clock);
+    expect(products).toEqual([{ id: String(a.id), title: "عباية سادة", variants: 3 }]);
+
+    for (let i = 0; i < 60; i++) woo.addProduct({ name: `Item ${i}` });
+    await store.enqueue(MizanEngine.wooBackfillJob("connect", clock.now() - 86_400_000), clock.now());
+    await settle(engine, store, clock);
+    expect(new Set(products.map((p) => p.id)).size).toBe(61);
+
+    clock.advance(60_000);
+    woo.updateProduct(a.id, { name: "عباية كريب" }); // its webhook is lost
+    clock.advance(5 * 60_000);
+    await engine.scheduleReconcile();
+    await settle(engine, store, clock);
+    expect(products.at(-1)).toMatchObject({ id: String(a.id), title: "عباية كريب" });
+    expect(await store.jobs({ status: "dead" })).toEqual([]);
   });
 });
