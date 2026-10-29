@@ -305,3 +305,39 @@ describe("WooCommerce products (E5-7)", () => {
     expect(await store.jobs({ status: "dead" })).toEqual([]);
   });
 });
+
+describe("WooCommerce stock push (E8-5 for WooCommerce)", () => {
+  it("each variant knows where its count lives: the product, the variation, or the product for a 'parent' variation; none when not managed", async () => {
+    const { mapWooProduct } = await import("../src/connectors/woocommerce/mapper.js");
+    const w = fake();
+    const simple = w.addProduct({ stock: 7 });
+    expect(mapWooProduct(simple, [], ctx()).variants[0]!.inventoryItemId).toBe(`product:${simple.id}`);
+    const unmanaged = w.addProduct({ stock: null });
+    expect(mapWooProduct(unmanaged, [], ctx()).variants[0]!.inventoryItemId).toBeUndefined();
+    const variable = w.addProduct({ sizes: ["S", "M"], stock: 9 });
+    const [s, m] = w.variationsOf.get(variable.id)!;
+    expect(mapWooProduct(variable, w.variationsOf.get(variable.id)!, ctx()).variants.map((v) => v.inventoryItemId)).toEqual([`product:${variable.id}`, `variation:${variable.id}:${m!.id}`]);
+    expect(s!.manage_stock).toBe("parent");
+  });
+
+  it("the latest count wins even when jobs run late or out of order; a lost answer is sent again safely; a deleted product is skipped", async () => {
+    const { woo, engine, store, clock, events } = setupWoo();
+    const variable = woo.addProduct({ sizes: ["S", "M"], stock: 9 });
+    const m = woo.variationsOf.get(variable.id)![1]!;
+    const target = `variation:${variable.id}:${m.id}`;
+    const first = await MizanEngine.stageWooStock(store, target, 6, clock.now());
+    const second = await MizanEngine.stageWooStock(store, target, 2, clock.now() + 1);
+    await store.enqueue(second, clock.now());
+    await store.enqueue(first, clock.now()); // the older job runs last: it still pushes the latest count
+    woo.faults.push({ path: `/products/${variable.id}/variations`, fault: "lost" });
+    await settle(engine, store, clock);
+    expect(m.stock_quantity).toBe(2);
+    expect(m.manage_stock).toBe(true);
+
+    woo.products.delete(variable.id);
+    await store.enqueue(await MizanEngine.stageWooStock(store, target, 1, clock.now() + 2), clock.now());
+    await settle(engine, store, clock);
+    expect(events.some((e) => e.event === "stock.push_skipped")).toBe(true);
+    expect(await store.jobs({ status: "dead" })).toEqual([]);
+  });
+});

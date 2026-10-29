@@ -6,7 +6,7 @@ import { Resolver } from "../../adapt/resolve.js";
 import type { ShapeWatch } from "../../adapt/shape.js";
 import type { PAYMENT_PATTERNS } from "../shopify/mapper.js";
 import { WooRest, type WooCommerceCredentials } from "./client.js";
-import { mapWooOrder, mapWooProduct } from "./mapper.js";
+import { mapWooOrder, mapWooProduct, parseWooStockTarget } from "./mapper.js";
 
 /** Order topics Mizan subscribes to. */
 export const WOO_WEBHOOK_TOPICS = ["order.created", "order.updated", "order.deleted", "product.created", "product.updated"] as const;
@@ -82,6 +82,19 @@ export class WooCommerceConnector {
     const nodes: CanonicalProduct[] = [];
     for (const p of rows) nodes.push(mapWooProduct(p, await this.variationsOf(p), this.ctx()));
     return { nodes, next: page < totalPages && rows.length ? page + 1 : null };
+  }
+
+  /**
+   * Set the stock count where it lives (E8-5): an absolute value, so sending it twice changes
+   * nothing. `manage_stock` is sent too, as it already was on for this record (the target exists
+   * only for managed stock), so a merchant who turned it off meanwhile gets it back on, never a
+   * silently ignored count.
+   */
+  async setStock(target: string, quantity: number): Promise<void> {
+    const t = parseWooStockTarget(target);
+    if (!t) throw new IntegrationError({ kind: "validation", connector: "woocommerce", message: `not a stock target: ${target}` });
+    const path = t.variationId ? `/products/${t.productId}/variations/${t.variationId}` : `/products/${t.productId}`;
+    await this.rest.write("setStock", "PUT", path, { manage_stock: true, stock_quantity: Math.max(0, Math.trunc(quantity)) }, true);
   }
 
   private async variationsOf(product: Record<string, unknown>): Promise<unknown[]> {

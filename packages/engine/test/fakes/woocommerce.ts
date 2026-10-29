@@ -63,6 +63,8 @@ export class FakeWooCommerce {
   legacyShape = false;
   /** Faults served, by kind (chaos tests check they really happened). */
   injected: Partial<Record<Fault, number>> = {};
+  /** Stock writes carried out. */
+  stockWrites = 0;
   /** Webhook POSTs carried out (to check nothing is created twice). */
   webhookCreates = 0;
   private seq = 7000;
@@ -268,6 +270,18 @@ export class FakeWooCommerce {
       const all = [...this.products.values()].filter((p) => Date.parse(`${p.date_modified_gmt}Z`) > since)
         .sort((a, b) => a.date_modified_gmt.localeCompare(b.date_modified_gmt) || a.id - b.id);
       return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
+    }
+    if (method === "PUT" && (m = path.match(/^\/products\/(\d+)(?:\/variations\/(\d+))?$/))) {
+      const [, pid, vid] = m;
+      const p = this.products.get(Number(pid));
+      const v = vid ? this.variationsOf.get(Number(pid))?.find((x) => x.id === Number(vid)) : undefined;
+      if (!p || (vid && !v)) return json(404, { code: vid ? "woocommerce_rest_product_variation_invalid_id" : "woocommerce_rest_product_invalid_id", message: "Invalid ID.", data: { status: 404 } });
+      const target = (v ?? p) as { manage_stock: boolean | "parent"; stock_quantity: number | null };
+      if (body.manage_stock !== undefined) target.manage_stock = body.manage_stock;
+      if (body.stock_quantity !== undefined) target.stock_quantity = body.stock_quantity;
+      this.stockWrites++;
+      p.date_modified = p.date_modified_gmt = this.stamp();
+      return json(200, v ?? p);
     }
     if (method === "GET" && path === "/webhooks") return json(200, [...this.webhooks.values()].map(({ secret: _s, ...w }) => w), { "x-wp-totalpages": "1" });
     if (method === "POST" && path === "/webhooks") {

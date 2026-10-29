@@ -184,12 +184,14 @@ export function mapWooProduct(raw: unknown, variations: unknown[], ctx: WooMapCt
   const type = (r.str("type", ["type"]) ?? "simple").toLowerCase();
   const managed = (x: Resolver) => x.any("manage_stock", ["manage_stock"]);
   const parentStock = managed(r) === true ? r.num("stock_quantity", ["stock_quantity"]) : undefined;
-  const variant = (x: Resolver, externalId: string, title: string | undefined) => {
+  // Where the count lives, as the stock push targets it (E8-5): the product, or the variation itself.
+  const variant = (x: Resolver, externalId: string, title: string | undefined, isVariation = false) => {
     const price = x.str("price", ["price"]) || x.str("regular_price", ["regular_price"]) || "0";
     const regular = x.str("regular_price", ["regular_price"]);
     const onSale = Boolean(x.str("sale_price", ["sale_price"])) && regular !== undefined && regular !== price;
     const m = managed(x);
     const available = m === true ? x.num("stock_quantity", ["stock_quantity"]) : m === "parent" ? parentStock : undefined;
+    const stockAt = m === true ? (isVariation ? wooStockTarget(id, externalId) : wooStockTarget(id)) : m === "parent" && parentStock !== undefined ? wooStockTarget(id) : undefined;
     return {
       externalId,
       sku: x.str("sku", ["sku"]) || undefined,
@@ -198,13 +200,14 @@ export function mapWooProduct(raw: unknown, variations: unknown[], ctx: WooMapCt
       price: { amount: price, currency: "" },
       compareAtPrice: onSale ? { amount: regular!, currency: "" } : null,
       ...(available !== undefined ? { available } : {}),
+      ...(stockAt ? { inventoryItemId: stockAt } : {}),
     };
   };
   const variants = type === "variable"
     ? variations.map((v) => {
       const vr = r.child(v, "product.variation");
       const attrs = vr.arr<{ option?: unknown }>("attributes", ["attributes"]).map((a) => (a && typeof a.option === "string" ? a.option : "")).filter(Boolean);
-      return variant(vr, vr.str("id", ["id"], { required: true })!, attrs.join(" / ") || undefined);
+      return variant(vr, vr.str("id", ["id"], { required: true })!, attrs.join(" / ") || undefined, true);
     })
     : [variant(r, id, "Default")];
   const tags = r.arr<{ name?: unknown }>("tags", ["tags"]).map((t) => (t && typeof t.name === "string" ? t.name : "")).filter(Boolean);
@@ -225,3 +228,14 @@ export function mapWooProduct(raw: unknown, variations: unknown[], ctx: WooMapCt
 
 /** The product id in a webhook body (the full product for created/updated; `{ id }` for deleted). */
 export const wooProductIdFromWebhook = wooOrderIdFromWebhook;
+
+/** "product:12" or "variation:12:34": the record whose `stock_quantity` holds a variant's count. */
+export function wooStockTarget(productId: string, variationId?: string): string {
+  return variationId ? `variation:${productId}:${variationId}` : `product:${productId}`;
+}
+
+export function parseWooStockTarget(target: string): { productId: string; variationId?: string } | null {
+  const m = /^(product|variation):(\d+)(?::(\d+))?$/.exec(target);
+  if (!m) return null;
+  return m[1] === "variation" && m[3] ? { productId: m[2]!, variationId: m[3] } : m[1] === "product" && !m[3] ? { productId: m[2]! } : null;
+}

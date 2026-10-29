@@ -30,7 +30,8 @@ const drain = async () => { const d = app.get(EventDispatcher); while ((await d.
 async function runJobs(rounds = 60) {
   const runner = app.get(EngineJobRunner);
   for (let i = 0; i < rounds; i++) {
-    const started = await runner.cycle();
+    await drain(); // events first: their consumers queue engine jobs
+    const started = await runner.cycle(Math.max(Date.now(), clock.now()));
     await runner.idle();
     await drain();
     if (started === 0) return;
@@ -97,6 +98,28 @@ describe("WooCommerce store (E5-7)", () => {
     await runJobs();
     const line = await db.tenant(store, (trx) => trx.selectFrom("order_lines as l").innerJoin("orders as o", "o.id", "l.order_id").select(["l.variant_id"]).where("o.number", "=", `#${o.id}`).executeTakeFirstOrThrow());
     expect(line.variant_id).not.toBeNull();
+  });
+
+  it("with stock push on, Mizan's count goes to WooCommerce, where WooCommerce keeps it (a shared count is summed)", async () => {
+    const simple = woo.addProduct({ name: "طرحة", stock: 20 });
+    const sized = woo.addProduct({ name: "عباية مقاسات", sizes: ["S", "M", "L"], stock: 9 }); // S shares the product's count
+    for (const p of [simple, sized]) {
+      const wh = woo.webhook("product.created", p);
+      await http().post(`/webhooks/woocommerce/${id}`).set(wh.headers).set("content-type", "application/json").send(wh.body).expect(200);
+    }
+    await runJobs();
+    const variant = (sku: string) => db.tenant(store, (trx) => trx.selectFrom("variants").select("id").where("sku", "=", sku).executeTakeFirstOrThrow()).then((r) => r.id);
+    const [m, l] = woo.variationsOf.get(sized.id)!.slice(1);
+    clock.t = Math.max(clock.t, Date.now()); // stock pushes are queued at the real time, as in production
+    await http().put("/v1/settings/inventory").set(as("owner")).send({ pushToStore: true }).expect(200);
+    const items = [{ variantId: await variant(simple.sku), kind: "count", quantity: 6 }, { variantId: await variant(`AB-${sized.id}-S`), kind: "count", quantity: 2 },
+      { variantId: await variant(m!.sku), kind: "count", quantity: 1 }];
+    await http().post("/v1/stock/movements").set(as("owner")).send({ items }).expect(200);
+    await runJobs();
+    expect(woo.products.get(simple.id)!.stock_quantity).toBe(6);
+    expect(woo.products.get(sized.id)!.stock_quantity).toBe(2); // S, which shares the product's count
+    expect(m!.stock_quantity).toBe(1);
+    expect(l!.stock_quantity).toBe(5); // never counted in Mizan: left to the store
   });
 
   it("a signed webhook brings a new order; the ping is answered; a bad signature or unknown connection is refused", async () => {

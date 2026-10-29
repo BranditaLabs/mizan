@@ -11,7 +11,7 @@ export type { ShopifyLearned } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";
 export type { WooCommerceCredentials } from "./connectors/woocommerce/client.js";
 export { WooCommerceConnector, WOO_WEBHOOK_TOPICS, type WooLearned } from "./connectors/woocommerce/connector.js";
-export { detectWooPayment, mapWooOrder, EG_STATES } from "./connectors/woocommerce/mapper.js";
+export { detectWooPayment, mapWooOrder, mapWooProduct, wooStockTarget, parseWooStockTarget, EG_STATES } from "./connectors/woocommerce/mapper.js";
 export { verifyWooSignature, signWoo, isWooPing, readWooHeaders, type WooWebhookMeta } from "./connectors/woocommerce/webhooks.js";
 export { send, type RequestSpec, type HttpResponse } from "./resilience/http.js";
 export { CircuitBreaker } from "./resilience/circuit.js";

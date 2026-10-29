@@ -437,6 +437,16 @@ export class MizanEngine {
     return { kind: "woocommerce.backfill", connection: "woocommerce", payload: { runKey, since: new Date(sinceMs).toISOString(), page: 1 }, idempotencyKey: `woocommerce:backfill:${runKey}:1` };
   }
 
+  /**
+   * Mizan's count for a WooCommerce stock target (E8-5): the desired value is recorded on the
+   * store (in the caller's transaction) and the job pushes whatever is desired when it runs, so
+   * late or out-of-order jobs still end on the latest count.
+   */
+  static async stageWooStock(store: Store, target: string, quantity: number, now: number): Promise<NewJob<{ target: string }>> {
+    await store.put("woo-stock-desired", target, { quantity }, now);
+    return { kind: "woocommerce.setStock", connection: "woocommerce", payload: { target }, idempotencyKey: `woo-stock:${target}:${quantity}:${now}` };
+  }
+
   /** Point the WooCommerce store's webhooks at Mizan and turn disabled ones back on (E5-7). Doubles as the keys' check. */
   static wooWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "woocommerce.syncWebhooks", connection: "woocommerce", payload: {}, idempotencyKey: `woocommerce:webhooks:${runKey}` };
@@ -619,6 +629,7 @@ export class MizanEngine {
       "woocommerce.syncWebhooks": () => this.syncWooWebhooks(),
       "woocommerce.backfill": (j) => this.wooBackfillPage(j.payload as WooBackfillPage),
       "woocommerce.ingestProduct": (j) => this.ingestWooProduct(j.payload.productId),
+      "woocommerce.setStock": (j) => this.pushWooStock(j.payload.target),
     };
   }
 
@@ -1048,6 +1059,18 @@ export class MizanEngine {
       const cursor = phase === "orders" ? "woocommerce.orders" : "woocommerce.products";
       if (!(await this.store.get("cursor", cursor))) await this.store.put("cursor", cursor, { since: new Date(this.now()).toISOString() }, this.now());
     }
+  }
+
+  private async pushWooStock(target: string) {
+    const desired = await this.store.get<{ quantity: number }>("woo-stock-desired", target);
+    if (!desired) return;
+    try {
+      await this.wooConnector().setStock(target, desired.quantity);
+    } catch (e) {
+      if (e instanceof IntegrationError && e.kind === "not_found") { this.emit("stock.push_skipped", { target, reason: "not_found", connector: "woocommerce" }); return; } // deleted in the store
+      throw e;
+    }
+    this.emit("stock.pushed", { target, quantity: desired.quantity, connector: "woocommerce" });
   }
 
   private async ingestWooProduct(productId: string) {
