@@ -169,6 +169,11 @@ export class BulkActionsService {
         await event("cancelled", { reason: p.reason }, o.status, "cancelled");
         await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: o.id }, actor, data: { number: o.number, reason: p.reason } });
         await store()?.enqueue(MizanEngine.shopifyCancelJob({ orderId: o.external_id!, reason: SHOPIFY_REASON[p.reason], note: "Mizan: cancelled by the team" }), now.getTime());
+        // A WooCommerce store's order too (E5-7): status cancelled, the note added once; the store restocks it.
+        if (o.provider === "woocommerce" && o.external_id && o.connection_id) {
+          const woo = new SqlStore(trxQueryClient(trx), { tenantId, store: o.connection_id, connections: { woocommerce: o.connection_id } });
+          await woo.enqueue(MizanEngine.wooCancelJob({ orderId: o.external_id, note: "Mizan: cancelled by the team" }), now.getTime());
+        }
         return;
       }
       case "ship": {

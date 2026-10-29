@@ -63,6 +63,9 @@ export class FakeWooCommerce {
   legacyShape = false;
   /** Faults served, by kind (chaos tests check they really happened). */
   injected: Partial<Record<Fault, number>> = {};
+  /** Notes on orders (internal), and how many order status writes were carried out. */
+  notes = new Map<number, string[]>();
+  orderWrites = 0;
   /** Stock writes carried out. */
   stockWrites = 0;
   /** Webhook POSTs carried out (to check nothing is created twice). */
@@ -270,6 +273,21 @@ export class FakeWooCommerce {
       const all = [...this.products.values()].filter((p) => Date.parse(`${p.date_modified_gmt}Z`) > since)
         .sort((a, b) => a.date_modified_gmt.localeCompare(b.date_modified_gmt) || a.id - b.id);
       return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
+    }
+    if (method === "PUT" && (m = path.match(/^\/orders\/(\d+)$/))) {
+      const o = this.orders.get(Number(m[1]));
+      if (!o) return json(404, { code: "woocommerce_rest_shop_order_invalid_id", message: "Invalid ID.", data: { status: 404 } });
+      if (body.status) o.status = body.status;
+      this.orderWrites++;
+      this.touch(o);
+      return json(200, this.view(o));
+    }
+    if ((m = path.match(/^\/orders\/(\d+)\/notes$/))) {
+      const id = Number(m[1]);
+      if (!this.orders.has(id)) return json(404, { code: "woocommerce_rest_shop_order_invalid_id", message: "Invalid ID.", data: { status: 404 } });
+      const list = this.notes.get(id) ?? [];
+      if (method === "GET") return json(200, list.map((note, i) => ({ id: i + 1, note, customer_note: false })));
+      if (method === "POST") { list.push(String(body.note)); this.notes.set(id, list); return json(201, { id: list.length, note: body.note, customer_note: false }); }
     }
     if (method === "PUT" && (m = path.match(/^\/products\/(\d+)(?:\/variations\/(\d+))?$/))) {
       const [, pid, vid] = m;

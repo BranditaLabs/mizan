@@ -341,3 +341,30 @@ describe("WooCommerce stock push (E8-5 for WooCommerce)", () => {
     expect(await store.jobs({ status: "dead" })).toEqual([]);
   });
 });
+
+describe("WooCommerce cancel (E5-4 for WooCommerce)", () => {
+  it("cancels once with the team's note once; a lost answer is sent again safely; already cancelled is fine; a completed order is refused", async () => {
+    const results: unknown[] = [];
+    const { woo, engine, store, clock } = setupWoo({ hooks: { onCancelResult: async (orderId, r) => { results.push({ orderId, ...r }); } } });
+    const o = woo.addOrder({ payment: "cod" });
+    woo.faults.push({ path: `/orders/${o.id}`, fault: "lost" });
+    await store.enqueue(MizanEngine.wooCancelJob({ orderId: String(o.id), note: "Mizan: cancelled by the team" }), clock.now());
+    await settle(engine, store, clock);
+    expect(woo.orders.get(o.id)!.status).toBe("cancelled");
+    expect(woo.notes.get(o.id)).toEqual(["Mizan: cancelled by the team"]);
+    expect(results).toEqual([{ orderId: String(o.id), ok: true, outcome: "cancelled" }]);
+
+    await store.enqueue({ ...MizanEngine.wooCancelJob({ orderId: String(o.id), note: "Mizan: cancelled by the team" }), idempotencyKey: "again" }, clock.now());
+    await settle(engine, store, clock);
+    expect(results.at(-1)).toMatchObject({ ok: true, outcome: "already_cancelled" });
+    expect(woo.notes.get(o.id)).toHaveLength(1);
+
+    const done = woo.addOrder({ payment: "card" });
+    woo.setStatus(done.id, "completed");
+    await store.enqueue(MizanEngine.wooCancelJob({ orderId: String(done.id) }), clock.now());
+    await settle(engine, store, clock);
+    expect(results.at(-1)).toMatchObject({ orderId: String(done.id), ok: false, reason: "validation" });
+    expect(woo.orders.get(done.id)!.status).toBe("completed");
+    expect(await store.jobs({ status: "dead" })).toEqual([]);
+  });
+});

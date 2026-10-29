@@ -111,6 +111,11 @@ export class DuplicatesService {
           // Cancelled in the store too (E5-4), unless money was paid: that goes back through a refund.
           if (BigInt(o.paid_minor) === 0n) await store.enqueue(MizanEngine.shopifyCancelJob({ orderId: o.external_id, reason: "OTHER", note: `Mizan: duplicate of ${o.of_number ?? "another order"}` }), now.getTime());
         }
+        // A WooCommerce store's duplicate is cancelled there too (no tags in WooCommerce: the note says why).
+        if (o.provider === "woocommerce" && o.external_id && o.connection_id && BigInt(o.paid_minor) === 0n) {
+          const woo = new SqlStore(trxQueryClient(trx), { tenantId, store: o.connection_id, connections: { woocommerce: o.connection_id } });
+          await woo.enqueue(MizanEngine.wooCancelJob({ orderId: o.external_id, note: `Mizan: duplicate of ${o.of_number ?? "another order"}` }), now.getTime());
+        }
       }
       const status = action === "keep" ? "kept" : "merged";
       await this.events.emit(trx, {

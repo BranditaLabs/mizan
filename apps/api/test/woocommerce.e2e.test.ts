@@ -138,6 +138,21 @@ describe("WooCommerce store (E5-7)", () => {
     expect(detail.shippingAddress ?? detail.address ?? {}).not.toHaveProperty("line1", expect.stringContaining("عباس")); // masked until revealed
   });
 
+  it("cancelling in Mizan cancels the WooCommerce order, with the team's note, once", async () => {
+    clock.advance(60_000);
+    const o = woo.addOrder({ payment: "cod" });
+    const wh = woo.webhook("order.created", o);
+    await http().post(`/webhooks/woocommerce/${id}`).set(wh.headers).set("content-type", "application/json").send(wh.body).expect(200);
+    await runJobs();
+    const row = (await http().get(`/v1/orders?q=${o.id}`).set(as("owner")).expect(200)).body.data[0];
+    const bulk = (await http().post("/v1/orders/bulk").set(as("owner")).send({ action: "cancel", orderIds: [row.id], reason: "customer_cancelled" }).expect(202)).body;
+    await runJobs();
+    expect((await http().get(`/v1/orders/bulk/${bulk.id}`).set(as("owner")).expect(200)).body).toMatchObject({ done: 1, skipped: 0 });
+    expect(woo.orders.get(o.id)!.status).toBe("cancelled");
+    expect(woo.notes.get(o.id)).toEqual(["Mizan: cancelled by the team"]);
+    expect((await http().get(`/v1/orders/${row.id}`).set(as("owner")).expect(200)).body.status).toBe("cancelled");
+  });
+
   it("a store already in another Mizan account is refused; new keys for the same store keep its webhooks", async () => {
     const other = (await http().post("/v1/tenants").set(as("other", "")).send({ name: "Copycat", country: "EG" }).expect(201)).body.id;
     expect((await http().post("/v1/connections/woocommerce").set(as("other", other)).send(keys).expect(409)).body.code).toBe("store_connected_elsewhere");

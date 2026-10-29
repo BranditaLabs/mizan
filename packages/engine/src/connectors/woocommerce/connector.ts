@@ -85,6 +85,29 @@ export class WooCommerceConnector {
   }
 
   /**
+   * Cancel the store's order (E5-4 for WooCommerce): read first (already cancelled → done), then
+   * set the status — an absolute value, safe to send again, so a timeout is simply retried.
+   * WooCommerce puts the stock back itself on cancellation. A completed or refunded order is not
+   * cancelled (its money goes back through a refund). The team's note is added once: a note
+   * with the same text already on the order is not written again.
+   */
+  async cancelOrder(o: { orderId: string; note?: string | undefined }): Promise<"cancelled" | "already_cancelled"> {
+    const current = await this.getOrder(o.orderId);
+    const status = (current.financialStatus ?? "").toLowerCase();
+    if (current.cancelled || status === "cancelled") return "already_cancelled";
+    if (status === "completed" || status === "refunded") {
+      throw new IntegrationError({ kind: "validation", connector: "woocommerce", message: `order ${o.orderId} is ${status} in the store: refund it instead of cancelling` });
+    }
+    await this.rest.write("cancelOrder", "PUT", `/orders/${encodeURIComponent(o.orderId)}`, { status: "cancelled" }, true);
+    if (o.note) {
+      const { json } = await this.rest.get<Array<{ note?: unknown }>>("listOrderNotes", `/orders/${encodeURIComponent(o.orderId)}/notes`, { type: "internal" });
+      const exists = Array.isArray(json) && json.some((n) => typeof n?.note === "string" && n.note.trim() === o.note!.trim());
+      if (!exists) await this.rest.write("addOrderNote", "POST", `/orders/${encodeURIComponent(o.orderId)}/notes`, { note: o.note, customer_note: false });
+    }
+    return "cancelled";
+  }
+
+  /**
    * Set the stock count where it lives (E8-5): an absolute value, so sending it twice changes
    * nothing. `manage_stock` is sent too, as it already was on for this record (the target exists
    * only for managed stock), so a merchant who turned it off meanwhile gets it back on, never a

@@ -475,6 +475,11 @@ export class MizanEngine {
   }
 
   /** Cancel a store order (E5-4): one job per order; the order is read again afterwards (fat fetch). */
+  /** Cancel a WooCommerce store's order (E5-4 for WooCommerce): status set once, the team's note added once. */
+  static wooCancelJob(p: { orderId: string; note?: string }): NewJob<{ orderId: string; note?: string }> {
+    return { kind: "woocommerce.cancelOrder", connection: "woocommerce", payload: p, idempotencyKey: `woocommerce:cancel:${p.orderId}` };
+  }
+
   static shopifyCancelJob(p: CancelJob): NewJob<CancelJob> {
     return { kind: "shopify.cancelOrder", connection: "shopify", payload: p, idempotencyKey: `shopify:cancel:${p.orderId}` };
   }
@@ -630,6 +635,7 @@ export class MizanEngine {
       "woocommerce.backfill": (j) => this.wooBackfillPage(j.payload as WooBackfillPage),
       "woocommerce.ingestProduct": (j) => this.ingestWooProduct(j.payload.productId),
       "woocommerce.setStock": (j) => this.pushWooStock(j.payload.target),
+      "woocommerce.cancelOrder": (j) => this.cancelOrder(j.payload, "woocommerce"),
     };
   }
 
@@ -653,10 +659,10 @@ export class MizanEngine {
     this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
   }
 
-  private async cancelOrder(p: CancelJob) {
+  private async cancelOrder(p: CancelJob | { orderId: string; note?: string }, provider: "shopify" | "woocommerce" = "shopify") {
     let outcome: CancelOutcome;
     try {
-      outcome = { ok: true, outcome: await this.shopify.cancelOrder(p) };
+      outcome = { ok: true, outcome: provider === "shopify" ? await this.shopify.cancelOrder(p as CancelJob) : await this.wooConnector().cancelOrder(p) };
     } catch (e) {
       if (!(e instanceof IntegrationError) || e.retryable) throw e;
       const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
@@ -665,7 +671,8 @@ export class MizanEngine {
       if (reason === "permission") throw e; // the store must approve write_orders again: surfaces as needs attention
       return;
     }
-    await this.ingestOrder(p.orderId);
+    if (provider === "shopify") await this.ingestOrder(p.orderId);
+    else await this.ingestWooOrder(p.orderId);
     await this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, outcome));
     this.emit("order.cancelled_in_store", { orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
   }
@@ -1095,7 +1102,7 @@ export class MizanEngine {
       const kind = o.error instanceof IntegrationError ? o.error.kind : "permanent";
       this.emit("job.dead", { jobId: o.job.id, job: o.job.kind, errorKind: kind, error: o.error.message, payload: o.job.payload as Record<string, unknown> });
       if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
-      if (o.job.kind === "shopify.cancelOrder" && kind !== "auth" && kind !== "permission") {
+      if ((o.job.kind === "shopify.cancelOrder" || o.job.kind === "woocommerce.cancelOrder") && kind !== "auth" && kind !== "permission") {
         const p = o.job.payload as CancelJob;
         this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
           .catch((e) => this.rt.logger.log("error", "cancel result hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
