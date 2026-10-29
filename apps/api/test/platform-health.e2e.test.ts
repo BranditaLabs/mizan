@@ -72,7 +72,7 @@ describe("system health (A-4)", () => {
     expect(h.outbox.running).toBe(gauge(text, "mizan_outbox_jobs", 'status="running"'));
     expect(h.events.dead).toBe(gauge(text, "mizan_domain_events", 'state="dead"'));
     expect(h.circuits.map((c: { provider: string; open: number }) => [c.provider, c.open]))
-      .toEqual([["shopify", gauge(text, "mizan_engine_circuits_open", 'provider="shopify"')], ["bosta", gauge(text, "mizan_engine_circuits_open", 'provider="bosta"')]]);
+      .toEqual([["shopify", gauge(text, "mizan_engine_circuits_open", 'provider="shopify"')], ["woocommerce", gauge(text, "mizan_engine_circuits_open", 'provider="woocommerce"')], ["bosta", gauge(text, "mizan_engine_circuits_open", 'provider="bosta"')]]);
     expect(h.outbox).toMatchObject({ dead: 3, pending: 3 });
     expect(h.deadEvents).toEqual([{ type: "order.created", count: 1 }]);
     expect(h.stores.map((s: { storeName: string; dead: number; pending: number }) => [s.storeName, s.dead, s.pending])).toEqual([["Nile Abayas", 2, 1], ["Delta Perfumes", 1, 2]]);

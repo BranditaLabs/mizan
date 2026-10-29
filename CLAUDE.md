@@ -29,7 +29,7 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 ## Repository map
 
 ```
-packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta + WhatsApp Cloud connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
+packages/engine/   ✅ BUILT — integration engine: Shopify + WooCommerce + Bosta + WhatsApp Cloud connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
 packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`mizan-db migrate`), generated Kysely types, withTenant (22 tests incl. real Postgres)
 packages/design-system/ ✅ BUILT — Brandita identity (ink, paper, one red point): tokens for CSS/Tailwind/TS/Flutter, Geist + Alexandria + Plex Arabic fonts, 124 icons, wordmark, app icons (70 tests: contrast, brand fidelity)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)

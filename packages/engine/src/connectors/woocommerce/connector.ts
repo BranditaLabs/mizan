@@ -26,6 +26,10 @@ export class WooCommerceConnector {
     this.rest = new WooRest(creds, rt, drift, shapes);
   }
 
+  health() {
+    return { circuit: this.rest.circuit.status, budget: this.rest.bucket.snapshot };
+  }
+
   exportLearned(): WooLearned {
     return { queryStringAuth: this.rest.queryStringAuth };
   }

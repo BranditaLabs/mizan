@@ -11,6 +11,7 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { PiiCipher } from "../../platform/pii/pii-cipher.js";
 import { TrackingService } from "./tracking.service.js";
+import { STORE_PROVIDERS } from "../../integrations/connection-resolver.js";
 import type { ShipmentResultSink } from "./ports.js";
 import type { BOOKING_ERRORS, ShipmentView } from "./shipping.dto.js";
 
@@ -71,16 +72,18 @@ export class ShippingService implements ShipmentResultSink {
     if (!courier) throw new ProblemError(409, "no_courier", "connect a courier first");
     if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
     // Jobs run in a store's engine: the order's own store, else the tenant's first (a courier is only connected after a store).
-    const fromStore = o.store_provider === "shopify" && o.store_status !== "disconnected" ? o.connection_id : null;
-    const storeId = fromStore ?? (await trx.selectFrom("connections").select("id").where("provider", "=", "shopify").where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
+    const fromStore = o.store_provider && (STORE_PROVIDERS as readonly string[]).includes(o.store_provider) && o.store_status !== "disconnected" ? o.connection_id : null;
+    const storeId = fromStore ?? (await trx.selectFrom("connections").select("id").where("provider", "in", [...STORE_PROVIDERS]).where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
     if (!storeId) throw new ProblemError(409, "store_not_connected", "connect the store first");
 
     const row = await trx.insertInto("shipments").values({
       tenant_id: tenantId, order_id: orderId, connection_id: courier.id, provider: courier.provider, currency: o.currency, cod_minor: cod,
       booking: "pending", requested_by: userId, created_at: now, updated_at: now,
     }).returning([...SHIPMENT_COLUMNS]).executeTakeFirstOrThrow();
-    const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: storeId, bosta: courier.id } });
-    await store.enqueue(MizanEngine.bostaShipJob({ shipmentId: row.id, orderId, ...(fromStore && o.external_id ? { storeOrderId: o.external_id } : {}) }), this.runtime(tenantId).clock.now());
+    const store = new SqlStore(trxQueryClient(trx), { tenantId, store: storeId, connections: { bosta: courier.id } });
+    // Only a Shopify order is fulfilled in the store with the tracking number (WooCommerce has no core shipment tracking).
+    const fulfilInStore = fromStore && o.store_provider === "shopify" && o.external_id;
+    await store.enqueue(MizanEngine.bostaShipJob({ shipmentId: row.id, orderId, ...(fulfilInStore ? { storeOrderId: o.external_id! } : {}) }), this.runtime(tenantId).clock.now());
     await timeline(trx, tenantId, orderId, "ship_requested", { ...data, shipmentId: row.id, provider: courier.provider }, userId ?? undefined);
     return { created: true, shipment: view(row) };
   }

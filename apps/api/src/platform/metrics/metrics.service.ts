@@ -115,16 +115,17 @@ export class MetricsService {
   }
 
   /** Circuit states per provider across this instance's store engines (the back office's health view reads the same). */
-  circuits(): { provider: "shopify" | "bosta"; open: number; halfOpen: number; closed: number }[] {
-    const out = { shopify: { open: 0, halfOpen: 0, closed: 0 }, bosta: { open: 0, halfOpen: 0, closed: 0 } };
+  circuits(): { provider: "shopify" | "woocommerce" | "bosta"; open: number; halfOpen: number; closed: number }[] {
+    const out = { shopify: { open: 0, halfOpen: 0, closed: 0 }, woocommerce: { open: 0, halfOpen: 0, closed: 0 }, bosta: { open: 0, halfOpen: 0, closed: 0 } };
     const bump = (c: { open: number; halfOpen: number; closed: number }, state: string) => {
       if (state === "open") c.open++; else if (state === "half_open") c.halfOpen++; else c.closed++;
     };
     for (const e of this.engines.all()) {
-      bump(out.shopify, e.engine.shopify.health().circuit.state);
+      if (e.engine.hasShopify) bump(out.shopify, e.engine.shopify.health().circuit.state);
+      if (e.engine.woo) bump(out.woocommerce, e.engine.woo.health().circuit.state);
       bump(out.bosta, e.engine.bosta.health().circuit.state);
     }
-    return [{ provider: "shopify", ...out.shopify }, { provider: "bosta", ...out.bosta }];
+    return [{ provider: "shopify", ...out.shopify }, { provider: "woocommerce", ...out.woocommerce }, { provider: "bosta", ...out.bosta }];
   }
 
   /** The queue numbers behind the outbox and domain-event gauges (A-4 shows exactly these). */

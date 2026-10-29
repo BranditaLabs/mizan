@@ -9,6 +9,7 @@ import { Database } from "../../../platform/db/database.js";
 import { ProblemError } from "../../../platform/http/problem.js";
 import { SecretsService } from "../../../platform/secrets/secrets.service.js";
 import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "../../../integrations/engine-registry.js";
+import { STORE_PROVIDERS } from "../../../integrations/connection-resolver.js";
 import { toConnectionView, type ConnectionView } from "../connections.dto.js";
 
 const CONNECTION_COLUMNS = ["id", "kind", "provider", "external_account", "status", "status_reason", "config", "updated_at"] as const;
@@ -34,7 +35,7 @@ export class BostaConnectService {
     const tenantId = auth.tenant!.id;
     const by = auditActor(auth);
     const view = await this.db.tenant(tenantId, async (trx) => {
-      const shop = await trx.selectFrom("connections").select("id").where("provider", "=", "shopify").where("status", "!=", "disconnected").executeTakeFirst();
+      const shop = await trx.selectFrom("connections").select("id").where("provider", "in", [...STORE_PROVIDERS]).where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst();
       if (!shop) throw new ProblemError(409, "store_not_connected", "connect the store before the courier");
       const existing = await trx.selectFrom("connections").select(["id", "secret_ref"]).where("provider", "=", "bosta").forUpdate().executeTakeFirst();
 
@@ -58,7 +59,7 @@ export class BostaConnectService {
       await this.audit.record(trx, { action: "connection.key_saved", tenantId, entity: { type: "connection", id }, after: { provider: "bosta", status: "pending" }, ...by });
 
       // Check the key in the background, queued in this transaction: no key saved without its check.
-      const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: shop.id, bosta: id } });
+      const store = new SqlStore(trxQueryClient(trx), { tenantId, store: shop.id, connections: { bosta: id } });
       await store.enqueue(MizanEngine.bostaAccessCheckJob(randomUUID()), this.runtime(tenantId).clock.now()); // the engine's clock schedules its jobs
 
       const row = await trx.selectFrom("connections").select([...CONNECTION_COLUMNS]).where("id", "=", id).executeTakeFirstOrThrow();

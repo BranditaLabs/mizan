@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const Circuit = z.object({ provider: z.enum(["shopify", "bosta"]), open: z.number().int(), halfOpen: z.number().int(), closed: z.number().int() });
+const Circuit = z.object({ provider: z.enum(["shopify", "woocommerce", "bosta"]), open: z.number().int(), halfOpen: z.number().int(), closed: z.number().int() });
 export const SystemHealthSchema = z.object({
   at: z.iso.datetime(),
   outbox: z.object({

@@ -2177,6 +2177,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/woocommerce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["WooCommerceConnectController_connect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/privacy-requests": {
         parameters: {
             query?: never;
@@ -6209,7 +6225,7 @@ export interface components {
             /** @description mizan_engine_circuits_open: store engines built on this API instance */
             circuits: {
                 /** @enum {string} */
-                provider: "shopify" | "bosta";
+                provider: "shopify" | "woocommerce" | "bosta";
                 open: number;
                 halfOpen: number;
                 closed: number;
@@ -6578,6 +6594,14 @@ export interface components {
             wabaId: string;
             /** @description A permanent system-user token with whatsapp_business_messaging and whatsapp_business_management; stored encrypted, never shown again */
             accessToken: string;
+        };
+        WooCommerceKeys: {
+            /** @description The store's address, https://shop.example.com */
+            siteUrl: string;
+            /** @description ck_…; stored encrypted, never shown again */
+            consumerKey: string;
+            /** @description cs_…; stored encrypted, never shown again */
+            consumerSecret: string;
         };
     };
     responses: never;
@@ -14387,6 +14411,61 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    WooCommerceConnectController_connect: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WooCommerceKeys"];
+            };
+        };
+        responses: {
+            /** @description Saved; pending until the keys are checked (webhooks pointed at Mizan), then the last 60 days of orders are imported; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

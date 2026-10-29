@@ -3,7 +3,7 @@ import { routeTemplate } from "../http/http.types.js";
 import type { MetricsService } from "./metrics.service.js";
 
 // Label values come from a fixed set: a URL segment would let anyone mint new series.
-const PROVIDERS = new Set(["shopify", "bosta"]);
+const PROVIDERS = new Set(["shopify", "woocommerce", "bosta"]);
 
 /** Times every request (Fastify hooks); the label is the matched route template, or "unmatched". */
 export function httpMetrics(fastify: FastifyInstance, metrics: MetricsService): void {

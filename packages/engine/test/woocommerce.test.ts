@@ -7,6 +7,7 @@ import { isWooPing, signWoo, verifyWooSignature } from "../src/connectors/woocom
 import { FakeClock } from "./fakes/clock.js";
 import { settle, setupWoo } from "./fakes/setup.js";
 import { FakeWooCommerce, type WooPayment } from "./fakes/woocommerce.js";
+import { MizanEngine } from "../src/engine/engine.js";
 
 const clock = new FakeClock();
 const ctx = () => ({ drift: new DriftMonitor(), now: () => clock.now() });
@@ -222,3 +223,31 @@ describe("WooCommerce webhooks and client (E5-7)", () => {
 function MizanEngineJob(runKey: string) {
   return { kind: "woocommerce.syncWebhooks", connection: "woocommerce", payload: {}, idempotencyKey: `woocommerce:webhooks:${runKey}` };
 }
+
+describe("WooCommerce connect: the keys' check and the history (E5-7)", () => {
+  it("refused keys end the check as needs-attention, not a dead job; good keys pass", async () => {
+    const checks: unknown[] = [];
+    const { woo, engine, store, clock } = setupWoo({ hooks: { onAccessChecked: async (provider, result) => { checks.push({ provider, ok: result.ok }); } } });
+    const good = woo.consumerSecret;
+    (woo as unknown as { consumerSecret: string }).consumerSecret = "cs_rotated";
+    await store.enqueue(MizanEngine.wooWebhooksJob("bad"), clock.now());
+    await settle(engine, store, clock);
+    expect(checks).toEqual([{ provider: "woocommerce", ok: false }]);
+    expect(await store.jobs({ status: "dead" })).toEqual([]);
+    (woo as unknown as { consumerSecret: string }).consumerSecret = good;
+    await store.enqueue(MizanEngine.wooWebhooksJob("good"), clock.now());
+    await settle(engine, store, clock);
+    expect(checks.at(-1)).toEqual({ provider: "woocommerce", ok: true });
+  });
+
+  it("imports the last days page by page, then the poll starts where the history ends", async () => {
+    const { woo, engine, store, clock, latest } = setupWoo();
+    for (let i = 0; i < 120; i++) woo.addOrder({ payment: i % 2 ? "cod" : "card" });
+    clock.advance(60_000);
+    await store.enqueue(MizanEngine.wooBackfillJob("connect", clock.now() - 60 * 86_400_000), clock.now());
+    await settle(engine, store, clock);
+    expect(latest().size).toBe(120);
+    expect((await store.jobs({ kind: "woocommerce.backfill" })).length).toBe(3); // 50 + 50 + 20
+    expect(await store.get("cursor", "woocommerce.orders")).toEqual({ since: new Date(clock.now()).toISOString() });
+  });
+});

@@ -88,8 +88,8 @@ describe("Shopify install from inside Mizan", () => {
     expect(claim.body).toMatchObject({ reconnected: false, connection: { provider: "shopify", account: shop.host, status: "active" } });
 
     const resolved = await app.get(ConnectionResolver).resolve(stores.sara!);
-    expect(resolved.shopify.accessToken.reveal()).toBe(token);
-    expect(resolved.shopify.shop).toBe(shop.host);
+    expect(resolved.shopify!.accessToken.reveal()).toBe(token);
+    expect(resolved.shopify!.shop).toBe(shop.host);
     const audit = await http().get("/v1/audit-log").set(as("sara")).expect(200);
     expect(JSON.stringify(audit.body)).toContain("connection.connected");
     expect(JSON.stringify(audit.body)).not.toContain(token);
@@ -106,8 +106,8 @@ describe("Shopify install from inside Mizan", () => {
     const before = await app.get(ConnectionResolver).resolve(stores.sara!);
     const { install } = await installFlow("sara", shop);
     const res = await http().post("/v1/connections/shopify/claim").set(as("sara")).send({ install }).expect(201);
-    expect(res.body).toMatchObject({ reconnected: true, connection: { id: before.shopify.connectionId } });
-    expect((await app.get(ConnectionResolver).resolve(stores.sara!)).shopify.accessToken.reveal()).toBe(shop.tokens.at(-1));
+    expect(res.body).toMatchObject({ reconnected: true, connection: { id: before.shopify!.connectionId } });
+    expect((await app.get(ConnectionResolver).resolve(stores.sara!)).shopify!.accessToken.reveal()).toBe(shop.tokens.at(-1));
   });
 
   it("a store installed before Mizan needed order edits is asked to approve the new permissions; approving clears it", async () => {
@@ -134,7 +134,7 @@ describe("Shopify install from inside Mizan", () => {
     const { shopify } = await app.get(ConnectionResolver).resolve(stores.sara!);
     const subs = [...shop.webhooks.values()];
     expect(subs.map((w) => w.topic).sort()).toEqual([...SHOPIFY_WEBHOOK_TOPICS].sort());
-    expect(new Set(subs.map((w) => w.uri))).toEqual(new Set([`https://api.mizan.test/webhooks/shopify/${shopify.connectionId}`]));
+    expect(new Set(subs.map((w) => w.uri))).toEqual(new Set([`https://api.mizan.test/webhooks/shopify/${shopify!.connectionId}`]));
     const jobs = await db.tenant(stores.sara!, (trx) => trx.selectFrom("mz_outbox").select(["kind", "status"]).where("kind", "=", "shopify.syncWebhooks").execute());
     expect(jobs).toEqual(Array(3).fill({ kind: "shopify.syncWebhooks", status: "done" })); // install, reinstall, approving new scopes
 
@@ -221,7 +221,7 @@ describe("install from the Shopify App Store", () => {
 describe("uninstall (E3-4)", () => {
   it("app/uninstalled disconnects the store, deletes its token, drops its jobs; a reinstall starts clean", async () => {
     const before = await app.get(ConnectionResolver).resolve(stores.sara!);
-    const connectionId = before.shopify.connectionId;
+    const connectionId = before.shopify!.connectionId;
     await db.tenant(stores.sara!, (trx) => trx.insertInto("mz_outbox").values({
       id: crypto.randomUUID(), tenant_id: stores.sara!, connection_id: connectionId, kind: "shopify.ingestOrder", connection: "shopify",
       payload: "{}", idempotency_key: "queued-before-uninstall", status: "pending", next_attempt_at: 1, created_at: 1, updated_at: 1,
@@ -245,7 +245,7 @@ describe("uninstall (E3-4)", () => {
     const res = await http().post("/v1/connections/shopify/claim").set(as("sara")).send({ install }).expect(201);
     expect(res.body).toMatchObject({ reconnected: true, connection: { id: connectionId, status: "active" } });
     const after = await app.get(ConnectionResolver).resolve(stores.sara!);
-    expect(after.shopify.accessToken.reveal()).toBe(shop.tokens.at(-1));
+    expect(after.shopify!.accessToken.reveal()).toBe(shop.tokens.at(-1));
     for (let i = 0; i < 4; i++) {
       await app.get(EventDispatcher).runOnce();
       await app.get(EngineJobRunner).cycle();

@@ -2841,7 +2841,8 @@
       "shopify": "Shopify",
       "bosta": "Bosta",
       "meta_whatsapp": "WhatsApp",
-      "whatsapp": "WhatsApp"
+      "whatsapp": "WhatsApp",
+      "woocommerce": "WooCommerce"
     },
     "status": {
       "active": "Connected",
@@ -2869,6 +2870,31 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners, admins and ops managers see integrations."
+    },
+    "woo": {
+      "open": "Connect a WooCommerce store",
+      "newKeys": "Paste new keys",
+      "title": "Connect WooCommerce",
+      "body": "Mizan reads your orders with REST API keys and sets up the store's webhooks itself.",
+      "steps": {
+        "one": "In WordPress, open WooCommerce → Settings → Advanced → REST API, and choose Add key.",
+        "two": "Give it a name (Mizan), pick your user, set Permissions to Read/Write, then Generate API key.",
+        "three": "Copy the consumer key and secret here. WooCommerce shows the secret once."
+      },
+      "site": "Store address",
+      "sitePlaceholder": "https://shop.example.com",
+      "key": "Consumer key",
+      "secret": "Consumer secret",
+      "secretHint": "Stored encrypted; never shown again.",
+      "keyInvalid": "A consumer key starts with ck_",
+      "secretInvalid": "A consumer secret starts with cs_",
+      "connect": "Connect",
+      "cancel": "Not now",
+      "saved": "Saved. Mizan is checking the keys and bringing in your orders.",
+      "reasons": {
+        "key_refused": "The store refused the keys. Create new Read/Write keys and paste them.",
+        "key_lacks_permission": "The keys are read-only or blocked by the site's firewall. Use Read/Write keys."
+      }
     }
   },
   "auditLog": {

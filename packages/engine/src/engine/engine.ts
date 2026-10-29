@@ -23,7 +23,8 @@ import { DEFAULT_WORKER, OutboxWorker, type JobOutcome, type WorkerOptions } fro
 export type Owner = "mizan" | "shopify";
 
 export interface EngineOptions {
-  shopify: ShopifyCredentials;
+  /** The store's Shopify connection; absent for a store on another platform (WooCommerce). */
+  shopify?: ShopifyCredentials;
   bosta: BostaConfig;
   /** A WooCommerce store (E5-7): its orders come in by signed webhook and by polling. */
   woocommerce?: WooCommerceCredentials;
@@ -62,7 +63,7 @@ export interface EngineOptions {
     /** A product read from the store (webhook, refetch or backfill page), without `raw`. Must be idempotent. */
     onProduct?: (product: CanonicalProduct) => Promise<void>;
     /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
-    onAccessChecked?: (provider: "bosta", result: AccessCheck) => Promise<void>;
+    onAccessChecked?: (provider: "bosta" | "woocommerce", result: AccessCheck) => Promise<void>;
     /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
     onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
     /** A store day was reconciled (E5-8): what the store had, and how many the engine recovered. */
@@ -113,6 +114,8 @@ export interface ShipmentStatusUpdate {
 }
 
 /** One store day to reconcile (E5-8): orders created in [from, to). */
+export interface WooBackfillPage { runKey: string; since: string; page: number }
+
 export interface ReconcileJob { day: string; from: string; to: string }
 /** What the store had that day, and how many of those the engine had never recorded (now ingested). */
 export interface ReconcileResult { day: string; from: string; to: string; seen: number; recovered: number }
@@ -199,7 +202,7 @@ const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).dige
 export class MizanEngine {
   readonly drift = new DriftMonitor();
   readonly shapes = new ShapeWatch();
-  readonly shopify: ShopifyConnector;
+  private readonly shopifyConn: ShopifyConnector | undefined;
   readonly bosta: BostaConnector;
   readonly woo: WooCommerceConnector | undefined;
   readonly worker: OutboxWorker;
@@ -221,12 +224,22 @@ export class MizanEngine {
       echoWindowMs: 2 * 60_000,
       ...options,
     };
-    this.shopify = new ShopifyConnector(options.shopify, rt, this.drift, this.shapes);
+    this.shopifyConn = options.shopify ? new ShopifyConnector(options.shopify, rt, this.drift, this.shapes) : undefined;
     this.bosta = new BostaConnector(options.bosta, rt, this.drift, this.shapes);
     this.woo = options.woocommerce ? new WooCommerceConnector({ ...options.woocommerce }, rt, this.drift, this.shapes) : undefined;
     this.worker = new OutboxWorker(store, rt, this.handlers(), { ...DEFAULT_WORKER, ...options.worker });
     this.worker.onOutcome((o) => this.onOutcome(o));
     this.drift.onNew((e) => this.emit("drift", { ...e }));
+  }
+
+  /** The store's Shopify connector; a job that needs it on a store without Shopify fails as permanent (nothing to retry). */
+  get shopify(): ShopifyConnector {
+    if (!this.shopifyConn) throw new IntegrationError({ kind: "permanent", connector: "shopify", message: "this store is not on Shopify" });
+    return this.shopifyConn;
+  }
+
+  get hasShopify(): boolean {
+    return this.shopifyConn !== undefined;
   }
 
   on(listener: Listener) {
@@ -246,9 +259,9 @@ export class MizanEngine {
     const bosta = this.opts.learned?.bosta ?? (await this.store.get<BostaLearned>("learned", "bosta"));
     const shopify = this.opts.learned?.shopify ?? (await this.store.get<ShopifyLearned>("learned", "shopify"));
     if (bosta) this.bosta.loadLearned(bosta);
-    if (shopify) this.shopify.loadLearned(shopify);
+    if (shopify) this.shopifyConn?.loadLearned(shopify);
     this.learnedSaved.bosta = JSON.stringify(this.bosta.exportLearned());
-    this.learnedSaved.shopify = JSON.stringify(this.shopify.exportLearned());
+    if (this.shopifyConn) this.learnedSaved.shopify = JSON.stringify(this.shopifyConn.exportLearned());
     if (this.woo) {
       this.woo.loadLearned(this.opts.learned?.woocommerce ?? (await this.store.get<WooLearned>("learned", "woocommerce")));
       this.learnedSaved.woocommerce = JSON.stringify(this.woo.exportLearned());
@@ -258,7 +271,7 @@ export class MizanEngine {
   /** Persist learned state that changed: in the engine store, and through hooks.onLearned. */
   private async saveLearned() {
     for (const provider of ["bosta", "shopify", "woocommerce"] as const) {
-      if (provider === "woocommerce" && !this.woo) continue;
+      if ((provider === "woocommerce" && !this.woo) || (provider === "shopify" && !this.shopifyConn)) continue;
       const state = provider === "bosta" ? this.bosta.exportLearned() : provider === "shopify" ? this.shopify.exportLearned() : this.woo!.exportLearned();
       const json = JSON.stringify(state);
       if (json === this.learnedSaved[provider]) continue;
@@ -275,6 +288,7 @@ export class MizanEngine {
   // ═════════════ inbound: webhooks ═════════════
 
   async handleShopifyWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    if (!this.shopifyConn) return { status: 404, body: { error: "no Shopify store on this connection" } };
     const hmac = headers["X-Shopify-Hmac-SHA256"] ?? headers["x-shopify-hmac-sha256"];
     if (!verifyShopifyHmac(rawBody, hmac, this.opts_shopifySecret())) return { status: 401, body: { error: "invalid signature" } };
     const meta = readShopifyHeaders(headers);
@@ -414,7 +428,12 @@ export class MizanEngine {
    * reference that never exists). Runs as a job, never in a request: network trouble retries,
    * a refused key ends the job and reports through hooks.onAccessChecked.
    */
-  /** Point the WooCommerce store's webhooks at Mizan and turn disabled ones back on (E5-7). */
+  /** Import a WooCommerce store's orders changed since `sinceMs` (E5-7), a page per job. */
+  static wooBackfillJob(runKey: string, sinceMs: number): NewJob<WooBackfillPage> {
+    return { kind: "woocommerce.backfill", connection: "woocommerce", payload: { runKey, since: new Date(sinceMs).toISOString(), page: 1 }, idempotencyKey: `woocommerce:backfill:${runKey}:1` };
+  }
+
+  /** Point the WooCommerce store's webhooks at Mizan and turn disabled ones back on (E5-7). Doubles as the keys' check. */
   static wooWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "woocommerce.syncWebhooks", connection: "woocommerce", payload: {}, idempotencyKey: `woocommerce:webhooks:${runKey}` };
   }
@@ -504,7 +523,7 @@ export class MizanEngine {
   /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
-    await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+    if (this.shopifyConn) await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
     if (this.woo) await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
     await this.enqueue("bosta.pollActive", {}, `poll:bosta:${slot}`);
   }
@@ -535,7 +554,8 @@ export class MizanEngine {
   async health() {
     const [pending, dead] = await Promise.all([this.store.jobs({ status: "pending" }), this.store.jobs({ status: "dead" })]);
     return {
-      shopify: this.shopify.health(),
+      /** The store's connector: Shopify, or WooCommerce for a store on WooCommerce. */
+      shopify: this.shopifyConn?.health() ?? this.woo!.health(),
       bosta: this.bosta.health(),
       outbox: { pending: pending.length, dead: dead.length },
       deadLetters: dead.slice(-20).map((j) => ({ id: j.id, kind: j.kind, attempts: j.attempts, error: j.lastError })),
@@ -589,6 +609,7 @@ export class MizanEngine {
       "woocommerce.ingestOrder": (j) => this.ingestWooOrder(j.payload.orderId),
       "woocommerce.pollOrders": () => this.pollWooOrders(),
       "woocommerce.syncWebhooks": () => this.syncWooWebhooks(),
+      "woocommerce.backfill": (j) => this.wooBackfillPage(j.payload as WooBackfillPage),
     };
   }
 
@@ -962,9 +983,31 @@ export class MizanEngine {
     await this.store.put("cursor", "woocommerce.orders", { since: maxSeen }, this.now());
   }
 
+  /** Also the keys' check (E5-7): it lists and writes webhooks, so it needs read/write keys that work. */
   private async syncWooWebhooks() {
-    const r = await this.wooConnector().syncWebhooks();
-    this.emit("woocommerce.webhooks_synced", { created: r.created, reactivated: r.reactivated });
+    let result: AccessCheck;
+    try {
+      const r = await this.wooConnector().syncWebhooks();
+      this.emit("woocommerce.webhooks_synced", { created: r.created, reactivated: r.reactivated });
+      result = { ok: true };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || (e.kind !== "auth" && e.kind !== "permission")) throw e; // retry the rest
+      result = { ok: false, reason: e.kind, message: e.message };
+    }
+    await this.runHook(() => this.opts.hooks?.onAccessChecked?.("woocommerce", result));
+  }
+
+  /** History on connect (E5-7): one page of orders changed since `since` per job, the next page queued by this one. */
+  private async wooBackfillPage(p: WooBackfillPage) {
+    const r = await this.wooConnector().ordersPage(p.since, p.page, 50);
+    for (const o of r.nodes) {
+      const known = await this.store.get<OrderRecord>("order", o.externalId);
+      if (!known || orderFingerprint(known.order) !== orderFingerprint(o)) await this.ingestOrderData(o);
+    }
+    this.emit(r.next ? "backfill.progress" : "backfill.completed", { runKey: p.runKey, connector: "woocommerce", page: p.page, orders: r.nodes.length });
+    if (r.next) await this.enqueue("woocommerce.backfill", { ...p, page: r.next }, `woocommerce:backfill:${p.runKey}:${r.next}`);
+    // The poll starts where the history ends: nothing between them is missed.
+    else if (!(await this.store.get("cursor", "woocommerce.orders"))) await this.store.put("cursor", "woocommerce.orders", { since: new Date(this.now()).toISOString() }, this.now());
   }
 
   private async pollActiveShipments() {

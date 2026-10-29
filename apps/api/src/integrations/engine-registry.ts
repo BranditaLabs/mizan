@@ -56,7 +56,7 @@ export function engineLogger(tenantId: string): Runtime["logger"] {
 }
 
 /**
- * One MizanEngine per store (a tenant's Shopify connection, E2-7), built from that store's
+ * One MizanEngine per store (a tenant's Shopify or WooCommerce connection, E2-7, E5-7), built from that store's
  * connection, the tenant's Bosta account and decrypted credentials. Each engine owns its
  * connectors, so circuit breakers and rate buckets are per store: one store being throttled or
  * down never slows another. Its SqlStore runs every query under the tenant's RLS context and
@@ -131,19 +131,33 @@ export class EngineRegistry {
 
   private async build(tenantId: string, storeId?: string): Promise<TenantEngine> {
     const c = await this.resolver.resolve(tenantId, storeId);
-    const connections: Record<string, string> = { shopify: c.shopify.connectionId };
+    const storeConnection = c.store.connectionId;
+    const connections: Record<string, string> = { [c.store.provider]: storeConnection };
     if (c.bosta) connections.bosta = c.bosta.connectionId;
-    const store = new SqlStore(tenantQueryClient(this.db.kysely, tenantId), { tenantId, connections });
+    // Rows are kept apart per store connection, whatever its platform.
+    const store = new SqlStore(tenantQueryClient(this.db.kysely, tenantId), { tenantId, store: storeConnection, connections });
 
     const bostaConfig = c.bosta?.config ?? {};
     const options: EngineOptions = {
-      shopify: {
-        shop: c.shopify.shop,
-        accessToken: c.shopify.accessToken.reveal(),
-        apiVersion: this.config.SHOPIFY_API_VERSION,
-        clientSecret: this.config.SHOPIFY_API_SECRET ?? "",
-        webhookUrl: new URL(`/webhooks/shopify/${c.shopify.connectionId}`, this.config.PUBLIC_URL).toString(),
-      },
+      ...(c.shopify ? {
+        shopify: {
+          shop: c.shopify.shop,
+          accessToken: c.shopify.accessToken.reveal(),
+          apiVersion: this.config.SHOPIFY_API_VERSION,
+          clientSecret: this.config.SHOPIFY_API_SECRET ?? "",
+          webhookUrl: new URL(`/webhooks/shopify/${c.shopify.connectionId}`, this.config.PUBLIC_URL).toString(),
+        },
+      } : {}),
+      // E5-7: a WooCommerce store, its keys and the secret its webhooks are signed with.
+      ...(c.woocommerce ? {
+        woocommerce: {
+          siteUrl: c.woocommerce.siteUrl,
+          consumerKey: c.woocommerce.consumerKey.reveal(),
+          consumerSecret: c.woocommerce.consumerSecret.reveal(),
+          webhookSecret: c.woocommerce.webhookSecret.reveal(),
+          webhookUrl: new URL(`/webhooks/woocommerce/${c.woocommerce.connectionId}`, this.config.PUBLIC_URL).toString(),
+        },
+      } : {}),
       // Without a Bosta connection, courier jobs fail as `auth` and surface as connection.needs_attention.
       bosta: {
         apiKey: c.bosta?.apiKey.reveal() ?? "",
@@ -154,33 +168,35 @@ export class EngineRegistry {
         ...(typeof bostaConfig.cityField === "string" ? { cityField: bostaConfig.cityField as "city" | "cityCode" | "cityId" } : {}),
       },
       // What Mizan writes back to the store as the courier reports (E7-7, Settings → Integrations).
-      ...engineSyncOptions(storeSyncOf(c.shopify.config)),
+      ...engineSyncOptions(storeSyncOf(c.store.config)),
       learned: {
-        shopify: c.shopify.learned,
+        ...(c.shopify ? { shopify: c.shopify.learned } : {}),
+        ...(c.woocommerce ? { woocommerce: c.woocommerce.learned } : {}),
         ...(c.bosta ? { bosta: c.bosta.learned } : {}),
       },
       hooks: {
         // Every order the engine ingests lands in Mizan's orders table before the job completes.
         onOrder: async (order) => {
-          await this.orders.project(tenantId, c.shopify.connectionId, order);
+          await this.orders.project(tenantId, storeConnection, order);
         },
         // Every product the engine reads lands in Mizan's catalogue (costs stay Mizan's).
         onProduct: async (product) => {
-          await this.products.project(tenantId, c.shopify.connectionId, product);
+          await this.products.project(tenantId, storeConnection, product);
         },
         onAccessChecked: async (provider, result) => {
-          if (c.bosta) await this.courierAccess.checked(tenantId, c.bosta.connectionId, provider, result);
+          const id = provider === "woocommerce" ? c.woocommerce?.connectionId : c.bosta?.connectionId;
+          if (id) await this.courierAccess.checked(tenantId, id, provider, result);
         },
         onAwaitingPayment: async (order, reason) => {
-          await this.orders.awaitingPayment(tenantId, c.shopify.connectionId, order, reason);
+          await this.orders.awaitingPayment(tenantId, storeConnection, order, reason);
         },
         // A store day was reconciled (E5-8): Mizan counts its own orders and records the result.
         onReconciled: async (result) => {
-          await this.reconciliation.record(tenantId, c.shopify.connectionId, result);
+          await this.reconciliation.record(tenantId, storeConnection, result);
         },
         // A bulk cancel reached the store's order, or could not (E5-4): a failure shows on the order.
         onCancelResult: async (orderId, result) => {
-          await this.cancelResults?.recordStoreCancel(tenantId, c.shopify.connectionId, orderId, result);
+          await this.cancelResults?.recordStoreCancel(tenantId, storeConnection, orderId, result);
         },
         // An accepted offer is in the Shopify order now, or could not be added (E6-13).
         onOfferResult: async (offerId, result) => {
@@ -197,7 +213,7 @@ export class EngineRegistry {
         },
         // Learned status codes, city aliases and query variants outlive the engine: they belong to the connection.
         onLearned: async (provider, state) => {
-          const connectionId = provider === "shopify" ? c.shopify.connectionId : provider === "bosta" ? c.bosta?.connectionId : undefined;
+          const connectionId = provider === "bosta" ? c.bosta?.connectionId : provider === c.store.provider ? storeConnection : undefined;
           if (!connectionId) return;
           await this.db.tenant(tenantId, (trx) => trx.updateTable("connections")
             .set({ learned: JSON.stringify(state), updated_at: new Date() }).where("id", "=", connectionId).execute());

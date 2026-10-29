@@ -24,6 +24,13 @@ export const BostaKeySchema = z.strictObject({
   apiKey: z.string().trim().min(8).max(512).describe("From Bosta's dashboard (Settings → API integration); stored encrypted, never shown again"),
 });
 
+/** E5-7: the store's address and the REST keys the owner creates in WooCommerce (Settings → Advanced → REST API, Read/Write). */
+export const WooCommerceKeysSchema = z.strictObject({
+  siteUrl: z.string().trim().min(4).max(300).describe("The store's address, https://shop.example.com"),
+  consumerKey: z.string().trim().regex(/^ck_[A-Za-z0-9_]{8,}$/, "a WooCommerce consumer key starts with ck_").describe("ck_…; stored encrypted, never shown again"),
+  consumerSecret: z.string().trim().regex(/^cs_[A-Za-z0-9_]{8,}$/, "a WooCommerce consumer secret starts with cs_").describe("cs_…; stored encrypted, never shown again"),
+});
+
 type Row = { id: string; kind: string; provider: string; external_account: string | null; status: string; status_reason: string | null; config: unknown; updated_at: Date };
 
 /**

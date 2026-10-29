@@ -71,6 +71,18 @@ export class WebhooksController {
     return res.code(result.status).send(result.body);
   }
 
+  /** E5-7: a WooCommerce store's webhooks (signed with the secret Mizan set on them); the save-time ping is answered 200. */
+  @Post("woocommerce/:connectionId")
+  @HttpCode(200)
+  async woocommerce(@Param("connectionId") connectionId: string, @Req() req: Request, @Res() res: Response) {
+    const route = await this.router.route(connectionId);
+    if (!route || route.provider !== "woocommerce") return res.code(404).send({ error: "unknown connection" });
+    if (route.status === "disconnected") return res.code(200).send({ ignored: "disconnected" });
+    const { engine } = await this.registry.get(route.tenantId, connectionId);
+    const result = await engine.handleWooCommerceWebhook(headersOf(req), rawBody(req));
+    return res.code(result.status).send(result.body);
+  }
+
   @Post("bosta/:connectionId")
   @HttpCode(200)
   async bosta(@Param("connectionId") connectionId: string, @Query() query: Record<string, string>, @Req() req: Request, @Res() res: Response) {

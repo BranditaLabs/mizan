@@ -70,3 +70,27 @@ test("owner in Arabic: renames the store and moves its time zone; it stays after
   await expect(form.getByLabel("المنطقة الزمنية")).toHaveValue("Asia/Riyadh");
   await expect(form).toContainText("EGP");
 });
+
+/** E5-7: an owner connects a WooCommerce store with its REST keys; the keys are checked in the background. */
+test("owner in Arabic: connects a WooCommerce store with its keys; it shows as being checked", async ({ page }) => {
+  const owner = await ownerWithStore("متجر ووكومرس");
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
+  await page.goto("/ar/settings/integrations");
+  await page.getByRole("button", { name: "اربط متجر ووكومرس" }).click();
+  const dialog = page.getByRole("dialog", { name: "اربط ووكومرس" });
+  await expect(dialog).toContainText("Read/Write");
+  await dialog.getByLabel("عنوان المتجر").fill("shop.example.test");
+  await dialog.getByLabel("الـ Consumer key").fill("pk_wrong");
+  await expect(dialog).toContainText("الـ consumer key بيبدأ بـ ck_");
+  await expect(dialog.getByRole("button", { name: "اربط", exact: true })).toBeDisabled();
+  await dialog.getByLabel("الـ Consumer key").fill("ck_0123456789abcdef");
+  await dialog.getByLabel("الـ Consumer secret").fill("cs_0123456789abcdef");
+  await dialog.getByRole("button", { name: "اربط", exact: true }).click();
+  await expect(page.locator(".mz-toast", { hasText: "ميزان بيتأكد من المفاتيح" })).toBeVisible();
+  const list = page.getByTestId("connections");
+  await expect(list).toContainText("ووكومرس");
+  await expect(list).toContainText("shop.example.test");
+  await expect(list).toContainText("بنراجع");
+});

@@ -93,7 +93,7 @@ describe("admin integration routes", () => {
     expect(res.body).toMatchObject({ connected: true, shopify: { circuit: { state: "closed" } }, bosta: { circuit: { state: "closed" } }, outbox: { dead: 0 } });
     expect(res.body.connections.map((c: { provider: string }) => c.provider).sort()).toEqual(["bosta", "shopify"]);
     const none = await http().get("/v1/admin/integrations/health").set(as("other", other)).expect(200);
-    expect(none.body).toEqual({ connected: false, reason: "no Shopify store is connected", connections: [] });
+    expect(none.body).toEqual({ connected: false, reason: "no store is connected", connections: [] });
   });
 
   it("replay: 404 for unknown ids, jobs that are not dead, and other stores' jobs", async () => {

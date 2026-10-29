@@ -126,12 +126,13 @@ export class FakeWooCommerce {
   webhook(topic: "order.created" | "order.updated" | "order.deleted", order: WooOrder | { id: number }) {
     const body = JSON.stringify(topic === "order.deleted" ? { id: order.id } : this.view(order as WooOrder));
     const [resource, event] = topic.split(".");
-    const hookId = [...this.webhooks.values()].find((w) => w.topic === topic)?.id ?? 1;
+    const hook = [...this.webhooks.values()].find((w) => w.topic === topic && w.status === "active");
+    const hookId = hook?.id ?? 1;
     return {
       body,
       headers: {
         "x-wc-webhook-source": `${this.siteUrl}/`, "x-wc-webhook-topic": topic, "x-wc-webhook-resource": resource!, "x-wc-webhook-event": event!,
-        "x-wc-webhook-signature": signWoo(body, this.webhookSecret), "x-wc-webhook-id": String(hookId),
+        "x-wc-webhook-signature": signWoo(body, hook?.secret || this.webhookSecret), // signed with the webhook's own secret, as WooCommerce does "x-wc-webhook-id": String(hookId),
         // wp_hash(id . strtotime('now')): the same for two deliveries in one second.
         "x-wc-webhook-delivery-id": createHash("md5").update(`${hookId}${Math.floor(this.clock.now() / 1000)}`).digest("hex"),
       } as Record<string, string>,

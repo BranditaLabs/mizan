@@ -2841,7 +2841,8 @@
       "shopify": "شوبيفاي",
       "bosta": "بوسطة",
       "meta_whatsapp": "واتساب",
-      "whatsapp": "واتساب"
+      "whatsapp": "واتساب",
+      "woocommerce": "ووكومرس (WooCommerce)"
     },
     "status": {
       "active": "مربوط",
@@ -2869,6 +2870,31 @@
     "notAllowed": {
       "title": "مش متاح لدورك",
       "body": "المالك والأدمن ومدير العمليات بس اللي بيشوفوا الربط."
+    },
+    "woo": {
+      "open": "اربط متجر ووكومرس",
+      "newKeys": "حط مفاتيح جديدة",
+      "title": "اربط ووكومرس",
+      "body": "ميزان بيقرا أوردراتك بمفاتيح الـ REST API وبيظبط الـ webhooks في المتجر لوحده.",
+      "steps": {
+        "one": "من ووردبريس افتح WooCommerce ← Settings ← Advanced ← REST API واختار Add key.",
+        "two": "سمّيه (Mizan)، اختار المستخدم بتاعك، وخلّي الصلاحيات Read/Write، وبعدين Generate API key.",
+        "three": "انسخ الـ consumer key والـ secret هنا. ووكومرس بيعرض الـ secret مرة واحدة بس."
+      },
+      "site": "عنوان المتجر",
+      "sitePlaceholder": "مثلاً https://shop.example.com",
+      "key": "الـ Consumer key",
+      "secret": "الـ Consumer secret",
+      "secretHint": "بيتحفظ متشفّر ومش هيظهر تاني.",
+      "keyInvalid": "الـ consumer key بيبدأ بـ ck_",
+      "secretInvalid": "الـ consumer secret بيبدأ بـ cs_",
+      "connect": "اربط",
+      "cancel": "مش دلوقتي",
+      "saved": "اتحفظ. ميزان بيتأكد من المفاتيح وبيجيب أوردراتك.",
+      "reasons": {
+        "key_refused": "المتجر رفض المفاتيح. اعمل مفاتيح Read/Write جديدة وحطها.",
+        "key_lacks_permission": "المفاتيح قراءة بس أو الـ firewall بتاع الموقع مانعها. استخدم مفاتيح Read/Write."
+      }
     }
   },
   "auditLog": {

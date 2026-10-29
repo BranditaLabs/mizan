@@ -85,9 +85,9 @@ describe("connection resolver and engine registry", () => {
     expect(a1).toBe(a2);
     expect(builds.filter((t) => t === A)).toHaveLength(1);
     expect(a1.engine.shopify.creds.accessToken).toBe("shpat_fake_token");
-    expect(a1.connections.shopify.connectionId).not.toBe(b.connections.shopify.connectionId);
+    expect(a1.connections.shopify!.connectionId).not.toBe(b.connections.shopify!.connectionId);
     expect(a1.engine.shopify).not.toBe(b.engine.shopify); // separate connectors → separate circuits and buckets
-    expect(String(a1.connections.shopify.accessToken)).toBe("[secret]");
+    expect(String(a1.connections.shopify!.accessToken)).toBe("[secret]");
   });
 
   it("rebuilds after invalidate()", async () => {

@@ -13225,6 +13225,90 @@
         ]
       }
     },
+    "/v1/connections/woocommerce": {
+      "post": {
+        "operationId": "WooCommerceConnectController_connect",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WooCommerceKeys"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Saved; pending until the keys are checked (webhooks pointed at Mizan), then the last 60 days of orders are imported; audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/v1/privacy-requests": {
       "get": {
         "operationId": "PrivacyController_list",
@@ -28999,6 +29083,7 @@
                   "type": "string",
                   "enum": [
                     "shopify",
+                    "woocommerce",
                     "bosta"
                   ]
                 },
@@ -30520,6 +30605,33 @@
           "phoneNumberId",
           "wabaId",
           "accessToken"
+        ],
+        "additionalProperties": false
+      },
+      "WooCommerceKeys": {
+        "type": "object",
+        "properties": {
+          "siteUrl": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "The store's address, https://shop.example.com"
+          },
+          "consumerKey": {
+            "type": "string",
+            "pattern": "^ck_[A-Za-z0-9_]{8,}$",
+            "description": "ck_…; stored encrypted, never shown again"
+          },
+          "consumerSecret": {
+            "type": "string",
+            "pattern": "^cs_[A-Za-z0-9_]{8,}$",
+            "description": "cs_…; stored encrypted, never shown again"
+          }
+        },
+        "required": [
+          "siteUrl",
+          "consumerKey",
+          "consumerSecret"
         ],
         "additionalProperties": false
       }
