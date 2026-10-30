@@ -150,6 +150,7 @@ test("Settings → Purchasing in English: the owner sets the approval limit", as
   const owner = await ownerWithStore("Purchasing Settings Store");
   await page.goto("/en/sign-in");
   await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/); // signed in before leaving the sign-in page
   await page.goto("/en/settings/purchasing");
   const screen = page.getByTestId("purchasing-settings");
   await expect(screen.getByLabel("Owner approval over (store currency)")).toHaveValue("50000.00");
