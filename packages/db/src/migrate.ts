@@ -101,3 +101,25 @@ export async function migrate(
     await client.query("SELECT pg_advisory_unlock($1)", [LOCK_KEY]);
   }
 }
+
+/** A role name Mizan creates itself: lower-case letters, digits and underscores. */
+const ROLE_NAME = /^[a-z_][a-z0-9_]{0,62}$/;
+
+/**
+ * The login the API and worker use (E1-11), made by the migrator after migrating: LOGIN, never
+ * BYPASSRLS, a member of only `mizan_app` (tenant data under RLS) and `mizan_worker` (event
+ * dispatch). Its password is set every run, so rotating the secret and redeploying is enough.
+ * On Cloud SQL this keeps the API out of `cloudsqlsuperuser`, which every user made through the
+ * Cloud SQL API joins. The password is passed as a parameter and never logged.
+ */
+export async function ensureAppLogin(client: MigrationClient, name: string, password: string, log: (line: string) => void = () => {}): Promise<void> {
+  if (!ROLE_NAME.test(name)) throw new Error(`not a role name Mizan creates: "${name}"`);
+  if (password.length < 24) throw new Error("the app login's password must be at least 24 characters");
+  const exists = (await client.query<{ n: number }>(`SELECT count(*)::int AS n FROM pg_roles WHERE rolname = $1`, [name]))[0]!.n > 0;
+  const [stmt] = await client.query<{ sql: string }>(
+    `SELECT format('${exists ? "ALTER" : "CREATE"} ROLE %I LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE PASSWORD %L', $1::text, $2::text) AS sql`, [name, password]);
+  await client.exec(stmt!.sql);
+  const [grant] = await client.query<{ sql: string }>(`SELECT format('GRANT mizan_app, mizan_worker TO %I', $1::text) AS sql`, [name]);
+  await client.exec(grant!.sql);
+  log(`app login ${name}: ${exists ? "updated" : "created"}, member of mizan_app and mizan_worker`);
+}

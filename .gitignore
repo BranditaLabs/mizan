@@ -17,3 +17,9 @@ graphify-out/*
 !graphify-out/graph.html
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+
+# Terraform (state lives in the GCS bucket)
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan

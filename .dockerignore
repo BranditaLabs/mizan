@@ -13,3 +13,4 @@ design
 deploy
 Dockerfile
 *.md
+**/.next

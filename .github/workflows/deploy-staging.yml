@@ -1,0 +1,88 @@
+name: Deploy staging
+
+# Build → push to Artifact Registry → migrate (Cloud Run job, schema owner) → deploy api, worker
+# and web → smoke test. Authenticates with Workload Identity Federation (no keys); the variables
+# come from infra/bootstrap.sh. Until they are set, the job is skipped.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to staging
+    if: vars.GCP_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: staging
+    env:
+      PROJECT: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      REGISTRY: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mizan
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+      - uses: docker/setup-buildx-action@v3
+
+      - name: API URL (the dashboard is built against it)
+        id: urls
+        run: echo "api=$(gcloud run services describe mizan-api --region "$REGION" --format='value(status.url)')" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push the API image (API, worker, migrations)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/api:${{ env.TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build and push the dashboard image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/web:${{ env.TAG }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.urls.outputs.api }}
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      - name: Migrate (must succeed before anything is deployed)
+        run: |
+          gcloud run jobs update mizan-migrate --region "$REGION" --image "$REGISTRY/api:$TAG" --quiet
+          gcloud run jobs execute mizan-migrate --region "$REGION" --wait
+
+      - name: Deploy worker, API, dashboard
+        run: |
+          gcloud run deploy mizan-worker --region "$REGION" --image "$REGISTRY/api:$TAG" --quiet
+          gcloud run deploy mizan-api --region "$REGION" --image "$REGISTRY/api:$TAG" --quiet
+          gcloud run deploy mizan-web --region "$REGION" --image "$REGISTRY/web:$TAG" --quiet
+
+      - name: Smoke test
+        run: |
+          api="${{ steps.urls.outputs.api }}"
+          web=$(gcloud run services describe mizan-web --region "$REGION" --format='value(status.url)')
+          curl -fsS "$api/health/ready"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$api/v1/me")" = "401"
+          curl -fsS "$web/ar" | grep -q 'dir="rtl"'
+          echo "### Staging deployed: \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API: $api" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Dashboard: $web" >> "$GITHUB_STEP_SUMMARY"

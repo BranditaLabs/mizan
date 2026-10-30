@@ -6,7 +6,7 @@ import { sql } from "kysely";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPgDb, pgMigrationClient } from "../src/clients.js";
-import { loadMigrations, migrate } from "../src/migrate.js";
+import { ensureAppLogin, loadMigrations, migrate } from "../src/migrate.js";
 import { asWorker, withTenant } from "../src/tenant.js";
 
 /**
@@ -46,6 +46,7 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
     // Every pool used here was destroyed in its test; FORCE only ends stray sessions.
     await admin.query(`DROP DATABASE IF EXISTS ${dbName} WITH (FORCE)`);
     await admin.query(`DROP ROLE IF EXISTS ${loginRole}`);
+    await admin.query(`DROP ROLE IF EXISTS mizan_login_${suffix}`);
     await admin.end();
   });
 
@@ -61,6 +62,40 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
     const again = await pgMigrationClient(migratorUrl);
     expect((await migrate(again)).applied).toEqual([]);
     await again.close();
+  });
+
+  it("creates the API login with only the RLS-bound roles, and rotates its password (E1-11)", async () => {
+    const name = `mizan_login_${suffix}`;
+    const first = randomBytes(18).toString("base64url");
+    const env = { PATH: process.env.PATH, DATABASE_URL_MIGRATOR: migratorUrl, DATABASE_APP_LOGIN: name, DATABASE_APP_PASSWORD: first };
+    const run = (e: Record<string, string | undefined>) => (existsSync(cli) ? execFileSync(process.execPath, [cli, "migrate"], { env: e, encoding: "utf8" }) : null);
+    const out = run(env);
+    if (out === null) {
+      const client = await pgMigrationClient(migratorUrl);
+      await ensureAppLogin(client, name, first);
+      await client.close();
+    } else {
+      expect(out).toContain(`app login ${name}: created`);
+      expect(out).not.toContain(first);
+    }
+    const role = (await admin.query(`SELECT rolcanlogin, rolbypassrls, rolsuper, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = $1`, [name])).rows[0];
+    expect(role).toEqual({ rolcanlogin: true, rolbypassrls: false, rolsuper: false, rolcreaterole: false, rolcreatedb: false });
+    const member = (await admin.query(`SELECT r.rolname FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE u.rolname = $1 ORDER BY 1`, [name])).rows.map((r) => r.rolname);
+    expect(member).toEqual(["mizan_app", "mizan_worker"]);
+    const as = (pw: string) => { const u = new URL(migratorUrl); u.username = name; u.password = pw; return u.toString(); };
+    const c1 = new pg.Client({ connectionString: as(first) });
+    await c1.connect();
+    await c1.end();
+    // A new secret, a redeploy: the stored password changes (the test server may trust local logins, so compare hashes).
+    const hash = async () => (await admin.query(`SELECT rolpassword FROM pg_authid WHERE rolname = $1`, [name])).rows[0].rolpassword as string;
+    const before = await hash();
+    const second = randomBytes(18).toString("base64url");
+    const client = await pgMigrationClient(migratorUrl);
+    await ensureAppLogin(client, name, second);
+    await expect(ensureAppLogin(client, "Robert'); DROP TABLE x;--", second)).rejects.toThrow(/not a role name/);
+    await expect(ensureAppLogin(client, name, "short")).rejects.toThrow(/at least 24/);
+    await client.close();
+    expect(await hash()).not.toBe(before);
   });
 
   it("cancels a runaway statement, logs slow ones without parameters, and fails fast when the pool is exhausted", async () => {

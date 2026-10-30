@@ -135,6 +135,50 @@ jobs:
         if: always()
         run: docker compose -p mizan down -v
 
+  web-image:
+    name: Dashboard image smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (Next.js standalone on distroless)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          load: true
+          tags: mizan-web:local
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.example.test
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Serve Arabic, RTL, assets, as a non-root user
+        run: |
+          docker run -d --name web -p 8080:8080 --cap-drop ALL mizan-web:local
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8080/ar && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8080/ar | grep -q 'dir="rtl"'
+          css=$(curl -fsS http://127.0.0.1:8080/ar | grep -oE '/_next/static/[^"]+\.css' | head -1)
+          curl -fsS -o /dev/null "http://127.0.0.1:8080${css}"
+          test "$(docker inspect -f '{{.Config.User}}' mizan-web:local)" = "65532:65532"
+      - name: Logs
+        if: failure()
+        run: docker logs web
+
+  infra:
+    name: Infrastructure (terraform validate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13.0"
+      - run: terraform -chdir=infra fmt -check -recursive
+      - run: terraform -chdir=infra init -backend=false -input=false
+      - run: terraform -chdir=infra validate
+      - run: bash -n infra/bootstrap.sh
+
   ops-app:
     name: Ops app (Flutter analyze and tests)
     runs-on: ubuntu-latest

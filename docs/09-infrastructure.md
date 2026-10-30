@@ -25,7 +25,7 @@ Each env is a separate Google Cloud project (`mizan-staging`, `mizan-prod`) in t
 | Errors | Sentry (or Error Reporting) | Scrub PII |
 | CDN | Cloud CDN for web static assets | — |
 
-Infrastructure as code: Terraform in `infra/` (create in backlog E1).
+Infrastructure as code: Terraform in `infra/` (✅ written in E1-11; `infra/README.md` and `infra/bootstrap.sh` for the first run). Staging reaches Cloud SQL through the Cloud SQL connector (public IP, no authorized networks); production moves to private IP. Cloud Scheduler is not used yet: the worker runs its own polls.
 
 ### Container image (✅ H-10)
 
@@ -69,7 +69,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 
 **Web (`apps/web`, build time):** `NEXT_PUBLIC_API_URL` and the Firebase web config `NEXT_PUBLIC_FIREBASE_{API_KEY,AUTH_DOMAIN,PROJECT_ID}` (public by design; restrict the API key to the web origins in Google Cloud). `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL` only for local development and the `web-e2e` job. See `apps/web/.env.example`.
 
-**Database roles:** migrations run as the schema owner (`DATABASE_URL_MIGRATOR`, `mizan-db migrate`). The API and worker log in as a separate user that is a member of `mizan_app` (tenant data under RLS) and `mizan_worker` (event dispatch across tenants on `domain_events` only), and is neither owner nor `BYPASSRLS`: `CREATE ROLE mizan_api LOGIN … IN ROLE mizan_app, mizan_worker` (Terraform, E1-11).
+**Database roles:** migrations run as the schema owner (`DATABASE_URL_MIGRATOR`, `mizan-db migrate`); with `DATABASE_APP_LOGIN` + `DATABASE_APP_PASSWORD` the same run creates or updates the API login (✅ E1-11; on Cloud SQL this keeps it out of `cloudsqlsuperuser`). The API and worker log in as a separate user that is a member of `mizan_app` (tenant data under RLS) and `mizan_worker` (event dispatch across tenants on `domain_events` only), and is neither owner nor `BYPASSRLS`: `CREATE ROLE mizan_api LOGIN … IN ROLE mizan_app, mizan_worker` (Terraform, E1-11).
 
 ## 4. CI/CD (GitHub Actions)
 
@@ -77,7 +77,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 | --- | --- | --- |
 | `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Lint runs in `build-test`. Job `web-e2e`: Playwright smoke of the dashboard's production build (Arabic default, RTL/LTR, theme cookie, system dark, security headers, no external requests). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `ops-app`: Flutter 3.47.9 in `apps/ops` — generated code (drift, l10n) must be current, `flutter analyze`, `flutter test` (incl. the offline-sync chaos run). Job `secrets-scan`: gitleaks over full history. |
 | `nightly-load.yml` ✅ | Daily 03:17 Cairo, manual | Build, then `npm run load -w @mizan/perf` (2 API instances, 2,000 stores, Postgres service); fails on a missed latency/throughput gate or a lost webhook; table in the job summary, JSON as artifact |
-| `deploy-staging.yml` | Merge to `main` | build images → push to Artifact Registry → run migrations (migrator role) → deploy Cloud Run → smoke test |
+| `deploy-staging.yml` ✅ | Merge to `main`, manual | Workload Identity Federation (no keys) → build `api` and `web` images → push to Artifact Registry → `mizan-migrate` job (migrations, then the `mizan_api` login with RLS roles only) → deploy worker, API, dashboard → smoke test (`/health/ready`, 401 on `/v1/me`, `/ar` in RTL). Skipped until `infra/bootstrap.sh` has run and its variables are set |
 | `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
 

@@ -40,7 +40,8 @@ apps/ops/          🚧 Flutter 3.47.9 ops app, offline-first: drift queue + exa
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
 .claude/commands/  slash commands for recurring work
-.github/workflows/ ci.yml — typecheck + tests + gitleaks on every PR (renovate.json for deps)
+infra/             🚧 Terraform for Google Cloud (E1-11) + bootstrap.sh for Cloud Shell; waiting for the owner's first run
+.github/workflows/ ci.yml — typecheck + tests + gitleaks + image and infra checks on every PR; deploy-staging.yml (renovate.json for deps)
 ```
 
 ## Commands
