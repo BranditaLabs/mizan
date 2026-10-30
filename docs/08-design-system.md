@@ -68,6 +68,16 @@ Defined in `packages/design-system/tokens/tokens.json`; never copy values into a
 
 Recipes and rules: `packages/design-system/docs/components.md` (buttons, fields, status and payment badges, tables, KPI tiles, feedback, floating layers, copy). **✅ E4-3:** built in `apps/web/src/components/ui` as React wrappers over the package's `components.css` classes (imported in the components layer, so the reference page and the app cannot drift); see them all at `/ar/ui` and `/en/ui`. Dialogs and drawers use the native modal `<dialog>`; keyboard movement in tabs, segmented controls and menus follows the screen in right-to-left. The list from the plan: Button, IconButton, Input, Select, Combobox, Checkbox, Switch, Tabs, Table (sortable, selectable, sticky header), Pill/Badge (status, risk), Card, StatCard (number + delta + sparkline), Drawer, Dialog, Toast, EmptyState, Skeleton, Timeline, MoneyText, PhoneText (masked, `<bdi>`), DateText, Avatar, CommandPalette.
 
+## 5b. Mizan Glass (the web app's surface, Oct 2026)
+
+The design team's premium layer, `packages/design-system/css/glass.css` (guide: `packages/design-system/docs/glass.md`), renders ink, paper and red as light through frosted glass. It ships as delivered and stays untouched; `css/glass-bridge.css` maps the core tokens (`--mz-*`) and components (`.mz-card`, `.mz-btn`, fields, tables, menus, dialogs, toasts, badges, skeletons) onto it inside a `.mzg` root, so every screen built on the core classes and Tailwind tokens becomes Glass without being rewritten.
+
+- `GlassRoot` (`apps/web/src/components/GlassRoot.tsx`) wraps the app frame and the auth screens: theme (`.light` follows the person's choice or the system), direction, and the drifting light fields.
+- The rail uses Glass navigation (`.nav`, `.nav-ind` sliding on a spring with the red point, `.nav-item`); the rail and top bar are `.g` panels.
+- Ink islands (`<GlassRoot ink>`): the dashboard hero and the sign-in brand side stay dark glass in either theme.
+- New code may use the Glass classes directly (`.g`, `.g-2`, `.chip`, `.seg`, loaders `.ld-*`); prefer the UI kit components, which carry the bridge.
+- The customer-facing confirmation page (`/c/[token]`) stays on the plain core system (low-end phones, no blur).
+
 ## 6. Accessibility
 
 WCAG 2.2 AA contrast for text and status pills in both themes; status never by colour alone (text label + icon); focus rings visible; all actions keyboard-reachable; tap targets ≥ 44 px in ops app.

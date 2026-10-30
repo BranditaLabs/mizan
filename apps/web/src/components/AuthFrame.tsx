@@ -3,6 +3,7 @@ import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { ThemedWordmark } from "./Wordmark";
+import { GlassRoot } from "./GlassRoot";
 
 /**
  * Frame for pages outside a store (sign-in, two-step, welcome): the wordmark and the language and
@@ -32,7 +33,8 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
  */
 export function AuthSplit({ theme, showcase, compactShowcase, children }: { theme: Theme; showcase: ReactNode; compactShowcase: ReactNode; children: ReactNode }) {
   return (
-    <div className="grid min-h-dvh grid-cols-1 bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+    <GlassRoot theme={theme}>
+    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
       <div className="flex min-h-dvh flex-col">
         <header className="flex h-16 items-center gap-3 px-4 md:px-8">
           <ThemedWordmark className="shrink-0 lg:invisible" />
@@ -44,11 +46,14 @@ export function AuthSplit({ theme, showcase, compactShowcase, children }: { them
           <div className="w-full max-w-[400px]">{children}</div>
         </main>
         <div className="px-4 pb-8 lg:hidden">
-          <div className="mx-auto max-w-[400px] rounded-xl bg-rail-bg p-2 text-rail-text">{compactShowcase}</div>
+          <GlassRoot ink fields={false} className="g mx-auto max-w-[400px] overflow-hidden p-2 text-rail-text">{compactShowcase}</GlassRoot>
         </div>
       </div>
-      <aside className="sticky top-0 hidden h-dvh bg-rail-bg text-rail-text lg:block">{showcase}</aside>
+      <aside className="sticky top-0 hidden h-dvh p-3 text-rail-text lg:block">
+        <GlassRoot ink className="g h-full overflow-hidden">{showcase}</GlassRoot>
+      </aside>
     </div>
+    </GlassRoot>
   );
 }
 

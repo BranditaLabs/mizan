@@ -20,6 +20,7 @@ npm run build -w @mizan/design-system  # regenerate dist/, icons and the referen
 | `dist/tokens.ts` | Typed token object (charts, inline styles, tests) |
 | `dist/mizan_tokens.dart` | Flutter: `MizanColorsLight/Dark`, `MizanType`, `MizanSpace`, `MizanRadius`, `MizanMotion`, `mizanLightTheme`, `mizanDarkTheme` |
 | `css/fonts.css` · `css/base.css` · `css/components.css` | Font faces, base layer (focus, RTL, selection, reduced motion), reference components `mz-*` |
+| `css/glass.css` · `docs/glass.md` | **Mizan Glass**: the premium layer (frosted surfaces, light fields, spotlight, sliding indicators, 6 animated loaders), dark and light |
 | `icons/` | `manifest.json` (source), `svg/*.svg`, `sprite.svg`, `index.ts` (names, labels, RTL flags), `react.tsx` (`<Icon name="cod" />`) |
 | `logo/` | `svg/` wordmarks and lockups, `png/` app icons and favicons, `favicon.ico`, `source/` scripts that outline the type |
 | `fonts/` | `web/*.woff2`, `ttf/*.ttf` (Flutter), `licenses/` (all SIL OFL 1.1) |
@@ -54,6 +55,10 @@ export const geist = localFont({ src: [
 @import "@mizan/design-system/base.css";
 /* optional: the reference component classes */
 @import "@mizan/design-system/components.css";
+/* optional: the premium glass layer (see docs/glass.md) */
+@import "@mizan/design-system/glass.css";
+/* the web app: render the core tokens and .mz-* components through it inside .mzg */
+@import "@mizan/design-system/glass-bridge.css";
 ```
 
 ```tsx

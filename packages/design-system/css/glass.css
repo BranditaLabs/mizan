@@ -1,0 +1,312 @@
+/* Mizan Glass — the premium layer of @mizan/design-system.
+   Brandita ink, paper and one red point, rendered as light through frosted glass.
+   Rules kept from the core system: primary actions are ink (paper on dark), red only for meaning,
+   status always has a label, numbers are tabular, Arabic is never tracked. Glass adds depth by blur
+   and light, so the core "no shadow" rule is relaxed for this layer only. */
+
+/* ───────────── 1. Theme tokens ───────────── */
+.mzg {
+  --bg: #060607;
+  --fg: #F4F1F6;
+  --fg-2: rgba(244, 241, 246, .82);
+  --fg-3: rgba(244, 241, 246, .64);
+  --line: rgba(255, 255, 255, .09);
+  --line-2: rgba(255, 255, 255, .16);
+  --glass: linear-gradient(180deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .045));
+  --glass-2: rgba(255, 255, 255, .055);
+  --glass-3: rgba(255, 255, 255, .1);
+  --glass-solid: rgba(20, 20, 23, .72);
+  --edge: rgba(255, 255, 255, .22);
+  --edge-in: rgba(255, 255, 255, .07);
+  --shadow: 0 1px 1px rgba(0, 0, 0, .5), 0 30px 60px -30px rgba(0, 0, 0, .85);
+  --shadow-lift: 0 1px 1px rgba(0, 0, 0, .5), 0 40px 80px -30px rgba(0, 0, 0, .9);
+  --solid: #F4F1F6;          /* primary action fill: paper on dark */
+  --solid-fg: #0B0B0B;
+  --red: #E33232;            /* Brandita red-hi on dark */
+  --red-glow: rgba(227, 50, 50, .55);
+  --red-soft: rgba(227, 50, 50, .16);
+  --ok: #46D6A0; --ok-soft: rgba(25, 158, 112, .2);
+  --warn: #F4B544; --warn-soft: rgba(201, 133, 0, .22);
+  --info: #6EAAF2; --info-soft: rgba(57, 135, 229, .2);
+  --bad: #FF6B66; --bad-soft: rgba(245, 52, 46, .18);
+  --v1: #F5342E; --v2: #3987E5; --v3: #C98500; --v4: #199E70; --v5: #9085E9; --v6: #D55181;
+  --field-1: rgba(222, 0, 0, .15);
+  --field-2: rgba(42, 120, 214, .13);
+  --field-3: rgba(144, 133, 233, .09);
+  --dot: rgba(255, 255, 255, .07);
+  --ease-out: cubic-bezier(.23, 1, .32, 1);
+  --ease-io: cubic-bezier(.65, 0, .35, 1);
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+  --blur: 24px;
+  position: relative;
+  isolation: isolate;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Geist", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.mzg.light {
+  --bg: #F5EFF7;
+  --fg: #0B0B0B;
+  --fg-2: rgba(11, 11, 11, .78);
+  --fg-3: rgba(11, 11, 11, .66);
+  --line: rgba(11, 11, 11, .07);
+  --line-2: rgba(11, 11, 11, .12);
+  --glass: linear-gradient(180deg, rgba(255, 255, 255, .80), rgba(255, 255, 255, .54));
+  --glass-2: rgba(255, 255, 255, .62);
+  --glass-3: rgba(255, 255, 255, .9);
+  --glass-solid: rgba(255, 255, 255, .86);
+  --edge: rgba(255, 255, 255, 1);
+  --edge-in: rgba(255, 255, 255, .95);
+  --shadow: 0 1px 2px rgba(11, 11, 11, .05), 0 24px 48px -28px rgba(46, 10, 64, .3);
+  --shadow-lift: 0 1px 2px rgba(11, 11, 11, .06), 0 36px 70px -30px rgba(46, 10, 64, .38);
+  --solid: #0B0B0B;
+  --solid-fg: #FEF7FF;
+  --red: #DE0000;
+  --red-glow: rgba(222, 0, 0, .35);
+  --red-soft: rgba(222, 0, 0, .08);
+  --ok: #0B7A53; --ok-soft: rgba(27, 175, 122, .13);
+  --warn: #8A5A00; --warn-soft: rgba(237, 161, 0, .16);
+  --info: #1C58A3; --info-soft: rgba(42, 120, 214, .11);
+  --bad: #B80000; --bad-soft: rgba(222, 0, 0, .08);
+  --v1: #DE0000; --v2: #2A78D6; --v3: #EDA100; --v4: #1BAF7A; --v5: #4A3AA7; --v6: #E87BA4;
+  --field-1: rgba(222, 0, 0, .08);
+  --field-2: rgba(42, 120, 214, .10);
+  --field-3: rgba(144, 133, 233, .14);
+  --dot: rgba(11, 11, 11, .06);
+}
+.mzg[dir="rtl"], .mzg :lang(ar) { font-family: "IBM Plex Sans Arabic", "Geist", system-ui, sans-serif; }
+.mzg[dir="rtl"] .disp, .mzg :lang(ar) .disp { font-family: "Alexandria", "Geist", sans-serif; letter-spacing: 0 !important; }
+
+/* ───────────── 2. Light fields (the "light behind the glass") ───────────── */
+.fields { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: -1; }
+.fields i { position: absolute; display: block; border-radius: 50%; filter: blur(140px); will-change: transform; }
+.fields .f1 { width: 640px; height: 640px; left: -180px; top: -260px; background: var(--field-1); animation: mzg-drift-a 24s var(--ease-io) infinite alternate; }
+.fields .f2 { width: 760px; height: 760px; right: -260px; top: 240px; background: var(--field-2); animation: mzg-drift-b 28s var(--ease-io) infinite alternate; }
+.fields .f3 { width: 560px; height: 560px; left: 36%; bottom: -300px; background: var(--field-3); animation: mzg-drift-a 32s var(--ease-io) infinite alternate-reverse; }
+.fields .dots { position: absolute; inset: 0; background-image: radial-gradient(var(--dot) 1px, transparent 1.2px); background-size: 24px 24px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 65%); mask-image: linear-gradient(180deg, #000 0%, transparent 65%); }
+@keyframes mzg-drift-a { to { transform: translate3d(140px, 90px, 0) scale(1.12); } }
+@keyframes mzg-drift-b { to { transform: translate3d(-160px, -70px, 0) scale(.9); } }
+
+/* ───────────── 3. Glass surfaces ───────────── */
+.g {
+  position: relative;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(165%);
+  backdrop-filter: blur(var(--blur)) saturate(165%);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: inset 0 1px 0 var(--edge-in), var(--shadow);
+}
+/* specular rim: bright top-left edge fading out, faint bottom-right */
+.g::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(155deg, var(--edge), transparent 34%, transparent 72%, var(--line-2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.g-2 { background: var(--glass-2); border-radius: 14px; border: 1px solid var(--line); }
+.g-solid { background: var(--glass-solid); -webkit-backdrop-filter: blur(32px) saturate(170%); backdrop-filter: blur(32px) saturate(170%); }
+.g-lift { box-shadow: inset 0 1px 0 var(--edge-in), var(--shadow-lift); }
+/* pointer-following spotlight: set --mx/--my on mousemove */
+.spot { overflow: hidden; }
+.spot::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s var(--ease-out);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, .09), transparent 42%);
+}
+.mzg.light .spot::after { background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, .7), transparent 42%); }
+@media (hover: hover) and (pointer: fine) { .spot:hover::after { opacity: 1; } }
+/* hero tile: the one number the screen exists for, lit by a red point */
+.hero-tile { background: linear-gradient(160deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .03)); }
+.hero-tile .halo { position: absolute; width: 240px; height: 240px; right: -70px; top: -110px; border-radius: 50%; background: var(--red-glow); filter: blur(70px); opacity: .3; pointer-events: none; animation: mzg-breathe 6s var(--ease-io) infinite alternate; }
+@keyframes mzg-breathe { from { opacity: .18; transform: scale(.9); } to { opacity: .34; transform: scale(1.08); } }
+
+/* ───────────── 4. Type helpers ───────────── */
+.disp { font-family: "Geist", system-ui, sans-serif; font-weight: 600; letter-spacing: -.035em; }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.mono { font-family: "Geist Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+.eyebrow { font: 600 12px/1.2 "Geist", system-ui, sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-2); }
+.mzg[dir="rtl"] .eyebrow { font-family: "IBM Plex Sans Arabic", sans-serif; letter-spacing: 0; text-transform: none; font-size: 12px; }
+.muted { color: var(--fg-2); } .faint { color: var(--fg-3); }
+
+/* ───────────── 5. Buttons ───────────── */
+.btn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 16px;
+  border-radius: 12px; border: 1px solid transparent; font: 500 13.5px/1 "Geist", system-ui, sans-serif; color: var(--fg);
+  cursor: pointer; overflow: hidden; white-space: nowrap; text-decoration: none; background: none;
+  transition: transform .2s var(--ease-out), background-color .2s var(--ease-out), border-color .2s var(--ease-out), box-shadow .3s var(--ease-out);
+}
+.mzg[dir="rtl"] .btn { font-family: "IBM Plex Sans Arabic", sans-serif; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+.btn:active { transform: scale(.97); }
+.btn:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.btn-primary { background: var(--solid); color: var(--solid-fg); box-shadow: 0 1px 0 rgba(255, 255, 255, .25) inset, 0 10px 24px -12px rgba(0, 0, 0, .6); }
+/* sheen sweeps across on hover */
+.btn-primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .45) 48%, transparent 66%); transform: translateX(-120%); }
+@media (hover: hover) and (pointer: fine) { .btn-primary:hover::after { transform: translateX(120%); transition: transform .9s var(--ease-out); } }
+.btn-glass { background: var(--glass-2); border-color: var(--line-2); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+@media (hover: hover) and (pointer: fine) { .btn-glass:hover { background: var(--glass-3); border-color: var(--edge); } .btn-ghost:hover { background: var(--glass-2); } }
+.btn-ghost { color: var(--fg-2); }
+.btn-red { background: linear-gradient(180deg, #F23B3B, #DE0000); color: #fff; box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 12px 30px -10px var(--red-glow); }
+@media (hover: hover) and (pointer: fine) { .btn-red:hover { box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 16px 40px -8px var(--red-glow); } }
+.btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; border-radius: 10px; }
+.btn-lg { height: 48px; padding: 0 22px; font-size: 15px; border-radius: 14px; }
+.btn-icon { width: 40px; padding: 0; }
+.btn-sm.btn-icon { width: 32px; }
+
+/* ───────────── 6. Segmented control (sliding glass thumb) ───────────── */
+.seg { position: relative; display: inline-flex; padding: 4px; border-radius: 13px; background: var(--glass-2); border: 1px solid var(--line); }
+.seg-thumb { position: absolute; top: 4px; bottom: 4px; left: 4px; border-radius: 9px; background: var(--glass-3); border: 1px solid var(--line-2);
+  box-shadow: inset 0 1px 0 var(--edge-in), 0 6px 14px -8px rgba(0, 0, 0, .6); transition: transform .45s var(--ease-spring), width .45s var(--ease-out); }
+.mzg.light .seg-thumb { background: #fff; }
+.seg button { position: relative; z-index: 1; height: 30px; padding: 0 14px; border: 0; background: none; color: var(--fg-3); font: 500 12.5px/1 "Geist", sans-serif; cursor: pointer; border-radius: 9px; transition: color .25s; }
+.seg button[aria-pressed="true"] { color: var(--fg); }
+.seg button:focus-visible { outline: 2px solid var(--fg); outline-offset: 1px; }
+
+/* ───────────── 7. Fields ───────────── */
+.field { display: flex; flex-direction: column; gap: 8px; }
+.label { font: 500 12.5px/1.2 "Geist", sans-serif; color: var(--fg-2); }
+.input {
+  height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--glass-2); color: var(--fg);
+  font: 400 14px/1 "Geist", sans-serif; outline: none; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  transition: border-color .2s var(--ease-out), box-shadow .3s var(--ease-out), background-color .2s;
+}
+.input::placeholder { color: var(--fg-3); }
+.input:focus { border-color: var(--fg-2); box-shadow: 0 0 0 4px var(--line), inset 0 1px 0 var(--edge-in); background: var(--glass-3); }
+.input[aria-invalid="true"] { border-color: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
+.hint { font-size: 12px; color: var(--fg-3); }
+.err { font: 500 12px/1.3 "Geist", sans-serif; color: var(--bad); display: flex; gap: 6px; align-items: center; }
+
+/* switch with a glass knob */
+.switch { position: relative; width: 44px; height: 26px; border-radius: 99px; border: 1px solid var(--line-2); background: var(--glass-2); cursor: pointer; padding: 0; transition: background-color .3s var(--ease-out); }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: var(--fg-2); box-shadow: 0 2px 6px rgba(0, 0, 0, .4); transition: transform .45s var(--ease-spring), background-color .3s; }
+.switch[aria-checked="true"] { background: var(--solid); border-color: transparent; }
+.switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--solid-fg); }
+.switch:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+/* ───────────── 8. Status, tags, keys ───────────── */
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px; border-radius: 99px; font: 500 12.5px/1 "Geist", sans-serif; white-space: nowrap; background: var(--glass-2); color: var(--fg-2); border: 1px solid var(--line); }
+.mzg[dir="rtl"] .chip { font-family: "IBM Plex Sans Arabic", sans-serif; }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; flex: none; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.chip.info { background: var(--info-soft); color: var(--info); border-color: transparent; }
+.chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.chip.plain::before { display: none; }
+.tag { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--glass-2); font: 500 12px/1 "Geist", sans-serif; color: var(--fg-2); white-space: nowrap; }
+.tag svg { width: 14px; height: 14px; }
+.kbd { display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 6px; border: 1px solid var(--line-2); border-bottom-width: 2px; font: 500 11px/1 "Geist Mono", monospace; color: var(--fg-3); background: var(--glass-2); }
+.ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.icon-tile { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--glass-2); border: 1px solid var(--line); color: var(--fg); flex: none; }
+
+/* live dot */
+.live { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.live::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--ok); animation: mzg-ping 2s var(--ease-out) infinite; }
+.live.red, .live.red::after { background: var(--red); }
+@keyframes mzg-ping { from { transform: scale(1); opacity: .7; } to { transform: scale(3.2); opacity: 0; } }
+
+/* ───────────── 9. Navigation rail ───────────── */
+.nav { position: relative; display: flex; flex-direction: column; }
+.nav-ind { position: absolute; left: 0; right: 0; top: 0; height: 38px; border-radius: 11px; background: var(--glass-3); border: 1px solid var(--line-2); box-shadow: inset 0 1px 0 var(--edge-in);
+  transition: transform .55s var(--ease-spring); pointer-events: none; }
+.nav-ind::before { content: ""; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 2px; border-radius: 2px; background: var(--red); box-shadow: 0 0 12px var(--red-glow); }
+.mzg[dir="rtl"] .nav-ind::before { left: auto; right: -1px; }
+.nav-item { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 12px; border: 0; background: none; border-radius: 11px; color: var(--fg-2);
+  font: 500 13.5px/1 "Geist", sans-serif; cursor: pointer; text-align: start; width: 100%; transition: color .2s; }
+.mzg[dir="rtl"] .nav-item { font-family: "IBM Plex Sans Arabic", sans-serif; }
+.nav-item[aria-current="page"] { color: var(--fg); }
+@media (hover: hover) and (pointer: fine) { .nav-item:hover { color: var(--fg); } }
+.nav-item:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+.nav-count { margin-inline-start: auto; font: 500 12px/1 "Geist", sans-serif; font-variant-numeric: tabular-nums; color: var(--fg-3); }
+.nav-label { height: 34px; display: flex; align-items: flex-end; padding: 0 12px 8px; }
+
+/* ───────────── 10. Tables ───────────── */
+.tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.tbl th { text-align: start; font: 600 12px/1.2 "Geist", sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-3); padding: 0 14px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td { padding: 14px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+.tbl tbody tr { transition: background-color .2s; }
+@media (hover: hover) and (pointer: fine) { .tbl tbody tr:hover { background: var(--glass-2); } }
+.tbl tbody tr:last-child td { border-bottom: 0; }
+.tbl .end { text-align: end; }
+
+/* ───────────── 11. Motion ───────────── */
+.rise { animation: mzg-rise .9s var(--ease-out) both; animation-delay: var(--d, 0s); }
+@keyframes mzg-rise { from { opacity: 0; transform: translateY(16px); filter: blur(8px); } }
+.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: mzg-draw 1.8s var(--ease-io) .25s forwards; }
+@keyframes mzg-draw { to { stroke-dashoffset: 0; } }
+.fade-in { animation: mzg-fade 1.2s var(--ease-out) .6s both; }
+@keyframes mzg-fade { from { opacity: 0; } }
+.grow-x { transform-origin: left center; animation: mzg-grow 1.2s var(--ease-out) both; animation-delay: var(--d, .2s); }
+.mzg[dir="rtl"] .grow-x { transform-origin: right center; }
+@keyframes mzg-grow { from { transform: scaleX(0); } }
+.seg-in { transform-box: fill-box; transform-origin: center; animation: mzg-seg 1s var(--ease-spring) both; animation-delay: var(--d, 0s); }
+@keyframes mzg-seg { from { opacity: 0; transform: rotate(-30deg) scale(.86); } }
+.slide-in { animation: mzg-slide .7s var(--ease-out) both; animation-delay: var(--d, 0s); }
+@keyframes mzg-slide { from { opacity: 0; transform: translateY(-10px) scale(.98); } }
+
+/* ───────────── 12. Feedback ───────────── */
+.toast { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 12px; border-radius: 16px; min-width: 300px; }
+.tooltip { padding: 10px 12px; border-radius: 12px; font-size: 12px; white-space: nowrap; }
+.skel { position: relative; overflow: hidden; border-radius: 8px; background: var(--glass-2); }
+.skel::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .09), transparent); animation: mzg-shimmer 1.6s var(--ease-io) infinite; }
+.mzg.light .skel::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85), transparent); }
+@keyframes mzg-shimmer { to { transform: translateX(100%); } }
+
+/* ───────────── 13. Loaders ───────────── */
+/* 13a. The Scale: Mizan means "the scale". The beam weighs, the pans stay level, the red point is the fulcrum. */
+.ld-scale { position: relative; width: 168px; height: 120px; }
+.ld-scale .post { position: absolute; left: 82px; top: 26px; width: 4px; height: 78px; border-radius: 2px; background: var(--fg); }
+.ld-scale .base { position: absolute; left: 50px; bottom: 10px; width: 68px; height: 4px; border-radius: 2px; background: var(--fg); }
+.ld-scale .beam { position: absolute; left: 14px; top: 24px; width: 140px; height: 4px; border-radius: 2px; background: var(--fg); transform-origin: 70px 2px; animation: mzg-weigh 2.8s var(--ease-io) infinite; }
+.ld-scale .pan { position: absolute; top: 2px; width: 44px; height: 40px; transform-origin: 22px 0; animation: mzg-level 2.8s var(--ease-io) infinite; }
+.ld-scale .pan.l { left: -20px; } .ld-scale .pan.r { right: -20px; }
+.ld-scale .pan i { position: absolute; top: 0; width: 1.5px; height: 30px; background: var(--fg-3); }
+.ld-scale .pan i:nth-child(1) { left: 21px; transform: rotate(28deg); transform-origin: top; }
+.ld-scale .pan i:nth-child(2) { left: 21px; transform: rotate(-28deg); transform-origin: top; }
+.ld-scale .pan b { position: absolute; left: 4px; top: 26px; width: 36px; height: 8px; border-radius: 0 0 18px 18px; background: var(--fg); }
+.ld-scale .pivot { position: absolute; left: 78px; top: 20px; width: 12px; height: 12px; background: var(--red); box-shadow: 0 0 18px var(--red-glow); animation: mzg-pivot 2.8s var(--ease-io) infinite; }
+@keyframes mzg-weigh { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
+@keyframes mzg-level { 0%, 100% { transform: rotate(9deg); } 50% { transform: rotate(-9deg); } }
+@keyframes mzg-pivot { 0%, 100% { box-shadow: 0 0 10px var(--red-glow); } 50% { box-shadow: 0 0 26px var(--red-glow); } }
+
+/* 13b. Wordmark reveal: outlines draw, fill rises, the red point drops in last. */
+.ld-word .stroke { fill: none; stroke: var(--fg); stroke-width: 6; stroke-dasharray: 1; stroke-dashoffset: 1; animation: mzg-word-draw 3.2s var(--ease-io) infinite; }
+.ld-word .fill { fill: var(--fg); opacity: 0; animation: mzg-word-fill 3.2s var(--ease-io) infinite; }
+.ld-word .tittle { fill: var(--red); animation: mzg-tittle 3.2s var(--ease-spring) infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes mzg-word-draw { 0% { stroke-dashoffset: 1; opacity: 1; } 45% { stroke-dashoffset: 0; opacity: 1; } 70%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+@keyframes mzg-word-fill { 0%, 38% { opacity: 0; } 60%, 88% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes mzg-tittle { 0%, 52% { opacity: 0; transform: translateY(-260px) scale(.4); } 66% { opacity: 1; transform: translateY(0) scale(1.15); } 74%, 88% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: scale(.6); } }
+
+/* 13c. Red point orbit: the app splash. A glass "m." tile with the point circling and settling. */
+.ld-orbit { position: relative; width: 120px; height: 120px; display: grid; place-items: center; }
+.ld-orbit .ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--line-2); }
+.ld-orbit .ring.r2 { inset: 14px; border-style: dashed; animation: mzg-spin 18s linear infinite; }
+.ld-orbit .sat { position: absolute; inset: 0; animation: mzg-spin 1.8s var(--ease-io) infinite; }
+.ld-orbit .sat i { position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; background: var(--red); box-shadow: 0 0 16px var(--red-glow); }
+.ld-orbit .core { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; }
+@keyframes mzg-spin { to { transform: rotate(360deg); } }
+
+/* 13d. Sync rail: a comet runs along a hairline (top-of-page loading) */
+.ld-rail { position: relative; height: 2px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.ld-rail::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34%; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--fg) 70%, var(--red)); box-shadow: 0 0 12px var(--red-glow); animation: mzg-comet 1.6s var(--ease-io) infinite; }
+@keyframes mzg-comet { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
+
+/* 13e. Ledger bars: three weights settling (inline, buttons, cells) */
+.ld-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
+.ld-bars i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; transform-origin: bottom; animation: mzg-bars 1s var(--ease-io) infinite; }
+.ld-bars i:nth-child(2) { animation-delay: .15s; } .ld-bars i:nth-child(3) { animation-delay: .3s; background: var(--red); }
+@keyframes mzg-bars { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+
+/* 13f. Progress ring with a glowing head */
+.ld-ring { width: 44px; height: 44px; animation: mzg-spin 1.1s linear infinite; }
+.ld-ring circle { fill: none; stroke-width: 3; stroke-linecap: round; }
+.ld-ring .trk { stroke: var(--line-2); }
+.ld-ring .arc { stroke: var(--fg); stroke-dasharray: 30 100; filter: drop-shadow(0 0 4px var(--red-glow)); }
+
+/* ───────────── 14. Accessibility ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  .rise, .draw, .fade-in, .grow-x, .seg-in, .slide-in { animation-duration: .01ms !important; animation-delay: 0s !important; }
+  .fields i, .hero-tile .halo { animation: none !important; }
+  .ld-scale *, .ld-orbit *, .ld-word *, .ld-rail::after, .ld-bars i, .ld-ring { animation-duration: 3.6s !important; }
+}

@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/Alert";
 import { buttonClass } from "@/components/ui/Button";
 import { SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
+import { GlassRoot } from "@/components/GlassRoot";
 import { StoreName } from "@/components/StoreName";
 import { PaymentMix } from "@/components/payments/PaymentMix";
 import { ActivityLog } from "./ActivityLog";
@@ -149,7 +150,8 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
   }, [home.from, home.to, revenue]);
 
   return (
-    <section className="mz-enter overflow-hidden rounded-xl border border-rail-line bg-rail-bg text-rail-text" aria-labelledby="kept-title" data-testid="kept">
+    <GlassRoot ink fields={false} className="g mz-enter overflow-hidden">
+    <section className="text-rail-text" aria-labelledby="kept-title" data-testid="kept">
       <div className="relative isolate flex flex-col gap-6 overflow-hidden p-6 lg:p-8">
         {/* The brand's red point as light, drifting behind the glass tiles. */}
         <span className="mz-orb -z-10 size-[420px] -bottom-48 end-[8%]" aria-hidden="true" />
@@ -215,6 +217,7 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
         </ul>
       </div>
     </section>
+    </GlassRoot>
   );
 }
 

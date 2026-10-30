@@ -13,29 +13,31 @@ const NAV: ReadonlyArray<{ key: Key; icon: IconProps["name"]; href?: string; sec
   { key: "settings", icon: "settings", href: "/settings/costs", section: "/settings" },
 ];
 
-/** The rail's main menu. Built modules are links (active from the path); the rest say "soon". */
+/**
+ * The rail's main menu on Mizan Glass (docs/glass.md "Navigation"): a glass indicator slides on a
+ * spring to the open section, carrying the red point at its edge. Active from the path.
+ */
 export function NavLinks() {
   const t = useTranslations("shell");
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
+  const current = NAV.findIndex(({ href, section }) => href !== undefined && isActive(section ?? href));
   return (
-    <nav aria-label={t("navLabel")} className="flex flex-col gap-0.5">
-      {NAV.map(({ key, icon, href, section }) => {
+    <nav aria-label={t("navLabel")} className="nav">
+      {current >= 0 ? <span className="nav-ind" style={{ transform: `translateY(${current * 38}px)` }} aria-hidden="true" /> : null}
+      {NAV.map(({ key, icon, href }, i) => {
         const label = t(`nav.${key}`);
-        const base = "relative flex h-[34px] items-center gap-2.5 rounded-sm px-3 text-label transition-colors duration-150 active:scale-[0.98]";
         if (!href) {
           return (
-            <span key={key} aria-disabled="true" className={`${base} text-rail-text-2`}>
+            <span key={key} aria-disabled="true" className="nav-item opacity-60">
               <Icon name={icon} size={17} />
               {label}
-              <span className="ms-auto rounded-full bg-rail-line px-2 text-caption">{t("soon")}</span>
+              <span className="nav-count">{t("soon")}</span>
             </span>
           );
         }
-        const active = isActive(section ?? href);
         return (
-          <Link key={key} href={href} aria-current={active ? "page" : undefined}
-            className={`${base} ${active ? "mz-rail-mark bg-rail-surface text-white before:absolute before:inset-y-1.5 before:start-0 before:w-0.5 before:rounded-full before:bg-rail-active" : "hover:bg-rail-surface hover:text-white"}`}>
+          <Link key={key} href={href} aria-current={i === current ? "page" : undefined} className="nav-item active:scale-[0.98]">
             <Icon name={icon} size={17} />
             {label}
           </Link>

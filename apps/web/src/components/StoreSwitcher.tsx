@@ -22,16 +22,16 @@ export function StoreSwitcher({ rail = false }: { rail?: boolean }) {
       <label htmlFor={id} className={`text-overline uppercase ${muted} ${rail ? "" : "sr-only"}`}>{t("label")}</label>
       {stores.length > 1 ? (
         <select id={id} value={store.tenantId} onChange={(e) => selectStore(e.target.value)} title={t("switch")} data-testid="store-switcher"
-          className={`h-9 min-w-0 truncate rounded-sm border px-2.5 text-label ${rail ? "border-rail-line bg-rail-surface text-white" : "border-line-strong bg-surface text-text"}`}>
+          className={`h-9 min-w-0 truncate rounded-sm border px-2.5 text-label ${rail ? "border-rail-line bg-rail-surface text-text" : "border-line-strong bg-surface text-text"}`}>
           {stores.map((s) => <option key={s.tenantId} value={s.tenantId}>{s.tenantName}</option>)}
         </select>
       ) : (
-        <output id={id} data-testid="store-switcher" className={`truncate text-label ${rail ? "text-white" : "text-text"}`}>{store.tenantName}</output>
+        <output id={id} data-testid="store-switcher" className="truncate text-label text-text">{store.tenantName}</output>
       )}
       {rail ? (
         <div className="flex items-center justify-between gap-2">
           <span className={`text-caption ${muted}`} data-testid="store-role">{tr(store.role)}</span>
-          <Link href="/welcome" className={`inline-flex items-center gap-1 text-caption ${muted} hover:text-white`}>
+          <Link href="/welcome" className={`inline-flex items-center gap-1 text-caption ${muted} hover:text-text`}>
             <Icon name="add" size={14} />
             {t("create")}
           </Link>

@@ -11,20 +11,23 @@ import { ShellCommands } from "./ShellCommands";
 import { SupportBanner } from "./SupportBanner";
 import { StoreSwitcher, UserMenu } from "./StoreSwitcher";
 import { ThemeSwitch } from "./ThemeSwitch";
-import { ThemedWordmark, Wordmark } from "./Wordmark";
+import { ThemedWordmark } from "./Wordmark";
+import { GlassRoot } from "./GlassRoot";
 
 /**
- * App frame (packages/design-system/docs/components.md §1): ink rail 232px on the start side,
- * header 56px, page up to 1440px. Red appears only on the logo's point and the active indicator.
+ * App frame on Mizan Glass (docs/glass.md): a glass rail on the start side and a glass bar on top,
+ * floating over the light fields; page up to 1440px. Red appears only on the logo's point and the
+ * active indicator.
  */
 export function Shell({ children, theme }: { children: ReactNode; theme: Theme }) {
   const t = useTranslations("shell");
   return (
-    <div className="grid h-dvh grid-cols-1 lg:grid-cols-[232px_minmax(0,1fr)] print:block print:h-auto">
+    <GlassRoot theme={theme} className="h-dvh print:h-auto">
+    <div className="grid h-dvh grid-cols-1 gap-3 lg:grid-cols-[248px_minmax(0,1fr)] lg:p-3 print:block print:h-auto">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded-sm focus:bg-surface focus:px-3 focus:py-2">{t("skip")}</a>
-      <aside className="hidden print:hidden min-h-0 flex-col overflow-y-auto bg-rail-bg px-3 py-5 text-rail-text lg:flex">
+      <aside className="g hidden print:hidden min-h-0 flex-col overflow-y-auto px-3 py-5 text-rail-text lg:flex">
         <div className="px-3 pb-6">
-          <Wordmark onDark />
+          <ThemedWordmark />
           <p className="mt-2 text-caption text-rail-text-2">{t("tagline")}</p>
         </div>
         <div className="mx-3 mb-5 border-b border-rail-line pb-4">
@@ -33,7 +36,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
         <NavLinks />
       </aside>
       <div className="flex min-h-0 min-w-0 flex-col print:block">
-        <header className="print:hidden sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-line bg-bg px-4 md:px-6">
+        <header className="g print:hidden sticky top-0 z-30 mx-3 mt-3 flex h-14 items-center gap-3 px-4 md:px-5 lg:mx-0 lg:mt-0">
           <ThemedWordmark className="shrink-0 lg:hidden" />
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
@@ -51,5 +54,6 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
         <main id="main" className="min-h-0 flex-1 overflow-y-auto print:overflow-visible"><RouteMotion>{children}</RouteMotion></main>
       </div>
     </div>
+    </GlassRoot>
   );
 }

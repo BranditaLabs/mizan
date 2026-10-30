@@ -13,6 +13,8 @@
     "./fonts.css": "./css/fonts.css",
     "./base.css": "./css/base.css",
     "./components.css": "./css/components.css",
+    "./glass.css": "./css/glass.css",
+    "./glass-bridge.css": "./css/glass-bridge.css",
     "./icons": "./icons/index.ts",
     "./package.json": "./package.json",
     "./icons/react": "./icons/react.tsx",

@@ -1,0 +1,127 @@
+/* Mizan Glass bridge: the core system rendered through glass.css.
+   glass.css arrives as the design team ships it (docs/glass.md) and stays untouched; this file maps
+   the core tokens (--mz-*) and components (.mz-*) onto it inside a `.mzg` root, so every screen built
+   on the core system, and every Tailwind class reading those tokens, becomes Glass at once.
+   `.mzg` is dark; `.mzg.light` is the paper theme. A nested `.mzg` without `.light` (the dashboard
+   hero, the sign-in brand side) stays dark glass in either theme: an ink island. */
+
+/* ───────────── Tokens: the core names, glass values ───────────── */
+.mzg {
+  --mz-bg: var(--bg);
+  --mz-surface: var(--glass-2);
+  --mz-surface-sunk: rgba(255, 255, 255, .035);
+  --mz-surface-hover: var(--glass-3);
+  --mz-surface-selected: var(--glass-3);
+  --mz-line: var(--line);
+  --mz-line-strong: var(--line-2);
+  --mz-text: var(--fg);
+  --mz-text-2: var(--fg-2);
+  --mz-text-3: var(--fg-3);
+  --mz-text-disabled: var(--fg-3);
+  --mz-primary: var(--solid);
+  --mz-primary-hover: var(--fg-2);
+  --mz-on-primary: var(--solid-fg);
+  --mz-brand: var(--red);
+  --mz-brand-hover: var(--bad);
+  --mz-brand-soft: var(--red-soft);
+  --mz-brand-text: var(--bad);
+  --mz-on-brand: #fff;
+  --mz-danger: var(--bad); --mz-danger-soft: var(--bad-soft); --mz-danger-text: var(--bad);
+  --mz-success: var(--ok); --mz-success-soft: var(--ok-soft); --mz-success-text: var(--ok);
+  --mz-warning: var(--warn); --mz-warning-soft: var(--warn-soft); --mz-warning-text: var(--warn);
+  --mz-info: var(--info); --mz-info-soft: var(--info-soft); --mz-info-text: var(--info);
+  --mz-neutral-soft: var(--glass-2); --mz-neutral-text: var(--fg-2);
+  --mz-focus: var(--fg);
+  --mz-scrim: rgba(6, 6, 7, .55);
+  --mz-viz-1: var(--v1); --mz-viz-2: var(--v2); --mz-viz-3: var(--v3); --mz-viz-4: var(--v4); --mz-viz-5: var(--v5); --mz-viz-6: var(--v6);
+  /* The rail is a glass panel of the same theme, not a black column. */
+  --mz-rail-bg: transparent;
+  --mz-rail-surface: var(--glass-2);
+  --mz-rail-line: var(--line);
+  --mz-rail-text: var(--fg-2);
+  --mz-rail-text-2: var(--fg-3);
+  --mz-rail-active: var(--red);
+  --mz-shadow-overlay: inset 0 1px 0 var(--edge-in), var(--shadow-lift);
+  --mz-ease-enter: var(--ease-out);
+  min-height: 100%;
+}
+.mzg.light { --mz-surface-sunk: rgba(255, 255, 255, .42); --mz-scrim: rgba(46, 10, 64, .18); }
+.mzg ::selection { background: var(--red-soft); color: var(--fg); }
+
+/* ───────────── Core components as glass ───────────── */
+.mzg .mz-card {
+  position: relative; background: var(--glass); border: 1px solid var(--line); border-radius: 20px;
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(165%); backdrop-filter: blur(var(--blur)) saturate(165%);
+  box-shadow: inset 0 1px 0 var(--edge-in), var(--shadow);
+}
+.mzg .mz-card::before { /* the specular rim of glass.css's .g */
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(155deg, var(--edge), transparent 34%, transparent 72%, var(--line-2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.mzg .mz-card__head { border-block-end-color: var(--line); }
+
+.mzg .mz-btn { height: calc(var(--_h) + 4px); border-radius: 12px; overflow: hidden; transition: transform .2s var(--ease-out), background-color .2s var(--ease-out), border-color .2s var(--ease-out), box-shadow .3s var(--ease-out); }
+.mzg .mz-btn--sm { border-radius: 10px; }
+.mzg .mz-btn--lg { border-radius: 14px; }
+.mzg .mz-btn--primary { box-shadow: 0 1px 0 rgba(255, 255, 255, .25) inset, 0 10px 24px -12px rgba(0, 0, 0, .6); }
+.mzg .mz-btn--primary::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, .45) 48%, transparent 66%); transform: translateX(-120%); pointer-events: none; }
+@media (hover: hover) and (pointer: fine) {
+  .mzg .mz-btn--primary:hover:not(:disabled) { background: var(--solid); }
+  .mzg .mz-btn--primary:hover:not(:disabled)::after { transform: translateX(120%); transition: transform .9s var(--ease-out); }
+  .mzg .mz-btn--secondary:hover:not(:disabled) { background: var(--glass-3); border-color: var(--edge); }
+}
+.mzg .mz-btn--secondary { background: var(--glass-2); border-color: var(--line-2); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.mzg .mz-btn--brand, .mzg .mz-btn--danger-solid { background: linear-gradient(180deg, #F23B3B, #DE0000); color: #fff; box-shadow: 0 1px 0 rgba(255, 255, 255, .3) inset, 0 12px 30px -10px var(--red-glow); }
+
+.mzg .mz-input, .mzg .mz-select, .mzg .mz-textarea {
+  border-radius: 12px; border-color: var(--line-2); background: var(--glass-2); color: var(--fg);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.mzg .mz-input:not(.mz-textarea), .mzg .mz-select { min-height: 42px; }
+.mzg .mz-input:focus-visible, .mzg .mz-select:focus-visible, .mzg .mz-textarea:focus-visible { border-color: var(--fg-2); background: var(--glass-3); box-shadow: 0 0 0 4px var(--line), inset 0 1px 0 var(--edge-in); }
+.mzg .mz-select option { background: var(--bg); color: var(--fg); }
+
+.mzg .mz-segmented { padding: 4px; border-radius: 13px; background: var(--glass-2); border-color: var(--line); }
+.mzg .mz-segmented button { height: 30px; border-radius: 9px; color: var(--fg-3); }
+.mzg .mz-segmented button[aria-pressed="true"] { background: var(--glass-3); color: var(--fg); box-shadow: inset 0 1px 0 var(--edge-in), 0 0 0 1px var(--line-2), 0 6px 14px -8px rgba(0, 0, 0, .6); }
+.mzg.light .mz-segmented button[aria-pressed="true"], .mzg.light .mz-segmented [role="radio"][aria-checked="true"] { background: #fff; }
+
+.mzg .mz-badge { height: 26px; padding-inline: 11px; background: var(--glass-2); color: var(--fg-2); border: 1px solid var(--line); }
+.mzg .mz-badge::before { box-shadow: 0 0 8px currentColor; }
+.mzg .mz-badge--success, .mzg .mz-badge--warning, .mzg .mz-badge--danger, .mzg .mz-badge--info { border-color: transparent; }
+.mzg .mz-tag { height: 26px; border-radius: 8px; background: var(--glass-2); border-color: var(--line-2); }
+.mzg .mz-kbd { border-radius: 6px; border-bottom-width: 2px; background: var(--glass-2); }
+
+.mzg .mz-table-wrap { background: var(--glass); border-color: var(--line); border-radius: 20px; -webkit-backdrop-filter: blur(var(--blur)) saturate(165%); backdrop-filter: blur(var(--blur)) saturate(165%); box-shadow: inset 0 1px 0 var(--edge-in), var(--shadow); }
+.mzg .mz-table th { background: transparent; color: var(--fg-3); border-block-end-color: var(--line); }
+.mzg .mz-table td { border-block-end-color: var(--line); }
+@media (hover: hover) and (pointer: fine) { .mzg .mz-table tbody tr:hover td { background: var(--glass-2); } }
+
+.mzg .mz-menu, .mzg .mz-dialog, .mzg .mz-drawer, .mzg .mz-toast, .mzg .mz-tooltip {
+  background: var(--glass-solid); color: var(--fg); border: 1px solid var(--line-2);
+  -webkit-backdrop-filter: blur(32px) saturate(170%); backdrop-filter: blur(32px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--edge-in), var(--shadow-lift);
+}
+.mzg .mz-menu { border-radius: 14px; }
+.mzg .mz-dialog { border-radius: 20px; }
+.mzg .mz-toast { border-radius: 16px; }
+.mzg .mz-tooltip { border-radius: 10px; }
+.mzg .mz-dialog::backdrop { background: var(--mz-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+
+.mzg .mz-alert { border-radius: 14px; }
+.mzg .mz-skeleton { background: var(--glass-2); background-image: none; position: relative; overflow: hidden; animation: none; }
+.mzg .mz-skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .09), transparent); animation: mzg-shimmer 1.6s var(--ease-io) infinite; }
+.mzg.light .mz-skeleton::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85), transparent); }
+.mzg .mz-switch { background: var(--glass-2); border: 1px solid var(--line-2); }
+.mzg .mz-switch:checked { background: var(--solid); border-color: transparent; }
+.mzg .mz-switch::after { transition: transform .45s var(--ease-spring), background-color .3s; }
+
+/* The rail as a glass panel; the open section's marker is the red point with its glow. */
+.mzg .mz-rail-mark::before { box-shadow: 0 0 12px var(--red-glow); }
+
+/* An ink island inside a light page: dark glass on the ink base, whatever the theme. */
+.mzg .mzg:not(.light) { background-color: var(--bg); }
+.mzg .mzg.g:not(.light) { background: var(--glass), var(--bg); }
+
+@media (prefers-reduced-motion: reduce) { .mzg .mz-btn--primary::after, .mzg .mz-skeleton::after { animation: none; transition: none; } }
