@@ -27,20 +27,22 @@ function RollingMoney({ money, digits, locale, from }: { money: Money; digits?: 
   const decimals = money.amount.split(".")[1]?.length ?? 0;
   const [shown, setShown] = useState(from === undefined ? target : Number(from));
   const [settled, setSettled] = useState(0);
-  const last = useRef(from === undefined ? target : Number(from));
+  // What is on screen now: a roll interrupted (a new value, or an effect run twice) goes on from here.
+  const onScreen = useRef(from === undefined ? target : Number(from));
 
   useEffect(() => {
-    const start = last.current;
-    last.current = target;
+    const start = onScreen.current;
     if (start === target || !Number.isFinite(target)) return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const t0 = performance.now();
     let raf = 0;
     const step = (now: number) => {
       const p = reduce ? 1 : Math.min(1, (now - t0) / ROLL_MS);
-      setShown(start + (target - start) * easeOut(p));
+      const v = p < 1 ? start + (target - start) * easeOut(p) : target;
+      onScreen.current = v;
+      setShown(v);
       if (p < 1) raf = requestAnimationFrame(step);
-      else { setShown(target); setSettled((n) => n + 1); }
+      else setSettled((n) => n + 1);
     };
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);

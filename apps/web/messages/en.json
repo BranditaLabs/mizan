@@ -1662,7 +1662,8 @@
         "title": "Orders missing from the store sync",
         "body": "On {count, plural, one {# day} other {# days}} the store had a different number of orders than Mizan, even after the nightly check fetched the missing ones. Check the store connection."
       }
-    }
+    },
+    "live": "Live · updated {time}"
   },
   "newOrder": {
     "title": "New order",

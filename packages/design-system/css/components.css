@@ -191,6 +191,9 @@
 /* The rail marker of the open section grows into place. */
 .mz-rail-mark::before { animation: mz-mark var(--mz-duration-slow) var(--mz-ease-expand) both; }
 @keyframes mz-mark { from { transform: scaleY(0); } }
+/* Chart bars rise from the zero line (origin set per bar); set animation-delay per bar for the run. */
+.mz-grow-y { transform-box: fill-box; animation: mz-grow-y 520ms var(--mz-ease-enter) both; }
+@keyframes mz-grow-y { from { transform: scaleY(0); } }
 /* A value that just changed settles with a brief tint (RollingNumber adds it). */
 .mz-settle { animation: mz-settle 900ms var(--mz-ease-standard); border-radius: var(--mz-radius-xs); }
 @keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-brand) 12%, transparent); } }
