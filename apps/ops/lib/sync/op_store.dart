@@ -101,12 +101,14 @@ class OpStore extends _$OpStore {
   /// Units of each variant received on this phone for [poId] that the fetched PO does not show yet:
   /// still pending, or received (phone time) after [fetchedAt] — the refresh sends the queue before
   /// it fetches, so anything older is in the fetched numbers. Phone time only: the server's clock
-  /// may differ. Refused receipts count for nothing.
+  /// may differ. Refused receipts count for nothing. Times are stored to the second, so a receipt
+  /// in the same second as the fetch counts as received here (at worst the screen shows fewer
+  /// still expected until the next refresh, never more than the phone already took in).
   Future<Map<String, int>> receivedHere(String poId, DateTime fetchedAt) async {
     final rows = await (select(ops)..where((o) => o.type.equals(OpTypes.poReceive) & o.status.isIn([OpStatus.pending.name, OpStatus.applied.name]))).get();
     final out = <String, int>{};
     for (final r in rows) {
-      if (r.status == OpStatus.applied && !r.at.isAfter(fetchedAt)) continue;
+      if (r.status == OpStatus.applied && r.at.isBefore(fetchedAt)) continue;
       final p = jsonDecode(r.payload) as Map;
       if (p['purchaseOrderId'] != poId) continue;
       for (final i in (p['items'] as List)) {
