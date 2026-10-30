@@ -237,9 +237,12 @@ Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separat
 
 - **M7 Attribution:** Meta/TikTok/Snap spend import; UTM + click-id capture; cost per delivered order; CAPI confirmed + delivered events (< 1 h after delivery).
   - [x] **M7-1** `M` True ROAS from the recorded spend: money that arrived ÷ spend next to the platform's view (every checkout) and the projection for orders still moving; ad cost per delivered order; lost share; by day and platform; metric layer `true_roas`, `cost_per_delivered_order`, `ad_spend` (unit `multiple`). `GET /v1/attribution/roas`, Profit → Ads: true ROAS (AR/EN); unit tests, API e2e, browser e2e. Pulled forward from V2 (owner's call, Oct 2026).
-  - [ ] **M7-2** `M` Order source: UTM and click ids (fbclid, ttclid, gclid, ScCid) from the store's order (Shopify customer journey, WooCommerce meta); ROAS per platform and campaign; unattributed visible.
-  - [ ] **M7-3** `L` Conversion events: confirmed and delivered (and refused, refunded) to Meta CAPI, TikTok Events API and Snap CAPI with the merchant's own token; hashed phone/email; outbox, fake servers, chaos suite.
-  - [ ] **M7-4** `L` Spend import from Meta, TikTok and Google Ads APIs (needs each platform's app approval, D-3); built against fakes first.
+  - Growth hub plan (`docs/14-growth-hub-plan.md`, awaiting the owner's approval): attribution, feedback loop to the ad platforms, CRM, full-funnel analytics and the marketing toolkit, in five phases:
+  - [ ] **G1 · Know:** M7-2 order source capture · M7-3 campaign results + alerts · M7-4 click-to-WhatsApp referral · AN-3 break-even ROAS · AN-4 daily digest · TK-1 UTM and link builder
+  - [ ] **G2 · Know the customer:** CRM-1 profiles (net LTV) · CRM-2 consent centre · CRM-3 segments · AN-2 cohorts and payback · AN-5 creative and product insights
+  - [ ] **G3 · Teach the platforms:** FB-1 conversion events framework · FB-2 Meta CAPI · FB-3 TikTok and Snap · FB-5 profit as the signal · TK-3 pixel/CAPI health
+  - [ ] **G4 · Grow the base:** CRM-4 WhatsApp campaigns · CRM-5 lifecycle flows · CRM-6 loyalty · M7-5 discount codes and influencers
+  - [ ] **G5 · Automate and scale:** M7-6 spend APIs · FB-6 audiences · FB-4 Google offline conversions · TK-2 catalog feeds · AN-1 full funnel · TK-4 pacing · TK-5 experiments · TK-6 AI analyst · TK-7 agency view · CRM-7 SMS/email · M7-7 storefront snippet
 - **M8 Reconciliation:** courier, gateway, BNPL, bank and marketplace payouts (API or file); auto-match; gaps; money in transit by source and age.
 - **M9 CRM, loyalty and marketing:** profiles, segments, loyalty points and tiers, store credit, campaigns with opt-in.
 - **M16 Purchasing:** suppliers, POs, reorder suggestions, receiving in the ops app, landed cost.
