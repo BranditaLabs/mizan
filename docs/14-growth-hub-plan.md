@@ -149,19 +149,81 @@ Sizes are `S` ≤ 1 week, `M` ≈ 1–2 weeks, `L` ≈ 2–4 weeks for one engin
 | **TK-6** | **AI growth analyst (M12).** A weekly review in Egyptian Arabic covering what to scale, pause or fix, grounded only in the store's numbers, with every number linked to its source. It suggests; the merchant decides. Changes to ads (pause, budget) come later and need `ads_management` and explicit approval each time. | M | Anthropic (have), M7-3 |
 | **TK-7** | **Agency view for Brandita.** One login across client stores: a portfolio of true ROAS, spend and profit, plus a client-ready monthly report (AR/EN, PDF). This sells the Brandita bundle. | M | M7-3 |
 
+### F. Tools that complete the hub
+
+| ID | Story | Size | Needs |
+| --- | --- | --- | --- |
+| **TK-8** | **Post-purchase survey.** One question after delivery on WhatsApp ("How did you hear about us?": Instagram, TikTok, a friend, an influencer…). It fills the gaps click tracking misses and is shown next to tracked attribution. | S | WhatsApp connected |
+| **TK-9** | **Lead ads and DMs to orders.** Meta and TikTok lead forms, and Instagram and Messenger DMs, become a WhatsApp conversation and then an order (manual order, E5), with the ad kept as the source. Common in Egypt for high-ticket and COD-wary buyers. | M | Meta Lead Ads webhook (`leads_retrieval`); M17 inbox for DMs |
+| **TK-10** | **Reviews and UGC.** Ask for a review or a photo after delivery (only delivered, never refused orders), then push it to the store (Shopify product reviews app or metafields) and reuse it in ads with consent. | M | Review app integration `[choose]` |
+| **TK-11** | **Affiliates and referral.** A "refer a friend" link or code per customer, with a reward paid only on the friend's **delivered** order, as store credit or points. Payouts to affiliates go through M19. | M | CRM-6 |
+| **TK-12** | **Opt-in capture.** A storefront widget (Shopify app embed) and a checkout checkbox that record WhatsApp marketing consent with evidence; click-to-WhatsApp entry links that start the chat (free service window). | S | Shopify app embed |
+| **TK-13** | **Creative analytics.** Results per ad creative (thumbnail, hook, format) in delivered profit, with refusal rate per creative: which creatives bring buyers who pay. | M | M7-6 (ad and creative ids) |
+
+## 4·G. The full funnel: who owns each stage
+
+| Stage | What happens | Tool brands use today | In Mizan |
+| --- | --- | --- | --- |
+| **Plan** | Budget, targets, break-even | Spreadsheet | AN-3 break-even ROAS, TK-4 pacing |
+| **Attract** | Ads, influencers, content | Ads Manager, influencer sheet | Spend import M7-6, codes M7-5, links TK-1, catalogs TK-2, creative analytics TK-13 |
+| **Capture** | Click → store, lead form, DM, WhatsApp | Pixel, lead form tools, DM inbox | Source capture M7-2/M7-4/M7-7, lead ads TK-9, opt-in TK-12 |
+| **Convert** | Checkout, upsell, COD → prepaid | Store, confirmation app | Store sync (built), offers in WhatsApp (built), conversion to prepaid (built) |
+| **Verify** | Confirm, score risk, stop fakes | Call centre, confirmation app | M2 confirmation and risk (built) |
+| **Deliver** | Ship, track, collect cash | Courier panel | M3 shipping, COD ledger (built) |
+| **Measure** | Profit, ROAS, funnel, cohorts | Profit dashboard (Safi), attribution tool, Looker | M5 profit (built), M7-1 true ROAS (built), M7-3, AN-1, AN-2, AN-5 |
+| **Teach** | Send real outcomes back to the platforms | CAPI gateway, Zapier | FB-1…FB-6 |
+| **Retain** | Segments, campaigns, flows, loyalty | Klaviyo/WhatsApp tools, loyalty app | CRM-1…CRM-7 |
+| **Advocate** | Reviews, referrals, affiliates | Reviews app, affiliate app | TK-10, TK-11 |
+| **Decide** | What to scale, pause or fix | Agency, analyst | AN-4 digest, TK-6 AI analyst, TK-7 agency view, TK-5 experiments |
+
+With all of it built, a brand replaces seven or eight tools with Mizan:
+- profit dashboard;
+- attribution tool;
+- CAPI gateway;
+- confirmation app;
+- courier panel;
+- CRM/WhatsApp marketing tool;
+- loyalty and reviews apps;
+- link builder.
+
+## 4·H. How the feedback optimises the ads
+
+Ad platforms bid toward the people most like those who triggered the optimisation event. Mizan changes **which event, with which value, from which people**:
+
+1. **A signal ladder by speed and truth.**
+   - `ConfirmedOrder` is sent within minutes of confirmation: fast enough for the platform to learn (enough events a week per ad set). Use it as the optimisation event while a campaign is new.
+   - `Purchase` is sent on delivery or payment, with the delivered value: the truth. Use it once there are enough delivered events a week `[platform minimums: CONFIRM, e.g. Meta ~50 per ad set per week]`.
+   - Mizan suggests the switch per campaign when the volume allows.
+2. **Value that means money.**
+   - The purchase value is what was actually delivered: partial deliveries are restated, and refunds are sent as refunds or adjustments where supported.
+   - With FB-5, the value is the order's **net profit**, so value-based bidding favours products and buyers that leave money, not just revenue.
+3. **Negative space.**
+   - Refused and cancelled orders send no purchase, so the platform stops learning from fake buyers.
+   - Frequent refusers and recent buyers go to **exclusion audiences** (FB-6).
+4. **Better seeds.**
+   - Lookalikes are seeded from customers with high **net LTV** who pay (VIP and repeat segments), not from all purchasers.
+5. **Match quality.**
+   - Hashed phone (and email when known), the click ids, and the same `event_id` as the browser pixel for deduplication.
+   - Health is watched with TK-3.
+6. **Decisions on top.**
+   - Campaign alerts (M7-3), pacing (TK-4) and the AI analyst (TK-6) say where to move budget, based on true ROAS and profit.
+   - The merchant or Brandita acts on them. Automated budget changes are a later, opt-in step (decision 5).
+
+**Measured result per pilot:** refusal rate and cost per delivered order, before and after switching a campaign to delivered or profit events, on the same budget (TK-5 logs the test).
+
 ## 5. Sequence
 
 Each phase ships something a pilot merchant can use. Approvals run in parallel from week 1.
 
 | Phase | Weeks | Ships | Why first |
 | --- | --- | --- | --- |
-| **G1 · Know** | 1–5 | M7-2 source capture → M7-3 campaign results → M7-4 click-to-WhatsApp → AN-3 break-even, AN-4 digest, TK-1 links | No approvals. Gives true ROAS **per campaign**, Safi's strongest feature, already better: delivered, not checkouts. |
+| **G1 · Know** | 1–5 | M7-2 source capture → M7-3 campaign results → M7-4 click-to-WhatsApp → AN-3 break-even, AN-4 digest, TK-1 links, TK-8 post-purchase survey | No approvals. Gives true ROAS **per campaign**, Safi's strongest feature, already better: delivered, not checkouts. |
 | **G2 · Know the customer** | 4–9 | CRM-1 profiles → CRM-2 consent → CRM-3 segments → AN-2 cohorts → AN-5 insights | No approvals. The base for audiences and campaigns. |
 | **G3 · Teach the platforms** | 7–12 | FB-1 framework → FB-2 Meta CAPI → FB-3 TikTok/Snap → FB-5 profit as signal → TK-3 health | Uses the merchant's own tokens (no App Review). The moat: platforms learn from real buyers. |
-| **G4 · Grow the base** | 10–16 | CRM-4 WhatsApp campaigns → CRM-5 lifecycle flows → CRM-6 loyalty → M7-5 codes and influencers | Needs WhatsApp connected and marketing templates. Repeat revenue, measured in delivered cash. |
-| **G5 · Automate and scale** | 14–22 | M7-6 spend APIs → FB-6 audiences → FB-4 Google offline → TK-2 catalogs → AN-1 full funnel → TK-4 pacing → TK-5 experiments → TK-6 AI analyst → TK-7 agency view → CRM-7 SMS/email | Each one goes live as its approval lands; it's built against fakes before. |
+| **G4 · Grow the base** | 10–16 | CRM-4 WhatsApp campaigns → CRM-5 lifecycle flows → CRM-6 loyalty → M7-5 codes and influencers → TK-12 opt-in capture → TK-10 reviews → TK-11 referrals | Needs WhatsApp connected and marketing templates. Repeat revenue, measured in delivered cash. |
+| **G5 · Automate and scale** | 14–22 | M7-6 spend APIs → FB-6 audiences → FB-4 Google offline → TK-2 catalogs → AN-1 full funnel → TK-4 pacing → TK-5 experiments → TK-6 AI analyst → TK-7 agency view → CRM-7 SMS/email → TK-9 lead ads and DMs → TK-13 creative analytics | Each one goes live as its approval lands; it's built against fakes before. |
 
-Total ≈ 22 weeks for one engineer, or about 12 with two (attribution and feedback in one stream, CRM and toolkit in the other).
+Total ≈ 26 weeks for one engineer, or about 14 with two (attribution and feedback in one stream, CRM and toolkit in the other).
 
 ## 6. Owner actions (start now; they gate G3–G5)
 
