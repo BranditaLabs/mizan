@@ -44,10 +44,10 @@ export class StockController {
   @Patch(":variantId")
   @Roles("owner", "admin", "ops_manager", "warehouse")
   @ApiJsonBody("StockThreshold", ThresholdSchema)
-  @ApiJson(200, "StockThresholdSet", ThresholdSetSchema, "Saved; stock.low fires when available falls to it or under")
+  @ApiJson(200, "StockThresholdSet", ThresholdSetSchema, "Saved; stock.low fires when available falls to it or under; pick lists sort by the bin")
   @ApiProblems(404, 409)
   threshold(@Auth() auth: AuthContext, @Param("variantId", new ParseUUIDPipe()) variantId: string, @Body(new ZodPipe(ThresholdSchema)) body: z.infer<typeof ThresholdSchema>) {
-    return this.stock.setThreshold(auth, variantId, body.lowStockAt);
+    return this.stock.setThreshold(auth, variantId, body);
   }
 }
 

@@ -692,6 +692,9 @@ export interface Orders {
   refusal_open_box: boolean | null;
   refused_at: Timestamp | null;
   balance_minor: GeneratedAlways<Int8 | null>;
+  packed_at: Timestamp | null;
+  packed_by: string | null;
+  pack_op_id: string | null;
 }
 
 export interface PaymentLinks {
@@ -730,6 +733,22 @@ export interface Payments {
   source: string;
   note: string | null;
   recorded_by: string | null;
+}
+
+export interface PickListOrders {
+  pick_list_id: string;
+  tenant_id: string;
+  order_id: string;
+}
+
+export interface PickLists {
+  id: Generated<string>;
+  tenant_id: string;
+  number: number;
+  status: Generated<string>;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+  closed_at: Timestamp | null;
 }
 
 export interface PlatformAudit {
@@ -1026,6 +1045,7 @@ export interface StockLevels {
   available: GeneratedAlways<number | null>;
   low_stock_at: number | null;
   updated_at: Generated<Timestamp>;
+  bin: string | null;
 }
 
 export interface StockMovements {
@@ -1287,6 +1307,8 @@ export interface DB {
   orders: Orders;
   payment_links: PaymentLinks;
   payments: Payments;
+  pick_list_orders: PickListOrders;
+  pick_lists: PickLists;
   platform_audit: PlatformAudit;
   platform_staff: PlatformStaff;
   platform_store_notes: PlatformStoreNotes;

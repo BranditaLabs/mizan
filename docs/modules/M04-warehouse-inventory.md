@@ -131,7 +131,9 @@ _Sample data. Full visual in `design/prototype.html`._
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/v1/picklists` | Create a pick list |
+| ✅ POST | `/v1/picklists` | Create a pick list from the confirmed orders ready to pack; items sorted by shelf (E8-4c) |
+| ✅ GET | `/v1/picklists`, `/v1/picklists/{id}` | Open or closed lists; a list with what is left to pick and each order's lines to scan (E8-4c) |
+| ✅ POST | `/v1/picklists/{id}/close` | Close by hand; it also closes itself when every order is packed (E8-4c) |
 | GET | `/v1/stock/ledger` | Movement history |
 | ✅ GET | `/v1/stock` | On hand, reserved, available per item; counted / not counted / out filters (E8-2) |
 | ✅ POST | `/v1/stock/movements` | Receive, count, adjust with a reason; all or none (E8-2) |
@@ -154,6 +156,7 @@ Conventions: `docs/05-api.md`.
 - **Alerts (E8-5).** Each counted item can have a threshold (`lowStockAt`). `stock.low` fires once when available falls to it or under, `stock.out` when it reaches zero; the Stock screen has a "Low stock" tab. Push notifications come with the ops app.
 - **The store's number (E8-5).** Off by default (Settings on the Stock screen, managers only). When on, Mizan owns the stock of counted items: their available count is sent to Shopify on every change, to the location that stocks the item (the first one when several do; one warehouse until E2-7 / multi-location). Uncounted items stay the store's. Mizan's push goes through the outbox and always sends the latest number; Shopify's own sales lower its number until the next change sends Mizan's.
 - **WooCommerce stores (E5-7).** The same switch: each WooCommerce variant knows where WooCommerce keeps its count (the product, the variation, or the product for a variation set to share it, `manage_stock: "parent"`); Mizan sets that record's `stock_quantity` (`woocommerce.setStock`, latest count wins), summing the items that share one count. Products whose stock WooCommerce does not manage, and items not counted in Mizan, are left to the store.
+- **Pick and pack (E8-4c, API).** A pick list batches confirmed orders that are ready (stock reserved, not a suspected duplicate, not packed, not on another open list); its items are the totals still to pick, sorted by shelf (`bin`, set per item on the Stock screen's PATCH). The phone sends `order.pack` with every item scanned into the box: packed only when that is exactly the order (a wrong or extra item is `wrong_item`, a missing one `incomplete`), a second phone packing the same order gets `already_packed` (first sync wins), a cancelled one `not_packable`. Packing records `packed_at`, the order's "packed" event and `order.packed`; it does not move stock — stock still leaves when the order ships, so nothing counts twice. A list closes itself when its last order is packed. The phone screens come next (E8-4c app).
 - One warehouse for now (the store's default); transfers, pick lists and pack scans are E8-4.
 
 ## Field ownership with the store (E8-1)

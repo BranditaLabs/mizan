@@ -20,7 +20,7 @@ export const DOMAIN_EVENT_TYPES = [
   // M3 Shipping
   "shipment.created", "shipment.booking_failed", "shipment.status_changed", "shipment.needs_review", "shipment.delivered", "shipment.returned",
   // M4 Warehouse
-  "stock.reserved", "stock.released", "stock.short", "stock.received", "stock.low", "stock.out", "stock.adjusted", "stock.changed",
+  "stock.reserved", "stock.released", "stock.short", "stock.received", "stock.low", "stock.out", "stock.adjusted", "stock.changed", "picklist.created", "picklist.closed", "order.packed",
   // M5 Profit, M6 Returns, M8 Reconciliation
   "pnl.recomputed", "costs.changed", "fx.rate_overridden", "ads.spend_changed",
   "ticket.created", "ticket.status_changed", "ticket.assigned", "return.inspected", "exchange.created", "exchange.returned", "order.partially_delivered", "order.refused", "settlement.matched", "settlement.gap_found",

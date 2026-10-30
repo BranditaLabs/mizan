@@ -23,6 +23,7 @@ export const StockRowSchema = z.object({
   available: z.number().int().nullable().describe("On hand − reserved; null when not counted"),
   storeAvailable: z.number().int().nullable().describe("What the store last reported (information only once counted here)"),
   lowStockAt: z.number().int().nullable(),
+  bin: z.string().nullable().describe("Shelf location (E8-4c): pick lists are sorted by it"),
 });
 
 export const StockPageSchema = z.object({
@@ -69,7 +70,8 @@ export const StockHistorySchema = z.object({
 });
 
 export const ThresholdSchema = z.strictObject({
-  lowStockAt: z.number().int().min(0).max(100_000).nullable().describe("Alert (stock.low) when available falls to this or under; null: no alert"),
-});
+  lowStockAt: z.number().int().min(0).max(100_000).nullable().optional().describe("Alert (stock.low) when available falls to this or under; null: no alert"),
+  bin: z.string().trim().min(1).max(32).regex(/^[\p{L}\p{N}][\p{L}\p{N} ._/-]*$/u).nullable().optional().describe("Shelf location, e.g. A-03-2 (E8-4c); null clears it"),
+}).refine((b) => b.lowStockAt !== undefined || b.bin !== undefined, { message: "send lowStockAt, bin or both" });
 
-export const ThresholdSetSchema = z.object({ variantId: z.uuid(), lowStockAt: z.number().int().nullable(), available: z.number().int() });
+export const ThresholdSetSchema = z.object({ variantId: z.uuid(), lowStockAt: z.number().int().nullable(), bin: z.string().nullable(), available: z.number().int() });

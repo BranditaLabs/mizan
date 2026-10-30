@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ADJUST_REASONS } from "../stock/stock.dto.js";
 
-/** Operations the ops app can queue offline (E8-3, E10-3); pick, pack and receive-by-PO come with E8-4 and M16. */
-export const OP_TYPES = ["stock.receive", "stock.count", "stock.adjust", "return.inspect"] as const;
+/** Operations the ops app can queue offline (E8-3, E10-3, pack E8-4c); receive-by-PO comes with M16. */
+export const OP_TYPES = ["stock.receive", "stock.count", "stock.adjust", "return.inspect", "order.pack"] as const;
 export const OP_STATUSES = ["applied", "duplicate", "rejected", "conflict"] as const;
 
 export const OpsSyncSchema = z.strictObject({

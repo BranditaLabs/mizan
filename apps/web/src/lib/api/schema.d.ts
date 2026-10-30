@@ -1265,6 +1265,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/picklists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PickingController_list"];
+        put?: never;
+        post: operations["PickingController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/picklists/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PickingController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/picklists/{id}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PickingController_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -3781,6 +3829,15 @@ export interface components {
                 paid?: string;
             };
         };
+        NewPickList: {
+            /** @description Orders to pick; without it, the oldest confirmed orders ready to pack */
+            orderIds?: string[];
+            /**
+             * @description How many orders when orderIds is not given
+             * @default 30
+             */
+            limit: number;
+        };
         NewRefund: {
             /** @description In the order's currency; Arabic digits accepted */
             amount: string;
@@ -4032,7 +4089,7 @@ export interface components {
             ops: {
                 /** @description Made by the app once per operation (a UUID or ULID); a replay with the same opId changes nothing */
                 opId: string;
-                /** @description One of: stock.receive, stock.count, stock.adjust, return.inspect */
+                /** @description One of: stock.receive, stock.count, stock.adjust, return.inspect, order.pack */
                 type: string;
                 payload: {
                     [key: string]: unknown;
@@ -4786,6 +4843,56 @@ export interface components {
                 };
             }[];
             nextCursor: string | null;
+        };
+        PickList: {
+            /** Format: uuid */
+            id: string;
+            number: number;
+            /** @enum {string} */
+            status: "open" | "closed";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description Totals for the unpacked orders, sorted by bin then SKU */
+            items: {
+                /** Format: uuid */
+                variantId: string | null;
+                sku: string | null;
+                barcode: string | null;
+                title: string;
+                quantity: number;
+                bin: string | null;
+            }[];
+            /** @description Each order with what must be scanned to pack it */
+            orders: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** Format: date-time */
+                packedAt: string | null;
+                lines: {
+                    /** Format: uuid */
+                    variantId: string | null;
+                    sku: string | null;
+                    barcode: string | null;
+                    title: string;
+                    quantity: number;
+                }[];
+            }[];
+        };
+        PickListPage: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** @enum {string} */
+                status: "open" | "closed";
+                orders: number;
+                packed: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
         };
         PlatformAnnouncement: {
             /** Format: uuid */
@@ -6089,6 +6196,8 @@ export interface components {
                 /** @description What the store last reported (information only once counted here) */
                 storeAvailable: number | null;
                 lowStockAt: number | null;
+                /** @description Shelf location (E8-4c): pick lists are sorted by it */
+                bin: string | null;
             }[];
             nextCursor: string | null;
             warehouse: {
@@ -6107,12 +6216,15 @@ export interface components {
         };
         StockThreshold: {
             /** @description Alert (stock.low) when available falls to this or under; null: no alert */
-            lowStockAt: number | null;
+            lowStockAt?: number | null;
+            /** @description Shelf location, e.g. A-03-2 (E8-4c); null clears it */
+            bin?: string | null;
         };
         StockThresholdSet: {
             /** Format: uuid */
             variantId: string;
             lowStockAt: number | null;
+            bin: string | null;
             available: number;
         };
         StoreAnnouncements: {
@@ -8168,7 +8280,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Saved; stock.low fires when available falls to it or under */
+            /** @description Saved; stock.low fires when available falls to it or under; pick lists sort by the bin */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -11369,6 +11481,175 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PickingController_list: {
+        parameters: {
+            query?: {
+                status?: "open" | "closed";
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Open (or closed) pick lists, newest first, with packed counts */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickListPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PickingController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPickList"];
+            };
+        };
+        responses: {
+            /** @description Created from the given or the oldest ready confirmed orders; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickList"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PickingController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Items by shelf for the unpacked orders, and each order's lines to scan */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickList"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PickingController_close: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Closed (its unpacked orders can go on a new list); audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickList"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

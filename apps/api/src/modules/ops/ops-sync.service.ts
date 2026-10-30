@@ -7,6 +7,8 @@ import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { StockService } from "../stock/stock.service.js";
 import { ReturnsService } from "../returns/returns.service.js";
+import { PackPayloadSchema } from "../picking/picking.dto.js";
+import { PackRefused, PickingService } from "../picking/picking.service.js";
 import { OP_TYPES, ReturnInspectPayloadSchema, StockOpPayloadSchema, type OpsSyncBody } from "./ops.dto.js";
 
 type Trx = Transaction<DB>;
@@ -29,6 +31,7 @@ export class OpsSyncService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(StockService) private readonly stock: StockService,
     @Inject(ReturnsService) private readonly returns: ReturnsService,
+    @Inject(PickingService) private readonly picking: PickingService,
   ) {}
 
   async sync(auth: AuthContext, body: OpsSyncBody) {
@@ -78,6 +81,17 @@ export class OpsSyncService {
   private async apply(trx: Trx, tenantId: string, auth: AuthContext, op: OpsSyncBody["ops"][number], deviceId: string): Promise<Record<string, unknown>> {
     if (!(OP_TYPES as readonly string[]).includes(op.type)) throw new Refused("rejected", "unknown_type", `no operation called ${op.type}`);
     if (op.type === "return.inspect") return this.inspect(trx, tenantId, auth, op);
+    if (op.type === "order.pack") {
+      // Scan-to-pack (E8-4c): packed only when what was scanned is exactly the order.
+      const parsed = PackPayloadSchema.safeParse(op.payload);
+      if (!parsed.success) throw new Refused("rejected", "invalid_payload", parsed.error.issues.map((x) => `${x.path.join(".") || "payload"}: ${x.message}`).join("; ").slice(0, 300));
+      try {
+        return await this.picking.pack(trx, tenantId, auth.user.id, parsed.data, op.opId, deviceId);
+      } catch (e) {
+        if (e instanceof PackRefused) throw new Refused(e.status, e.code, e.message);
+        throw e;
+      }
+    }
     const parsed = StockOpPayloadSchema.safeParse(op.payload);
     if (!parsed.success) throw new Refused("rejected", "invalid_payload", parsed.error.issues.map((x) => `${x.path.join(".") || "payload"}: ${x.message}`).join("; ").slice(0, 300));
     const p = parsed.data;

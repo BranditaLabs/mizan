@@ -156,7 +156,7 @@ export class StockService {
       const base = () => trx.selectFrom("variants as v").innerJoin("products as p", "p.id", "v.product_id")
         .leftJoin("stock_levels as s", (j) => j.onRef("s.variant_id", "=", "v.id").on("s.warehouse_id", "=", warehouse.id))
         .where("p.status", "!=", "archived");
-      let query = base().select(["v.id", "v.sku", "v.title", "v.barcode", "v.available as store_available", "p.title as product_title", "s.on_hand", "s.reserved", "s.low_stock_at"])
+      let query = base().select(["v.id", "v.sku", "v.title", "v.barcode", "v.available as store_available", "p.title as product_title", "s.on_hand", "s.reserved", "s.low_stock_at", "s.bin"])
         .orderBy("v.sku").limit(q.limit + 1);
       if (q.search) {
         const s = like(q.search);
@@ -182,7 +182,7 @@ export class StockService {
           return {
             variantId: r.id, productTitle: r.product_title, variantTitle: r.title, sku: r.sku, barcode: r.barcode, counted,
             onHand: r.on_hand, reserved: r.reserved, available: counted ? r.on_hand! - r.reserved! : null,
-            storeAvailable: r.store_available, lowStockAt: r.low_stock_at,
+            storeAvailable: r.store_available, lowStockAt: r.low_stock_at, bin: r.bin,
           };
         }),
         nextCursor: rows.length > q.limit && last ? encode(last.sku) : null,
@@ -210,19 +210,20 @@ export class StockService {
     });
   }
 
-  /** One item's low-stock threshold; only items counted here have one. */
-  async setThreshold(auth: AuthContext, variantId: string, lowStockAt: number | null) {
+  /** One item's low-stock threshold and shelf (bin, E8-4c); only items counted here have them. */
+  async setThreshold(auth: AuthContext, variantId: string, body: { lowStockAt?: number | null | undefined; bin?: string | null | undefined }) {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
       const warehouse = await this.warehouse(trx, tenantId);
-      const row = await trx.updateTable("stock_levels").set({ low_stock_at: lowStockAt, updated_at: new Date() })
-        .where("warehouse_id", "=", warehouse.id).where("variant_id", "=", variantId).returning(["on_hand", "reserved"]).executeTakeFirst();
+      const row = await trx.updateTable("stock_levels").set({
+        ...(body.lowStockAt !== undefined ? { low_stock_at: body.lowStockAt } : {}), ...(body.bin !== undefined ? { bin: body.bin } : {}), updated_at: new Date(),
+      }).where("warehouse_id", "=", warehouse.id).where("variant_id", "=", variantId).returning(["on_hand", "reserved", "low_stock_at", "bin"]).executeTakeFirst();
       if (!row) {
         const exists = await trx.selectFrom("variants").select("id").where("id", "=", variantId).executeTakeFirst();
         throw exists ? new ProblemError(409, "not_counted", "count this item in Mizan before setting its alert") : new ProblemError(404, "not_found", "this variant does not exist in this store");
       }
-      await this.audit.record(trx, { action: "stock.threshold_set", tenantId, entity: { type: "variant", id: variantId }, after: { lowStockAt }, ...auditActor(auth) });
-      return { variantId, lowStockAt, available: row.on_hand - row.reserved };
+      await this.audit.record(trx, { action: "stock.threshold_set", tenantId, entity: { type: "variant", id: variantId }, after: { lowStockAt: row.low_stock_at, bin: row.bin }, ...auditActor(auth) });
+      return { variantId, lowStockAt: row.low_stock_at, bin: row.bin, available: row.on_hand - row.reserved };
     });
   }
 
