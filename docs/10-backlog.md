@@ -218,7 +218,7 @@ Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separat
 
 - [ ] **E13-1** Production Terraform, `deploy-prod.yml`, backups + restore drill. 🚧 **Done:** `envs/production.tfvars` (HA, warm instances; Doha or Dammam per project), `deploy-prod.yml` on `v*` tags with environment approval, the deployer trusting only tags in production, `MIZAN_ENV` guards, the restore runbook with a quarterly drill. **Left:** private IP for Cloud SQL, HTTPS load balancer + Cloud Armor + domains, the first drill on staging.
 - [ ] **E13-2** Monitoring dashboards + alerts (`docs/09` §5); status page. 🚧 **Done:** `infra/monitoring.tf` (uptime checks, golden-signal and Cloud SQL alerts, error-log alert, email channel, dashboard; app-metric alerts behind `app_metrics_enabled`). **Left:** the Managed Prometheus collector on Cloud Run, a public status page.
-- [ ] **E13-3** Privacy policy, terms, DPA published; cookie notice.
+- [ ] **E13-3** Privacy policy, terms, DPA published; cookie notice. 🚧 **Drafts done** (`docs/legal/`, AR/EN, from what the code does: processor/controller roles, sub-processors, retention, cookie and storage inventory, security annex). **Waiting on:** the owner's placeholders (legal entity, contacts, prices) and counsel's review of the `[CONFIRM]` points; then publish at `/legal/…`, accept terms + DPA at sign-up (version per tenant), App Store listing URL.
 - [ ] **E13-4** Penetration test; fix findings.
 - [ ] **E13-5** Shopify App Store submission.
 - **Gate 2:** MVP live with 10 pilot merchants.

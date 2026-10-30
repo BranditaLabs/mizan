@@ -37,6 +37,9 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 
 ## 3. Regulations
 
+Legal drafts for counsel (privacy policy, terms, DPA with security annex and sub-processors, cookie inventory), Arabic and English: `docs/legal/` (E13-3).
+
+
 | Law / rule | Applies | What we do |
 | --- | --- | --- |
 | **Egypt — Personal Data Protection Law 151/2020** | All Egyptian merchants and customers | Lawful basis via merchant (controller) → Mizan (processor) DPA; data subject rights; breach notification process; check licensing/registration duties with the data protection authority `[CONFIRM]` |
