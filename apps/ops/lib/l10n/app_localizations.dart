@@ -229,6 +229,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing counted on this phone yet.'**
   String get nothingYet;
+
+  /// No description provided for @tabCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Count'**
+  String get tabCount;
+
+  /// No description provided for @tabPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick & pack'**
+  String get tabPick;
+
+  /// No description provided for @pickListsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick lists'**
+  String get pickListsTitle;
+
+  /// No description provided for @refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refresh;
+
+  /// No description provided for @noPickLists.
+  ///
+  /// In en, this message translates to:
+  /// **'No pick list on this phone. Refresh when online, after a list is made.'**
+  String get noPickLists;
+
+  /// No description provided for @pickListsSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to load pick lists.'**
+  String get pickListsSignIn;
+
+  /// No description provided for @pickListLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'List {number}'**
+  String pickListLabel(int number);
+
+  /// No description provided for @pickListSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{orders, plural, =1{1 order} other{{orders} orders}} · {packed} packed'**
+  String pickListSummary(int orders, int packed);
+
+  /// No description provided for @fetchedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated {time}'**
+  String fetchedAt(String time);
+
+  /// No description provided for @toPick.
+  ///
+  /// In en, this message translates to:
+  /// **'To pick, by shelf'**
+  String get toPick;
+
+  /// No description provided for @ordersToPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders to pack'**
+  String get ordersToPack;
+
+  /// No description provided for @noShelf.
+  ///
+  /// In en, this message translates to:
+  /// **'No shelf'**
+  String get noShelf;
+
+  /// No description provided for @pack.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack'**
+  String get pack;
+
+  /// No description provided for @packed.
+  ///
+  /// In en, this message translates to:
+  /// **'Packed'**
+  String get packed;
+
+  /// No description provided for @packTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pack order {number}'**
+  String packTitle(String number);
+
+  /// No description provided for @scanHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan each item into the box'**
+  String get scanHint;
+
+  /// No description provided for @typeCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Barcode won\'t read? Type it'**
+  String get typeCode;
+
+  /// No description provided for @add.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get add;
+
+  /// No description provided for @scanCounted.
+  ///
+  /// In en, this message translates to:
+  /// **'Added: {title}'**
+  String scanCounted(String title);
+
+  /// No description provided for @scanWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on this order. Keep it out of the box.'**
+  String get scanWrong;
+
+  /// No description provided for @scanTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'{title}: all of it is already in the box.'**
+  String scanTooMany(String title);
+
+  /// No description provided for @progress.
+  ///
+  /// In en, this message translates to:
+  /// **'{scanned} of {wanted} items'**
+  String progress(int scanned, int wanted);
+
+  /// No description provided for @finishPack.
+  ///
+  /// In en, this message translates to:
+  /// **'Box packed'**
+  String get finishPack;
+
+  /// No description provided for @packSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Order {number} packed. It syncs when there is a connection.'**
+  String packSaved(String number);
+
+  /// No description provided for @removeOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Take one out'**
+  String get removeOne;
 }
 
 class _AppLocalizationsDelegate

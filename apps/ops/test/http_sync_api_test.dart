@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mizan_ops/pick/pick_api.dart';
 import 'package:mizan_ops/sync/op.dart';
 import 'package:mizan_ops/sync/sync_api.dart';
 
@@ -50,5 +51,20 @@ void main() {
     expect([busy.kind, busy.retryAfter], [SyncFailureKind.server, const Duration(seconds: 7)]);
     expect((await failure((_) async => throw http.ClientException('connection reset'))).kind, SyncFailureKind.offline);
     expect((await failure((_) => Completer<http.Response>().future, timeout: const Duration(milliseconds: 20))).kind, SyncFailureKind.offline);
+  });
+
+  test('pick lists: the open ids, then each list; a 401 means sign in again', () async {
+    final seen = <String>[];
+    final pick = HttpPickApi(baseUrl: Uri.parse('https://api.mizan.test'), token: () async => 'id-token', tenantId: () => 'tenant-1', client: MockClient((req) async {
+      seen.add('${req.url.path}?${req.url.query}');
+      expect(req.headers['x-tenant-id'], 'tenant-1');
+      if (req.url.path == '/v1/picklists') return http.Response(jsonEncode({'data': [{'id': 'l-1', 'number': 3, 'status': 'open', 'orders': 1, 'packed': 0, 'createdAt': '2026-10-30T08:00:00.000Z'}]}), 200);
+      return http.Response(jsonEncode({'id': 'l-1', 'number': 3, 'status': 'open', 'items': [], 'orders': []}), 200);
+    }));
+    expect(await pick.openListIds(), ['l-1']);
+    expect((await pick.list('l-1'))['number'], 3);
+    expect(seen, ['/v1/picklists?status=open', '/v1/picklists/l-1?']);
+    final refused = HttpPickApi(baseUrl: Uri.parse('https://api.mizan.test'), token: () async => 't', tenantId: () => 'x', client: MockClient((_) async => http.Response('', 401)));
+    await expectLater(refused.openListIds(), throwsA(isA<SyncFailure>().having((f) => f.kind, 'kind', SyncFailureKind.signedOut)));
   });
 }

@@ -25,12 +25,51 @@ class Ops extends Table {
   Set<Column> get primaryKey => {opId};
 }
 
-@DriftDatabase(tables: [Ops])
+/// Pick lists as last fetched (E8-4c): the warehouse picks and packs from them offline.
+@DataClassName('PickListRow')
+class PickLists extends Table {
+  TextColumn get id => text()();
+  IntColumn get number => integer()();
+  TextColumn get json => text()();
+  DateTimeColumn get fetchedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Ops, PickLists])
 class OpStore extends _$OpStore {
   OpStore(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) await m.createTable(pickLists); // E8-4c
+        },
+      );
+
+  /// Replace the cached open lists with the ones just fetched (a closed list drops out).
+  Future<void> savePickLists(List<Map<String, Object?>> lists, DateTime now) => transaction(() async {
+        await delete(pickLists).go();
+        for (final l in lists) {
+          await into(pickLists).insert(PickListsCompanion.insert(id: l['id'] as String, number: (l['number'] as num).toInt(), json: jsonEncode(l), fetchedAt: now.toUtc()));
+        }
+      });
+
+  /// The cached lists, newest number first, with when they were fetched.
+  Future<List<(Map<String, Object?>, DateTime)>> cachedPickLists() async {
+    final rows = await (select(pickLists)..orderBy([(p) => OrderingTerm.desc(p.number)])).get();
+    return [for (final r in rows) ((jsonDecode(r.json) as Map).cast<String, Object?>(), r.fetchedAt.toUtc())];
+  }
+
+  /// Orders packed on this phone and not refused (pending or applied): shown packed before the next fetch.
+  Future<Set<String>> packedOrderIds() async {
+    final rows = await (select(ops)..where((o) => o.type.equals(OpTypes.orderPack) & o.status.isIn([OpStatus.pending.name, OpStatus.applied.name]))).get();
+    return {for (final r in rows) (jsonDecode(r.payload) as Map)['orderId'] as String};
+  }
 
   /// Queue an operation (safe to call twice with the same opId: the first one stays).
   Future<void> enqueue(Op op) => into(ops).insert(

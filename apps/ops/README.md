@@ -8,7 +8,11 @@ The phone app for warehouse staff and agents: **offline-first**. Every operation
 - `lib/app/` — the first screen: count an item (barcode or SKU, quantity), saved at once with or without a connection; the phone's operations and what Mizan decided.
 - Tests: a fake sync server with Mizan's exactly-once rule that drops, refuses and loses answers; a chaos run of 300 operations at 10/25/50 % failures (each applied once, in order, nothing left pending); the HTTP client's wire format and error kinds; the screen in Arabic and English.
 
-Next: sign-in (Firebase, the store), camera scanning, pick lists and scan-to-pack (backlog E8-4b, E8-4c).
+## Pick and pack (E8-4c)
+
+- `lib/pick/` — pick lists fetched from `GET /v1/picklists` and kept on the phone (they open with no connection); the list by shelf, then its orders; the pack screen: the camera (mobile_scanner) or a typed code, each scan checked on the spot (`PackSession`: a wrong item is blocked with a buzz and a red message, too many is refused, a scan by mistake can be taken out), "Box packed" only when everything is in, then one `order.pack` op through the same exactly-once sync. An order packed here shows packed before the next fetch.
+
+Next: sign-in (Firebase, the store; backlog E8-4b) — until then the app counts, picks and packs from cached lists, and syncs once a session exists — and receiving against a purchase order (M16).
 
 ## Commands
 

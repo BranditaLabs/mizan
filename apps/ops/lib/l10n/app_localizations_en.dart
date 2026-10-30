@@ -87,4 +87,102 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nothingYet => 'Nothing counted on this phone yet.';
+
+  @override
+  String get tabCount => 'Count';
+
+  @override
+  String get tabPick => 'Pick & pack';
+
+  @override
+  String get pickListsTitle => 'Pick lists';
+
+  @override
+  String get refresh => 'Refresh';
+
+  @override
+  String get noPickLists =>
+      'No pick list on this phone. Refresh when online, after a list is made.';
+
+  @override
+  String get pickListsSignIn => 'Sign in to load pick lists.';
+
+  @override
+  String pickListLabel(int number) {
+    return 'List $number';
+  }
+
+  @override
+  String pickListSummary(int orders, int packed) {
+    String _temp0 = intl.Intl.pluralLogic(
+      orders,
+      locale: localeName,
+      other: '$orders orders',
+      one: '1 order',
+    );
+    return '$_temp0 · $packed packed';
+  }
+
+  @override
+  String fetchedAt(String time) {
+    return 'Updated $time';
+  }
+
+  @override
+  String get toPick => 'To pick, by shelf';
+
+  @override
+  String get ordersToPack => 'Orders to pack';
+
+  @override
+  String get noShelf => 'No shelf';
+
+  @override
+  String get pack => 'Pack';
+
+  @override
+  String get packed => 'Packed';
+
+  @override
+  String packTitle(String number) {
+    return 'Pack order $number';
+  }
+
+  @override
+  String get scanHint => 'Scan each item into the box';
+
+  @override
+  String get typeCode => 'Barcode won\'t read? Type it';
+
+  @override
+  String get add => 'Add';
+
+  @override
+  String scanCounted(String title) {
+    return 'Added: $title';
+  }
+
+  @override
+  String get scanWrong => 'Not on this order. Keep it out of the box.';
+
+  @override
+  String scanTooMany(String title) {
+    return '$title: all of it is already in the box.';
+  }
+
+  @override
+  String progress(int scanned, int wanted) {
+    return '$scanned of $wanted items';
+  }
+
+  @override
+  String get finishPack => 'Box packed';
+
+  @override
+  String packSaved(String number) {
+    return 'Order $number packed. It syncs when there is a connection.';
+  }
+
+  @override
+  String get removeOne => 'Take one out';
 }

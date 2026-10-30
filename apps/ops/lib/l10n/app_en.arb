@@ -3,7 +3,13 @@
   "appTitle": "Mizan Ops",
   "queueTitle": "Stock on this phone",
   "pending": "{count, plural, =0{Everything is synced} =1{1 operation waiting to sync} other{{count} operations waiting to sync}}",
-  "@pending": {"placeholders": {"count": {"type": "int"}}},
+  "@pending": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "countTitle": "Count an item",
   "itemCode": "Barcode or SKU",
   "itemCodeHint": "Scan or type it",
@@ -22,6 +28,102 @@
   "statusRejected": "Not accepted",
   "statusConflict": "Mizan's count won",
   "opCount": "Count {code}: {quantity}",
-  "@opCount": {"placeholders": {"code": {"type": "String"}, "quantity": {"type": "int"}}},
-  "nothingYet": "Nothing counted on this phone yet."
+  "@opCount": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "quantity": {
+        "type": "int"
+      }
+    }
+  },
+  "nothingYet": "Nothing counted on this phone yet.",
+  "tabCount": "Count",
+  "tabPick": "Pick & pack",
+  "pickListsTitle": "Pick lists",
+  "refresh": "Refresh",
+  "noPickLists": "No pick list on this phone. Refresh when online, after a list is made.",
+  "pickListsSignIn": "Sign in to load pick lists.",
+  "pickListLabel": "List {number}",
+  "@pickListLabel": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "pickListSummary": "{orders, plural, =1{1 order} other{{orders} orders}} · {packed} packed",
+  "@pickListSummary": {
+    "placeholders": {
+      "orders": {
+        "type": "int"
+      },
+      "packed": {
+        "type": "int"
+      }
+    }
+  },
+  "fetchedAt": "Updated {time}",
+  "@fetchedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "toPick": "To pick, by shelf",
+  "ordersToPack": "Orders to pack",
+  "noShelf": "No shelf",
+  "pack": "Pack",
+  "packed": "Packed",
+  "packTitle": "Pack order {number}",
+  "@packTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "scanHint": "Scan each item into the box",
+  "typeCode": "Barcode won't read? Type it",
+  "add": "Add",
+  "scanCounted": "Added: {title}",
+  "@scanCounted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "scanWrong": "Not on this order. Keep it out of the box.",
+  "scanTooMany": "{title}: all of it is already in the box.",
+  "@scanTooMany": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "progress": "{scanned} of {wanted} items",
+  "@progress": {
+    "placeholders": {
+      "scanned": {
+        "type": "int"
+      },
+      "wanted": {
+        "type": "int"
+      }
+    }
+  },
+  "finishPack": "Box packed",
+  "packSaved": "Order {number} packed. It syncs when there is a connection.",
+  "@packSaved": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "removeOne": "Take one out"
 }

@@ -86,4 +86,102 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get nothingYet => 'لسه مفيش حاجة اتعدّت على الموبايل ده.';
+
+  @override
+  String get tabCount => 'عدّ';
+
+  @override
+  String get tabPick => 'تجهيز وتقفيل';
+
+  @override
+  String get pickListsTitle => 'قوايم التجهيز';
+
+  @override
+  String get refresh => 'حدّث';
+
+  @override
+  String get noPickLists =>
+      'مفيش قايمة تجهيز على الموبايل ده. حدّث وانت أونلاين بعد ما تتعمل قايمة.';
+
+  @override
+  String get pickListsSignIn => 'سجّل دخول عشان تجيب قوايم التجهيز.';
+
+  @override
+  String pickListLabel(int number) {
+    return 'قايمة $number';
+  }
+
+  @override
+  String pickListSummary(int orders, int packed) {
+    String _temp0 = intl.Intl.pluralLogic(
+      orders,
+      locale: localeName,
+      other: '$orders أوردرات',
+      one: 'أوردر واحد',
+    );
+    return '$_temp0 · $packed اتقفلوا';
+  }
+
+  @override
+  String fetchedAt(String time) {
+    return 'اتحدّثت $time';
+  }
+
+  @override
+  String get toPick => 'هتاخد إيه، بالرف';
+
+  @override
+  String get ordersToPack => 'أوردرات للتقفيل';
+
+  @override
+  String get noShelf => 'من غير رف';
+
+  @override
+  String get pack => 'قفّل';
+
+  @override
+  String get packed => 'اتقفل';
+
+  @override
+  String packTitle(String number) {
+    return 'تقفيل أوردر $number';
+  }
+
+  @override
+  String get scanHint => 'امسح كل صنف وانت بتحطه في الكرتونة';
+
+  @override
+  String get typeCode => 'الباركود مش بيتقري؟ اكتبه';
+
+  @override
+  String get add => 'ضيف';
+
+  @override
+  String scanCounted(String title) {
+    return 'اتضاف: $title';
+  }
+
+  @override
+  String get scanWrong => 'ده مش في الأوردر ده. ماتحطوش في الكرتونة.';
+
+  @override
+  String scanTooMany(String title) {
+    return '$title: الكمية كلها في الكرتونة خلاص.';
+  }
+
+  @override
+  String progress(int scanned, int wanted) {
+    return '$scanned من $wanted صنف';
+  }
+
+  @override
+  String get finishPack => 'الكرتونة اتقفلت';
+
+  @override
+  String packSaved(String number) {
+    return 'أوردر $number اتقفل. هيتزامن أول ما يبقى فيه نت.';
+  }
+
+  @override
+  String get removeOne => 'شيل واحد';
 }
