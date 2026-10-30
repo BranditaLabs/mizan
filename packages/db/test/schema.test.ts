@@ -98,7 +98,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "feature_flag_stores_tenant", "announcements_live", "whatsapp_messages_out", "pick_lists_open", "pick_list_orders_order",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "feature_flag_stores_tenant", "announcements_live", "whatsapp_messages_out", "pick_lists_open", "pick_list_orders_order", "suppliers_name", "purchase_orders_status", "purchase_orders_supplier", "purchase_order_lines_variant", "purchase_receipts_po", "purchase_receipt_lines_receipt",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -335,6 +335,22 @@ describe("schema", () => {
     await asTenant(T1, () => db.query(`UPDATE pick_lists SET status = 'closed', closed_at = now() WHERE id = $1`, [list]));
     await expect(asTenant(T1, () => db.query(`UPDATE stock_levels SET bin = '' WHERE false`))).resolves.toBeTruthy();
     expect((await asTenant(T2, () => db.query(`SELECT * FROM pick_lists`))).rows).toEqual([]);
+  });
+
+  it("keeps purchase orders, receipts and their opIds per store (M16-1)", async () => {
+    const one = async <T>(q: string, args: unknown[]) => (await asTenant(T1, () => db.query<T & Record<string, unknown>>(q, args))).rows[0]!;
+    const sup = await one<{ id: string }>(`INSERT INTO suppliers (tenant_id, name, currency) VALUES ($1, 'Alex Textiles', 'EGP') RETURNING id`, [T1]);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO suppliers (tenant_id, name, currency) VALUES ($1, 'alex textiles', 'EGP')`, [T1]))).rejects.toThrow(/suppliers_name/);
+    const p = await one<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Scarf') RETURNING id`, [T1]);
+    const v = await one<{ id: string }>(`INSERT INTO variants (tenant_id, product_id, sku, currency) VALUES ($1, $2, 'SCARF-1', 'EGP') RETURNING id`, [T1, p.id]);
+    const w = await one<{ id: string }>(`INSERT INTO warehouses (tenant_id, name) VALUES ($1, 'PO wh') RETURNING id`, [T1]);
+    const po = await one<{ id: string }>(`INSERT INTO purchase_orders (tenant_id, supplier_id, warehouse_id, number, currency) VALUES ($1, $2, $3, 'PO-0001', 'EGP') RETURNING id`, [T1, sup.id, w.id]);
+    const line = await one<{ id: string }>(`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, variant_id, quantity, unit_cost_minor) VALUES ($1, $2, $3, 10, 9000) RETURNING id`, [T1, po.id, v.id]);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, variant_id, quantity, unit_cost_minor) VALUES ($1, $2, $3, 1, 1)`, [T1, po.id, v.id]))).rejects.toThrow(/purchase_order_lines_variant/);
+    const r = await one<{ id: string }>(`INSERT INTO purchase_receipts (tenant_id, purchase_order_id, number, device_op_id, cost_status) VALUES ($1, $2, 1, 'op-po-1', 'applied') RETURNING id`, [T1, po.id]);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO purchase_receipts (tenant_id, purchase_order_id, number, device_op_id, cost_status) VALUES ($1, $2, 2, 'op-po-1', 'applied')`, [T1, po.id]))).rejects.toThrow(/duplicate key/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO purchase_receipt_lines (tenant_id, receipt_id, po_line_id, variant_id, quantity, damaged) VALUES ($1, $2, $3, $4, 0, 0)`, [T1, r.id, line.id, v.id]))).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM purchase_receipts`))).rows).toEqual([]);
   });
 
   it("keeps a WhatsApp opt-out apart from an opt-in (E6-4b)", async () => {

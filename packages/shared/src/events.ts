@@ -28,7 +28,7 @@ export const DOMAIN_EVENT_TYPES = [
   "payment.received", "payment.failed", "refund.created", "refund.approved", "refund.rejected", "refund.completed", "dispute.opened",
   "order.awaiting_payment", "order.payment_changed",
   // M16–M20
-  "po.received", "stock.reorder_suggested", "conversation.created", "conversation.sla_breached",
+  "po.approved", "po.sent", "po.cancelled", "po.received", "stock.reorder_suggested", "conversation.created", "conversation.sla_breached",
   "channel.order_received", "listing.error", "channel.payout_received",
   "period.closed", "einvoice.rejected", "metric.threshold_crossed",
 ] as const;

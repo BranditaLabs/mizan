@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ADJUST_REASONS } from "../stock/stock.dto.js";
 
-/** Operations the ops app can queue offline (E8-3, E10-3, pack E8-4c); receive-by-PO comes with M16. */
-export const OP_TYPES = ["stock.receive", "stock.count", "stock.adjust", "return.inspect", "order.pack"] as const;
+/** Operations the ops app can queue offline (E8-3, E10-3, pack E8-4c, receive against a PO M16-1). */
+export const OP_TYPES = ["stock.receive", "stock.count", "stock.adjust", "return.inspect", "order.pack", "po.receive"] as const;
 export const OP_STATUSES = ["applied", "duplicate", "rejected", "conflict"] as const;
 
 export const OpsSyncSchema = z.strictObject({
@@ -50,7 +50,7 @@ export const OpsSyncResultSchema = z.object({
     opId: z.string(),
     status: z.enum(OP_STATUSES).describe("applied now; duplicate: already synced (see original); rejected: can never apply (fix and send a new op); conflict: the server's stock wins, tell the user"),
     original: z.enum(["applied", "rejected", "conflict"]).nullable().describe("For a duplicate: what happened the first time"),
-    code: z.string().nullable().describe("unknown_type, invalid_payload, unknown_item, below_reserved…"),
+    code: z.string().nullable().describe("unknown_type, invalid_payload, unknown_item, below_reserved, over_receipt, po_not_open…"),
     message: z.string().nullable(),
     result: z.record(z.string(), z.unknown()).nullable().describe("For applied stock ops: the item's levels after it"),
   })).describe("In the order the ops were sent"),

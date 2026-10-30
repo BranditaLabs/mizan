@@ -845,6 +845,7 @@ export interface PurchaseOrderLines {
   received_qty: Generated<number>;
   unit_cost_minor: Int8;
   landed_cost_minor: Int8 | null;
+  damaged_qty: Generated<number>;
 }
 
 export interface PurchaseOrders {
@@ -859,6 +860,41 @@ export interface PurchaseOrders {
   expected_at: Timestamp | null;
   approved_by: string | null;
   created_at: Generated<Timestamp>;
+  notes: string | null;
+  created_by: string | null;
+  approved_at: Timestamp | null;
+  sent_at: Timestamp | null;
+  received_at: Timestamp | null;
+  cancelled_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface PurchaseReceiptLines {
+  id: Generated<string>;
+  tenant_id: string;
+  receipt_id: string;
+  po_line_id: string;
+  variant_id: string;
+  quantity: number;
+  damaged: Generated<number>;
+  unit_cost_minor: Int8 | null;
+  cost_before_minor: Int8 | null;
+  cost_after_minor: Int8 | null;
+}
+
+export interface PurchaseReceipts {
+  id: Generated<string>;
+  tenant_id: string;
+  purchase_order_id: string;
+  number: number;
+  received_by: string | null;
+  received_at: Generated<Timestamp>;
+  device_op_id: string | null;
+  over_approved_by: string | null;
+  fx_rate: Numeric | null;
+  fx_day: Timestamp | null;
+  cost_status: string;
+  note: string | null;
 }
 
 export interface Refunds {
@@ -1089,6 +1125,9 @@ export interface Suppliers {
   lead_time_days: number | null;
   payment_terms: string | null;
   created_at: Generated<Timestamp>;
+  notes: string | null;
+  archived_at: Timestamp | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface SupportAccess {
@@ -1318,6 +1357,8 @@ export interface DB {
   products: Products;
   purchase_order_lines: PurchaseOrderLines;
   purchase_orders: PurchaseOrders;
+  purchase_receipt_lines: PurchaseReceiptLines;
+  purchase_receipts: PurchaseReceipts;
   refunds: Refunds;
   reports: Reports;
   return_inspections: ReturnInspections;

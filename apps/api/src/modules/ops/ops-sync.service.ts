@@ -9,6 +9,8 @@ import { StockService } from "../stock/stock.service.js";
 import { ReturnsService } from "../returns/returns.service.js";
 import { PackPayloadSchema } from "../picking/picking.dto.js";
 import { PackRefused, PickingService } from "../picking/picking.service.js";
+import { PoReceivePayloadSchema } from "../purchasing/purchasing.dto.js";
+import { PurchasingService, ReceiptRefused } from "../purchasing/purchasing.service.js";
 import { OP_TYPES, ReturnInspectPayloadSchema, StockOpPayloadSchema, type OpsSyncBody } from "./ops.dto.js";
 
 type Trx = Transaction<DB>;
@@ -32,6 +34,7 @@ export class OpsSyncService {
     @Inject(StockService) private readonly stock: StockService,
     @Inject(ReturnsService) private readonly returns: ReturnsService,
     @Inject(PickingService) private readonly picking: PickingService,
+    @Inject(PurchasingService) private readonly purchasing: PurchasingService,
   ) {}
 
   async sync(auth: AuthContext, body: OpsSyncBody) {
@@ -89,6 +92,18 @@ export class OpsSyncService {
         return await this.picking.pack(trx, tenantId, auth.user.id, parsed.data, op.opId, deviceId);
       } catch (e) {
         if (e instanceof PackRefused) throw new Refused(e.status, e.code, e.message);
+        throw e;
+      }
+    }
+    if (op.type === "po.receive") {
+      // Receiving against a PO (M16-1): more than ordered is a conflict a manager settles on the web.
+      const parsed = PoReceivePayloadSchema.safeParse(op.payload);
+      if (!parsed.success) throw new Refused("rejected", "invalid_payload", parsed.error.issues.map((x) => `${x.path.join(".") || "payload"}: ${x.message}`).join("; ").slice(0, 300));
+      const p = parsed.data;
+      try {
+        return await this.purchasing.receive(trx, tenantId, auth.user.id, { id: p.purchaseOrderId, number: p.number }, p.items, { note: p.note ?? `device ${deviceId}`, deviceOpId: op.opId });
+      } catch (e) {
+        if (e instanceof ReceiptRefused) throw new Refused(e.status, e.code, e.message);
         throw e;
       }
     }

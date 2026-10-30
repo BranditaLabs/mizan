@@ -1313,6 +1313,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SuppliersController_list"];
+        put?: never;
+        post: operations["SuppliersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/suppliers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["SuppliersController_update"];
+        trace?: never;
+    };
+    "/v1/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PurchaseOrdersController_list"];
+        put?: never;
+        post: operations["PurchaseOrdersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PurchaseOrdersController_get"];
+        put: operations["PurchaseOrdersController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PurchaseOrdersController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PurchaseOrdersController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PurchaseOrdersController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/{id}/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["PurchaseOrdersController_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/purchasing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PurchasingSettingsController_get"];
+        put: operations["PurchasingSettingsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ops/sync": {
         parameters: {
             query?: never;
@@ -3838,6 +3982,43 @@ export interface components {
              */
             limit: number;
         };
+        NewPurchaseOrder: {
+            /** Format: uuid */
+            supplierId: string;
+            /** @description Defaults to the supplier's */
+            currency?: string;
+            /**
+             * Format: date
+             * @description When the supplier should deliver (YYYY-MM-DD)
+             */
+            expectedAt?: string;
+            notes?: string;
+            lines: {
+                /** Format: uuid */
+                variantId: string;
+                quantity: number;
+                /** @description Per unit, in the PO's currency */
+                unitCost: string;
+            }[];
+        };
+        NewReceipt: {
+            items: {
+                /** Format: uuid */
+                variantId?: string;
+                barcode?: string;
+                sku?: string;
+                /** @description Good units, into stock */
+                quantity: number;
+                /** @default 0 */
+                damaged: number;
+            }[];
+            /**
+             * @description Take in more than ordered (owner, admin or ops manager)
+             * @default false
+             */
+            allowOver: boolean;
+            note?: string;
+        };
         NewRefund: {
             /** @description In the order's currency; Arabic digits accepted */
             amount: string;
@@ -3852,6 +4033,20 @@ export interface components {
              * @description The ticket this refund settles; it must be on the same order
              */
             ticketId?: string;
+        };
+        NewSupplier: {
+            name: string;
+            /** @description What the supplier invoices in; POs default to it */
+            currency: string;
+            contactName?: string;
+            /** @description Shown to the team; not used for messages yet */
+            phone?: string;
+            /** Format: email */
+            email?: string;
+            country?: string;
+            leadTimeDays?: number;
+            paymentTerms?: string;
+            notes?: string;
         };
         NewTicket: {
             /** @enum {string} */
@@ -4089,7 +4284,7 @@ export interface components {
             ops: {
                 /** @description Made by the app once per operation (a UUID or ULID); a replay with the same opId changes nothing */
                 opId: string;
-                /** @description One of: stock.receive, stock.count, stock.adjust, return.inspect, order.pack */
+                /** @description One of: stock.receive, stock.count, stock.adjust, return.inspect, order.pack, po.receive */
                 type: string;
                 payload: {
                     [key: string]: unknown;
@@ -4117,7 +4312,7 @@ export interface components {
                  * @enum {string|null}
                  */
                 original: "applied" | "rejected" | "conflict" | null;
-                /** @description unknown_type, invalid_payload, unknown_item, below_reserved… */
+                /** @description unknown_type, invalid_payload, unknown_item, below_reserved, over_receipt, po_not_open… */
                 code: string | null;
                 message: string | null;
                 /** @description For applied stock ops: the item's levels after it */
@@ -5577,6 +5772,119 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        PurchaseOrder: {
+            /** Format: uuid */
+            id: string;
+            number: string;
+            /** @enum {string} */
+            status: "draft" | "approved" | "sent" | "partially_received" | "received" | "cancelled";
+            supplier: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            total: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Lines (SKUs) */
+            items: number;
+            units: number;
+            /** @description Good and damaged units that arrived */
+            receivedUnits: number;
+            /** Format: date */
+            expectedAt: string | null;
+            /** @description Expected date passed and not fully received */
+            late: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            notes: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            receivedAt: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            /** @description Above the approval threshold (or in a foreign currency): only owner or admin can approve */
+            needsOwner: boolean;
+            lines: {
+                /** Format: uuid */
+                id: string;
+                /** Format: uuid */
+                variantId: string;
+                sku: string | null;
+                barcode: string | null;
+                title: string;
+                quantity: number;
+                received: number;
+                damaged: number;
+                unitCost: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+            receipts: {
+                /** Format: uuid */
+                id: string;
+                number: number;
+                /** Format: date-time */
+                receivedAt: string;
+                units: number;
+                damaged: number;
+                /**
+                 * @description fx_missing: stock went in, but no FX rate for the day, so the cost was not updated
+                 * @enum {string}
+                 */
+                costStatus: "applied" | "fx_missing";
+                /** @description 1 item currency = rate PO currency, locked at receipt */
+                fxRate: string | null;
+                overApproved: boolean;
+                viaApp: boolean;
+            }[];
+        };
+        PurchaseOrderList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** @enum {string} */
+                status: "draft" | "approved" | "sent" | "partially_received" | "received" | "cancelled";
+                supplier: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                };
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Lines (SKUs) */
+                items: number;
+                units: number;
+                /** @description Good and damaged units that arrived */
+                receivedUnits: number;
+                /** Format: date */
+                expectedAt: string | null;
+                /** @description Expected date passed and not fully received */
+                late: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            counts: {
+                [key: string]: number;
+            };
+        };
+        PurchasingSettings: {
+            /** @description Decimal in the store's base currency */
+            approveOver: string;
+            currency: string;
+        };
+        PurchasingSettingsInput: {
+            /** @description POs above this, in the store's base currency, need owner or admin to approve; foreign-currency POs always do */
+            approveOver: string;
+        };
         PutFlag: {
             enabled: boolean;
             description?: string;
@@ -6290,6 +6598,40 @@ export interface components {
             /** @description Tag mizan-lost when the courier lost it */
             tagLost: boolean;
         };
+        Supplier: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            currency: string;
+            contactName: string | null;
+            phone: string | null;
+            email: string | null;
+            country: string | null;
+            leadTimeDays: number | null;
+            paymentTerms: string | null;
+            notes: string | null;
+            archived: boolean;
+            /** @description POs not yet received or cancelled */
+            openOrders: number;
+        };
+        SupplierList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                currency: string;
+                contactName: string | null;
+                phone: string | null;
+                email: string | null;
+                country: string | null;
+                leadTimeDays: number | null;
+                paymentTerms: string | null;
+                notes: string | null;
+                archived: boolean;
+                /** @description POs not yet received or cancelled */
+                openOrders: number;
+            }[];
+        };
         SupportAccessEnded: {
             /** @description Grants ended */
             ended: number;
@@ -6590,6 +6932,22 @@ export interface components {
             role?: "super_admin" | "support" | "finance" | "engineer";
             /** @enum {string} */
             status?: "active" | "disabled";
+        };
+        UpdateSupplier: {
+            name?: string;
+            /** @description What the supplier invoices in; POs default to it */
+            currency?: string;
+            contactName?: string;
+            /** @description Shown to the team; not used for messages yet */
+            phone?: string;
+            /** Format: email */
+            email?: string;
+            country?: string;
+            leadTimeDays?: number;
+            paymentTerms?: string;
+            notes?: string;
+            /** @description Archived suppliers are hidden and get no new POs; their POs stay */
+            archived?: boolean;
         };
         UpdateTenant: {
             name?: string;
@@ -11650,6 +12008,678 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SuppliersController_list: {
+        parameters: {
+            query?: {
+                archived?: "true" | "false";
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active (or archived) suppliers by name, with their open POs */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SuppliersController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewSupplier"];
+            };
+        };
+        responses: {
+            /** @description Created; the name is unique among active suppliers; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Supplier"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SuppliersController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSupplier"];
+            };
+        };
+        responses: {
+            /** @description Changed fields, or archived/restored; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Supplier"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_list: {
+        parameters: {
+            query?: {
+                /** @description open = approved, sent or partially received (what the warehouse can receive) */
+                status?: "draft" | "approved" | "sent" | "partially_received" | "received" | "cancelled" | "open";
+                supplierId?: string;
+                limit?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first, with a count per status; open = what can still be received */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrderList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPurchaseOrder"];
+            };
+        };
+        responses: {
+            /** @description A draft numbered PO-0001…, in the supplier's currency unless given; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Lines with what arrived, and each receipt with its locked FX rate */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewPurchaseOrder"];
+            };
+        };
+        responses: {
+            /** @description A draft replaced as a whole; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_approve: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved; above the store's threshold or in a foreign currency only by the owner or an admin (403 needs_owner); audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_send: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Marked as sent to the supplier; repeating it changes nothing; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_cancel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cancelled while nothing was received; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchaseOrdersController_receive: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewReceipt"];
+            };
+        };
+        responses: {
+            /** @description Good units into stock, damaged recorded, moving-average cost at the day's FX rate; more than ordered needs allowOver (409 over_receipt); audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchasingSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The approval threshold in the store's base currency */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchasingSettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PurchasingSettingsController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurchasingSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description Saved; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchasingSettings"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

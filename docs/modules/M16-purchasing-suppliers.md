@@ -115,22 +115,31 @@ _Sample data. Full visual in `design/prototype.html`._
 | Supplier lead time slips | Lead time re-learned; reorder points move earlier |
 | SKU discontinued | Excluded from suggestions; open POs flagged |
 
+## Built so far (M16-1)
+
+- **Suppliers:** name unique among active ones, currency, contact, lead time, terms, notes; archive and restore.
+- **POs:** `PO-0001…`, priced per unit in the supplier's currency (or another); a draft is edited as a whole; approval by amount (owner or admin above the threshold or in a foreign currency, else also the ops manager); "sent" is marked by hand for now; cancel only before anything arrived; late = expected date passed and not fully received.
+- **Receiving:** from the web or the ops app (`po.receive`, exactly once per opId), by scan (barcode), SKU or id; good units into stock against the PO (orders waiting for stock get reserved), damaged recorded only; partial receipts; more than ordered needs a manager (the app gets a conflict).
+- **Moving-average cost:** per receipt, (on hand × cost + received value) ÷ (on hand + received), in the item's currency at the receipt day's FX rate, locked on the receipt. An item without a cost takes the receipt's. No rate for the day: the stock goes in and the receipt is marked `fx_missing` (cost unchanged).
+- **Later:** landed cost (freight, customs) on top, reorder suggestions, sending the PO (PDF, email, WhatsApp), supplier bills and the 3-way match, damaged claims, `supplier.late`, the web screens (M16-2) and the ops-app receiving screen (M16-3).
+
 ## Acceptance criteria
 
 - [ ] Reorder list matches the rule for every SKU with stock history.
-- [ ] Receiving updates stock and moving-average cost once, even offline.
+- [x] Receiving updates stock and moving-average cost once, even offline. ✅ M16-1 (API; ops-app screen M16-3)
 - [ ] Landed cost flows into COGS for orders after receipt.
-- [ ] Over-receipts and price variances need approval.
+- [ ] Over-receipts and price variances need approval. ✅ over-receipts (M16-1); price variances with supplier bills
 - [ ] Every PO line shows its landed cost per unit.
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/suppliers` | Suppliers |
-| GET | `/v1/purchase-orders` | POs |
-| POST | `/v1/purchase-orders` | Create |
-| POST | `/v1/purchase-orders/{id}/receipts` | Receive |
+| GET · POST · PATCH | `/v1/suppliers` | ✅ Suppliers |
+| GET · POST · PUT | `/v1/purchase-orders` | ✅ POs, drafts edited as a whole |
+| POST | `/v1/purchase-orders/{id}/approve` · `/send` · `/cancel` | ✅ Lifecycle |
+| POST | `/v1/purchase-orders/{id}/receipts` | ✅ Receive (web); the ops app sends `po.receive` through `/v1/ops/sync` |
+| GET · PUT | `/v1/settings/purchasing` | ✅ Approval threshold |
 | GET | `/v1/reorder-suggestions` | Suggestions |
 
 Conventions: `docs/05-api.md`.

@@ -289,6 +289,32 @@ export class StockService {
     return true;
   }
 
+  /**
+   * Good units received against a purchase order (M16-1): 'receive' movements referencing the PO,
+   * inside the caller's transaction. A variant not counted yet starts being counted here. Returns
+   * what was on hand before (never below zero), for the moving-average cost.
+   */
+  async receivePurchase(trx: Trx, tenantId: string, actor: EventActor, poId: string, items: Array<{ variantId: string; quantity: number }>, deviceOpId?: string): Promise<{ warehouseId: string; onHandBefore: Map<string, number>; ordersReserved: number }> {
+    const warehouse = await this.warehouse(trx, tenantId);
+    const ids = [...new Set(items.map((i) => i.variantId))].sort();
+    const before = await this.lock(trx, warehouse.id, ids);
+    const fresh = ids.filter((id) => !before.has(id));
+    if (fresh.length) {
+      await trx.insertInto("stock_levels").values(fresh.map((variant_id) => ({ tenant_id: tenantId, warehouse_id: warehouse.id, variant_id }))).onConflict((oc) => oc.doNothing()).execute();
+    }
+    const onHandBefore = new Map(ids.map((id) => [id, Math.max(0, before.get(id)?.on_hand ?? 0)]));
+    const moves = items.filter((i) => i.quantity > 0).map((i) => ({ variant: i.variantId, reason: "receive", delta: i.quantity, ref: poId, refType: "purchase_order", deviceOpId: deviceOpId ?? null }));
+    await this.write(trx, tenantId, warehouse.id, moves, actor);
+    if (moves.length) {
+      await this.events.emit(trx, { type: "stock.received", tenantId, entity: { type: "warehouse", id: warehouse.id }, actor, data: { items: Object.fromEntries(moves.map((m) => [m.variant, m.delta])), purchaseOrderId: poId } });
+    }
+    let reserved = 0;
+    if (fresh.length) reserved += await this.retryWaiting(trx, tenantId, fresh, ["short", "untracked"]);
+    const up = moves.map((m) => m.variant).filter((v) => !fresh.includes(v));
+    if (up.length) reserved += await this.retryWaiting(trx, tenantId, up, ["short"]);
+    return { warehouseId: warehouse.id, onHandBefore, ordersReserved: reserved };
+  }
+
   private async write(trx: Trx, tenantId: string, warehouseId: string, moves: Array<{ variant: string; reason: string; delta: number; ref?: string; refType?: string; detail?: string | null; note?: string | null; deviceOpId?: string | null }>, actor: EventActor) {
     if (!moves.length) return;
     await trx.insertInto("stock_movements").values(moves.map((m) => ({
