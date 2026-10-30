@@ -37,17 +37,30 @@ class PickLists extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Ops, PickLists])
+/// Purchase orders to receive as last fetched (M16-3): the warehouse receives offline.
+@DataClassName('PurchaseOrderRow')
+class PurchaseOrders extends Table {
+  TextColumn get id => text()();
+  TextColumn get number => text()();
+  TextColumn get json => text()();
+  DateTimeColumn get fetchedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Ops, PickLists, PurchaseOrders])
 class OpStore extends _$OpStore {
   OpStore(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
           if (from < 2) await m.createTable(pickLists); // E8-4c
+          if (from < 3) await m.createTable(purchaseOrders); // M16-3
         },
       );
 
@@ -69,6 +82,37 @@ class OpStore extends _$OpStore {
   Future<Set<String>> packedOrderIds() async {
     final rows = await (select(ops)..where((o) => o.type.equals(OpTypes.orderPack) & o.status.isIn([OpStatus.pending.name, OpStatus.applied.name]))).get();
     return {for (final r in rows) (jsonDecode(r.payload) as Map)['orderId'] as String};
+  }
+
+  /// Replace the cached purchase orders with the ones just fetched (a received or cancelled one drops out).
+  Future<void> savePurchaseOrders(List<Map<String, Object?>> pos, DateTime now) => transaction(() async {
+        await delete(purchaseOrders).go();
+        for (final p in pos) {
+          await into(purchaseOrders).insert(PurchaseOrdersCompanion.insert(id: p['id'] as String, number: p['number'] as String, json: jsonEncode(p), fetchedAt: now.toUtc()));
+        }
+      });
+
+  /// The cached purchase orders, by number, with when they were fetched.
+  Future<List<(Map<String, Object?>, DateTime)>> cachedPurchaseOrders() async {
+    final rows = await (select(purchaseOrders)..orderBy([(p) => OrderingTerm.asc(p.number)])).get();
+    return [for (final r in rows) ((jsonDecode(r.json) as Map).cast<String, Object?>(), r.fetchedAt.toUtc())];
+  }
+
+  /// Units of each variant received on this phone for [poId] that the fetched PO does not show yet:
+  /// still pending, or applied after [fetchedAt]. Refused receipts count for nothing.
+  Future<Map<String, int>> receivedHere(String poId, DateTime fetchedAt) async {
+    final rows = await (select(ops)..where((o) => o.type.equals(OpTypes.poReceive) & o.status.isIn([OpStatus.pending.name, OpStatus.applied.name]))).get();
+    final out = <String, int>{};
+    for (final r in rows) {
+      if (r.status == OpStatus.applied && (r.syncedAt == null || !r.syncedAt!.isAfter(fetchedAt))) continue;
+      final p = jsonDecode(r.payload) as Map;
+      if (p['purchaseOrderId'] != poId) continue;
+      for (final i in (p['items'] as List)) {
+        final m = i as Map;
+        out[m['variantId'] as String] = (out[m['variantId'] as String] ?? 0) + ((m['quantity'] as num?)?.toInt() ?? 0) + ((m['damaged'] as num?)?.toInt() ?? 0);
+      }
+    }
+    return out;
   }
 
   /// Queue an operation (safe to call twice with the same opId: the first one stays).

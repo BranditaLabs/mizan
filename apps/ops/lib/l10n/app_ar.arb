@@ -46,5 +46,22 @@
   "progress": "{scanned} من {wanted} صنف",
   "finishPack": "الكرتونة اتقفلت",
   "packSaved": "أوردر {number} اتقفل. هيتزامن أول ما يبقى فيه نت.",
-  "removeOne": "شيل واحد"
+  "removeOne": "شيل واحد",
+  "tabReceive": "استلام",
+  "receiveTitle": "أوامر شراء للاستلام",
+  "noPurchaseOrders": "مفيش أوامر شراء على الموبايل. اعمل تحديث لما يبقى فيه نت، بعد ما واحد يتوافق عليه.",
+  "receiveSignIn": "سجّل دخول عشان تحمّل أوامر الشراء.",
+  "stillExpected": "{count, plural, =0{مفيش حاجة فاضلة} =1{قطعة واحدة لسه جاية} =2{قطعتين لسه جايين} few{{count} قطع لسه جايين} other{{count} قطعة لسه جايين}}",
+  "receivePoTitle": "استلام {number}",
+  "receiveHint": "اعمل سكان لكل قطعة وهي نازلة من التسليم.",
+  "receiveCounted": "اتستلم: {title}",
+  "receiveDamagedCounted": "تالف: {title}",
+  "receiveWrong": "مش في أمر الشراء ده. حطه على جنب.",
+  "receiveTooMany": "{title} وصل كله. الزيادة محتاجة مدير من الويب.",
+  "damagedMode": "قطع تالفة",
+  "damagedModeHint": "السكان بيتحسب تالف: بيتسجل ومش بيدخل المخزن.",
+  "receiveTotals": "{good} سليم · {damaged} تالف",
+  "damagedCount": "{count} تالف",
+  "saveDelivery": "احفظ التسليم",
+  "deliverySaved": "تسليم {number} اتحفظ. هيتبعت لما يبقى فيه نت."
 }

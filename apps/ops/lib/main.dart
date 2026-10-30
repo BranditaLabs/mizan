@@ -6,6 +6,7 @@ import 'app/home_screen.dart';
 import 'pick/camera_scanner.dart';
 import 'pick/pack_screen.dart';
 import 'pick/pick_api.dart';
+import 'receive/receive_api.dart';
 import 'l10n/app_localizations.dart';
 import 'sync/op_store.dart';
 import 'sync/sync_engine.dart';
@@ -18,11 +19,12 @@ Future<void> main() async {
 
 /// Mizan's ops app (M4, ADR-0005): Arabic first (right to left), English too; the Brandita theme.
 class MizanOpsApp extends StatelessWidget {
-  const MizanOpsApp({super.key, required this.store, this.engine, this.pickApi, this.scanner, this.locale});
+  const MizanOpsApp({super.key, required this.store, this.engine, this.pickApi, this.receiveApi, this.scanner, this.locale});
 
   final OpStore store;
   final SyncEngine? engine;
   final PickApi? pickApi;
+  final ReceiveApi? receiveApi;
 
   /// The camera on a phone; none in tests (codes are typed).
   final ScannerBuilder? scanner;
@@ -39,6 +41,6 @@ class MizanOpsApp extends StatelessWidget {
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: const [AppLocalizations.delegate, GlobalMaterialLocalizations.delegate, GlobalWidgetsLocalizations.delegate, GlobalCupertinoLocalizations.delegate],
         localeResolutionCallback: (device, supported) => supported.firstWhere((l) => l.languageCode == device?.languageCode, orElse: () => const Locale('ar')),
-        home: HomeScreen(store: store, engine: engine, pickApi: pickApi, scanner: scanner),
+        home: HomeScreen(store: store, engine: engine, pickApi: pickApi, receiveApi: receiveApi, scanner: scanner),
       );
 }

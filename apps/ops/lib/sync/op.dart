@@ -14,7 +14,8 @@ abstract final class OpTypes {
   static const stockAdjust = 'stock.adjust';
   static const returnInspect = 'return.inspect';
   static const orderPack = 'order.pack';
-  static const all = {stockReceive, stockCount, stockAdjust, returnInspect, orderPack};
+  static const poReceive = 'po.receive';
+  static const all = {stockReceive, stockCount, stockAdjust, returnInspect, orderPack, poReceive};
 }
 
 /// One thing done on the phone, queued until the server has it. `opId` is made once, here, and

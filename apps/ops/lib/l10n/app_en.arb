@@ -125,5 +125,81 @@
       }
     }
   },
-  "removeOne": "Take one out"
+  "removeOne": "Take one out",
+  "tabReceive": "Receive",
+  "receiveTitle": "Purchase orders to receive",
+  "noPurchaseOrders": "No purchase order on this phone. Refresh when online, after one is approved.",
+  "receiveSignIn": "Sign in to load purchase orders.",
+  "stillExpected": "{count, plural, =0{Nothing left to receive} =1{1 unit still expected} other{{count} units still expected}}",
+  "@stillExpected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "receivePoTitle": "Receive {number}",
+  "@receivePoTitle": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "receiveHint": "Scan each item as it comes off the delivery.",
+  "receiveCounted": "Received: {title}",
+  "@receiveCounted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "receiveDamagedCounted": "Damaged: {title}",
+  "@receiveDamagedCounted": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "receiveWrong": "Not on this purchase order. Put it aside.",
+  "receiveTooMany": "All of {title} is in. More than ordered needs a manager on the web.",
+  "@receiveTooMany": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "damagedMode": "Damaged items",
+  "damagedModeHint": "Scans count as damaged: recorded, not put in stock.",
+  "receiveTotals": "{good} good · {damaged} damaged",
+  "@receiveTotals": {
+    "placeholders": {
+      "good": {
+        "type": "int"
+      },
+      "damaged": {
+        "type": "int"
+      }
+    }
+  },
+  "damagedCount": "{count} damaged",
+  "@damagedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "saveDelivery": "Save delivery",
+  "deliverySaved": "Delivery for {number} saved. It syncs when online.",
+  "@deliverySaved": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -185,4 +185,80 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get removeOne => 'Take one out';
+
+  @override
+  String get tabReceive => 'Receive';
+
+  @override
+  String get receiveTitle => 'Purchase orders to receive';
+
+  @override
+  String get noPurchaseOrders =>
+      'No purchase order on this phone. Refresh when online, after one is approved.';
+
+  @override
+  String get receiveSignIn => 'Sign in to load purchase orders.';
+
+  @override
+  String stillExpected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count units still expected',
+      one: '1 unit still expected',
+      zero: 'Nothing left to receive',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String receivePoTitle(String number) {
+    return 'Receive $number';
+  }
+
+  @override
+  String get receiveHint => 'Scan each item as it comes off the delivery.';
+
+  @override
+  String receiveCounted(String title) {
+    return 'Received: $title';
+  }
+
+  @override
+  String receiveDamagedCounted(String title) {
+    return 'Damaged: $title';
+  }
+
+  @override
+  String get receiveWrong => 'Not on this purchase order. Put it aside.';
+
+  @override
+  String receiveTooMany(String title) {
+    return 'All of $title is in. More than ordered needs a manager on the web.';
+  }
+
+  @override
+  String get damagedMode => 'Damaged items';
+
+  @override
+  String get damagedModeHint =>
+      'Scans count as damaged: recorded, not put in stock.';
+
+  @override
+  String receiveTotals(int good, int damaged) {
+    return '$good good · $damaged damaged';
+  }
+
+  @override
+  String damagedCount(int count) {
+    return '$count damaged';
+  }
+
+  @override
+  String get saveDelivery => 'Save delivery';
+
+  @override
+  String deliverySaved(String number) {
+    return 'Delivery for $number saved. It syncs when online.';
+  }
 }

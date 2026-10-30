@@ -184,4 +184,81 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get removeOne => 'شيل واحد';
+
+  @override
+  String get tabReceive => 'استلام';
+
+  @override
+  String get receiveTitle => 'أوامر شراء للاستلام';
+
+  @override
+  String get noPurchaseOrders =>
+      'مفيش أوامر شراء على الموبايل. اعمل تحديث لما يبقى فيه نت، بعد ما واحد يتوافق عليه.';
+
+  @override
+  String get receiveSignIn => 'سجّل دخول عشان تحمّل أوامر الشراء.';
+
+  @override
+  String stillExpected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count قطعة لسه جايين',
+      few: '$count قطع لسه جايين',
+      two: 'قطعتين لسه جايين',
+      one: 'قطعة واحدة لسه جاية',
+      zero: 'مفيش حاجة فاضلة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String receivePoTitle(String number) {
+    return 'استلام $number';
+  }
+
+  @override
+  String get receiveHint => 'اعمل سكان لكل قطعة وهي نازلة من التسليم.';
+
+  @override
+  String receiveCounted(String title) {
+    return 'اتستلم: $title';
+  }
+
+  @override
+  String receiveDamagedCounted(String title) {
+    return 'تالف: $title';
+  }
+
+  @override
+  String get receiveWrong => 'مش في أمر الشراء ده. حطه على جنب.';
+
+  @override
+  String receiveTooMany(String title) {
+    return '$title وصل كله. الزيادة محتاجة مدير من الويب.';
+  }
+
+  @override
+  String get damagedMode => 'قطع تالفة';
+
+  @override
+  String get damagedModeHint => 'السكان بيتحسب تالف: بيتسجل ومش بيدخل المخزن.';
+
+  @override
+  String receiveTotals(int good, int damaged) {
+    return '$good سليم · $damaged تالف';
+  }
+
+  @override
+  String damagedCount(int count) {
+    return '$count تالف';
+  }
+
+  @override
+  String get saveDelivery => 'احفظ التسليم';
+
+  @override
+  String deliverySaved(String number) {
+    return 'تسليم $number اتحفظ. هيتبعت لما يبقى فيه نت.';
+  }
 }

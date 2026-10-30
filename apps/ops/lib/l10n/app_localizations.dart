@@ -379,6 +379,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take one out'**
   String get removeOne;
+
+  /// No description provided for @tabReceive.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive'**
+  String get tabReceive;
+
+  /// No description provided for @receiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase orders to receive'**
+  String get receiveTitle;
+
+  /// No description provided for @noPurchaseOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'No purchase order on this phone. Refresh when online, after one is approved.'**
+  String get noPurchaseOrders;
+
+  /// No description provided for @receiveSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to load purchase orders.'**
+  String get receiveSignIn;
+
+  /// No description provided for @stillExpected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Nothing left to receive} =1{1 unit still expected} other{{count} units still expected}}'**
+  String stillExpected(int count);
+
+  /// No description provided for @receivePoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive {number}'**
+  String receivePoTitle(String number);
+
+  /// No description provided for @receiveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan each item as it comes off the delivery.'**
+  String get receiveHint;
+
+  /// No description provided for @receiveCounted.
+  ///
+  /// In en, this message translates to:
+  /// **'Received: {title}'**
+  String receiveCounted(String title);
+
+  /// No description provided for @receiveDamagedCounted.
+  ///
+  /// In en, this message translates to:
+  /// **'Damaged: {title}'**
+  String receiveDamagedCounted(String title);
+
+  /// No description provided for @receiveWrong.
+  ///
+  /// In en, this message translates to:
+  /// **'Not on this purchase order. Put it aside.'**
+  String get receiveWrong;
+
+  /// No description provided for @receiveTooMany.
+  ///
+  /// In en, this message translates to:
+  /// **'All of {title} is in. More than ordered needs a manager on the web.'**
+  String receiveTooMany(String title);
+
+  /// No description provided for @damagedMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Damaged items'**
+  String get damagedMode;
+
+  /// No description provided for @damagedModeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Scans count as damaged: recorded, not put in stock.'**
+  String get damagedModeHint;
+
+  /// No description provided for @receiveTotals.
+  ///
+  /// In en, this message translates to:
+  /// **'{good} good · {damaged} damaged'**
+  String receiveTotals(int good, int damaged);
+
+  /// No description provided for @damagedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} damaged'**
+  String damagedCount(int count);
+
+  /// No description provided for @saveDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Save delivery'**
+  String get saveDelivery;
+
+  /// No description provided for @deliverySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery for {number} saved. It syncs when online.'**
+  String deliverySaved(String number);
 }
 
 class _AppLocalizationsDelegate
