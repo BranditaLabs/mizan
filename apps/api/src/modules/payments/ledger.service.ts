@@ -26,6 +26,8 @@ export interface PostLine {
   status?: LedgerStatus;
   parentId?: string | null;
   note?: string | null;
+  /** The provider's actual fee on this line (a chargeback fee): a cost in profit. */
+  feeMinor?: bigint;
   recordedBy?: string | null;
   occurredAt?: Date;
   /** Added to the line's event (a refund's id and number). */
@@ -115,6 +117,7 @@ export class LedgerService {
       tenant_id: tenantId, order_id: orderId, connection_id: line.connectionId ?? null, method: line.method, kind: line.kind, status, source: line.source,
       amount_minor: line.amountMinor, currency: line.currency, external_ref: line.externalRef, parent_id: line.parentId ?? null,
       note: line.note ?? null, recorded_by: line.recordedBy ?? null, occurred_at: line.occurredAt ?? new Date(),
+      ...(line.feeMinor !== undefined ? { fee_minor: line.feeMinor, fee_is_actual: true } : {}),
     }).returning(["id", "kind", "status", "amount_minor", "source"]).executeTakeFirstOrThrow();
     const all = [...rows, row].map(asLine);
     const next = money(all, {

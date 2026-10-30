@@ -3343,5 +3343,133 @@
       "title": "Not available for your role",
       "body": "Owners, admins, ops managers and finance see payment settings."
     }
+  },
+  "disputes": {
+    "title": "Chargebacks",
+    "none": "No chargebacks on this order.",
+    "record": "Record a chargeback",
+    "queueTitle": "Chargebacks to answer ({count})",
+    "missed": "Deadline missed",
+    "daysLeft": "{days, plural, =0 {Due today} one {# day left} other {# days left}}",
+    "evidenceSent": "Evidence sent",
+    "feeShort": "Fee",
+    "pack": "Evidence pack",
+    "markSent": "Evidence sent",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Record",
+    "recordTitle": "Record a chargeback",
+    "recordHint": "The gateway or bank took money back from this order. It leaves the payments and counts against profit.",
+    "amount": "Amount taken back ({currency})",
+    "held": "The store holds <amount></amount> on this order",
+    "fee": "Chargeback fee ({currency})",
+    "feeHint": "What the gateway charges for the case; a cost in profit",
+    "reasonLabel": "Reason given",
+    "respondBy": "Respond by",
+    "caseId": "Case number",
+    "caseHint": "From the gateway: the same case is never recorded twice",
+    "note": "Note",
+    "recorded": "{number} recorded",
+    "errors": {
+      "overChargeback": "That is more than the store holds on this order.",
+      "otherOrder": "This case number is already on another order.",
+      "amount": "Enter an amount like 250 or 250.50."
+    },
+    "sent": "Marked as sent",
+    "sentTitle": "Evidence for {number}",
+    "sentNote": "How it was sent",
+    "sentNoteHint": "For example: uploaded on the gateway's portal. No card numbers.",
+    "closeTitle": "Close {number}",
+    "outcome": "Outcome",
+    "outcomeHint": {
+      "won": "The gateway gave the money back: it returns to the payments. The fee stays a cost.",
+      "lost": "The gateway kept the money.",
+      "accepted": "Not contested: the money stays out."
+    },
+    "closed": {
+      "won": "Won: the money is back",
+      "lost": "Closed as lost",
+      "accepted": "Closed as accepted"
+    },
+    "status": {
+      "open": "Open",
+      "evidence_submitted": "Evidence sent",
+      "won": "Won",
+      "lost": "Lost",
+      "accepted": "Accepted"
+    },
+    "reason": {
+      "fraud": "Fraud (not the cardholder)",
+      "not_received": "Not received",
+      "not_as_described": "Not as described",
+      "duplicate": "Charged twice",
+      "cancelled": "Cancelled order",
+      "other": "Other"
+    },
+    "notAllowed": "Owners, admins and finance open evidence packs.",
+    "loading": "Loading",
+    "backToOrder": "Back to the order",
+    "print": "Print or save as PDF",
+    "generated": "prepared",
+    "packTitle": "Evidence for chargeback {number}",
+    "packFor": "Order",
+    "sections": {
+      "order": "The order",
+      "customer": "Delivered to",
+      "delivery": "Delivery",
+      "chat": "Confirmation with the customer",
+      "payments": "Payments"
+    },
+    "fields": {
+      "placed": "Placed",
+      "status": "Status",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "total": "Total",
+      "name": "Name",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "redacted": "The customer's details were deleted on their request.",
+    "noShipment": "No shipment recorded.",
+    "noChat": "No confirmation messages.",
+    "confirmationRun": "Confirmation",
+    "fromCustomer": "From the customer",
+    "toCustomer": "To the customer",
+    "outcomes": {
+      "confirmed": "confirmed",
+      "changed": "asked for a change",
+      "cancelled": "cancelled",
+      "wrong_number": "wrong number",
+      "no_reply": "no reply"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "call_team": "team call",
+      "call_auto": "automatic call",
+      "voice": "call",
+      "agent": "team",
+      "link": "link"
+    },
+    "actions": {
+      "confirm": "confirmed",
+      "change": "asked for a change",
+      "cancel": "cancelled",
+      "keep": "kept the order",
+      "reason": "gave a reason",
+      "note": "sent a note"
+    },
+    "messageStatus": {
+      "accepted": "accepted",
+      "sent": "sent",
+      "delivered": "delivered",
+      "read": "read",
+      "failed": "failed",
+      "received": "received"
+    },
+    "footer": "Prepared by Mizan from the store's records. Message contents are not stored; the exchange shows what was sent and tapped.",
+    "times": "× {n}",
+    "phoneEnds": "ending <n>{last4}</n>"
   }
 }

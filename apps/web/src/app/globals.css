@@ -20,3 +20,10 @@
     &:where(:root:not([data-theme]) *) { @slot; }
   }
 }
+
+/* Printing (the dispute evidence pack, E14-5): paper colours whatever the theme, no app frame. */
+@media print {
+  :root { color-scheme: light; }
+  body { background: none !important; }
+  .mz-card { break-inside: avoid; box-shadow: none; }
+}

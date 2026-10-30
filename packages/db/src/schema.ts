@@ -285,6 +285,13 @@ export interface Disputes {
   external_ref: string | null;
   created_at: Generated<Timestamp>;
   closed_at: Timestamp | null;
+  number: number;
+  source: Generated<string>;
+  note: string | null;
+  opened_by: string | null;
+  evidence_submitted_at: Timestamp | null;
+  reversal_payment_id: string | null;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface DomainEvents {

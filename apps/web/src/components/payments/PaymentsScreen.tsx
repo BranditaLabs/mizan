@@ -14,6 +14,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { MODE_ICON } from "@/components/orders/order-ui";
+import { DisputeQueue } from "./Disputes";
 import { RefundQueue } from "./Refunds";
 
 type Row = Schemas["PaymentPage"]["data"][number];
@@ -81,6 +82,7 @@ export function PaymentsScreen() {
   return frame(
     <>
     <RefundQueue />
+    <DisputeQueue />
     <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(first ? { count: first.counts[v] } : {}) }))}>
       {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
         <div className="flex flex-col gap-3">

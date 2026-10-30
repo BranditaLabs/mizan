@@ -98,7 +98,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "feature_flag_stores_tenant", "announcements_live", "whatsapp_messages_out", "pick_lists_open", "pick_list_orders_order", "suppliers_name", "purchase_orders_status", "purchase_orders_supplier", "purchase_order_lines_variant", "purchase_receipts_po", "purchase_receipt_lines_receipt", "landed_costs_po", "payment_links_open_conversion", "payment_links_order",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "feature_flag_stores_tenant", "announcements_live", "whatsapp_messages_out", "pick_lists_open", "pick_list_orders_order", "suppliers_name", "purchase_orders_status", "purchase_orders_supplier", "purchase_order_lines_variant", "purchase_receipts_po", "purchase_receipt_lines_receipt", "landed_costs_po", "payment_links_open_conversion", "payment_links_order", "disputes_number", "disputes_external", "disputes_order", "disputes_due",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -371,6 +371,21 @@ describe("schema", () => {
     await ins("expired");
     await expect(asTenant(T1, () => db.query(`INSERT INTO payment_links (tenant_id, order_id, purpose, amount_minor, currency, method) VALUES ($1, $2, 'deposit', 1, 'EGP', 'cash')`, [T1, o]))).rejects.toThrow(/check/);
     expect((await asTenant(T2, () => db.query(`SELECT * FROM payment_links`))).rows).toEqual([]);
+  });
+
+  it("numbers disputes per store, one per gateway reference, with sane amounts and reasons (E14-5)", async () => {
+    const order = (t: string, n: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, number, currency, total_minor, placed_at) VALUES ($1, $2, 'EGP', 90000, now()) RETURNING id`, [t, n])).then((r) => r.rows[0]!.id);
+    const [o1, o2] = [await order(T1, "#DS-1"), await order(T2, "#DS-1")];
+    const ins = (t: string, o: string, number: number, extra: { ref?: string; amount?: number; reason?: string } = {}) => asTenant(t, () => db.query(
+      `INSERT INTO disputes (tenant_id, order_id, number, amount_minor, currency, reason_code, external_ref) VALUES ($1, $2, $3, $4, 'EGP', $5, $6)`,
+      [t, o, number, extra.amount ?? 90000, extra.reason ?? "fraud", extra.ref ?? null]));
+    await ins(T1, o1, 1001, { ref: "cb-77" });
+    await expect(ins(T1, o1, 1001)).rejects.toThrow(/disputes_number/);
+    await expect(ins(T1, o1, 1002, { ref: "cb-77" })).rejects.toThrow(/disputes_external/);
+    await expect(ins(T1, o1, 1003, { amount: 0 })).rejects.toThrow(/disputes_amounts/);
+    await expect(ins(T1, o1, 1004, { reason: "angry" })).rejects.toThrow(/disputes_reason/);
+    await ins(T2, o2, 1001, { ref: "cb-77" }); // another store, same numbers and references
+    expect((await asTenant(T2, () => db.query(`SELECT number FROM disputes`))).rows).toEqual([{ number: 1001 }]);
   });
 
   it("keeps a WhatsApp opt-out apart from an opt-in (E6-4b)", async () => {

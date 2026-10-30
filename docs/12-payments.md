@@ -87,6 +87,8 @@ Return inspected or refund approved → `refund.create` → to original method t
 
 Gateway reports dispute → `dispute.opened` → evidence pack generated (order, shipment tracking and proof of delivery, chat history, address, IP if available) → finance submits before `respond_by` → won (reversal) or lost (cost in M5).
 
+✅ Built (E14-5, `apps/api/src/modules/payments/disputes.*`; order screen → *Chargebacks*, payments screen queue, `/disputes/{id}` evidence pack): owner, admin or finance record the chargeback the gateway or bank reported (amount, fee, reason, deadline, case number; one dispute per case). It leaves the ledger as a chargeback line with the fee, so the order shows `disputed` and profit counts the amount and the fee (a won dispute's reversal gives the amount back; the fee stays). The evidence pack gathers the order, who it went to and where, the courier's events, the confirmation and WhatsApp actions (no message bodies; phone's last four only) and the payments, laid out in AR or EN to print or save as PDF; opening it is audited. Then evidence sent → won, lost or accepted. Gateway webhooks recording disputes and uploading the pack arrive with E14-2. Also fixed with it: profit counted chargeback lines with their ledger sign, so a chargeback lowered costs; it is now −Σ(chargeback + reversal) + chargeback fees, with chargebacks in the 5,000-order property suite.
+
 ## 6. Fees and profit
 
 | Fee | Source | Lands in `order_pnl` |

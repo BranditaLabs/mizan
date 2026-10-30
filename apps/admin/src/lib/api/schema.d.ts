@@ -209,6 +209,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrderDisputesController_open"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DisputesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{disputeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DisputesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{disputeId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["DisputesController_evidence"];
+        put?: never;
+        post: operations["DisputesController_submit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/disputes/{disputeId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DisputesController_close"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders": {
         parameters: {
             query?: never;
@@ -3024,6 +3104,14 @@ export interface components {
             saved: true;
             replayed: boolean;
         };
+        CloseDispute: {
+            /**
+             * @description won: the money comes back (a reversal line); lost: the gateway kept it; accepted: not contested
+             * @enum {string}
+             */
+            outcome: "won" | "lost" | "accepted";
+            note?: string;
+        };
         CompleteRefund: {
             /** @description The transfer or gateway reference */
             reference?: string;
@@ -3612,6 +3700,91 @@ export interface components {
             /** @description Shown to the stores they belong to */
             reason: string;
         };
+        Dispute: {
+            /** Format: uuid */
+            id: string;
+            /** @description D-1001… */
+            number: string;
+            order: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+            };
+            /** @enum {string} */
+            status: "open" | "evidence_submitted" | "won" | "lost" | "accepted";
+            /** @enum {string|null} */
+            reason: "fraud" | "not_received" | "not_as_described" | "duplicate" | "cancelled" | "other" | null;
+            amount: {
+                amount: string;
+                currency: string;
+            };
+            fee: {
+                amount: string;
+                currency: string;
+            };
+            method: string | null;
+            /** @enum {string} */
+            source: "manual" | "gateway";
+            /** Format: date-time */
+            respondBy: string | null;
+            /** @description Whole days to the deadline while open; negative once missed */
+            daysLeft: number | null;
+            externalRef: string | null;
+            note: string | null;
+            evidenceNote: string | null;
+            openedBy: string | null;
+            /** Format: date-time */
+            evidenceSubmittedAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DisputeList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** @description D-1001… */
+                number: string;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                };
+                /** @enum {string} */
+                status: "open" | "evidence_submitted" | "won" | "lost" | "accepted";
+                /** @enum {string|null} */
+                reason: "fraud" | "not_received" | "not_as_described" | "duplicate" | "cancelled" | "other" | null;
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                fee: {
+                    amount: string;
+                    currency: string;
+                };
+                method: string | null;
+                /** @enum {string} */
+                source: "manual" | "gateway";
+                /** Format: date-time */
+                respondBy: string | null;
+                /** @description Whole days to the deadline while open; negative once missed */
+                daysLeft: number | null;
+                externalRef: string | null;
+                note: string | null;
+                evidenceNote: string | null;
+                openedBy: string | null;
+                /** Format: date-time */
+                evidenceSubmittedAt: string | null;
+                /** Format: date-time */
+                closedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            counts: {
+                [key: string]: number;
+            };
+        };
         DraftFromSuggestions: {
             /** Format: uuid */
             supplierId: string;
@@ -3656,6 +3829,152 @@ export interface components {
         DuplicateResolved: {
             /** @enum {string} */
             status: "kept" | "merged";
+        };
+        EvidencePack: {
+            dispute: {
+                /** Format: uuid */
+                id: string;
+                /** @description D-1001… */
+                number: string;
+                order: {
+                    /** Format: uuid */
+                    id: string;
+                    number: string;
+                };
+                /** @enum {string} */
+                status: "open" | "evidence_submitted" | "won" | "lost" | "accepted";
+                /** @enum {string|null} */
+                reason: "fraud" | "not_received" | "not_as_described" | "duplicate" | "cancelled" | "other" | null;
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                fee: {
+                    amount: string;
+                    currency: string;
+                };
+                method: string | null;
+                /** @enum {string} */
+                source: "manual" | "gateway";
+                /** Format: date-time */
+                respondBy: string | null;
+                /** @description Whole days to the deadline while open; negative once missed */
+                daysLeft: number | null;
+                externalRef: string | null;
+                note: string | null;
+                evidenceNote: string | null;
+                openedBy: string | null;
+                /** Format: date-time */
+                evidenceSubmittedAt: string | null;
+                /** Format: date-time */
+                closedAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            };
+            store: {
+                name: string;
+                country: string;
+            };
+            /** Format: date-time */
+            generatedAt: string;
+            order: {
+                number: string;
+                channel: string;
+                status: string;
+                paymentMode: string;
+                /** Format: date-time */
+                placedAt: string;
+                /** Format: date-time */
+                confirmedAt: string | null;
+                /** Format: date-time */
+                shippedAt: string | null;
+                /** Format: date-time */
+                deliveredAt: string | null;
+                subtotal: {
+                    amount: string;
+                    currency: string;
+                };
+                shipping: {
+                    amount: string;
+                    currency: string;
+                };
+                discount: {
+                    amount: string;
+                    currency: string;
+                };
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                lines: {
+                    title: string;
+                    sku: string | null;
+                    quantity: number;
+                    unitPrice: {
+                        amount: string;
+                        currency: string;
+                    };
+                    total: {
+                        amount: string;
+                        currency: string;
+                    };
+                }[];
+            };
+            /** @description null when the customer's details were deleted on request */
+            customer: {
+                name: string | null;
+                phoneLast4: string | null;
+                address: {
+                    line1: string | null;
+                    line2: string | null;
+                    city: string | null;
+                    province: string | null;
+                    country: string | null;
+                };
+            } | null;
+            payments: {
+                kind: string;
+                method: string;
+                status: string;
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                /** Format: date-time */
+                at: string;
+            }[];
+            shipments: {
+                courier: string;
+                trackingNumber: string | null;
+                trackingUrl: string | null;
+                status: string;
+                /** Format: date-time */
+                statusAt: string | null;
+                events: {
+                    status: string;
+                    /** Format: date-time */
+                    at: string;
+                    source: string;
+                }[];
+            }[];
+            confirmation: {
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+                outcome: string | null;
+                channel: string | null;
+            }[];
+            /** @description The WhatsApp exchange with the customer: what was sent and tapped, never message bodies */
+            messages: {
+                /** Format: date-time */
+                at: string;
+                /** @enum {string} */
+                direction: "in" | "out";
+                kind: string;
+                action: string | null;
+                status: string;
+            }[];
         };
         Exchange: {
             /** Format: uuid */
@@ -4064,6 +4383,22 @@ export interface components {
             method: "instapay" | "wallet" | "bank_transfer" | "link";
             /** @description Where to pay; defaults to the store's for this method */
             instructions?: string;
+        };
+        NewDispute: {
+            /** @description Taken back, in the order's currency; Arabic digits accepted */
+            amount: string;
+            /** @description The gateway's chargeback fee, a cost in profit (0 if none) */
+            fee?: string;
+            /** @enum {string} */
+            reason: "fraud" | "not_received" | "not_as_described" | "duplicate" | "cancelled" | "other";
+            /**
+             * Format: date-time
+             * @description The gateway's deadline for evidence
+             */
+            respondBy?: string;
+            /** @description The gateway's case id: one dispute per case */
+            externalRef?: string;
+            note?: string;
         };
         NewExchange: {
             /**
@@ -6911,6 +7246,10 @@ export interface components {
             /** @description Tag mizan-lost when the courier lost it */
             tagLost: boolean;
         };
+        SubmitEvidence: {
+            /** @description What was sent and how (portal, email); no card numbers */
+            note?: string;
+        };
         Supplier: {
             /** Format: uuid */
             id: string;
@@ -8242,6 +8581,311 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConversionSettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderDisputesController_open: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewDispute"];
+            };
+        };
+        responses: {
+            /** @description Numbered D-1001…; the amount leaves the ledger as a chargeback with its fee; the same case again returns it; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DisputesController_list: {
+        parameters: {
+            query?: {
+                /** @description open = open or evidence submitted */
+                status?: "open" | "closed" | "all";
+                orderId?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The nearest deadline first, then the newest */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DisputeList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DisputesController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One dispute */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DisputesController_evidence: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The order, delivery, chat actions and payments to send the gateway; the customer's name and address are decrypted and the access audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidencePack"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DisputesController_submit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitEvidence"];
+            };
+        };
+        responses: {
+            /** @description Marks the evidence sent to the gateway; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DisputesController_close: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                disputeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseDispute"];
+            };
+        };
+        responses: {
+            /** @description won puts the amount back in the ledger (the fee stays a cost); lost or accepted closes it; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dispute"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

@@ -18,6 +18,7 @@ import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { DuplicateBanner } from "./DuplicateBanner";
 import { LedgerCard } from "./LedgerCard";
+import { DisputesCard } from "@/components/payments/Disputes";
 import { RefundsCard } from "@/components/payments/Refunds";
 import { ConversionCard } from "./ConversionCard";
 import { ReturnsCard } from "./ReturnsCard";
@@ -177,6 +178,7 @@ export function OrderDetail({ id }: { id: string }) {
           <ReturnsCard orderId={o.id} />
           <ExchangeCard order={o} />
           <RefundsCard orderId={o.id} />
+          <DisputesCard orderId={o.id} />
         </div>
 
         <aside className="flex flex-col gap-4">

@@ -98,7 +98,8 @@ describe("GET /v1/orders/{id}", () => {
     const times = body.events.map((e: { at: string }) => e.at);
     expect([...times].sort().reverse()).toEqual(times);
     // Nothing personal beyond the label, last four digits and the area.
-    expect(JSON.stringify(body)).not.toMatch(/Mona Adel|Adel|Abbas|Floor|0123|mona@|\+2010|30\.05|31\.33/);
+    // Ids are random and can hold any digits ("101234cb-…"), so they are left out of the search.
+    expect(JSON.stringify(body).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<id>")).not.toMatch(/Mona Adel|Adel|Abbas|Floor|0123|mona@|\+2010|30\.05|31\.33/);
   });
 
   it("is not found outside the caller's scope or store, and for unknown or malformed ids", async () => {

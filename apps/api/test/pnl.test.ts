@@ -42,7 +42,12 @@ function gen(r: () => number): PnlInput {
     stage, paymentMode: mode, currency, totalMinor: total, codMinor: mode === "cod" || mode === "partial" ? total - paid : 0n,
     refundedMinor: r() < 0.1 ? paid / 2n : 0n, rateToBase: foreign ? (r() < 0.8 ? "48.75" : null) : "1", base: "EGP", lines,
     confirmed: stage !== "open" && (stage !== "cancelled" || r() < 0.5),
-    payments: paid > 0n ? [{ kind: "sale", method: pick(["card", "wallet", "bnpl"]), amountMinor: paid, feeMinor: int(5_000), feeIsActual: r() < 0.3 }] : [],
+    payments: paid > 0n ? [
+      { kind: "sale", method: pick(["card", "wallet", "bnpl"]), amountMinor: paid, feeMinor: int(5_000), feeIsActual: r() < 0.3 },
+      // E14-5: a chargeback (negative, with its fee), sometimes won back.
+      ...(r() < 0.15 ? [{ kind: "chargeback", method: "card", amountMinor: -(paid / 2n), feeMinor: int(3_000), feeIsActual: true },
+        ...(r() < 0.5 ? [{ kind: "chargeback_reversal", method: "card", amountMinor: paid / 2n, feeMinor: 0n, feeIsActual: true }] : [])] : []),
+    ] : [],
     rules: {
       packaging: has() ? egp("7.50") : null, agent: has() ? egp("12.00") : null, codPct: has() ? "1.5" : null,
       courier: has() ? { amount: egp("60.00"), returnAmount: has() ? egp("30.00") : null } : null,
@@ -189,6 +194,17 @@ describe("worked examples", () => {
       payments: [{ kind: "sale", method: "card", amountMinor: 125000n, feeMinor: 0n, feeIsActual: false }],
       rules: { ...base.rules, paymentFee: () => ({ pct: "2.75", fixed: egp("2.00") }) } });
     expect(p).toMatchObject({ revenue: 125000n, paymentFee: 3638n, cogs: 80000n, shipping: 0n });
+  });
+
+  it("a chargeback costs what was taken back plus its fee; a won dispute gives the amount back, not the fee (E14-5)", () => {
+    const card = { ...base, stage: "delivered" as const, paymentMode: "prepaid", codMinor: 0n, rules: { ...base.rules, paymentFee: () => null } };
+    const sale = { kind: "sale", method: "card", amountMinor: 125000n, feeMinor: 0n, feeIsActual: true };
+    const cb = { kind: "chargeback", method: "card", amountMinor: -125000n, feeMinor: 15000n, feeIsActual: true };
+    const lost = computePnl({ ...card, payments: [sale, cb] });
+    expect(lost).toMatchObject({ revenue: 125000n, chargeback: 140000n });
+    expect(lost.net).toBe(computePnl({ ...card, payments: [sale] }).net - 140000n);
+    const won = computePnl({ ...card, payments: [sale, cb, { kind: "chargeback_reversal", method: "card", amountMinor: 125000n, feeMinor: 0n, feeIsActual: true }] });
+    expect(won.chargeback).toBe(15000n);
   });
 
   it("cancelled before anything moved is final at zero (agent time aside)", () => {

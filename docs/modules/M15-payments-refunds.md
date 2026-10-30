@@ -128,7 +128,7 @@ _Sample data. Full visual in `design/prototype.html`._
 - [x] Every order shows a ledger whose lines sum to its balance. ✅ E14-1: ledger panel on the order screen; property tests in `apps/api/test/ledger.test.ts`.
 - [x] A COD order converts to prepaid with one link; the shipment COD amount updates. ✅ E14-3 with manual methods (InstaPay, wallet, transfer, the store's page): the offer and its message from the order screen or the automation action; recording the money lowers the cash to collect and sends a booked shipment to review (docs/12 §5.1). Gateway links with E14-2.
 - [ ] Refunds reach the gateway and are confirmed back, or flagged within 24 h.
-- [ ] Chargebacks appear within one sync and reduce provisional profit.
+- [x] Chargebacks appear within one sync and reduce provisional profit. ✅ E14-5: recorded by the team with amount, fee and deadline, in the ledger and profit at once; evidence pack to print as PDF; won puts the amount back. From the gateway's own webhooks with E14-2.
 - [ ] No card number is ever stored or logged by Mizan.
 
 ## API
@@ -141,8 +141,8 @@ _Sample data. Full visual in `design/prototype.html`._
 | POST | `/v1/orders/{id}/payment-links` | Create a link |
 | POST | `/v1/orders/{id}/refunds` | Refund |
 | GET | `/v1/payments` | List and filter |
-| GET | `/v1/disputes` | Chargebacks |
-| POST | `/v1/disputes/{id}/evidence` | Submit evidence |
+| GET | `/v1/disputes` | Chargebacks ✅ E14-5 (also POST `/v1/orders/{id}/disputes`, GET `/v1/disputes/{id}/evidence`, POST `/v1/disputes/{id}/close`; docs/05) |
+| POST | `/v1/disputes/{id}/evidence` | Submit evidence ✅ E14-5 |
 
 Conventions: `docs/05-api.md`.
 

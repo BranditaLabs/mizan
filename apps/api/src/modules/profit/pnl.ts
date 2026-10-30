@@ -103,7 +103,10 @@ export function computePnl(i: PnlInput): Pnl {
   const codIn = collects && i.stage === "delivered" ? codCollected + i.codMinor : 0n;
   const revenue = conv(prepaidIn + codIn);
   const refund = conv(i.refundedMinor);
-  const chargeback = conv(i.payments.filter((p) => p.kind === "chargeback").reduce((a, p) => a + p.amountMinor, 0n));
+  // Chargebacks: what the gateway took back less what a won dispute returned (lines are signed:
+  // chargeback negative, reversal positive), plus the chargeback fees.
+  const chargebackLines = i.payments.filter((p) => p.kind === "chargeback" || p.kind === "chargeback_reversal");
+  const chargeback = conv(-chargebackLines.reduce((a, p) => a + p.amountMinor, 0n) + chargebackLines.reduce((a, p) => a + (p.kind === "chargeback" ? p.feeMinor : 0n), 0n));
 
   // Product cost, from confirmation on. A returned order's goods are back in stock except the
   // units inspection found damaged or wrote off (E10-3); a delivered order's units the customer
