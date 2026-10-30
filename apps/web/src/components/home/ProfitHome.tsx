@@ -6,11 +6,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { buttonClass } from "@/components/ui/Button";
-import { StatCard } from "@/components/ui/StatCard";
 import { SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { StoreName } from "@/components/StoreName";
 import { PaymentMix } from "@/components/payments/PaymentMix";
+import { ActivityLog } from "./ActivityLog";
+import { ProfitChart } from "./ProfitChart";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
@@ -24,8 +25,6 @@ const PERIODS = [7, 30, 90] as const;
 const REFRESH_MS = 60_000;
 const minor = (m: Money) => Math.round(Number(m.amount) * 100);
 const negative = (m: Money) => m.amount.startsWith("-");
-/** A store day shown without shifting through a midnight. */
-const noon = (day: string) => new Date(`${day}T12:00:00Z`);
 const order = (i: number) => ({ "--i": i }) as CSSProperties;
 
 const LEAK_LINK: Record<Leak["kind"], string> = {
@@ -87,23 +86,25 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
       </header>
       {setup}
 
-      <Hero home={h} updated={updated} fetching={q.isFetching} />
-
-      <div className="mz-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="kpis">
-        <div style={order(0)}><StatCard label={t("kpi.yesterday")} value={<MoneyText money={h.yesterday.expectedNet} roll from="0" />}
-          period={t("kpi.yesterdayHint", { orders: h.yesterday.orders })} /></div>
-        <div style={order(1)}><StatCard label={t("kpi.delivery")} value={p.deliveryRate !== null ? t("pct", { v: p.deliveryRate }) : "—"}
-          period={t("kpi.deliveryHint", { delivered: p.delivered, returned: p.returned })} /></div>
-        <div style={order(2)}><StatCard label={t("kpi.refusals")} value={<MoneyText money={p.refusalLoss} roll from="0" />} period={t("kpi.refusalsHint", { count: p.returned })} /></div>
-        <div style={order(3)}><StatCard label={t("kpi.cash")} value={<MoneyText money={sum(h.cash.inTransit, h.cash.awaitingRemittance)} roll from="0" />}
-          period={t("kpi.cashHint", { transit: formatMoney(h.cash.inTransit, locale), held: formatMoney(h.cash.awaitingRemittance, locale) })} /></div>
-      </div>
+      <Hero home={h} updated={updated} fetching={q.isFetching}>
+        <div className="mz-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="kpis">
+          <GlassStat i={0} label={t("kpi.yesterday")} value={<MoneyText money={h.yesterday.expectedNet} roll from="0" />} hint={t("kpi.yesterdayHint", { orders: h.yesterday.orders })} />
+          <GlassStat i={1} label={t("kpi.delivery")} value={p.deliveryRate !== null ? t("pct", { v: p.deliveryRate }) : "—"}
+            hint={t("kpi.deliveryHint", { delivered: p.delivered, returned: p.returned })} meter={p.deliveryRate !== null ? Number(p.deliveryRate) : null} />
+          <GlassStat i={2} label={t("kpi.refusals")} value={<MoneyText money={p.refusalLoss} roll from="0" />} hint={t("kpi.refusalsHint", { count: p.returned })} />
+          <GlassStat i={3} label={t("kpi.cash")} value={<MoneyText money={sum(h.cash.inTransit, h.cash.awaitingRemittance)} roll from="0" />}
+            hint={t("kpi.cashHint", { transit: formatMoney(h.cash.inTransit, locale), held: formatMoney(h.cash.awaitingRemittance, locale) })} />
+        </div>
+      </Hero>
 
       <div className="grid items-start gap-4 lg:grid-cols-3">
-        <Trend home={h} />
+        <ProfitChart home={h} />
+        <PaymentMix days={days} />
+      </div>
+      <div className="grid items-start gap-4 lg:grid-cols-3">
+        <ActivityLog />
         <Leaks leaks={h.leaks} />
       </div>
-      <PaymentMix days={days} />
     </div>
   );
 }
@@ -122,7 +123,7 @@ const COSTS = ["productCost", "shippingAndCod", "ads", "returns", "team", "fees"
  * its parts filling in turn (product, shipping, ads …) until what is left, the kept part, lands in
  * red. The legend under it carries the amounts and shares.
  */
-function Hero({ home, updated, fetching }: { home: Home; updated: string; fetching: boolean }) {
+function Hero({ home, updated, fetching, children }: { home: Home; updated: string; fetching: boolean; children: ReactNode }) {
   const t = useTranslations("profitHome");
   const tw = useTranslations("profitHome.where");
   const p = home.period;
@@ -149,7 +150,10 @@ function Hero({ home, updated, fetching }: { home: Home; updated: string; fetchi
 
   return (
     <section className="mz-enter overflow-hidden rounded-xl border border-rail-line bg-rail-bg text-rail-text" aria-labelledby="kept-title" data-testid="kept">
-      <div className="flex flex-col gap-6 p-6 lg:p-8">
+      <div className="relative isolate flex flex-col gap-6 overflow-hidden p-6 lg:p-8">
+        {/* The brand's red point as light, drifting behind the glass tiles. */}
+        <span className="mz-orb -z-10 size-[420px] -bottom-48 end-[8%]" aria-hidden="true" />
+        <span className="mz-orb mz-orb--quiet -z-10 size-[320px] -top-40 start-[18%]" aria-hidden="true" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 id="kept-title" className="text-body text-rail-text-2">{t("kept.title", { days: home.days })}</h2>
           <p className="flex items-center gap-2 text-caption text-rail-text-2" aria-live="polite">
@@ -183,6 +187,7 @@ function Hero({ home, updated, fetching }: { home: Home; updated: string; fetchi
             <p className="text-body-sm" data-testid="expected">{t.rich("kept.expected", { money: () => <b className="text-rail-text"><MoneyText money={p.expectedKept} /></b> })}</p>
           ) : null}
         </div>
+        {children}
       </div>
 
       <div className="flex flex-col gap-4 bg-rail-surface p-6 lg:p-8">
@@ -213,68 +218,6 @@ function Hero({ home, updated, fetching }: { home: Home; updated: string; fetchi
   );
 }
 
-/** Profit per day: what each day's orders make if those on their way deliver; losses below the line, in red. */
-function Trend({ home }: { home: Home }) {
-  const t = useTranslations("profitHome.trend");
-  const locale = useLocale();
-  const [hover, setHover] = useState<number | null>(null);
-  const values = home.trend.map((d) => minor(d.expectedNet));
-  // One axis from the deepest loss to the best day: the zero line sits where it falls.
-  const top = Math.max(0, ...values);
-  const bottom = Math.max(0, ...values.map((v) => -v));
-  const H = 120;
-  const scale = H / Math.max(1, top + bottom);
-  const zero = top * scale;
-  const w = 100 / values.length;
-  const best = values.indexOf(Math.max(...values));
-  const fmtDay = (d: string) => new Intl.DateTimeFormat(locale === "ar" ? "ar-EG-u-nu-latn" : "en-GB", { day: "numeric", month: "short", timeZone: "UTC" }).format(noon(d));
-  const tip = hover !== null ? home.trend[hover] : undefined;
-  return (
-    <section className="mz-card flex flex-col gap-3 p-5 lg:col-span-2" aria-labelledby="trend-title">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="trend-title" className="text-heading-sm">{t("title")}</h2>
-        <p className="text-caption text-text-3">{t("hint")}</p>
-      </div>
-      {/* Time runs left to right in both languages (charts are not mirrored). */}
-      <div className="relative" dir="ltr" onMouseLeave={() => setHover(null)}>
-        <svg viewBox={`0 0 100 ${H}`} preserveAspectRatio="none" className="h-44 w-full overflow-visible" role="img" aria-label={t("title")} data-testid="trend">
-          <line x1="0" x2="100" y1={zero} y2={zero} className="stroke-line-strong" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          {home.trend.map((d, i) => {
-            const v = values[i]!;
-            const hgt = Math.abs(v) * scale;
-            const on = hover === i;
-            return (
-              <g key={d.day} onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)}>
-                <rect x={i * w} y={0} width={w} height={H} className={on ? "fill-surface-hover" : "fill-transparent"} />
-                {v !== 0 ? (
-                  <rect x={i * w + w * 0.2} y={v > 0 ? zero - hgt : zero} width={w * 0.6} height={Math.max(hgt, 0.8)} rx="0.5"
-                    className={`mz-grow-y ${v < 0 ? "fill-danger" : on || i === best ? "fill-text" : "fill-text-3"}`}
-                    style={{ transformOrigin: v > 0 ? "50% 100%" : "50% 0%", animationDelay: `${Math.min(i, 40) * 14}ms` }} />
-                ) : null}
-              </g>
-            );
-          })}
-        </svg>
-        {tip ? (
-          <div className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md bg-primary px-2.5 py-1.5 text-caption text-on-primary shadow-overlay"
-            style={{ left: `${(hover! + 0.5) * w}%` }} dir="auto">
-            <p className="font-medium">{fmtDay(tip.day)}</p>
-            <p className="tabular-nums"><MoneyText money={tip.expectedNet} /> · {t("orders", { count: tip.orders })}</p>
-          </div>
-        ) : null}
-      </div>
-      <div className="flex justify-between text-caption text-text-3" dir="ltr" aria-hidden="true">
-        <span>{fmtDay(home.from)}</span><span>{fmtDay(home.to)}</span>
-      </div>
-      <table className="sr-only">
-        <caption>{t("title")}</caption>
-        <thead><tr><th>{t("day")}</th><th>{t("orders", { count: 2 })}</th><th>{t("profit")}</th></tr></thead>
-        <tbody>{home.trend.map((d) => <tr key={d.day}><td>{fmtDay(d.day)}</td><td>{d.orders}</td><td><MoneyText money={d.expectedNet} /></td></tr>)}</tbody>
-      </table>
-    </section>
-  );
-}
-
 /** Leaks: what is costing money, or hiding it, with where to fix it. */
 function Leaks({ leaks }: { leaks: Leak[] }) {
   const t = useTranslations("profitHome.leaks");
@@ -296,5 +239,21 @@ function Leaks({ leaks }: { leaks: Leak[] }) {
         </ul>
       )}
     </section>
+  );
+}
+
+/** A KPI as glass over the ink: the brand's light passes behind it. `meter` draws a share under the value. */
+function GlassStat({ label, value, hint, meter = null, i }: { label: string; value: ReactNode; hint: ReactNode; meter?: number | null; i: number }) {
+  return (
+    <div className="mz-glass flex flex-col gap-1.5 p-4" style={order(i)}>
+      <p className="text-caption text-rail-text-2">{label}</p>
+      <p className="font-display text-kpi-sm leading-tight text-white tabular-nums">{value}</p>
+      {meter !== null ? (
+        <span className="mt-1 block h-1 overflow-hidden rounded-full bg-rail-line" aria-hidden="true">
+          <span className="mz-grow-x block h-full rounded-full bg-rail-text" style={{ inlineSize: `${Math.max(0, Math.min(100, meter))}%` }} />
+        </span>
+      ) : null}
+      <p className="text-caption text-rail-text-2">{hint}</p>
+    </div>
   );
 }

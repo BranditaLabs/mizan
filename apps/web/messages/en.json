@@ -1616,7 +1616,10 @@
       "day": "Day",
       "profit": "Profit",
       "orders": "{count, plural, one {# order} other {# orders}}",
-      "tip": "{day} · {money} · {count, plural, one {# order} other {# orders}}"
+      "tip": "{day} · {money} · {count, plural, one {# order} other {# orders}}",
+      "expected": "Expected",
+      "real": "Real",
+      "explore": "Profit per day: move with the arrow keys"
     },
     "leaks": {
       "title": "Needs attention",
@@ -1675,7 +1678,13 @@
         "body": "On {count, plural, one {# day} other {# days}} the store had a different number of orders than Mizan, even after the nightly check fetched the missing ones. Check the store connection."
       }
     },
-    "live": "Live · updated {time}"
+    "live": "Live · updated {time}",
+    "activity": {
+      "title": "Activity",
+      "all": "Full log",
+      "loading": "Loading",
+      "empty": "Nothing yet. Changes and alerts show here as they happen."
+    }
   },
   "newOrder": {
     "title": "New order",
@@ -2385,7 +2394,8 @@
       "title": "How customers paid · {days} days",
       "open": "All payments",
       "share": "<n>{pct}%</n> · {orders, plural, one {# order} other {# orders}}",
-      "received": "Money in by method"
+      "received": "Money in by method",
+      "orders": "orders"
     }
   },
   "refunds": {
@@ -3048,6 +3058,11 @@
       },
       "export": {
         "created": "Exported data"
+      },
+      "tenant": {
+        "created": "Created the store",
+        "updated": "Changed the store",
+        "settings_updated": "Changed store settings"
       }
     },
     "empty": {

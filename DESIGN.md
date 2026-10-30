@@ -37,6 +37,7 @@ typography:
 shape:
   radius: { xs: 4px, sm: 6px, md: 8px, lg: 12px, xl: 16px }
   elevation: flat            # no shadows on cards, buttons or shapes; only menus, dialogs, toasts use shadow-overlay
+  glass: ink-only           # .mz-glass tiles over the ink hero, with the brand glow (.mz-orb) behind; never on paper cards (owner's decision, Oct 2026)
 
 motion:
   properties: [transform, opacity]
@@ -69,7 +70,7 @@ Calm and premium: ink on paper, generous but dense where work happens, flat surf
 Use the kit in `apps/web/src/components/ui` (gallery at `/ar/ui`, `/en/ui`) and recipes in `packages/design-system/docs/components.md`: tables with sticky headers and status pills, KPI tiles, filter tabs with counts, empty states with one action, skeleton rows while loading, problem toasts for API errors, dialogs for confirmations that move money or stock.
 
 ## Don't
-- No gradients, glassmorphism, drop shadows on cards, or stock illustrations.
+- No gradients, drop shadows on cards, or stock illustrations. Glass only on the ink (`.mz-glass` over `.mz-orb`, the brand's red point as light): KPI tiles on the dashboard's hero. Never glass on paper surfaces, never as decoration without something behind it.
 - No hex values or non-token classes in components (a unit test fails on them).
 - No red primary buttons; no colour that carries meaning without a label or icon.
 - Don't redesign the identity: refinements keep ink, paper and the red point.
