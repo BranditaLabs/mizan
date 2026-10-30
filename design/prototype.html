@@ -574,9 +574,9 @@ V.overview = () => {
    <section class="card hero">
      <svg class="fulcrum" viewBox="0 0 120 60" aria-hidden="true"><line x1="6" y1="14" x2="114" y2="14" stroke="var(--ink)" stroke-width="2.2" stroke-linecap="round"/><circle cx="6" cy="14" r="4" fill="var(--ink)"/><circle cx="114" cy="14" r="4" fill="var(--ink)"/><path d="M60 17l-12 26h24z" fill="var(--accent)"/></svg>
      <div class="eyebrow">${t('kept')}</div>
-     <div class="k"><div class="big num">${S.lang==='ar'?'212,400':'212,400'}<small>${S.lang==='ar'?'ج.م':'EGP'}</small></div>
+     <div class="k"><div class="big num">${S.lang==='ar'?'186,960':'186,960'}<small>${S.lang==='ar'?'ج.م':'EGP'}</small></div>
        <div class="delta"><span class="pill p-good">+8.2%</span><span class="mut" style="font-size:12px">${t('vsPrev')}</span></div></div>
-     <p class="lede">${t('ofEvery')} <b class="num">${S.lang==='ar'?'100 ج.م':'EGP 100'}</b> ${t('kept2')} <b class="num">${S.lang==='ar'?'14.90 ج.م':'EGP 14.90'}</b>.</p>
+     <p class="lede">${t('ofEvery')} <b class="num">${S.lang==='ar'?'100 ج.م':'EGP 100'}</b> ${t('kept2')} <b class="num">${S.lang==='ar'?'13.20 ج.م':'EGP 13.20'}</b>.</p>
      <div class="beam"><div class="eyebrow" style="margin-bottom:10px">${t('where')} · ${t('revenue')} ${compact(rev)}</div>
        <div class="bar" role="img" aria-label="${t('where')}">${order.map(([k,p,c])=>`<span class="seg ${k==='keptL'?'kept':''}" title="${t(k)} · ${(p*100).toFixed(1)}%" style="flex:${p} 1 0;background:${k==='keptL'?'':c}"></span>`).join('')}</div>
        <div class="legend">${order.map(([k,p,c])=>`<div style="--c:${c}">${t(k)}<b>${compact(Math.round(rev*p))}</b><em>${(p*100).toFixed(1)}%</em></div>`).join('')}</div>
@@ -676,7 +676,7 @@ V.profit = () => {
   const rows = p.lines.map(([k,v])=>{ const start = run; run += v; return {k,v,start,end:run}; });
   const scale = x => (x/rev)*100;
   return `<div class="wrap fade">${head(t('pr_title'), t('pr_sub'), `<button class="btn">${S.lang==='ar'?'تصدير':'Export'}</button>`)}
-   <div class="kpis">${[[t('revenue'),compact(1420000)],[t('net'),compact(212400)],[S.lang==='ar'?'هامش الربح':'Margin','14.9%'],[t('rto'),compact(61000)]].map(([l,v],i)=>`<div class="card kpi"><div class="l">${l}</div><div class="v num" style="${i===1?'color:var(--accent-ink)':''}">${v}</div></div>`).join('')}</div>
+   <div class="kpis">${[[t('revenue'),compact(1420000)],[t('net'),compact(186960)],[S.lang==='ar'?'هامش الربح':'Margin','13.2%'],[t('rto'),compact(61000)]].map(([l,v],i)=>`<div class="card kpi"><div class="l">${l}</div><div class="v num" style="${i===1?'color:var(--accent-ink)':''}">${v}</div></div>`).join('')}</div>
    <div class="grid g-12" style="margin-top:16px">
     <section class="card s-6"><div class="card-h"><h3>${t('byOrder')}</h3></div><div class="tw" style="margin-top:12px"><table class="t"><thead><tr><th>${t('c_order')}</th><th class="end">${t('revenue')}</th><th class="end">${t('net')}</th><th>${t('c_status')}</th></tr></thead><tbody>
      ${ids.map(id=>{const o=ORDERS.find(x=>x.id===id);const q=PNL[id];return `<tr data-p="${id}" class="${S.pOrder===id?'sel':''}"><td class="mono"><bdi>#${id}</bdi></td><td class="end num">${money(o.total)}</td><td class="end num" style="color:${q.net<0?'var(--bad)':'var(--good)'}">${q.net>0?'+':''}${nf(q.net)}</td><td><span class="pill ${ST[o.st]}">${t(o.st)}</span></td></tr>`}).join('')}
