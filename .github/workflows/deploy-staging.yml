@@ -19,7 +19,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy to staging
-    if: vars.GCP_PROJECT_ID != ''
+    if: vars.GCP_PROJECT_ID != '' && vars.MIZAN_ENV != 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: staging

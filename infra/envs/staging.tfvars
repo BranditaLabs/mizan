@@ -10,3 +10,5 @@ worker_min_instances = 1
 # public_url = "https://api-xxxxx-ww.a.run.app"
 # web_url    = "https://web-xxxxx-ww.a.run.app"
 # platform_bootstrap_emails = "you@example.com"
+# Alerts by email (an on-call or team address):
+# alert_emails = ["ops@example.com"]

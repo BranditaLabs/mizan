@@ -11,7 +11,8 @@ Terraform for one environment per project (`mizan-staging`, later `mizan-prod`) 
 | Merchant credentials | Cloud KMS key `tenant-secrets` (90-day rotation) wraps each secret's data key |
 | Files | Cloud Storage `<project>-files`, private, 180-day lifecycle |
 | Images | Artifact Registry `mizan` (`api`, `web`), last 20 kept |
-| Deploys | `.github/workflows/deploy-staging.yml` on every push to `main`, through Workload Identity Federation (no keys) |
+| Deploys | `deploy-staging.yml` on every push to `main`; `deploy-prod.yml` on a release tag `v*` after the `production` environment's reviewers approve; both through Workload Identity Federation (no keys; staging trusts `main`, production only `v*` tags) |
+| Monitoring (`monitoring.tf`) | Uptime checks (API readiness, `/ar`), alerts on API 5xx > 1 %, p95 latency, worker down, Cloud SQL CPU/disk/connections and error logs, emailed to `alert_emails`; a "Mizan <env>" dashboard. The app-level alerts of docs/09 §5 (outbox lag, dead letters, webhook ack, open circuits…) turn on with `app_metrics_enabled = true` once Managed Prometheus scrapes `/metrics` |
 
 ## First time (about 20 minutes, once per environment)
 
@@ -21,7 +22,7 @@ Terraform for one environment per project (`mizan-staging`, later `mizan-prod`) 
    git clone https://github.com/BranditaLabs/mizan && cd mizan
    bash infra/bootstrap.sh <project-id> me-central1 staging
    ```
-3. Add the GitHub variables it prints (Settings → Secrets and variables → Actions → **Variables**; they are identifiers, not secrets).
+3. Add the GitHub variables it prints under **Settings → Environments → staging** (or **production**) **→ Environment variables**; they are identifiers, not secrets. `MIZAN_ENV` keeps each workflow on its own project. For production, also add **Required reviewers** to the environment.
 4. Firebase: add Firebase to the same project; Authentication → Email/Password and Phone; upgrade to Identity Platform and turn on SMS multi-factor; add the dashboard URL to Authorized domains.
 5. Push to `main` (or run the workflow by hand): build → migrate → deploy → smoke test.
 
@@ -36,4 +37,4 @@ terraform -chdir=infra plan -var-file=envs/staging.tfvars -var="project_id=<proj
 
 CI runs `fmt`, `init -backend=false` and `validate` on every PR (job `infra`). Images are deployed by the workflow; Terraform ignores them after creating each service on a placeholder.
 
-**Production differences (later):** private IP for Cloud SQL with HA (`db_high_availability = true`), min instances from the H-13 load test, an HTTPS load balancer with Cloud Armor and the mapped domains, and `deploy-prod.yml` on `v*` tags with approval.
+**Production:** `bash infra/bootstrap.sh <prod-project> me-central1 production` (or `me-central2` for a Saudi project) uses `envs/production.tfvars`: HA Cloud SQL, 2 warm API instances, p95 alert at 300 ms. Release with `git tag v1.0.0 && git push --tags`, then approve in GitHub. Restores: `docs/runbooks/database-restore.md` (drill every quarter). **Still to do:** private IP for Cloud SQL, an HTTPS load balancer with Cloud Armor and the mapped domains, tiers from the H-13 load test.

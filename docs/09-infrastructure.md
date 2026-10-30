@@ -78,7 +78,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 | `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Lint runs in `build-test`. Job `web-e2e`: Playwright smoke of the dashboard's production build (Arabic default, RTL/LTR, theme cookie, system dark, security headers, no external requests). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `ops-app`: Flutter 3.47.9 in `apps/ops` — generated code (drift, l10n) must be current, `flutter analyze`, `flutter test` (incl. the offline-sync chaos run). Job `secrets-scan`: gitleaks over full history. |
 | `nightly-load.yml` ✅ | Daily 03:17 Cairo, manual | Build, then `npm run load -w @mizan/perf` (2 API instances, 2,000 stores, Postgres service); fails on a missed latency/throughput gate or a lost webhook; table in the job summary, JSON as artifact |
 | `deploy-staging.yml` ✅ | Merge to `main`, manual | Workload Identity Federation (no keys) → build `api` and `web` images → push to Artifact Registry → `mizan-migrate` job (migrations, then the `mizan_api` login with RLS roles only) → deploy worker, API, dashboard → smoke test (`/health/ready`, 401 on `/v1/me`, `/ar` in RTL). Skipped until `infra/bootstrap.sh` has run and its variables are set |
-| `deploy-prod.yml` | Git tag `v*` (manual approval) | same as staging, against prod; migrations must be backward compatible with the previous release |
+| `deploy-prod.yml` ✅ | Git tag `v*` (approval by the `production` environment's reviewers) | same as staging, against prod (`MIZAN_ENV = production`; the deployer trusts only `v*` tags); migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
 
 Branching: trunk-based, short-lived feature branches, PR review required, squash merge. Conventional commits.
@@ -133,7 +133,7 @@ Each API instance serves `GET /metrics` (Prometheus text format, outside `/v1`);
 | `mizan_engine_circuits_open` | gauge (at scrape) | `provider` |
 | `mizan_process_*`, `mizan_nodejs_*` | default | — |
 
-Alert rules (PromQL, in Cloud Monitoring):
+Alert rules (PromQL, in Cloud Monitoring; ✅ written in `infra/monitoring.tf` with the golden-signal alerts on Cloud Run and Cloud SQL metrics, uptime checks and a dashboard — the rules below switch on with `app_metrics_enabled` once the Managed Prometheus collector runs beside the API and worker):
 
 | Alert | Expression | For | Severity |
 | --- | --- | --- | --- |
@@ -171,6 +171,9 @@ Reference for the 10× target: Cloud SQL `db-custom-8-32768` (max_connections �
 Guards on every pooled connection: `statement_timeout` 15 s (worker may raise it via `DATABASE_STATEMENT_TIMEOUT_MS`), `idle_in_transaction_session_timeout` 30 s, pool acquire timeout 5 s (fail fast instead of queueing), connections recycled every 30 min, `application_name` = `mizan-api` / `mizan-worker`. Slow statements (≥ 500 ms) are logged with their SQL text only, never parameters.
 
 ## 6. Backups and recovery
+
+Restore runbook and quarterly drill: `docs/runbooks/database-restore.md` (✅ E13-1).
+
 
 - Cloud SQL automated backups daily, 30-day retention; PITR 7 days.
 - Monthly restore drill into a scratch instance; record time to restore.

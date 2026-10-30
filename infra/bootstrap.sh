@@ -18,6 +18,14 @@ POOL="github"
 PROVIDER="mizan-repo"
 DEPLOYER="mizan-deployer"
 STATE_BUCKET="${PROJECT}-tfstate"
+# Staging deploys from main; any other environment only from a release tag (v1.2.3), approved in GitHub.
+if [[ "${ENV}" == "staging" ]]; then
+  REF_CONDITION="assertion.ref == 'refs/heads/main'"
+  GITHUB_ENV_NAME="staging"
+else
+  REF_CONDITION="assertion.ref.startsWith('refs/tags/v')"
+  GITHUB_ENV_NAME="production"
+fi
 
 say() { printf '\n\033[1m▸ %s\033[0m\n' "$*"; }
 
@@ -52,7 +60,7 @@ if ! gcloud iam workload-identity-pools providers describe "${PROVIDER}" --workl
   gcloud iam workload-identity-pools providers create-oidc "${PROVIDER}" --workload-identity-pool="${POOL}" --location=global \
     --issuer-uri="https://token.actions.githubusercontent.com" \
     --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
-    --attribute-condition="assertion.repository == '${REPO}' && assertion.ref == 'refs/heads/main'"
+    --attribute-condition="assertion.repository == '${REPO}' && ${REF_CONDITION}"
 fi
 if ! gcloud iam service-accounts describe "${DEPLOYER}@${PROJECT}.iam.gserviceaccount.com" >/dev/null 2>&1; then
   gcloud iam service-accounts create "${DEPLOYER}" --display-name="Mizan deploys from GitHub Actions"
@@ -70,15 +78,16 @@ for sa in mizan-api mizan-web mizan-migrate; do
 done
 
 WIF_PROVIDER="projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/providers/${PROVIDER}"
-say "Done. In GitHub → BranditaLabs/mizan → Settings → Secrets and variables → Actions → Variables, add:"
+say "Done. In GitHub → BranditaLabs/mizan → Settings → Environments → ${GITHUB_ENV_NAME} → Environment variables, add:"
 cat <<EOF
+  MIZAN_ENV          = ${GITHUB_ENV_NAME}
   GCP_PROJECT_ID     = ${PROJECT}
   GCP_REGION         = ${REGION}
   GCP_WIF_PROVIDER   = ${WIF_PROVIDER}
   GCP_DEPLOYER_SA    = ${DEPLOYER_EMAIL}
   FIREBASE_API_KEY   = (Firebase console → Project settings → Your apps → Web app → apiKey; public by design)
   FIREBASE_AUTH_DOMAIN = ${PROJECT}.firebaseapp.com
-(These are identifiers, not secrets.) The next push to main builds, migrates and deploys.
+(These are identifiers, not secrets.) $( [[ "${GITHUB_ENV_NAME}" == "staging" ]] && echo "The next push to main builds, migrates and deploys." || echo "For production also add Required reviewers to the environment; a release tag (git tag v1.0.0 && git push --tags) then waits for approval before it deploys." )
 
 Still in the console, once:
   • Firebase: add Firebase to ${PROJECT}; Authentication → Sign-in method: Email/Password and Phone;
