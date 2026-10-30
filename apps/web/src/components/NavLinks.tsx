@@ -2,6 +2,7 @@
 
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 
 type Key = "home" | "orders" | "confirmation" | "tickets" | "payments" | "products" | "shipping" | "warehouse" | "purchasing" | "profit" | "reports" | "automations" | "settings";
@@ -22,8 +23,11 @@ export function NavLinks() {
   const pathname = usePathname();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
   const current = NAV.findIndex(({ href, section }) => href !== undefined && isActive(section ?? href));
+  const nav = useRef<HTMLElement>(null);
+  // The open section is always in view when the menu is taller than the rail.
+  useEffect(() => { nav.current?.querySelector<HTMLElement>("[aria-current=page]")?.scrollIntoView({ block: "nearest" }); }, [current]);
   return (
-    <nav aria-label={t("navLabel")} className="nav">
+    <nav ref={nav} aria-label={t("navLabel")} className="nav">
       {current >= 0 ? <span className="nav-ind" style={{ transform: `translateY(${current * 38}px)` }} aria-hidden="true" /> : null}
       {NAV.map(({ key, icon, href }, i) => {
         const label = t(`nav.${key}`);

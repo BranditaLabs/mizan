@@ -1,6 +1,7 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cx } from "./logic";
+import { LedgerBars } from "./Loader";
 
 /**
  * Buttons (components.md §2, `.mz-btn`). One `primary` (ink) action per screen; `brand` (red) at
@@ -16,7 +17,7 @@ export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize
 }
 
 function Spinner() {
-  return <span aria-hidden="true" className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />;
+  return <LedgerBars />;
 }
 
 export function Button({ variant = "primary", size = "md", busy = false, icon, iconEnd, className, children, disabled, ...rest }:

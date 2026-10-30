@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { buttonClass } from "@/components/ui/Button";
-import { SkeletonRows } from "@/components/ui/Surface";
+import { ScaleLoader } from "@/components/ui/Loader";
 import { MoneyText } from "@/components/ui/Values";
 import { GlassRoot } from "@/components/GlassRoot";
 import { StoreName } from "@/components/StoreName";
@@ -61,7 +61,7 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
     refetchIntervalInBackground: false,
   });
   if (!store || !canRead) return <>{fallback}</>;
-  if (q.isPending) return <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>;
+  if (q.isPending) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><ScaleLoader label={t("loading")} /></div>;
   if (q.isError) return <><Alert tone="danger">{t("loadFailed")}</Alert>{fallback}</>;
   const h = q.data;
   // Nothing yet (a new store): the welcome and setup instead of a page of zeros.

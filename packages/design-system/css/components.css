@@ -268,3 +268,22 @@
 .mz-grow-x { transform-origin: left; animation: mz-grow-x 800ms var(--mz-ease-expand) 200ms both; }
 [dir="rtl"] .mz-grow-x { transform-origin: right; }
 @keyframes mz-grow-x { from { transform: scaleX(0); } }
+
+/* ───────────── Native scroll area ───────────── */
+/* A panel that scrolls on its own like a native list: momentum, no scroll chaining into the page,
+   a thin scrollbar in the theme's line colour, and edges that fade only while there is more to see
+   (scroll-driven; browsers without it simply show no fade). */
+@property --_fade-top { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --_fade-end { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.mz-scroll {
+  overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin; scrollbar-color: transparent transparent; scrollbar-gutter: stable;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--_fade-top), #000 calc(100% - var(--_fade-end)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--_fade-top), #000 calc(100% - var(--_fade-end)), transparent 100%);
+  transition: scrollbar-color var(--mz-duration-base) var(--mz-ease-standard);
+}
+.mz-scroll:hover, .mz-scroll:focus-within { scrollbar-color: var(--mz-line-strong) transparent; }
+@supports (animation-timeline: scroll()) {
+  .mz-scroll { animation: mz-scroll-fade linear both; animation-timeline: scroll(self); }
+}
+@keyframes mz-scroll-fade { 0% { --_fade-top: 0px; --_fade-end: 24px; } 8% { --_fade-top: 24px; } 92% { --_fade-end: 24px; } 100% { --_fade-top: 24px; --_fade-end: 0px; } }

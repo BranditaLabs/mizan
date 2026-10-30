@@ -61,7 +61,7 @@
 }
 .mzg .mz-card__head { border-block-end-color: var(--line); }
 
-.mzg .mz-btn { height: calc(var(--_h) + 4px); border-radius: 12px; overflow: hidden; transition: transform .2s var(--ease-out), background-color .2s var(--ease-out), border-color .2s var(--ease-out), box-shadow .3s var(--ease-out); }
+.mzg .mz-btn { position: relative; isolation: isolate; height: calc(var(--_h) + 4px); border-radius: 12px; overflow: hidden; transition: transform .2s var(--ease-out), background-color .2s var(--ease-out), border-color .2s var(--ease-out), box-shadow .3s var(--ease-out); }
 .mzg .mz-btn--sm { border-radius: 10px; }
 .mzg .mz-btn--lg { border-radius: 14px; }
 .mzg .mz-btn--primary { box-shadow: 0 1px 0 rgba(255, 255, 255, .25) inset, 0 10px 24px -12px rgba(0, 0, 0, .6); }

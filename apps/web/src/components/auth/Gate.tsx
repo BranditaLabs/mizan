@@ -6,14 +6,13 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { useSession } from "@/lib/session";
+import { BootLoader } from "@/components/ui/Loader";
 
 export function Loading() {
   const t = useTranslations("gate");
   return (
-    <div role="status" className="flex min-h-[50dvh] items-center justify-center gap-2.5 text-body-sm text-text-2">
-      <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-transparent" />
-      {t("loading")}
-    </div>
+    <BootLoader label={t("loading")} />
+
   );
 }
 
