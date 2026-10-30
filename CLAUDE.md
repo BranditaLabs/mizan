@@ -16,6 +16,7 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 | Payment methods, ledger, cash rule, refunds, fees | `docs/12-payments.md` |
 | Events, actions, recipes, automation guarantees | `docs/13-automation-platform.md` |
 | Growth hub plan: attribution, ad feedback loop, CRM, marketing toolkit | `docs/14-growth-hub-plan.md` |
+| **Go-live plan: launch track and feature track in parallel** | `docs/15-go-live-plan.md` |
 | Deployables, module layout, events, tenancy | `docs/03-architecture.md` |
 | Tables, money, profit rules | `docs/04-data-model.md` + `packages/db/migrations/` |
 | Endpoint conventions and list | `docs/05-api.md` |

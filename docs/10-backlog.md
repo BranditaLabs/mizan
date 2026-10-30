@@ -221,6 +221,15 @@ Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separat
 - [ ] **E13-3** Privacy policy, terms, DPA published; cookie notice. 🚧 **Drafts done** (`docs/legal/`, AR/EN, from what the code does: processor/controller roles, sub-processors, retention, cookie and storage inventory, security annex). **Waiting on:** the owner's placeholders (legal entity, contacts, prices) and counsel's review of the `[CONFIRM]` points; then publish at `/legal/…`, accept terms + DPA at sign-up (version per tenant), App Store listing URL.
 - [ ] **E13-4** Penetration test; fix findings.
 - [ ] **E13-5** Shopify App Store submission.
+- **Go-live plan** (`docs/15-go-live-plan.md`): launch track L0 staging → L1 harden, legal, Shopify app, warehouse app release, runbooks → L2 production, restore drill, go/no-go → L3/L4 pilots, with the growth-hub feature track in parallel behind flags.
+  - [ ] **L0-3** `S` Deploy the back office (`apps/admin`) on Cloud Run (Terraform), `ADMIN_URL` in the API's CORS.
+  - [ ] **L1-1** `M` Security pass: Strix + `/security-review`, fix high and medium findings.
+  - [ ] **L1-3** `S` Legal pages `/legal/*` (AR/EN) and acceptance of terms + DPA at sign-up, version per store.
+  - [ ] **L1-5** `S` Warehouse app signed Android release, Play internal testing.
+  - [ ] **L1-6** `S` Runbooks: pilot onboarding, support, daily health check.
+  - [ ] **L1-7** `S` Pilot dashboard from the metric layer + weekly CSV.
+  - [ ] **L1-8** `S` In-app "Send feedback" → a ticket for the Mizan team.
+  - [ ] **L2-4** `S` Production restore drill, timed.
 - **Gate 2:** MVP live with 10 pilot merchants.
 
 ---
