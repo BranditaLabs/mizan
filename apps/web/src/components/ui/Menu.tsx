@@ -53,7 +53,7 @@ export function MenuButton({ label, icon = "more", text, items, variant = "ghost
       </button>
       {open ? (
         <div id={`${id}-menu`} role="menu" aria-label={label} onKeyDown={onMenuKey}
-          className="mz-menu mz-enter absolute end-0 top-full z-[var(--mz-z-dropdown)] mt-1">
+          className="mz-menu absolute end-0 top-full z-[var(--mz-z-dropdown)] mt-1">
           {items.map((it, i) => (
             <div key={it.id}>
               {it.separatorBefore ? <div role="separator" className="mz-menu__sep" /> : null}

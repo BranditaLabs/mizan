@@ -5,6 +5,7 @@ import { LocaleSwitch } from "./LocaleSwitch";
 import { NavLinks } from "./NavLinks";
 import { NotificationBell } from "./NotificationBell";
 import { PlanBanner } from "./PlanBanner";
+import { RouteMotion } from "./RouteMotion";
 import { AnnouncementsBanner } from "./AnnouncementsBanner";
 import { ShellCommands } from "./ShellCommands";
 import { SupportBanner } from "./SupportBanner";
@@ -47,7 +48,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <SupportBanner />
           <PlanBanner />
         </div>
-        <main id="main" className="min-h-0 flex-1 overflow-y-auto print:overflow-visible">{children}</main>
+        <main id="main" className="min-h-0 flex-1 overflow-y-auto print:overflow-visible"><RouteMotion>{children}</RouteMotion></main>
       </div>
     </div>
   );

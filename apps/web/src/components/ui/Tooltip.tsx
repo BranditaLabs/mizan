@@ -19,7 +19,7 @@ export function Tooltip({ content, children }: { content: ReactNode; children: R
       {isValidElement(children) ? cloneElement(children, { "aria-describedby": shown ? id : undefined }) : children}
       {shown ? (
         <span className="pointer-events-none absolute inset-x-0 bottom-full z-[var(--mz-z-tooltip)] mb-1.5 flex justify-center">
-          <span id={id} role="tooltip" className="mz-tooltip mz-enter w-max max-w-[260px] whitespace-normal">{content}</span>
+          <span id={id} role="tooltip" className="mz-tooltip w-max max-w-[260px] whitespace-normal">{content}</span>
         </span>
       ) : null}
     </span>

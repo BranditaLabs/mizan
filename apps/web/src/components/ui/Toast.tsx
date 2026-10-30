@@ -30,7 +30,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div role="status" aria-live="polite" className="print:hidden pointer-events-none fixed bottom-4 end-4 z-[var(--mz-z-toast)] flex w-[min(380px,calc(100vw-32px))] flex-col gap-2">
         {items.map((it) => (
-          <div key={it.id} className="mz-toast mz-enter pointer-events-auto">
+          <div key={it.id} className="mz-toast pointer-events-auto">
             <span className="flex-1">{it.message}</span>
             {it.action ? (
               <button type="button" className="text-label underline underline-offset-2" onClick={() => { it.action!.onClick(); dismiss(it.id); }}>{it.action.label}</button>

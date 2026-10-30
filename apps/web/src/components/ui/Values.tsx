@@ -2,15 +2,52 @@
 
 import type { Money } from "@mizan/shared";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatDate, formatMoney, formatRelative, type Digits } from "@/lib/format";
 import { Bdi } from "../Bdi";
 import { maskPhone } from "./logic";
 
-/** Money from a decimal string, isolated inside text of either direction ("1,150.00 ج.م." / "EGP 1,150.00"). */
-export function MoneyText({ money, digits }: { money: Money; digits?: Digits }) {
+/**
+ * Money from a decimal string, isolated inside text of either direction ("1,150.00 ج.م." / "EGP 1,150.00").
+ * `roll`: the scale settling (Mizan's signature motion): when the amount changes, the figure runs to
+ * its new value and settles with a brief tint; `from` sets where it starts the first time (a KPI
+ * counting up as the screen opens). Reduced motion shows the new value at once.
+ */
+export function MoneyText({ money, digits, roll = false, from }: { money: Money; digits?: Digits; roll?: boolean; from?: string }) {
   const locale = useLocale();
-  return <Bdi>{formatMoney(money, locale, digits)}</Bdi>;
+  if (!roll) return <Bdi>{formatMoney(money, locale, digits)}</Bdi>;
+  return <RollingMoney money={money} digits={digits} locale={locale} from={from} />;
+}
+
+const ROLL_MS = 700;
+const easeOut = (t: number) => 1 - Math.pow(2, -10 * t);
+
+function RollingMoney({ money, digits, locale, from }: { money: Money; digits?: Digits; locale: string; from?: string }) {
+  const target = Number(money.amount);
+  const decimals = money.amount.split(".")[1]?.length ?? 0;
+  const [shown, setShown] = useState(from === undefined ? target : Number(from));
+  const [settled, setSettled] = useState(0);
+  const last = useRef(from === undefined ? target : Number(from));
+
+  useEffect(() => {
+    const start = last.current;
+    last.current = target;
+    if (start === target || !Number.isFinite(target)) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (now: number) => {
+      const p = reduce ? 1 : Math.min(1, (now - t0) / ROLL_MS);
+      setShown(start + (target - start) * easeOut(p));
+      if (p < 1) raf = requestAnimationFrame(step);
+      else { setShown(target); setSettled((n) => n + 1); }
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+
+  const text = formatMoney({ amount: shown.toFixed(decimals), currency: money.currency }, locale, digits);
+  return <span key={settled} className={settled ? "mz-settle" : undefined}><Bdi>{text}</Bdi></span>;
 }
 
 /**

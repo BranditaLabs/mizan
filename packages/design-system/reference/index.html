@@ -436,6 +436,8 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--mz-font-display); color: var(--mz
 p { margin: 0; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 ::selection { background: var(--mz-brand-soft); color: var(--mz-text); }
+/* The browser's own surfaces carry the design too: caret, form accents, scrollbars. */
+:root { accent-color: var(--mz-primary); caret-color: var(--mz-brand); scrollbar-color: var(--mz-line-strong) transparent; scrollbar-width: thin; }
 
 /* Focus: monochrome ring, always visible for keyboard users */
 :focus { outline: none; }
@@ -475,7 +477,8 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
   font: 500 13px/1 var(--mz-font-sans); white-space: nowrap; cursor: pointer; user-select: none;
   transition: background-color var(--mz-duration-fast) var(--mz-ease-standard), border-color var(--mz-duration-fast) var(--mz-ease-standard), color var(--mz-duration-fast) var(--mz-ease-standard), transform var(--mz-duration-fast) var(--mz-ease-standard);
 }
-.mz-btn:active:not(:disabled) { transform: translateY(0.5px) scale(0.99); }
+.mz-btn:active:not(:disabled) { transform: scale(0.97); transition-duration: var(--mz-duration-instant); }
+.mz-btn[aria-busy="true"] { cursor: progress; }
 .mz-btn:disabled, .mz-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 .mz-btn .mz-icon { width: 16px; height: 16px; }
 .mz-btn--sm { --_h: var(--mz-control-sm); padding-inline: 10px; font-size: 12.5px; }
@@ -510,7 +513,7 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-textarea { height: auto; min-height: 88px; padding-block: 10px; resize: vertical; }
 .mz-input::placeholder, .mz-textarea::placeholder { color: var(--mz-text-3); }
 .mz-input:hover, .mz-select:hover, .mz-textarea:hover { border-color: var(--mz-text-3); }
-.mz-input:focus-visible, .mz-select:focus-visible, .mz-textarea:focus-visible { outline: none; border-color: var(--mz-focus); box-shadow: 0 0 0 1px var(--mz-focus); }
+.mz-input:focus-visible, .mz-select:focus-visible, .mz-textarea:focus-visible { outline: none; border-color: var(--mz-focus); box-shadow: 0 0 0 1px var(--mz-focus), 0 0 0 4px color-mix(in srgb, var(--mz-focus) 14%, transparent); }
 .mz-input[aria-invalid="true"] { border-color: var(--mz-danger); box-shadow: 0 0 0 1px var(--mz-danger); }
 .mz-input-wrap { position: relative; display: flex; align-items: center; }
 .mz-input-wrap > .mz-icon { position: absolute; inset-inline-start: 11px; color: var(--mz-text-3); width: 16px; height: 16px; pointer-events: none; }
@@ -530,7 +533,8 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 [dir="rtl"] .mz-switch:checked::after { transform: translateX(-14px); }
 
 .mz-segmented { display: inline-flex; padding: 3px; gap: 2px; background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-sm); }
-.mz-segmented button { border: 0; background: transparent; color: var(--mz-text-2); font: 500 12.5px/1 var(--mz-font-sans); height: 28px; padding-inline: 12px; border-radius: 4px; cursor: pointer; }
+.mz-segmented button { border: 0; background: transparent; color: var(--mz-text-2); font: 500 12.5px/1 var(--mz-font-sans); height: 28px; padding-inline: 12px; border-radius: 4px; cursor: pointer; transition: background-color var(--mz-duration-base) var(--mz-ease-standard), color var(--mz-duration-base) var(--mz-ease-standard), box-shadow var(--mz-duration-base) var(--mz-ease-standard), transform var(--mz-duration-instant) var(--mz-ease-standard); }
+.mz-segmented button:active { transform: scale(0.97); }
 .mz-segmented button[aria-pressed="true"] { background: var(--mz-surface); color: var(--mz-text); box-shadow: 0 0 0 1px var(--mz-line-strong); }
 
 /* ───────────── Badges, pills, status ───────────── */
@@ -552,7 +556,9 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-risk--high .mz-risk__bar > i { background: var(--mz-danger); }
 
 /* ───────────── Surfaces ───────────── */
-.mz-card { background: var(--mz-surface); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); }
+.mz-card { background: var(--mz-surface); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); transition: border-color var(--mz-duration-base) var(--mz-ease-standard); }
+/* A card that is a link or opens something: the border answers the pointer; nothing lifts. */
+@media (hover: hover) and (pointer: fine) { a.mz-card:hover, .mz-card[data-interactive]:hover { border-color: var(--mz-line-strong); } }
 .mz-card__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-block-end: 1px solid var(--mz-line); }
 .mz-card__title { font: 600 14px/20px var(--mz-font-sans); }
 .mz-card__body { padding: 16px; }
@@ -616,23 +622,42 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-tabs::-webkit-scrollbar { display: none; }
 .mz-tab { position: relative; flex: none; white-space: nowrap; padding: 10px 0 12px; font: 500 13px/1 var(--mz-font-sans); color: var(--mz-text-3); background: none; border: 0; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
 .mz-tab[aria-selected="true"], .mz-tab[aria-current="page"] { color: var(--mz-text); }
-.mz-tab[aria-selected="true"]::after, .mz-tab[aria-current="page"]::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: -1px; height: 2px; background: var(--mz-text); }
+.mz-tab { transition: color var(--mz-duration-base) var(--mz-ease-standard); }
+@media (hover: hover) and (pointer: fine) { .mz-tab:hover { color: var(--mz-text-2); } }
+.mz-tab[aria-selected="true"]::after, .mz-tab[aria-current="page"]::after { content: ""; position: absolute; inset-inline: 0; inset-block-end: -1px; height: 2px; background: var(--mz-text); border-radius: 2px; animation: mz-underline var(--mz-duration-slow) var(--mz-ease-enter) both; }
+@keyframes mz-underline { from { transform: scaleX(0.3); opacity: 0; } }
 .mz-tab .count { font: 500 11px/1 var(--mz-font-mono); color: var(--mz-text-3); background: var(--mz-surface-sunk); padding: 3px 6px; border-radius: 999px; }
 
 /* ───────────── Floating layers (the only shadows) ───────────── */
-.mz-menu { min-width: 200px; padding: 4px; background: var(--mz-surface); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); box-shadow: var(--mz-shadow-overlay); }
+.mz-menu { animation: mz-pop var(--mz-duration-base) var(--mz-ease-enter) both; transform-origin: top; min-width: 200px; padding: 4px; background: var(--mz-surface); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-md); box-shadow: var(--mz-shadow-overlay); }
 .mz-menu__item { display: flex; align-items: center; gap: 10px; height: 32px; padding-inline: 10px; border-radius: 4px; font-size: 13px; color: var(--mz-text); cursor: pointer; }
+.mz-menu__item { transition: background-color var(--mz-duration-instant) var(--mz-ease-standard); }
 .mz-menu__item:hover { background: var(--mz-surface-hover); }
 .mz-menu__item--danger { color: var(--mz-danger-text); }
 .mz-menu__sep { height: 1px; background: var(--mz-line); margin: 4px 0; }
+.mz-dialog[open] { animation: mz-dialog-in var(--mz-duration-slow) var(--mz-ease-expand) both; }
+.mz-dialog[open]::backdrop { animation: mz-fade var(--mz-duration-slow) var(--mz-ease-standard) both; }
 .mz-dialog { width: min(480px, calc(100vw - 32px)); background: var(--mz-surface); border: 1px solid var(--mz-line); border-radius: var(--mz-radius-lg); box-shadow: var(--mz-shadow-overlay); padding: 20px; display: grid; gap: 12px; }
 .mz-drawer { width: var(--mz-drawer-width); max-width: 100vw; background: var(--mz-surface); border-inline-start: 1px solid var(--mz-line); box-shadow: var(--mz-shadow-overlay); }
-.mz-toast { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--mz-radius-md); background: var(--mz-primary); color: var(--mz-on-primary); font-size: 13px; box-shadow: var(--mz-shadow-overlay); }
-.mz-tooltip { padding: 6px 8px; border-radius: 4px; background: var(--mz-primary); color: var(--mz-on-primary); font: 500 12px/16px var(--mz-font-sans); }
+.mz-toast { animation: mz-toast-in var(--mz-duration-slow) var(--mz-ease-expand) both; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: var(--mz-radius-md); background: var(--mz-primary); color: var(--mz-on-primary); font-size: 13px; box-shadow: var(--mz-shadow-overlay); }
+.mz-tooltip { animation: mz-fade var(--mz-duration-fast) var(--mz-ease-standard) both; padding: 6px 8px; border-radius: 4px; background: var(--mz-primary); color: var(--mz-on-primary); font: 500 12px/16px var(--mz-font-sans); }
 
 /* Entrances */
 @keyframes mz-in { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
 .mz-enter { animation: mz-in var(--mz-duration-base) var(--mz-ease-enter) both; }
+@keyframes mz-fade { from { opacity: 0; } }
+@keyframes mz-pop { from { opacity: 0; transform: translateY(-4px) scale(.97); } }
+@keyframes mz-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+@keyframes mz-toast-in { from { opacity: 0; transform: translateY(12px) scale(.96); } }
+@keyframes mz-rise { from { opacity: 0; transform: translateY(8px); } }
+/* A list appearing as a list: rows arrive in order, the whole run under 300ms (set --i per row). */
+.mz-stagger > * { animation: mz-rise var(--mz-duration-slow) var(--mz-ease-enter) both; animation-delay: calc(min(var(--i, 0), 8) * 30ms); }
+/* The rail marker of the open section grows into place. */
+.mz-rail-mark::before { animation: mz-mark var(--mz-duration-slow) var(--mz-ease-expand) both; }
+@keyframes mz-mark { from { transform: scaleY(0); } }
+/* A value that just changed settles with a brief tint (RollingNumber adds it). */
+.mz-settle { animation: mz-settle 900ms var(--mz-ease-standard); border-radius: var(--mz-radius-xs); }
+@keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-brand) 12%, transparent); } }
 
 /* ───────────── Feedback ───────────── */
 .mz-alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--mz-radius-md); font-size: 13px; line-height: 19px; background: var(--mz-info-soft); color: var(--mz-info-text); }

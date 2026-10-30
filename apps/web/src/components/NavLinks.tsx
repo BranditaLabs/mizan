@@ -22,7 +22,7 @@ export function NavLinks() {
     <nav aria-label={t("navLabel")} className="flex flex-col gap-0.5">
       {NAV.map(({ key, icon, href, section }) => {
         const label = t(`nav.${key}`);
-        const base = "relative flex h-[34px] items-center gap-2.5 rounded-sm px-3 text-label";
+        const base = "relative flex h-[34px] items-center gap-2.5 rounded-sm px-3 text-label transition-colors duration-150 active:scale-[0.98]";
         if (!href) {
           return (
             <span key={key} aria-disabled="true" className={`${base} text-rail-text-2`}>
@@ -35,7 +35,7 @@ export function NavLinks() {
         const active = isActive(section ?? href);
         return (
           <Link key={key} href={href} aria-current={active ? "page" : undefined}
-            className={`${base} ${active ? "bg-rail-surface text-white before:absolute before:inset-y-1.5 before:start-0 before:w-0.5 before:rounded-full before:bg-rail-active" : "hover:bg-rail-surface hover:text-white"}`}>
+            className={`${base} ${active ? "mz-rail-mark bg-rail-surface text-white before:absolute before:inset-y-1.5 before:start-0 before:w-0.5 before:rounded-full before:bg-rail-active" : "hover:bg-rail-surface hover:text-white"}`}>
             <Icon name={icon} size={17} />
             {label}
           </Link>

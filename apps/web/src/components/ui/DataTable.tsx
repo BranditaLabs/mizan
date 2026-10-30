@@ -2,7 +2,7 @@
 
 import { Icon } from "@mizan/design-system/icons/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Bdi } from "../Bdi";
 import { Button } from "./Button";
 import { CheckboxOnly } from "./Choice";
@@ -102,16 +102,16 @@ export function DataTable<T>({ label, columns, rows, rowKey, rowLabel, selectabl
               })}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="mz-stagger">
             {sorted.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + (selectable ? 1 : 0)} className="whitespace-normal">{empty}</td>
               </tr>
-            ) : sorted.map((row) => {
+            ) : sorted.map((row, i) => {
               const k = rowKey(row);
               const on = selected.has(k);
               return (
-                <tr key={k} aria-selected={selectable ? on : undefined}>
+                <tr key={k} aria-selected={selectable ? on : undefined} style={{ "--i": i } as CSSProperties}>
                   {selectable ? (
                     <td><CheckboxOnly label={t("selectRow", { row: rowLabel?.(row) ?? k })} checked={on} onChange={() => toggle(k)} /></td>
                   ) : null}

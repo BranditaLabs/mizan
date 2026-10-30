@@ -83,7 +83,7 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
         <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
           <div>
             <h2 id="kept-title" className="text-overline uppercase text-text-3">{t("kept.title", { days: h.days })}</h2>
-            <p className={`font-display text-display-md ${negative(p.kept) ? "text-danger-text" : ""}`}><MoneyText money={p.kept} /></p>
+            <p className={`font-display text-display-md ${negative(p.kept) ? "text-danger-text" : ""}`}><MoneyText money={p.kept} roll from="0" /></p>
           </div>
           {p.change !== null ? (
             <p className="pb-1.5 text-body-sm text-text-3">
@@ -101,12 +101,12 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
       </section>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="kpis">
-        <StatCard label={t("kpi.yesterday")} value={<MoneyText money={h.yesterday.expectedNet} />}
+        <StatCard label={t("kpi.yesterday")} value={<MoneyText money={h.yesterday.expectedNet} roll />}
           period={t("kpi.yesterdayHint", { orders: h.yesterday.orders })} />
         <StatCard label={t("kpi.delivery")} value={p.deliveryRate !== null ? t("pct", { v: p.deliveryRate }) : "—"}
           period={t("kpi.deliveryHint", { delivered: p.delivered, returned: p.returned })} />
-        <StatCard label={t("kpi.refusals")} value={<MoneyText money={p.refusalLoss} />} period={t("kpi.refusalsHint", { count: p.returned })} />
-        <StatCard label={t("kpi.cash")} value={<MoneyText money={sum(h.cash.inTransit, h.cash.awaitingRemittance)} />}
+        <StatCard label={t("kpi.refusals")} value={<MoneyText money={p.refusalLoss} roll />} period={t("kpi.refusalsHint", { count: p.returned })} />
+        <StatCard label={t("kpi.cash")} value={<MoneyText money={sum(h.cash.inTransit, h.cash.awaitingRemittance)} roll />}
           period={t("kpi.cashHint", { transit: formatMoney(h.cash.inTransit, locale), held: formatMoney(h.cash.awaitingRemittance, locale) })} />
       </div>
 

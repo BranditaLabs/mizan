@@ -10,6 +10,8 @@ h1, h2, h3, h4 { margin: 0; font-family: var(--mz-font-display); color: var(--mz
 p { margin: 0; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 ::selection { background: var(--mz-brand-soft); color: var(--mz-text); }
+/* The browser's own surfaces carry the design too: caret, form accents, scrollbars. */
+:root { accent-color: var(--mz-primary); caret-color: var(--mz-brand); scrollbar-color: var(--mz-line-strong) transparent; scrollbar-width: thin; }
 
 /* Focus: monochrome ring, always visible for keyboard users */
 :focus { outline: none; }
