@@ -22,7 +22,8 @@
       "automations": "Automations",
       "tickets": "Tickets",
       "payments": "Payments",
-      "reports": "Reports"
+      "reports": "Reports",
+      "purchasing": "Purchasing"
     },
     "language": {
       "label": "Language",
@@ -1168,7 +1169,8 @@
       "team": "Team",
       "integrations": "Integrations",
       "audit": "Audit log",
-      "store": "Store"
+      "store": "Store",
+      "purchasing": "Purchasing"
     }
   },
   "confirmationSettings": {
@@ -3017,6 +3019,203 @@
       "Asia_Muscat": "Muscat",
       "Asia_Amman": "Amman",
       "Africa_Casablanca": "Casablanca"
+    }
+  },
+  "purchasing": {
+    "title": "Purchase orders",
+    "subtitle": "What you're buying, from whom, and what has arrived.",
+    "loading": "Loading",
+    "back": "Purchase orders",
+    "notFound": "This purchase order isn't in this store",
+    "newPo": "New PO",
+    "suppliers": "Suppliers",
+    "tabsLabel": "Purchase orders by status",
+    "late": "Late",
+    "itemsUnits": "{items, plural, one {# item} other {# items}} · {units, plural, one {# unit} other {# units}}",
+    "receivedPct": "{pct}% received",
+    "details": "Details",
+    "lines": "Items",
+    "needsOwner": "Above the approval limit or in another currency: the owner or an admin approves it.",
+    "needsOwnerTag": "Owner approves",
+    "cancel": "Cancel",
+    "cancelConfirm": "Cancel {number}? It can't be undone.",
+    "created": "{number} saved as a draft",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers, finance and the warehouse see purchase orders.",
+      "managers": "Owners, admins and ops managers create purchase orders.",
+      "suppliers": "Owners, admins, ops managers and finance see suppliers."
+    },
+    "view": {
+      "open": "Coming",
+      "draft": "Drafts",
+      "received": "Received",
+      "cancelled": "Cancelled",
+      "all": "All"
+    },
+    "status": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "sent": "Sent",
+      "partially_received": "Partly received",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
+    "columns": {
+      "po": "PO",
+      "supplier": "Supplier",
+      "items": "Items",
+      "total": "Total",
+      "expected": "Expected",
+      "received": "Received",
+      "status": "Status",
+      "item": "Item",
+      "ordered": "Ordered",
+      "receivedQty": "Received",
+      "damaged": "Damaged",
+      "unitCost": "Unit cost"
+    },
+    "empty": {
+      "title": "No purchase orders here",
+      "body": "Purchase orders you create show up here."
+    },
+    "emptyOpen": {
+      "title": "Nothing on its way",
+      "body": "Approved and sent purchase orders wait here until everything arrives."
+    },
+    "noSuppliers": {
+      "title": "Add a supplier first",
+      "body": "A purchase order is from a supplier: add who you buy from, their currency and lead time.",
+      "cta": "Add a supplier"
+    },
+    "fields": {
+      "supplier": "Supplier",
+      "currency": "Currency",
+      "expectedAt": "Expected on",
+      "notes": "Notes",
+      "quantity": "Qty",
+      "unitCost": "Unit cost ({currency})",
+      "created": "Created",
+      "approvedAt": "Approved",
+      "sentAt": "Sent",
+      "receivedAt": "Fully received"
+    },
+    "new": {
+      "title": "New purchase order",
+      "subtitle": "Saved as a draft; approve it, then mark it sent.",
+      "supplier": "Supplier and delivery",
+      "pickSupplier": "Choose a supplier",
+      "currencyHint": "The supplier's currency unless you change it",
+      "items": "Items",
+      "pickItem": "Add an item",
+      "noProducts": "No product matches",
+      "pickPlaceholder": "Product name or SKU",
+      "remove": "Remove {title}",
+      "empty": "No items yet: add what you're buying.",
+      "summary": "Summary",
+      "draftHint": "Nothing is ordered until it's approved and sent.",
+      "save": "Save draft"
+    },
+    "errors": {
+      "supplier": "Choose a supplier",
+      "lines": "Add at least one item",
+      "fixLines": "Fix the items marked above",
+      "quantity": "A whole number from 1",
+      "amount": "An amount like 90 or 90.50",
+      "count": "A whole number",
+      "name": "Enter the supplier's name",
+      "currency": "3 letters, like EGP or USD"
+    },
+    "receipts": {
+      "title": "Deliveries",
+      "number": "Delivery {n}",
+      "units": "{units, plural, one {# unit} other {# units}} into stock",
+      "damaged": "{n} damaged",
+      "viaApp": "Ops app",
+      "over": "More than ordered",
+      "fxMissing": "Cost waiting for an FX rate",
+      "rate": "Rate",
+      "none": "Nothing received yet."
+    },
+    "next": {
+      "title": "Next step",
+      "draft": "Check the items and prices, then approve.",
+      "draftOwner": "This one needs the owner or an admin to approve.",
+      "approved": "Approved. Mark it sent once the supplier has it.",
+      "receive": "When the delivery arrives, receive it here or scan it in the ops app.",
+      "received": "Everything arrived. Stock and costs are updated.",
+      "cancelled": "Cancelled."
+    },
+    "actions": {
+      "approve": "Approve",
+      "send": "Mark as sent",
+      "receive": "Receive delivery",
+      "cancel": "Cancel PO",
+      "cancelYes": "Yes, cancel",
+      "keep": "Keep it"
+    },
+    "done": {
+      "approve": "Approved",
+      "send": "Marked as sent",
+      "cancel": "Cancelled"
+    },
+    "receive": {
+      "title": "Receive {number}",
+      "description": "Count what arrived. Good units go into stock; damaged ones are recorded only.",
+      "left": "{n} still expected",
+      "good": "Good",
+      "damaged": "Damaged",
+      "allowOver": "Take in more than ordered (manager)",
+      "overError": "That's more than ordered. A manager can take it in.",
+      "costHint": "Each item's cost moves to the average with this delivery, at today's exchange rate.",
+      "save": "Receive",
+      "done": "Delivery received",
+      "doneAll": "Delivery received: the PO is complete"
+    },
+    "supplier": {
+      "name": "Name",
+      "leadTime": "Lead time (days)",
+      "days": "{n, plural, one {# day} other {# days}}",
+      "contact": "Contact",
+      "openOrders": "Open POs",
+      "edit": "Edit",
+      "subtitle": "Who you buy from, in which currency, and how long they take.",
+      "new": "Add supplier",
+      "active": "Active",
+      "archived": "Archived",
+      "noneArchived": "No archived suppliers",
+      "editTitle": "Edit supplier",
+      "archive": "Archive",
+      "restore": "Restore",
+      "save": "Save",
+      "archivedDone": "Supplier archived",
+      "restored": "Supplier restored",
+      "saved": "Saved",
+      "exists": "A supplier with this name already exists",
+      "currencyHint": "What they invoice in, like EGP or USD",
+      "leadTimeHint": "From sending the PO to delivery",
+      "contactName": "Contact person",
+      "phone": "Phone",
+      "email": "Email",
+      "terms": "Payment terms"
+    }
+  },
+  "purchasingSettings": {
+    "title": "Purchasing",
+    "subtitle": "Who approves what the store buys.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "approveOver": "Owner approval over (store currency)",
+    "approveOverHint": "0 means every purchase order needs the owner or an admin",
+    "rules": {
+      "under": "Under it, an ops manager can approve a purchase order too.",
+      "over": "Over it, only the owner or an admin approves.",
+      "foreign": "A purchase order in another currency always needs the owner or an admin."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers and finance see purchasing settings."
     }
   }
 }

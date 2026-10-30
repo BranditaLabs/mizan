@@ -240,7 +240,7 @@ Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separat
 - **M9 CRM, loyalty and marketing:** profiles, segments, loyalty points and tiers, store credit, campaigns with opt-in.
 - **M16 Purchasing:** suppliers, POs, reorder suggestions, receiving in the ops app, landed cost.
   - [x] **M16-1** `L` Suppliers, purchase orders (draft → approved by amount → sent → received), receiving from the web and the ops app's `po.receive` (exactly once, partial, damaged, over-receipt needs a manager), moving-average cost at the receipt day's FX locked on the receipt; events `po.approved/sent/cancelled/received`; migration 0051; API e2e.
-  - [ ] **M16-2** `M` Web: suppliers, purchase orders list, new/edit PO, PO screen with approve, send and receive (AR/EN).
+  - [x] **M16-2** `M` Web: Purchasing in the rail; purchase orders by status (coming, drafts, received, cancelled) with how much arrived and late flags; new PO (supplier, currency, expected date, items with unit costs); the PO screen with the next step (approve, mark sent, receive with good and damaged per line, over-receipt only with a manager's tick, cancel with an in-card confirmation) and deliveries with their locked FX rate; suppliers (add, edit, archive, restore); Settings → Purchasing (approval limit). Browser e2e (AR flow, EN settings). Editing a draft from the web comes with M16-4.
   - [ ] **M16-3** `M` Ops app: open POs cached offline, receive by scan into the exactly-once queue.
   - [ ] **M16-4** `M` Landed cost, reorder suggestions, sending the PO, supplier bills.
 - **M17 Inbox:** WhatsApp, Instagram, Messenger, email, web chat; SLAs; AI drafts.
