@@ -4,7 +4,7 @@ import { normalizePhone } from "@mizan/shared";
 import { multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator, sendEmailVerification } from "firebase/auth";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent } from "react";
-import { AuthCard } from "@/components/AuthFrame";
+import { AuthHeading, CodeField, Step } from "./kit";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -67,34 +67,37 @@ export function TwoStep() {
 
   if (!hasPassword) {
     return (
-      <AuthCard title={t("title")}>
+      <Step>
+        <AuthHeading title={t("title")} />
         <Alert tone="warning">{t("phoneAccount")}</Alert>
-        <Button variant="secondary" onClick={() => void signOutAndBack(false)}>{t("signOutAndBack")}</Button>
-      </AuthCard>
+        <Button variant="secondary" size="lg" onClick={() => void signOutAndBack(false)}>{t("signOutAndBack")}</Button>
+      </Step>
     );
   }
 
   if (!verified) {
     return (
-      <AuthCard title={t("title")} subtitle={t("body")}>
+      <Step key="verify">
+        <AuthHeading title={t("title")} body={t("body")} />
+        <StepCount at={1} />
         <h2 className="text-heading-sm">{t("verifyEmail.title")}</h2>
         <p className="text-body-sm text-text-2">{t.rich("verifyEmail.body", { email: user.email ?? "", e: (c) => <Bdi code>{c}</Bdi> })}</p>
         {linkSent ? <Alert tone="success">{t("verifyEmail.sent")}</Alert> : null}
         {notYet ? <Alert tone="warning">{t("verifyEmail.notYet")}</Alert> : null}
         {errorAlert}
-        <Button variant={linkSent ? "secondary" : "primary"} busy={busy && !linkSent}
+        <Button size="lg" variant={linkSent ? "secondary" : "primary"} busy={busy && !linkSent}
           onClick={() => void run(async () => { auth.languageCode = locale; await sendEmailVerification(user); setLinkSent(true); })}>
           {t("verifyEmail.send")}
         </Button>
         {linkSent ? (
-          <Button busy={busy} onClick={() => void run(async () => {
+          <Button size="lg" busy={busy} onClick={() => void run(async () => {
             await user.reload();
             await user.getIdToken(true);
             setNotYet(!user.emailVerified);
             setVerified(user.emailVerified);
           })}>{t("verifyEmail.done")}</Button>
         ) : null}
-      </AuthCard>
+      </Step>
     );
   }
 
@@ -123,14 +126,15 @@ export function TwoStep() {
   };
 
   return (
-    <AuthCard title={t("title")} subtitle={t("body")}>
+    <Step key="phone">
+      <AuthHeading title={t("title")} body={t("body")} />
+      <StepCount at={2} />
       <h2 className="text-heading-sm">{t("phone.title")}</h2>
       {verificationId ? (
         <form onSubmit={onEnable} className="flex flex-col gap-4" noValidate>
-          <Field label={te("code")} hint={te.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> })} ltr
-            inputMode="numeric" autoComplete="one-time-code" required autoFocus name="code" value={code} onChange={(e) => setCode(e.target.value)} />
+          <CodeField label={te("code")} hint={te.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> })} value={code} onChange={setCode} />
           {errorAlert}
-          <Button type="submit" busy={busy}>{t("phone.enable")}</Button>
+          <Button type="submit" size="lg" busy={busy}>{t("phone.enable")}</Button>
           <Button variant="ghost" onClick={() => { setVerificationId(null); setError(null); }}>{te("changeNumber")}</Button>
         </form>
       ) : (
@@ -138,11 +142,21 @@ export function TwoStep() {
           <Field label={te("phone")} hint={te.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} type="tel" ltr autoComplete="tel"
             inputMode="tel" required name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           {errorAlert}
-          <Button type="submit" busy={busy}>{t("phone.submit")}</Button>
+          <Button type="submit" size="lg" busy={busy}>{t("phone.submit")}</Button>
         </form>
       )}
       {error === "recentLogin" ? <Button variant="secondary" onClick={() => void signOutAndBack(false)}>{t("signOutAndBack")}</Button> : null}
       <div id={RECAPTCHA} />
-    </AuthCard>
+    </Step>
+  );
+}
+
+/** Where the person is in the two steps (email, then phone): a quiet line, not a numbered badge. */
+function StepCount({ at }: { at: 1 | 2 }) {
+  const t = useTranslations("twoStep");
+  return (
+    <div className="flex items-center gap-3" aria-label={t("progress", { at, total: 2 })}>
+      {[1, 2].map((n) => <span key={n} className={`h-1 flex-1 rounded-full transition-colors duration-500 ${n <= at ? "bg-text" : "bg-line"}`} />)}
+    </div>
   );
 }

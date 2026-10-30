@@ -167,8 +167,19 @@
       "net": "Net profit",
       "loss": "Lost on this order",
       "worksWith": "Works with Shopify, WooCommerce, Bosta and WhatsApp.",
-      "expectedNet": "Expected profit"
-    }
+      "expectedNet": "Expected profit",
+      "scaleLabel": "The scale: revenue against costs for the sample order"
+    },
+    "showChars": "Show",
+    "hideChars": "Hide",
+    "capsLock": "Caps Lock is on.",
+    "resetTitle": "Reset your password",
+    "resetBody": "We'll email you a link to choose a new one.",
+    "resetSend": "Send reset link",
+    "backToSignIn": "Back to sign in",
+    "codeTitle": "Enter the code",
+    "done": "Signed in. Opening your store…",
+    "phoneTitle": "Sign in with your phone"
   },
   "twoStep": {
     "title": "Turn on two-step verification",
@@ -188,7 +199,8 @@
     },
     "phoneAccount": "This account signs in with a phone number. Store owners need an email account to turn on the second step.",
     "recentLogin": "For your security, sign out, sign in again, then turn on the second step.",
-    "signOutAndBack": "Sign out and back in"
+    "signOutAndBack": "Sign out and back in",
+    "progress": "Step {at} of {total}"
   },
   "welcome": {
     "title": "Welcome",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Wordmark } from "@/components/Wordmark";
 import { MoneyText } from "@/components/ui/Values";
@@ -166,16 +166,69 @@ export function Showcase({ compact = false }: { compact?: boolean }) {
 
   if (compact) return order;
   return (
-    <div className="flex h-full flex-col justify-between gap-10 p-10 xl:p-14">
-      <Wordmark onDark className="h-7 w-auto self-start" />
-      <div className="flex max-w-[520px] flex-col gap-8">
+    <div className="flex h-full flex-col justify-between gap-8 overflow-y-auto p-10 xl:p-14">
+      <Wordmark onDark className="h-7 w-auto shrink-0 self-start" />
+      <div className="flex max-w-[540px] flex-col gap-7">
         <div className="flex flex-col gap-3">
-          <p className="font-display text-display-md text-rail-text">{t("headline")}</p>
+          <p className="font-display text-display-md text-white text-balance">{t("headline")}</p>
           <p className="max-w-[46ch] text-body-lg text-rail-text-2">{t("lede")}</p>
         </div>
+        <Scale revenue={v.real ? v.revenue : s.total} expected={!v.real} costs={v.spent} loss={loss} />
         {order}
       </div>
       <p className="text-body-sm text-rail-text-2">{t("worksWith")}</p>
     </div>
+  );
+}
+
+const PIVOT = { x: 160, y: 34 };
+const ARM = 118;
+const MAX_TILT = 14;
+const SWING = "transform 900ms cubic-bezier(0.32, 0.72, 0, 1)";
+
+/**
+ * The scale (ميزان): revenue in the pan on the reading-start side, costs in the other. The beam tips
+ * toward the heavier pan and settles; the pivot is the brand's one red point. Drawn in code; the
+ * pans hang level because they move with the beam's ends rather than turn with it.
+ */
+function Scale({ revenue, expected, costs, loss }: { revenue: number; expected: boolean; costs: number; loss: boolean }) {
+  const t = useTranslations("auth.showcase");
+  const rtl = useLocale() === "ar";
+  const heavier = Math.max(revenue, costs, 1);
+  // Positive: the costs side is down. Revenue sits on the start side: the left in English, the right in Arabic.
+  const tilt = Math.max(-MAX_TILT, Math.min(MAX_TILT, ((costs - revenue) / heavier) * MAX_TILT * 1.6));
+  const angle = rtl ? -tilt : tilt;
+  const rad = (angle * Math.PI) / 180;
+  // Where an end of the beam is, relative to the pivot (side -1: left, 1: right).
+  const end = (side: -1 | 1) => ({ x: side * ARM * Math.cos(rad), y: side * ARM * Math.sin(rad) });
+  const revenueFill = expected ? "fill-rail-text opacity-30" : "fill-rail-text";
+  const costsFill = loss ? "fill-brand" : "fill-rail-text-2";
+  /** A pan hung from one end: strings to a dish, moved with that end, never turned. */
+  const pan = (side: -1 | 1, fill: string) => {
+    const at = end(side);
+    return (
+      <g style={{ transform: `translate(${at.x}px, ${at.y}px)`, transition: SWING }}>
+        <line x1={PIVOT.x} y1={PIVOT.y} x2={PIVOT.x - 26} y2={PIVOT.y + 62} className="stroke-rail-text-2" strokeWidth="1" />
+        <line x1={PIVOT.x} y1={PIVOT.y} x2={PIVOT.x + 26} y2={PIVOT.y + 62} className="stroke-rail-text-2" strokeWidth="1" />
+        <path d={`M${PIVOT.x - 34} ${PIVOT.y + 62} Q ${PIVOT.x} ${PIVOT.y + 92} ${PIVOT.x + 34} ${PIVOT.y + 62} Z`} className={`${fill} transition-[fill,opacity] duration-700`} />
+      </g>
+    );
+  };
+  return (
+    <figure className="flex flex-col gap-3" aria-label={t("scaleLabel")}>
+      <svg viewBox="0 0 320 150" className="h-auto w-full max-w-[420px] overflow-visible" aria-hidden="true">
+        <path d="M160 34 L160 132 M128 140 Q160 124 192 140 Z" className="fill-rail-surface stroke-rail-text-2" strokeWidth="1.25" strokeLinejoin="round" />
+        <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: `${PIVOT.x}px ${PIVOT.y}px`, transition: SWING }}>
+          <line x1={PIVOT.x - ARM} y1={PIVOT.y} x2={PIVOT.x + ARM} y2={PIVOT.y} className="stroke-rail-text" strokeWidth="2.5" strokeLinecap="round" />
+        </g>
+        {pan(-1, rtl ? costsFill : revenueFill)}
+        {pan(1, rtl ? revenueFill : costsFill)}
+        <circle cx={PIVOT.x} cy={PIVOT.y} r="5" className="fill-brand" />
+      </svg>
+      <figcaption className="flex max-w-[420px] justify-between text-caption text-rail-text-2">
+        <span>{expected ? t("expected") : t("revenue")} <MoneyText money={egp(revenue)} /></span>
+        <span className={loss ? "text-brand" : undefined}>{t("costs")} <MoneyText money={egp(costs)} /></span>
+      </figcaption>
+    </figure>
   );
 }

@@ -17,16 +17,19 @@ import { useRouter } from "@/i18n/navigation";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
 import { firebaseAuth, smsVerifier } from "@/lib/firebase";
 import { useSession } from "@/lib/session";
+import { AuthHeading, CodeField, Done, PasswordField, Step } from "./kit";
 
 const RECAPTCHA = "sms-verifier";
 const CLOSED = new Set(["auth/popup-closed-by-user", "auth/cancelled-popup-request", "auth/user-cancelled"]);
 
 type Mfa = { resolver: MultiFactorResolver; verificationId: string; hint: string };
+type StepName = "start" | "phoneCode" | "mfa" | "reset";
 
 /**
- * Sign-in (E4-2). Email + password, then the SMS second step for accounts that turned it on
- * (owners and admins must: the API answers mfa_required otherwise). Phone number + SMS code for
- * confirmation and warehouse teams. Once signed in, the store gate decides where to go.
+ * Sign-in (E4-2), one step at a time. Start: Google, or email and password (or a new account), or a
+ * phone number. Then the code we texted (phone sign-in), the SMS second step for accounts that turned
+ * it on (owners and admins must: the API answers mfa_required otherwise), or a password reset link.
+ * Each step slides in from the reading direction; once signed in, the store gate decides where to go.
  */
 export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) {
   const t = useTranslations("auth");
@@ -35,6 +38,7 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
   const { status } = useSession();
   const auth = firebaseAuth();
 
+  const [step, setStep] = useState<StepName>("start");
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [creating, setCreating] = useState(false);
   const [email, setEmail] = useState("");
@@ -52,6 +56,9 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
   }, [status, next, router]);
 
   if (!auth) return <Alert tone="warning">{t("notConfigured")}</Alert>;
+  if (status === "signed-in") return <Done text={t("done")} />;
+
+  const go = (s: StepName) => { setError(null); setCode(""); setStep(s); };
 
   async function run(work: () => Promise<void>) {
     setBusy(true);
@@ -72,8 +79,8 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
     const hint = resolver.hints.find((h) => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID) as PhoneMultiFactorInfo | undefined;
     if (!hint) throw err;
     const verificationId = await new PhoneAuthProvider(auth).verifyPhoneNumber({ multiFactorHint: hint, session: resolver.session }, smsVerifier(auth, RECAPTCHA));
-    setCode("");
     setMfa({ resolver, verificationId, hint: hint.phoneNumber.replace(/\D/g, "").slice(-4) });
+    go("mfa");
   }
 
   const onEmail = (e: FormEvent) => {
@@ -105,16 +112,36 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
     });
   };
 
+  const onPhone = (e: FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      const p = normalizePhone(phone, "EG");
+      if (!p) {
+        setError("invalidPhone");
+        return;
+      }
+      auth.languageCode = locale;
+      setConfirmation(await signInWithPhoneNumber(auth, p.e164, smsVerifier(auth, RECAPTCHA)));
+      go("phoneCode");
+    });
+  };
+
+  const onPhoneCode = (e: FormEvent) => {
+    e.preventDefault();
+    if (!confirmation) return;
+    void run(async () => { await confirmation.confirm(code.trim()); });
+  };
+
   const onMfa = (e: FormEvent) => {
     e.preventDefault();
     if (!mfa) return;
     void run(async () => {
-      const assertion = PhoneMultiFactorGenerator.assertion(PhoneAuthProvider.credential(mfa.verificationId, code.trim()));
-      await mfa.resolver.resolveSignIn(assertion);
+      await mfa.resolver.resolveSignIn(PhoneMultiFactorGenerator.assertion(PhoneAuthProvider.credential(mfa.verificationId, code.trim())));
     });
   };
 
-  const onReset = () => {
+  const onReset = (e: FormEvent) => {
+    e.preventDefault();
     void run(async () => {
       auth.languageCode = locale;
       await sendPasswordResetEmail(auth, email.trim());
@@ -122,98 +149,89 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
     });
   };
 
-  const onPhone = (e: FormEvent) => {
-    e.preventDefault();
-    void run(async () => {
-      if (confirmation) {
-        await confirmation.confirm(code.trim());
-        return;
-      }
-      const p = normalizePhone(phone, "EG");
-      if (!p) {
-        setError("invalidPhone");
-        return;
-      }
-      auth.languageCode = locale;
-      setCode("");
-      setConfirmation(await signInWithPhoneNumber(auth, p.e164, smsVerifier(auth, RECAPTCHA)));
-    });
-  };
-
   const errorAlert = error ? <Alert tone="danger">{t(`errors.${error}`)}</Alert> : null;
-  const codeField = (hint: React.ReactNode) => (
-    <Field label={t("code")} hint={hint} ltr inputMode="numeric" autoComplete="one-time-code" required autoFocus
-      value={code} onChange={(e) => setCode(e.target.value)} name="code" />
+  const emailField = (
+    <Field label={t("email")} type="email" ltr autoComplete="email" required name="email" className="[&_input]:h-11"
+      value={email} onChange={(e) => setEmail(e.target.value)} />
   );
 
   return (
-    <div className="mz-enter flex flex-col gap-5">
-      {enrolled ? <Alert tone="success">{t("enrolled")}</Alert> : null}
-      <section>
-        {mfa ? (
-          <form onSubmit={onMfa} className="flex flex-col gap-5" noValidate>
-            <div className="flex flex-col gap-2">
-              <h1 className="font-display text-heading-lg">{t("mfa.title")}</h1>
-              <p className="text-body text-text-2">{t.rich("mfa.body", { hint: mfa.hint, n: (c) => <Bdi code>{c}</Bdi> })}</p>
-            </div>
-            {codeField(null)}
+    <div className="flex flex-col gap-5">
+      {enrolled && step === "start" ? <Alert tone="success">{t("enrolled")}</Alert> : null}
+
+      {step === "start" ? (
+        <Step key="start">
+          <AuthHeading title={creating ? t("createTitle") : t("title")} body={creating ? t("createSubtitle") : t("subtitle")} />
+          <button type="button" onClick={onGoogle} disabled={busy}
+            className="flex h-12 w-full items-center justify-center gap-3 rounded-md border border-line-strong bg-surface text-label text-text transition-[transform,background-color,border-color] duration-150 hover:border-text-3 hover:bg-surface-hover active:scale-[0.99] disabled:opacity-60">
+            <GoogleMark />
+            {t("google")}
+          </button>
+          <p className="text-center text-caption text-text-3">{t("or")}</p>
+          <Segmented label={t("tabs.label")} value={method}
+            options={(["email", "phone"] as const).map((m) => ({ value: m, label: t(`tabs.${m}`) }))}
+            onChange={(m) => { setMethod(m); setError(null); }} />
+          {method === "email" ? (
+            <form key="email" onSubmit={onEmail} className="mz-step flex flex-col gap-4" noValidate>
+              {emailField}
+              <PasswordField label={t("password")} autoComplete={creating ? "new-password" : "current-password"} required name="password"
+                hint={creating ? t("passwordHint") : undefined} value={password} onChange={(e) => setPassword(e.target.value)} />
+              {errorAlert}
+              <Button type="submit" size="lg" busy={busy}>{creating ? t("createSubmit") : t("signIn")}</Button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Button variant="ghost" onClick={() => { setCreating(!creating); setError(null); }}>{creating ? t("haveAccount") : t("createAccount")}</Button>
+                {creating ? null : <Button variant="ghost" onClick={() => { setResetSent(false); go("reset"); }}>{t("forgot")}</Button>}
+              </div>
+            </form>
+          ) : (
+            <form key="phone" onSubmit={onPhone} className="mz-step flex flex-col gap-4" noValidate>
+              <Field label={t("phone")} type="tel" ltr autoComplete="tel" inputMode="tel" required name="phone" className="[&_input]:h-11"
+                hint={t.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} value={phone} onChange={(e) => setPhone(e.target.value)} />
+              {errorAlert}
+              <Button type="submit" size="lg" busy={busy}>{t("sendCode")}</Button>
+            </form>
+          )}
+        </Step>
+      ) : null}
+
+      {step === "phoneCode" ? (
+        <Step key="phoneCode">
+          <AuthHeading title={t("codeTitle")} body={t.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> })} />
+          <form onSubmit={onPhoneCode} className="flex flex-col gap-4" noValidate>
+            <CodeField label={t("code")} value={code} onChange={setCode} />
+            {errorAlert}
+            <Button type="submit" size="lg" busy={busy}>{t("verify")}</Button>
+            <Button variant="ghost" onClick={() => { setConfirmation(null); go("start"); }}>{t("changeNumber")}</Button>
+          </form>
+        </Step>
+      ) : null}
+
+      {step === "mfa" && mfa ? (
+        <Step key="mfa">
+          <AuthHeading title={t("mfa.title")} body={t.rich("mfa.body", { hint: mfa.hint, n: (c) => <Bdi code>{c}</Bdi> })} />
+          <form onSubmit={onMfa} className="flex flex-col gap-4" noValidate>
+            <CodeField label={t("code")} value={code} onChange={setCode} />
             {errorAlert}
             <Button type="submit" size="lg" busy={busy}>{t("mfa.submit")}</Button>
-            <Button variant="ghost" onClick={() => { setMfa(null); setCode(""); setError(null); }}>{t("back")}</Button>
+            <Button variant="ghost" onClick={() => { setMfa(null); go("start"); }}>{t("back")}</Button>
           </form>
-        ) : (
-          <>
-            <div className="flex flex-col gap-2">
-              <h1 className="font-display text-heading-lg">{creating ? t("createTitle") : t("title")}</h1>
-              <p className="text-body text-text-2">{creating ? t("createSubtitle") : t("subtitle")}</p>
-            </div>
-            <button type="button" onClick={onGoogle} disabled={busy}
-              className="mt-7 flex h-12 w-full items-center justify-center gap-3 rounded-md border border-line-strong bg-surface text-label text-text transition-[transform,background-color] duration-150 hover:bg-surface-hover active:scale-[0.99] disabled:opacity-60">
-              <GoogleMark />
-              {t("google")}
-            </button>
-            <p className="my-5 text-center text-caption text-text-3">{t("or")}</p>
-            <Segmented label={t("tabs.label")} value={method}
-              options={(["email", "phone"] as const).map((m) => ({ value: m, label: t(`tabs.${m}`) }))}
-              onChange={(m) => { setMethod(m); setError(null); }} />
-            {method === "email" ? (
-              <form onSubmit={onEmail} className="mt-5 flex flex-col gap-4" noValidate>
-                <Field label={t("email")} type="email" ltr autoComplete="email" required name="email"
-                  value={email} onChange={(e) => setEmail(e.target.value)} />
-                <Field label={t("password")} type="password" ltr autoComplete={creating ? "new-password" : "current-password"} required name="password"
-                  hint={creating ? t("passwordHint") : undefined} value={password} onChange={(e) => setPassword(e.target.value)} />
-                {resetSent ? <Alert tone="success">{t.rich("resetSent", { email: email.trim(), e: (c) => <Bdi code>{c}</Bdi> })}</Alert> : null}
-                {errorAlert}
-                <Button type="submit" size="lg" busy={busy}>{creating ? t("createSubmit") : t("signIn")}</Button>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Button variant="ghost" onClick={() => { setCreating(!creating); setError(null); }}>{creating ? t("haveAccount") : t("createAccount")}</Button>
-                  {creating ? null : <Button variant="ghost" onClick={onReset} disabled={!email.trim()}>{t("forgot")}</Button>}
-                </div>
-              </form>
-            ) : (
-              <form onSubmit={onPhone} className="mt-5 flex flex-col gap-4" noValidate>
-                {confirmation ? (
-                  <>
-                    {codeField(t.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> }))}
-                    {errorAlert}
-                    <Button type="submit" size="lg" busy={busy}>{t("verify")}</Button>
-                    <Button variant="ghost" onClick={() => { setConfirmation(null); setError(null); }}>{t("changeNumber")}</Button>
-                  </>
-                ) : (
-                  <>
-                    <Field label={t("phone")} type="tel" ltr autoComplete="tel" inputMode="tel" required name="phone"
-                      hint={t.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} value={phone} onChange={(e) => setPhone(e.target.value)} />
-                    {errorAlert}
-                    <Button type="submit" size="lg" busy={busy}>{t("sendCode")}</Button>
-                  </>
-                )}
-              </form>
-            )}
-          </>
-        )}
-      </section>
+        </Step>
+      ) : null}
+
+      {step === "reset" ? (
+        <Step key="reset">
+          <AuthHeading title={t("resetTitle")} body={t("resetBody")} />
+          <form onSubmit={onReset} className="flex flex-col gap-4" noValidate>
+            {emailField}
+            {resetSent ? <Alert tone="success">{t.rich("resetSent", { email: email.trim(), e: (c) => <Bdi code>{c}</Bdi> })}</Alert> : null}
+            {errorAlert}
+            <Button type="submit" size="lg" busy={busy} disabled={!email.trim()}>{t("resetSend")}</Button>
+            <Button variant="ghost" onClick={() => go("start")}>{t("backToSignIn")}</Button>
+          </form>
+        </Step>
+      ) : null}
+
       <p className="text-caption text-text-3">{t("legal")}</p>
-      {status === "signed-in" ? <p role="status" className="text-center text-body-sm text-text-2">{t("redirecting")}</p> : null}
       <div id={RECAPTCHA} />
     </div>
   );

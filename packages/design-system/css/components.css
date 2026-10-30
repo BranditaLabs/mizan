@@ -194,6 +194,18 @@
 /* Chart bars rise from the zero line (origin set per bar); set animation-delay per bar for the run. */
 .mz-grow-y { transform-box: fill-box; animation: mz-grow-y 520ms var(--mz-ease-enter) both; }
 @keyframes mz-grow-y { from { transform: scaleY(0); } }
+/* A step of a flow arrives from the reading direction (sign-in, setup). */
+.mz-step { --mz-step-x: 18px; animation: mz-step var(--mz-duration-slow) var(--mz-ease-enter) both; }
+[dir="rtl"] .mz-step { --mz-step-x: -18px; }
+@keyframes mz-step { from { opacity: 0; transform: translateX(var(--mz-step-x)); } }
+/* A typed digit lands in its box. */
+.mz-digit { animation: mz-digit var(--mz-duration-base) var(--mz-ease-enter) both; }
+@keyframes mz-digit { from { transform: scale(.82); opacity: .2; } }
+/* A line that draws itself (set pathLength="1" on the shape); --late waits for the first. */
+.mz-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: mz-draw 520ms var(--mz-ease-expand) forwards; }
+.mz-draw--late { animation-delay: 360ms; }
+@keyframes mz-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .mz-draw { stroke-dashoffset: 0; animation: none; } .mz-step { animation: mz-fade var(--mz-duration-fast) both; } }
 /* A value that just changed settles with a brief tint (RollingNumber adds it). */
 .mz-settle { animation: mz-settle 900ms var(--mz-ease-standard); border-radius: var(--mz-radius-xs); }
 @keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-brand) 12%, transparent); } }

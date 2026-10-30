@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { useRouter } from "@/i18n/navigation";
+import { AuthHeading, Step } from "./kit";
 import { ApiError, idempotency, ok, type MyInvitation, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
@@ -62,14 +63,11 @@ export function Welcome() {
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="font-display text-heading-lg">{t("title")}</h1>
-        <p className="mt-1.5 text-body-sm text-text-2">{t("subtitle")}</p>
-      </div>
+    <Step>
+      <AuthHeading title={t("title")} body={t("subtitle")} />
 
       {me.invitations.length > 0 ? (
-        <section className="rounded-lg border border-line bg-surface p-5" aria-labelledby="invites">
+        <section className="rounded-lg bg-surface-sunk p-5" aria-labelledby="invites">
           <h2 id="invites" className="text-heading-sm">{t("invitations.title")}</h2>
           <ul className="mt-3 flex flex-col divide-y divide-line">
             {me.invitations.map((inv) => (
@@ -89,21 +87,21 @@ export function Welcome() {
         </section>
       ) : null}
 
-      <section className="rounded-lg border border-line bg-surface p-5" aria-labelledby="create">
+      <section aria-labelledby="create">
         <h2 id="create" className="text-heading-sm">{t("create.title")}</h2>
         <form onSubmit={onCreate} className="mt-4 flex flex-col gap-4">
-          <Field label={t("create.name")} required minLength={2} maxLength={80} name="store" autoComplete="organization"
+          <Field label={t("create.name")} className="[&_input]:h-11" required minLength={2} maxLength={80} name="store" autoComplete="organization"
             value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor={countryId} className="text-label text-text">{t("create.country")}</label>
             <select id={countryId} value={country} onChange={(e) => setCountry(e.target.value as typeof country)} aria-describedby={`${countryId}-hint`}
-              className="h-9 rounded-sm border border-line-strong bg-surface px-3 text-body text-text hover:border-text-3 focus-visible:border-focus focus-visible:ring-1 focus-visible:ring-focus">
+              className="mz-select h-11">
               {COUNTRY_CODES.map((c) => <option key={c} value={c}>{tc(c)}</option>)}
             </select>
             <p id={`${countryId}-hint`} className="text-caption text-text-3">{t("create.countryHint")}</p>
           </div>
           {createError ? <Alert tone="danger">{t(`errors.${createError}`)}</Alert> : null}
-          <Button type="submit" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2}>{t("create.submit")}</Button>
+          <Button type="submit" size="lg" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2}>{t("create.submit")}</Button>
         </form>
       </section>
 
@@ -111,6 +109,6 @@ export function Welcome() {
         <span>{t.rich("signedInAs", { who, n: (c) => <Bdi code>{c}</Bdi> })}</span>
         <Button variant="ghost" onClick={() => void signOut()}>{ts("signOut")}</Button>
       </div>
-    </div>
+    </Step>
   );
 }
