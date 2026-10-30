@@ -74,23 +74,23 @@
     "MA": "Morocco"
   },
   "auth": {
-    "title": "Sign in to Mizan",
-    "subtitle": "Run every order from checkout to cash, and see what each one really made.",
+    "title": "Welcome back",
+    "subtitle": "Sign in to run orders, payments and profit for your store.",
     "notConfigured": "Sign-in is not configured in this build.",
     "tabs": {
       "label": "Sign-in method",
       "email": "Email",
-      "phone": "Phone number"
+      "phone": "Phone"
     },
     "email": "Email",
     "password": "Password",
     "passwordHint": "8 characters or more",
     "signIn": "Sign in",
     "createAccount": "Create an account",
-    "createTitle": "New account",
+    "createTitle": "Create your account",
     "createSubmit": "Create account",
     "haveAccount": "Have an account? Sign in",
-    "forgot": "Forgot your password?",
+    "forgot": "Forgot password?",
     "resetSent": "We sent a password reset link to <e>{email}</e>.",
     "phone": "Phone number",
     "phoneHint": "Example: <n>01001234821</n>",
@@ -123,53 +123,9 @@
     "redirecting": "Opening your store…",
     "createSubtitle": "One account for your store and your team. You add the store next.",
     "google": "Continue with Google",
-    "or": "or with your email or phone",
+    "or": "or",
     "back": "Back",
     "legal": "Owners and admins confirm sign-in with a code on their phone. Confirmation and warehouse teams can sign in with their phone number.",
-    "showcase": {
-      "headline": "Every order, to the last pound.",
-      "lede": "Mizan follows each order from checkout to cash and shows what it really made, after every cost.",
-      "caption": "Sample order",
-      "pause": "Pause",
-      "play": "Play",
-      "stagesLabel": "Where the order is",
-      "item": {
-        "abaya": "Plain abaya",
-        "bag": "Leather bag",
-        "sneakers": "Sneakers"
-      },
-      "pay": {
-        "cod": "Cash on delivery",
-        "card": "Paid by card"
-      },
-      "stage": {
-        "placed": "Placed",
-        "confirmed": "Confirmed",
-        "shipped": "Shipped",
-        "delivered": "Delivered",
-        "cash": "Cash in",
-        "refused": "Refused",
-        "returned": "Back in stock"
-      },
-      "revenue": "Revenue",
-      "expected": "Expected",
-      "costs": "Costs",
-      "cost": {
-        "product": "Product",
-        "shipping": "Shipping",
-        "codFee": "COD fee",
-        "paymentFee": "Card fee",
-        "team": "Team",
-        "packaging": "Packaging",
-        "ads": "Ads",
-        "returnLeg": "Return"
-      },
-      "net": "Net profit",
-      "loss": "Lost on this order",
-      "worksWith": "Works with Shopify, WooCommerce, Bosta and WhatsApp.",
-      "expectedNet": "Expected profit",
-      "scaleLabel": "The scale: revenue against costs for the sample order"
-    },
     "showChars": "Show",
     "hideChars": "Hide",
     "capsLock": "Caps Lock is on.",
@@ -179,7 +135,59 @@
     "backToSignIn": "Back to sign in",
     "codeTitle": "Enter the code",
     "done": "Signed in. Opening your store…",
-    "phoneTitle": "Sign in with your phone"
+    "phoneTitle": "Sign in with your phone",
+    "emailLabel": "Work email",
+    "emailPlaceholder": "name@store.com",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "10 0123 4821",
+    "countryCode": "Country code",
+    "phoneHintSms": "We send a 6-digit code by SMS.",
+    "continue": "Continue",
+    "newQ": "New to Mizan?",
+    "haveQ": "Have an account?",
+    "signInLink": "Sign in",
+    "codeSent": "We sent a 6-digit code by SMS to <n>{phone}</n>",
+    "codeLabel": "Verification code",
+    "resendIn": "Resend in <n>{time}</n>",
+    "resend": "Send a new code",
+    "verifySignIn": "Verify and sign in",
+    "doneTitle": "You're in",
+    "opening": "Balancing your books…",
+    "switchTheme": "Switch theme",
+    "footer": {
+      "rights": "© 2026 Mizan · powered by Brandita",
+      "privacy": "Privacy",
+      "terms": "Terms"
+    },
+    "brand": {
+      "kicker": "The commerce operating system",
+      "headline": "Every order, every method.",
+      "headline2": "Real profit on each one.",
+      "status1": "Awaiting deposit",
+      "status2": "Shipped · collect 1,800",
+      "status3": "Delivered · settled",
+      "initials": "SM",
+      "customer": "Sara M.",
+      "method": "Deposit + COD · Bosta",
+      "amount": "EGP 2,100",
+      "profitLabel": "Net profit on this order",
+      "profit": "EGP 512",
+      "points": {
+        "whatsapp": {
+          "title": "Confirm on WhatsApp",
+          "body": "Risky orders get a deposit link before they ship."
+        },
+        "owed": {
+          "title": "Collect only what’s owed",
+          "body": "Couriers never collect more or less than the balance."
+        },
+        "profit": {
+          "title": "See real profit",
+          "body": "After shipping, fees, returns and ads, per order."
+        }
+      },
+      "orderId": "#EO-48302"
+    }
   },
   "twoStep": {
     "title": "Turn on two-step verification",

@@ -42,11 +42,11 @@ test("owner: new account → store → two-step verification → signs in with t
   await expect(page.getByText("Two-step verification is on.")).toBeVisible();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("wrong-password");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.locator("main").getByRole("alert")).toHaveText("That email or password is not right.");
   await page.getByLabel("Password").fill(PASSWORD);
   const seen = await smsCount(phone.e164);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Second step" })).toBeVisible();
   await expect(page.getByText(`ending in ${phone.e164.slice(-4)}`)).toBeVisible();
   await page.getByLabel("Code").fill("000000");
@@ -75,11 +75,11 @@ test("agent in Arabic: phone number and code, joins the store they were invited 
   await page.goto("/ar");
   await expect(page).toHaveURL(/\/ar\/sign-in/);
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("ادخل على ميزان");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("أهلاً بيك تاني");
   // A number that is not an Egyptian mobile never reaches Firebase.
-  await page.getByRole("radio", { name: "رقم الموبايل", exact: true }).click();
+  await page.getByRole("radio", { name: "الموبايل", exact: true }).click();
   await page.getByLabel("رقم الموبايل", { exact: true }).fill("0123");
-  await page.getByRole("button", { name: "ابعت الكود" }).click();
+  await page.getByRole("button", { name: "كمّل", exact: true }).click();
   await expect(page.locator("main").getByRole("alert")).toContainText("رقم الموبايل مش صحيح");
   await page.getByRole("radio", { name: "الإيميل", exact: true }).click();
   await expect(page.getByRole("radio", { name: "الإيميل", exact: true })).toHaveAttribute("aria-checked", "true");

@@ -33,6 +33,12 @@ export function firebaseAuth(): Auth | null {
   return auth;
 }
 
+/** Firebase writes its SMS and emails in this language (\r\ or \en\). */
+export function setAuthLanguage(language: string): void {
+  const a = firebaseAuth();
+  if (a) a.languageCode = language;
+}
+
 let verifier: RecaptchaVerifier | null = null;
 
 /**

@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 import { AuthSplit } from "@/components/AuthFrame";
-import { Showcase } from "@/components/auth/Showcase";
 import { RequireUser } from "@/components/auth/Gate";
 import { Welcome } from "@/components/auth/Welcome";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
@@ -20,7 +19,7 @@ export default async function Page({ params }: Props) {
   setRequestLocale(locale);
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <AuthSplit theme={theme} showcase={<Showcase />} compactShowcase={<Showcase compact />}>
+    <AuthSplit theme={theme}>
       <RequireUser><Welcome /></RequireUser>
     </AuthSplit>
   );

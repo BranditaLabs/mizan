@@ -134,3 +134,31 @@
 .mzg .mzg.g:not(.light) { background: var(--glass), var(--bg); }
 
 @media (prefers-reduced-motion: reduce) { .mzg .mz-btn--primary::after, .mzg .mz-skeleton::after { animation: none; transition: none; } }
+
+/* ───────────── Sign-in (the "Sign in · glass" board of the Mizan Glass canvas) ───────────── */
+.mzg .auth-card { border-radius: 28px; --_gap: clamp(12px, 2.3vh, 22px); --_ctl: clamp(40px, 5.3vh, 48px); }
+/* The sign-in fits the window: gaps, controls and type tighten with the height, never a scrollbar on a laptop. */
+.mzg .auth-card .mz-step { gap: var(--_gap); }
+.mzg .auth-order { border-radius: 22px; } .mzg .auth-profit { border-radius: 18px; } .mzg .auth-point { border-radius: 16px; }
+.mzg .auth-brand { border-radius: 28px; position: relative; overflow: hidden; }
+.mzg .auth-brand .glow { position: absolute; width: 520px; height: 520px; border-radius: 50%; inset-inline-end: -160px; top: -180px; background: var(--red-glow); filter: blur(120px); opacity: .22; pointer-events: none; }
+.mzg .auth-title { font-size: clamp(26px, 3.8vh, 34px); line-height: 1.1; }
+.mzg .auth-headline { font-size: clamp(28px, min(3vw, 4.9vh), 44px); line-height: 1.08; }
+.mzg .auth-divider { display: flex; align-items: center; gap: 12px; color: var(--fg-3); font-size: 12.5px; }
+.mzg .auth-divider::before, .mzg .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line-2); }
+.mzg .auth-link { color: var(--fg); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; background: none; border: 0; padding: 0; cursor: pointer; font: inherit; }
+.mzg .auth-float { animation: mzg-float 7s var(--ease-io) infinite alternate; }
+.mzg .auth-float.b { animation-duration: 9s; animation-delay: -3s; }
+@keyframes mzg-float { from { transform: translateY(-8px); } to { transform: translateY(10px); } }
+/* A status chip that cycles through an order's life (deposit → shipped → settled). */
+.mzg .auth-cycle { display: grid; justify-items: end; }
+.mzg .auth-cycle > span { grid-area: 1 / 1; opacity: 0; animation: mzg-cycle 9s infinite; width: max-content; }
+.mzg .auth-cycle > span:nth-child(2) { animation-delay: 3s; } .mzg .auth-cycle > span:nth-child(3) { animation-delay: 6s; }
+@keyframes mzg-cycle { 0%, 2% { opacity: 0; transform: translateY(6px); } 6%, 30% { opacity: 1; transform: none; } 34%, 100% { opacity: 0; transform: translateY(-6px); } }
+/* The code: six glass boxes over one real input. */
+.mzg .auth-box { height: clamp(44px, 6.4vh, 58px); border-radius: 14px; display: grid; place-items: center; font: 600 24px/1 "Geist", sans-serif; background: var(--glass-2); border: 1px solid var(--line-2);
+  transition: border-color .2s, box-shadow .3s, transform .3s var(--ease-spring); }
+.mzg .auth-box.on { border-color: var(--fg-2); box-shadow: 0 0 0 4px var(--line); transform: translateY(-2px); }
+.mzg .auth-box.filled { background: var(--glass-3); }
+@media (max-width: 900px) { .mzg .auth-brand { display: none !important; } }
+@media (prefers-reduced-motion: reduce) { .mzg .auth-float, .mzg .auth-cycle > span { animation: none; } .mzg .auth-cycle > span:first-child { opacity: 1; } }

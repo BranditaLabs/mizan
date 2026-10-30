@@ -36,7 +36,8 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
   });
 
   it("Arabic copy is actually Arabic (no untranslated English left behind)", () => {
-    const allowedLatin = new Set(["shell.language.en"]);
+    // The English name of English, and example data shown as is (an email address, a phone number, an order id).
+    const allowedLatin = new Set(["shell.language.en", "auth.emailPlaceholder", "auth.phonePlaceholder", "auth.brand.orderId"]);
     for (const [k, v] of Object.entries(A)) {
       if (allowedLatin.has(k)) continue;
       expect(/[؀-ۿ]/.test(v), `${k}: ${v}`).toBe(true);

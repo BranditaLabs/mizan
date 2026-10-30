@@ -1,9 +1,12 @@
-import type { ReactNode } from "react";
+﻿import { useTranslations } from "next-intl";
+import type { CSSProperties, ReactNode } from "react";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { ThemedWordmark } from "./Wordmark";
 import { GlassRoot } from "./GlassRoot";
+import { LanguageToggle, ThemeToggle } from "./auth/Toggles";
+import { BrandPanel } from "./auth/BrandPanel";
 
 /**
  * Frame for pages outside a store (sign-in, two-step, welcome): the wordmark and the language and
@@ -27,36 +30,39 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
 }
 
 /**
- * The sign-in screen's frame: the form on the paper side (start), the brand on the ink side (end)
- * with a sample order moving to cash (Showcase). Below 1024px the form comes first and the sample
- * order follows it, compact. The ink side is an aside, outside `main`.
+ * The frame of every screen before a store (sign-in, two-step, welcome), as the "Sign in Â· glass"
+ * board of the Mizan Glass canvas: on the start side the wordmark, a language and a theme button,
+ * the step in a glass card and the footer; on the end side the brand panel. The brand panel steps
+ * aside under 900px. Theme and direction come from GlassRoot.
  */
-export function AuthSplit({ theme, showcase, compactShowcase, children }: { theme: Theme; showcase: ReactNode; compactShowcase: ReactNode; children: ReactNode }) {
+export function AuthSplit({ theme, children }: { theme: Theme; children: ReactNode }) {
+  const t = useTranslations("auth");
   return (
-    <GlassRoot theme={theme}>
-    <div className="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-      <div className="flex min-h-dvh flex-col">
-        <header className="flex h-16 items-center gap-3 px-4 md:px-8">
-          <ThemedWordmark className="shrink-0 lg:invisible" />
-          <span className="flex-1" />
-          <LocaleSwitch />
-          <span className="hidden sm:contents"><ThemeSwitch initial={theme} /></span>
-        </header>
-        <main id="main" className="flex flex-1 items-center justify-center px-4 pt-4 pb-10 md:px-8">
-          <div className="g w-full max-w-[440px] p-6 sm:p-8">{children}</div>
-        </main>
-        <div className="px-4 pb-8 lg:hidden">
-          <GlassRoot ink fields={false} className="g mx-auto max-w-[400px] overflow-hidden p-2 text-rail-text">{compactShowcase}</GlassRoot>
+    <GlassRoot theme={theme} className="min-h-dvh">
+      <div className="flex min-h-dvh flex-wrap gap-4 p-[clamp(8px,2vh,16px)]">
+        <div className="flex min-w-0 flex-[1_1_440px] flex-col px-2 py-[clamp(8px,2.2vh,20px)] sm:px-[clamp(8px,4vw,56px)]">
+          <header className="flex items-center justify-between gap-3">
+            <ThemedWordmark />
+            <div className="flex gap-2">
+              <LanguageToggle />
+              <ThemeToggle initial={theme} />
+            </div>
+          </header>
+          <main id="main" className="grid flex-1 place-items-center py-[clamp(10px,3vh,40px)]">
+            <div className="g g-lift rise auth-card flex w-full max-w-[440px] flex-col gap-(--_gap) px-[clamp(20px,4vw,36px)] py-[clamp(20px,3.6vh,36px)]">{children}</div>
+          </main>
+          <footer className="faint flex flex-wrap justify-between gap-3 text-caption [@media(max-height:680px)]:hidden">
+            <span>{t("footer.rights")}</span>
+            <span className="flex gap-4"><span>{t("footer.privacy")}</span><span>{t("footer.terms")}</span></span>
+          </footer>
         </div>
+        <aside className="g auth-brand rise flex min-w-0 flex-[1.15_1_520px] flex-col justify-between gap-[clamp(12px,2vh,24px)] p-[clamp(24px,5vh,48px)]" style={{ "--d": ".1s" } as CSSProperties}>
+          <BrandPanel />
+        </aside>
       </div>
-      <aside className="sticky top-0 hidden h-dvh p-3 text-rail-text lg:block">
-        <GlassRoot ink className="g h-full overflow-hidden">{showcase}</GlassRoot>
-      </aside>
-    </div>
     </GlassRoot>
   );
 }
-
 /** A titled card inside AuthFrame (flat: border, no shadow). */
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   return (

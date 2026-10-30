@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 import { AuthSplit } from "@/components/AuthFrame";
-import { Showcase } from "@/components/auth/Showcase";
 import { SignIn } from "@/components/auth/SignIn";
 import { safeNext } from "@/lib/next-path";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
@@ -21,7 +20,7 @@ export default async function SignInPage({ params, searchParams }: Props) {
   const q = await searchParams;
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
-    <AuthSplit theme={theme} showcase={<Showcase />} compactShowcase={<Showcase compact />}>
+    <AuthSplit theme={theme}>
       <SignIn next={safeNext(q.next)} enrolled={q.enrolled === "1"} />
     </AuthSplit>
   );
