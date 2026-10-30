@@ -356,6 +356,10 @@ describe("schema", () => {
     await asTenant(T1, () => db.query(`INSERT INTO landed_costs (tenant_id, purchase_order_id, kind, amount_minor, currency, description) VALUES ($1, $2, 'customs', 50000, 'EGP', 'Alexandria port')`, [T1, po.id]));
     await expect(asTenant(T1, () => db.query(`INSERT INTO landed_costs (tenant_id, purchase_order_id, kind, amount_minor, currency) VALUES ($1, $2, 'bribe', 1, 'EGP')`, [T1, po.id]))).rejects.toThrow(/check/);
     expect((await asTenant(T2, () => db.query(`SELECT * FROM landed_costs`))).rows).toEqual([]);
+    // M16-4b: a pack size is 1 or more; the reorder flag is a time.
+    await expect(asTenant(T1, () => db.query(`UPDATE variants SET reorder_pack_size = 0 WHERE id = $1`, [v.id]))).rejects.toThrow(/check/);
+    await asTenant(T1, () => db.query(`UPDATE variants SET reorder_pack_size = 12 WHERE id = $1`, [v.id]));
+    await asTenant(T1, () => db.query(`UPDATE stock_levels SET reorder_flagged_at = now() WHERE variant_id = $1`, [v.id]));
   });
 
   it("keeps a WhatsApp opt-out apart from an opt-in (E6-4b)", async () => {

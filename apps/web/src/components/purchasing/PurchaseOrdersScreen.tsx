@@ -63,6 +63,7 @@ export function PurchaseOrdersScreen() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {SUPPLIER_READERS.has(role) ? <Link href="/purchasing/suppliers" className={buttonClass("secondary", "md")}>{t("suppliers")}</Link> : null}
+          {SUPPLIER_READERS.has(role) ? <Link href="/purchasing/reorder" className={buttonClass("secondary", "md")}>{t("reorder.title")}</Link> : null}
           {MANAGERS.has(role) ? <Link href="/purchasing/new" className={buttonClass("primary", "md")}>{t("newPo")}</Link> : null}
         </div>
       </header>

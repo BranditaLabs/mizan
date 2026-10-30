@@ -139,9 +139,34 @@ export type PoReceivePayload = z.output<typeof PoReceivePayloadSchema>;
 
 export const PurchasingSettingsSchema = z.strictObject({
   approveOver: Amount.describe("POs above this, in the store's base currency, need owner or admin to approve; foreign-currency POs always do"),
+  safetyDays: z.number().int().min(0).max(90).default(7).describe("Safety stock, in days of sales (M16-4b)"),
+  targetCoverDays: z.number().int().min(1).max(365).default(30).describe("A reorder brings cover to this many days after lead time"),
+  velocityDays: z.number().int().min(7).max(180).default(28).describe("Sales over this many days set the pace"),
 });
-export type PurchasingSettings = z.infer<typeof PurchasingSettingsSchema>;
-export const DEFAULT_PURCHASING: PurchasingSettings = { approveOver: "50000.00" };
+export type PurchasingSettings = z.output<typeof PurchasingSettingsSchema>;
+export const DEFAULT_PURCHASING: PurchasingSettings = { approveOver: "50000.00", safetyDays: 7, targetCoverDays: 30, velocityDays: 28 };
+
+const Suggestion = z.object({
+  variantId: z.uuid(), sku: z.string().nullable(), title: z.string(),
+  available: z.number().int(), incoming: z.number().int(), unitsOut: z.number().int().describe("Shipped less restocked, over velocityDays"),
+  velocity: z.number().describe("Units a day"), daysCover: z.number().int().nullable(), leadDays: z.number().int(),
+  reorderPoint: z.number().int(), suggested: z.number().int(), packSize: z.number().int(),
+  supplier: z.object({ id: z.uuid(), name: z.string(), currency: z.string() }).nullable().describe("Who it was last bought from"),
+  lastUnitCost: z.object({ amount: z.string(), currency: z.string() }).nullable(),
+});
+export const ReorderSuggestionsSchema = z.object({
+  data: z.array(Suggestion).describe("Items at or under their reorder point, the least cover first"),
+  settings: z.object({ safetyDays: z.number().int(), targetCoverDays: z.number().int(), velocityDays: z.number().int() }),
+});
+export type ReorderSuggestion = z.infer<typeof Suggestion>;
+export const ReorderQuerySchema = z.object({ supplierId: z.uuid().optional() });
+
+/** M16-4b: a draft PO for a supplier from suggestions (quantities can be changed). */
+export const DraftFromSuggestionsSchema = z.strictObject({
+  supplierId: z.uuid(),
+  items: z.array(z.strictObject({ variantId: z.uuid(), quantity: z.number().int().min(1).max(1_000_000) })).min(1).max(200),
+}).refine((b) => new Set(b.items.map((i) => i.variantId)).size === b.items.length, { message: "each item once", path: ["items"] });
+export type DraftFromSuggestions = z.infer<typeof DraftFromSuggestionsSchema>;
 
 export function purchasingSettings(settings: unknown): PurchasingSettings {
   const parsed = PurchasingSettingsSchema.safeParse((settings as { purchasing?: unknown } | null)?.purchasing);

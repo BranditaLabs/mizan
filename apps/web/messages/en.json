@@ -3234,6 +3234,23 @@
         "value": "By value",
         "quantity": "By quantity"
       }
+    },
+    "reorder": {
+      "title": "Reorder",
+      "subtitle": "Items that will run out before a new delivery could arrive: sales over the last {velocity} days, the supplier's lead time and {safety} days of safety stock. The quantity covers lead time plus {target} days.",
+      "empty": {
+        "title": "Nothing to reorder",
+        "body": "Every counted item has enough stock, or stock on its way, for its lead time and safety days."
+      },
+      "noSupplier": "No supplier yet",
+      "noSupplierHint": "These were never on a purchase order: add them to one by hand and next time they show under their supplier.",
+      "pick": "Order {title}",
+      "numbers": "{available} available · {incoming} on the way · {velocity} a day · {lead} days lead time",
+      "lastPrice": "last price",
+      "cover": "{days, plural, =0{Out now} =1{1 day left} other{# days left}}",
+      "quantity": "Quantity",
+      "pack": "In packs of {n}",
+      "draft": "{count, plural, =1{Draft a PO with 1 item} other{Draft a PO with # items}}"
     }
   },
   "purchasingSettings": {
@@ -3252,6 +3269,14 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners, admins, ops managers and finance see purchasing settings."
+    },
+    "reorder": {
+      "title": "Reorder rule",
+      "hint": "How Mizan decides what to suggest buying.",
+      "velocityDays": "Sales window (days)",
+      "safetyDays": "Safety stock (days)",
+      "targetCoverDays": "Target cover (days)",
+      "days": "Days, a whole number"
     }
   }
 }

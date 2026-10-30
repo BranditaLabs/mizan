@@ -1473,6 +1473,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/reorder-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ReorderController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/from-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ReorderController_draft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/settings/purchasing": {
         parameters: {
             query?: never;
@@ -3485,6 +3517,15 @@ export interface components {
         DisableUser: {
             /** @description Shown to the stores they belong to */
             reason: string;
+        };
+        DraftFromSuggestions: {
+            /** Format: uuid */
+            supplierId: string;
+            items: {
+                /** Format: uuid */
+                variantId: string;
+                quantity: number;
+            }[];
         };
         DryRun: {
             /**
@@ -5947,10 +5988,28 @@ export interface components {
             /** @description Decimal in the store's base currency */
             approveOver: string;
             currency: string;
+            safetyDays: number;
+            targetCoverDays: number;
+            velocityDays: number;
         };
         PurchasingSettingsInput: {
             /** @description POs above this, in the store's base currency, need owner or admin to approve; foreign-currency POs always do */
             approveOver: string;
+            /**
+             * @description Safety stock, in days of sales (M16-4b)
+             * @default 7
+             */
+            safetyDays: number;
+            /**
+             * @description A reorder brings cover to this many days after lead time
+             * @default 30
+             */
+            targetCoverDays: number;
+            /**
+             * @description Sales over this many days set the pace
+             * @default 28
+             */
+            velocityDays: number;
         };
         PutFlag: {
             enabled: boolean;
@@ -6204,6 +6263,42 @@ export interface components {
         };
         RejectRefund: {
             reason: string;
+        };
+        ReorderSuggestions: {
+            /** @description Items at or under their reorder point, the least cover first */
+            data: {
+                /** Format: uuid */
+                variantId: string;
+                sku: string | null;
+                title: string;
+                available: number;
+                incoming: number;
+                /** @description Shipped less restocked, over velocityDays */
+                unitsOut: number;
+                /** @description Units a day */
+                velocity: number;
+                daysCover: number | null;
+                leadDays: number;
+                reorderPoint: number;
+                suggested: number;
+                packSize: number;
+                /** @description Who it was last bought from */
+                supplier: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                    currency: string;
+                } | null;
+                lastUnitCost: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
+            settings: {
+                safetyDays: number;
+                targetCoverDays: number;
+                velocityDays: number;
+            };
         };
         Replayed: {
             /** @enum {boolean} */
@@ -12806,6 +12901,105 @@ export interface operations {
             };
         };
     };
+    ReorderController_list: {
+        parameters: {
+            query?: {
+                supplierId?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Items at or under their reorder point with the quantity to order, the least cover first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReorderSuggestions"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReorderController_draft: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftFromSuggestions"];
+            };
+        };
+        responses: {
+            /** @description A draft for the supplier at its last price per item (else the item's cost in the same currency, else 0 to fill in); audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     PurchasingSettingsController_get: {
         parameters: {
             query?: never;
@@ -12819,7 +13013,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The approval threshold in the store's base currency */
+            /** @description The approval threshold in the store's base currency and the reorder rule */
             200: {
                 headers: {
                     [name: string]: unknown;

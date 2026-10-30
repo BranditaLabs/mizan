@@ -31,10 +31,13 @@ export function PurchasingSettingsScreen() {
   });
   const [value, setValue] = useState<string | null>(null);
   const current = value ?? q.data?.approveOver ?? "";
+  const [days, setDays] = useState<Partial<Record<"safetyDays" | "targetCoverDays" | "velocityDays", string>>>({});
+  const day = (k: "safetyDays" | "targetCoverDays" | "velocityDays") => days[k] ?? String(q.data?.[k] ?? "");
+  const daysValid = (["safetyDays", "targetCoverDays", "velocityDays"] as const).every((k) => /^\d{1,3}$/.test(day(k)));
   const save = useMutation({
-    mutationFn: () => ok(api.PUT("/v1/settings/purchasing", { body: { approveOver: current.trim() } })),
+    mutationFn: () => ok(api.PUT("/v1/settings/purchasing", { body: { approveOver: current.trim(), safetyDays: Number(day("safetyDays")), targetCoverDays: Number(day("targetCoverDays")), velocityDays: Number(day("velocityDays")) } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("saved") }); setValue(null); void qc.invalidateQueries({ queryKey: ["purchasingSettings"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); },
+    onSuccess: () => { toast({ message: t("saved") }); setValue(null); setDays({}); void qc.invalidateQueries({ queryKey: ["reorder"] }); void qc.invalidateQueries({ queryKey: ["purchasingSettings"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); },
   });
   const body = !READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
     : !q.data ? <div className="mz-card"><SkeletonRows rows={2} label={t("loading")} /></div>
@@ -45,8 +48,16 @@ export function PurchasingSettingsScreen() {
         <ul className="list-disc ps-5 text-body-sm text-text-2">
           <li>{t("rules.under")}</li><li>{t("rules.over")}</li><li>{t("rules.foreign")}</li>
         </ul>
+        <h2 className="mt-2 text-heading-sm">{t("reorder.title")}</h2>
+        <p className="text-body-sm text-text-2">{t("reorder.hint")}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {(["velocityDays", "safetyDays", "targetCoverDays"] as const).map((k) => (
+            <Field key={k} label={t(`reorder.${k}`)} inputMode="numeric" ltr value={day(k)} disabled={!EDITORS.has(role)}
+              onChange={(e) => setDays({ ...days, [k]: e.target.value.trim() })} error={/^\d{1,3}$/.test(day(k)) ? null : t("reorder.days")} />
+          ))}
+        </div>
         {save.isError ? <Alert tone="danger">{problemText(save.error, tpr)}</Alert> : null}
-        {EDITORS.has(role) ? <div><Button type="submit" busy={save.isPending} disabled={!current.trim()}>{t("save")}</Button></div> : null}
+        {EDITORS.has(role) ? <div><Button type="submit" busy={save.isPending} disabled={!current.trim() || !daysValid}>{t("save")}</Button></div> : null}
       </form>
     );
   return (

@@ -122,11 +122,12 @@ _Sample data. Full visual in `design/prototype.html`._
 - **Receiving:** from the web or the ops app (`po.receive`, exactly once per opId), by scan (barcode), SKU or id; good units into stock against the PO (orders waiting for stock get reserved), damaged recorded only; partial receipts; more than ordered needs a manager (the app gets a conflict).
 - **Moving-average cost:** per receipt, (on hand × cost + received value) ÷ (on hand + received), in the item's currency at the receipt day's FX rate, locked on the receipt. An item without a cost takes the receipt's. No rate for the day: the stock goes in and the receipt is marked `fx_missing` (cost unchanged).
 - **Landed cost (M16-4a):** freight, customs, insurance, clearance and other costs on an open PO, in any currency, spread by value or quantity into the unit cost of each later receipt at its day's rate; the PO screen shows each line's cost with landed costs. A draft PO can be edited from the web.
-- **Later:** reorder suggestions, sending the PO (PDF, email, WhatsApp), supplier bills and the 3-way match, damaged claims, `supplier.late`, ✅ the ops-app receiving screen (M16-3: Receive tab, offline, scan-checked, damaged switch). ✅ Web screens (M16-2): `/purchasing`, `/purchasing/new`, `/purchasing/{id}`, `/purchasing/suppliers`, `/settings/purchasing`.
+- **Reorder suggestions (M16-4b):** the rule above on every counted item (sales = shipped less restocked returns; pack size rounding); Purchasing → Reorder groups them by supplier and makes a draft PO at the last price; `stock.reorder_suggested` hourly, once per crossing; the rule's days in Settings → Purchasing.
+- **Later:** sending the PO (PDF, email, WhatsApp), supplier bills and the 3-way match, damaged claims, `supplier.late`, ✅ the ops-app receiving screen (M16-3: Receive tab, offline, scan-checked, damaged switch). ✅ Web screens (M16-2): `/purchasing`, `/purchasing/new`, `/purchasing/{id}`, `/purchasing/suppliers`, `/settings/purchasing`.
 
 ## Acceptance criteria
 
-- [ ] Reorder list matches the rule for every SKU with stock history.
+- [x] Reorder list matches the rule for every SKU with stock history. ✅ M16-4b (property-tested)
 - [x] Receiving updates stock and moving-average cost once, even offline. ✅ M16-1 (API; ops-app screen M16-3)
 - [x] Landed cost flows into COGS for orders after receipt. ✅ M16-4a
 - [ ] Over-receipts and price variances need approval. ✅ over-receipts (M16-1); price variances with supplier bills

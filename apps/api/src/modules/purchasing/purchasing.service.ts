@@ -383,7 +383,7 @@ export class PurchasingService {
       const t = await trx.selectFrom("tenants").select(["settings", "base_currency"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
       const s = purchasingSettings(t.settings);
       const currency = t.base_currency.trim();
-      return { approveOver: fromMinor(toMinor(s.approveOver, currency), currency).amount, currency };
+      return { ...s, approveOver: fromMinor(toMinor(s.approveOver, currency), currency).amount, currency };
     });
   }
 

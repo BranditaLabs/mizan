@@ -6,14 +6,18 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  NewLandedCostSchema, NewPurchaseOrderSchema, NewReceiptSchema, NewSupplierSchema, PurchaseOrderListSchema, PurchaseOrderSchema, PurchaseOrdersQuerySchema,
+  DraftFromSuggestionsSchema, NewLandedCostSchema, NewPurchaseOrderSchema, ReorderQuerySchema, ReorderSuggestionsSchema, NewReceiptSchema, NewSupplierSchema, PurchaseOrderListSchema, PurchaseOrderSchema, PurchaseOrdersQuerySchema,
   PurchasingSettingsSchema, SupplierListSchema, SupplierSchema, SuppliersQuerySchema, UpdateSupplierSchema,
-  type NewLandedCost, type NewPurchaseOrder, type NewReceipt, type NewSupplier, type PurchasingSettings, type UpdateSupplier,
+  type DraftFromSuggestions, type NewLandedCost, type NewPurchaseOrder, type NewReceipt, type NewSupplier, type PurchasingSettings, type UpdateSupplier,
 } from "./purchasing.dto.js";
 import { PurchasingService } from "./purchasing.service.js";
+import { ReorderService } from "./reorder.service.js";
 
 
-const SettingsViewSchema = z.object({ approveOver: z.string().describe("Decimal in the store's base currency"), currency: z.string() });
+const SettingsViewSchema = z.object({
+  approveOver: z.string().describe("Decimal in the store's base currency"), currency: z.string(),
+  safetyDays: z.number().int(), targetCoverDays: z.number().int(), velocityDays: z.number().int(),
+});
 
 /** M16 suppliers (M16-1). */
 @ApiTags("purchasing")
@@ -126,6 +130,30 @@ export class PurchaseOrdersController {
   }
 }
 
+/** M16-4b reorder suggestions and a draft PO from them. */
+@ApiTags("purchasing")
+@Controller()
+export class ReorderController {
+  constructor(@Inject(ReorderService) private readonly reorder: ReorderService) {}
+
+  @Get("reorder-suggestions")
+  @Roles("owner", "admin", "ops_manager", "finance")
+  @ApiQueryZod(ReorderQuerySchema)
+  @ApiJson(200, "ReorderSuggestions", ReorderSuggestionsSchema, "Items at or under their reorder point with the quantity to order, the least cover first")
+  list(@Auth() auth: AuthContext, @Query(new ZodPipe(ReorderQuerySchema)) q: z.output<typeof ReorderQuerySchema>) {
+    return this.reorder.suggestions(auth.tenant!.id, q);
+  }
+
+  @Post("purchase-orders/from-suggestions")
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("DraftFromSuggestions", DraftFromSuggestionsSchema)
+  @ApiJson(201, "PurchaseOrder", PurchaseOrderSchema, "A draft for the supplier at its last price per item (else the item's cost in the same currency, else 0 to fill in); audited")
+  @ApiProblems(404, 409, 422)
+  draft(@Auth() auth: AuthContext, @Body(new ZodPipe(DraftFromSuggestionsSchema)) body: DraftFromSuggestions) {
+    return this.reorder.draft(auth, body);
+  }
+}
+
 /** M16-4a landed costs on a purchase order. */
 @ApiTags("purchasing")
 @Controller("purchase-orders/:id/landed-costs")
@@ -158,7 +186,7 @@ export class PurchasingSettingsController {
 
   @Get()
   @Roles("owner", "admin", "ops_manager", "finance")
-  @ApiJson(200, "PurchasingSettings", SettingsViewSchema, "The approval threshold in the store's base currency")
+  @ApiJson(200, "PurchasingSettings", SettingsViewSchema, "The approval threshold in the store's base currency and the reorder rule")
   get(@Auth() auth: AuthContext) {
     return this.purchasing.getSettings(auth.tenant!.id);
   }

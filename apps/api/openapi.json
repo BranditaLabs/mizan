@@ -9538,6 +9538,164 @@
         ]
       }
     },
+    "/v1/reorder-suggestions": {
+      "get": {
+        "operationId": "ReorderController_list",
+        "parameters": [
+          {
+            "name": "supplierId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Items at or under their reorder point with the quantity to order, the least cover first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReorderSuggestions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "purchasing"
+        ]
+      }
+    },
+    "/v1/purchase-orders/from-suggestions": {
+      "post": {
+        "operationId": "ReorderController_draft",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftFromSuggestions"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "A draft for the supplier at its last price per item (else the item's cost in the same currency, else 0 to fill in); audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrder"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "purchasing"
+        ]
+      }
+    },
     "/v1/settings/purchasing": {
       "get": {
         "operationId": "PurchasingSettingsController_get",
@@ -9567,7 +9725,7 @@
         ],
         "responses": {
           "200": {
-            "description": "The approval threshold in the store's base currency",
+            "description": "The approval threshold in the store's base currency and the reorder rule",
             "content": {
               "application/json": {
                 "schema": {
@@ -19294,6 +19452,46 @@
         ],
         "additionalProperties": false
       },
+      "DraftFromSuggestions": {
+        "type": "object",
+        "properties": {
+          "supplierId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "items": {
+            "minItems": 1,
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000
+                }
+              },
+              "required": [
+                "variantId",
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "supplierId",
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "DryRun": {
         "type": "object",
         "properties": {
@@ -28729,11 +28927,29 @@
           },
           "currency": {
             "type": "string"
+          },
+          "safetyDays": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "targetCoverDays": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "velocityDays": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
           }
         },
         "required": [
           "approveOver",
-          "currency"
+          "currency",
+          "safetyDays",
+          "targetCoverDays",
+          "velocityDays"
         ],
         "additionalProperties": false
       },
@@ -28744,6 +28960,27 @@
             "type": "string",
             "pattern": "^\\d{1,12}(\\.\\d{1,3})?$",
             "description": "POs above this, in the store's base currency, need owner or admin to approve; foreign-currency POs always do"
+          },
+          "safetyDays": {
+            "default": 7,
+            "description": "Safety stock, in days of sales (M16-4b)",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 90
+          },
+          "targetCoverDays": {
+            "default": 30,
+            "description": "A reorder brings cover to this many days after lead time",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365
+          },
+          "velocityDays": {
+            "default": 28,
+            "description": "Sales over this many days set the pace",
+            "type": "integer",
+            "minimum": 7,
+            "maximum": 180
           }
         },
         "required": [
@@ -29663,6 +29900,167 @@
         },
         "required": [
           "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ReorderSuggestions": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "sku": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "available": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "incoming": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "unitsOut": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Shipped less restocked, over velocityDays"
+                },
+                "velocity": {
+                  "type": "number",
+                  "description": "Units a day"
+                },
+                "daysCover": {
+                  "nullable": true,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "leadDays": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "reorderPoint": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "suggested": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "packSize": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "supplier": {
+                  "nullable": true,
+                  "description": "Who it was last bought from",
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "lastUnitCost": {
+                  "nullable": true,
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "variantId",
+                "sku",
+                "title",
+                "available",
+                "incoming",
+                "unitsOut",
+                "velocity",
+                "daysCover",
+                "leadDays",
+                "reorderPoint",
+                "suggested",
+                "packSize",
+                "supplier",
+                "lastUnitCost"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Items at or under their reorder point, the least cover first"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "safetyDays": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "targetCoverDays": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "velocityDays": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "safetyDays",
+              "targetCoverDays",
+              "velocityDays"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data",
+          "settings"
         ],
         "additionalProperties": false
       },

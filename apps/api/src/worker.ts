@@ -27,6 +27,7 @@ async function main(): Promise<void> {
   const { FxService } = await import("./modules/profit/fx/fx.service.js");
   const { ConfirmationRunner } = await import("./modules/confirmation/confirmation.runner.js");
   const { ReconciliationService } = await import("./modules/orders/reconciliation.service.js");
+  const { ReorderService } = await import("./modules/purchasing/reorder.service.js");
   const { exitOnSignals } = await import("./platform/shutdown.js");
   const { Logger: NestLogger } = await import("@nestjs/common");
   const { MetricsService } = await import("./platform/metrics/metrics.service.js");
@@ -44,6 +45,7 @@ async function main(): Promise<void> {
   app.get(FxService).start();
   app.get(ConfirmationRunner).start();
   app.get(ReconciliationService).start();
+  app.get(ReorderService).start();
 }
 
 void main();

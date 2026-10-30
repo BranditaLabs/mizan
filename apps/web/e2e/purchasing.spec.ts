@@ -159,3 +159,36 @@ test("Settings → Purchasing in English: the owner sets the approval limit", as
   await page.reload();
   await expect(page.getByTestId("purchasing-settings").getByLabel("Owner approval over (store currency)")).toHaveValue("1000.00");
 });
+
+test("reorder in English: suggestions by supplier, a quantity changed, a draft PO from them", async ({ page }) => {
+  const owner = await ownerWithStore("Reorder Store");
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
+  const supplierId = "55555555-5555-4555-8555-555555555551";
+  let posted: unknown = null;
+  await page.route("**/v1/reorder-suggestions*", (route) => route.fulfill({ json: {
+    settings: { safetyDays: 7, targetCoverDays: 30, velocityDays: 28 },
+    data: [
+      { variantId: ABAYA, sku: "ABY-1", title: "Plain abaya", available: 10, incoming: 0, unitsOut: 56, velocity: 2, daysCover: 5, leadDays: 7, reorderPoint: 28, suggested: 64, packSize: 1,
+        supplier: { id: supplierId, name: "Alex Textiles", currency: "EGP" }, lastUnitCost: { amount: "80.00", currency: "EGP" } },
+      { variantId: SCARF, sku: "SCF-1", title: "Scarf", available: 2, incoming: 0, unitsOut: 28, velocity: 1, daysCover: 2, leadDays: 14, reorderPoint: 21, suggested: 48, packSize: 12,
+        supplier: null, lastUnitCost: null },
+    ],
+  } }));
+  await page.route("**/v1/purchase-orders/from-suggestions", (route) => {
+    posted = route.request().postDataJSON();
+    return route.fulfill({ status: 201, json: { ...po("draft", [0, 0]), supplier: { id: supplierId, name: "Alex Textiles" } } });
+  });
+  await page.route(`**/v1/purchase-orders/${PO_ID}`, (route) => route.fulfill({ json: { ...po("draft", [0, 0]), supplier: { id: supplierId, name: "Alex Textiles" } } }));
+  await page.goto("/en/purchasing/reorder");
+  const screen = page.getByTestId("reorder");
+  await expect(screen).toContainText("sales over the last 28 days");
+  await expect(screen).toContainText("No supplier yet");
+  await expect(screen).toContainText("5 days left");
+  await expect(screen).toContainText("In packs of 12");
+  await screen.getByLabel("Quantity").first().fill("60");
+  await screen.getByRole("button", { name: "Draft a PO with 1 item" }).click();
+  await expect(page).toHaveURL(new RegExp(`/en/purchasing/${PO_ID}$`));
+  expect(posted).toEqual({ supplierId, items: [{ variantId: ABAYA, quantity: 60 }] });
+});

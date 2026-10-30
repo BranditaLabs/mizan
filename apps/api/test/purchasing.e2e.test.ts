@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
+import { ReorderService } from "../src/modules/purchasing/reorder.service.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
 /**
@@ -86,9 +87,9 @@ describe("purchase orders and receiving (M16-1)", () => {
   });
 
   it("nothing is received before approval; above the threshold only the owner approves", async () => {
-    expect((await http().get("/v1/settings/purchasing").set(as("owner")).expect(200)).body).toEqual({ approveOver: "50000.00", currency: "EGP" });
+    expect((await http().get("/v1/settings/purchasing").set(as("owner")).expect(200)).body).toEqual({ approveOver: "50000.00", currency: "EGP", safetyDays: 7, targetCoverDays: 30, velocityDays: 28 });
     await http().put("/v1/settings/purchasing").set(as("opsman")).send({ approveOver: "1000" }).expect(403);
-    expect((await http().put("/v1/settings/purchasing").set(as("owner")).send({ approveOver: "1000" }).expect(200)).body).toEqual({ approveOver: "1000.00", currency: "EGP" });
+    expect((await http().put("/v1/settings/purchasing").set(as("owner")).send({ approveOver: "1000" }).expect(200)).body).toEqual({ approveOver: "1000.00", currency: "EGP", safetyDays: 7, targetCoverDays: 30, velocityDays: 28 });
     expect((await http().post(`/v1/purchase-orders/${po.id}/receipts`).set(as("keeper")).send({ items: [{ variantId: items["AB-1"], quantity: 1 }] }).expect(409)).body.code).toBe("po_not_open");
     await http().post(`/v1/purchase-orders/${po.id}/approve`).set(as("keeper")).expect(403);
     expect((await http().post(`/v1/purchase-orders/${po.id}/approve`).set(as("opsman")).expect(403)).body.code).toBe("needs_owner");
@@ -208,5 +209,51 @@ describe("landed costs (M16-4a)", () => {
     // A received PO's costs are final.
     const done = (await http().get("/v1/purchase-orders?status=received").set(as("owner")).expect(200)).body.data[0];
     expect((await http().post(`/v1/purchase-orders/${done.id}/landed-costs`).set(as("owner")).send({ kind: "freight", amount: "5" }).expect(409)).body.code).toBe("po_closed");
+  });
+});
+
+describe("reorder suggestions (M16-4b)", () => {
+  it("2 a day with 7 days lead and 7 safety: due at 28, order up to 37 days; one event per crossing; a draft at the last price", async () => {
+    let variant = "";
+    await db.tenant(store, async (trx) => {
+      const p = await trx.insertInto("products").values({ tenant_id: store, title: "Jilbab" }).returning("id").executeTakeFirstOrThrow();
+      variant = (await trx.insertInto("variants").values({ tenant_id: store, product_id: p.id, sku: "RO-1", currency: "EGP", price_minor: 90000 }).returning("id").executeTakeFirstOrThrow()).id;
+    });
+    await http().post("/v1/stock/movements").set(as("owner")).send({ items: [{ variantId: variant, kind: "count", quantity: 66 }] }).expect(200);
+    // 56 shipped over the last 28 days (stock leaves at shipping as a pick), none back: 2 a day.
+    await db.tenant(store, async (trx) => {
+      const w = await trx.selectFrom("warehouses").select("id").orderBy("is_default", "desc").orderBy("name").executeTakeFirstOrThrow();
+      for (let d = 1; d <= 28; d++) {
+        await trx.insertInto("stock_movements").values({ tenant_id: store, warehouse_id: w.id, variant_id: variant, delta: -2, reason: "pick", created_at: new Date(Date.now() - d * 86_400_000 + 3_600_000) }).execute();
+      }
+      await trx.updateTable("stock_levels").set({ on_hand: 10 }).where("variant_id", "=", variant).execute();
+    });
+    // Last bought from Alex Textiles (lead time 7 days) at 80.00: that PO is still a draft, so nothing is on its way.
+    await http().post("/v1/purchase-orders").set(as("owner")).send({ supplierId: supplier, lines: [{ variantId: variant, quantity: 1, unitCost: "80" }] }).expect(201);
+
+    expect((await http().get("/v1/settings/purchasing").set(as("owner")).expect(200)).body).toMatchObject({ safetyDays: 7, targetCoverDays: 30, velocityDays: 28 });
+    const list = (await http().get("/v1/reorder-suggestions").set(as("opsman")).expect(200)).body;
+    const s = list.data.find((x: { sku: string }) => x.sku === "RO-1");
+    expect(s).toMatchObject({ available: 10, incoming: 0, unitsOut: 56, velocity: 2, daysCover: 5, leadDays: 7, reorderPoint: 28, suggested: 74 - 10,
+      supplier: { id: supplier, name: "Alex Textiles", currency: "EGP" }, lastUnitCost: { amount: "80.00", currency: "EGP" } });
+    await http().get("/v1/reorder-suggestions").set(as("keeper")).expect(403);
+    expect((await http().get(`/v1/reorder-suggestions?supplierId=${supplier}`).set(as("owner")).expect(200)).body.data.map((x: { sku: string }) => x.sku)).toContain("RO-1");
+
+    const reorder = app.get(ReorderService);
+    expect(await reorder.flag(store)).toBeGreaterThanOrEqual(1);
+    expect(await reorder.flag(store)).toBe(0); // once per crossing
+    const events = await db.tenant(store, async (trx) => trx.selectFrom("domain_events").select(["entity_id", "data"]).where("type", "=", "stock.reorder_suggested").where("entity_id", "=", variant).execute());
+    expect(events).toHaveLength(1);
+    expect(events[0]!.data).toMatchObject({ sku: "RO-1", suggested: 64, reorderPoint: 28 });
+
+    const draft = (await http().post("/v1/purchase-orders/from-suggestions").set(as("opsman")).send({ supplierId: supplier, items: [{ variantId: variant, quantity: 64 }] }).expect(201)).body;
+    expect(draft).toMatchObject({ status: "draft", units: 64, total: { amount: "5120.00", currency: "EGP" } });
+    expect(draft.lines[0]).toMatchObject({ sku: "RO-1", quantity: 64, unitCost: { amount: "80.00" } });
+    // Approved, it is on its way: no longer due, and the flag clears.
+    await http().post(`/v1/purchase-orders/${draft.id}/approve`).set(as("owner")).expect(200);
+    expect((await http().get("/v1/reorder-suggestions").set(as("owner")).expect(200)).body.data.find((x: { sku: string }) => x.sku === "RO-1")).toBeUndefined();
+    await reorder.flag(store);
+    const flagged = await db.tenant(store, async (trx) => trx.selectFrom("stock_levels").select("reorder_flagged_at").where("variant_id", "=", variant).executeTakeFirstOrThrow());
+    expect(flagged.reorder_flagged_at).toBeNull();
   });
 });

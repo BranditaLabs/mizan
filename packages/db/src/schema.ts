@@ -1086,6 +1086,7 @@ export interface StockLevels {
   low_stock_at: number | null;
   updated_at: Generated<Timestamp>;
   bin: string | null;
+  reorder_flagged_at: Timestamp | null;
 }
 
 export interface StockMovements {
@@ -1252,6 +1253,7 @@ export interface Variants {
   available: number | null;
   available_at: Timestamp | null;
   barcode_set_at: Timestamp | null;
+  reorder_pack_size: number | null;
 }
 
 export interface Warehouses {
