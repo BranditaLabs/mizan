@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale } from "next-intl";
-import { useRef, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 import { cx, moveIndex } from "./logic";
 
 /** Checkbox (16px, ink when checked) with its label (components.md §3). `indeterminate` for "some rows". */
@@ -40,6 +40,30 @@ export function Switch({ label, description, className, ...input }: Omit<InputHT
  * Segmented control (`.mz-segmented`): 2–4 exclusive views. A radio group for assistive tech;
  * arrow keys move the choice (and follow the screen in right-to-left).
  */
+/**
+ * The thumb under a segmented control's chosen option (Mizan Glass "seg-thumb"): it springs to the
+ * option when the choice changes and follows it when sizes or the language change. Place it as the
+ * group's first child; `index` is the chosen option's position among the buttons.
+ */
+export function SegThumb({ index }: { index: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [box, setBox] = useState<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const thumb = ref.current;
+    const group = thumb?.parentElement;
+    if (!thumb || !group) return;
+    const measure = () => {
+      const b = group.querySelectorAll<HTMLElement>(":scope > button")[index];
+      setBox(b ? { x: b.offsetLeft, w: b.offsetWidth } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(group);
+    return () => ro.disconnect();
+  }, [index]);
+  return <span ref={ref} className="mz-seg-thumb" aria-hidden="true" style={box ? { width: box.w, transform: `translateX(${box.x}px)` } : { opacity: 0 }} />;
+}
+
 export function Segmented<V extends string>({ label, value, options, onChange, className }:
   { label: string; value: V; options: ReadonlyArray<{ value: NoInfer<V>; label: ReactNode; lang?: string }>; onChange(v: NoInfer<V>): void; className?: string }) {
   const rtl = useLocale() === "ar";
@@ -54,6 +78,7 @@ export function Segmented<V extends string>({ label, value, options, onChange, c
   };
   return (
     <div role="radiogroup" aria-label={label} className={cx("mz-segmented", className)} onKeyDown={onKey}>
+      {current >= 0 ? <SegThumb index={current} /> : null}
       {options.map((o, i) => (
         <button key={o.value} ref={(el) => { refs.current[i] = el; }} type="button" role="radio" lang={o.lang}
           aria-checked={o.value === value} tabIndex={o.value === value ? 0 : -1}

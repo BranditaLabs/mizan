@@ -287,3 +287,10 @@
   .mz-scroll { animation: mz-scroll-fade linear both; animation-timeline: scroll(self); }
 }
 @keyframes mz-scroll-fade { 0% { --_fade-top: 0px; --_fade-end: 24px; } 8% { --_fade-top: 24px; } 92% { --_fade-end: 24px; } 100% { --_fade-top: 24px; --_fade-end: 0px; } }
+/* Segmented: a thumb slides under the chosen option (SegThumb sets its offset and width). */
+.mz-segmented { position: relative; }
+.mz-segmented > button { position: relative; z-index: 1; }
+.mz-seg-thumb { position: absolute; inset-block: 3px; left: 0; border-radius: 4px; background: var(--mz-surface); box-shadow: 0 0 0 1px var(--mz-line-strong); pointer-events: none;
+  transition: transform 450ms cubic-bezier(.34, 1.56, .64, 1), width 450ms var(--mz-ease-enter); }
+.mz-segmented:has(> .mz-seg-thumb) > button[aria-pressed="true"], .mz-segmented:has(> .mz-seg-thumb) > button[aria-checked="true"] { background: transparent; box-shadow: none; color: var(--mz-text); }
+@media (prefers-reduced-motion: reduce) { .mz-seg-thumb { transition-duration: 1ms; } }

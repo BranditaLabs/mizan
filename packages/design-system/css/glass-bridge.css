@@ -85,7 +85,16 @@
 .mzg .mz-segmented { padding: 4px; border-radius: 13px; background: var(--glass-2); border-color: var(--line); }
 .mzg .mz-segmented button { height: 30px; border-radius: 9px; color: var(--fg-3); }
 .mzg .mz-segmented button[aria-pressed="true"] { background: var(--glass-3); color: var(--fg); box-shadow: inset 0 1px 0 var(--edge-in), 0 0 0 1px var(--line-2), 0 6px 14px -8px rgba(0, 0, 0, .6); }
+.mzg .mz-segmented button[aria-checked="true"] { background: var(--glass-3); color: var(--fg); box-shadow: inset 0 1px 0 var(--edge-in), 0 0 0 1px var(--line-2); }
 .mzg.light .mz-segmented button[aria-pressed="true"], .mzg.light .mz-segmented [role="radio"][aria-checked="true"] { background: #fff; }
+.mzg .mz-seg-thumb { inset-block: 4px; border-radius: 9px; background: var(--glass-3); border: 1px solid var(--line-2); box-shadow: inset 0 1px 0 var(--edge-in), 0 6px 14px -8px rgba(0, 0, 0, .6); }
+.mzg.light .mz-seg-thumb { background: #fff; }
+.mzg .mz-segmented:has(> .mz-seg-thumb) > button[aria-checked="true"], .mzg .mz-segmented:has(> .mz-seg-thumb) > button[aria-pressed="true"] { background: transparent; box-shadow: none; }
+/* Light under the pointer on glass cards (GlassRoot sets --mx/--my). */
+.mzg .mz-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .4s var(--ease-out);
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, .07), transparent 42%); }
+.mzg.light .mz-card::after { background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(255, 255, 255, .65), transparent 42%); }
+@media (hover: hover) and (pointer: fine) { .mzg .mz-card:hover::after { opacity: 1; } }
 
 .mzg .mz-badge { height: 26px; padding-inline: 11px; background: var(--glass-2); color: var(--fg-2); border: 1px solid var(--line); }
 .mzg .mz-badge::before { box-shadow: 0 0 8px currentColor; }

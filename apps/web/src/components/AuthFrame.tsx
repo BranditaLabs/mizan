@@ -43,7 +43,7 @@ export function AuthSplit({ theme, showcase, compactShowcase, children }: { them
           <span className="hidden sm:contents"><ThemeSwitch initial={theme} /></span>
         </header>
         <main id="main" className="flex flex-1 items-center justify-center px-4 pt-4 pb-10 md:px-8">
-          <div className="w-full max-w-[400px]">{children}</div>
+          <div className="g w-full max-w-[440px] p-6 sm:p-8">{children}</div>
         </main>
         <div className="px-4 pb-8 lg:hidden">
           <GlassRoot ink fields={false} className="g mx-auto max-w-[400px] overflow-hidden p-2 text-rail-text">{compactShowcase}</GlassRoot>

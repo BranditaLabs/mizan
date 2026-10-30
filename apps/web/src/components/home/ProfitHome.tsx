@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { buttonClass } from "@/components/ui/Button";
+import { SegThumb } from "@/components/ui/Choice";
 import { ScaleLoader } from "@/components/ui/Loader";
 import { MoneyText } from "@/components/ui/Values";
 import { GlassRoot } from "@/components/GlassRoot";
@@ -80,6 +81,7 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
           </div>
         </div>
         <nav aria-label={t("period.label")} className="mz-segmented">
+          <SegThumb index={PERIODS.indexOf(days)} />
           {PERIODS.map((d) => (
             <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)}>{t("period.days", { days: d })}</button>
           ))}
