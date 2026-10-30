@@ -1,0 +1,43 @@
+name: mizan_ops
+description: "Mizan ops app: warehouse, agents, receiving (offline-first)"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.13.7 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  drift: 2.35.3
+  path_provider: 2.1.6
+  path: 1.9.1
+  http: 1.6.0
+  uuid: 4.6.0
+  intl: 0.20.3
+  flutter_localizations:
+    sdk: flutter
+  sqlite3: 3.8.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: 6.0.0
+  drift_dev: 2.35.2
+  build_runner: 2.17.1
+flutter:
+  uses-material-design: true
+  generate: true
+  # The Brandita fonts (packages/design-system/fonts/ttf), copied into assets/fonts.
+  fonts:
+    - family: Geist
+      fonts: [{asset: assets/fonts/Geist-Regular.ttf, weight: 400}, {asset: assets/fonts/Geist-Medium.ttf, weight: 500}, {asset: assets/fonts/Geist-SemiBold.ttf, weight: 600}, {asset: assets/fonts/Geist-Bold.ttf, weight: 700}]
+    - family: GeistMono
+      fonts: [{asset: assets/fonts/GeistMono-Regular.ttf, weight: 400}, {asset: assets/fonts/GeistMono-Medium.ttf, weight: 500}, {asset: assets/fonts/GeistMono-SemiBold.ttf, weight: 600}]
+    - family: Alexandria
+      fonts: [{asset: assets/fonts/Alexandria-Medium.ttf, weight: 500}, {asset: assets/fonts/Alexandria-SemiBold.ttf, weight: 600}, {asset: assets/fonts/Alexandria-Bold.ttf, weight: 700}, {asset: assets/fonts/Alexandria-ExtraBold.ttf, weight: 800}]
+    - family: IBMPlexSansArabic
+      fonts: [{asset: assets/fonts/IBMPlexSansArabic-Regular.ttf, weight: 400}, {asset: assets/fonts/IBMPlexSansArabic-Medium.ttf, weight: 500}, {asset: assets/fonts/IBMPlexSansArabic-SemiBold.ttf, weight: 600}, {asset: assets/fonts/IBMPlexSansArabic-Bold.ttf, weight: 700}]

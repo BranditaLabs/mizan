@@ -74,4 +74,4 @@ WCAG 2.2 AA contrast for text and status pills in both themes; status never by c
 
 ## 7. Ops app (Flutter)
 
-Same tokens: `packages/design-system/dist/mizan_tokens.dart` (`mizanLightTheme`, `mizanDarkTheme`, colours, type, spacing, radius, motion) and the TTF fonts in `packages/design-system/fonts/ttf` (pubspec in its README). Material 3 with custom theme; `Directionality` from user language; `intl` + ARB files for strings. Offline-first: local SQLite (drift) queue of operations with `opId`; sync via `POST /v1/ops/sync`; conflict = server wins, user told.
+Same tokens: `packages/design-system/dist/mizan_tokens.dart` (`mizanLightTheme`, `mizanDarkTheme`, colours, type, spacing, radius, motion) and the TTF fonts in `packages/design-system/fonts/ttf` (pubspec in its README). Material 3 with custom theme; `Directionality` from user language; `intl` + ARB files for strings. Offline-first: local SQLite (drift) queue of operations with `opId`; sync via `POST /v1/ops/sync`; conflict = server wins, user told. ✅ E8-4a in `apps/ops` (the theme and fonts are copied there; a test keeps them current).

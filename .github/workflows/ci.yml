@@ -135,6 +135,29 @@ jobs:
         if: always()
         run: docker compose -p mizan down -v
 
+  ops-app:
+    name: Ops app (Flutter analyze and tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FLUTTER_VERSION: 3.47.9
+    defaults:
+      run:
+        working-directory: apps/ops
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter
+        working-directory: .
+        run: |
+          curl -sSfL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" | tar -xJ -C "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter --disable-analytics && flutter pub get
+      # Generated code (drift, l10n) is committed: it must be what the sources produce.
+      - run: dart run build_runner build --delete-conflicting-outputs && flutter gen-l10n && git diff --exit-code -- lib
+      - run: flutter analyze
+      # The offline queue and sync (incl. chaos at 10/25/50 %), the screens in Arabic and English.
+      - run: flutter test
+
   secrets-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
