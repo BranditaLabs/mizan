@@ -1457,6 +1457,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attribution/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttributionController_sources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/attribution/sources/backfill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AttributionController_backfill"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/picklists": {
         parameters: {
             query?: never;
@@ -3040,6 +3072,11 @@ export interface components {
         };
         AutomationPatch: {
             enabled: boolean;
+        };
+        BackfillSources: {
+            /** @description Store connections whose recent orders are read again */
+            connections: number;
+            days: number;
         };
         BostaKey: {
             /** @description From Bosta's dashboard (Settings → API integration); stored encrypted, never shown again */
@@ -5117,6 +5154,33 @@ export interface components {
              */
             stock: "reserved" | "short" | "untracked" | null;
             externalId: string | null;
+            /** @description Where the order came from (M7-2); null until it is known */
+            source: {
+                /** @enum {string} */
+                platform: "meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown";
+                paid: boolean | null;
+                /**
+                 * @description Which evidence decided: click_id, utm, referrer, store, channel, none
+                 * @enum {string}
+                 */
+                rule: "click_id" | "utm" | "referrer" | "store" | "channel" | "none";
+                utm: {
+                    source: string | null;
+                    medium: string | null;
+                    campaign: string | null;
+                    content: string | null;
+                    term: string | null;
+                };
+                /** @description fbclid, gclid, ttclid… (the id itself is not shown) */
+                clickIdKind: string | null;
+                referrerDomain: string | null;
+                landingPath: string | null;
+                /** @enum {string|null} */
+                firstPlatform: "meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown" | null;
+                /** Format: date-time */
+                firstSeenAt: string | null;
+                discountCodes: string[];
+            } | null;
             currency: string;
             subtotal: {
                 amount: string;
@@ -5539,6 +5603,77 @@ export interface components {
         OrderSettings: {
             /** @description An order of the same customer with the same product within this many hours of another is a likely duplicate; 0 turns detection off (at most 7 days) */
             duplicateWindowHours: number;
+        };
+        OrderSources: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            currency: string;
+            orders: number;
+            /** @description Orders with a known source (not unknown or direct), percent */
+            attributedShare: string | null;
+            /** @description Most orders first; orders with no source are always shown as unknown */
+            byPlatform: {
+                orders: number;
+                delivered: number;
+                /** @description Cancelled after shipping, refused or returned */
+                lost: number;
+                placed: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Paid, or cash delivered, less refunds */
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Delivered ÷ (delivered + lost), percent */
+                deliveredRate: string | null;
+                /** @enum {string} */
+                platform: "meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown";
+                /** @description Of these, from a paid ad */
+                paid: number;
+                share: string | null;
+                /** @description Ad spend recorded for this platform in the period */
+                spend: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description Real money ÷ spend, when spend is recorded */
+                trueRoas: string | null;
+            }[];
+            /** @description UTM campaigns, most orders first (top 20) */
+            campaigns: {
+                orders: number;
+                delivered: number;
+                /** @description Cancelled after shipping, refused or returned */
+                lost: number;
+                placed: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Paid, or cash delivered, less refunds */
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Delivered ÷ (delivered + lost), percent */
+                deliveredRate: string | null;
+                /** @enum {string} */
+                platform: "meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown";
+                campaign: string;
+            }[];
         };
         PartialDelivered: {
             /** Format: uuid */
@@ -13525,6 +13660,87 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttributionController_sources: {
+        parameters: {
+            query?: {
+                /** @description The last 7, 14, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The period's orders by source platform and UTM campaign: delivery, real money, profit, and true ROAS where spend is recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderSources"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttributionController_backfill: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Read the stores' recent orders again so each one's source is captured (Shopify: the last 60 days) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackfillSources"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

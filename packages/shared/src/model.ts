@@ -7,6 +7,8 @@
  * one adapter instead of leaking across the product.
  */
 
+import type { OrderSourceHints } from "./attribution.js";
+
 export type ConnectorId = "shopify" | "bosta" | (string & {});
 
 export interface Money {
@@ -88,6 +90,8 @@ export interface CanonicalOrder {
   lines: OrderLine[];
   fulfillmentGroups: FulfillmentGroup[];
   tags: string[];
+  /** Where the order came from, as the store recorded it (M7-2); resolved by `resolveOrderSource`. */
+  source?: OrderSourceHints;
   /** Raw payload kept for audit and for re-mapping after an adapter fix. */
   raw?: unknown;
 }

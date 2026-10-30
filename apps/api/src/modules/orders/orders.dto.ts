@@ -1,4 +1,5 @@
 import { MoneySchema } from "@mizan/shared";
+import { OrderSourceSchema } from "../attribution/attribution.dto.js";
 import { z } from "zod";
 import { MANUAL_PAYMENT_MODES, MONEY_IN_METHODS, ORDER_SOURCES } from "./manual-order.js";
 import { BULK_ACTIONS, CANCEL_REASONS } from "./bulk.service.js";
@@ -92,6 +93,7 @@ export const OrderEventSchema = z.object({
  */
 export const OrderDetailSchema = OrderSummarySchema.extend({
   externalId: z.string().nullable(),
+  source: OrderSourceSchema.nullable().describe("Where the order came from (M7-2); null until it is known"),
   currency: z.string(),
   subtotal: MoneyLine,
   shipping: MoneyLine,

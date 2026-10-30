@@ -22,6 +22,16 @@ interface Order {
   lines: Array<{ id: string; title: string; sku: string; quantity: number; price: string }>;
   fulfillmentOrders: Array<{ id: string; status: string }>;
   fulfillments: Array<{ id: string; status: string; trackingInfo: Array<{ company: string; number: string; url?: string }>; events?: Array<{ id: string; status: string; happenedAt: string; message?: string }> }>;
+  /** Where the order came from (M7-2), as Shopify reports it. */
+  source?: OrderSource;
+}
+
+type Visit = { landingPage?: string | null; referrerUrl?: string | null; source?: string; sourceType?: string | null; occurredAt?: string; utmParameters?: { source?: string; medium?: string; campaign?: string; content?: string; term?: string } | null };
+export interface OrderSource {
+  journey?: { ready: boolean; firstVisit?: Visit | null; lastVisit?: Visit | null } | null;
+  discountCodes?: string[];
+  customAttributes?: Array<{ key: string; value: string }>;
+  sourceName?: string;
 }
 
 export class FakeShopify {
@@ -50,6 +60,8 @@ export class FakeShopify {
   bucket = { max: 1000, available: 1000, restore: 100, last: 0 };
   costPerCall = 10;
   rejectFields = new Set<string>();
+  /** Fields this app may not read (a missing scope or protected data level): Shopify nulls them and answers ACCESS_DENIED. */
+  denyFields = new Set<string>();
   dropPaths = new Set<string>();
   /** FulfillmentEventStatus values this API version accepts (an older one lacks CARRIER_PICKED_UP). */
   eventStatuses = new Set(["CONFIRMED", "LABEL_PRINTED", "CARRIER_PICKED_UP", "IN_TRANSIT", "OUT_FOR_DELIVERY", "ATTEMPTED_DELIVERY", "DELIVERED", "FAILURE", "DELAYED", "READY_FOR_PICKUP"]);
@@ -87,7 +99,7 @@ export class FakeShopify {
    * balance COD), "bnpl" (Tabby), "bank" (bank transfer, unpaid until paid()), "manual" (unrecognised method).
    * `cod: false` is kept as a shorthand for "card".
    */
-  addOrder(o: Partial<{ city: string; province: string; phone: string; cod: boolean; payment: "cod" | "card" | "deposit" | "bnpl" | "bank" | "manual"; tags: string[]; total: string; name: string; createdAt: string }> = {}) {
+  addOrder(o: Partial<{ city: string; province: string; phone: string; cod: boolean; payment: "cod" | "card" | "deposit" | "bnpl" | "bank" | "manual"; tags: string[]; total: string; name: string; createdAt: string; source: OrderSource }> = {}) {
     const id = this.nextId("Order");
     const now = this.touch();
     const payment = o.payment ?? (o.cod === false ? "card" : "cod");
@@ -114,6 +126,7 @@ export class FakeShopify {
       lines: [{ id: this.nextId("LineItem"), title: "Vitamin C serum 30 ml", sku: "SER-30", quantity: 2, price: "575.00" }],
       fulfillmentOrders: [{ id: this.nextId("FulfillmentOrder"), status: "OPEN" }],
       fulfillments: [],
+      ...(o.source ? { source: o.source } : {}),
     };
     this.orders.set(id, order);
     return order;
@@ -266,8 +279,31 @@ export class FakeShopify {
       throw err;
     }
     if (fault === "lost") return hang(init);
+    // Like GraphQL, only what was asked for: a query without the source fields gets none.
+    const unasked = new Set(["customerJourneySummary", "discountCodes", "customAttributes", "sourceName"].filter((f) => !query.includes(f)));
+    if (unasked.size) data = this.nullFields(data, unasked, true);
+    const denied = [...this.denyFields].filter((f) => query.includes(f));
+    if (denied.length) {
+      const errors = denied.map((f) => ({ message: `Access denied for ${f} field.`, path: [op === "MizanOrders" ? "orders" : "order", f], extensions: { code: "ACCESS_DENIED" } }));
+      return json(200, { data: this.drop(this.nullFields(data, new Set(denied))), errors, extensions: this.cost() }, headers);
+    }
     return json(200, { data: this.drop(data), extensions: this.cost() }, headers);
   };
+
+  private nullFields(data: unknown, fields: Set<string>, remove = false): unknown {
+    const clone = structuredClone(data);
+    const walk = (o: unknown) => {
+      if (Array.isArray(o)) return o.forEach(walk);
+      if (!o || typeof o !== "object") return;
+      for (const k of Object.keys(o as Record<string, unknown>)) {
+        if (fields.has(k) && remove) delete (o as Record<string, unknown>)[k];
+        else if (fields.has(k)) (o as Record<string, unknown>)[k] = null;
+        else walk((o as Record<string, unknown>)[k]);
+      }
+    };
+    walk(clone);
+    return clone;
+  }
 
   private drop(data: unknown) {
     if (!this.dropPaths.size) return data;
@@ -303,6 +339,8 @@ export class FakeShopify {
       lineItems: { nodes: o.lines.map((l) => ({ id: l.id, title: l.title, sku: l.sku, quantity: l.quantity, variant: this.variantBySku(l.sku), originalUnitPriceSet: m(l.price) })) },
       fulfillmentOrders: { nodes: o.fulfillmentOrders.map((f) => ({ id: f.id, status: f.status, lineItems: { nodes: o.lines.map((l) => ({ id: `${f.id}-${l.id}`, lineItem: { id: l.id } })) } })) },
       fulfillments: o.fulfillments,
+      sourceName: o.source?.sourceName ?? "web", discountCodes: o.source?.discountCodes ?? [], customAttributes: o.source?.customAttributes ?? [],
+      customerJourneySummary: o.source?.journey ?? { ready: false, firstVisit: null, lastVisit: null },
     };
   }
 

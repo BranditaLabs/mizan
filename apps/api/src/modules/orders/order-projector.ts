@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import { cashToCollect, type ShipBlockReason } from "@mizan/engine";
-import { normalizePhone, toAsciiDigits, toMinor, type CanonicalOrder } from "@mizan/shared";
+import { normalizePhone, resolveOrderSource, toAsciiDigits, toMinor, type CanonicalOrder } from "@mizan/shared";
 import { phoneCountryOf } from "../../platform/pii/phone-country.js";
 import { Database } from "../../platform/db/database.js";
 import { DuplicatesService } from "./duplicates.service.js";
@@ -124,6 +124,7 @@ export class OrderProjector {
         ...values, status: order.cancelled ? "cancelled" : "new", placed_at: order.createdAt, ...(opts.channel ? { channel: opts.channel } : {}),
       }).returning(["id", "status"]).executeTakeFirstOrThrow();
       await this.syncLines(trx, tenantId, row.id, order, opts.variantIds);
+      await this.syncSource(trx, tenantId, row.id, order, opts, false);
       await this.ledger.syncStore(trx, tenantId, row.id, connectionId, this.ledgerSource(order), { ...money(values), previous_status: values.payment_status });
       if (customerId) {
         await trx.updateTable("customers").set((eb) => ({ orders_count: eb("orders_count", "+", 1) })).where("id", "=", customerId).execute();
@@ -153,6 +154,7 @@ export class OrderProjector {
       ...(status === "cancelled" && existing.status !== "cancelled" ? { cancelled_at: new Date() } : {}),
     }).where("id", "=", existing.id).execute();
     await this.syncLines(trx, tenantId, existing.id, order);
+    await this.syncSource(trx, tenantId, existing.id, order, opts, redacted);
 
     if (changed.some((c) => PAYMENT_FIELDS.has(c))) {
       await trx.insertInto("order_events").values({
@@ -254,6 +256,28 @@ export class OrderProjector {
   }
 
   /** Lines follow the store: update by external line id, add new ones, remove vanished ones. */
+  /**
+   * Where the order came from (M7-2), resolved from the store's hints by the ranked rules. Orders the
+   * team typed in carry what the team said (Instagram, WhatsApp, walk-in…), else "manual". A later read with nothing to go on never erases an earlier answer
+   * (Shopify's journey can arrive after the order). A redacted order keeps no click id.
+   */
+  private async syncSource(trx: Transaction<DB>, tenantId: string, orderId: string, order: CanonicalOrder, opts: ProjectOptions, redacted: boolean) {
+    const s = resolveOrderSource(order.source ?? (opts.channel === "manual" ? { channel: "manual" } : undefined));
+    const row = {
+      platform: s.platform, paid: s.paid, rule: s.rule,
+      utm_source: s.utm.source ?? null, utm_medium: s.utm.medium ?? null, utm_campaign: s.utm.campaign ?? null,
+      utm_content: s.utm.content ?? null, utm_term: s.utm.term ?? null, utm_id: s.utm.id ?? null,
+      click_id_kind: !redacted && s.clickId ? s.clickId.kind : null, click_id: !redacted && s.clickId ? s.clickId.value : null,
+      referrer_domain: s.referrerDomain ?? null, landing_path: s.landingPath ?? null,
+      first_platform: s.firstPlatform ?? null, first_seen_at: s.firstSeenAt ? new Date(s.firstSeenAt) : null,
+      discount_codes: s.discountCodes, updated_at: new Date(),
+    };
+    const insert = trx.insertInto("order_sources").values({ tenant_id: tenantId, order_id: orderId, ...row });
+    await (s.rule === "none"
+      ? insert.onConflict((oc) => oc.columns(["tenant_id", "order_id"]).doNothing())
+      : insert.onConflict((oc) => oc.columns(["tenant_id", "order_id"]).doUpdateSet(row))).execute();
+  }
+
   private async syncLines(trx: Transaction<DB>, tenantId: string, orderId: string, order: CanonicalOrder, picked?: Record<string, string>) {
     const current = await trx.selectFrom("order_lines").select(["id", "external_line_id"]).where("order_id", "=", orderId).execute();
     const byExt = new Map(current.map((l) => [l.external_line_id, l.id]));

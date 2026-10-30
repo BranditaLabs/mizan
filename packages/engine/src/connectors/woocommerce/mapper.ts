@@ -1,5 +1,5 @@
-import type { Address, CanonicalOrder, CanonicalProduct, Money, PaymentMode, PaymentStatus } from "@mizan/shared";
-import { fromMinor, toMinor } from "@mizan/shared";
+import type { Address, CanonicalOrder, CanonicalProduct, Money, OrderSourceHints, PaymentMode, PaymentStatus } from "@mizan/shared";
+import { fromMinor, sourceAttributes, toMinor } from "@mizan/shared";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
 import { PAYMENT_PATTERNS } from "../shopify/mapper.js";
@@ -153,8 +153,38 @@ export function mapWooOrder(raw: unknown, ctx: WooMapCtx): CanonicalOrder {
     lines,
     fulfillmentGroups: [],
     tags: [],
+    ...sourceHints(r),
     raw,
   };
+}
+
+/**
+ * Where the order came from (M7-2): WooCommerce's order attribution (8.5+) keeps the session's
+ * source in order meta (`_wc_order_attribution_*`); older stores often have plugin `utm_*` meta.
+ */
+function sourceHints(r: Resolver): { source?: OrderSourceHints } {
+  const meta = new Map<string, string>();
+  for (const m of r.arr<{ key?: unknown; value?: unknown }>("meta_data", ["meta_data"])) {
+    if (typeof m?.key === "string" && (typeof m.value === "string" || typeof m.value === "number")) meta.set(m.key.toLowerCase(), String(m.value));
+  }
+  // "(direct)" / "(none)" are WooCommerce's placeholders for "no value".
+  const attr = (k: string) => { const v = meta.get(`_wc_order_attribution_${k}`)?.trim(); return v && !/^\(.*\)$/.test(v) ? v : undefined; };
+  const type = attr("source_type");
+  const utm = { source: attr("utm_source"), medium: attr("utm_medium"), campaign: attr("utm_campaign"), content: attr("utm_content"), term: attr("utm_term"), id: attr("utm_id") };
+  const visit = {
+    ...(attr("session_entry") ? { landingUrl: attr("session_entry") } : {}), ...(attr("referrer") ? { referrerUrl: attr("referrer") } : {}),
+    ...(type ? { sourceType: type } : {}), ...(attr("session_start_time") ? { occurredAt: attr("session_start_time") } : {}),
+    ...(Object.values(utm).some(Boolean) ? { utm } : {}),
+  };
+  // "admin" orders were typed in the dashboard.
+  const channel = type === "admin" ? "admin" : type === "mobile_app" ? "mobile_app" : r.str("created_via", ["created_via"]);
+  const codes = r.arr<unknown>("coupon_lines", ["coupon_lines"]).map((c) => r.child(c).str("code", ["code"]) ?? "").filter(Boolean);
+  const attributes = sourceAttributes([...meta.entries()].map(([key, value]) => ({ key: key.replace(/^_/, ""), value })));
+  const hints: OrderSourceHints = {
+    ...(Object.keys(visit).length ? { lastVisit: visit } : {}), ...(channel ? { channel } : {}),
+    ...(codes.length ? { discountCodes: codes } : {}), ...(attributes ? { attributes } : {}),
+  };
+  return Object.keys(hints).length ? { source: hints } : {};
 }
 
 /** "575" / 575.5 → "575.00" / "575.50" in the currency's minor units. */

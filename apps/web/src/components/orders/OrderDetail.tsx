@@ -23,6 +23,7 @@ import { RefundsCard } from "@/components/payments/Refunds";
 import { ConversionCard } from "./ConversionCard";
 import { ReturnsCard } from "./ReturnsCard";
 import { ShippingCard } from "./ShippingCard";
+import { SourceCard } from "./SourceCard";
 import { ExchangeCard } from "./ExchangeCard";
 import { DoorCard } from "./DoorCard";
 import { ProfitCard } from "./ProfitCard";
@@ -185,6 +186,7 @@ export function OrderDetail({ id }: { id: string }) {
           <CustomerCard order={o} />
           <ConfirmationCard orderId={o.id} orderStatus={o.status} />
           <TicketsCard order={{ id: o.id, number: o.number }} />
+          <SourceCard source={o.source} />
           <Card title={t("detail.risk.title")}>
             {o.risk === null ? <p className="text-body-sm text-text-2">{t("detail.risk.notScored")}</p> : (
               <div className="flex flex-col gap-2">

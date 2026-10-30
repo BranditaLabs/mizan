@@ -3618,7 +3618,7 @@
       "snapchat": "Snapchat",
       "other": "Other"
     },
-    "perCampaignSoon": "ROAS per platform and campaign comes once orders carry their ad source (UTM and click id), the next step.",
+    "perCampaignSoon": "Each order's source is below. ROAS per campaign needs spend per campaign (the CSV with campaign columns), the next step.",
     "ordersTitle": "These days' orders",
     "orders": {
       "placed": "Placed",
@@ -3630,5 +3630,80 @@
     },
     "note": "Orders count on the day they were placed, like the profit screen. Money that arrived = paid before delivery, or cash delivered, less refunds.",
     "timesUnit": "×"
+  },
+  "sources": {
+    "title": "Where orders came from",
+    "subtitle": "Each order's source from the store's own records: the ad click, the campaign tags, the site that sent the visitor.",
+    "known": "We know the source of <b>{pct}</b>% of the <b>{orders}</b> orders placed in these days.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load where orders came from.",
+    "none": "—",
+    "times": "<n>{v}</n>×",
+    "pct": "{pct}%",
+    "paidOf": "{n} from ads",
+    "platformsTitle": "By source",
+    "campaignsTitle": "By campaign",
+    "col": {
+      "platform": "Source",
+      "orders": "Orders",
+      "share": "Share",
+      "delivered": "Delivered",
+      "rate": "Delivered rate",
+      "real": "Arrived",
+      "net": "Net profit",
+      "roas": "True ROAS",
+      "campaign": "Campaign"
+    },
+    "empty": {
+      "title": "No orders in these days",
+      "body": "Once orders arrive, each one's source shows here."
+    },
+    "noCampaigns": {
+      "title": "No campaign tags yet",
+      "body": "Add UTM tags to your ad links (utm_source, utm_campaign) and each campaign's orders and delivered money show here."
+    },
+    "backfill": "Read recent orders again",
+    "backfillStarted": "Reading the last {days} days of orders again. Their sources fill in over the next minutes.",
+    "backfillFailed": "Couldn't start reading orders again. Try again.",
+    "card": {
+      "title": "Where it came from",
+      "unknown": "The store didn't record where this order came from.",
+      "paid": "Ad",
+      "organic": "Organic",
+      "rule": "How we know",
+      "campaign": "Campaign",
+      "ad": "Ad",
+      "tags": "Tags",
+      "referrer": "Came from",
+      "landing": "Landed on",
+      "first": "First visit from",
+      "codes": "Codes",
+      "rules": {
+        "click_id": "Ad click",
+        "utm": "Campaign tags",
+        "referrer": "The site that sent them",
+        "store": "The store's records",
+        "channel": "Sales channel",
+        "none": "Nothing recorded"
+      }
+    },
+    "platform": {
+      "meta": "Meta (Facebook, Instagram)",
+      "tiktok": "TikTok",
+      "snapchat": "Snapchat",
+      "google": "Google",
+      "microsoft": "Microsoft Bing",
+      "x": "X (Twitter)",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "sms": "SMS",
+      "search": "Other search",
+      "social": "Other social",
+      "referral": "Another website",
+      "direct": "Direct visit",
+      "pos": "In store",
+      "manual": "Typed by the team",
+      "unknown": "Unknown"
+    }
   }
 }

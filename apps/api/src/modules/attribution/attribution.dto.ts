@@ -1,4 +1,4 @@
-import { MoneySchema } from "@mizan/shared";
+import { MoneySchema, SOURCE_PLATFORMS, SOURCE_RULES } from "@mizan/shared";
 import { z } from "zod";
 import { AD_PLATFORMS } from "../profit/ads/ad-spend.csv.js";
 
@@ -27,3 +27,30 @@ export const RoasSchema = z.object({
   days: z.array(z.object({ day: z.iso.date(), spend: MoneySchema, orders: z.number().int(), delivered: z.number().int(), real: MoneySchema, trueRoas: Multiple })),
 });
 export type Roas = z.infer<typeof RoasSchema>;
+
+const SourceRow = z.object({
+  orders: z.number().int(), delivered: z.number().int(), lost: z.number().int().describe("Cancelled after shipping, refused or returned"),
+  placed: MoneySchema, real: MoneySchema.describe("Paid, or cash delivered, less refunds"), net: MoneySchema.describe("Net profit of these orders"),
+  deliveredRate: z.string().nullable().describe("Delivered ÷ (delivered + lost), percent"),
+});
+export const OrderSourcesSchema = z.object({
+  from: z.iso.date(), to: z.iso.date(), currency: z.string(),
+  orders: z.number().int(), attributedShare: z.string().nullable().describe("Orders with a known source (not unknown or direct), percent"),
+  byPlatform: z.array(SourceRow.extend({
+    platform: z.enum(SOURCE_PLATFORMS), paid: z.number().int().describe("Of these, from a paid ad"),
+    share: z.string().nullable(), spend: MoneySchema.nullable().describe("Ad spend recorded for this platform in the period"),
+    trueRoas: z.string().nullable().describe("Real money ÷ spend, when spend is recorded"),
+  })).describe("Most orders first; orders with no source are always shown as unknown"),
+  campaigns: z.array(SourceRow.extend({ platform: z.enum(SOURCE_PLATFORMS), campaign: z.string() })).describe("UTM campaigns, most orders first (top 20)"),
+});
+export type OrderSources = z.infer<typeof OrderSourcesSchema>;
+
+export const OrderSourceSchema = z.object({
+  platform: z.enum(SOURCE_PLATFORMS), paid: z.boolean().nullable(), rule: z.enum(SOURCE_RULES).describe("Which evidence decided: click_id, utm, referrer, store, channel, none"),
+  utm: z.object({ source: z.string().nullable(), medium: z.string().nullable(), campaign: z.string().nullable(), content: z.string().nullable(), term: z.string().nullable() }),
+  clickIdKind: z.string().nullable().describe("fbclid, gclid, ttclid… (the id itself is not shown)"),
+  referrerDomain: z.string().nullable(), landingPath: z.string().nullable(),
+  firstPlatform: z.enum(SOURCE_PLATFORMS).nullable(), firstSeenAt: z.iso.datetime().nullable(), discountCodes: z.array(z.string()),
+});
+
+export const BackfillSourcesSchema = z.object({ connections: z.number().int().describe("Store connections whose recent orders are read again"), days: z.number().int() });

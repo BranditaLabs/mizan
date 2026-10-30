@@ -111,12 +111,13 @@ export class OrdersService {
       const o = await trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id").selectAll("o").select("c.provider")
         .where("o.id", "=", id).where((eb) => roleScope(eb, auth)).executeTakeFirst();
       if (!o) throw notFound();
-      const [lines, payments, shipments, events] = await Promise.all([
+      const [lines, payments, shipments, events, source] = await Promise.all([
         trx.selectFrom("order_lines").select(["id", "sku", "title", "quantity", "unit_price_minor", "variant_id"]).where("order_id", "=", id).orderBy("id").execute(),
         trx.selectFrom("payments").select(["id", "kind", "method", "status", "amount_minor", "currency", "occurred_at"]).where("order_id", "=", id).orderBy("occurred_at", "desc").execute(),
         trx.selectFrom("shipments").select(["id", "provider", "tracking_number", "status", "status_at", "cod_minor", "currency", "booking", "error_code", "tracking_url"]).where("order_id", "=", id).orderBy("created_at", "desc").execute(),
         trx.selectFrom("order_events").select(["id", "type", "from_status", "to_status", "actor_type", "data", "created_at"]).where("order_id", "=", id)
           .orderBy("created_at", "desc").orderBy("id", "desc").limit(200).execute(),
+        trx.selectFrom("order_sources").selectAll().where("order_id", "=", id).executeTakeFirst(),
       ]);
       const pii = o.customer_label ? await this.cipher.forTenant(trx, tenantId) : null;
       const twin = o.duplicate_of ? await trx.selectFrom("orders").select(["id", "number", "status"]).where("id", "=", o.duplicate_of).executeTakeFirst() : undefined;
@@ -137,6 +138,12 @@ export class OrdersService {
         area: { city: o.ship_city, province: o.ship_province, country: o.ship_country },
         hasLocation: o.ship_lat !== null && o.ship_lng !== null,
         redacted: o.pii_redacted_at !== null,
+        source: source ? {
+          platform: source.platform as NonNullable<OrderDetail["source"]>["platform"], paid: source.paid, rule: source.rule as NonNullable<OrderDetail["source"]>["rule"],
+          utm: { source: source.utm_source, medium: source.utm_medium, campaign: source.utm_campaign, content: source.utm_content, term: source.utm_term },
+          clickIdKind: source.click_id_kind, referrerDomain: source.referrer_domain, landingPath: source.landing_path,
+          firstPlatform: source.first_platform as NonNullable<OrderDetail["source"]>["firstPlatform"], firstSeenAt: iso(source.first_seen_at), discountCodes: source.discount_codes,
+        } : null,
         placedAt: o.placed_at.toISOString(),
         timestamps: { placedAt: o.placed_at.toISOString(), confirmedAt: iso(o.confirmed_at), shippedAt: iso(o.shipped_at), deliveredAt: iso(o.delivered_at), cancelledAt: iso(o.cancelled_at) },
         lines: lines.map((l) => ({

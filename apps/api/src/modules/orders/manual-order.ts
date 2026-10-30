@@ -1,4 +1,4 @@
-import { fromMinor, toMinor, type CanonicalOrder } from "@mizan/shared";
+import { fromMinor, toMinor, type CanonicalOrder, type OrderSourceHints } from "@mizan/shared";
 
 /**
  * A manual order (E5-5), pure: what the team typed (a phone, WhatsApp or Instagram order) becomes a
@@ -6,6 +6,12 @@ import { fromMinor, toMinor, type CanonicalOrder } from "@mizan/shared";
  * the same. Money in minor units throughout; the payment decides what the courier collects.
  */
 export const ORDER_SOURCES = ["phone", "whatsapp", "instagram", "facebook", "tiktok", "walk_in", "other"] as const;
+
+/** What the team said about where a typed-in order came from, as source hints (M7-2). */
+const SOURCE_HINTS: Record<(typeof ORDER_SOURCES)[number], OrderSourceHints> = {
+  phone: { channel: "manual" }, other: { channel: "manual" }, walk_in: { channel: "pos" }, whatsapp: { channel: "whatsapp" },
+  instagram: { lastVisit: { source: "instagram" } }, facebook: { lastVisit: { source: "facebook" } }, tiktok: { lastVisit: { source: "tiktok" } },
+};
 export const MANUAL_PAYMENT_MODES = ["cod", "prepaid", "partial", "bank_transfer"] as const;
 export const MONEY_IN_METHODS = ["wallet", "card", "instapay"] as const;
 
@@ -84,7 +90,7 @@ export function buildManualOrder(
         city: input.address.city, ...(input.address.province ? { province: input.address.province } : {}), countryCode: ctx.country,
       },
       lines: lines.map(({ unitMinor: _, ...l }) => l),
-      fulfillmentGroups: [], tags: [`source:${input.source}`],
+      fulfillmentGroups: [], tags: [`source:${input.source}`], source: SOURCE_HINTS[input.source],
     },
   };
 }

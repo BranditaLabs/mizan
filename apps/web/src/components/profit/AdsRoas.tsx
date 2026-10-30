@@ -12,6 +12,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { OrderSources } from "./OrderSources";
 
 type Roas = Schemas["Roas"];
 const PERIODS = [7, 14, 30, 90] as const;
@@ -135,6 +136,7 @@ export function AdsRoas() {
           <p className="text-caption text-text-3">{t("note")}</p>
         </>
       ) : null}
+      {r ? <OrderSources days={days} /> : null}
     </>,
   );
 }

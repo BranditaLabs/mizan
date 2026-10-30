@@ -13,6 +13,11 @@ export interface GqlOperation {
   /** Estimated cost in points, reserved in the limiter before sending. */
   cost: number;
   variants: string[];
+  /**
+   * Fields a variant may ask for that the shop can refuse (an API version without them, or access
+   * the app lacks): an error about these only moves on to the next variant instead of failing.
+   */
+  optional?: string[];
 }
 
 const MONEY = `shopMoney { amount currencyCode }`;
@@ -42,16 +47,25 @@ const ORDER_V1 = `${ORDER_CORE} customer { displayName firstName lastName email 
 /** Last resort for shops on versions without the money fields: the mapper derives amounts from status. */
 const ORDER_V2 = `${ORDER_BASE} customer { displayName firstName lastName email phone }`;
 
+/** Where the order came from (M7-2): the customer journey, codes, note attributes and the sales channel. */
+const VISIT = `landingPage referrerUrl source sourceType occurredAt utmParameters { source medium campaign content term }`;
+const ORDER_SOURCE = `sourceName discountCodes customAttributes { key value } customerJourneySummary { ready firstVisit { ${VISIT} } lastVisit { ${VISIT} } }`;
+const SOURCE_FIELDS = ["customerJourneySummary", "discountCodes", "customAttributes", "sourceName", "landingPage", "referrerUrl", "utmParameters"];
+/** With the source first; a shop that refuses those fields falls back to the variants without them. */
+const ORDER_VARIANTS = [`${ORDER_V0} ${ORDER_SOURCE}`, `${ORDER_V1} ${ORDER_SOURCE}`, ORDER_V0, ORDER_V1, ORDER_V2];
+
 export const ORDER_BY_ID: GqlOperation = {
   name: "MizanOrder",
   cost: 40,
-  variants: [ORDER_V0, ORDER_V1, ORDER_V2].map((f) => `query MizanOrder($id: ID!) { order(id: $id) { ${f} } }`),
+  variants: ORDER_VARIANTS.map((f) => `query MizanOrder($id: ID!) { order(id: $id) { ${f} } }`),
+  optional: SOURCE_FIELDS,
 };
 
 export const ORDERS_UPDATED: GqlOperation = {
   name: "MizanOrders",
   cost: 250,
-  variants: [ORDER_V0, ORDER_V1, ORDER_V2].map(
+  optional: SOURCE_FIELDS,
+  variants: ORDER_VARIANTS.map(
     (f) => `query MizanOrders($first: Int!, $after: String, $query: String) {
       orders(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
         pageInfo { hasNextPage endCursor }

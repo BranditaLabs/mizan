@@ -9479,6 +9479,158 @@
         ]
       }
     },
+    "/v1/attribution/sources": {
+      "get": {
+        "operationId": "AttributionController_sources",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "The last 7, 14, 30 or 90 store days, today included (default 30)",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "The last 7, 14, 30 or 90 store days, today included (default 30)"
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Or a range of store days (with `to`, at most 366)",
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "description": "Or a range of store days (with `to`, at most 366)"
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The period's orders by source platform and UTM campaign: delivery, real money, profit, and true ROAS where spend is recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderSources"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "attribution"
+        ]
+      }
+    },
+    "/v1/attribution/sources/backfill": {
+      "post": {
+        "operationId": "AttributionController_backfill",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Read the stores' recent orders again so each one's source is captured (Shopify: the last 60 days)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillSources"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "attribution"
+        ]
+      }
+    },
     "/v1/picklists": {
       "post": {
         "operationId": "PickingController_create",
@@ -18299,6 +18451,27 @@
         ],
         "additionalProperties": false
       },
+      "BackfillSources": {
+        "type": "object",
+        "properties": {
+          "connections": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Store connections whose recent orders are read again"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "connections",
+          "days"
+        ],
+        "additionalProperties": false
+      },
       "BostaKey": {
         "type": "object",
         "properties": {
@@ -25924,6 +26097,143 @@
             "nullable": true,
             "type": "string"
           },
+          "source": {
+            "nullable": true,
+            "description": "Where the order came from (M7-2); null until it is known",
+            "type": "object",
+            "properties": {
+              "platform": {
+                "type": "string",
+                "enum": [
+                  "meta",
+                  "tiktok",
+                  "snapchat",
+                  "google",
+                  "microsoft",
+                  "x",
+                  "whatsapp",
+                  "email",
+                  "sms",
+                  "search",
+                  "social",
+                  "referral",
+                  "direct",
+                  "pos",
+                  "manual",
+                  "unknown"
+                ]
+              },
+              "paid": {
+                "nullable": true,
+                "type": "boolean"
+              },
+              "rule": {
+                "type": "string",
+                "enum": [
+                  "click_id",
+                  "utm",
+                  "referrer",
+                  "store",
+                  "channel",
+                  "none"
+                ],
+                "description": "Which evidence decided: click_id, utm, referrer, store, channel, none"
+              },
+              "utm": {
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "medium": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "campaign": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "content": {
+                    "nullable": true,
+                    "type": "string"
+                  },
+                  "term": {
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "source",
+                  "medium",
+                  "campaign",
+                  "content",
+                  "term"
+                ],
+                "additionalProperties": false
+              },
+              "clickIdKind": {
+                "nullable": true,
+                "description": "fbclid, gclid, ttclid… (the id itself is not shown)",
+                "type": "string"
+              },
+              "referrerDomain": {
+                "nullable": true,
+                "type": "string"
+              },
+              "landingPath": {
+                "nullable": true,
+                "type": "string"
+              },
+              "firstPlatform": {
+                "nullable": true,
+                "type": "string",
+                "enum": [
+                  "meta",
+                  "tiktok",
+                  "snapchat",
+                  "google",
+                  "microsoft",
+                  "x",
+                  "whatsapp",
+                  "email",
+                  "sms",
+                  "search",
+                  "social",
+                  "referral",
+                  "direct",
+                  "pos",
+                  "manual",
+                  "unknown"
+                ]
+              },
+              "firstSeenAt": {
+                "nullable": true,
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "discountCodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "platform",
+              "paid",
+              "rule",
+              "utm",
+              "clickIdKind",
+              "referrerDomain",
+              "landingPath",
+              "firstPlatform",
+              "firstSeenAt",
+              "discountCodes"
+            ],
+            "additionalProperties": false
+          },
           "currency": {
             "type": "string"
           },
@@ -26541,6 +26851,7 @@
           "duplicate",
           "stock",
           "externalId",
+          "source",
           "currency",
           "subtotal",
           "shipping",
@@ -27630,6 +27941,309 @@
         },
         "required": [
           "duplicateWindowHours"
+        ],
+        "additionalProperties": false
+      },
+      "OrderSources": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "orders": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "attributedShare": {
+            "nullable": true,
+            "description": "Orders with a known source (not unknown or direct), percent",
+            "type": "string"
+          },
+          "byPlatform": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "delivered": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "lost": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Cancelled after shipping, refused or returned"
+                },
+                "placed": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "real": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Paid, or cash delivered, less refunds"
+                },
+                "net": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Net profit of these orders"
+                },
+                "deliveredRate": {
+                  "nullable": true,
+                  "description": "Delivered ÷ (delivered + lost), percent",
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string",
+                  "enum": [
+                    "meta",
+                    "tiktok",
+                    "snapchat",
+                    "google",
+                    "microsoft",
+                    "x",
+                    "whatsapp",
+                    "email",
+                    "sms",
+                    "search",
+                    "social",
+                    "referral",
+                    "direct",
+                    "pos",
+                    "manual",
+                    "unknown"
+                  ]
+                },
+                "paid": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Of these, from a paid ad"
+                },
+                "share": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "spend": {
+                  "nullable": true,
+                  "description": "Ad spend recorded for this platform in the period",
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "trueRoas": {
+                  "nullable": true,
+                  "description": "Real money ÷ spend, when spend is recorded",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "orders",
+                "delivered",
+                "lost",
+                "placed",
+                "real",
+                "net",
+                "deliveredRate",
+                "platform",
+                "paid",
+                "share",
+                "spend",
+                "trueRoas"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Most orders first; orders with no source are always shown as unknown"
+          },
+          "campaigns": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "delivered": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "lost": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Cancelled after shipping, refused or returned"
+                },
+                "placed": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "real": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Paid, or cash delivered, less refunds"
+                },
+                "net": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Net profit of these orders"
+                },
+                "deliveredRate": {
+                  "nullable": true,
+                  "description": "Delivered ÷ (delivered + lost), percent",
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string",
+                  "enum": [
+                    "meta",
+                    "tiktok",
+                    "snapchat",
+                    "google",
+                    "microsoft",
+                    "x",
+                    "whatsapp",
+                    "email",
+                    "sms",
+                    "search",
+                    "social",
+                    "referral",
+                    "direct",
+                    "pos",
+                    "manual",
+                    "unknown"
+                  ]
+                },
+                "campaign": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "orders",
+                "delivered",
+                "lost",
+                "placed",
+                "real",
+                "net",
+                "deliveredRate",
+                "platform",
+                "campaign"
+              ],
+              "additionalProperties": false
+            },
+            "description": "UTM campaigns, most orders first (top 20)"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "currency",
+          "orders",
+          "attributedShare",
+          "byPlatform",
+          "campaigns"
         ],
         "additionalProperties": false
       },

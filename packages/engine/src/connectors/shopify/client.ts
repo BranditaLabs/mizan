@@ -23,7 +23,7 @@ export interface ShopifyCredentials {
 
 interface GqlBody {
   data?: Record<string, unknown> | null;
-  errors?: Array<{ message: string; extensions?: { code?: string; [k: string]: unknown } }>;
+  errors?: Array<{ message: string; path?: Array<string | number>; extensions?: { code?: string; [k: string]: unknown } }>;
   extensions?: { cost?: { requestedQueryCost?: number; actualQueryCost?: number; throttleStatus?: { maximumAvailable: number; currentlyAvailable: number; restoreRate: number } } };
 }
 
@@ -118,6 +118,13 @@ export class ShopifyGraphql {
       const need = body.extensions?.cost?.requestedQueryCost ?? op.cost;
       const waitMs = ts ? Math.ceil((Math.max(0, need - ts.currentlyAvailable) / Math.max(1, ts.restoreRate)) * 1000) : 1_000;
       return new IntegrationError({ kind: "rate_limited", connector: "shopify", message: `${op.name}: throttled`, retryAfterMs: waitMs, details: errs });
+    }
+    // Refused only on optional fields (a version without them, or access the app lacks): the next variant leaves them out.
+    const optional = op.optional ?? [];
+    const aboutOptional = (e: { message: string; path?: Array<string | number> }) =>
+      Boolean(e.path?.some((p) => optional.includes(String(p)))) || optional.some((f) => e.message.includes(`'${f}'`));
+    if (optional.length && errs.every(aboutOptional) && (codes.includes("ACCESS_DENIED") || SCHEMA_ERROR.test(text))) {
+      return new IntegrationError({ kind: "schema_drift", connector: "shopify", message: `${op.name}: optional fields refused: ${text}`, details: errs });
     }
     if (codes.includes("ACCESS_DENIED")) return new IntegrationError({ kind: "permission", connector: "shopify", message: `${op.name}: ${text}`, details: errs });
     if (codes.includes("INTERNAL_SERVER_ERROR")) return new IntegrationError({ kind: "transient", connector: "shopify", message: `${op.name}: ${text}`, details: errs });

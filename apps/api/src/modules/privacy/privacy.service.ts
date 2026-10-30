@@ -172,7 +172,11 @@ export class PrivacyService {
         eb.val(false),
       ]));
     }
-    const redactedOrders = await orders.returning("external_id").execute();
+    const redactedOrders = await orders.returning(["id", "external_id"]).execute();
+    // An ad click id points at one visit by one person (M7-2): it goes with the rest.
+    if (redactedOrders.length) {
+      await trx.updateTable("order_sources").set({ click_id: null, click_id_kind: null }).where("order_id", "in", redactedOrders.map((o) => o.id)).execute();
+    }
 
     // Customers known only through this shop. One also known from another channel keeps its data:
     // that channel's controller (the store) has its own basis for it.

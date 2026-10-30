@@ -644,6 +644,28 @@ export interface OrderReconciliations {
   checked_at: Generated<Timestamp>;
 }
 
+export interface OrderSources {
+  tenant_id: string;
+  order_id: string;
+  platform: string;
+  paid: boolean | null;
+  rule: string;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  utm_content: string | null;
+  utm_term: string | null;
+  utm_id: string | null;
+  click_id_kind: string | null;
+  click_id: string | null;
+  referrer_domain: string | null;
+  landing_path: string | null;
+  first_platform: string | null;
+  first_seen_at: Timestamp | null;
+  discount_codes: Generated<ArrayType<string>>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Orders {
   id: Generated<string>;
   tenant_id: string;
@@ -1373,6 +1395,7 @@ export interface DB {
   order_offers: OrderOffers;
   order_pnl: OrderPnl;
   order_reconciliations: OrderReconciliations;
+  order_sources: OrderSources;
   orders: Orders;
   payment_links: PaymentLinks;
   payments: Payments;
