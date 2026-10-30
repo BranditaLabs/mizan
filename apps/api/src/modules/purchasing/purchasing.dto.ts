@@ -76,6 +76,18 @@ export const PurchaseOrderListSchema = z.object({
   counts: z.record(z.enum(PO_STATUSES), z.number().int()),
 });
 
+export const LANDED_KINDS = ["freight", "customs", "insurance", "clearance", "other"] as const;
+
+/** M16-4a: freight, customs and other costs of bringing the goods in, spread into their unit cost. */
+export const NewLandedCostSchema = z.strictObject({
+  kind: z.enum(LANDED_KINDS),
+  amount: Amount.describe("In the cost's currency"),
+  currency: Currency.optional().describe("Defaults to the store's base currency (customs and local freight are usually paid locally)"),
+  allocateBy: z.enum(["value", "quantity"]).default("value").describe("Spread over the PO's lines by their value or their quantity"),
+  description: z.string().trim().max(200).optional(),
+});
+export type NewLandedCost = z.output<typeof NewLandedCostSchema>;
+
 export const PurchaseOrderSchema = PurchaseOrderSummarySchema.extend({
   notes: z.string().nullable(),
   approvedAt: z.iso.datetime().nullable(), sentAt: z.iso.datetime().nullable(), receivedAt: z.iso.datetime().nullable(), cancelledAt: z.iso.datetime().nullable(),
@@ -83,6 +95,10 @@ export const PurchaseOrderSchema = PurchaseOrderSummarySchema.extend({
   lines: z.array(z.object({
     id: z.uuid(), variantId: z.uuid(), sku: z.string().nullable(), barcode: z.string().nullable(), title: z.string(),
     quantity: z.number().int(), received: z.number().int(), damaged: z.number().int(), unitCost: Money,
+    landedUnitCost: Money.nullable().describe("Unit cost with its share of the landed costs, in the PO's currency; null when a landed cost is in another currency (converted at receipt)"),
+  })),
+  landedCosts: z.array(z.object({
+    id: z.uuid(), kind: z.enum(LANDED_KINDS), amount: Money, allocateBy: z.enum(["value", "quantity"]), description: z.string().nullable(), createdAt: z.iso.datetime(),
   })),
   receipts: z.array(z.object({
     id: z.uuid(), number: z.number().int(), receivedAt: z.iso.datetime(), units: z.number().int(), damaged: z.number().int(),

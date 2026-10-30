@@ -11,23 +11,30 @@ const ABAYA = "77777777-7777-4777-8777-777777777771";
 const SCARF = "77777777-7777-4777-8777-777777777772";
 const PO_ID = "99999999-9999-4999-8999-999999999991";
 
-function po(status: string, received: [number, number], receipts: object[] = []) {
+function po(status: string, received: [number, number], receipts: object[] = [], landed = false) {
   return {
     id: PO_ID, number: "PO-0001", status, supplier: { id: "", name: "" }, total: { amount: "1200.00", currency: "EGP" }, items: 2, units: 15,
     receivedUnits: received[0] + received[1], expectedAt: "2026-11-05", late: false, createdAt: "2026-10-30T08:00:00.000Z", notes: "دفعة الشتا",
     approvedAt: status === "draft" ? null : "2026-10-30T08:05:00.000Z", sentAt: null, receivedAt: null, cancelledAt: null, needsOwner: false,
     lines: [
-      { id: "aaaaaaaa-0000-4000-8000-000000000001", variantId: ABAYA, sku: "ABY-1", barcode: "6221000000101", title: "عباية سادة", quantity: 10, received: received[0], damaged: 0, unitCost: { amount: "100.00", currency: "EGP" } },
-      { id: "aaaaaaaa-0000-4000-8000-000000000002", variantId: SCARF, sku: "SCF-1", barcode: null, title: "طرحة", quantity: 5, received: received[1], damaged: 0, unitCost: { amount: "40.00", currency: "EGP" } },
+      { id: "aaaaaaaa-0000-4000-8000-000000000001", variantId: ABAYA, sku: "ABY-1", barcode: "6221000000101", title: "عباية سادة", quantity: 10, received: received[0], damaged: 0, unitCost: { amount: "100.00", currency: "EGP" }, landedUnitCost: landed ? { amount: "150.00", currency: "EGP" } : null },
+      { id: "aaaaaaaa-0000-4000-8000-000000000002", variantId: SCARF, sku: "SCF-1", barcode: null, title: "طرحة", quantity: 5, received: received[1], damaged: 0, unitCost: { amount: "40.00", currency: "EGP" }, landedUnitCost: landed ? { amount: "60.00", currency: "EGP" } : null },
     ],
     receipts,
+    landedCosts: landed ? [{ id: "cccccccc-0000-4000-8000-000000000001", kind: "freight", amount: { amount: "600.00", currency: "EGP" }, allocateBy: "value", description: "إسكندرية للقاهرة", createdAt: "2026-10-30T08:10:00.000Z" }] : [],
   };
 }
 
 async function servePurchasing(page: Page, supplier: { id: string; name: string }) {
-  const sent: Record<string, unknown[]> = { create: [], receive: [] };
+  const sent: Record<string, unknown[]> = { create: [], receive: [], landed: [] };
+  let landed = false;
   let state = po("draft", [0, 0]);
-  const reply = () => ({ ...state, supplier });
+  const reply = () => ({ ...state, ...(landed ? { landedCosts: po("draft", [0, 0], [], true).landedCosts, lines: po(state.status, [state.lines[0]!.received, state.lines[1]!.received], state.receipts, true).lines } : {}), supplier });
+  await page.route(`**/v1/purchase-orders/${PO_ID}/landed-costs`, (route) => {
+    sent.landed!.push(route.request().postDataJSON());
+    landed = true;
+    return route.fulfill({ status: 201, json: reply() });
+  });
   await page.route("**/v1/orders/products*", (route) => route.fulfill({ json: { data: [
     { variantId: ABAYA, sku: "ABY-1", title: "عباية سادة", price: { amount: "500.00", currency: "EGP" }, available: 4 },
     { variantId: SCARF, sku: "SCF-1", title: "طرحة", price: { amount: "150.00", currency: "EGP" }, available: 0 },
@@ -107,6 +114,16 @@ test("owner in Arabic: adds a supplier, drafts a PO, approves it and receives pa
   const detail = page.getByTestId("purchase-order");
   await expect(detail.getByRole("heading", { level: 1 })).toContainText("PO-0001");
   await expect(detail).toContainText("مسودة");
+  // Freight on the draft: spread by value into each unit's cost.
+  const costs = detail.getByTestId("landed-costs");
+  await costs.getByLabel("المبلغ").fill("600");
+  await costs.getByLabel("ملاحظة").fill("إسكندرية للقاهرة");
+  await costs.getByRole("button", { name: "ضيف مصروف" }).click();
+  await expect(page.locator(".mz-toast", { hasText: "المصروف اتضاف" })).toBeVisible();
+  expect(sent.landed).toEqual([{ kind: "freight", amount: "600", currency: "EGP", allocateBy: "value", description: "إسكندرية للقاهرة" }]);
+  await expect(costs).toContainText("شحن");
+  await expect(detail.getByRole("row", { name: /عباية سادة/ })).toContainText("150.00");
+  await expect(detail.getByRole("link", { name: "عدّل المسودة" })).toBeVisible();
   await detail.getByRole("button", { name: "وافق" }).click();
   await expect(page.locator(".mz-toast", { hasText: "اتوافق عليه" })).toBeVisible();
   await detail.getByRole("button", { name: "استلم التسليم" }).click();

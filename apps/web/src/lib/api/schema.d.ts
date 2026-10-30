@@ -1441,6 +1441,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/purchase-orders/{id}/landed-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["LandedCostsController_add"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/purchase-orders/{id}/landed-costs/{costId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["LandedCostsController_remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/settings/purchasing": {
         parameters: {
             query?: never;
@@ -3926,6 +3958,21 @@ export interface components {
              */
             ticketId?: string;
         };
+        NewLandedCost: {
+            /** @enum {string} */
+            kind: "freight" | "customs" | "insurance" | "clearance" | "other";
+            /** @description In the cost's currency */
+            amount: string;
+            /** @description Defaults to the store's base currency (customs and local freight are usually paid locally) */
+            currency?: string;
+            /**
+             * @description Spread over the PO's lines by their value or their quantity
+             * @default value
+             * @enum {string}
+             */
+            allocateBy: "value" | "quantity";
+            description?: string;
+        };
         NewOrder: {
             /**
              * @description Where the customer ordered
@@ -5824,6 +5871,26 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
+                /** @description Unit cost with its share of the landed costs, in the PO's currency; null when a landed cost is in another currency (converted at receipt) */
+                landedUnitCost: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
+            landedCosts: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "freight" | "customs" | "insurance" | "clearance" | "other";
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @enum {string} */
+                allocateBy: "value" | "quantity";
+                description: string | null;
+                /** Format: date-time */
+                createdAt: string;
             }[];
             receipts: {
                 /** Format: uuid */
@@ -12601,6 +12668,126 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LandedCostsController_add: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewLandedCost"];
+            };
+        };
+        responses: {
+            /** @description Added while stock can still arrive; spread into the unit cost of later receipts at their day's FX; audited */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LandedCostsController_remove: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+                costId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed; receipts already taken keep their cost; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

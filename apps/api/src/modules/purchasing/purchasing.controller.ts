@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
@@ -6,9 +6,9 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  NewPurchaseOrderSchema, NewReceiptSchema, NewSupplierSchema, PurchaseOrderListSchema, PurchaseOrderSchema, PurchaseOrdersQuerySchema,
+  NewLandedCostSchema, NewPurchaseOrderSchema, NewReceiptSchema, NewSupplierSchema, PurchaseOrderListSchema, PurchaseOrderSchema, PurchaseOrdersQuerySchema,
   PurchasingSettingsSchema, SupplierListSchema, SupplierSchema, SuppliersQuerySchema, UpdateSupplierSchema,
-  type NewPurchaseOrder, type NewReceipt, type NewSupplier, type PurchasingSettings, type UpdateSupplier,
+  type NewLandedCost, type NewPurchaseOrder, type NewReceipt, type NewSupplier, type PurchasingSettings, type UpdateSupplier,
 } from "./purchasing.dto.js";
 import { PurchasingService } from "./purchasing.service.js";
 
@@ -123,6 +123,30 @@ export class PurchaseOrdersController {
   @ApiProblems(403, 404, 409, 422)
   receive(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(NewReceiptSchema)) body: NewReceipt) {
     return this.purchasing.receiveWeb(auth, id, body);
+  }
+}
+
+/** M16-4a landed costs on a purchase order. */
+@ApiTags("purchasing")
+@Controller("purchase-orders/:id/landed-costs")
+export class LandedCostsController {
+  constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
+
+  @Post()
+  @Roles("owner", "admin", "ops_manager", "finance")
+  @ApiJsonBody("NewLandedCost", NewLandedCostSchema)
+  @ApiJson(201, "PurchaseOrder", PurchaseOrderSchema, "Added while stock can still arrive; spread into the unit cost of later receipts at their day's FX; audited")
+  @ApiProblems(404, 409, 422)
+  add(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(NewLandedCostSchema)) body: NewLandedCost) {
+    return this.purchasing.addLandedCost(auth, id, body);
+  }
+
+  @Delete(":costId")
+  @Roles("owner", "admin", "ops_manager", "finance")
+  @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "Removed; receipts already taken keep their cost; audited")
+  @ApiProblems(404, 409)
+  remove(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Param("costId", new ParseUUIDPipe()) costId: string) {
+    return this.purchasing.removeLandedCost(auth, id, costId);
   }
 }
 

@@ -172,3 +172,41 @@ describe("purchase orders and receiving (M16-1)", () => {
     expect(new Set(actions.map((a) => a.action))).toEqual(new Set(["po.created", "po.updated", "po.approved", "po.sent", "po.received", "po.cancelled"]));
   });
 });
+
+describe("landed costs (M16-4a)", () => {
+  it("are spread by value or quantity into the unit cost at receipt, each currency at the day's rate", async () => {
+    const ids: Record<string, string> = {};
+    await db.tenant(store, async (trx) => {
+      for (const [sku, title] of [["LC-X", "Kaftan"], ["LC-Y", "Belt"]] as const) {
+        const p = await trx.insertInto("products").values({ tenant_id: store, title }).returning("id").executeTakeFirstOrThrow();
+        ids[sku] = (await trx.insertInto("variants").values({ tenant_id: store, product_id: p.id, sku, currency: "EGP", price_minor: 50000 }).returning("id").executeTakeFirstOrThrow()).id;
+      }
+    });
+    const p = (await http().post("/v1/purchase-orders").set(as("owner")).send({ supplierId: supplier, lines: [
+      { variantId: ids["LC-X"], quantity: 10, unitCost: "100" }, { variantId: ids["LC-Y"], quantity: 5, unitCost: "40" },
+    ] }).expect(201)).body;
+    await http().post(`/v1/purchase-orders/${p.id}/landed-costs`).set(as("keeper")).send({ kind: "freight", amount: "600" }).expect(403);
+    await http().post(`/v1/purchase-orders/${p.id}/landed-costs`).set(as("owner")).send({ kind: "bribe", amount: "1" }).expect(422);
+    const withFreight = (await http().post(`/v1/purchase-orders/${p.id}/landed-costs`).set(as("opsman")).send({ kind: "freight", amount: "600", description: "Alexandria to Cairo" }).expect(201)).body;
+    // 600.00 by value over 1,200.00 of goods: 50% on each unit.
+    expect(withFreight.lines.map((l: { sku: string; landedUnitCost: { amount: string } }) => [l.sku, l.landedUnitCost.amount])).toEqual([["LC-X", "150.00"], ["LC-Y", "60.00"]]);
+    const withCustoms = (await http().post(`/v1/purchase-orders/${p.id}/landed-costs`).set(as("owner")).send({ kind: "customs", amount: "10", currency: "USD", allocateBy: "quantity" }).expect(201)).body;
+    expect(withCustoms.landedCosts).toHaveLength(2);
+    expect(withCustoms.lines[0].landedUnitCost).toBeNull(); // a cost in another currency is converted at receipt
+    const wrong = (await http().post(`/v1/purchase-orders/${p.id}/landed-costs`).set(as("owner")).send({ kind: "other", amount: "1" }).expect(201)).body;
+    const extra = wrong.landedCosts.find((c: { kind: string }) => c.kind === "other").id;
+    expect((await http().delete(`/v1/purchase-orders/${p.id}/landed-costs/${extra}`).set(as("owner")).expect(200)).body.landedCosts).toHaveLength(2);
+
+    await http().post(`/v1/purchase-orders/${p.id}/approve`).set(as("owner")).expect(200);
+    await http().post(`/v1/purchase-orders/${p.id}/receipts`).set(as("keeper")).send({ items: [{ sku: "LC-X", quantity: 4 }] }).expect(201);
+    // Goods 4 × 100.00 = 400.00; freight 600 × (1000/1200) × 4/10 = 200.00; customs 10 USD × 10/15 × 4/10 = 2.67 USD = 133.50 at 50 EGP.
+    // (400.00 + 200.00 + 133.50) ÷ 4 = 183.375 → 183.38
+    expect(Number((await db.tenant(store, async (trx) => trx.selectFrom("variants").select("cogs_minor").where("id", "=", ids["LC-X"]!).executeTakeFirstOrThrow())).cogs_minor)).toBe(18338);
+    const line = await db.tenant(store, async (trx) => trx.selectFrom("purchase_receipt_lines").select(["landed_minor", "unit_cost_minor"]).where("variant_id", "=", ids["LC-X"]!).executeTakeFirstOrThrow());
+    expect([Number(line.landed_minor), Number(line.unit_cost_minor)]).toEqual([33350, 18338]);
+
+    // A received PO's costs are final.
+    const done = (await http().get("/v1/purchase-orders?status=received").set(as("owner")).expect(200)).body.data[0];
+    expect((await http().post(`/v1/purchase-orders/${done.id}/landed-costs`).set(as("owner")).send({ kind: "freight", amount: "5" }).expect(409)).body.code).toBe("po_closed");
+  });
+});

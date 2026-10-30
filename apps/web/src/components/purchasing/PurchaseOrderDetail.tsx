@@ -6,11 +6,11 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge, Tag } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass, IconButton } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Choice";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field } from "@/components/ui/Field";
+import { Field, Select, TextArea } from "@/components/ui/Field";
 import { Card, EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -18,7 +18,7 @@ import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
-import { MANAGERS, OWNERS, RECEIVABLE, RECEIVERS, STATUS_TONE, VIEWERS } from "./purchasing-ui";
+import { AMOUNT, MANAGERS, OWNERS, RECEIVABLE, RECEIVERS, STATUS_TONE, VIEWERS } from "./purchasing-ui";
 
 type Po = Schemas["PurchaseOrder"];
 type Line = Po["lines"][number];
@@ -55,6 +55,10 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
     { id: "received", header: t("columns.receivedQty"), numeric: true, cell: (l) => <span className="mz-num">{l.received}</span> },
     { id: "damaged", header: t("columns.damaged"), numeric: true, cell: (l) => (l.damaged ? <span className="mz-num text-danger-text">{l.damaged}</span> : <span className="mz-num text-text-3">{0}</span>) },
     { id: "unit", header: t("columns.unitCost"), numeric: true, cell: (l) => <MoneyText money={l.unitCost} /> },
+    ...(po.landedCosts.length ? [{
+      id: "landed", header: t("columns.withLanded"), numeric: true,
+      cell: (l: Line) => (l.landedUnitCost ? <MoneyText money={l.landedUnitCost} /> : <span className="text-caption text-text-3">{t("landed.atReceipt")}</span>),
+    }] : []),
   ];
   return frame(
     <>
@@ -105,6 +109,7 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
         </div>
         <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
           <NextStep po={po} role={role} onReceive={() => setReceiving(true)} />
+          <LandedCosts po={po} role={role} />
         </aside>
       </div>
       {receiving ? <ReceiveDialog po={po} manager={MANAGERS.has(role)} onClose={() => setReceiving(false)} /> : null}
@@ -139,6 +144,7 @@ function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): 
         {po.status === "draft" ? (
           <>
             <p className="text-body-sm text-text-2">{po.needsOwner ? t("next.draftOwner") : t("next.draft")}</p>
+            {manager ? <Link href={`/purchasing/${po.id}/edit`} className={buttonClass("secondary")}>{t("actions.edit")}</Link> : null}
             {canApprove ? <Button icon="confirm" busy={act.isPending && act.variables === "approve"} onClick={() => act.mutate("approve")}>{t("actions.approve")}</Button>
               : manager ? <Alert tone="info">{t("needsOwner")}</Alert> : null}
           </>
@@ -225,5 +231,77 @@ function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onC
         {message ? <Alert tone="danger">{message}</Alert> : null}
       </form>
     </Dialog>
+  );
+}
+
+const LANDED_KINDS = ["freight", "customs", "insurance", "clearance", "other"] as const;
+const LANDED_EDITORS = new Set(["owner", "admin", "ops_manager", "finance"]);
+
+/** Freight, customs and fees (M16-4a): spread into the unit cost of the units received after them. */
+function LandedCosts({ po, role }: { po: Po; role: string }) {
+  const t = useTranslations("purchasing");
+  const tpr = useTranslations("problem");
+  const { api, store } = useSession();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const open = po.status !== "received" && po.status !== "cancelled";
+  const editor = open && LANDED_EDITORS.has(role);
+  const [kind, setKind] = useState<(typeof LANDED_KINDS)[number]>("freight");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState(store?.baseCurrency ?? "EGP");
+  const [allocateBy, setAllocateBy] = useState<"value" | "quantity">("value");
+  const [description, setDescription] = useState("");
+  const done = () => { void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); };
+  const add = useMutation({
+    mutationFn: () => ok(api.POST("/v1/purchase-orders/{id}/landed-costs", { params: { path: { id: po.id } }, body: {
+      kind, amount: amount.trim(), currency, allocateBy, ...(description.trim() ? { description: description.trim() } : {}),
+    } })),
+    meta: { toast: false },
+    onSuccess: () => { toast({ message: t("landed.added") }); setAmount(""); setDescription(""); done(); },
+  });
+  const remove = useMutation({
+    mutationFn: (costId: string) => ok(api.DELETE("/v1/purchase-orders/{id}/landed-costs/{costId}", { params: { path: { id: po.id, costId } } })),
+    meta: { toast: false },
+    onSuccess: () => { toast({ message: t("landed.removed") }); done(); },
+  });
+  if (!po.landedCosts.length && !editor) return null;
+  const valid = AMOUNT.test(amount.trim()) && Number(amount) > 0 && /^[A-Z]{3}$/.test(currency);
+  return (
+    <Card title={t("landed.title")}>
+      <div className="flex flex-col gap-3" data-testid="landed-costs">
+        <p className="text-caption text-text-3">{t("landed.hint")}</p>
+        {po.landedCosts.length ? (
+          <ul className="flex flex-col divide-y divide-line">
+            {po.landedCosts.map((c) => (
+              <li key={c.id} className="flex items-center gap-2 py-2 text-body-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{t(`landed.kind.${c.kind}`)} · <MoneyText money={c.amount} /></p>
+                  <p className="text-caption text-text-3">{t(`landed.by.${c.allocateBy}`)}{c.description ? <> · <bdi>{c.description}</bdi></> : null}</p>
+                </div>
+                {editor ? <IconButton icon="delete" label={t("landed.remove", { kind: t(`landed.kind.${c.kind}`) })} onClick={() => remove.mutate(c.id)} /> : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {editor ? (
+          <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); if (valid) add.mutate(); }}>
+            <Select label={t("landed.kindLabel")} value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
+              {LANDED_KINDS.map((k) => <option key={k} value={k}>{t(`landed.kind.${k}`)}</option>)}
+            </Select>
+            <div className="flex gap-2">
+              <Field label={t("landed.amount")} ltr inputMode="decimal" className="flex-1" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Field label={t("fields.currency")} ltr maxLength={3} className="w-20" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
+            </div>
+            <Select label={t("landed.allocate")} value={allocateBy} onChange={(e) => setAllocateBy(e.target.value as typeof allocateBy)}>
+              <option value="value">{t("landed.by.value")}</option>
+              <option value="quantity">{t("landed.by.quantity")}</option>
+            </Select>
+            <TextArea label={t("landed.description")} maxLength={200} rows={1} value={description} onChange={(e) => setDescription(e.target.value)} />
+            {add.isError || remove.isError ? <Alert tone="danger">{problemText(add.error ?? remove.error, tpr)}</Alert> : null}
+            <div><Button type="submit" variant="secondary" size="sm" icon="add" busy={add.isPending} disabled={!valid}>{t("landed.add")}</Button></div>
+          </form>
+        ) : null}
+      </div>
+    </Card>
   );
 }

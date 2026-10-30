@@ -121,15 +121,16 @@ _Sample data. Full visual in `design/prototype.html`._
 - **POs:** `PO-0001…`, priced per unit in the supplier's currency (or another); a draft is edited as a whole; approval by amount (owner or admin above the threshold or in a foreign currency, else also the ops manager); "sent" is marked by hand for now; cancel only before anything arrived; late = expected date passed and not fully received.
 - **Receiving:** from the web or the ops app (`po.receive`, exactly once per opId), by scan (barcode), SKU or id; good units into stock against the PO (orders waiting for stock get reserved), damaged recorded only; partial receipts; more than ordered needs a manager (the app gets a conflict).
 - **Moving-average cost:** per receipt, (on hand × cost + received value) ÷ (on hand + received), in the item's currency at the receipt day's FX rate, locked on the receipt. An item without a cost takes the receipt's. No rate for the day: the stock goes in and the receipt is marked `fx_missing` (cost unchanged).
-- **Later:** landed cost (freight, customs) on top, reorder suggestions, sending the PO (PDF, email, WhatsApp), supplier bills and the 3-way match, damaged claims, `supplier.late`, ✅ the ops-app receiving screen (M16-3: Receive tab, offline, scan-checked, damaged switch). ✅ Web screens (M16-2): `/purchasing`, `/purchasing/new`, `/purchasing/{id}`, `/purchasing/suppliers`, `/settings/purchasing`.
+- **Landed cost (M16-4a):** freight, customs, insurance, clearance and other costs on an open PO, in any currency, spread by value or quantity into the unit cost of each later receipt at its day's rate; the PO screen shows each line's cost with landed costs. A draft PO can be edited from the web.
+- **Later:** reorder suggestions, sending the PO (PDF, email, WhatsApp), supplier bills and the 3-way match, damaged claims, `supplier.late`, ✅ the ops-app receiving screen (M16-3: Receive tab, offline, scan-checked, damaged switch). ✅ Web screens (M16-2): `/purchasing`, `/purchasing/new`, `/purchasing/{id}`, `/purchasing/suppliers`, `/settings/purchasing`.
 
 ## Acceptance criteria
 
 - [ ] Reorder list matches the rule for every SKU with stock history.
 - [x] Receiving updates stock and moving-average cost once, even offline. ✅ M16-1 (API; ops-app screen M16-3)
-- [ ] Landed cost flows into COGS for orders after receipt.
+- [x] Landed cost flows into COGS for orders after receipt. ✅ M16-4a
 - [ ] Over-receipts and price variances need approval. ✅ over-receipts (M16-1); price variances with supplier bills
-- [ ] Every PO line shows its landed cost per unit.
+- [x] Every PO line shows its landed cost per unit. ✅ M16-4a (estimated on the PO when the costs share its currency; exact per receipt)
 
 ## API
 

@@ -3073,7 +3073,8 @@
       "ordered": "Ordered",
       "receivedQty": "Received",
       "damaged": "Damaged",
-      "unitCost": "Unit cost"
+      "unitCost": "Unit cost",
+      "withLanded": "With landed"
     },
     "empty": {
       "title": "No purchase orders here",
@@ -3152,7 +3153,8 @@
       "receive": "Receive delivery",
       "cancel": "Cancel PO",
       "cancelYes": "Yes, cancel",
-      "keep": "Keep it"
+      "keep": "Keep it",
+      "edit": "Edit draft"
     },
     "done": {
       "approve": "Approved",
@@ -3198,6 +3200,40 @@
       "phone": "Phone",
       "email": "Email",
       "terms": "Payment terms"
+    },
+    "saved": "Saved",
+    "edit": {
+      "title": "Edit {number}",
+      "subtitle": "Only a draft can change; approval checks the new total.",
+      "save": "Save changes",
+      "notDraft": {
+        "title": "Only a draft can be edited",
+        "body": "This purchase order was approved: its items and prices are final."
+      }
+    },
+    "landed": {
+      "title": "Landed costs",
+      "hint": "Freight, customs and fees, spread into the unit cost of what arrives after they are added.",
+      "atReceipt": "At receipt",
+      "added": "Landed cost added",
+      "removed": "Landed cost removed",
+      "kindLabel": "Kind",
+      "amount": "Amount",
+      "allocate": "Spread by",
+      "description": "Note",
+      "add": "Add cost",
+      "remove": "Remove {kind}",
+      "kind": {
+        "freight": "Freight",
+        "customs": "Customs",
+        "insurance": "Insurance",
+        "clearance": "Clearance",
+        "other": "Other"
+      },
+      "by": {
+        "value": "By value",
+        "quantity": "By quantity"
+      }
     }
   },
   "purchasingSettings": {

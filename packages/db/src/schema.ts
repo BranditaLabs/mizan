@@ -424,6 +424,9 @@ export interface LandedCosts {
   amount_minor: Int8;
   currency: string;
   allocate_by: Generated<string>;
+  description: string | null;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
 }
 
 export interface Listings {
@@ -880,6 +883,7 @@ export interface PurchaseReceiptLines {
   unit_cost_minor: Int8 | null;
   cost_before_minor: Int8 | null;
   cost_after_minor: Int8 | null;
+  landed_minor: Generated<Int8>;
 }
 
 export interface PurchaseReceipts {

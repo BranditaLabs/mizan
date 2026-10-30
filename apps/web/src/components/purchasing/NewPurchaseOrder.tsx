@@ -13,7 +13,7 @@ import { Card, EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surfac
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
 import { Link, useRouter } from "@/i18n/navigation";
-import { ok } from "@/lib/api/client";
+import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { AMOUNT, MANAGERS } from "./purchasing-ui";
@@ -25,7 +25,7 @@ const QTY = /^[1-9]\d{0,5}$/;
  * New purchase order (M16-2): a supplier, what to buy at what unit cost (in the supplier's
  * currency unless changed), and when it should arrive. Saved as a draft to approve.
  */
-export function NewPurchaseOrder() {
+export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {}) {
   const t = useTranslations("purchasing");
   const tpr = useTranslations("problem");
   const { api, user, store } = useSession();
@@ -33,11 +33,11 @@ export function NewPurchaseOrder() {
   const qc = useQueryClient();
   const toast = useToast();
   const allowed = MANAGERS.has(store?.role ?? "");
-  const [supplierId, setSupplierId] = useState("");
-  const [currency, setCurrency] = useState<string | null>(null);
-  const [expectedAt, setExpectedAt] = useState("");
-  const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<Line[]>([]);
+  const [supplierId, setSupplierId] = useState(po?.supplier.id ?? "");
+  const [currency, setCurrency] = useState<string | null>(po?.total.currency ?? null);
+  const [expectedAt, setExpectedAt] = useState(po?.expectedAt ?? "");
+  const [notes, setNotes] = useState(po?.notes ?? "");
+  const [lines, setLines] = useState<Line[]>(() => (po?.lines ?? []).map((l) => ({ variantId: l.variantId, title: l.title, sku: l.sku, quantity: String(l.quantity), unitCost: l.unitCost.amount })));
   const [tried, setTried] = useState(false);
 
   const suppliers = useQuery({
@@ -53,12 +53,20 @@ export function NewPurchaseOrder() {
   const supplier = suppliers.data?.data.find((s) => s.id === supplierId);
   const cur = currency ?? supplier?.currency ?? store?.baseCurrency ?? "EGP";
   const create = useMutation({
-    mutationFn: () => ok(api.POST("/v1/purchase-orders", { body: {
-      supplierId, currency: cur, ...(expectedAt ? { expectedAt } : {}), ...(notes.trim() ? { notes: notes.trim() } : {}),
-      lines: lines.map((l) => ({ variantId: l.variantId, quantity: Number(l.quantity), unitCost: l.unitCost.trim() })),
-    } })),
+    mutationFn: () => {
+      const body = {
+        supplierId, currency: cur, ...(expectedAt ? { expectedAt } : {}), ...(notes.trim() ? { notes: notes.trim() } : {}),
+        lines: lines.map((l) => ({ variantId: l.variantId, quantity: Number(l.quantity), unitCost: l.unitCost.trim() })),
+      };
+      return ok(po ? api.PUT("/v1/purchase-orders/{id}", { params: { path: { id: po.id } }, body }) : api.POST("/v1/purchase-orders", { body }));
+    },
     meta: { toast: false },
-    onSuccess: (po) => { toast({ message: t("created", { number: po.number }) }); void qc.invalidateQueries({ queryKey: ["purchaseOrders"] }); router.push(`/purchasing/${po.id}`); },
+    onSuccess: (saved) => {
+      toast({ message: po ? t("saved") : t("created", { number: saved.number }) });
+      void qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
+      void qc.invalidateQueries({ queryKey: ["purchaseOrder"] });
+      router.push(`/purchasing/${saved.id}`);
+    },
   });
 
   const frame = (body: React.ReactNode) => (
@@ -90,8 +98,8 @@ export function NewPurchaseOrder() {
   return frame(
     <>
       <header>
-        <h1 className="font-display text-heading-lg">{t("new.title")}</h1>
-        <p className="mt-1 text-body-sm text-text-2">{t("new.subtitle")}</p>
+        <h1 className="font-display text-heading-lg">{po ? t("edit.title", { number: po.number }) : t("new.title")}</h1>
+        <p className="mt-1 text-body-sm text-text-2">{po ? t("edit.subtitle") : t("new.subtitle")}</p>
       </header>
       <form className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div className="flex min-w-0 flex-col gap-4">
@@ -140,7 +148,7 @@ export function NewPurchaseOrder() {
               ]} />
               <p className="text-caption text-text-3">{t("new.draftHint")}</p>
               {create.isError ? <Alert tone="danger">{problemText(create.error, tpr)}</Alert> : null}
-              <Button type="submit" busy={create.isPending}>{t("new.save")}</Button>
+              <Button type="submit" busy={create.isPending}>{po ? t("edit.save") : t("new.save")}</Button>
             </div>
           </Card>
         </aside>

@@ -10,9 +10,10 @@ import { ProblemError } from "../../platform/http/problem.js";
 import { FxService } from "../profit/fx/fx.service.js";
 import { dayText, localDay, storeClock } from "../profit/store-day.js";
 import { StockService } from "../stock/stock.service.js";
+import { landedFor, type LandedCost } from "./landed.js";
 import {
   PO_STATUSES, purchasingSettings, RECEIVABLE,
-  type NewPurchaseOrder, type NewReceipt, type NewSupplier, type PoStatus, type PurchaseOrder, type PurchasingSettings, type UpdateSupplier,
+  type NewLandedCost, type NewPurchaseOrder, type NewReceipt, type NewSupplier, type PoStatus, type PurchaseOrder, type PurchasingSettings, type UpdateSupplier,
 } from "./purchasing.dto.js";
 
 type Trx = Transaction<DB>;
@@ -279,7 +280,15 @@ export class PurchasingService {
     for (const c of new Set(lines.filter((l) => got.has(l.id)).map((l) => l.currency.trim()))) rates.set(c, (await this.fx.rate(trx, tenantId, c, poCurrency, day)).rate);
     const currencies = [...rates.keys()];
     const lockedRate = currencies.length === 1 ? rates.get(currencies[0]!) ?? null : null;
-    const costStatus = [...rates.values()].every((r) => r !== null) ? "applied" : "fx_missing";
+    // Landed costs (M16-4a): each in its own currency, converted to the item's at the same day's rate.
+    const landed: LandedCost[] = (await trx.selectFrom("landed_costs").select(["amount_minor", "currency", "allocate_by"]).where("purchase_order_id", "=", po.id).execute())
+      .map((c) => ({ amountMinor: BigInt(c.amount_minor), currency: c.currency.trim(), allocateBy: c.allocate_by === "quantity" ? "quantity" : "value" }));
+    const weights = lines.map((l) => ({ id: l.id, quantity: l.quantity, unitCostMinor: BigInt(l.unit_cost_minor) }));
+    const landedRates = new Map<string, string | null>();
+    for (const item of currencies) {
+      for (const c of new Set(landed.map((x) => x.currency))) landedRates.set(`${item}|${c}`, (await this.fx.rate(trx, tenantId, item, c, day)).rate);
+    }
+    const costStatus = [...rates.values(), ...landedRates.values()].every((r) => r !== null) ? "applied" : "fx_missing";
 
     const last = await trx.selectFrom("purchase_receipts").select((eb) => eb.fn.max("number").as("n")).where("purchase_order_id", "=", po.id).executeTakeFirst();
     const receipt = await trx.insertInto("purchase_receipts").values({
@@ -293,22 +302,26 @@ export class PurchasingService {
       const itemCurrency = l.currency.trim();
       const rate = rates.get(itemCurrency) ?? null;
       let unit: bigint | null = null;
+      let landedMinor = 0n;
       let before: bigint | null = l.cogs_set_at ? BigInt(l.cogs_minor) : null;
       let after: bigint | null = before;
-      if (rate !== null && g.good > 0) {
-        // The value of the good units in the item's currency (1 item currency = rate PO currency).
-        const value = toMinor(convertMoney(fromMinor(BigInt(g.good) * BigInt(l.unit_cost_minor), poCurrency), itemCurrency, ratio("1", rate, 12)));
+      if (costStatus === "applied" && rate !== null && g.good > 0) {
+        // The value of the good units in the item's currency (1 item currency = rate PO currency), plus their landed cost.
+        for (const [c, minor] of landedFor(landed, weights, l.id, g.good)) {
+          landedMinor += toMinor(convertMoney(fromMinor(minor, c), itemCurrency, ratio("1", landedRates.get(`${itemCurrency}|${c}`)!, 12)));
+        }
+        const value = toMinor(convertMoney(fromMinor(BigInt(g.good) * BigInt(l.unit_cost_minor), poCurrency), itemCurrency, ratio("1", rate, 12))) + landedMinor;
         unit = divRound(value, BigInt(g.good));
         const onHand = BigInt(stocked.onHandBefore.get(l.variant_id) ?? 0);
         after = before === null || onHand === 0n ? unit : divRound(onHand * before + value, onHand + BigInt(g.good));
         await trx.updateTable("variants").set({ cogs_minor: after, cogs_set_at: now, updated_at: now }).where("id", "=", l.variant_id).execute();
         costed.push(l.variant_id);
-      } else if (rate === null) {
+      } else if (costStatus !== "applied") {
         before = after = null;
       }
       await trx.insertInto("purchase_receipt_lines").values({
         tenant_id: tenantId, receipt_id: receipt.id, po_line_id: lineId, variant_id: l.variant_id, quantity: g.good, damaged: g.damaged,
-        unit_cost_minor: unit, cost_before_minor: before, cost_after_minor: after,
+        unit_cost_minor: unit, cost_before_minor: before, cost_after_minor: after, landed_minor: landedMinor,
       }).execute();
       await trx.updateTable("purchase_order_lines").set((eb) => ({ received_qty: eb("received_qty", "+", g.good), damaged_qty: eb("damaged_qty", "+", g.damaged) })).where("id", "=", lineId).execute();
     }
@@ -323,6 +336,44 @@ export class PurchasingService {
     await this.events.emit(trx, { type: "po.received", tenantId, entity, actor, data: { number: po.number, receipt: receipt.number, units, damaged, complete: !left, costStatus, overReceived: over.length > 0, supplierId: po.supplier_id } });
     if (costed.length) await this.events.emit(trx, { type: "costs.changed", tenantId, entity: { type: "tenant", id: tenantId }, actor, data: { kind: "product_cost", source: "purchase_receipt", variantIds: costed.slice(0, 500) } });
     return { purchaseOrderId: po.id, number: po.number, receipt: receipt.number, units, damaged, status, costStatus, ordersReserved: stocked.ordersReserved };
+  }
+
+  // ───────────── Landed costs (M16-4a) ─────────────
+
+  /** Add a landed cost while stock can still arrive; it counts for the receipts after it. */
+  async addLandedCost(auth: AuthContext, id: string, body: NewLandedCost): Promise<PurchaseOrder> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const po = await this.lockPo(trx, id);
+      if (po.status === "received" || po.status === "cancelled") throw new ProblemError(409, "po_closed", `${po.number} is ${po.status}: its costs are final`);
+      const currency = body.currency ?? (await storeClock(trx, tenantId)).base;
+      let amountMinor: bigint;
+      try {
+        amountMinor = toMinor(body.amount, currency);
+      } catch {
+        throw new ProblemError(422, "validation_failed", `too many decimals for ${currency}`, [{ path: "amount", code: "invalid", message: body.amount }]);
+      }
+      if (amountMinor <= 0n) throw new ProblemError(422, "validation_failed", "a landed cost is more than zero", [{ path: "amount", code: "too_small" }]);
+      const c = await trx.insertInto("landed_costs").values({
+        tenant_id: tenantId, purchase_order_id: id, kind: body.kind, amount_minor: amountMinor, currency, allocate_by: body.allocateBy,
+        description: body.description ?? null, created_by: auth.user.id,
+      }).returning("id").executeTakeFirstOrThrow();
+      await this.audit.record(trx, { action: "po.landed_cost_added", tenantId, entity: { type: "purchase_order", id }, after: { number: po.number, landedCostId: c.id, kind: body.kind, amount: fromMinor(amountMinor, currency) }, ...auditActor(auth) });
+      return this.view(trx, tenantId, id);
+    });
+  }
+
+  /** Remove one (a mistake): receipts already taken keep the cost they were given. */
+  async removeLandedCost(auth: AuthContext, id: string, costId: string): Promise<PurchaseOrder> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const po = await this.lockPo(trx, id);
+      if (po.status === "received" || po.status === "cancelled") throw new ProblemError(409, "po_closed", `${po.number} is ${po.status}: its costs are final`);
+      const gone = await trx.deleteFrom("landed_costs").where("id", "=", costId).where("purchase_order_id", "=", id).returning(["kind", "amount_minor", "currency"]).executeTakeFirst();
+      if (!gone) throw new ProblemError(404, "not_found", "no such landed cost on this purchase order");
+      await this.audit.record(trx, { action: "po.landed_cost_removed", tenantId, entity: { type: "purchase_order", id }, before: { kind: gone.kind, amount: fromMinor(BigInt(gone.amount_minor), gone.currency.trim()) }, after: { number: po.number }, ...auditActor(auth) });
+      return this.view(trx, tenantId, id);
+    });
   }
 
   // ───────────── Settings ─────────────
@@ -415,6 +466,11 @@ export class PurchasingService {
     const receipts = await trx.selectFrom("purchase_receipts as r").leftJoin("purchase_receipt_lines as rl", "rl.receipt_id", "r.id")
       .select(["r.id", "r.number", "r.received_at", "r.cost_status", "r.fx_rate", "r.over_approved_by", "r.device_op_id", sql<string>`coalesce(sum(rl.quantity), 0)`.as("units"), sql<string>`coalesce(sum(rl.damaged), 0)`.as("damaged")])
       .where("r.purchase_order_id", "=", id).groupBy(["r.id", "r.number", "r.received_at", "r.cost_status", "r.fx_rate", "r.over_approved_by", "r.device_op_id"]).orderBy("r.number").execute();
+    const landed = await trx.selectFrom("landed_costs").select(["id", "kind", "amount_minor", "currency", "allocate_by", "description", "created_at"])
+      .where("purchase_order_id", "=", id).orderBy("created_at").execute();
+    const costs: LandedCost[] = landed.map((c) => ({ amountMinor: BigInt(c.amount_minor), currency: c.currency.trim(), allocateBy: c.allocate_by === "quantity" ? "quantity" : "value" }));
+    const sameCurrency = costs.every((c) => c.currency === currency);
+    const weights = lines.map((l) => ({ id: l.id, quantity: l.quantity, unitCostMinor: BigInt(l.unit_cost_minor) }));
     return {
       ...this.summary(r, localDay(now, timezone)),
       notes: r.notes,
@@ -423,6 +479,13 @@ export class PurchasingService {
       lines: lines.map((l) => ({
         id: l.id, variantId: l.variant_id, sku: l.sku, barcode: l.barcode, title: l.variant_title && l.variant_title !== "Default Title" ? `${l.title} · ${l.variant_title}` : l.title,
         quantity: l.quantity, received: l.received_qty, damaged: l.damaged_qty, unitCost: fromMinor(BigInt(l.unit_cost_minor), currency),
+        landedUnitCost: sameCurrency && l.quantity > 0
+          ? fromMinor(BigInt(l.unit_cost_minor) + ((landedFor(costs, weights, l.id, l.quantity).get(currency) ?? 0n) + BigInt(l.quantity) / 2n) / BigInt(l.quantity), currency)
+          : null,
+      })),
+      landedCosts: landed.map((c) => ({
+        id: c.id, kind: c.kind as NewLandedCost["kind"], amount: fromMinor(BigInt(c.amount_minor), c.currency.trim()), allocateBy: c.allocate_by === "quantity" ? "quantity" as const : "value" as const,
+        description: c.description, createdAt: c.created_at.toISOString(),
       })),
       receipts: receipts.map((x) => ({
         id: x.id, number: x.number, receivedAt: x.received_at.toISOString(), units: Number(x.units), damaged: Number(x.damaged),
