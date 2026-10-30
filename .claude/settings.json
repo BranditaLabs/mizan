@@ -1,0 +1,8 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@anthropic-plugin-directory": true,
+    "security-guidance@anthropic-plugin-directory": true,
+    "code-simplifier@anthropic-plugin-directory": true,
+    "code-review-anthropics@anthropic-plugin-directory": true
+  }
+}
