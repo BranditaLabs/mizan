@@ -60,7 +60,7 @@ describe("automation core (E11-1, E11-3)", () => {
     const c = (await http().get("/v1/catalog").set(as("owner")).expect(200)).body;
     expect(c.triggers).toEqual(expect.arrayContaining([{ event: "order.created", context: "order" }, { event: "stock.low", context: "item" }]));
     expect(c.triggers.map((t: { event: string }) => t.event)).not.toContain("stock.changed"); // plumbing, never a trigger
-    expect(c.actions.map((a: { action: string }) => a.action)).toEqual(["order.add_tag", "order.assign", "notify.team"]);
+    expect(c.actions.map((a: { action: string }) => a.action)).toEqual(["order.add_tag", "order.assign", "order.convert_to_prepaid", "notify.team"]);
     expect(c.fields.order.map((f: { field: string }) => f.field)).not.toContain("order.phone"); // no personal data
 
     const bad = await create({ name: "Wrong", trigger: "stock.low", conditions: { all: [{ field: "order.total", op: "gt", value: 1 }] }, steps: [{ action: "order.add_tag", params: { tags: ["x"] } }] }, 422);

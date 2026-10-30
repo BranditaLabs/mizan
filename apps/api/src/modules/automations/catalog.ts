@@ -40,6 +40,14 @@ const Tag = z.string().trim().toLowerCase().regex(/^[\p{L}\p{N}][\p{L}\p{N} _-]{
 export const ACTIONS = {
   "order.add_tag": { needs: "order", params: z.strictObject({ tags: z.array(Tag).min(1).max(5) }) },
   "order.assign": { needs: "order", params: z.strictObject({ userId: z.uuid().nullable().describe("null: unassign") }) },
+  "order.convert_to_prepaid": {
+    needs: "order",
+    params: z.strictObject({
+      purpose: z.enum(["full", "deposit"]).default("full"),
+      depositPct: z.number().int().min(5).max(90).optional().describe("Deposit only; default the store's share"),
+      method: z.enum(["instapay", "wallet", "bank_transfer", "link"]).describe("Uses the store's pay-to details for it (Settings → Payments)"),
+    }),
+  },
   "notify.team": {
     needs: "none",
     params: z.strictObject({

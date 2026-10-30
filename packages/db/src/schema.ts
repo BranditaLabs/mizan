@@ -704,7 +704,7 @@ export interface PaymentLinks {
   id: Generated<string>;
   tenant_id: string;
   order_id: string;
-  connection_id: string;
+  connection_id: string | null;
   purpose: string;
   amount_minor: Int8;
   currency: string;
@@ -714,6 +714,13 @@ export interface PaymentLinks {
   status: Generated<string>;
   expires_at: Timestamp | null;
   created_at: Generated<Timestamp>;
+  kind: string | null;
+  method: string | null;
+  instructions: string | null;
+  paid_before_minor: Generated<Int8>;
+  paid_at: Timestamp | null;
+  created_by: string | null;
+  source: Generated<string>;
 }
 
 export interface Payments {

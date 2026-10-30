@@ -19,6 +19,7 @@ import { ConfirmationCard } from "./ConfirmationCard";
 import { DuplicateBanner } from "./DuplicateBanner";
 import { LedgerCard } from "./LedgerCard";
 import { RefundsCard } from "@/components/payments/Refunds";
+import { ConversionCard } from "./ConversionCard";
 import { ReturnsCard } from "./ReturnsCard";
 import { ShippingCard } from "./ShippingCard";
 import { ExchangeCard } from "./ExchangeCard";
@@ -170,6 +171,7 @@ export function OrderDetail({ id }: { id: string }) {
               )}
             </Card>
           )} />
+          <ConversionCard orderId={o.id} />
           <ShippingCard order={o} />
           <DoorCard order={o} />
           <ReturnsCard orderId={o.id} />

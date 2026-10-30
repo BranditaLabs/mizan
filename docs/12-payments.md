@@ -66,6 +66,8 @@ Blocked orders arriving through auto-ship emit `order.awaiting_payment` and ship
 
 Risky COD order (M2 score ≥ threshold) → `payment.send_link` (full or deposit, optional discount) → customer pays → `payment.received` → order becomes `prepaid` or `partial` → shipment COD amount updated (or booked with the new amount) → risk reduced. Recipe: *COD rescue* (`docs/13-automation-platform.md`).
 
+✅ Built (E14-3, `apps/api/src/modules/payments/conversion.*`, order screen → *Convert to prepaid*, Settings → Payments): manual methods first. The store sets where customers pay (InstaPay address, wallet number, bank account, its own payment page), the default deposit (30% of what the courier would collect, rounded up to a whole unit) and how long an offer stays open (24 h). The team, or the automation action `order.convert_to_prepaid`, offers all or a deposit on a COD order not yet shipped; Mizan writes the message in Egyptian Arabic and English for the team to send (WhatsApp sending of it comes with the payment-message template). When the team records the money in the ledger, the cash to collect drops in the same transaction, the offer is paid (`payment.link_paid`), and a shipment already booked with the old cash goes to the review queue so it is re-booked or corrected with the courier (`shipment.needs_review`, reason `cod_changed`). Not yet: a discount for paying first, gateway links (with E14-2) and the mode switching to `prepaid` (the order keeps `cod` with less to collect; `payment_status` shows partial or paid).
+
 ### 5.2 Bank transfer
 
 Order placed with bank transfer → held, reminders at 12 h and 36 h → payment matched (merchant marks paid, or bank line matched in M8) → ships automatically → cancelled and stock released after the deadline if unpaid.

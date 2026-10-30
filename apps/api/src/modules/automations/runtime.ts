@@ -4,6 +4,7 @@ import type { DB } from "@mizan/db";
 import { fromMinor, type DomainEvent, type EventActor } from "@mizan/shared";
 import { EventsService } from "../../platform/events/events.service.js";
 import { OrderActions } from "../orders/order-actions.js";
+import { ConversionService } from "../payments/conversion.service.js";
 import { ACTIONS, contextOf, ERROR_MIN_RUNS, ERROR_RATE, MAX_DEPTH, parseStep, type ActionName, type Step } from "./catalog.js";
 import { ConditionsSchema, evaluate, valueAt } from "./conditions.js";
 
@@ -27,6 +28,7 @@ export class AutomationRuntime {
   constructor(
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(OrderActions) private readonly orders: OrderActions,
+    @Inject(ConversionService) private readonly conversions: ConversionService,
   ) {}
 
   async onEvent(trx: Trx, event: DomainEvent): Promise<void> {
@@ -120,6 +122,15 @@ export class AutomationRuntime {
           if (!member) throw new Error("the person to assign is not an active member");
         }
         return this.orders.assign(trx, event.tenantId, orderId!, userId, actor, ref);
+      }
+      case "order.convert_to_prepaid": {
+        // The offer, then a note to the team to send it (an automatic WhatsApp message comes with the gateway, E14-2).
+        const c = await this.conversions.create(trx, event.tenantId, orderId!, { purpose: p.purpose as "full" | "deposit", method: p.method as "instapay", ...(p.depositPct ? { depositPct: p.depositPct as number } : {}) }, actor, "automation");
+        await trx.insertInto("notifications").values({
+          tenant_id: event.tenantId, roles: ["owner", "admin", "ops_manager", "agent"], text: `${c.number}: send the customer the payment message (order → Convert to prepaid)`.slice(0, 400),
+          entity_type: "order", entity_id: orderId!, source: `automation:${ref.automation}`, dedupe_key: `automation:${ref.automationRun}:${ref.automationStep}`,
+        }).onConflict((oc) => oc.columns(["tenant_id", "dedupe_key"]).where("dedupe_key", "is not", null).doNothing()).execute();
+        return "done";
       }
       case "notify.team": {
         const text = fill(p.message as string, ctx).slice(0, 400);

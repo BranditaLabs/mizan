@@ -21,7 +21,7 @@ type Recipe = Schemas["RecipeList"]["data"][number];
 const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
 const KNOWN_TRIGGERS = new Set(["order.created", "order.scored", "order.duplicate_found", "order.store_cancel_failed", "order.assigned", "order.tagged", "order.confirmed", "order.cancelled",
   "stock.short", "stock.low", "stock.out", "connection.needs_attention", "offer.accepted", "payment.received", "ticket.created", "ticket.status_changed", "ticket.assigned"]);
-const KNOWN_ACTIONS = new Set(["order.add_tag", "order.assign", "notify.team"]);
+const KNOWN_ACTIONS = new Set(["order.add_tag", "order.assign", "order.convert_to_prepaid", "notify.team"]);
 
 /**
  * Automation Studio (M13, E11-2): the store's automations with an on/off switch and their run

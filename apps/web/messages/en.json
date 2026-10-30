@@ -1170,7 +1170,8 @@
       "integrations": "Integrations",
       "audit": "Audit log",
       "store": "Store",
-      "purchasing": "Purchasing"
+      "purchasing": "Purchasing",
+      "payments": "Payments"
     }
   },
   "confirmationSettings": {
@@ -2087,6 +2088,7 @@
     "action": {
       "order_add_tag": "tag the order",
       "order_assign": "assign the order",
+      "order_convert_to_prepaid": "offer to pay before delivery",
       "notify_team": "notify the team"
     },
     "log": {
@@ -3277,6 +3279,69 @@
       "safetyDays": "Safety stock (days)",
       "targetCoverDays": "Target cover (days)",
       "days": "Days, a whole number"
+    }
+  },
+  "conversion": {
+    "title": "Convert to prepaid",
+    "hint": "Ask the customer to pay all, or a deposit, before shipping: fewer refusals at the door.",
+    "offered": "Offer ready: send the message",
+    "cancelled": "Offer withdrawn",
+    "copied": "Copied",
+    "copy": "Copy message",
+    "cancel": "Withdraw offer",
+    "whenPaid": "When the money arrives, record it in Payments on this order: the offer closes and the courier collects less.",
+    "setUp": "Set up where customers pay first:",
+    "setUpLink": "Settings → Payments",
+    "owed": "The courier would collect",
+    "what": "Ask for",
+    "depositAmount": "Deposit",
+    "depositHint": "Default <amount></amount>",
+    "how": "Pay by",
+    "offer": "Make the offer",
+    "until": "Open until",
+    "noInstructions": "Add where to pay by this method in Settings → Payments.",
+    "status": {
+      "open": "Waiting for payment",
+      "paid": "Paid",
+      "expired": "Expired",
+      "cancelled": "Withdrawn"
+    },
+    "purpose": {
+      "full": "All of it",
+      "deposit": "A deposit"
+    },
+    "method": {
+      "instapay": "InstaPay",
+      "wallet": "Mobile wallet",
+      "bank_transfer": "Bank transfer",
+      "link": "Payment link"
+    },
+    "reason": {
+      "not_cod": "Only cash-on-delivery orders are converted.",
+      "nothing_owed": "Nothing is left to collect.",
+      "already_shipped": "This order has already left.",
+      "closed": "This order is cancelled."
+    }
+  },
+  "conversionSettings": {
+    "title": "Payments",
+    "subtitle": "Converting COD orders: where customers pay, the deposit and how long an offer stays open.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "methodsTitle": "Where customers pay",
+    "methodsHint": "Only what you fill in is offered. These are the store's details, shown to the customer.",
+    "hints": {
+      "instapay": "Your InstaPay address, e.g. store@instapay",
+      "wallet": "The wallet number",
+      "bank_transfer": "Bank, account name and IBAN",
+      "link": "A payment page you already have (https://…)"
+    },
+    "depositPct": "Deposit (% of what is owed)",
+    "expiresHours": "Offer open for (hours)",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers and finance see payment settings."
     }
   }
 }

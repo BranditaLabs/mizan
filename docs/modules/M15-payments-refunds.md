@@ -126,7 +126,7 @@ _Sample data. Full visual in `design/prototype.html`._
 ## Acceptance criteria
 
 - [x] Every order shows a ledger whose lines sum to its balance. ✅ E14-1: ledger panel on the order screen; property tests in `apps/api/test/ledger.test.ts`.
-- [ ] A COD order converts to prepaid with one link; the shipment COD amount updates.
+- [x] A COD order converts to prepaid with one link; the shipment COD amount updates. ✅ E14-3 with manual methods (InstaPay, wallet, transfer, the store's page): the offer and its message from the order screen or the automation action; recording the money lowers the cash to collect and sends a booked shipment to review (docs/12 §5.1). Gateway links with E14-2.
 - [ ] Refunds reach the gateway and are confirmed back, or flagged within 24 h.
 - [ ] Chargebacks appear within one sync and reduce provisional profit.
 - [ ] No card number is ever stored or logged by Mizan.

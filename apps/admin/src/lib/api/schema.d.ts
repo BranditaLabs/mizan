@@ -161,6 +161,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/{id}/conversion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrderConversionController_get"];
+        put?: never;
+        post: operations["OrderConversionController_offer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/conversion/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrderConversionController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/settings/conversion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConversionSettingsController_get"];
+        put: operations["ConversionSettingsController_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders": {
         parameters: {
             query?: never;
@@ -2803,7 +2851,7 @@ export interface components {
             /** @description Actions run in order; one failing stops the rest */
             steps: {
                 /** @enum {string} */
-                action: "order.add_tag" | "order.assign" | "notify.team";
+                action: "order.add_tag" | "order.assign" | "order.convert_to_prepaid" | "notify.team";
                 /** @default {} */
                 params: {
                     [key: string]: unknown;
@@ -3210,6 +3258,52 @@ export interface components {
             verifiedAt: string | null;
             /** Format: date-time */
             updatedAt: string;
+        };
+        ConversionSettings: {
+            /**
+             * @description A deposit offer asks for this share of what is owed
+             * @default 30
+             */
+            depositPct: number;
+            /** @default 24 */
+            expiresHours: number;
+            /** @default {} */
+            methods: {
+                /** @description The store's InstaPay address, e.g. store@instapay */
+                instapay?: string;
+                /** @description The store's wallet number */
+                wallet?: string;
+                /** @description Bank, account name and IBAN */
+                bank_transfer?: string;
+                /**
+                 * Format: uri
+                 * @description A payment page the store already has
+                 */
+                link?: string;
+            };
+        };
+        ConversionSettingsInput: {
+            /**
+             * @description A deposit offer asks for this share of what is owed
+             * @default 30
+             */
+            depositPct: number;
+            /** @default 24 */
+            expiresHours: number;
+            /** @default {} */
+            methods: {
+                /** @description The store's InstaPay address, e.g. store@instapay */
+                instapay?: string;
+                /** @description The store's wallet number */
+                wallet?: string;
+                /** @description Bank, account name and IBAN */
+                bank_transfer?: string;
+                /**
+                 * Format: uri
+                 * @description A payment page the store already has
+                 */
+                link?: string;
+            };
         };
         CostRule: {
             /** Format: uuid */
@@ -3961,6 +4055,16 @@ export interface components {
             /** @description Orders waiting for stock that are now reserved */
             ordersReserved: number;
         };
+        NewConversion: {
+            /** @enum {string} */
+            purpose: "full" | "deposit";
+            /** @description Deposit only: the amount (default the store's deposit share of what is owed) */
+            amount?: string;
+            /** @enum {string} */
+            method: "instapay" | "wallet" | "bank_transfer" | "link";
+            /** @description Where to pay; defaults to the store's for this method */
+            instructions?: string;
+        };
         NewExchange: {
             /**
              * Format: uuid
@@ -4514,6 +4618,53 @@ export interface components {
                  */
                 call_team: true;
             };
+        };
+        OrderConversion: {
+            /** @description A COD order not yet shipped with cash still to collect */
+            eligible: boolean;
+            /** @enum {string|null} */
+            reason: "not_cod" | "nothing_owed" | "already_shipped" | "closed" | null;
+            /** @description What the courier would collect today */
+            owed: {
+                amount: string;
+                currency: string;
+            };
+            /** @description The default deposit */
+            deposit: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Methods the store has set up */
+            methods: ("instapay" | "wallet" | "bank_transfer" | "link")[];
+            /** @description The latest offer */
+            current: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                purpose: "full" | "deposit";
+                /** @enum {string} */
+                method: "instapay" | "wallet" | "bank_transfer" | "link";
+                /** @enum {string} */
+                status: "open" | "paid" | "expired" | "cancelled";
+                amount: {
+                    amount: string;
+                    currency: string;
+                };
+                instructions: string | null;
+                /** Format: date-time */
+                expiresAt: string | null;
+                /** Format: date-time */
+                paidAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** @enum {string} */
+                source: "manual" | "automation" | "gateway";
+            } | null;
+            /** @description For an open offer: the text to send the customer */
+            message: {
+                ar: string;
+                en: string;
+            } | null;
         };
         OrderCreated: {
             /** Format: uuid */
@@ -7858,6 +8009,239 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderConversionController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the order can be converted, what is owed, the latest offer and, while open, the message to send */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderConversion"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderConversionController_offer: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewConversion"];
+            };
+        };
+        responses: {
+            /** @description An offer to pay all (or a deposit) before shipping; emits payment.link_sent; audited. Paid when the ledger receives it */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderConversion"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrderConversionController_cancel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The open offer withdrawn; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderConversion"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConversionSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deposit share, offer time and the store's pay-to details per method */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversionSettings"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConversionSettingsController_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversionSettingsInput"];
+            };
+        };
+        responses: {
+            /** @description Saved; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConversionSettings"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

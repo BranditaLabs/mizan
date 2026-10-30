@@ -110,6 +110,7 @@ function RecordPayment({ orderId, ledger, onClose }: { orderId: string; ledger: 
       void qc.invalidateQueries({ queryKey: ["ledger"] });
       void qc.invalidateQueries({ queryKey: ["order"] });
       void qc.invalidateQueries({ queryKey: ["orderPnl"] });
+      void qc.invalidateQueries({ queryKey: ["conversion"] });
       onClose();
     },
   });
