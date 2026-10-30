@@ -15,3 +15,5 @@ perf/load-results.json
 graphify-out/*
 !graphify-out/GRAPH_REPORT.md
 !graphify-out/graph.html
+# Playwright CLI output (may contain credentials)
+.playwright-cli/
