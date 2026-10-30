@@ -80,8 +80,9 @@ test("owner in Arabic: connects a WooCommerce store with its keys; it shows as b
   await page.goto("/ar/settings/integrations");
   await page.getByRole("button", { name: "اربط متجر ووكومرس" }).click();
   const dialog = page.getByRole("dialog", { name: "اربط ووكومرس" });
-  await expect(dialog).toContainText("Read/Write");
   await dialog.getByLabel("عنوان المتجر").fill("shop.example.test");
+  await dialog.getByRole("button", { name: "أو حط المفاتيح بإيدك" }).click();
+  await expect(dialog).toContainText("Read/Write");
   await dialog.getByLabel("الـ Consumer key").fill("pk_wrong");
   await expect(dialog).toContainText("الـ consumer key بيبدأ بـ ck_");
   await expect(dialog.getByRole("button", { name: "اربط", exact: true })).toBeDisabled();
@@ -93,4 +94,26 @@ test("owner in Arabic: connects a WooCommerce store with its keys; it shows as b
   await expect(list).toContainText("ووكومرس");
   await expect(list).toContainText("shop.example.test");
   await expect(list).toContainText("بنراجع");
+});
+
+/** E5-7 one click: the owner is sent to WooCommerce's approval page, and told how it went on return. */
+test("owner in English: approves Mizan in WooCommerce in one click, and sees the result on return", async ({ page }) => {
+  const owner = await ownerWithStore("Woo One Click");
+  await page.route("https://approve.example.test/**", (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<html><body>WooCommerce approval</body></html>" }));
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
+  await page.goto("/en/settings/integrations");
+  await page.getByRole("button", { name: "Connect a WooCommerce store" }).click();
+  const dialog = page.getByRole("dialog", { name: "Connect WooCommerce" });
+  await dialog.getByLabel("Store address").fill("approve.example.test");
+  await dialog.getByRole("button", { name: "Approve in WooCommerce" }).click();
+  await page.waitForURL(/approve\.example\.test\/wc-auth\/v1\/authorize/);
+  const url = new URL(page.url());
+  expect(url.searchParams.get("scope")).toBe("read_write");
+  expect(url.searchParams.get("return_url")).toContain("/en/settings/integrations?woo=returned");
+
+  await page.goto("/en/settings/integrations?woo=returned&success=0&user_id=x");
+  await expect(page.locator(".mz-toast", { hasText: "WooCommerce didn't approve Mizan" })).toBeVisible();
+  await expect(page).toHaveURL(/\/en\/settings\/integrations$/);
 });

@@ -3,6 +3,8 @@ import { Inject, Injectable } from "@nestjs/common";
 import { asWorker, trxQueryClient } from "@mizan/db";
 import { MizanEngine, SqlStore } from "@mizan/engine";
 import { auditActor, AuditService } from "../../../platform/audit/audit.service.js";
+import { APP_CONFIG, type AppConfig } from "../../../platform/config.js";
+import { readWooAuthToken, WOO_AUTH_TTL_MS, wooAuthToken } from "./woocommerce-auth.js";
 import type { AuthContext } from "../../../platform/auth/auth.types.js";
 import { Database } from "../../../platform/db/database.js";
 import { ProblemError } from "../../../platform/http/problem.js";
@@ -32,11 +34,59 @@ export class WooCommerceConnectService {
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
     @Inject(WebhookRouter) private readonly router: WebhookRouter,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async connect(auth: AuthContext, body: { siteUrl: string; consumerKey: string; consumerSecret: string }): Promise<ConnectionView> {
-    const tenantId = auth.tenant!.id;
-    const by = auditActor(auth);
+    return this.save(auth.tenant!.id, auditActor(auth), body);
+  }
+
+  /**
+   * One click (E5-7): the address of WooCommerce's approval page for this store. The owner signs
+   * in to WordPress there and approves Read/Write access; WooCommerce then posts the new keys to
+   * `/webhooks/woocommerce-auth` (with the signed `user_id`) and sends the browser back to
+   * Settings → Integrations with `success=1` or `0`.
+   */
+  authorizeUrl(auth: AuthContext, siteUrl: string, locale: "ar" | "en"): { url: string; expiresAt: string } {
+    const site = normalizeSite(siteUrl);
+    const base = `${site.origin}${site.pathname === "/" ? "" : site.pathname}`;
+    const expiresAt = Date.now() + WOO_AUTH_TTL_MS;
+    const token = wooAuthToken(this.config.LINK_SIGNING_KEY, { tenantId: auth.tenant!.id, userId: auth.user.id, siteUrl: base, expiresAt });
+    const q = new URLSearchParams({
+      app_name: "Mizan", scope: "read_write", user_id: token,
+      return_url: new URL(`/${locale}/settings/integrations?woo=returned`, this.config.WEB_URL).toString(),
+      callback_url: new URL("/webhooks/woocommerce-auth", this.config.PUBLIC_URL).toString(),
+    });
+    return { url: `${base}/wc-auth/v1/authorize?${q.toString()}`, expiresAt: new Date(expiresAt).toISOString() };
+  }
+
+  /**
+   * WooCommerce's post with the keys the owner approved. Answers 200 only when they are saved
+   * (WooCommerce tells the owner it failed otherwise). The member must still be an owner or admin
+   * of the store, the access Read/Write, and the token signed by Mizan and not expired.
+   */
+  async receiveKeys(raw: string): Promise<{ status: number; body: Record<string, unknown> }> {
+    let p: { user_id?: unknown; consumer_key?: unknown; consumer_secret?: unknown; key_permissions?: unknown };
+    try { p = JSON.parse(raw); } catch { return { status: 400, body: { error: "invalid json" } }; }
+    const claim = readWooAuthToken(this.config.LINK_SIGNING_KEY, p.user_id);
+    if (!claim) return { status: 401, body: { error: "unknown or expired request" } };
+    if (p.key_permissions !== "read_write") return { status: 400, body: { error: "Mizan needs Read/Write access" } };
+    if (typeof p.consumer_key !== "string" || !/^ck_[A-Za-z0-9_]{8,}$/.test(p.consumer_key) || typeof p.consumer_secret !== "string" || !/^cs_[A-Za-z0-9_]{8,}$/.test(p.consumer_secret)) {
+      return { status: 400, body: { error: "malformed keys" } };
+    }
+    const member = await this.db.tenant(claim.tenantId, (trx) => trx.selectFrom("memberships").select("role")
+      .where("user_id", "=", claim.userId).where("status", "=", "active").executeTakeFirst());
+    if (!member || !["owner", "admin"].includes(member.role)) return { status: 403, body: { error: "the member who asked can no longer connect stores" } };
+    try {
+      await this.save(claim.tenantId, { actor: { type: "user" as const, id: claim.userId } }, { siteUrl: claim.siteUrl, consumerKey: p.consumer_key, consumerSecret: p.consumer_secret });
+    } catch (e) {
+      if (e instanceof ProblemError) return { status: e.status, body: { error: e.code } };
+      throw e;
+    }
+    return { status: 200, body: { saved: true } };
+  }
+
+  private async save(tenantId: string, by: { actor: { type: "user"; id: string }; ip?: string | undefined }, body: { siteUrl: string; consumerKey: string; consumerSecret: string }): Promise<ConnectionView> {
     const site = normalizeSite(body.siteUrl);
     const account = `${site.host}${site.pathname === "/" ? "" : site.pathname}`;
     const siteUrl = `${site.origin}${site.pathname === "/" ? "" : site.pathname}`;

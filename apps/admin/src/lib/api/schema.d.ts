@@ -2193,6 +2193,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/woocommerce/authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["WooCommerceConnectController_authorize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/privacy-requests": {
         parameters: {
             query?: never;
@@ -6594,6 +6610,28 @@ export interface components {
             wabaId: string;
             /** @description A permanent system-user token with whatsapp_business_messaging and whatsapp_business_management; stored encrypted, never shown again */
             accessToken: string;
+        };
+        WooCommerceAuthorize: {
+            /** @description The store's address, https://shop.example.com */
+            siteUrl: string;
+            /**
+             * @description Where the owner comes back to after approving
+             * @default ar
+             * @enum {string}
+             */
+            locale: "ar" | "en";
+        };
+        WooCommerceAuthorizeUrl: {
+            /**
+             * Format: uri
+             * @description WooCommerce's approval page (/wc-auth/v1/authorize) for this store
+             */
+            url: string;
+            /**
+             * Format: date-time
+             * @description Approve before this; then ask for a new link
+             */
+            expiresAt: string;
         };
         WooCommerceKeys: {
             /** @description The store's address, https://shop.example.com */
@@ -14471,6 +14509,52 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    WooCommerceConnectController_authorize: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WooCommerceAuthorize"];
+            };
+        };
+        responses: {
+            /** @description Open it in the browser: the owner approves Read/Write in WooCommerce and comes back to Settings → Integrations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WooCommerceAuthorizeUrl"];
                 };
             };
             /** @description Understood but refused (a business rule) */

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +31,14 @@ export function IntegrationsScreen() {
   const toast = useToast();
   const [woo, setWoo] = useState<{ site: string } | null>(null);
   const role = store?.role ?? "";
+  // Back from WooCommerce's approval page (E5-7): say how it went, once, then drop the query.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("woo") !== "returned") return;
+    toast({ message: t(q.get("success") === "1" ? "woo.approved" : "woo.denied") });
+    void qc.invalidateQueries({ queryKey: ["connections"] });
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [toast, t, qc]);
   const scope = [user?.uid ?? "", store?.tenantId ?? ""];
   const list = useQuery({ queryKey: ["connections", ...scope], queryFn: () => ok(api.GET("/v1/connections")), enabled: READERS.has(role) });
   const dead = useQuery({ queryKey: ["deadLetters", ...scope], queryFn: () => ok(api.GET("/v1/admin/integrations/dead-letters", { params: { query: { limit: 50 } } })), enabled: READERS.has(role) });

@@ -31,6 +31,16 @@ export const WooCommerceKeysSchema = z.strictObject({
   consumerSecret: z.string().trim().regex(/^cs_[A-Za-z0-9_]{8,}$/, "a WooCommerce consumer secret starts with cs_").describe("cs_…; stored encrypted, never shown again"),
 });
 
+/** E5-7 one click: the store's address; Mizan answers with WooCommerce's approval page for it. */
+export const WooCommerceAuthorizeSchema = z.strictObject({
+  siteUrl: z.string().trim().min(4).max(300).describe("The store's address, https://shop.example.com"),
+  locale: z.enum(["ar", "en"]).default("ar").describe("Where the owner comes back to after approving"),
+});
+export const WooCommerceAuthorizeUrlSchema = z.object({
+  url: z.url().describe("WooCommerce's approval page (/wc-auth/v1/authorize) for this store"),
+  expiresAt: z.iso.datetime().describe("Approve before this; then ask for a new link"),
+});
+
 type Row = { id: string; kind: string; provider: string; external_account: string | null; status: string; status_reason: string | null; config: unknown; updated_at: Date };
 
 /**

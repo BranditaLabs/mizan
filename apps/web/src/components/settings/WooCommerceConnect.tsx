@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button, ButtonGroup } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
@@ -23,6 +23,8 @@ export function WooCommerceConnect({ open, onClose, site = "" }: { open: boolean
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
+  const locale = useLocale() === "en" ? "en" : "ar";
+  const [mode, setMode] = useState<"approve" | "keys">("approve");
   const [siteUrl, setSiteUrl] = useState(site);
   const [consumerKey, setKey] = useState("");
   const [consumerSecret, setSecret] = useState("");
@@ -36,25 +38,43 @@ export function WooCommerceConnect({ open, onClose, site = "" }: { open: boolean
       onClose();
     },
   });
+  // One click: WooCommerce's own approval page; the keys come back to Mizan by themselves.
+  const approve = useMutation({
+    mutationFn: () => ok(api.POST("/v1/connections/woocommerce/authorize", { body: { siteUrl: siteUrl.trim(), locale } })),
+    onSuccess: (r) => { window.location.assign(r.url); },
+  });
   const keyBad = consumerKey.trim() !== "" && !KEY.test(consumerKey.trim());
   const secretBad = consumerSecret.trim() !== "" && !SECRET.test(consumerSecret.trim());
   const ready = siteUrl.trim().length > 3 && KEY.test(consumerKey.trim()) && SECRET.test(consumerSecret.trim());
+  const siteOk = siteUrl.trim().length > 3;
   return (
-    <Dialog open={open} onClose={onClose} title={t("title")} description={t("body")} footer={(
+    <Dialog open={open} onClose={onClose} title={t("title")} description={t(mode === "approve" ? "approveBody" : "body")} footer={(
       <ButtonGroup>
-        <Button busy={save.isPending} disabled={!ready} onClick={() => save.mutate()}>{t("connect")}</Button>
+        {mode === "approve"
+          ? <Button busy={approve.isPending} disabled={!siteOk} onClick={() => approve.mutate()}>{t("approve")}</Button>
+          : <Button busy={save.isPending} disabled={!ready} onClick={() => save.mutate()}>{t("connect")}</Button>}
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>
       <div className="flex flex-col gap-3" data-testid="woo-connect">
-        <ol className="list-decimal ps-5 text-body-sm text-text-2">
-          <li>{t("steps.one")}</li>
-          <li>{t("steps.two")}</li>
-          <li>{t("steps.three")}</li>
-        </ol>
         <Field label={t("site")} placeholder={t("sitePlaceholder")} value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} ltr inputMode="url" autoComplete="url" />
-        <Field label={t("key")} value={consumerKey} onChange={(e) => setKey(e.target.value)} ltr autoComplete="off" spellCheck={false} error={keyBad ? t("keyInvalid") : null} />
-        <Field label={t("secret")} type="password" value={consumerSecret} onChange={(e) => setSecret(e.target.value)} ltr autoComplete="off" spellCheck={false} error={secretBad ? t("secretInvalid") : null} hint={t("secretHint")} />
+        {mode === "approve" ? (
+          <>
+            <p className="text-body-sm text-text-2">{t("approveHint")}</p>
+            <Button variant="ghost" size="sm" className="self-start" onClick={() => setMode("keys")}>{t("useKeys")}</Button>
+          </>
+        ) : (
+          <>
+            <ol className="list-decimal ps-5 text-body-sm text-text-2">
+              <li>{t("steps.one")}</li>
+              <li>{t("steps.two")}</li>
+              <li>{t("steps.three")}</li>
+            </ol>
+            <Field label={t("key")} value={consumerKey} onChange={(e) => setKey(e.target.value)} ltr autoComplete="off" spellCheck={false} error={keyBad ? t("keyInvalid") : null} />
+            <Field label={t("secret")} type="password" value={consumerSecret} onChange={(e) => setSecret(e.target.value)} ltr autoComplete="off" spellCheck={false} error={secretBad ? t("secretInvalid") : null} hint={t("secretHint")} />
+            <Button variant="ghost" size="sm" className="self-start" onClick={() => setMode("approve")}>{t("useApprove")}</Button>
+          </>
+        )}
       </div>
     </Dialog>
   );

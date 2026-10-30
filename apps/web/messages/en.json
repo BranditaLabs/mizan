@@ -2894,7 +2894,14 @@
       "reasons": {
         "key_refused": "The store refused the keys. Create new Read/Write keys and paste them.",
         "key_lacks_permission": "The keys are read-only or blocked by the site's firewall. Use Read/Write keys."
-      }
+      },
+      "approveBody": "Approve Mizan in your WooCommerce admin. Mizan gets Read/Write keys by itself and sets up the store's webhooks.",
+      "approveHint": "You'll sign in to WordPress if needed, approve, and come back here.",
+      "approve": "Approve in WooCommerce",
+      "useKeys": "Paste keys instead",
+      "useApprove": "Approve in WooCommerce instead",
+      "approved": "WooCommerce approved Mizan. Checking the store and bringing in your orders.",
+      "denied": "WooCommerce didn't approve Mizan. Try again or paste keys."
     }
   },
   "auditLog": {

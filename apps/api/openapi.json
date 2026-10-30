@@ -13309,6 +13309,80 @@
         ]
       }
     },
+    "/v1/connections/woocommerce/authorize": {
+      "post": {
+        "operationId": "WooCommerceConnectController_authorize",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WooCommerceAuthorize"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Open it in the browser: the owner approves Read/Write in WooCommerce and comes back to Settings → Integrations",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WooCommerceAuthorizeUrl"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/v1/privacy-requests": {
       "get": {
         "operationId": "PrivacyController_list",
@@ -30605,6 +30679,51 @@
           "phoneNumberId",
           "wabaId",
           "accessToken"
+        ],
+        "additionalProperties": false
+      },
+      "WooCommerceAuthorize": {
+        "type": "object",
+        "properties": {
+          "siteUrl": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 300,
+            "description": "The store's address, https://shop.example.com"
+          },
+          "locale": {
+            "default": "ar",
+            "description": "Where the owner comes back to after approving",
+            "type": "string",
+            "enum": [
+              "ar",
+              "en"
+            ]
+          }
+        },
+        "required": [
+          "siteUrl"
+        ],
+        "additionalProperties": false
+      },
+      "WooCommerceAuthorizeUrl": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "WooCommerce's approval page (/wc-auth/v1/authorize) for this store"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "Approve before this; then ask for a new link"
+          }
+        },
+        "required": [
+          "url",
+          "expiresAt"
         ],
         "additionalProperties": false
       },

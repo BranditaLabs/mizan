@@ -170,4 +170,26 @@ describe("WooCommerce store (E5-7)", () => {
     const list = (await http().get("/v1/connections").set(as("owner")).expect(200)).body.data;
     expect(list.find((c: { id: string }) => c.id === id)).toMatchObject({ status: "needs_attention", reason: "key_refused" });
   });
+
+  it("one click: WooCommerce's approval page, then its post with the keys saves them for the store that asked", async () => {
+    const link = (await http().post("/v1/connections/woocommerce/authorize").set(as("owner")).send({ siteUrl: woo.host, locale: "en" }).expect(200)).body;
+    const url = new URL(link.url);
+    expect(`${url.origin}${url.pathname}`).toBe(`${woo.siteUrl}/wc-auth/v1/authorize`);
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      app_name: "Mizan", scope: "read_write", callback_url: "https://api.mizan.test/webhooks/woocommerce-auth",
+      return_url: "https://app.mizan.test/en/settings/integrations?woo=returned",
+    });
+    const token = url.searchParams.get("user_id")!;
+    const post = (body: object) => http().post("/webhooks/woocommerce-auth").set("content-type", "application/json;charset=UTF-8").send(JSON.stringify(body));
+    const keysBody = { key_id: 7, user_id: token, consumer_key: woo.consumerKey, consumer_secret: woo.consumerSecret, key_permissions: "read_write" };
+    await post({ ...keysBody, user_id: `${token}x` }).expect(401);
+    await post({ ...keysBody, key_permissions: "read" }).expect(400);
+    await post({ ...keysBody, consumer_key: "nope" }).expect(400);
+    await http().post("/v1/connections/woocommerce/authorize").set(as("owner")).send({ siteUrl: "http://plain.example" }).expect(422);
+    expect((await post(keysBody).expect(200)).body).toEqual({ saved: true });
+    await runJobs();
+    expect(await connection(id)).toMatchObject({ status: "active", status_reason: null }); // the same store: new keys, checked again
+    const audit = (await http().get("/v1/audit-log?action=connection.key_saved").set(as("owner")).expect(200)).body.data;
+    expect(audit[0]).toMatchObject({ after: expect.objectContaining({ provider: "woocommerce", reconnected: true }) });
+  });
 });
