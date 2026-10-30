@@ -27,7 +27,11 @@ export interface Migration {
   name: string;
   sql: string;
   checksum: string;
+  /** The checksum of the file's bytes as read, which databases migrated before line endings were ignored may hold. */
+  rawChecksum: string;
 }
+
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 
 export const MIGRATIONS_DIR = fileURLToPath(new URL("../migrations", import.meta.url));
 
@@ -41,7 +45,8 @@ export function loadMigrations(dir = MIGRATIONS_DIR): Migration[] {
     const m = FILE.exec(file);
     if (!m) throw new Error(`migration file name must look like 0001_name.sql: ${file}`);
     const sql = readFileSync(join(dir, file), "utf8");
-    return { version: m[1]!, name: m[2]!, sql, checksum: createHash("sha256").update(sql).digest("hex") };
+    // Line endings are not a change: a Windows checkout (CRLF) must match what Linux applied (LF).
+    return { version: m[1]!, name: m[2]!, sql, checksum: sha256(sql.replace(/\r\n/g, "\n")), rawChecksum: sha256(sql) };
   });
   const seen = new Set<string>();
   for (const m of migrations) {
@@ -78,7 +83,10 @@ export async function migrate(
     for (const m of migrations) {
       const prior = done.get(m.version);
       if (prior !== undefined) {
-        if (prior !== m.checksum) {
+        if (prior === m.rawChecksum && prior !== m.checksum) {
+          // Applied from a CRLF checkout before line endings were ignored: the same migration; record it the new way.
+          await client.query("UPDATE schema_migrations SET checksum = $1 WHERE version = $2", [m.checksum, m.version]);
+        } else if (prior !== m.checksum) {
           throw new Error(`migration ${m.version}_${m.name} was changed after it was applied; add a new migration instead`);
         }
         result.skipped.push(m.version);

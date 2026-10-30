@@ -20,6 +20,13 @@ describe("loadMigrations", () => {
     expect(ms[0]!.checksum).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  it("a Windows checkout (CRLF) has the same checksum as what Linux applied (LF)", () => {
+    const lf = loadMigrations(dirWith({ "0001_a.sql": "CREATE TABLE a (id INT);\nSELECT 1;\n" }))[0]!;
+    const crlf = loadMigrations(dirWith({ "0001_a.sql": "CREATE TABLE a (id INT);\r\nSELECT 1;\r\n" }))[0]!;
+    expect(crlf.checksum).toBe(lf.checksum);
+    expect(loadMigrations(dirWith({ "0001_a.sql": "CREATE TABLE a (id INT);\nSELECT 2;\n" }))[0]!.checksum).not.toBe(lf.checksum);
+  });
+
   it("rejects bad names and duplicate versions", () => {
     expect(() => loadMigrations(dirWith({ "1_x.sql": "" }))).toThrow(/0001_name\.sql/);
     expect(() => loadMigrations(dirWith({ "0001_a.sql": "", "0001_b.sql": "" }))).toThrow(/duplicate migration version 0001/);
@@ -62,6 +69,21 @@ describe("migrate", () => {
     await migrate(client, { dir });
     writeFileSync(join(dir, "0001_a.sql"), "CREATE TABLE a (id bigint);");
     await expect(migrate(client, { dir })).rejects.toThrow(/0001_a was changed after it was applied/);
+    await db.close();
+  });
+
+  it("a database that recorded a CRLF file's raw checksum carries on, and is recorded the new way", async () => {
+    const db = new PGlite();
+    const client = pgliteMigrationClient(db);
+    const dir = dirWith({ "0001_a.sql": "CREATE TABLE a (id int);\r\n" });
+    const [m] = loadMigrations(dir);
+    await client.exec("CREATE TABLE schema_migrations (version TEXT PRIMARY KEY, name TEXT NOT NULL, checksum TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())");
+    await client.exec("CREATE TABLE a (id int)");
+    await client.query("INSERT INTO schema_migrations (version, name, checksum) VALUES ('0001', 'a', $1)", [m!.rawChecksum]);
+    expect(await migrate(client, { dir })).toEqual({ applied: [], skipped: ["0001"] });
+    expect(await client.query("SELECT checksum FROM schema_migrations")).toEqual([{ checksum: m!.checksum }]);
+    writeFileSync(join(dir, "0001_a.sql"), "CREATE TABLE a (id int);\n"); // the same file from a Linux checkout
+    expect((await migrate(client, { dir })).skipped).toEqual(["0001"]);
     await db.close();
   });
 });
