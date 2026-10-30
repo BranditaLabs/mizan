@@ -11,3 +11,7 @@ coverage
 .next
 build
 perf/load-results.json
+# graphify: the report and the HTML map are committed; the rest is rebuilt with `graphify update .`
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/graph.html

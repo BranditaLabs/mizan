@@ -119,6 +119,13 @@ Pin exact versions in `package.json` when creating each app.
 - Each gateway, BNPL and marketplace: authentication, webhook signing, refunds and payout report formats — confirm from the provider's docs before building (`docs/06-integrations.md`).
 - All prices in `docs/01-business-model.md` are proposals to validate with pilot merchants.
 
+## Agent tools
+
+- **System map (graphify):** `graphify-out/GRAPH_REPORT.md` (communities, hubs, surprising links) and `graphify-out/graph.html` (open in a browser). The `graphify` skill answers architecture questions from it. Rebuild after code changes, no LLM needed (~45 s): `uvx --from 'graphifyy[sql]==0.9.97' graphify update .` (writes `graph.json` locally; only the report and HTML are committed). Then `graphify query "…"`, `graphify path "A" "B"`, `graphify explain "X"`.
+- **Skills in `.claude/skills/`:** `graphify`, Vercel agent skills `react-best-practices`, `composition-patterns`, `react-view-transitions`, `web-design-guidelines` (for apps/web and apps/admin; RTL and i18n rules here still win).
+- **MCP servers (`.mcp.json`):** `context7` (current library docs; optional `CONTEXT7_API_KEY`), `21st-magic` (UI component generation; needs `API_KEY_21ST`). Keys come from the environment, never from the repo or chat. Generated components must still use `@mizan/design-system`, logical CSS and i18n.
+- **Security testing (Strix):** `uv tool install strix-agent==1.7.0`; needs Docker plus `STRIX_LLM` and `LLM_API_KEY` in the environment. Run only against this repo or our own staging: `strix --target ./ -n`.
+
 ## How to work here
 
 - Start each session by reading `docs/10-backlog.md` and picking the next unchecked item in the current phase.
