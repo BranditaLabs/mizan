@@ -37,7 +37,7 @@ export class DashboardsService {
     return this.db.tenant(tenantId, async (trx) => {
       const { base, timezone } = await storeClock(trx, tenantId);
       const { from, to } = this.metrics.period(q, timezone, now);
-      const facts = await this.metrics.facts(trx, base, timezone, from, to);
+      const facts = await this.metrics.facts(trx, tenantId, base, timezone, from, to);
       const series = d.series.filter((s) => SERIES_ROLES[s].has(role));
       const daily = series.length ? await this.metrics.daily(trx, base, timezone, from, to) : [];
       return {
@@ -60,8 +60,8 @@ export class DashboardsService {
     const d = await this.get(auth, id, q);
     const ar = auth.user.language === "ar";
     const L = ar
-      ? { metric: "المقياس", value: "القيمة", unit: "الوحدة", definition: "التعريف", day: "اليوم", period: "الفترة", units: { count: "عدد", percent: "٪", money: d.currency, days: "يوم" } }
-      : { metric: "Metric", value: "Value", unit: "Unit", definition: "Definition", day: "Day", period: "Period", units: { count: "count", percent: "%", money: d.currency, days: "days" } };
+      ? { metric: "المقياس", value: "القيمة", unit: "الوحدة", definition: "التعريف", day: "اليوم", period: "الفترة", units: { count: "عدد", percent: "٪", money: d.currency, days: "يوم", multiple: "ضعف" } }
+      : { metric: "Metric", value: "Value", unit: "Unit", definition: "Definition", day: "Day", period: "Period", units: { count: "count", percent: "%", money: d.currency, days: "days", multiple: "×" } };
     const num = (v: string | null): Cell => (v === null ? null : format === "xlsx" ? Number(v) : v);
     const rows: Cell[][] = [
       [d.name, `${L.period}: ${d.from} → ${d.to}`],

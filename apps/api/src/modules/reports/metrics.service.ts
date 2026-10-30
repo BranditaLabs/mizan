@@ -4,6 +4,7 @@ import type { DB } from "@mizan/db";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
+import { AdSpendService } from "../profit/ads/ad-spend.service.js";
 import { addDays, asDate, localDay, storeClock } from "../profit/store-day.js";
 import { METRICS, metricByKey, type MetricFacts } from "./metrics.js";
 import type { MetricValuesQuery } from "./metrics.dto.js";
@@ -17,7 +18,7 @@ const COD = ["cod", "partial"];
  */
 @Injectable()
 export class MetricsService {
-  constructor(@Inject(Database) private readonly db: Database) {}
+  constructor(@Inject(Database) private readonly db: Database, @Inject(AdSpendService) private readonly adSpend: AdSpendService) {}
 
   catalogue(auth: AuthContext) {
     const lang = auth.user.language;
@@ -34,7 +35,7 @@ export class MetricsService {
     return this.db.tenant(tenantId, async (trx) => {
       const { base, timezone } = await storeClock(trx, tenantId);
       const { from, to } = this.period(q, timezone, now);
-      const f = await this.facts(trx, base, timezone, from, to);
+      const f = await this.facts(trx, tenantId, base, timezone, from, to);
       return {
         from, to, currency: base,
         data: keys.map((k) => { const m = metricByKey.get(k)!; return { key: m.key, version: m.version, unit: m.unit, ...m.compute(f) }; }),
@@ -43,7 +44,7 @@ export class MetricsService {
   }
 
   /** Everything the metrics read, for store days `from`…`to` (inclusive). */
-  async facts(trx: Transaction<DB>, base: string, timezone: string, from: string, to: string): Promise<MetricFacts> {
+  async facts(trx: Transaction<DB>, tenantId: string, base: string, timezone: string, from: string, to: string): Promise<MetricFacts> {
     const days = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000 + 1;
     const local = sql`(o.placed_at AT TIME ZONE ${timezone})::date`;
     const o = await trx.selectFrom("orders as o").select([
@@ -59,13 +60,15 @@ export class MetricsService {
       sql<string>`count(*) filter (where o.status = 'returned' or (o.status = 'cancelled' and o.shipped_at is not null))`.as("returned"),
       sql<string>`coalesce(sum(p.net_minor), 0)`.as("net"),
       sql<string>`coalesce(sum(p.revenue_minor), 0)`.as("revenue"),
+      sql<string>`coalesce(sum(p.refund_minor), 0)`.as("refunds"),
     ]).where("p.day", ">=", asDate(from)).where("p.day", "<=", asDate(to)).where("p.currency", "=", base).executeTakeFirstOrThrow();
     const stock = await trx.selectFrom("stock_levels").select(sql<string>`coalesce(sum(greatest(on_hand - reserved, 0)), 0)`.as("n")).executeTakeFirstOrThrow();
     const shipped = await trx.selectFrom("stock_movements").select(sql<string>`coalesce(-sum(delta), 0)`.as("n"))
       .where("reason", "=", "pick").where(sql<boolean>`(created_at AT TIME ZONE ${timezone})::date between ${asDate(from)} and ${asDate(to)}`).executeTakeFirstOrThrow();
     return {
       base, days, live: BigInt(o.live), prepaid: BigInt(o.prepaid), cod: BigInt(o.cod), totalBase: BigInt(o.total_base), ordersBase: BigInt(o.orders_base),
-      delivered: BigInt(p.delivered), returned: BigInt(p.returned), net: BigInt(p.net), revenue: BigInt(p.revenue),
+      delivered: BigInt(p.delivered), returned: BigInt(p.returned), net: BigInt(p.net), revenue: BigInt(p.revenue), refunds: BigInt(p.refunds),
+      spend: (await this.adSpend.spendInBase(trx, tenantId, base, from, to)).total,
       available: BigInt(stock.n), unitsShipped: BigInt(shipped.n),
     };
   }

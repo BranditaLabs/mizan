@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { Transaction } from "kysely";
+import { sql, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import { convertMoney, fromMinor, ratio, toMinor, type Money } from "@mizan/shared";
 import { AuditService, auditActor } from "../../../platform/audit/audit.service.js";
@@ -188,6 +188,28 @@ export class AdSpendService {
   }
 
   /** Spend by currency on a day, in the base currency at that day's rates. */
+  /**
+   * Spend for store days `from`…`to` in the base currency (each day at its own rate), by day and
+   * platform, for ROAS (M7-1) and the metric layer. A day in a currency without a rate is left out
+   * and flagged, never guessed.
+   */
+  async spendInBase(trx: Transaction<DB>, tenantId: string, base: string, from: string, to: string) {
+    const rows = await trx.selectFrom("ad_spend").select([dayText("day").as("day"), "platform", "currency", sql<string>`sum(spend_minor)`.as("minor")])
+      .where("day", ">=", asDate(from)).where("day", "<=", asDate(to)).groupBy(["day", "platform", "currency"]).execute();
+    const byDay = new Map<string, bigint>();
+    const byPlatform = new Map<string, bigint>();
+    let total = 0n;
+    let fxMissing = false;
+    for (const r of rows) {
+      const { minor, fxMissing: missing } = await this.toBase(trx, tenantId, base, r.day, new Map([[r.currency.trim(), BigInt(r.minor)]]));
+      fxMissing ||= missing;
+      total += minor;
+      byDay.set(r.day, (byDay.get(r.day) ?? 0n) + minor);
+      byPlatform.set(r.platform, (byPlatform.get(r.platform) ?? 0n) + minor);
+    }
+    return { total, byDay, byPlatform, fxMissing };
+  }
+
   private async toBase(trx: Transaction<DB>, tenantId: string, base: string, day: string, byCurrency: Map<string, bigint>) {
     let minor = 0n;
     let fxMissing = false;

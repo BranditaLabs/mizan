@@ -1393,6 +1393,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attribution/roas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttributionController_roas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/picklists": {
         parameters: {
             query?: never;
@@ -3656,7 +3672,7 @@ export interface components {
                 name: string;
                 definition: string;
                 /** @enum {string} */
-                unit: "count" | "percent" | "money" | "days";
+                unit: "count" | "percent" | "money" | "days" | "multiple";
                 value: string | null;
                 money?: {
                     amount: string;
@@ -4329,7 +4345,7 @@ export interface components {
                 key: string;
                 version: number;
                 /** @enum {string} */
-                unit: "count" | "percent" | "money" | "days";
+                unit: "count" | "percent" | "money" | "days" | "multiple";
                 module: string;
                 name: string;
                 definition: string;
@@ -4346,7 +4362,7 @@ export interface components {
                 key: string;
                 version: number;
                 /** @enum {string} */
-                unit: "count" | "percent" | "money" | "days";
+                unit: "count" | "percent" | "money" | "days" | "multiple";
                 /** @description Decimal string: a count, a percentage with one decimal ("82.4"), an amount, or days; null when it cannot be computed (nothing to divide by) */
                 value: string | null;
                 money?: {
@@ -6854,6 +6870,89 @@ export interface components {
                 lat: number;
                 lng: number;
             } | null;
+        };
+        Roas: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            currency: string;
+            spend: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Some spend is in a currency without a rate that day: left out */
+            fxMissing: boolean;
+            /** @description Money that is real (paid, or cash delivered, less refunds) ÷ spend */
+            trueRoas: string | null;
+            /** @description Every order placed, at its full value ÷ spend: roughly what an ad platform reports */
+            reportedRoas: string | null;
+            /** @description True ROAS if the orders still moving arrive at the rate the finished ones did */
+            projectedRoas: string | null;
+            costPerOrder: {
+                amount: string;
+                currency: string;
+            } | null;
+            costPerDelivered: {
+                amount: string;
+                currency: string;
+            } | null;
+            /** @description Delivered ÷ (delivered + refused or returned), percent */
+            deliveredRate: string | null;
+            /** @description Cancelled, refused or returned ÷ orders placed, percent */
+            lostShare: string | null;
+            orders: {
+                placed: number;
+                delivered: number;
+                moving: number;
+                cancelled: number;
+                returned: number;
+            };
+            money: {
+                placed: {
+                    amount: string;
+                    currency: string;
+                };
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                pending: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders, ad costs included */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+            };
+            /** @description Spend by platform. ROAS per platform and campaign needs each order's ad source (M7-2) */
+            byPlatform: {
+                /** @enum {string} */
+                platform: "meta" | "tiktok" | "google" | "snapchat" | "other";
+                spend: {
+                    amount: string;
+                    currency: string;
+                };
+                share: string | null;
+            }[];
+            days: {
+                /** Format: date */
+                day: string;
+                spend: {
+                    amount: string;
+                    currency: string;
+                };
+                orders: number;
+                delivered: number;
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description A multiple with two decimals ("3.75" = 3.75×); null when it cannot be known */
+                trueRoas: string | null;
+            }[];
         };
         ScriptPreview: {
             /** @enum {string} */
@@ -13025,6 +13124,54 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttributionController_roas: {
+        parameters: {
+            query?: {
+                /** @description The last 7, 14, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ad spend against what the period's orders really brought: true, reported and projected ROAS, cost per delivered order, by day and platform */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Roas"];
                 };
             };
             /** @description Understood but refused (a business rule) */

@@ -5,7 +5,7 @@ export const MetricCatalogueSchema = z.object({
   data: z.array(z.object({
     key: z.string(),
     version: z.number().int(),
-    unit: z.enum(["count", "percent", "money", "days"]),
+    unit: z.enum(["count", "percent", "money", "days", "multiple"]),
     module: z.string(),
     name: z.string(),
     definition: z.string(),
@@ -27,7 +27,7 @@ export const MetricValuesSchema = z.object({
   data: z.array(z.object({
     key: z.string(),
     version: z.number().int(),
-    unit: z.enum(["count", "percent", "money", "days"]),
+    unit: z.enum(["count", "percent", "money", "days", "multiple"]),
     value: z.string().nullable().describe("Decimal string: a count, a percentage with one decimal (\"82.4\"), an amount, or days; null when it cannot be computed (nothing to divide by)"),
     money: MoneySchema.nullable().optional(),
     numerator: z.string().optional(),

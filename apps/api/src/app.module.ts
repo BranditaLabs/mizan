@@ -8,6 +8,7 @@ import { OrdersModule } from "./modules/orders/orders.module.js";
 import { CatalogModule } from "./modules/catalog/catalog.module.js";
 import { OnboardingModule } from "./modules/onboarding/onboarding.module.js";
 import { ProfitModule } from "./modules/profit/profit.module.js";
+import { AttributionModule } from "./modules/attribution/attribution.module.js";
 import { StockModule } from "./modules/stock/stock.module.js";
 import { PaymentsModule } from "./modules/payments/payments.module.js";
 import { TicketsModule } from "./modules/tickets/tickets.module.js";
@@ -62,7 +63,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, BillingModule, ReportsModule, PickingModule, PurchasingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, BillingModule, ReportsModule, AttributionModule, PickingModule, PurchasingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }, FastifyReady],
     };
   }

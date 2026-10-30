@@ -28,7 +28,7 @@ export const DashboardSchema = z.object({
     key: z.string(),
     name: z.string(),
     definition: z.string(),
-    unit: z.enum(["count", "percent", "money", "days"]),
+    unit: z.enum(["count", "percent", "money", "days", "multiple"]),
     value: z.string().nullable(),
     money: MoneySchema.nullable().optional(),
   })).describe("The dashboard's metrics the caller may see, from the metric layer"),

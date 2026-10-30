@@ -1754,7 +1754,8 @@
     "none": "Not yet",
     "pct": "{pct}%",
     "export": "Export CSV",
-    "note": "Revenue counts when the money is real (cash on delivery once delivered). Expected profit adds orders on their way if they deliver. A product's share of an order: its own cost, and the rest by its share of the order's value. Rent and ad spend no order carried stay on the home."
+    "note": "Revenue counts when the money is real (cash on delivery once delivered). Expected profit adds orders on their way if they deliver. A product's share of an order: its own cost, and the rest by its share of the order's value. Rent and ad spend no order carried stay on the home.",
+    "adsLink": "Ads: true ROAS"
   },
   "callQueue": {
     "title": "Confirmation calls",
@@ -2511,7 +2512,10 @@
     "day": "Day",
     "excel": "Excel",
     "csv": "CSV",
-    "tip": "{day}: {value}"
+    "tip": "{day}: {value}",
+    "times": "<n>{v}</n>×",
+    "daysUnit": "days",
+    "timesUnit": "×"
   },
   "shipping": {
     "title": "Shipping",
@@ -3471,5 +3475,66 @@
     "footer": "Prepared by Mizan from the store's records. Message contents are not stored; the exchange shows what was sent and tapped.",
     "times": "× {n}",
     "phoneEnds": "ending <n>{last4}</n>"
+  },
+  "adsRoas": {
+    "title": "Ads: true ROAS",
+    "subtitle": "What your ads really brought: orders followed to delivery and cash, not the checkouts the ad platform counts.",
+    "enterSpend": "Enter ad spend",
+    "period": "Period",
+    "days": "{days} days",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load ROAS.",
+    "notAllowed": {
+      "title": "You can't see ad results",
+      "body": "Owners, admins, ops managers and finance see them."
+    },
+    "empty": {
+      "title": "No ad spend in this period",
+      "body": "Enter each day's spend per platform, or import the CSV from Ads Manager, and Mizan follows those days' orders to the cash."
+    },
+    "fxMissing": "Some spend is in a currency without an exchange rate for its day; it is left out until you add the rate.",
+    "none": "—",
+    "times": "<n>{v}</n>×",
+    "kpi": {
+      "true": "True ROAS",
+      "trueHint": "<real></real> arrived ÷ <spend></spend> spent",
+      "reported": "What the platform would show",
+      "reportedHint": "Every checkout at full value ÷ spend",
+      "projected": "Expected when all arrive",
+      "projectedHint": "{moving, plural, =0 {No orders still on their way} one {# order still on its way, at your delivery rate} other {# orders still on their way, at your delivery rate}}",
+      "perDelivered": "Ad cost per delivered order",
+      "perOrder": "<cost></cost> per order placed"
+    },
+    "gap": "<b>{lost}</b>% of the {placed} orders from these days never paid (cancelled, refused or returned). The platform would show <b>{reported}</b>×; what arrived is <b>{real}</b>×.",
+    "daysTitle": "By day",
+    "col": {
+      "day": "Day",
+      "spend": "Spend",
+      "orders": "Orders",
+      "delivered": "Delivered",
+      "real": "Arrived",
+      "roas": "True ROAS"
+    },
+    "platformsTitle": "Spend by platform",
+    "share": "{pct}%",
+    "platform": {
+      "meta": "Meta",
+      "tiktok": "TikTok",
+      "google": "Google",
+      "snapchat": "Snapchat",
+      "other": "Other"
+    },
+    "perCampaignSoon": "ROAS per platform and campaign comes once orders carry their ad source (UTM and click id), the next step.",
+    "ordersTitle": "These days' orders",
+    "orders": {
+      "placed": "Placed",
+      "delivered": "Delivered",
+      "moving": "Still on their way",
+      "returned": "Refused or returned",
+      "cancelled": "Cancelled",
+      "net": "Net profit, ads included"
+    },
+    "note": "Orders count on the day they were placed, like the profit screen. Money that arrived = paid before delivery, or cash delivered, less refunds.",
+    "timesUnit": "×"
   }
 }

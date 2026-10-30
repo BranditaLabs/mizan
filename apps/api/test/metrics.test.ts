@@ -4,10 +4,20 @@ import { percent } from "../src/modules/profit/home.js";
 
 /** E15-1: the metric layer's definitions, without the database. */
 const facts = (over: Partial<MetricFacts> = {}): MetricFacts => ({
-  base: "EGP", days: 30, live: 200n, prepaid: 50n, cod: 150n, delivered: 120n, returned: 30n, net: 1_234_550n, revenue: 9_000_000n,
+  base: "EGP", days: 30, live: 200n, prepaid: 50n, cod: 150n, delivered: 120n, returned: 30n, net: 1_234_550n, revenue: 9_000_000n, refunds: 500_000n, spend: 3_000_000n,
   totalBase: 24_000_000n, ordersBase: 199n, available: 400n, unitsShipped: 600n, ...over,
 });
 const value = (key: string, f = facts()) => metricByKey.get(key)!.compute(f);
+
+describe("ad metrics (M7-1)", () => {
+  it("true ROAS is real money less refunds over spend; cost per delivered order is spend over delivered", () => {
+    expect(value("true_roas")).toEqual({ value: "2.83", numerator: "8500000", denominator: "3000000" });
+    expect(value("cost_per_delivered_order")).toMatchObject({ value: "250.00", money: { amount: "250.00", currency: "EGP" } });
+    expect(value("ad_spend")).toMatchObject({ value: "30000.00" });
+    expect(value("true_roas", facts({ spend: 0n })).value).toBeNull();
+    expect(value("cost_per_delivered_order", facts({ delivered: 0n })).value).toBeNull();
+  });
+});
 
 describe("metric layer (E15-1)", () => {
   it("each metric is defined once, versioned, in Arabic and English, for at least the owner", () => {

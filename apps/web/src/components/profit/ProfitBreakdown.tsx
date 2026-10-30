@@ -4,9 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
+import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { downloadText, toCsv } from "@/lib/csv";
 import { formatDate } from "@/lib/format";
@@ -112,7 +113,10 @@ export function ProfitBreakdown() {
       ) : null}
       <p className="text-caption text-text-3">{t("note")}</p>
     </>,
-    <Button variant="secondary" icon="download" disabled={!b || b.rows.length === 0} onClick={() => b && exportCsv(b)}>{t("export")}</Button>,
+    <div className="flex flex-wrap gap-2">
+      <Link href="/profit/ads" className={buttonClass("secondary")}>{t("adsLink")}</Link>
+      <Button variant="secondary" icon="download" disabled={!b || b.rows.length === 0} onClick={() => b && exportCsv(b)}>{t("export")}</Button>
+    </div>,
   );
 }
 

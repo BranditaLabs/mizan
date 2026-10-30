@@ -1,4 +1,5 @@
 import { fromMinor, type Money } from "@mizan/shared";
+import { multiple, perUnit } from "../attribution/roas.js";
 import { percent } from "../profit/home.js";
 
 /**
@@ -24,6 +25,9 @@ export interface MetricFacts {
   /** Base currency minor units, from order profit. */
   net: bigint;
   revenue: bigint;
+  refunds: bigint;
+  /** Ad spend in the period, base currency (each day at its rate; days without a rate left out). */
+  spend: bigint;
   /** Order totals in the base currency and how many orders they cover. */
   totalBase: bigint;
   ordersBase: bigint;
@@ -32,7 +36,7 @@ export interface MetricFacts {
   unitsShipped: bigint;
 }
 
-export type MetricUnit = "count" | "percent" | "money" | "days";
+export type MetricUnit = "count" | "percent" | "money" | "days" | "multiple";
 export interface MetricValue { value: string | null; money?: Money | null; numerator?: string; denominator?: string }
 export interface MetricDefinition {
   key: string;
@@ -107,6 +111,28 @@ export const METRICS: readonly MetricDefinition[] = [
       if (f.ordersBase === 0n) return { value: null, money: null, numerator: String(f.totalBase), denominator: "0" };
       const m = fromMinor((f.totalBase * 2n + f.ordersBase) / (2n * f.ordersBase), f.base);
       return { value: m.amount, money: m, numerator: String(f.totalBase), denominator: String(f.ordersBase) };
+    },
+  },
+  {
+    key: "ad_spend", version: 1, unit: "money", module: "M7", roles: MONEY_READERS,
+    name: { en: "Ad spend", ar: "مصروف الإعلانات" },
+    definition: { en: "Ad spend entered or imported for the period, in the store's currency at each day's rate.", ar: "مصروف الإعلانات المتسجّل أو المستورد في الفترة، بعملة المتجر بسعر صرف كل يوم." },
+    compute: (f) => { const m = fromMinor(f.spend, f.base); return { value: m.amount, money: m }; },
+  },
+  {
+    key: "true_roas", version: 1, unit: "multiple", module: "M7", roles: MONEY_READERS,
+    name: { en: "True ROAS", ar: "العائد الحقيقي من الإعلانات" },
+    definition: { en: "Money that is real (paid, or cash delivered, less refunds) from the period's orders ÷ ad spend.", ar: "الفلوس الحقيقية (المدفوعة، أو الكاش اللي اتسلّم، ناقص المرتجع) من أوردرات الفترة ÷ مصروف الإعلانات." },
+    compute: (f) => ({ value: multiple(f.revenue - f.refunds, f.spend), numerator: String(f.revenue - f.refunds), denominator: String(f.spend) }),
+  },
+  {
+    key: "cost_per_delivered_order", version: 1, unit: "money", module: "M7", roles: MONEY_READERS,
+    name: { en: "Ad cost per delivered order", ar: "تكلفة الإعلان لكل أوردر اتسلّم" },
+    definition: { en: "Ad spend ÷ the period's delivered orders.", ar: "مصروف الإعلانات ÷ أوردرات الفترة اللي اتسلّمت." },
+    compute: (f) => {
+      const v = perUnit(f.spend, f.delivered);
+      const m = v === null ? null : fromMinor(v, f.base);
+      return { value: m?.amount ?? null, money: m, numerator: String(f.spend), denominator: String(f.delivered) };
     },
   },
   {

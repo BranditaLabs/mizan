@@ -236,6 +236,10 @@ Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separat
 ## Phase 3 — V2 (months 7–12)
 
 - **M7 Attribution:** Meta/TikTok/Snap spend import; UTM + click-id capture; cost per delivered order; CAPI confirmed + delivered events (< 1 h after delivery).
+  - [x] **M7-1** `M` True ROAS from the recorded spend: money that arrived ÷ spend next to the platform's view (every checkout) and the projection for orders still moving; ad cost per delivered order; lost share; by day and platform; metric layer `true_roas`, `cost_per_delivered_order`, `ad_spend` (unit `multiple`). `GET /v1/attribution/roas`, Profit → Ads: true ROAS (AR/EN); unit tests, API e2e, browser e2e. Pulled forward from V2 (owner's call, Oct 2026).
+  - [ ] **M7-2** `M` Order source: UTM and click ids (fbclid, ttclid, gclid, ScCid) from the store's order (Shopify customer journey, WooCommerce meta); ROAS per platform and campaign; unattributed visible.
+  - [ ] **M7-3** `L` Conversion events: confirmed and delivered (and refused, refunded) to Meta CAPI, TikTok Events API and Snap CAPI with the merchant's own token; hashed phone/email; outbox, fake servers, chaos suite.
+  - [ ] **M7-4** `L` Spend import from Meta, TikTok and Google Ads APIs (needs each platform's app approval, D-3); built against fakes first.
 - **M8 Reconciliation:** courier, gateway, BNPL, bank and marketplace payouts (API or file); auto-match; gaps; money in transit by source and age.
 - **M9 CRM, loyalty and marketing:** profiles, segments, loyalty points and tiers, store credit, campaigns with opt-in.
 - **M16 Purchasing:** suppliers, POs, reorder suggestions, receiving in the ops app, landed cost.

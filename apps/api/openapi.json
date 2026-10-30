@@ -8984,6 +8984,104 @@
         ]
       }
     },
+    "/v1/attribution/roas": {
+      "get": {
+        "operationId": "AttributionController_roas",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "The last 7, 14, 30 or 90 store days, today included (default 30)",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "The last 7, 14, 30 or 90 store days, today included (default 30)"
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Or a range of store days (with `to`, at most 366)",
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "description": "Or a range of store days (with `to`, at most 366)"
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ad spend against what the period's orders really brought: true, reported and projected ROAS, cost per delivered order, by day and platform",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Roas"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "attribution"
+        ]
+      }
+    },
     "/v1/picklists": {
       "post": {
         "operationId": "PickingController_create",
@@ -20249,7 +20347,8 @@
                     "count",
                     "percent",
                     "money",
-                    "days"
+                    "days",
+                    "multiple"
                   ]
                 },
                 "value": {
@@ -22851,7 +22950,8 @@
                     "count",
                     "percent",
                     "money",
-                    "days"
+                    "days",
+                    "multiple"
                   ]
                 },
                 "module": {
@@ -22918,7 +23018,8 @@
                     "count",
                     "percent",
                     "money",
-                    "days"
+                    "days",
+                    "multiple"
                   ]
                 },
                 "value": {
@@ -32581,6 +32682,351 @@
           "phone",
           "address",
           "location"
+        ],
+        "additionalProperties": false
+      },
+      "Roas": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "spend": {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "fxMissing": {
+            "type": "boolean",
+            "description": "Some spend is in a currency without a rate that day: left out"
+          },
+          "trueRoas": {
+            "nullable": true,
+            "description": "Money that is real (paid, or cash delivered, less refunds) ÷ spend",
+            "type": "string"
+          },
+          "reportedRoas": {
+            "nullable": true,
+            "description": "Every order placed, at its full value ÷ spend: roughly what an ad platform reports",
+            "type": "string"
+          },
+          "projectedRoas": {
+            "nullable": true,
+            "description": "True ROAS if the orders still moving arrive at the rate the finished ones did",
+            "type": "string"
+          },
+          "costPerOrder": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "costPerDelivered": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "additionalProperties": false
+          },
+          "deliveredRate": {
+            "nullable": true,
+            "description": "Delivered ÷ (delivered + refused or returned), percent",
+            "type": "string"
+          },
+          "lostShare": {
+            "nullable": true,
+            "description": "Cancelled, refused or returned ÷ orders placed, percent",
+            "type": "string"
+          },
+          "orders": {
+            "type": "object",
+            "properties": {
+              "placed": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "delivered": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "moving": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "cancelled": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "returned": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "placed",
+              "delivered",
+              "moving",
+              "cancelled",
+              "returned"
+            ],
+            "additionalProperties": false
+          },
+          "money": {
+            "type": "object",
+            "properties": {
+              "placed": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "real": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "pending": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false
+              },
+              "net": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "amount",
+                  "currency"
+                ],
+                "additionalProperties": false,
+                "description": "Net profit of these orders, ad costs included"
+              }
+            },
+            "required": [
+              "placed",
+              "real",
+              "pending",
+              "net"
+            ],
+            "additionalProperties": false
+          },
+          "byPlatform": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string",
+                  "enum": [
+                    "meta",
+                    "tiktok",
+                    "google",
+                    "snapchat",
+                    "other"
+                  ]
+                },
+                "spend": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "share": {
+                  "nullable": true,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "platform",
+                "spend",
+                "share"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Spend by platform. ROAS per platform and campaign needs each order's ad source (M7-2)"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                },
+                "spend": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "orders": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "delivered": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "real": {
+                  "type": "object",
+                  "properties": {
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "amount",
+                    "currency"
+                  ],
+                  "additionalProperties": false
+                },
+                "trueRoas": {
+                  "nullable": true,
+                  "description": "A multiple with two decimals (\"3.75\" = 3.75×); null when it cannot be known",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "day",
+                "spend",
+                "orders",
+                "delivered",
+                "real",
+                "trueRoas"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "currency",
+          "spend",
+          "fxMissing",
+          "trueRoas",
+          "reportedRoas",
+          "projectedRoas",
+          "costPerOrder",
+          "costPerDelivered",
+          "deliveredRate",
+          "lostShare",
+          "orders",
+          "money",
+          "byPlatform",
+          "days"
         ],
         "additionalProperties": false
       },

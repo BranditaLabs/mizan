@@ -81,7 +81,12 @@ function DashboardView({ d, days }: { d: Dashboard; days: number }) {
         <Downloads d={d} days={days} />
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="tiles">
-        {d.tiles.map((tile) => <StatCard key={tile.key} label={tile.name} value={<TileValue tile={tile} />} period={tile.definition} />)}
+        {d.tiles.map((tile) => (
+          // A unit word ("days", "ضعف") stays outside the left-to-right number, so Arabic reads in order.
+          <StatCard key={tile.key} label={tile.name} period={tile.definition}
+            {...(tile.value !== null && (tile.unit === "days" || tile.unit === "multiple")
+              ? { value: tile.value, unit: t(tile.unit === "days" ? "daysUnit" : "timesUnit") } : { value: <TileValue tile={tile} /> })} />
+        ))}
       </div>
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {d.series.map((s) => <SeriesChart key={s.key} s={s} currency={d.currency} />)}
@@ -96,6 +101,7 @@ function TileValue({ tile }: { tile: Tile }) {
   if (tile.unit === "money" && tile.money) return <MoneyText money={tile.money} />;
   if (tile.unit === "percent") return <>{t("pct", { v: tile.value })}</>;
   if (tile.unit === "days") return <>{t("days", { v: tile.value })}</>;
+  if (tile.unit === "multiple") return <>{t.rich("times", { v: tile.value, n: (c) => <bdi className="mz-num">{c}</bdi> })}</>;
   return <>{tile.value}</>;
 }
 
