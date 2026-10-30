@@ -1090,6 +1090,16 @@ export interface ShopifyInstalls {
   claimed_at: Timestamp | null;
 }
 
+export interface SsoDomains {
+  domain: string;
+  store_id: string;
+  provider_id: string;
+  enabled: Generated<boolean>;
+  staff_id: string | null;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface StockLevels {
   tenant_id: string;
   warehouse_id: string;
@@ -1390,6 +1400,7 @@ export interface DB {
   shipment_events: ShipmentEvents;
   shipments: Shipments;
   shopify_installs: ShopifyInstalls;
+  sso_domains: SsoDomains;
   stock_levels: StockLevels;
   stock_movements: StockMovements;
   store_credit_ledger: StoreCreditLedger;

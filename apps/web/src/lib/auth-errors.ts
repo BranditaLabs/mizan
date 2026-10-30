@@ -1,7 +1,9 @@
-/** Firebase Auth error codes → `auth.errors.*` messages (never Firebase's English text). */
+import { ApiError } from "@/lib/api/client";
+
+/** Firebase Auth error codes (and the API's, before sign-in) → `auth.errors.*` messages (never Firebase's English text). */
 export type AuthErrorKey =
   | "invalidCredential" | "emailInUse" | "weakPassword" | "invalidEmail" | "invalidPhone"
-  | "invalidCode" | "codeExpired" | "tooMany" | "network" | "popupBlocked" | "methodOff" | "otherMethod" | "generic";
+  | "invalidCode" | "codeExpired" | "tooMany" | "network" | "popupBlocked" | "methodOff" | "otherMethod" | "ssoNotSet" | "ssoWrongDomain" | "generic";
 
 const BY_CODE: Record<string, AuthErrorKey> = {
   "auth/invalid-credential": "invalidCredential",
@@ -28,6 +30,13 @@ const BY_CODE: Record<string, AuthErrorKey> = {
 };
 
 export function authErrorKey(e: unknown): AuthErrorKey {
+  if (e instanceof ApiError) {
+    if (e.code === "sso_not_configured") return "ssoNotSet";
+    if (e.code === "sso_domain_mismatch") return "ssoWrongDomain";
+    if (e.status === 429) return "tooMany";
+    if (e.status === 0) return "network";
+    return "generic";
+  }
   const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : "";
   return BY_CODE[code] ?? "generic";
 }

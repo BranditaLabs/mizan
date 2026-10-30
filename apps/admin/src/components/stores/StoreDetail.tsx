@@ -13,6 +13,7 @@ import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { StoreSso } from "./StoreSso";
 import { StoreStatus } from "./StoreStatus";
 
 const PLANS = ["free", "growth", "scale", "enterprise"] as const;
@@ -121,6 +122,8 @@ export function StoreDetail({ storeId }: { storeId: string }) {
           </form>
         </Card>
       ) : null}
+
+      <StoreSso storeId={storeId} />
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card title={t("team")}>

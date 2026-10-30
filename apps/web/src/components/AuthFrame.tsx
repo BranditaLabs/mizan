@@ -1,4 +1,4 @@
-﻿import { useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode } from "react";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
@@ -30,7 +30,7 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
 }
 
 /**
- * The frame of every screen before a store (sign-in, two-step, welcome), as the "Sign in Â· glass"
+ * The frame of every screen before a store (sign-in, two-step, welcome), as the "Sign in · glass"
  * board of the Mizan Glass canvas: on the start side the wordmark, a language and a theme button,
  * the step in a glass card and the footer; on the end side the brand panel. The brand panel steps
  * aside under 900px. Theme and direction come from GlassRoot.

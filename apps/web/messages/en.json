@@ -118,7 +118,9 @@
       "generic": "Something went wrong. Try again.",
       "popupBlocked": "The browser blocked the Google window. Allow pop-ups for this site and try again.",
       "methodOff": "This sign-in method is not turned on for Mizan yet.",
-      "otherMethod": "This email already signs in another way. Use your email and password."
+      "otherMethod": "This email already signs in another way. Use your email and password.",
+      "ssoNotSet": "Your company hasn't set up sign-in with Mizan yet. Use your email, phone or Google, or ask your admin.",
+      "ssoWrongDomain": "Your company's sign-in isn't set up for this email. Use your email, phone or Google."
     },
     "redirecting": "Opening your store…",
     "createSubtitle": "One account for your store and your team. You add the store next.",
@@ -187,7 +189,12 @@
         }
       },
       "orderId": "#EO-48302"
-    }
+    },
+    "googleShort": "Google",
+    "sso": "Company SSO",
+    "ssoTitle": "Sign in with your company",
+    "ssoBody": "Type your work email and we'll take you to your company's sign-in page.",
+    "ssoSubmit": "Continue to company sign-in"
   },
   "twoStep": {
     "title": "Turn on two-step verification",

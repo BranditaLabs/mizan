@@ -25,6 +25,12 @@ const toUser = (r: UserRow): AuthUser => ({
 /** What the guard needs; tenantStatus includes "deleted" (the guard refuses it). */
 type MembershipCheck = Pick<MembershipView, "role" | "status"> & { tenantStatus: string };
 
+/** A sign-in through a company's identity provider (A-9): Firebase Identity Platform's SAML or OIDC providers. */
+export const SSO_PROVIDER = /^(saml|oidc)\.[a-z0-9-]{1,60}$/;
+
+/** The email's domain, lower-cased ("Sara@Acme.COM" → "acme.com"). */
+export const emailDomain = (email: string | undefined) => email?.split("@").at(-1)?.trim().toLowerCase() || undefined;
+
 /** Identity fields that, when they change in the token, must reach the users table. */
 const profileOf = (i: VerifiedIdentity) => `${i.email ?? ""}|${i.phone ?? ""}|${i.name ?? ""}`;
 
@@ -34,6 +40,8 @@ export class AuthService {
   private readonly userCache: TtlCache<string, { user: AuthUser; profile: string; disabled: boolean }>;
   /** `${tenantId}:${userId}` → membership; null = not a member. */
   private readonly membershipCache: TtlCache<string, MembershipCheck | null>;
+  /** Email domain → its enabled SSO provider; null = none. */
+  private readonly ssoCache: TtlCache<string, string | null>;
 
   constructor(
     @Inject(Database) private readonly db: Database,
@@ -41,6 +49,35 @@ export class AuthService {
   ) {
     this.userCache = new TtlCache(config.AUTH_USER_CACHE_MS);
     this.membershipCache = new TtlCache(config.AUTH_MEMBERSHIP_CACHE_MS);
+    this.ssoCache = new TtlCache(config.AUTH_MEMBERSHIP_CACHE_MS);
+  }
+
+  /** The enabled SSO provider for an email domain (A-9), or null. Read before sign-in, so no tenant. */
+  async ssoProvider(domain: string): Promise<string | null> {
+    const cached = this.ssoCache.get(domain);
+    if (cached !== undefined) return cached;
+    const row = await this.db.platform((trx) => trx.selectFrom("sso_domains").select("provider_id")
+      .where("domain", "=", domain).where("enabled", "=", true).executeTakeFirst());
+    const provider = row?.provider_id ?? null;
+    this.ssoCache.set(domain, provider);
+    return provider;
+  }
+
+  /** Forget a cached domain after staff change it (this instance at once; others within the TTL). */
+  forgetSso(domain: string): void {
+    this.ssoCache.delete(domain);
+  }
+
+  /**
+   * A token from a company's identity provider counts only for that company's domain: the provider
+   * must be the one Mizan staff registered for the email's domain, and still enabled. Otherwise a
+   * provider set up for one company could vouch for another company's people.
+   */
+  async checkSso(identity: VerifiedIdentity): Promise<void> {
+    const domain = emailDomain(identity.email);
+    if (!domain || (await this.ssoProvider(domain)) !== identity.signInProvider) {
+      throw new ProblemError(401, "sso_domain_mismatch", "this company sign-in is not set up for your email's domain");
+    }
   }
 
   /** Forget cached memberships after a change (this instance at once; others within the TTL). */

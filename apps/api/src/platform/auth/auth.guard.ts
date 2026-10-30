@@ -5,7 +5,7 @@ import { MFA_REQUIRED_ROLES, type MemberRole } from "@mizan/shared";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { ProblemError } from "../http/problem.js";
 import { RateLimiter } from "../http/rate-limit.js";
-import { AuthService } from "./auth.service.js";
+import { AuthService, SSO_PROVIDER } from "./auth.service.js";
 import type { AuthedRequest, SupportGrant } from "./auth.types.js";
 import { IS_PUBLIC, NO_SUPPORT, NO_TENANT, ROLES } from "./decorators.js";
 import { TOKEN_VERIFIER, type TokenVerifier } from "./token-verifier.js";
@@ -22,7 +22,9 @@ const BEARER = /^Bearer ([A-Za-z0-9\-_.]+)$/;
  * 1. Bearer Firebase ID token → verified identity → Mizan user (created on first sign-in).
  * 2. Unless @NoTenant(): X-Tenant-Id must name a tenant where the user is an *active* member.
  *    Unknown tenant, no membership, invited or disabled all answer the same 403, so tenant ids cannot be probed.
- * 3. Owners and admins need a second factor when AUTH_REQUIRE_MFA (default on in production).
+ * 3. Owners and admins need a second factor when AUTH_REQUIRE_MFA (default on in production). A
+ *    company sign-in (SSO, A-9) counts only for the domain staff registered it for; its provider
+ *    then owns the second factor.
  * 4. @Roles(...) narrows further.
  * 5. A non-member who is Mizan staff with an open support grant (A-3) acts as an admin: read-only
  *    unless the grant is for writing, never on @NoSupport routes, every call in the staff trail.
@@ -51,6 +53,9 @@ export class AuthGuard implements CanActivate {
 
     const identity = await this.verifier.verify(token);
     this.limits.checkUser(identity.uid, res);
+    // A-9: company sign-in counts only for the domain it was set up for; that provider owns the second factor.
+    const viaSso = SSO_PROVIDER.test(identity.signInProvider ?? "");
+    if (viaSso) await this.auth.checkSso(identity);
     const user = await this.auth.resolveUser(identity);
     req.auth = { identity, user, ...(req.ip ? { ip: req.ip } : {}) };
 
@@ -73,7 +78,7 @@ export class AuthGuard implements CanActivate {
       throw new ProblemError(403, "tenant_inactive", `this store is ${membership.tenantStatus}`);
     }
     const requireMfa = this.config.AUTH_REQUIRE_MFA ?? this.config.NODE_ENV === "production";
-    if (requireMfa && MFA_REQUIRED_ROLES.has(membership.role) && !identity.secondFactor) {
+    if (requireMfa && MFA_REQUIRED_ROLES.has(membership.role) && !identity.secondFactor && !viaSso) {
       throw new ProblemError(403, "mfa_required", "owners and admins must sign in with two-step verification");
     }
     const allowed = this.reflector.getAllAndOverride<MemberRole[] | undefined>(ROLES, targets);

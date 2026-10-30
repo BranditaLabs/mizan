@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { Icon } from "@mizan/design-system/icons/react";
 import { normalizePhone } from "@mizan/shared";
 import {
-  createUserWithEmailAndPassword, getMultiFactorResolver, GoogleAuthProvider, PhoneAuthProvider, PhoneMultiFactorGenerator,
-  sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPhoneNumber, signInWithPopup,
+  createUserWithEmailAndPassword, getMultiFactorResolver, GoogleAuthProvider, OAuthProvider, PhoneAuthProvider, PhoneMultiFactorGenerator,
+  SAMLAuthProvider, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPhoneNumber, signInWithPopup,
   type ConfirmationResult, type MultiFactorError, type MultiFactorResolver, type PhoneMultiFactorInfo,
 } from "firebase/auth";
 import { useLocale, useTranslations } from "next-intl";
@@ -14,6 +14,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Segmented } from "@/components/ui/Choice";
 import { LedgerBars } from "@/components/ui/Loader";
 import { useRouter } from "@/i18n/navigation";
+import { apiClient, ok } from "@/lib/api/client";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
 import { firebaseAuth, setAuthLanguage, smsVerifier } from "@/lib/firebase";
 import { useSession } from "@/lib/session";
@@ -27,11 +28,12 @@ type Country = (typeof COUNTRIES)[number]["code"];
 const RESEND_S = 60;
 
 type Mfa = { resolver: MultiFactorResolver; verificationId: string; hint: string };
-type StepName = "start" | "phoneCode" | "mfa" | "reset";
+type StepName = "start" | "phoneCode" | "mfa" | "reset" | "sso";
 
 /**
- * Sign-in (E4-2) as the "Sign in Â· glass" board of the Mizan Glass canvas, one step at a time.
- * Start: email and password (or a new account), or a mobile number; then Google. Then the code we
+ * Sign-in (E4-2) as the "Sign in · glass" board of the Mizan Glass canvas, one step at a time.
+ * Start: email and password (or a new account), or a mobile number; then Google or the company's
+ * own sign-in (SSO, A-9: the work email finds the provider Mizan staff set up). Then the code we
  * texted (phone sign-in, with a resend countdown), the SMS second step for accounts that turned it on
  * (owners and admins must: the API answers mfa_required otherwise), or a password reset link. Once
  * signed in, the scale weighs while the store gate opens the store.
@@ -121,6 +123,22 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
       } catch (err) {
         if (CLOSED.has(authErrorCode(err))) return; // the person closed the window: nothing to say
         await secondStep(err);
+      }
+    });
+  };
+
+  /** Company sign-in: which provider the work email's domain uses, then that provider's window (SAML or OIDC). */
+  const onSso = (e: FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      const { providerId } = await ok(apiClient({ user: null, locale }).POST("/v1/public/sso", { body: { email: email.trim() } }));
+      const provider = providerId.startsWith("saml.") ? new SAMLAuthProvider(providerId) : new OAuthProvider(providerId);
+      if (provider instanceof OAuthProvider) provider.setCustomParameters({ login_hint: email.trim() });
+      setAuthLanguage(locale);
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        if (!CLOSED.has(authErrorCode(err))) throw err;
       }
     });
   };
@@ -215,10 +233,16 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
             </form>
           )}
           <div className="auth-divider [@media(max-height:640px)]:hidden">{t("or")}</div>
-          <button type="button" onClick={onGoogle} disabled={busy} className="btn btn-glass btn-lg h-(--_ctl) w-full">
-            <GoogleMark />
-            {t("google")}
-          </button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button type="button" onClick={onGoogle} disabled={busy} aria-label={t("google")} className="btn btn-glass btn-lg h-(--_ctl) w-full">
+              <GoogleMark />
+              {t("googleShort")}
+            </button>
+            <button type="button" onClick={() => go("sso")} disabled={busy} className="btn btn-glass btn-lg h-(--_ctl) w-full">
+              <Icon name="locked" size={16} />
+              {t("sso")}
+            </button>
+          </div>
           <p className="muted m-0 text-center text-body">
             {creating ? t("haveQ") : t("newQ")}{" "}
             <button type="button" className="auth-link" onClick={() => { setCreating(!creating); setError(null); }}>{creating ? t("signInLink") : t("createAccount")}</button>
@@ -267,6 +291,19 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
             {resetSent ? <Alert tone="success">{t.rich("resetSent", { email: email.trim(), e: (c) => <Bdi code>{c}</Bdi> })}</Alert> : null}
             {errorAlert}
             {submit(t("resetSend"), false)}
+          </form>
+        </Step>
+      ) : null}
+
+      {step === "sso" ? (
+        <Step key="sso">
+          <BackLink onClick={() => go("start")} />
+          <StepIcon name="locked" />
+          <AuthHeading title={t("ssoTitle")} body={t("ssoBody")} />
+          <form onSubmit={onSso} className="flex flex-col gap-(--_gap)" noValidate>
+            {emailField}
+            {errorAlert}
+            {submit(t("ssoSubmit"))}
           </form>
         </Step>
       ) : null}

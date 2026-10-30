@@ -157,7 +157,32 @@
     "notes": "Internal notes",
     "addNote": "Add a note",
     "saveNote": "Save note",
-    "notesHint": "Only Mizan staff see notes."
+    "notesHint": "Only Mizan staff see notes.",
+    "sso": {
+      "title": "Company sign-in (SSO)",
+      "intro": "People whose work email is at one of these domains sign in through the store's own identity provider. Create the SAML or OIDC provider in Firebase Identity Platform first, and verify the domain with the store (a DNS TXT record or the owner's written request).",
+      "loadFailed": "We couldn't load this store's company sign-in.",
+      "none": "No company sign-in. The team signs in with email, phone or Google.",
+      "on": "On",
+      "paused": "Paused",
+      "pause": "Pause",
+      "resume": "Resume",
+      "remove": "Remove",
+      "pausedReason": "Paused from the back office",
+      "resumedReason": "Resumed from the back office",
+      "domain": "Email domain",
+      "provider": "Provider ID",
+      "providerHint": "From Identity Platform, like saml.acme or oidc.acme",
+      "reason": "How the domain was verified",
+      "reasonHint": "The store sees this in its audit log",
+      "add": "Add domain",
+      "errors": {
+        "domain_taken": "This domain already signs in to another store.",
+        "public_email_domain": "Public mailboxes like gmail.com can't belong to one company.",
+        "validation_failed": "Check the domain and the provider ID.",
+        "generic": "That didn't work. Try again."
+      }
+    }
   },
   "access": {
     "title": "My support access",
