@@ -86,9 +86,10 @@ export class ReorderService implements OnApplicationBootstrap, OnApplicationShut
 
   /** Flag items that crossed their point (one event each) and unflag those back over it, store by store. */
   async flagAll(now = new Date()): Promise<number> {
-    const stores = await this.db.worker((trx) => trx.selectFrom("stock_levels").select("tenant_id").distinct().execute());
+    // The worker role has no grant on stock_levels; stores come from `tenants` (as the usage closer).
+    const stores = await this.db.platform((trx) => trx.selectFrom("tenants").select("id").where("status", "in", ["trial", "active"]).execute());
     let emitted = 0;
-    for (const s of stores) emitted += await this.flag(s.tenant_id, now);
+    for (const s of stores) emitted += await this.flag(s.id, now);
     return emitted;
   }
 

@@ -240,7 +240,8 @@ describe("reorder suggestions (M16-4b)", () => {
     expect((await http().get(`/v1/reorder-suggestions?supplierId=${supplier}`).set(as("owner")).expect(200)).body.data.map((x: { sku: string }) => x.sku)).toContain("RO-1");
 
     const reorder = app.get(ReorderService);
-    expect(await reorder.flag(store)).toBeGreaterThanOrEqual(1);
+    // The hourly path, across stores, as the worker runs it (it once lacked the rights to list them).
+    expect(await reorder.flagAll()).toBeGreaterThanOrEqual(1);
     expect(await reorder.flag(store)).toBe(0); // once per crossing
     const events = await db.tenant(store, async (trx) => trx.selectFrom("domain_events").select(["entity_id", "data"]).where("type", "=", "stock.reorder_suggested").where("entity_id", "=", variant).execute());
     expect(events).toHaveLength(1);

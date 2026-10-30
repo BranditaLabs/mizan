@@ -23,3 +23,6 @@ infra/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
+
+# Local PGlite data (DATABASE_URL=pglite:./.data/dev)
+.data/
