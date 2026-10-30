@@ -2,8 +2,8 @@
 
 import { normalizePhone } from "@mizan/shared";
 import {
-  createUserWithEmailAndPassword, getMultiFactorResolver, PhoneAuthProvider, PhoneMultiFactorGenerator,
-  sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPhoneNumber,
+  createUserWithEmailAndPassword, getMultiFactorResolver, GoogleAuthProvider, PhoneAuthProvider, PhoneMultiFactorGenerator,
+  sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPhoneNumber, signInWithPopup,
   type ConfirmationResult, type MultiFactorError, type MultiFactorResolver, type PhoneMultiFactorInfo,
 } from "firebase/auth";
 import { useLocale, useTranslations } from "next-intl";
@@ -19,6 +19,7 @@ import { firebaseAuth, smsVerifier } from "@/lib/firebase";
 import { useSession } from "@/lib/session";
 
 const RECAPTCHA = "sms-verifier";
+const CLOSED = new Set(["auth/popup-closed-by-user", "auth/cancelled-popup-request", "auth/user-cancelled"]);
 
 type Mfa = { resolver: MultiFactorResolver; verificationId: string; hint: string };
 
@@ -64,6 +65,17 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
     }
   }
 
+  /** A first factor that needs the SMS second step (email or Google): send the code and ask for it. */
+  async function secondStep(err: unknown) {
+    if (!auth || authErrorCode(err) !== "auth/multi-factor-auth-required") throw err;
+    const resolver = getMultiFactorResolver(auth, err as MultiFactorError);
+    const hint = resolver.hints.find((h) => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID) as PhoneMultiFactorInfo | undefined;
+    if (!hint) throw err;
+    const verificationId = await new PhoneAuthProvider(auth).verifyPhoneNumber({ multiFactorHint: hint, session: resolver.session }, smsVerifier(auth, RECAPTCHA));
+    setCode("");
+    setMfa({ resolver, verificationId, hint: hint.phoneNumber.replace(/\D/g, "").slice(-4) });
+  }
+
   const onEmail = (e: FormEvent) => {
     e.preventDefault();
     void run(async () => {
@@ -74,13 +86,21 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
       try {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       } catch (err) {
-        if (authErrorCode(err) !== "auth/multi-factor-auth-required") throw err;
-        const resolver = getMultiFactorResolver(auth, err as MultiFactorError);
-        const hint = resolver.hints.find((h) => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID) as PhoneMultiFactorInfo | undefined;
-        if (!hint) throw err;
-        const verificationId = await new PhoneAuthProvider(auth).verifyPhoneNumber({ multiFactorHint: hint, session: resolver.session }, smsVerifier(auth, RECAPTCHA));
-        setCode("");
-        setMfa({ resolver, verificationId, hint: hint.phoneNumber.replace(/\D/g, "").slice(-4) });
+        await secondStep(err);
+      }
+    });
+  };
+
+  const onGoogle = () => {
+    void run(async () => {
+      auth.languageCode = locale;
+      const google = new GoogleAuthProvider();
+      google.setCustomParameters({ prompt: "select_account" });
+      try {
+        await signInWithPopup(auth, google);
+      } catch (err) {
+        if (CLOSED.has(authErrorCode(err))) return; // the person closed the window: nothing to say
+        await secondStep(err);
       }
     });
   };
@@ -127,26 +147,35 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mz-enter flex flex-col gap-5">
       {enrolled ? <Alert tone="success">{t("enrolled")}</Alert> : null}
-      <section className="rounded-lg border border-line bg-surface p-5 sm:p-6">
+      <section>
         {mfa ? (
-          <form onSubmit={onMfa} className="flex flex-col gap-4" noValidate>
-            <h1 className="font-display text-heading-md">{t("mfa.title")}</h1>
-            <p className="text-body-sm text-text-2">{t.rich("mfa.body", { hint: mfa.hint, n: (c) => <Bdi code>{c}</Bdi> })}</p>
+          <form onSubmit={onMfa} className="flex flex-col gap-5" noValidate>
+            <div className="flex flex-col gap-2">
+              <h1 className="font-display text-heading-lg">{t("mfa.title")}</h1>
+              <p className="text-body text-text-2">{t.rich("mfa.body", { hint: mfa.hint, n: (c) => <Bdi code>{c}</Bdi> })}</p>
+            </div>
             {codeField(null)}
             {errorAlert}
-            <Button type="submit" busy={busy}>{t("mfa.submit")}</Button>
+            <Button type="submit" size="lg" busy={busy}>{t("mfa.submit")}</Button>
+            <Button variant="ghost" onClick={() => { setMfa(null); setCode(""); setError(null); }}>{t("back")}</Button>
           </form>
         ) : (
           <>
-            <h1 className="font-display text-heading-md">{creating ? t("createTitle") : t("title")}</h1>
-            <p className="mt-1.5 text-body-sm text-text-2">{t("subtitle")}</p>
-            <div className="mt-5">
-              <Segmented label={t("tabs.label")} value={method}
-                options={(["email", "phone"] as const).map((m) => ({ value: m, label: t(`tabs.${m}`) }))}
-                onChange={(m) => { setMethod(m); setError(null); }} />
+            <div className="flex flex-col gap-2">
+              <h1 className="font-display text-heading-lg">{creating ? t("createTitle") : t("title")}</h1>
+              <p className="text-body text-text-2">{creating ? t("createSubtitle") : t("subtitle")}</p>
             </div>
+            <button type="button" onClick={onGoogle} disabled={busy}
+              className="mt-7 flex h-12 w-full items-center justify-center gap-3 rounded-md border border-line-strong bg-surface text-label text-text transition-[transform,background-color] duration-150 hover:bg-surface-hover active:scale-[0.99] disabled:opacity-60">
+              <GoogleMark />
+              {t("google")}
+            </button>
+            <p className="my-5 text-center text-caption text-text-3">{t("or")}</p>
+            <Segmented label={t("tabs.label")} value={method}
+              options={(["email", "phone"] as const).map((m) => ({ value: m, label: t(`tabs.${m}`) }))}
+              onChange={(m) => { setMethod(m); setError(null); }} />
             {method === "email" ? (
               <form onSubmit={onEmail} className="mt-5 flex flex-col gap-4" noValidate>
                 <Field label={t("email")} type="email" ltr autoComplete="email" required name="email"
@@ -155,7 +184,7 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
                   hint={creating ? t("passwordHint") : undefined} value={password} onChange={(e) => setPassword(e.target.value)} />
                 {resetSent ? <Alert tone="success">{t.rich("resetSent", { email: email.trim(), e: (c) => <Bdi code>{c}</Bdi> })}</Alert> : null}
                 {errorAlert}
-                <Button type="submit" busy={busy}>{creating ? t("createSubmit") : t("signIn")}</Button>
+                <Button type="submit" size="lg" busy={busy}>{creating ? t("createSubmit") : t("signIn")}</Button>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Button variant="ghost" onClick={() => { setCreating(!creating); setError(null); }}>{creating ? t("haveAccount") : t("createAccount")}</Button>
                   {creating ? null : <Button variant="ghost" onClick={onReset} disabled={!email.trim()}>{t("forgot")}</Button>}
@@ -167,7 +196,7 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
                   <>
                     {codeField(t.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> }))}
                     {errorAlert}
-                    <Button type="submit" busy={busy}>{t("verify")}</Button>
+                    <Button type="submit" size="lg" busy={busy}>{t("verify")}</Button>
                     <Button variant="ghost" onClick={() => { setConfirmation(null); setError(null); }}>{t("changeNumber")}</Button>
                   </>
                 ) : (
@@ -175,7 +204,7 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
                     <Field label={t("phone")} type="tel" ltr autoComplete="tel" inputMode="tel" required name="phone"
                       hint={t.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} value={phone} onChange={(e) => setPhone(e.target.value)} />
                     {errorAlert}
-                    <Button type="submit" busy={busy}>{t("sendCode")}</Button>
+                    <Button type="submit" size="lg" busy={busy}>{t("sendCode")}</Button>
                   </>
                 )}
               </form>
@@ -183,8 +212,21 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
           </>
         )}
       </section>
+      <p className="text-caption text-text-3">{t("legal")}</p>
       {status === "signed-in" ? <p role="status" className="text-center text-body-sm text-text-2">{t("redirecting")}</p> : null}
       <div id={RECAPTCHA} />
     </div>
+  );
+}
+
+/** Google's "G", in its own colours as Google's sign-in branding asks; decorative next to the label. */
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
   );
 }

@@ -12,7 +12,8 @@ const fakeUser = () => ({ getIdToken: vi.fn(async (force?: boolean) => (force ? 
 
 describe("generated API types", () => {
   it("src/lib/api/schema.d.ts matches apps/api/openapi.json (run `npm run gen:api -w @mizan/web`)", async () => {
-    expect(readFileSync(OUT, "utf8")).toBe(await generate());
+    // Line endings aside: a Windows checkout has CRLF.
+    expect(readFileSync(OUT, "utf8").replace(/\r\n/g, "\n")).toBe((await generate()).replace(/\r\n/g, "\n"));
   });
 });
 

@@ -25,6 +25,33 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
   );
 }
 
+/**
+ * The sign-in screen's frame: the form on the paper side (start), the brand on the ink side (end)
+ * with a sample order moving to cash (Showcase). Below 1024px the form comes first and the sample
+ * order follows it, compact. The ink side is an aside, outside `main`.
+ */
+export function AuthSplit({ theme, showcase, compactShowcase, children }: { theme: Theme; showcase: ReactNode; compactShowcase: ReactNode; children: ReactNode }) {
+  return (
+    <div className="grid min-h-dvh grid-cols-1 bg-bg lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+      <div className="flex min-h-dvh flex-col">
+        <header className="flex h-16 items-center gap-3 px-4 md:px-8">
+          <ThemedWordmark className="shrink-0 lg:invisible" />
+          <span className="flex-1" />
+          <LocaleSwitch />
+          <span className="hidden sm:contents"><ThemeSwitch initial={theme} /></span>
+        </header>
+        <main id="main" className="flex flex-1 items-center justify-center px-4 pt-4 pb-10 md:px-8">
+          <div className="w-full max-w-[400px]">{children}</div>
+        </main>
+        <div className="px-4 pb-8 lg:hidden">
+          <div className="mx-auto max-w-[400px] rounded-xl bg-rail-bg p-2 text-rail-text">{compactShowcase}</div>
+        </div>
+      </div>
+      <aside className="sticky top-0 hidden h-dvh bg-rail-bg text-rail-text lg:block">{showcase}</aside>
+    </div>
+  );
+}
+
 /** A titled card inside AuthFrame (flat: border, no shadow). */
 export function AuthCard({ title, subtitle, children }: { title: string; subtitle?: ReactNode; children: ReactNode }) {
   return (

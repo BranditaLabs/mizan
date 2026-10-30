@@ -1,7 +1,7 @@
 /** Firebase Auth error codes → `auth.errors.*` messages (never Firebase's English text). */
 export type AuthErrorKey =
   | "invalidCredential" | "emailInUse" | "weakPassword" | "invalidEmail" | "invalidPhone"
-  | "invalidCode" | "codeExpired" | "tooMany" | "network" | "generic";
+  | "invalidCode" | "codeExpired" | "tooMany" | "network" | "popupBlocked" | "methodOff" | "otherMethod" | "generic";
 
 const BY_CODE: Record<string, AuthErrorKey> = {
   "auth/invalid-credential": "invalidCredential",
@@ -22,6 +22,9 @@ const BY_CODE: Record<string, AuthErrorKey> = {
   "auth/too-many-requests": "tooMany",
   "auth/quota-exceeded": "tooMany",
   "auth/network-request-failed": "network",
+  "auth/popup-blocked": "popupBlocked",
+  "auth/operation-not-allowed": "methodOff",
+  "auth/account-exists-with-different-credential": "otherMethod",
 };
 
 export function authErrorKey(e: unknown): AuthErrorKey {

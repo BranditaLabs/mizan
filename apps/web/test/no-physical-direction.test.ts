@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { ESLint, RuleTester } from "eslint";
 import { describe, expect, it } from "vitest";
 import rule, { logicalFor } from "../eslint-rules/no-physical-direction.js";
@@ -33,7 +34,7 @@ tester.run("no-physical-direction", rule, {
 });
 
 describe("lint config", () => {
-  const eslint = new ESLint({ cwd: new URL("..", import.meta.url).pathname });
+  const eslint = new ESLint({ cwd: fileURLToPath(new URL("..", import.meta.url)) });
 
   it("blocks physical direction classes and literal UI strings in components", async () => {
     const [result] = await eslint.lintText(

@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -27,7 +28,7 @@ function files(dir: string): string[] {
 /** Every class-like token inside string literals of the component files, variant prefixes removed. */
 function classTokens(): Array<{ file: string; cls: string }> {
   const out: Array<{ file: string; cls: string }> = [];
-  for (const file of files(new URL("../src", import.meta.url).pathname)) {
+  for (const file of files(fileURLToPath(new URL("../src", import.meta.url)))) {
     const src = readFileSync(file, "utf8");
     for (const lit of src.matchAll(/["`]([^"`]*)["`]/g)) {
       for (const raw of lit[1]!.split(/\s+/)) {

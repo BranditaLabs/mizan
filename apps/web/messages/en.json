@@ -75,7 +75,7 @@
   },
   "auth": {
     "title": "Sign in to Mizan",
-    "subtitle": "Store owners and admins sign in with email and a code on their phone. Confirmation and warehouse teams can use their phone number.",
+    "subtitle": "Run every order from checkout to cash, and see what each one really made.",
     "notConfigured": "Sign-in is not configured in this build.",
     "tabs": {
       "label": "Sign-in method",
@@ -115,9 +115,60 @@
       "codeExpired": "That code expired. Send a new one.",
       "tooMany": "Too many attempts. Wait a little and try again.",
       "network": "No connection. Check the internet and try again.",
-      "generic": "Something went wrong. Try again."
+      "generic": "Something went wrong. Try again.",
+      "popupBlocked": "The browser blocked the Google window. Allow pop-ups for this site and try again.",
+      "methodOff": "This sign-in method is not turned on for Mizan yet.",
+      "otherMethod": "This email already signs in another way. Use your email and password."
     },
-    "redirecting": "Opening your store…"
+    "redirecting": "Opening your store…",
+    "createSubtitle": "One account for your store and your team. You add the store next.",
+    "google": "Continue with Google",
+    "or": "or with your email or phone",
+    "back": "Back",
+    "legal": "Owners and admins confirm sign-in with a code on their phone. Confirmation and warehouse teams can sign in with their phone number.",
+    "showcase": {
+      "headline": "Every order, to the last pound.",
+      "lede": "Mizan follows each order from checkout to cash and shows what it really made, after every cost.",
+      "caption": "Sample order",
+      "pause": "Pause",
+      "play": "Play",
+      "stagesLabel": "Where the order is",
+      "item": {
+        "abaya": "Plain abaya",
+        "bag": "Leather bag",
+        "sneakers": "Sneakers"
+      },
+      "pay": {
+        "cod": "Cash on delivery",
+        "card": "Paid by card"
+      },
+      "stage": {
+        "placed": "Placed",
+        "confirmed": "Confirmed",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cash": "Cash in",
+        "refused": "Refused",
+        "returned": "Back in stock"
+      },
+      "revenue": "Revenue",
+      "expected": "Expected",
+      "costs": "Costs",
+      "cost": {
+        "product": "Product",
+        "shipping": "Shipping",
+        "codFee": "COD fee",
+        "paymentFee": "Card fee",
+        "team": "Team",
+        "packaging": "Packaging",
+        "ads": "Ads",
+        "returnLeg": "Return"
+      },
+      "net": "Net profit",
+      "loss": "Lost on this order",
+      "worksWith": "Works with Shopify, WooCommerce, Bosta and WhatsApp.",
+      "expectedNet": "Expected profit"
+    }
   },
   "twoStep": {
     "title": "Turn on two-step verification",
