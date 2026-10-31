@@ -7,5 +7,10 @@ title = "mizan gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Dummy credentials in fake provider servers"
+description = "Dummy credentials in fake provider servers; the Shopify app's public Client ID"
 paths = ['''^packages/[^/]+/test/fakes/''']
+# SHOPIFY_API_KEY is the app's Client ID: public by design (Shopify puts it in every install URL).
+# Only that line shape is allowed; the client secret (shpss_…) and access tokens (shpat_…) stay
+# flagged and live in Key Vault (shopify-api-secret), never in the repo.
+regexTarget = "line"
+regexes = ['''^\s*SHOPIFY_API_KEY\s*=\s*"[0-9a-f]{32}"''']
