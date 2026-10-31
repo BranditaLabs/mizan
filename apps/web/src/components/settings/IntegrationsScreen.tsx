@@ -12,6 +12,7 @@ import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { EngineHealth, ResolveCityDialog, unknownCity } from "./EngineHealth";
 import { SettingsTabs } from "./SettingsTabs";
 import { WooCommerceConnect } from "./WooCommerceConnect";
 
@@ -30,6 +31,7 @@ export function IntegrationsScreen() {
   const qc = useQueryClient();
   const toast = useToast();
   const [woo, setWoo] = useState<{ site: string } | null>(null);
+  const [city, setCity] = useState<{ jobId: string; text: string } | null>(null);
   const role = store?.role ?? "";
   // Back from WooCommerce's approval page (E5-7): say how it went, once, then drop the query.
   useEffect(() => {
@@ -44,7 +46,7 @@ export function IntegrationsScreen() {
   const dead = useQuery({ queryKey: ["deadLetters", ...scope], queryFn: () => ok(api.GET("/v1/admin/integrations/dead-letters", { params: { query: { limit: 50 } } })), enabled: READERS.has(role) });
   const replay = useMutation({
     mutationFn: (id: string) => ok(api.POST("/v1/admin/integrations/jobs/{id}/replay", { params: { path: { id } } })),
-    onSuccess: () => { toast({ message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); },
+    onSuccess: () => { toast({ message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); void qc.invalidateQueries({ queryKey: ["integrationsHealth"] }); },
   });
   const reasonText = (provider: string, reason: string) => {
     const key = provider === "woocommerce" && t.has(`woo.reasons.${reason}`) ? `woo.reasons.${reason}` : `reasons.${reason}`;
@@ -93,7 +95,9 @@ export function IntegrationsScreen() {
               <p className="text-body-sm text-text-2">{t("dead.subtitle")}</p>
               {dead.data?.data.length ? (
                 <ul className="mt-3 flex flex-col divide-y divide-line" data-testid="dead-letters">
-                  {dead.data.data.map((j) => (
+                  {dead.data.data.map((j) => {
+                    const unknown = unknownCity(j.error);
+                    return (
                     <li key={j.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                       <div className="min-w-0">
                         <p className="font-medium"><Bdi code>{j.kind}</Bdi></p>
@@ -101,13 +105,17 @@ export function IntegrationsScreen() {
                       </div>
                       <span className="flex items-center gap-2 text-caption text-text-2">
                         <DateText value={j.failedAt} relative />
-                        <Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} onClick={() => replay.mutate(j.id)}>{t("dead.replay")}</Button>
+                        {unknown ? <Button size="sm" onClick={() => setCity({ jobId: j.id, text: unknown })}>{t("city.open")}</Button>
+                          : <Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} onClick={() => replay.mutate(j.id)}>{t("dead.replay")}</Button>}
                       </span>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               ) : <p className="mt-2 text-body-sm text-text-2">{t("dead.none")}</p>}
             </section>
+            <EngineHealth />
+            {city ? <ResolveCityDialog jobId={city.jobId} text={city.text} onClose={() => setCity(null)} /> : null}
           </>
         )}
     </div>

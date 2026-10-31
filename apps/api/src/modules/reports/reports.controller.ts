@@ -6,6 +6,7 @@ import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schem
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import { MetricCatalogueSchema, MetricValuesQuerySchema, MetricValuesSchema, type MetricValuesQuery } from "./metrics.dto.js";
 import { MetricsService } from "./metrics.service.js";
+import { Reader } from "./reader.js";
 
 /** M20 metrics (E15-1): one definition per number, the same on every screen. */
 @ApiTags("reports")
@@ -17,7 +18,7 @@ export class ReportsController {
   @Get("catalogue")
   @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
   @ApiJson(200, "MetricCatalogue", MetricCatalogueSchema, "The semantic metric catalogue the caller may see (name and definition in their language)")
-  catalogue(@Auth() auth: AuthContext) {
+  catalogue(@Reader() auth: AuthContext) {
     return this.metrics.catalogue(auth);
   }
 

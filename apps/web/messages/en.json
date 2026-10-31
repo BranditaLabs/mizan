@@ -1165,6 +1165,13 @@
       "set": "Set rate",
       "invalid": "Enter a rate like 0.0205",
       "line": "<c>1 {base}</c> = <c>{rate} {quote}</c>"
+    },
+    "recalc": {
+      "title": "Recalculate profit",
+      "body": "After changing costs, update the profit of orders not delivered or returned yet (last {days} days). Final orders keep the costs of their day.",
+      "run": "Recalculate",
+      "done": "{n, plural, =0 {Nothing to update} one {# order updated} other {# orders updated}}",
+      "doneMore": "{n} orders updated; more remain, run it again"
     }
   },
   "confirm": {
@@ -1249,7 +1256,9 @@
       "audit": "Audit log",
       "store": "Store",
       "purchasing": "Purchasing",
-      "payments": "Payments"
+      "payments": "Payments",
+      "orders": "Orders",
+      "privacy": "Privacy"
     }
   },
   "confirmationSettings": {
@@ -2121,7 +2130,8 @@
       "description": "Items counted here show their available number in Shopify (on hand minus what confirmed orders hold), so the store never sells what's gone. Items not counted stay as the store has them.",
       "on": "Your store now gets Mizan's numbers.",
       "off": "Your store keeps its own numbers."
-    }
+    },
+    "pickLists": "Pick lists"
   },
   "automations": {
     "title": "Automations",
@@ -2196,6 +2206,25 @@
         "loop_guard": "Stopped: too many automations in a chain",
         "invalid_conditions": "The conditions can't be read"
       }
+    },
+    "try": {
+      "open": "Try it",
+      "title": "Try {name}",
+      "body": "Pick an order to see whether the rules match it and what would run. Nothing is done.",
+      "close": "Close",
+      "order": "Order number",
+      "orderHint": "As on the orders screen, e.g. M-1001",
+      "run": "Try",
+      "noOrder": "No order with this number.",
+      "matched": "Would run",
+      "notMatched": "Would not run",
+      "actual": "This order:",
+      "pass": "Matches",
+      "fail": "Doesn't match",
+      "noRules": "No rules: it runs on every order.",
+      "wouldRun": "What would happen",
+      "wouldNotRun": "What would happen if it matched",
+      "noOrderStep": "This step needs an order and would fail."
     }
   },
   "notifications": {
@@ -2604,7 +2633,18 @@
     "tip": "{day}: {value}",
     "times": "<n>{v}</n>×",
     "daysUnit": "days",
-    "timesUnit": "×"
+    "timesUnit": "×",
+    "metrics": {
+      "tab": "All metrics",
+      "module": {
+        "M1": "Orders",
+        "M3": "Shipping",
+        "M4": "Warehouse",
+        "M5": "Profit",
+        "M7": "Ads",
+        "M15": "Payments"
+      }
+    }
   },
   "shipping": {
     "title": "Shipping",
@@ -2776,6 +2816,19 @@
       "askBody": "Mizan books the courier for each order with the cash it should collect. Orders that can't ship yet are skipped, and you'll see why.",
       "go": "Ship them",
       "close": "Not now"
+    },
+    "history": {
+      "open": "History",
+      "title": "History of {number}",
+      "close": "Close",
+      "loading": "Loading…",
+      "empty": "No status yet.",
+      "courierSaid": "The courier sent:",
+      "source": {
+        "webhook": "From the courier",
+        "poll": "Checked with the courier",
+        "ops": "Set by the team"
+      }
     }
   },
   "exchanges": {
@@ -2999,6 +3052,35 @@
       "useApprove": "Approve in WooCommerce instead",
       "approved": "WooCommerce approved Mizan. Checking the store and bringing in your orders.",
       "denied": "WooCommerce didn't approve Mizan. Try again or paste keys."
+    },
+    "engine": {
+      "title": "Sync engine",
+      "subtitle": "Whether calls to the store and the courier are going through, the queue, and fields that changed shape.",
+      "loading": "Loading",
+      "notConnected": "Connect a store to see the sync engine.",
+      "store": "Store",
+      "courier": "Courier",
+      "pending": "Jobs waiting",
+      "dead": "Jobs that need you",
+      "drift": "Changed fields",
+      "noDrift": "Nothing changed shape.",
+      "times": "{n, plural, one {once} other {# times}}",
+      "circuit": {
+        "closed": "Working",
+        "half_open": "Trying again",
+        "open": "Paused after errors"
+      }
+    },
+    "city": {
+      "open": "Pick the city",
+      "title": "Pick the courier's city",
+      "body": "The courier didn't recognise <b>{text}</b>. Pick its city once; Mizan remembers it for every later order and sends this shipment again.",
+      "search": "Search the courier's cities",
+      "pick": "Cities",
+      "loading": "Loading",
+      "cancel": "Cancel",
+      "save": "Save and send again",
+      "saved": "City saved; the shipment is on its way again"
     }
   },
   "auditLog": {
@@ -3704,6 +3786,110 @@
       "pos": "In store",
       "manual": "Typed by the team",
       "unknown": "Unknown"
+    }
+  },
+  "orderSettings": {
+    "title": "Orders",
+    "subtitle": "How orders are handled as they arrive.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "window": "Likely duplicate within (hours)",
+    "windowHint": "0 turns the check off; at most 168 (7 days)",
+    "windowInvalid": "A whole number from 0 to 168",
+    "rules": {
+      "same": "The same customer ordering the same product again within this time is flagged as a likely duplicate.",
+      "keep": "The team keeps both or merges the newer into the earlier; nothing is cancelled on its own.",
+      "off": "Confirmation never messages the customer twice for a flagged order.",
+      "from": "A change applies to orders that arrive from now on."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and ops managers set how orders are handled."
+    }
+  },
+  "privacySettings": {
+    "title": "Privacy",
+    "subtitle": "Customers' requests to see or delete their data, and when each is due. Mizan carries them out; this is the record.",
+    "loading": "Loading",
+    "completed": "Done",
+    "download": "Download",
+    "columns": {
+      "source": "Request",
+      "status": "Status",
+      "due": "Due",
+      "export": "Their data"
+    },
+    "source": {
+      "shopify_customers_data_request": "Data request (Shopify)",
+      "shopify_customers_redact": "Delete a customer (Shopify)",
+      "shopify_shop_redact": "Delete the store's data (Shopify)",
+      "merchant": "From the store",
+      "customer": "From the customer"
+    },
+    "status": {
+      "received": "Received",
+      "in_progress": "In progress",
+      "done": "Done",
+      "rejected": "Rejected"
+    },
+    "empty": {
+      "title": "No requests",
+      "body": "When a customer asks for their data or to be deleted, the request shows here."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Only owners and admins see privacy requests."
+    }
+  },
+  "pickLists": {
+    "title": "Pick lists",
+    "subtitle": "Batch the confirmed orders ready to pack, pick by shelf, and pack by scan in the ops app.",
+    "backToStock": "Stock",
+    "backToLists": "Pick lists",
+    "loading": "Loading",
+    "tabsLabel": "Pick lists by status",
+    "size": "Orders in the list",
+    "sizeHint": "The oldest confirmed orders ready to pack, up to 100",
+    "create": "New pick list",
+    "nothing": "No confirmed order is waiting to be picked.",
+    "number": "List #{n}",
+    "packedOf": "{packed} of {orders} packed",
+    "columns": {
+      "number": "List",
+      "packed": "Packed"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "empty": {
+      "open": {
+        "title": "No open lists",
+        "body": "Make one from the orders ready to pack."
+      },
+      "closed": {
+        "title": "No closed lists",
+        "body": "Lists show here once they're closed."
+      }
+    },
+    "print": "Print",
+    "close": "Close list",
+    "closed": "List closed",
+    "closeTitle": "Close list #{n}?",
+    "closeBody": "Orders not packed yet can go on a new list.",
+    "pick": "To pick",
+    "bin": "Shelf",
+    "item": "Item",
+    "qty": "Qty",
+    "allPacked": "Everything on this list is packed.",
+    "orders": "Orders",
+    "packed": "Packed",
+    "toPack": "To pack",
+    "times": "× {n}",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers and the warehouse work with pick lists."
     }
   }
 }

@@ -2593,6 +2593,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/integrations/cities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["IntegrationsAdminController_cities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/integrations/cities/resolve": {
         parameters: {
             query?: never;
@@ -3586,6 +3602,13 @@ export interface components {
         CostsUpdated: {
             updated: number;
             missingCost: number;
+        };
+        CourierCities: {
+            data: {
+                id: string;
+                name: string;
+                nameAr: string | null;
+            }[];
         };
         CourierScorecard: {
             days: number;
@@ -17638,6 +17661,61 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    IntegrationsAdminController_cities: {
+        parameters: {
+            query?: {
+                /** @description What the customer typed, or part of a city name */
+                q?: string;
+                limit?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Bosta's cities closest to the text (or the first ones), to pick for an address it could not match */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourierCities"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem */
+            502: {
                 headers: {
                     [name: string]: unknown;
                 };

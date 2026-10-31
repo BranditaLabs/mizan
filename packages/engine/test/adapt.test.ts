@@ -98,6 +98,10 @@ describe("city resolution", () => {
     const learned = new CityResolver(cities, new Map([["kafr atlantis", "c-giza"]]));
     expect(learned.resolve("Kafr Atlantis")).toMatchObject({ via: "learned", city: { name: "Giza" } });
   });
+  it("lists every city for ops to pick from, and ranks them by a name typed in either language", () => {
+    expect(r.all().map((c) => c.id)).toEqual(cities.map((c) => c.id));
+    expect(r.suggest("الجيزه", 1).map((c) => c.name)).toEqual(["Giza"]);
+  });
 });
 
 describe("phone normalization", () => {

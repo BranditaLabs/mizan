@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
@@ -46,6 +46,7 @@ export function ShipmentsScreen() {
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | null>(null);
+  const [history, setHistory] = useState<Row | null>(null);
   const [importing, setImporting] = useState(false);
   const [now] = useState(() => Date.now());
   const manager = MANAGERS.has(store?.role ?? "");
@@ -80,9 +81,14 @@ export function ShipmentsScreen() {
       />
     ) },
     { id: "cod", header: t("columns.cod"), numeric: true, cell: (r) => <MoneyText money={r.cod} /> },
-    ...(manager && view === "review" ? [{ id: "act", header: t("columns.action"), cell: (r: Row) => r.booking === "booked"
-      ? <Button size="sm" variant="secondary" onClick={() => setEditing(r)}>{t("set.open")}</Button>
-      : <Link href={`/orders/${r.order.id}`} className="text-body-sm underline">{t("openOrder")}</Link> }] : []),
+    { id: "act", header: t("columns.action"), cell: (r: Row) => (
+      <span className="flex flex-wrap gap-2">
+        {r.booking === "booked" ? <Button size="sm" variant="ghost" onClick={() => setHistory(r)}>{t("history.open")}</Button> : null}
+        {manager && view === "review" ? (r.booking === "booked"
+          ? <Button size="sm" variant="secondary" onClick={() => setEditing(r)}>{t("set.open")}</Button>
+          : <Link href={`/orders/${r.order.id}`} className="text-body-sm underline">{t("openOrder")}</Link>) : null}
+      </span>
+    ) },
   ];
   return (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="shipments">
@@ -107,6 +113,7 @@ export function ShipmentsScreen() {
       </Tabs>
       <Scorecard />
       {editing ? <SetStatusDialog row={editing} onClose={() => setEditing(null)} /> : null}
+      {history ? <HistoryDialog row={history} onClose={() => setHistory(null)} /> : null}
       <StatusImport open={importing} onClose={() => setImporting(false)} />
     </div>
   );
@@ -144,6 +151,40 @@ function SetStatusDialog({ row, onClose }: { row: Row; onClose(): void }) {
         </Select>
         <TextArea label={t("note")} hint={t("noteHint")} value={note} maxLength={300} onChange={(e) => setNote(e.target.value)} dir="auto" />
       </div>
+    </Dialog>
+  );
+}
+
+const SOURCES = new Set(["webhook", "poll", "ops"]);
+
+/** Every status the shipment had, newest first, and where each came from (the courier's webhook, a poll, or a person). */
+function HistoryDialog({ row, onClose }: { row: Row; onClose(): void }) {
+  const t = useTranslations("shipments.history");
+  const ts = useTranslations("shipping");
+  const { api, user, store } = useSession();
+  const q = useQuery({
+    queryKey: ["shipments", user?.uid ?? "", store?.tenantId ?? "", "history", row.id],
+    queryFn: () => ok(api.GET("/v1/shipments/{id}/events", { params: { path: { id: row.id } } })),
+  });
+  return (
+    <Dialog open onClose={onClose} title={t("title", { number: row.order.number })} footer={<Button variant="ghost" onClick={onClose}>{t("close")}</Button>}>
+      {q.isPending ? <SkeletonRows rows={4} label={t("loading")} /> : null}
+      {q.data && q.data.data.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : null}
+      <ol className="flex flex-col divide-y divide-line text-body-sm" data-testid="shipment-history">
+        {(q.data?.data ?? []).map((e, i) => (
+          <li key={i} className="flex flex-wrap items-start justify-between gap-2 py-2">
+            <span className="flex flex-col gap-0.5">
+              <span className="flex items-center gap-2">
+                <Badge tone={TONE[e.status as Status] ?? "neutral"}>{isStatus(e.status) ? ts(`status.${e.status}`) : e.status}</Badge>
+                <span className="text-caption text-text-3">{SOURCES.has(e.source) ? t(`source.${e.source}`) : e.source}</span>
+              </span>
+              {e.statusRaw ? <span className="text-caption text-text-2">{t("courierSaid")}{" "}<span dir="auto">{e.statusRaw}</span></span> : null}
+              {e.note ? <span className="text-caption text-text-2" dir="auto">{e.note}</span> : null}
+            </span>
+            <span className="text-caption text-text-3"><DateText value={e.at} /></span>
+          </li>
+        ))}
+      </ol>
     </Dialog>
   );
 }

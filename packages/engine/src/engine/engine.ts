@@ -559,6 +559,12 @@ export class MizanEngine {
     return true;
   }
 
+  /** Bosta's cities closest to what ops typed, to pick the city of an address it could not match. */
+  async courierCities(text?: string, n = 10) {
+    const r = await this.bosta.cities();
+    return text?.trim() ? r.suggest(text, n) : r.all().slice(0, n);
+  }
+
   replay(jobId: string) {
     return this.store.replay(jobId, this.now());
   }

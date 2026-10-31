@@ -18,6 +18,7 @@ type DashboardId = Dashboard["id"];
 type Tile = Dashboard["tiles"][number];
 type Series = Dashboard["series"][number];
 const PERIODS = [7, 30, 90] as const;
+const MODULES = new Set(["M1", "M3", "M4", "M5", "M7", "M15"]);
 /** A store day shown without shifting through a midnight. */
 const noon = (day: string) => new Date(`${day}T12:00:00Z`);
 
@@ -28,20 +29,22 @@ const noon = (day: string) => new Date(`${day}T12:00:00Z`);
  */
 export function ReportsScreen() {
   const t = useTranslations("reports");
+  const locale = useLocale();
   const { api, user, store } = useSession();
-  const [picked, setPicked] = useState<DashboardId | null>(null);
+  const [picked, setPicked] = useState<DashboardId | "metrics" | null>(null);
   const [days, setDays] = useState<(typeof PERIODS)[number]>(30);
   const list = useQuery({
-    queryKey: ["dashboards", user?.uid ?? "", store?.tenantId ?? ""],
+    queryKey: ["dashboards", user?.uid ?? "", store?.tenantId ?? "", locale],
     queryFn: () => ok(api.GET("/v1/dashboards")),
     enabled: Boolean(store),
   });
   const ids = list.data?.data ?? [];
-  const id = picked && ids.some((d) => d.id === picked) ? picked : ids[0]?.id ?? null;
+  const id = picked && picked !== "metrics" && ids.some((d) => d.id === picked) ? picked : ids[0]?.id ?? null;
+  const tab = picked === "metrics" ? "metrics" : id;
   const dash = useQuery({
-    queryKey: ["dashboard", user?.uid ?? "", store?.tenantId ?? "", id, days],
+    queryKey: ["dashboard", user?.uid ?? "", store?.tenantId ?? "", id, days, locale],
     queryFn: () => ok(api.GET("/v1/dashboards/{id}", { params: { path: { id: id! }, query: { days } } })),
-    enabled: Boolean(store) && id !== null,
+    enabled: Boolean(store) && id !== null && tab !== "metrics",
     placeholderData: (prev) => prev,
   });
 
@@ -62,8 +65,9 @@ export function ReportsScreen() {
         : list.isError ? <Alert tone="danger">{t("loadFailed")}</Alert>
         : id === null ? <div className="mz-card"><EmptyState icon="locked" title={t("none.title")} body={t("none.body")} /></div>
         : (
-          <Tabs label={t("tabsLabel")} value={id} onChange={setPicked} items={ids.map((d) => ({ value: d.id, label: d.name }))}>
-            {dash.isPending ? <div className="mz-card"><SkeletonRows rows={4} label={t("loading")} /></div>
+          <Tabs<DashboardId | "metrics"> label={t("tabsLabel")} value={tab ?? id} onChange={setPicked} items={[...ids.map((d) => ({ value: d.id, label: d.name })), { value: "metrics" as const, label: t("metrics.tab") }]}>
+            {tab === "metrics" ? <MetricsView days={days} />
+              : dash.isPending ? <div className="mz-card"><SkeletonRows rows={4} label={t("loading")} /></div>
               : dash.isError ? <Alert tone="danger">{t("loadFailed")}</Alert>
               : <DashboardView d={dash.data} days={days} />}
           </Tabs>
@@ -91,6 +95,53 @@ function DashboardView({ d, days }: { d: Dashboard; days: number }) {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {d.series.map((s) => <SeriesChart key={s.key} s={s} currency={d.currency} />)}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Every metric the caller may see (E15-1), with its definition and its value for the period: the
+ * dictionary behind every number on every screen, so a team can check what a figure means.
+ */
+function MetricsView({ days }: { days: number }) {
+  const t = useTranslations("reports");
+  const locale = useLocale();
+  const { api, user, store } = useSession();
+  const scope = [user?.uid ?? "", store?.tenantId ?? ""];
+  const catalogue = useQuery({ queryKey: ["metricCatalogue", ...scope, locale], queryFn: () => ok(api.GET("/v1/metrics/catalogue")), staleTime: 3_600_000 });
+  const values = useQuery({
+    queryKey: ["metricValues", ...scope, days],
+    queryFn: () => ok(api.GET("/v1/metrics/values", { params: { query: { days } } })),
+    placeholderData: (prev) => prev,
+  });
+  if (catalogue.isPending || values.isPending) return <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>;
+  if (catalogue.isError || values.isError) return <Alert tone="danger">{t("loadFailed")}</Alert>;
+  const byKey = new Map(values.data.data.map((v) => [v.key, v]));
+  const modules = [...new Set(catalogue.data.data.map((m) => m.module))];
+  return (
+    <div className="flex flex-col gap-4" data-testid="metrics">
+      <p className="text-body-sm text-text-2">{t.rich("range", { from: () => <bdi dir="ltr">{values.data.from}</bdi>, to: () => <bdi dir="ltr">{values.data.to}</bdi> })}</p>
+      {modules.map((mod) => (
+        <section key={mod} className="mz-card p-4">
+          <h2 className="mb-2 text-heading-sm">{MODULES.has(mod) ? t(`metrics.module.${mod as "M1"}`) : mod}</h2>
+          <dl className="flex flex-col divide-y divide-line">
+            {catalogue.data.data.filter((m) => m.module === mod).map((m) => {
+              const v = byKey.get(m.key);
+              return (
+                <div key={m.key} className="flex flex-wrap items-start justify-between gap-3 py-2">
+                  <dt className="flex min-w-0 max-w-[70ch] flex-col">
+                    <span className="font-medium">{m.name}</span>
+                    <span className="text-caption text-text-2">{m.definition}</span>
+                  </dt>
+                  <dd className="text-body-lg font-medium">
+                    <TileValue tile={{ key: m.key, name: m.name, definition: m.definition, unit: m.unit, value: v?.value ?? null, ...(v?.money ? { money: v.money } : {}) }} />
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </section>
+      ))}
     </div>
   );
 }

@@ -263,7 +263,7 @@ export function EvidencePack({ disputeId }: { disputeId: string }) {
   const frame = (body: React.ReactNode) => (
     <div className="mx-auto flex max-w-[860px] flex-col gap-4 px-4 pt-6 pb-14 md:px-6 print:max-w-none print:p-0" data-testid="evidence-pack">{body}</div>
   );
-  if (!allowed) return frame(<Alert tone="info">{t("notAllowed")}</Alert>);
+  if (!allowed) return frame(OPS_VIEWERS.has(store?.role ?? "") ? <DisputeSummary disputeId={disputeId} /> : <Alert tone="info">{t("notAllowed")}</Alert>);
   if (!p) return frame(<p className="text-body-sm text-text-3">{q.isError ? problemText(q.error, tpr) : t("loading")}</p>);
   const d = p.dispute;
   const orderStatus = (s: string) => (s in STATUS_KEYS ? to(`status.${s as "new"}`) : s);
@@ -372,3 +372,35 @@ const CHAT_OUTCOMES = new Set(["confirmed", "changed", "cancelled", "wrong_numbe
 const CHANNELS = new Set(["whatsapp", "call_team", "call_auto", "voice", "agent", "link"]);
 const ACTIONS = new Set(["confirm", "change", "cancel", "keep", "reason", "note"]);
 const MSG_STATUS = new Set(["accepted", "sent", "delivered", "read", "failed", "received"]);
+
+/** Ops managers follow disputes but don't open evidence (it decrypts the customer's address). */
+const OPS_VIEWERS = new Set(["ops_manager"]);
+
+/** The dispute without its evidence: where it stands and by when, for those who follow it. */
+function DisputeSummary({ disputeId }: { disputeId: string }) {
+  const t = useTranslations("disputes");
+  const tpr = useTranslations("problem");
+  const { api, user, store } = useSession();
+  const q = useQuery({
+    queryKey: ["disputes", user?.uid ?? "", store?.tenantId ?? "", "one", disputeId],
+    queryFn: () => ok(api.GET("/v1/disputes/{disputeId}", { params: { path: { disputeId } } })),
+    meta: { toast: false },
+  });
+  const d = q.data;
+  if (!d) return <p className="text-body-sm text-text-3">{q.isError ? problemText(q.error, tpr) : t("loading")}</p>;
+  return (
+    <div className="flex flex-col gap-4" data-testid="dispute-summary">
+      <Link href={`/orders/${d.order.id}`} className="text-body-sm text-text-2 underline">{t("backToOrder")}</Link>
+      <header className="flex flex-col gap-1">
+        <h1 className="font-display text-heading-lg">{t("packTitle", { number: d.number })}</h1>
+        <p className="flex flex-wrap items-center gap-2 text-body-sm">
+          <Badge tone={TONE[d.status]}>{t(`status.${d.status}`)}</Badge>
+          {t("packFor")} <bdi className="mz-id">{d.order.number}</bdi> · <MoneyText money={d.amount} />
+          {d.reason ? <> · {t(`reason.${d.reason}`)}</> : null}
+        </p>
+        {d.respondBy ? <p className="text-caption text-text-2">{t("respondBy")}: <DateText value={d.respondBy} /></p> : null}
+      </header>
+      <Alert tone="info">{t("notAllowed")}</Alert>
+    </div>
+  );
+}

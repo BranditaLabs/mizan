@@ -13,6 +13,7 @@ import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
+import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { SettingsTabs } from "./SettingsTabs";
 
@@ -109,6 +110,7 @@ export function CostsScreen() {
         </Card>
 
         <FxCard canEdit={canEdit} today={rules.data.today} />
+        {canEdit ? <RecalculateCard today={rules.data.today} /> : null}
       </div>
     </Page>
   );
@@ -349,6 +351,51 @@ function FxCard({ canEdit, today }: { canEdit: boolean; today: string }) {
           {fx.data.feed ? <p className="mt-3 text-caption text-text-3">{fx.data.feed}</p> : null}
         </>
       ) : <Alert tone="danger">{tc("loadFailed")}</Alert>}
+    </Card>
+  );
+}
+
+const RECALC_DAYS = 90;
+/** At most this many calls of up to 2,000 orders each, so one click never loops forever. */
+const RECALC_ROUNDS = 10;
+
+/**
+ * Profit of orders still provisional (not delivered or returned yet) follows today's rules once
+ * recalculated; final orders keep the cost of their day. Runs over the last 90 store days.
+ */
+function RecalculateCard({ today }: { today: string }) {
+  const t = useTranslations("costs.recalc");
+  const tpr = useTranslations("problem");
+  const { api } = useSession();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const run = useMutation({
+    mutationFn: async () => {
+      const from = new Date(`${today}T12:00:00Z`);
+      from.setUTCDate(from.getUTCDate() - (RECALC_DAYS - 1));
+      let total = 0;
+      for (let i = 0; i < RECALC_ROUNDS; i++) {
+        const r = await ok(api.POST("/v1/profit/recalculate", { body: { from: from.toISOString().slice(0, 10), to: today } }));
+        total += r.recomputed;
+        if (!r.truncated) return { total, more: false };
+      }
+      return { total, more: true };
+    },
+    meta: { toast: false },
+    onSuccess: (r) => {
+      toast({ message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
+      void qc.invalidateQueries({ queryKey: ["profitHome"] });
+      void qc.invalidateQueries({ queryKey: ["profitBreakdown"] });
+      void qc.invalidateQueries({ queryKey: ["orderPnl"] });
+    },
+  });
+  return (
+    <Card title={t("title")} className="lg:col-span-2">
+      <div className="flex flex-wrap items-center justify-between gap-3" data-testid="recalculate">
+        <p className="max-w-[70ch] text-body-sm text-text-2">{t("body", { days: RECALC_DAYS })}</p>
+        <Button variant="secondary" icon="refresh" busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button>
+      </div>
+      {run.isError ? <div className="mt-3"><Alert tone="danger">{problemText(run.error, tpr)}</Alert></div> : null}
     </Card>
   );
 }

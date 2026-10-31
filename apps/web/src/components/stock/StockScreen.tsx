@@ -31,6 +31,7 @@ const REASONS: readonly Reason[] = ["damaged", "lost", "found", "correction", "o
 const READERS = new Set(["owner", "admin", "ops_manager", "warehouse", "finance"]);
 const WRITERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
 const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
+const PICKERS = WRITERS;
 
 /**
  * Stock (M4, E8-2): on hand, reserved for confirmed orders, and available, in the main warehouse.
@@ -63,9 +64,12 @@ export function StockScreen() {
 
   const frame = (body: React.ReactNode) => (
     <div className="mx-auto flex max-w-[1440px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="stock">
-      <header>
-        <h1 className="font-display text-heading-lg">{t("title")}</h1>
-        <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-heading-lg">{t("title")}</h1>
+          <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
+        </div>
+        {PICKERS.has(store?.role ?? "") ? <Link href="/stock/picklists" className="mz-btn mz-btn--secondary">{t("pickLists")}</Link> : null}
       </header>
       {body}
     </div>

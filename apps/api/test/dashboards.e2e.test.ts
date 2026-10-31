@@ -62,11 +62,15 @@ beforeAll(async () => {
 afterAll(() => app.close());
 
 describe("dashboards (E15-2)", () => {
-  // Names come in the reader's profile language: Arabic unless they chose English.
+  // Names come in the request's language (the dashboard sends its own), else the profile's.
   it("tiles are the metric layer's values; the series covers every day of the period", async () => {
     const d = (await http().get("/v1/dashboards/home?days=7").set(as("owner")).expect(200)).body;
     const v = (await http().get("/v1/metrics/values?days=7").set(as("owner")).expect(200)).body;
-    expect(d).toMatchObject({ id: "home", name: "نظرة عامة", from: v.from, to: v.to, currency: "EGP" });
+    expect(d).toMatchObject({ id: "home", name: "Overview", from: v.from, to: v.to, currency: "EGP" });
+    const ar = (await http().get("/v1/dashboards/home?days=7").set({ ...as("owner"), "Accept-Language": "ar" }).expect(200)).body;
+    expect(ar.name).toBe("نظرة عامة");
+    const none = (await http().get("/v1/dashboards").set({ Authorization: "Bearer owner", "X-Tenant-Id": store }).expect(200)).body;
+    expect(none.data[0].name).toBe("نظرة عامة"); // no header: the profile's language (Arabic by default)
     for (const t of d.tiles) {
       const m = v.data.find((x: { key: string }) => x.key === t.key);
       expect(t.value).toBe(m.value);
@@ -97,7 +101,7 @@ describe("dashboards (E15-2)", () => {
   });
 
   it("downloads the dashboard as CSV (UTF-8 with BOM) or Excel", async () => {
-    const c = await http().get("/v1/dashboards/operations/export?format=csv&days=7").set(as("owner")).buffer(true).parse(binary).expect(200);
+    const c = await http().get("/v1/dashboards/operations/export?format=csv&days=7").set({ ...as("owner"), "Accept-Language": "ar" }).buffer(true).parse(binary).expect(200);
     expect(c.headers["content-type"]).toMatch(/^text\/csv/);
     expect(c.headers["content-disposition"]).toMatch(/^attachment; filename="mizan-operations-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.csv"$/);
     expect(c.headers["cache-control"]).toBe("no-store");
@@ -105,6 +109,9 @@ describe("dashboards (E15-2)", () => {
     expect(text.charCodeAt(0)).toBe(0xfeff);
     expect(text).toContain("التشغيل");
     expect(text).toContain("المقياس,القيمة");
+    // Downloaded from the English dashboard: an English file.
+    const en = (await http().get("/v1/dashboards/operations/export?format=csv&days=7").set(as("owner")).buffer(true).parse(binary).expect(200)).body as Buffer;
+    expect(en.toString("utf8")).toContain("Metric,Value");
     expect(text.split("\r\n").filter((l) => /^\d{4}-\d{2}-\d{2},/.test(l))).toHaveLength(7);
 
     const x = await http().get("/v1/dashboards/profit/export?days=30").set(as("owner")).buffer(true).parse(binary).expect(200);

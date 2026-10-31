@@ -84,6 +84,8 @@ describe("metrics (E15-1)", () => {
     expect(wh.data.map((x: { key: string }) => x.key)).toEqual(["orders", "days_of_cover"]);
     const ar = (await http().get("/v1/metrics/catalogue").set(as("owner", "ar")).expect(200)).body;
     expect(ar.data.find((x: { key: string }) => x.key === "delivered_rate")).toMatchObject({ name: "نسبة التسليم", unit: "percent", module: "M3", version: 1 });
+    const en = (await http().get("/v1/metrics/catalogue").set(as("owner", "en")).expect(200)).body;
+    expect(en.data.find((x: { key: string }) => x.key === "delivered_rate")).toMatchObject({ name: "Delivered rate" });
     await http().get("/v1/metrics/values?keys=orders,happiness").set(as("owner")).expect(422);
     await http().get("/v1/metrics/values?days=12").set(as("owner")).expect(422);
     await http().get("/v1/metrics/values?from=2026-01-01").set(as("owner")).expect(422);

@@ -9,6 +9,7 @@ import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/h
 import { ProblemError } from "../../platform/http/problem.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import { scrubText } from "../../platform/logging/redact.js";
+import { isIntegrationError } from "@mizan/engine";
 import { NotConnectedError } from "../../integrations/connection-resolver.js";
 import { EngineRegistry } from "../../integrations/engine-registry.js";
 
@@ -23,6 +24,11 @@ const ResolveCitySchema = z.strictObject({
   jobId: z.string().regex(UUID).optional(),
 });
 
+const CitiesQuerySchema = z.object({
+  q: z.string().trim().max(80).optional().describe("What the customer typed, or part of a city name"),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+const CitiesSchema = z.object({ data: z.array(z.object({ id: z.string(), name: z.string(), nameAr: z.string().nullable() })) });
 const ListSchema = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) });
 const HealthQuerySchema = z.object({ connectionId: z.uuid().optional().describe("Which Shopify store (default: the first)") });
 
@@ -121,6 +127,22 @@ export class IntegrationsAdminController {
       action: "integration.job_replayed", tenantId: auth.tenant!.id, ...auditActor(auth), entity: { type: "engine_job", id },
     }));
     return { replayed: true as const };
+  }
+
+  @Get("cities")
+  @ApiQueryZod(CitiesQuerySchema)
+  @ApiJson(200, "CourierCities", CitiesSchema, "Bosta's cities closest to the text (or the first ones), to pick for an address it could not match")
+  @ApiProblems(409, 502)
+  async cities(@Auth() auth: AuthContext, @Query(new ZodPipe(CitiesQuerySchema)) q: z.infer<typeof CitiesQuerySchema>) {
+    try {
+      const { engine } = await this.registry.get(auth.tenant!.id);
+      const cities = await engine.courierCities(q.q, q.limit);
+      return { data: cities.map((c) => ({ id: c.id, name: c.name, nameAr: c.nameAr ?? null })) };
+    } catch (err) {
+      if (err instanceof NotConnectedError) throw new ProblemError(409, "not_connected", err.detail);
+      if (isIntegrationError(err)) throw new ProblemError(502, "courier_unavailable", "Bosta did not answer with its cities; try again shortly");
+      throw err;
+    }
   }
 
   @Post("cities/resolve")

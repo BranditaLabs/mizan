@@ -78,6 +78,10 @@ describe("admin integration routes", () => {
     expect(job).toMatchObject({ provider: "bosta", payload: { orderId: o.id } });
     expect(job.error).toMatch(/Kafr Atlantis/i);
 
+    // The team looks the city up by name instead of knowing Bosta's id.
+    const found = await http().get("/v1/admin/integrations/cities?q=Giza&limit=3").set(as("owner", store)).expect(200);
+    expect(found.body.data[0]).toMatchObject({ id: "c-giza", name: "Giza" });
+    expect(found.body.data).toHaveLength(3);
     await http().post("/v1/admin/integrations/cities/resolve").set(as("owner", store))
       .send({ text: "Kafr Atlantis", cityId: "c-giza", jobId: job.id }).expect(200, { saved: true, replayed: true });
     await drain();
@@ -105,6 +109,9 @@ describe("admin integration routes", () => {
 
   it("is for owners, admins and ops managers only; validates input", async () => {
     expect((await http().get("/v1/admin/integrations/health").set(as("agent", store)).expect(403)).body.code).toBe("insufficient_role");
+    expect((await http().get("/v1/admin/integrations/cities").set(as("agent", store)).expect(403)).body.code).toBe("insufficient_role");
+    await http().get("/v1/admin/integrations/cities?limit=0").set(as("owner", store)).expect(422);
+    expect((await http().get("/v1/admin/integrations/cities").set(as("other", other)).expect(409)).body.code).toBe("not_connected");
     await http().post("/v1/admin/integrations/cities/resolve").set(as("owner", store)).send({ text: "x", cityId: "" }).expect(422);
     await http().post("/v1/admin/integrations/cities/resolve").set(as("owner", store)).send({ text: "Somewhere", cityId: "c-giza", jobId: crypto.randomUUID() }).expect(404);
   });

@@ -9,11 +9,13 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
+import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
+import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 
 type Automation = Schemas["AutomationList"]["data"][number];
@@ -37,7 +39,11 @@ export function Automations() {
   const allowed = MANAGERS.has(store?.role ?? "");
   const scope = [user?.uid ?? "", store?.tenantId ?? ""];
   const [log, setLog] = useState<Automation | null>(null);
+  const [trying, setTrying] = useState<Automation | null>(null);
   const list = useQuery({ queryKey: ["automations", ...scope], queryFn: () => ok(api.GET("/v1/automations")), enabled: Boolean(store) && allowed });
+  // The registry in code says which triggers carry an order: those can be tried on one (E11-3).
+  const catalog = useQuery({ queryKey: ["automationCatalog", ...scope], queryFn: () => ok(api.GET("/v1/catalog")), enabled: Boolean(store) && allowed, staleTime: Infinity });
+  const orderTriggers = new Set((catalog.data?.triggers ?? []).filter((c) => c.context === "order").map((c) => c.event));
   const recipes = useQuery({ queryKey: ["recipes", ...scope, locale], queryFn: () => ok(api.GET("/v1/automations/recipes", { params: { query: { lang: locale } } })), enabled: Boolean(store) && allowed });
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["automations"] }); void qc.invalidateQueries({ queryKey: ["recipes"] }); };
   const install = useMutation({
@@ -81,7 +87,10 @@ export function Automations() {
                   {t("stats", { runs: a.stats.runs, failures: a.stats.failures })}
                   {a.stats.lastRunAt ? <>{" · "}{t("lastRun")}{" "}<DateText value={a.stats.lastRunAt} /></> : null}
                 </span>
-                <Button size="sm" variant="ghost" onClick={() => setLog(a)}>{t("runLog")}</Button>
+                <span className="flex gap-1">
+                  {orderTriggers.has(a.trigger) ? <Button size="sm" variant="ghost" onClick={() => setTrying(a)}>{t("try.open")}</Button> : null}
+                  <Button size="sm" variant="ghost" onClick={() => setLog(a)}>{t("runLog")}</Button>
+                </span>
               </div>
             </li>
           ))}
@@ -113,6 +122,7 @@ export function Automations() {
         </ul>
       </section>
       {log ? <RunLog automation={log} onClose={() => setLog(null)} /> : null}
+      {trying ? <TryIt automation={trying} action={action} onClose={() => setTrying(null)} /> : null}
     </>,
   );
 }
@@ -144,6 +154,74 @@ function RunLog({ automation, onClose }: { automation: Automation; onClose(): vo
           </li>
         ))}
       </ul>
+    </Dialog>
+  );
+}
+
+const show = (v: unknown) => (v === null || v === undefined ? "—" : typeof v === "string" ? v : JSON.stringify(v));
+
+/**
+ * Try an automation on one order (E11-3 dry run): each rule with the order's actual value, and the
+ * steps that would run. Nothing is done, nothing is logged as a run.
+ */
+function TryIt({ automation, action, onClose }: { automation: Automation; action(a: string): string; onClose(): void }) {
+  const t = useTranslations("automations.try");
+  const tpr = useTranslations("problem");
+  const { api } = useSession();
+  const [number, setNumber] = useState("");
+  const run = useMutation({
+    mutationFn: async () => {
+      const found = await ok(api.GET("/v1/orders", { params: { query: { q: number.trim(), limit: 1 } } }));
+      const order = found.data[0];
+      if (!order) return null;
+      return { order: order.number, result: await ok(api.POST("/v1/automations/{id}/test", { params: { path: { id: automation.id } }, body: { orderId: order.id } })) };
+    },
+    meta: { toast: false },
+  });
+  const r = run.data?.result;
+  return (
+    <Dialog open onClose={onClose} title={t("title", { name: automation.name })} description={t("body")} footer={<Button variant="ghost" onClick={onClose}>{t("close")}</Button>}>
+      <div className="flex flex-col gap-3">
+      <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (number.trim()) run.mutate(); }}>
+        <Field label={t("order")} hint={t("orderHint")} ltr value={number} onChange={(e) => setNumber(e.target.value)} className="min-w-0 flex-1" />
+        <Button type="submit" busy={run.isPending} disabled={!number.trim()}>{t("run")}</Button>
+      </form>
+      {run.isError ? <Alert tone="danger">{problemText(run.error, tpr)}</Alert> : null}
+      {run.data === null ? <Alert tone="warning">{t("noOrder")}</Alert> : null}
+      {r ? (
+        <div className="flex flex-col gap-3" data-testid="dry-run">
+          <p className="flex items-center gap-2 text-body-sm">
+            <Badge tone={r.matched ? "success" : "neutral"}>{r.matched ? t("matched") : t("notMatched")}</Badge>
+            <Bdi>{run.data?.order}</Bdi>
+          </p>
+          {r.rules.length ? (
+            <ul className="flex flex-col divide-y divide-line text-body-sm">
+              {r.rules.map((rule, i) => (
+                <li key={i} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                  <span><bdi dir="ltr" className="mz-id">{rule.field} {rule.op} {show(rule.value)}</bdi></span>
+                  <span className="flex items-center gap-2">
+                    <span className="text-caption text-text-2">{t("actual")} <bdi dir="ltr" className="mz-id">{show(rule.actual)}</bdi></span>
+                    <Badge tone={rule.pass ? "success" : "danger"}>{rule.pass ? t("pass") : t("fail")}</Badge>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : <p className="text-body-sm text-text-2">{t("noRules")}</p>}
+          <div>
+            <h3 className="text-label">{r.matched ? t("wouldRun") : t("wouldNotRun")}</h3>
+            <ul className="mt-1 flex flex-col gap-1 text-body-sm">
+              {r.steps.map((s, i) => (
+                <li key={i}>
+                  {action(s.action)}
+                  {typeof s.params.message === "string" ? <span className="block text-caption text-text-2" dir="auto">{s.params.message}</span> : null}
+                  {s.note ? <span className="block text-caption text-danger-text">{t("noOrderStep")}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ) : null}
+      </div>
     </Dialog>
   );
 }
