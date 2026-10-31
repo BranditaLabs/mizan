@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/*
+ * Mizan design system (packages/design-system, docs/08): Brandita's ink, paper and one red point.
+ * Tokens (--mz-*) switch with <html data-theme="light|dark"> or the system preference; components
+ * use the semantic Tailwind names (bg-surface, text-text-2, border-line, bg-primary …), never hex.
+ */
+@import "@mizan/design-system/fonts.css";
+@import "@mizan/design-system/tokens.css";
+@import "@mizan/design-system/tailwind.css";
+/* In the base layer, so Tailwind utilities (mt-1 on an h1 …) still win over its element resets. */
+@import "@mizan/design-system/base.css" layer(base);
+/* The reference components (mz-btn, mz-table, mz-kpi …) that src/components/ui wraps; utilities still win. */
+@import "@mizan/design-system/components.css" layer(components);
+/* Mizan Glass (docs/glass.md): the premium layer, and the bridge that renders the core tokens and components through it inside .mzg. */
+@import "@mizan/design-system/glass.css" layer(components);
+@import "@mizan/design-system/glass-bridge.css" layer(components);
+
+/* `dark:` follows the user's choice, or the system when there is none (same rule as tokens.css). */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) { @slot; }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme]) *) { @slot; }
+  }
+}
+
+/* Printing (the dispute evidence pack, E14-5): paper colours whatever the theme, no app frame. */
+@media print {
+  :root { color-scheme: light; }
+  body { background: none !important; }
+  .mz-card { break-inside: avoid; box-shadow: none; }
+}

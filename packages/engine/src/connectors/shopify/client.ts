@@ -17,11 +17,13 @@ export interface ShopifyCredentials {
   clientSecret: string;
   /** Override for tests or a proxy. */
   baseUrl?: string;
+  /** Where Shopify delivers this store's webhooks (https; the platform's per-connection URL). */
+  webhookUrl?: string;
 }
 
 interface GqlBody {
   data?: Record<string, unknown> | null;
-  errors?: Array<{ message: string; extensions?: { code?: string; [k: string]: unknown } }>;
+  errors?: Array<{ message: string; path?: Array<string | number>; extensions?: { code?: string; [k: string]: unknown } }>;
   extensions?: { cost?: { requestedQueryCost?: number; actualQueryCost?: number; throttleStatus?: { maximumAvailable: number; currentlyAvailable: number; restoreRate: number } } };
 }
 
@@ -48,6 +50,15 @@ export class ShopifyGraphql {
   readonly bucket: AdaptiveBucket;
   private readonly variantInUse = new Map<string, number>();
   private versionWarned = false;
+
+  /** Query variants switched to after schema rejections (operation name → variant index). */
+  exportVariants(): Record<string, number> {
+    return Object.fromEntries(this.variantInUse);
+  }
+
+  loadVariants(state: Record<string, number> | undefined) {
+    for (const [op, i] of Object.entries(state ?? {})) if (Number.isInteger(i) && i >= 0) this.variantInUse.set(op, i);
+  }
 
   constructor(
     private readonly creds: ShopifyCredentials,
@@ -107,6 +118,13 @@ export class ShopifyGraphql {
       const need = body.extensions?.cost?.requestedQueryCost ?? op.cost;
       const waitMs = ts ? Math.ceil((Math.max(0, need - ts.currentlyAvailable) / Math.max(1, ts.restoreRate)) * 1000) : 1_000;
       return new IntegrationError({ kind: "rate_limited", connector: "shopify", message: `${op.name}: throttled`, retryAfterMs: waitMs, details: errs });
+    }
+    // Refused only on optional fields (a version without them, or access the app lacks): the next variant leaves them out.
+    const optional = op.optional ?? [];
+    const aboutOptional = (e: { message: string; path?: Array<string | number> }) =>
+      Boolean(e.path?.some((p) => optional.includes(String(p)))) || optional.some((f) => e.message.includes(`'${f}'`));
+    if (optional.length && errs.every(aboutOptional) && (codes.includes("ACCESS_DENIED") || SCHEMA_ERROR.test(text))) {
+      return new IntegrationError({ kind: "schema_drift", connector: "shopify", message: `${op.name}: optional fields refused: ${text}`, details: errs });
     }
     if (codes.includes("ACCESS_DENIED")) return new IntegrationError({ kind: "permission", connector: "shopify", message: `${op.name}: ${text}`, details: errs });
     if (codes.includes("INTERNAL_SERVER_ERROR")) return new IntegrationError({ kind: "transient", connector: "shopify", message: `${op.name}: ${text}`, details: errs });

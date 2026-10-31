@@ -9,7 +9,7 @@ flowchart TB
     O[Ops app<br/>Flutter · offline-first]
     P[Public API clients<br/>REST + webhooks]
   end
-  subgraph Mizan["Mizan platform (Google Cloud, Middle East region)"]
+  subgraph Mizan["Mizan platform (Azure UAE North)"]
     API[apps/api<br/>NestJS modular monolith]
     WK[Workers<br/>outbox + schedulers]
     ENG[packages/engine<br/>connectors · resilience · adaptation]
@@ -41,12 +41,13 @@ flowchart TB
 
 | Unit | Code | Runs | Scales by |
 | --- | --- | --- | --- |
-| API | `apps/api` (`main.ts`) | Cloud Run service, ≥ 2 instances | Requests |
-| Worker | `apps/api` (`worker.ts`, same image, different entry) | Cloud Run service, always-on, ≥ 1 | Outbox backlog |
-| Scheduler | Cloud Scheduler → `POST /internal/cron/*` on the worker | — | — |
-| Web | `apps/web` | Cloud Run (or Vercel if preferred; keep ME data residency for APIs) | Requests |
+| API | `apps/api` (`main.ts`) | Azure Container App `ca-mizan-api`, ≥ 2 replicas in production | Requests |
+| Worker | `apps/api` (`worker.ts`, same image, different entry) | Azure Container App `ca-mizan-worker`, always-on, ≥ 1 | Outbox backlog |
+| Scheduler | None: the worker runs its own polls | — | — |
+| Web | `apps/web` | Azure Container App `ca-mizan-web` | Requests |
 | Ops app (warehouse, agents, POS in V3) | `apps/ops` | Play Store / App Store; internal testing tracks first | — |
-| Database | Cloud SQL for PostgreSQL 16+, HA, PITR | ME region | Vertical first, read replica for reports |
+| Migrations | `packages/db` (`cli.js migrate`, same image) | Container Apps Job `caj-mizan-migrate`, run by CI before each deploy | — |
+| Database | Azure Database for PostgreSQL Flexible Server 16, zone-redundant HA in production, PITR | UAE North | Vertical first, read replica for reports |
 
 One image, two entry points, keeps the modular monolith simple: the API never runs long jobs; the worker never serves user traffic.
 
@@ -63,7 +64,7 @@ apps/api/src/
     events/               domain event bus (in-process) + outbox writer
     i18n/                 server-side messages (AR/EN)
     audit/                append-only audit log
-    secrets/              encrypt/decrypt credentials (Cloud KMS envelope)
+    secrets/              encrypt/decrypt credentials (envelope; data keys wrapped by the Key Vault key `tenant-secrets`)
     http/                 error filter, problem+json, pagination, idempotency-key middleware
   modules/
     tenants/  users/  billing/
@@ -128,17 +129,32 @@ sequenceDiagram
 | `channel.order_received` / `listing.error` / `channel.payout_received` | M18 | M1, M8, M13 |
 | `period.closed` / `einvoice.rejected` | M19 | M13 |
 | `metric.threshold_crossed` | M20 | M13 |
+| `privacy.requested` / `privacy.completed` | Privacy (E3-3) | ✅ `privacy.shopify` (redact / compile), M13 (notify the owner) |
+| `connection.connected` / `connection.disconnected` | Connections (E3; a courier emits `connected` once its key passed the check, E4-5) | ✅ `integrations.shopify-connected` (queues webhook registration E3-2 and history import E3-5 as engine jobs), ✅ `onboarding.product-events`, M13 |
+| `connection.needs_attention` | Connections (E4-5: courier key refused) | M13 (notify the owner) |
+| `tenant.created` / `order.created` | Tenants / M1 | ✅ `onboarding.product-events` (milestones `signup`, `first_order_synced`) |
 
 Full catalogue with actions: `docs/13-automation-platform.md`.
 
 Event envelope: `{ id, type, tenantId, occurredAt, actor, entity: { type, id }, data, version }`. Consumers must be idempotent (event `id`).
+
+**Implementation (✅ E1-8, `apps/api/src/platform/events/`):**
+
+| Step | How |
+| --- | --- |
+| Write | `EventsService.emit(trx, …)` inserts into `domain_events` in the caller's tenant transaction: the event exists iff the change committed. Data = ids and facts, never personal data. Catalogue: `@mizan/shared` `DOMAIN_EVENT_TYPES` |
+| Claim | `EventDispatcher` (worker; in-process only in dev with PGlite) leases due events as `mizan_worker` with `FOR UPDATE SKIP LOCKED` (60 s lease, batch 50) |
+| Deliver | Per `@EventConsumer({ name, events })`, in the event's tenant transaction: insert `event_deliveries (consumer, event_id)` then run the handler. Both commit together, so each consumer sees each event **exactly once**, even if the worker dies after a consumer commits |
+| Finish | All consumers ok → `dispatched_at`. A failure → full-jitter backoff (≤ 1 h), scrubbed `last_error`; only consumers without a delivery mark re-run. Dead after 10 attempts (`dead_at`) |
+
+Ordering is by `occurred_at` within a batch, not guaranteed across retries: consumers must tolerate out-of-order events (use entity versions or re-read the entity).
 
 ## 6. Engine integration
 
 `packages/engine` today is a standalone service (`src/server.ts`) with its own small schema (`mz_inbound_events`, `mz_outbox`, `mz_records`). To embed it in `apps/api`:
 
 1. Keep the engine as a library; the API imports `MizanEngine` and registers its job handlers in the worker.
-2. Add `tenant_id` and `connection_id` to the engine's job and record tables (one engine instance per process, connections resolved per job from the `connections` table and decrypted secrets).
+2. ✅ (E2-1) Engine tables are tenant-scoped (migration 0008: per-tenant keys, `connection_id` on jobs, RLS). `SqlStore(client, { tenantId, connections })`; inside the platform the client is `tenantQueryClient(db, tenantId)` from `@mizan/db`, so every engine query runs under RLS. ✅ (E2-2) `apps/api/src/integrations/`: `ConnectionResolver` loads a tenant's Shopify/Bosta connections and decrypts their credentials (`secrets`, JSON `{ accessToken }` / `{ apiKey, webhookToken }`); `EngineRegistry` keeps one `MizanEngine` per tenant (own connectors → own circuit breakers and rate buckets); `EngineJobRunner` (in `worker.js`) finds tenants with due jobs as `mizan_worker` and ticks each tenant's engine without waiting for slow ones. ✅ (E2-7) Several Shopify stores per tenant: one engine per store connection (`EngineRegistry.get(tenantId, storeId)`), its `SqlStore` scoped to that store (`scope` column on `mz_records`, `mz_inbound_events`, `mz_outbox`, migration 0032: cursors, backfill and product state, dedupe and idempotency keys per store); the runner ticks each (tenant, store) with due jobs; Shopify webhooks route by the connection in the URL; one Bosta account serves all of a tenant's stores, and a Bosta webhook goes to the store whose engine booked the shipment (`peekBostaWebhook` + its shipment record).
 3. ✅ Canonical types live in `packages/shared` (`@mizan/shared`); engine and API import them from there.
 4. Replace `engine.on(...)` listeners with handlers that write domain events (section 5).
 5. The engine's `/ops/*` endpoints become admin API routes under `/v1/admin/integrations/*`.
@@ -155,8 +171,8 @@ See backlog epic **E2** in `docs/10-backlog.md`.
 
 ## 8. Data residency
 
-- Primary region: Google Cloud `me-central1` (Doha) or `me-central2` (Dammam). Decide in ADR-0009 after checking service availability (Cloud SQL, Cloud Run, KMS) and latency from Cairo.
-- KSA merchants: add a KSA-hosted deployment (Dammam) when PDPL or customer contracts require it. The schema is region-agnostic; `tenants.region` routes the tenant.
+- Primary region: Azure UAE North (`uaenorth`), decided in ADR-0014 (supersedes ADR-0009).
+- KSA merchants: add a KSA-hosted deployment in an Azure Saudi region when PDPL or customer contracts require it. The schema is region-agnostic; `tenants.region` routes the tenant.
 
 ## 9. Key technical decisions
 

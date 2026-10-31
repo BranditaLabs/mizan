@@ -2,14 +2,19 @@
   "name": "mizan",
   "private": true,
   "version": "0.1.0",
-  "description": "Mizan — MENA e-commerce operating system, powered by Brandita",
+  "description": "Mizan \u2014 MENA e-commerce operating system, powered by Brandita",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*",
+    "perf"
   ],
   "scripts": {
+    "build": "npm run build:api && npm run build -w @mizan/web && npm run build -w @mizan/admin",
+    "build:api": "npm run build -w @mizan/shared -w @mizan/db -w @mizan/engine -w @mizan/api",
     "test": "npm test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "demo": "npm run demo -w @mizan/engine"
+    "demo": "npm run demo -w @mizan/engine",
+    "lint": "npm run lint --workspaces --if-present"
   },
   "engines": {
     "node": ">=22"

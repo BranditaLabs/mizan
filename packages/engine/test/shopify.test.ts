@@ -47,6 +47,35 @@ describe("Shopify connector", () => {
     expect(engine.drift.report().some((d) => d.kind === "fallback_field" && d.field === "customer.phone")).toBe(true);
   });
 
+  it("reads which product each line is, and leaves a deleted product's line unlinked", async () => {
+    const { shop, engine } = setup();
+    const { variantId } = shop.addProduct({ title: "Vitamin C serum", price: "575.00", sku: "SER-30" });
+    const linked = await engine.shopify.getOrder(shop.addOrder().id);
+    expect(linked.lines[0]).toMatchObject({ sku: "SER-30", variantExternalId: variantId });
+    shop.products.clear();
+    const orphan = await engine.shopify.getOrder(shop.addOrder().id);
+    expect(orphan.lines[0]!.variantExternalId).toBeUndefined();
+    expect(engine.drift.report().some((d) => d.field === "order.lineItem.variantExternalId")).toBe(false); // optional: not drift
+  });
+
+  it("reads each variant's barcode; a blank one is no barcode", async () => {
+    const { shop, engine } = setup();
+    const a = shop.addProduct({ title: "Vitamin C serum", price: "575.00", sku: "SER-30", barcode: " 6221234567890 " });
+    const b = shop.addProduct({ title: "Toner", price: "300.00", sku: "TON-1", barcode: "" });
+    expect((await engine.shopify.getProduct(a.productId)).variants[0]!.barcode).toBe("6221234567890");
+    expect((await engine.shopify.getProduct(b.productId)).variants[0]!.barcode).toBeUndefined();
+    expect(engine.drift.report().some((d) => d.field === "product.variant.barcode")).toBe(false); // optional: not drift
+  });
+
+  it("reads where each variant is stocked; none is not drift", async () => {
+    const { shop, engine } = setup();
+    const p = shop.addProduct({ title: "Tote", price: "300.00", sku: "BAG-1", location: "gid://shopify/Location/9" });
+    expect((await engine.shopify.getProduct(p.productId)).variants[0]!.locationIds).toEqual(["gid://shopify/Location/9"]);
+    shop.inventory.clear();
+    expect((await engine.shopify.getProduct(p.productId)).variants[0]!.locationIds).toEqual([]);
+    expect(engine.drift.report().some((d) => d.field === "product.variant.locationIds")).toBe(false);
+  });
+
   it("rejects webhooks with a bad signature and processes duplicates once", async () => {
     const { shop, engine, store, clock } = setup();
     const o = shop.addOrder();

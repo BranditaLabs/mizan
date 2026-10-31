@@ -7,6 +7,8 @@
  * one adapter instead of leaking across the product.
  */
 
+import type { OrderSourceHints } from "./attribution.js";
+
 export type ConnectorId = "shopify" | "bosta" | (string & {});
 
 export interface Money {
@@ -29,6 +31,8 @@ export interface Address {
 export interface OrderLine {
   externalLineId: string;
   sku?: string;
+  /** The platform's variant id, when the product still exists; links the line to the catalogue. */
+  variantExternalId?: string;
   title: string;
   quantity: number;
   unitPrice: Money;
@@ -55,7 +59,7 @@ export type PaymentMode = (typeof PAYMENT_MODES)[number];
 /** Where the money stands, independent of the platform's own enum. */
 export const PAYMENT_STATUSES = [
   "unpaid", "authorized", "partially_paid", "paid",
-  "partially_refunded", "refunded", "voided", "failed", "unknown",
+  "partially_refunded", "refunded", "voided", "failed", "disputed", "unknown",
 ] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
@@ -86,6 +90,8 @@ export interface CanonicalOrder {
   lines: OrderLine[];
   fulfillmentGroups: FulfillmentGroup[];
   tags: string[];
+  /** Where the order came from, as the store recorded it (M7-2); resolved by `resolveOrderSource`. */
+  source?: OrderSourceHints;
   /** Raw payload kept for audit and for re-mapping after an adapter fix. */
   raw?: unknown;
 }
@@ -93,10 +99,14 @@ export interface CanonicalOrder {
 export interface CanonicalVariant {
   externalId: string;
   sku?: string;
+  /** The store's barcode (EAN/UPC/any), when it has one. */
+  barcode?: string;
   title?: string;
   price: Money;
   compareAtPrice?: Money | null;
   inventoryItemId?: string;
+  /** Store locations that stock this variant (where Mizan's count is sent, E8-5). */
+  locationIds?: string[];
   available?: number;
 }
 

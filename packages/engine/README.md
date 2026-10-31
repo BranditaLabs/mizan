@@ -100,6 +100,14 @@ Rules live in `src/core/payments.ts` (`cashToCollect`), shared by every courier 
 
 ---
 
+## Hooks (platform)
+
+`EngineOptions.learned` seeds what the connectors learned before; `hooks.onLearned(provider, state)` fires when it changes (checked after every job). The platform keeps it in `connections.learned`.
+
+`hooks.onAwaitingPayment(order, reason)` is awaited when a confirmed order is held for payment.
+
+`EngineOptions.hooks.onOrder(order, previous)` is awaited inside the ingest job, before the engine records the order or ships it. A failing hook fails the job (as `transient`, so it retries with backoff); the platform uses it to store every ingested order in its own tables.
+
 ## Project layout
 
 ```

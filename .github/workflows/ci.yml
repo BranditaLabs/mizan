@@ -17,6 +17,17 @@ jobs:
     name: Typecheck and test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      # Real PostgreSQL for packages/db/test/postgres.test.ts (node-postgres, non-owner role, RLS)
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,8 +36,171 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      # Engine (incl. chaos suite) and db schema/RLS tests
+      - run: npm run lint
+      - run: npm run build
+      # Engine (incl. chaos suite), db (PGlite + real Postgres), shared and api tests
       - run: npm test
+
+  web-e2e:
+    name: Web end to end (sign-in, RTL/LTR, themes)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # Firebase Auth emulator (firebase-tools 15 needs Java 21)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.34.0
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      # The real API (PGlite) and the web app built against the emulator stack (apps/web/e2e/env.mjs)
+      - run: npm run build:api && npm run build:e2e -w @mizan/web
+      - run: npm run e2e -w @mizan/web
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-e2e
+          path: |
+            apps/web/test-results
+            apps/web/playwright-report
+          if-no-files-found: ignore
+
+  admin-e2e:
+    name: Back office end to end (staff sign-in, stores, health, flags)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-15.34.0
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/admin
+      # The real API (PGlite, with a bootstrap super admin) and the back office built against the emulator stack (apps/admin/e2e/env.mjs)
+      - run: npm run build:api && npm run build:e2e -w @mizan/admin
+      - run: npm run e2e -w @mizan/admin
+        env:
+          CI: "true"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: admin-e2e
+          path: |
+            apps/admin/test-results
+            apps/admin/playwright-report
+          if-no-files-found: ignore
+
+  image:
+    name: Production image smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: mizan-api:local
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Start stack (Postgres, migrations, API, worker)
+        run: docker compose -p mizan up -d --no-build
+      - name: Smoke test
+        run: deploy/compose/smoke.sh mizan
+      - name: Stop stack
+        if: always()
+        run: docker compose -p mizan down -v
+
+  web-image:
+    name: Dashboard image smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image (Next.js standalone on distroless)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          load: true
+          tags: mizan-web:local
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://api.example.test
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - name: Serve Arabic, RTL, assets, as a non-root user
+        run: |
+          docker run -d --name web -p 8080:8080 --cap-drop ALL mizan-web:local
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8080/ar && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8080/ar | grep -q 'dir="rtl"'
+          css=$(curl -fsS http://127.0.0.1:8080/ar | grep -oE '/_next/static/[^"]+\.css' | head -1)
+          curl -fsS -o /dev/null "http://127.0.0.1:8080${css}"
+          test "$(docker inspect -f '{{.Config.User}}' mizan-web:local)" = "65532:65532"
+      - name: Logs
+        if: failure()
+        run: docker logs web
+
+  infra:
+    name: Infrastructure (terraform validate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.13.0"
+      - run: terraform -chdir=infra fmt -check -recursive
+      - run: terraform -chdir=infra init -backend=false -input=false
+      - run: terraform -chdir=infra validate
+      - run: bash -n infra/bootstrap.sh
+
+  ops-app:
+    name: Ops app (Flutter analyze and tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FLUTTER_VERSION: 3.47.9
+    defaults:
+      run:
+        working-directory: apps/ops
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Flutter
+        working-directory: .
+        run: |
+          curl -sSfL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" | tar -xJ -C "$HOME"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter --disable-analytics && flutter pub get
+      # Generated code (drift, l10n) is committed: it must be what the sources produce.
+      - run: dart run build_runner build --delete-conflicting-outputs && flutter gen-l10n && git diff --exit-code -- lib
+      - run: flutter analyze
+      # The offline queue and sync (incl. chaos at 10/25/50 %), the screens in Arabic and English.
+      - run: flutter test
 
   secrets-scan:
     name: Secret scan (gitleaks)

@@ -24,6 +24,17 @@ export interface Tracking {
  *   - fulfillments are checked for the tracking number before creating
  *   - marking paid is skipped when the order is already paid
  */
+export interface ShopifyLearned {
+  variants: Record<string, number>;
+  inventoryCompareField: "changeFromQuantity" | "compareQuantity";
+}
+
+/** Shopify's OrderCancelReason. */
+/** Shopify's FulfillmentEventStatus values Mizan sends (E7-7). */
+export type FulfillmentEventStatus = "CARRIER_PICKED_UP" | "IN_TRANSIT" | "OUT_FOR_DELIVERY" | "ATTEMPTED_DELIVERY" | "DELIVERED" | "FAILURE" | "DELAYED";
+
+export type CancelReason = "CUSTOMER" | "DECLINED" | "FRAUD" | "INVENTORY" | "OTHER" | "STAFF";
+
 export class ShopifyConnector {
   readonly id = "shopify";
   readonly gql: ShopifyGraphql;
@@ -32,6 +43,18 @@ export class ShopifyConnector {
 
   constructor(readonly creds: ShopifyCredentials, private readonly rt: Runtime, private readonly drift: DriftSink, shapes: ShapeWatch, private readonly opts: { codPatterns?: RegExp[] } = {}) {
     this.gql = new ShopifyGraphql(creds, rt, drift, shapes);
+  }
+
+  /** What this connector learned about the shop's API (query variants, inventory compare field). */
+  exportLearned(): ShopifyLearned {
+    return { variants: this.gql.exportVariants(), inventoryCompareField: this.inventoryCompareField };
+  }
+
+  loadLearned(state: Partial<ShopifyLearned> | undefined) {
+    this.gql.loadVariants(state?.variants);
+    if (state?.inventoryCompareField === "compareQuantity" || state?.inventoryCompareField === "changeFromQuantity") {
+      this.inventoryCompareField = state.inventoryCompareField;
+    }
   }
 
   private ctx() {
@@ -48,13 +71,18 @@ export class ShopifyConnector {
 
   async *ordersUpdatedSince(sinceIso: string, pageSize = 50): AsyncGenerator<CanonicalOrder[]> {
     let after: string | null = null;
-    for (;;) {
-      const data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
-        await this.gql.run(Q.ORDERS_UPDATED, { first: pageSize, after, query: `updated_at:>='${sinceIso}'` }, { idempotent: true });
-      yield data.orders.nodes.map((n) => mapOrder(n, this.ctx()));
-      if (!data.orders.pageInfo.hasNextPage) return;
-      after = data.orders.pageInfo.endCursor;
-    }
+    do {
+      const page = await this.ordersPage(`updated_at:>='${sinceIso}'`, after, pageSize);
+      yield page.nodes;
+      after = page.next;
+    } while (after);
+  }
+
+  /** One page of orders matching a Shopify search query, oldest update first; `next` is null on the last page. */
+  async ordersPage(query: string | null, after: string | null, pageSize = 50): Promise<{ nodes: CanonicalOrder[]; next: string | null }> {
+    const data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
+      await this.gql.run(Q.ORDERS_UPDATED, { first: pageSize, after, query }, { idempotent: true });
+    return { nodes: data.orders.nodes.map((n) => mapOrder(n, this.ctx())), next: data.orders.pageInfo.hasNextPage ? data.orders.pageInfo.endCursor : null };
   }
 
   async getProduct(id: string): Promise<CanonicalProduct> {
@@ -65,13 +93,17 @@ export class ShopifyConnector {
 
   async *productsUpdatedSince(sinceIso: string, pageSize = 50): AsyncGenerator<CanonicalProduct[]> {
     let after: string | null = null;
-    for (;;) {
-      const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
-        await this.gql.run(Q.PRODUCTS_UPDATED, { first: pageSize, after, query: `updated_at:>='${sinceIso}'` }, { idempotent: true });
-      yield data.products.nodes.map((n) => mapProduct(n, this.ctx()));
-      if (!data.products.pageInfo.hasNextPage) return;
-      after = data.products.pageInfo.endCursor;
-    }
+    do {
+      const page = await this.productsPage(`updated_at:>='${sinceIso}'`, after, pageSize);
+      yield page.nodes;
+      after = page.next;
+    } while (after);
+  }
+
+  async productsPage(query: string | null, after: string | null, pageSize = 50): Promise<{ nodes: CanonicalProduct[]; next: string | null }> {
+    const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
+      await this.gql.run(Q.PRODUCTS_UPDATED, { first: pageSize, after, query }, { idempotent: true });
+    return { nodes: data.products.nodes.map((n) => mapProduct(n, this.ctx())), next: data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null };
   }
 
   async getAvailable(inventoryItemId: string, locationId: string): Promise<number> {
@@ -172,6 +204,52 @@ export class ShopifyConnector {
     return "created";
   }
 
+  /**
+   * One courier step on the order's fulfillment (E7-7): the fulfillment carrying this tracking number
+   * gets the event once. The write is not idempotent, so the fulfillment's events are read first (same
+   * status at the same time, or any DELIVERED, means it is there) and a timeout is verified by reading
+   * again. No fulfillment yet (its own job still running) is transient: the job waits for it. A store
+   * whose API version does not know CARRIER_PICKED_UP gets IN_TRANSIT instead, recorded as drift.
+   */
+  async addFulfillmentEvent(e: { orderId: string; trackingNumber: string; status: FulfillmentEventStatus; happenedAt: string; message?: string }): Promise<"created" | "already_recorded"> {
+    const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: e.orderId }, { idempotent: true });
+    if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${e.orderId} not found` });
+    const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+    const fulfillment = r.arr<{ id?: string; trackingInfo?: Array<{ number?: string }> }>("fulfillments", ["fulfillments"])
+      .find((f) => (f.trackingInfo ?? []).some((t) => t.number === e.trackingNumber));
+    if (!fulfillment?.id) {
+      throw new IntegrationError({ kind: "transient", connector: "shopify", message: `order ${e.orderId} has no fulfillment for ${e.trackingNumber} yet` });
+    }
+    const at = Date.parse(e.happenedAt);
+    const recorded = async (status: FulfillmentEventStatus) => {
+      const d = await this.gql.run<{ fulfillment: Record<string, unknown> | null }>(Q.FULFILLMENT_EVENTS, { id: fulfillment.id }, { idempotent: true });
+      if (!d.fulfillment) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `fulfillment ${fulfillment.id} not found` });
+      const fr = new Resolver(d.fulfillment, { connector: "shopify", entity: "fulfillment", drift: this.drift, now: () => this.rt.clock.now() });
+      const events = fr.arr<{ status?: string; happenedAt?: string }>("events", ["events.nodes", "events"]);
+      return events.some((x) => x.status === status && (status === "DELIVERED" || Math.abs(Date.parse(x.happenedAt ?? "") - at) < 1_000));
+    };
+    let status = e.status;
+    for (;;) {
+      if (await recorded(status)) return "already_recorded";
+      try {
+        const d = await this.gql.run<{ fulfillmentEventCreate: { userErrors: UserErrors } }>(Q.FULFILLMENT_EVENT_CREATE, {
+          fulfillmentEvent: { fulfillmentId: fulfillment.id, status, happenedAt: new Date(at).toISOString(), ...(e.message ? { message: e.message } : {}) },
+        }, { idempotent: false });
+        assertNoUserErrors("fulfillmentEventCreate", d.fulfillmentEventCreate?.userErrors);
+        return "created";
+      } catch (err) {
+        if (err instanceof IntegrationError && status === "CARRIER_PICKED_UP" && (err.kind === "validation" || err.kind === "schema_drift") && /CARRIER_PICKED_UP/.test(err.message)) {
+          this.drift.record({ connector: "shopify", entity: "fulfillmentEvent", kind: "fallback_field", field: "status", detail: "CARRIER_PICKED_UP not accepted; sent IN_TRANSIT", at: this.rt.clock.now() });
+          status = "IN_TRANSIT";
+          continue;
+        }
+        if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+        if (await recorded(status)) return "created";
+        throw new IntegrationError({ kind: "transient", connector: "shopify", message: "fulfillmentEventCreate timed out and the event is not there: will try again", cause: err });
+      }
+    }
+  }
+
   async markPaid(orderId: string): Promise<"marked" | "already_paid"> {
     const order = await this.getOrder(orderId);
     if (order.financialStatus && /^PAID$/i.test(order.financialStatus)) return "already_paid";
@@ -182,9 +260,120 @@ export class ShopifyConnector {
     return "marked";
   }
 
+  /**
+   * Add an accepted offer to the customer's order (E6-13) through Shopify's order edit. Safe to
+   * repeat: it reads first and stops if the order already carries the offer (its marker tag, or
+   * the item's line already there after a commit whose response was lost); the commit itself is
+   * not idempotent, so a timeout is verified by reading the order again, never re-sent blindly.
+   * The marker tag goes on last. Throws `validation` for an order that cannot take it (cancelled,
+   * item sold out or gone).
+   */
+  async addOfferToOrder(o: { orderId: string; variantId: string; qty: number; discountPct: string; marker: string; note: string }): Promise<"added" | "already_added"> {
+    const tag = `mizan-offer-${o.marker}`;
+    const state = async () => {
+      const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: o.orderId }, { idempotent: true });
+      if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${o.orderId} not found` });
+      const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+      const lines = r.arr("lineItems", ["lineItems"]).map((li) => {
+        const lr = r.child(li, "order.lineItem");
+        return { variantId: lr.str("variantId", ["variant.id", "variantId"]), quantity: lr.num("quantity", ["currentQuantity", "quantity"]) ?? 0 };
+      });
+      return {
+        tagged: r.arr<string>("tags", ["tags"]).includes(tag),
+        hasLine: lines.some((l) => l.variantId === o.variantId && l.quantity >= o.qty),
+        cancelled: Boolean(r.str("cancelledAt", ["cancelledAt"])),
+      };
+    };
+    const before = await state();
+    if (before.tagged) return "already_added";
+    if (before.hasLine) { await this.addTags(o.orderId, [tag]); return "already_added"; }
+    if (before.cancelled) throw new IntegrationError({ kind: "validation", connector: "shopify", message: `order ${o.orderId} is cancelled` });
+
+    const begin = await this.gql.run<{ orderEditBegin: { calculatedOrder?: { id: string } | null; userErrors: UserErrors } }>(Q.ORDER_EDIT_BEGIN, { id: o.orderId }, { idempotent: true });
+    assertNoUserErrors("orderEditBegin", begin.orderEditBegin?.userErrors);
+    const calc = begin.orderEditBegin?.calculatedOrder?.id;
+    if (!calc) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderEditBegin: no calculatedOrder.id" });
+    // Adding to an uncommitted edit changes nothing in the store: safe to repeat.
+    const add = await this.gql.run<{ orderEditAddVariant: { calculatedLineItem?: { id: string } | null; userErrors: UserErrors } }>(Q.ORDER_EDIT_ADD_VARIANT, { id: calc, variantId: o.variantId, quantity: o.qty }, { idempotent: true });
+    assertNoUserErrors("orderEditAddVariant", add.orderEditAddVariant?.userErrors);
+    const line = add.orderEditAddVariant?.calculatedLineItem?.id;
+    if (!line) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderEditAddVariant: no calculatedLineItem.id" });
+    if (Number(o.discountPct) > 0) {
+      const d = await this.gql.run<{ orderEditAddLineItemDiscount: { userErrors: UserErrors } }>(Q.ORDER_EDIT_ADD_DISCOUNT, {
+        id: calc, lineItemId: line, discount: { percentValue: Number(o.discountPct), description: o.note },
+      }, { idempotent: true });
+      assertNoUserErrors("orderEditAddLineItemDiscount", d.orderEditAddLineItemDiscount?.userErrors);
+    }
+    try {
+      const c = await this.gql.run<{ orderEditCommit: { userErrors: UserErrors } }>(Q.ORDER_EDIT_COMMIT, { id: calc, notifyCustomer: false, staffNote: o.note }, { idempotent: false });
+      assertNoUserErrors("orderEditCommit", c.orderEditCommit?.userErrors);
+    } catch (err) {
+      // The commit may have gone through before the response was lost: look before anything else.
+      if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+      const after = await state();
+      if (!after.hasLine && !after.tagged) throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderEditCommit timed out and the order has no new line: will start the edit again", cause: err });
+    }
+    await this.addTags(o.orderId, [tag]);
+    return "added";
+  }
+
+  /**
+   * Cancel the store's order (E5-4), once: an order already cancelled is left alone; the mutation is
+   * not idempotent, so a timeout is checked by reading the order before anything is sent again.
+   * Never refunds, never notifies the customer, restocks.
+   */
+  async cancelOrder(o: { orderId: string; reason: CancelReason; note?: string | undefined }): Promise<"cancelled" | "already_cancelled"> {
+    if ((await this.getOrder(o.orderId)).cancelled) return "already_cancelled";
+    try {
+      const d = await this.gql.run<{ orderCancel: { orderCancelUserErrors?: UserErrors; userErrors?: UserErrors } }>(
+        Q.ORDER_CANCEL, { orderId: o.orderId, reason: o.reason, staffNote: o.note ?? null }, { idempotent: false });
+      const errs = [...(d.orderCancel?.orderCancelUserErrors ?? []), ...(d.orderCancel?.userErrors ?? [])];
+      if (errs.some((e) => /already.*cancel/i.test(e.message))) return "already_cancelled";
+      assertNoUserErrors("orderCancel", errs);
+    } catch (err) {
+      if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+      if (!(await this.getOrder(o.orderId)).cancelled) {
+        throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderCancel timed out and the order is not cancelled: will try again", cause: err });
+      }
+    }
+    return "cancelled";
+  }
+
   async addTags(id: string, tags: string[]): Promise<void> {
     const d = await this.gql.run<{ tagsAdd: { userErrors: UserErrors } }>(Q.TAGS_ADD, { id, tags }, { idempotent: true });
     assertNoUserErrors("tagsAdd", d.tagsAdd?.userErrors);
+  }
+
+  // ───────────── webhooks ─────────────
+
+  /**
+   * Make this app's subscriptions on the shop exactly `topics` → `uri`: delete ours that point
+   * elsewhere (old URL, old connection) or at topics we no longer want, create the missing ones.
+   * Safe to repeat: Shopify refuses a second subscription for the same topic and address.
+   * Compliance topics (customers/redact …) are app configuration, not subscriptions.
+   */
+  async syncWebhooks(uri: string, topics: readonly string[]): Promise<{ created: string[]; deleted: number; kept: number }> {
+    const d = await this.gql.run<Record<string, unknown>>(Q.WEBHOOK_SUBSCRIPTIONS, { first: 100 }, { idempotent: true });
+    const nodes = (new Resolver(d, { connector: "shopify", entity: "webhook_subscriptions", ...this.ctx() }).any("nodes", ["webhookSubscriptions.nodes"]) ?? []) as unknown[];
+    const existing = nodes.map((n) => {
+      const r = new Resolver(n, { connector: "shopify", entity: "webhook_subscription", ...this.ctx() });
+      return { id: r.str("id", ["id"], { required: true })!, topic: r.str("topic", ["topic"], { required: true })!, uri: r.str("uri", ["uri", "endpoint.callbackUrl", "callbackUrl"]) };
+    });
+    let deleted = 0;
+    for (const e of existing.filter((x) => x.uri !== uri || !topics.includes(x.topic))) {
+      const res = await this.gql.run<{ webhookSubscriptionDelete: { userErrors: UserErrors } }>(Q.WEBHOOK_DELETE, { id: e.id }, { idempotent: true });
+      const errs = (res.webhookSubscriptionDelete?.userErrors ?? []).filter((x) => !/not.*found|does not exist/i.test(x.message));
+      assertNoUserErrors("webhookSubscriptionDelete", errs);
+      deleted++;
+    }
+    const created: string[] = [];
+    for (const topic of topics.filter((t) => !existing.some((x) => x.topic === t && x.uri === uri))) {
+      const res = await this.gql.run<{ webhookSubscriptionCreate: { userErrors: UserErrors } }>(Q.WEBHOOK_CREATE, { topic, sub: { uri, format: "JSON" } }, { idempotent: true });
+      const errs = (res.webhookSubscriptionCreate?.userErrors ?? []).filter((x) => !/already been taken|already exists/i.test(x.message));
+      assertNoUserErrors("webhookSubscriptionCreate", errs);
+      created.push(topic);
+    }
+    return { created, deleted, kept: existing.length - deleted };
   }
 
   health() {

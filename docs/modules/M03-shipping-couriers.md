@@ -93,12 +93,28 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 > Codes shown are illustrative. Each adapter ships with a mapping table confirmed against that courier's API documentation.
 
+## Built
+
+✅ **E7-1 — booking the courier.** A confirmed order with a delivery address is shipped from the order screen (`POST /v1/orders/{id}/ship`, owner, admin, ops manager, warehouse). The shipment row (`booking = pending`) and the engine job `bosta.ship` are written in one transaction; the job carries ids only and the engine reads the order (address, phone) from the platform when it runs. Bosta is called once per shipment: the shipment id is the courier reference, so a booking whose answer was lost is found and adopted, never made twice. The courier collects `cashToCollect(order)` (0 when prepaid, the balance after a deposit; an unpaid transfer is refused before anything is queued). Booked → tracking number, the order `shipped` with `shipped_at` (stock picks, profit moves to shipped), a Shopify order fulfilled with the number. Refused → `failed` with a reason the screen explains (unknown city, address or phone, payment, the courier key), and the team ships again once fixed. Labels wait for Bosta's AWB endpoint to be confirmed (E7-2).
+
+🚧 **E7-2 — the shipping screen (bulk ship done; labels and courier choice wait).** `/shipping` opens on **Ready to ship**: confirmed orders with no live shipment, not waiting for stock or a duplicate decision (`GET /v1/orders?shipping=ready`, with the count on the tab). Managers and the warehouse select orders and ship them in one go (`POST /v1/orders/bulk` with `action: ship`): the worker books each order as the order screen does, in chunks, one savepoint per order, and the progress panel lists the orders skipped and why (not confirmed, no address, the payment, already with the courier). No API courier connected → refused before anything is queued. Still to come: labels (A6/A4 PDF merge) once Bosta's AWB endpoint is confirmed, and choosing the courier per batch once a second API courier (J&T) is connected; couriers without an API are still recorded per order (E7-6).
+
+✅ **E7-3 — tracking and the review queue.** The courier's statuses (webhook hints re-read from Bosta, and the poll of active shipments) reach the shipment through the engine's `onShipmentStatus` hook, called before the engine records them so a platform failure retries the job. A mapped status moves the shipment (`shipment_events` row, `shipment.status_changed`); delivered → the order `delivered` with `delivered_at` (`shipment.delivered`), returned → the order `returned` (`shipment.returned`, return inspection opens). A status Mizan cannot map keeps the last good one and flags the shipment (`shipment.needs_review`); once a shipment is final, a courier status that disagrees is not applied but goes to review. A person sets the status from the review queue (audited, rule 7). The Shipping screen (`/shipping`) lists shipments by view with counts and search; the order's timeline shows each courier status. A delivery the courier cancelled can be booked again from the order.
+
+✅ **E7-6 — couriers without an API.** The team records the handover on the order (courier name + tracking number; the courier is remembered by name), and the courier's daily report updates the shipments as a CSV import on the Shipping screen (tracking number + status in Arabic or English, date and note optional; all or nothing, each line that can't be applied is named; each row is an audited person's update). The same import works as a fallback for Bosta when its webhooks are down.
+
+✅ **E7-7 — courier progress in Shopify.** Each courier step reaches the store's order as a Shopify fulfillment event once, at the courier's time (picked up, in transit, out for delivery, delivery attempts, delivered, delays; refused/returning and lost as failures with a line saying which), so the customer's order page and Shopify's shipping emails follow the parcel. Lost parcels are tagged `mizan-lost`, returned ones `mizan-returned`, cash orders marked paid on delivery — each a switch per store in Settings → Store sync (all on by default). Manual orders (not from a store) send nothing.
+
+✅ **E7-4 — courier scorecard by zone** (`GET /v1/couriers/scorecard`, "Couriers by zone" on the Shipping screen): per courier and governorate (or city), shipments booked in the last 30/90/180 days, delivered rate (the metric layer's formula), returns, still out, and days from booking to delivery. Days to remit come with settlements (M8).
+
 ## Events emitted
 
 | Event | Meaning |
 | --- | --- |
-| `shipment.created` | Courier booked, tracking number issued |
-| `shipment.status_changed` | Mapped status changed |
+| `shipment.created` | Courier booked, tracking number issued ✅ E7-1 |
+| `shipment.booking_failed` | The courier or the order refused the booking (`code`: city_unknown, address_invalid, payment_blocks …) ✅ E7-1 |
+| `shipment.status_changed` | Mapped status changed ✅ E7-3 |
+| `shipment.needs_review` | A status Mizan could not map, or one contradicting a final status ✅ E7-3 |
 | `shipment.stuck` | No update past the threshold |
 | `shipment.delivered` | Final delivered status |
 | `shipment.refused` | Customer refused or returned |
@@ -131,6 +147,7 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 | Address change after booking | Courier update API if supported, else cancel and rebook |
 | Partial delivery | Delivered items charged; rest go to M6 |
 | Duplicate tracking number | Rejected; alert to ops |
+| Upsell offer still being added (M2, E6-13) | Booking waits while the order's offer is `accepted` or `applying`, so the parcel and the cash to collect include it; a proposed offer is allowed up to 30 minutes after confirmation, then it expires and booking goes ahead |
 
 ## Acceptance criteria
 
@@ -144,12 +161,13 @@ The amount the courier collects comes from the payment ledger (M15), not from th
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| POST | `/v1/orders/{id}/ship` | Book one order ✅ E7-1; many from the shipping screen through `POST /v1/orders/bulk` `action: ship` ✅ E7-2 |
 | POST | `/v1/shipments` | Book one or many shipments |
 | GET | `/v1/shipments/{id}/label` | Label PDF |
 | GET | `/v1/shipments` | List and filter |
 | POST | `/v1/couriers/{code}/webhook` | Inbound courier status |
 | DELETE | `/v1/shipments/{id}` | Cancel before pickup |
-| GET | `/v1/couriers/scorecard` | Rates by zone |
+| GET | `/v1/couriers/scorecard` | Rates by zone ✅ E7-4 |
 
 Conventions: `docs/05-api.md`.
 

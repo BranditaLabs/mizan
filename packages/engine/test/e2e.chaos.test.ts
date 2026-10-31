@@ -7,7 +7,7 @@ import { LOCATION, settle, setup } from "./fakes/setup.js";
  * reach exactly the right final state: one delivery per order, one
  * fulfillment per order, the right cash amount on every delivery for every
  * payment method (COD, card, deposit + COD, BNPL, bank transfer), cash orders
- * marked paid once, prices in sync — no duplicates, nothing lost, nothing left
+ * marked paid once, each courier step on the store's order once, prices in sync — no duplicates, nothing lost, nothing left
  * in the dead-letter queue.
  */
 const METHOD = (i: number) => (i % 8 === 5 ? "bank" : (["cod", "card", "deposit", "bnpl", "cod"] as const)[i % 5]);
@@ -101,6 +101,14 @@ describe("end-to-end under chaos", () => {
     const markPaidCalls = shop.calls.filter((c) => c.op === "MizanOrderMarkPaid").length;
     const cashOrders = orders.filter((_, i) => METHOD(i) === "cod" || METHOD(i) === "deposit").length;
     expect(markPaidCalls).toBe(cashOrders); // once each, only for orders where the courier collected cash
+
+    // Courier progress on each store order (E7-7): delivered exactly once, no step twice.
+    for (const o of orders) {
+      const events = shop.orders.get(o.id)!.fulfillments[0]!.events ?? [];
+      expect(events.filter((e) => e.status === "DELIVERED"), `order ${o.id}`).toHaveLength(1);
+      const keys = events.map((e) => `${e.status}@${e.happenedAt}`);
+      expect(new Set(keys).size).toBe(keys.length);
+    }
 
     // Catalog sync under the same chaos.
     const p = shop.addProduct({ title: "Vitamin C serum", price: "500.00", stock: 15 });

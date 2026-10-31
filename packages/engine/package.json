@@ -5,16 +5,28 @@
   "type": "module",
   "private": true,
   "license": "UNLICENSED",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "source": "./test/fakes/index.ts"
+    }
+  },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "demo": "tsx examples/demo.ts"
+    "demo": "tsx --conditions=source examples/demo.ts"
   },
   "dependencies": {
     "@mizan/shared": "0.1.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.15",
+    "@mizan/db": "0.1.0",
     "@types/node": "^22.10.2",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",

@@ -1,0 +1,3936 @@
+{
+  "meta": {
+    "title": "Mizan",
+    "description": "Mizan — the commerce operating system: orders, confirmation, shipping, warehouse and real profit in one place."
+  },
+  "shell": {
+    "logoAlt": "mizan",
+    "brand": "Mizan",
+    "tagline": "Commerce operating system",
+    "skip": "Skip to content",
+    "navLabel": "Main menu",
+    "soon": "Soon",
+    "nav": {
+      "home": "Home",
+      "orders": "Orders",
+      "confirmation": "Confirmation",
+      "shipping": "Shipping",
+      "warehouse": "Warehouse",
+      "profit": "Profit",
+      "settings": "Settings",
+      "products": "Products",
+      "automations": "Automations",
+      "tickets": "Tickets",
+      "payments": "Payments",
+      "reports": "Reports",
+      "purchasing": "Purchasing"
+    },
+    "language": {
+      "label": "Language",
+      "ar": "عربي",
+      "en": "English"
+    },
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
+    "store": {
+      "label": "Store",
+      "switch": "Switch store",
+      "create": "New store"
+    },
+    "signOut": "Sign out"
+  },
+  "home": {
+    "title": "Welcome to Mizan",
+    "subtitle": "Connect your store to see your orders and your real profit in one place.",
+    "empty": {
+      "title": "No orders yet",
+      "body": "Once you connect a Shopify store, we import the last {days} days of orders and all your products.",
+      "cta": "Connect your store"
+    },
+    "example": "Example: order <num>{number}</num> worth <money>{amount}</money>"
+  },
+  "roles": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "ops_manager": "Ops manager",
+    "agent": "Confirmation agent",
+    "warehouse": "Warehouse",
+    "finance": "Finance",
+    "media_buyer": "Media buyer"
+  },
+  "countries": {
+    "EG": "Egypt",
+    "SA": "Saudi Arabia",
+    "AE": "United Arab Emirates",
+    "KW": "Kuwait",
+    "QA": "Qatar",
+    "BH": "Bahrain",
+    "OM": "Oman",
+    "JO": "Jordan",
+    "MA": "Morocco"
+  },
+  "auth": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to run orders, payments and profit for your store.",
+    "notConfigured": "Sign-in is not configured in this build.",
+    "tabs": {
+      "label": "Sign-in method",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "8 characters or more",
+    "signIn": "Sign in",
+    "createAccount": "Create an account",
+    "createTitle": "Create your account",
+    "createSubmit": "Create account",
+    "haveAccount": "Have an account? Sign in",
+    "forgot": "Forgot password?",
+    "resetSent": "We sent a password reset link to <e>{email}</e>.",
+    "phone": "Phone number",
+    "phoneHint": "Example: <n>01001234821</n>",
+    "sendCode": "Send code",
+    "code": "Code",
+    "codeHint": "The code we texted to <n>{phone}</n>",
+    "verify": "Verify",
+    "changeNumber": "Change number",
+    "mfa": {
+      "title": "Second step",
+      "body": "We texted a code to the number ending in <n>{hint}</n>.",
+      "submit": "Verify and sign in"
+    },
+    "enrolled": "Two-step verification is on. Sign in again with your email and a code.",
+    "errors": {
+      "invalidCredential": "That email or password is not right.",
+      "emailInUse": "This email already has an account. Sign in with it.",
+      "weakPassword": "That password is too short. Use 8 characters or more.",
+      "invalidEmail": "That email address looks wrong.",
+      "invalidPhone": "That phone number is not valid. Write it like 01001234821.",
+      "invalidCode": "That code is wrong. Check the message and type it again.",
+      "codeExpired": "That code expired. Send a new one.",
+      "tooMany": "Too many attempts. Wait a little and try again.",
+      "network": "No connection. Check the internet and try again.",
+      "generic": "Something went wrong. Try again.",
+      "popupBlocked": "The browser blocked the Google window. Allow pop-ups for this site and try again.",
+      "methodOff": "This sign-in method is not turned on for Mizan yet.",
+      "otherMethod": "This email already signs in another way. Use your email and password.",
+      "ssoNotSet": "Your company hasn't set up sign-in with Mizan yet. Use your email, phone or Google, or ask your admin.",
+      "ssoWrongDomain": "Your company's sign-in isn't set up for this email. Use your email, phone or Google."
+    },
+    "redirecting": "Opening your store…",
+    "createSubtitle": "One account for your store and your team. You add the store next.",
+    "google": "Continue with Google",
+    "or": "or",
+    "back": "Back",
+    "legal": "Owners and admins confirm sign-in with a code on their phone. Confirmation and warehouse teams can sign in with their phone number.",
+    "showChars": "Show",
+    "hideChars": "Hide",
+    "capsLock": "Caps Lock is on.",
+    "resetTitle": "Reset your password",
+    "resetBody": "We'll email you a link to choose a new one.",
+    "resetSend": "Send reset link",
+    "backToSignIn": "Back to sign in",
+    "codeTitle": "Enter the code",
+    "done": "Signed in. Opening your store…",
+    "phoneTitle": "Sign in with your phone",
+    "emailLabel": "Work email",
+    "emailPlaceholder": "name@store.com",
+    "phoneLabel": "Mobile number",
+    "phonePlaceholder": "10 0123 4821",
+    "countryCode": "Country code",
+    "phoneHintSms": "We send a 6-digit code by SMS.",
+    "continue": "Continue",
+    "newQ": "New to Mizan?",
+    "haveQ": "Have an account?",
+    "signInLink": "Sign in",
+    "codeSent": "We sent a 6-digit code by SMS to <n>{phone}</n>",
+    "codeLabel": "Verification code",
+    "resendIn": "Resend in <n>{time}</n>",
+    "resend": "Send a new code",
+    "verifySignIn": "Verify and sign in",
+    "doneTitle": "You're in",
+    "opening": "Balancing your books…",
+    "switchTheme": "Switch theme",
+    "footer": {
+      "rights": "© 2026 Mizan · powered by Brandita",
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "dpa": "Data processing",
+      "legal": "Legal"
+    },
+    "brand": {
+      "kicker": "The commerce operating system",
+      "headline": "Every order, every method.",
+      "headline2": "Real profit on each one.",
+      "status1": "Awaiting deposit",
+      "status2": "Shipped · collect 1,800",
+      "status3": "Delivered · settled",
+      "initials": "SM",
+      "customer": "Sara M.",
+      "method": "Deposit + COD · Bosta",
+      "amount": "EGP 2,100",
+      "profitLabel": "Net profit on this order",
+      "profit": "EGP 512",
+      "points": {
+        "whatsapp": {
+          "title": "Confirm on WhatsApp",
+          "body": "Risky orders get a deposit link before they ship."
+        },
+        "owed": {
+          "title": "Collect only what’s owed",
+          "body": "Couriers never collect more or less than the balance."
+        },
+        "profit": {
+          "title": "See real profit",
+          "body": "After shipping, fees, returns and ads, per order."
+        }
+      },
+      "orderId": "#EO-48302"
+    },
+    "googleShort": "Google",
+    "sso": "Company SSO",
+    "ssoTitle": "Sign in with your company",
+    "ssoBody": "Type your work email and we'll take you to your company's sign-in page.",
+    "ssoSubmit": "Continue to company sign-in"
+  },
+  "twoStep": {
+    "title": "Turn on two-step verification",
+    "body": "To protect your store, owners and admins sign in with email and a code sent to their phone.",
+    "verifyEmail": {
+      "title": "Confirm your email first",
+      "body": "We will send a confirmation link to <e>{email}</e>. Open it, then come back here.",
+      "send": "Send confirmation link",
+      "sent": "Link sent. Check your email.",
+      "done": "I confirmed my email",
+      "notYet": "Your email is not confirmed yet. Open the link in the message."
+    },
+    "phone": {
+      "title": "Phone number for codes",
+      "submit": "Send code",
+      "enable": "Turn on"
+    },
+    "phoneAccount": "This account signs in with a phone number. Store owners need an email account to turn on the second step.",
+    "recentLogin": "For your security, sign out, sign in again, then turn on the second step.",
+    "signOutAndBack": "Sign out and back in",
+    "progress": "Step {at} of {total}"
+  },
+  "welcome": {
+    "title": "Welcome",
+    "subtitle": "Open a store you were invited to, or create your own.",
+    "invitations": {
+      "title": "Invitations waiting for you",
+      "accept": "Join",
+      "expires": "Open until {date}"
+    },
+    "create": {
+      "title": "Create a store",
+      "name": "Store name",
+      "country": "Country",
+      "countryHint": "We set the currency, time zone and phone format from the country.",
+      "submit": "Create store"
+    },
+    "errors": {
+      "tenantLimit": "You have reached the store limit.",
+      "generic": "We couldn't create the store. Try again."
+    },
+    "signedInAs": "Signed in as <n>{who}</n>"
+  },
+  "gate": {
+    "loading": "Loading…",
+    "unavailable": "We can't reach your store right now.",
+    "retry": "Try again"
+  },
+  "ui": {
+    "close": "Close",
+    "cancel": "Cancel",
+    "dismiss": "Dismiss",
+    "phone": {
+      "reveal": "Show number"
+    },
+    "table": {
+      "bulk": "Actions on selected rows",
+      "selected": "{count} selected",
+      "clear": "Clear selection",
+      "selectAll": "Select all rows",
+      "selectRow": "Select {row}",
+      "count": "{count, plural, one {# row} other {# rows}}"
+    },
+    "palette": {
+      "label": "Search or jump to",
+      "placeholder": "Type a page or an action…",
+      "results": "Results",
+      "empty": "Nothing matches. Try another word.",
+      "open": "Search or jump to…",
+      "groups": {
+        "navigate": "Go to",
+        "stores": "Stores",
+        "preferences": "Preferences",
+        "account": "Account"
+      },
+      "commands": {
+        "home": "Home",
+        "store": "Switch to {store}",
+        "theme": {
+          "light": "Light theme",
+          "dark": "Dark theme",
+          "system": "Theme: follow the device"
+        },
+        "language": {
+          "ar": "Arabic (عربي)",
+          "en": "English"
+        },
+        "signOut": "Sign out"
+      }
+    }
+  },
+  "payments": {
+    "method": {
+      "cod": "Cash on delivery",
+      "card": "Card",
+      "wallet": "Wallet",
+      "deposit": "Deposit",
+      "bnpl": "Pay later",
+      "bank_transfer": "Bank transfer"
+    },
+    "mode": {
+      "cod": "Cash on delivery",
+      "prepaid": "Prepaid",
+      "partial": "Deposit + cash",
+      "bnpl": "Pay later",
+      "bank_transfer": "Bank transfer",
+      "store_credit": "Store credit",
+      "mixed": "Mixed",
+      "unknown": "Unknown"
+    },
+    "status": {
+      "unpaid": "Unpaid",
+      "authorized": "Authorized",
+      "partially_paid": "Partly paid",
+      "paid": "Paid",
+      "partially_refunded": "Partly refunded",
+      "refunded": "Refunded",
+      "disputed": "Disputed",
+      "failed": "Failed",
+      "voided": "Voided"
+    }
+  },
+  "gallery": {
+    "eyebrow": "Design system",
+    "title": "UI kit",
+    "subtitle": "Every component of the dashboard, from the design system's recipes, in the current language and theme. Sample data only.",
+    "buttons": {
+      "title": "Buttons",
+      "body": "One primary (ink) action per screen. Red only for the one commercial moment. Destructive actions ask first.",
+      "primary": "Confirm order",
+      "secondary": "Print label",
+      "ghost": "Skip",
+      "brand": "Upgrade plan",
+      "danger": "Cancel order",
+      "refresh": "Refresh",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Next step",
+      "busy": "Save",
+      "disabled": "Not available"
+    },
+    "fields": {
+      "title": "Fields",
+      "body": "Label above, hint below; the error replaces the hint and says how to fix it.",
+      "name": "Store name",
+      "nameHint": "Customers see it in messages.",
+      "nameValue": "Nile Threads",
+      "phone": "Customer phone",
+      "phoneError": "This number is too short. Egyptian mobiles have 11 digits.",
+      "city": "City",
+      "cityPlaceholder": "Type to search",
+      "cityEmpty": "No city matches. Check the spelling.",
+      "cityHint": "Couriers deliver by city.",
+      "courier": "Courier",
+      "couriers": {
+        "bosta": "Bosta",
+        "aramex": "Aramex",
+        "mylerz": "Mylerz"
+      },
+      "note": "Note for the courier",
+      "notePlaceholder": "Call before arriving",
+      "search": "Search orders",
+      "checkbox": "Send a WhatsApp confirmation",
+      "density": "Row density",
+      "comfortable": "Comfortable",
+      "compact": "Compact",
+      "autoConfirm": "Confirm low-risk orders automatically",
+      "autoConfirmHint": "Orders with a risk under 40 skip the call.",
+      "notify": "Tell me about refused deliveries"
+    },
+    "statusSection": {
+      "title": "Status and payment",
+      "body": "Badges always carry words; colour is never the only signal. Payment methods are tags with their icon.",
+      "tag": "Shopify"
+    },
+    "status": {
+      "new": "New",
+      "pending": "Waiting to confirm",
+      "confirmed": "Confirmed",
+      "shipped": "In transit",
+      "delivered": "Delivered",
+      "refused": "Refused",
+      "paid": "Paid"
+    },
+    "risk": {
+      "label": "Risk {score} of 100",
+      "reasons": "Two refused orders on this number in 60 days; address without a landmark."
+    },
+    "kpis": {
+      "title": "Summary tiles",
+      "body": "The hero tile is the number the screen exists for. Green and red follow meaning: a falling return rate is good news.",
+      "netProfit": "Net profit, last 7 days",
+      "vsLastWeek": "vs last week",
+      "trend": "Trend over 14 days",
+      "margin": "Margin",
+      "rto": "Return rate",
+      "cashWithCouriers": "Cash with couriers"
+    },
+    "table": {
+      "title": "Table",
+      "body": "Sticky header, sortable columns, row selection with bulk actions. Numbers at the end, ids left to right.",
+      "order": "Order",
+      "customer": "Customer",
+      "payment": "Payment",
+      "total": "Total",
+      "risk": "Risk",
+      "status": "Status",
+      "age": "Age",
+      "label": "Sample orders",
+      "rowLabel": "order {id}",
+      "ship": "{count, plural, one {Ship # order} other {Ship # orders}}"
+    },
+    "tabs": {
+      "label": "Order views",
+      "all": "All",
+      "confirm": "To confirm",
+      "ship": "Ready to ship",
+      "transit": "In transit"
+    },
+    "empty": {
+      "title": "No orders here",
+      "body": "Orders that need this step will show here as they arrive.",
+      "returnsTitle": "No returns yet",
+      "returnsBody": "When a courier brings a parcel back, it shows here for checking and restocking.",
+      "returnsAction": "Set up return reasons"
+    },
+    "toast": {
+      "shipped": "{count, plural, one {# order shipped with Bosta} other {# orders shipped with Bosta}}",
+      "undo": "Undo",
+      "undone": "Shipping undone",
+      "tagged": "Tag added",
+      "exported": "Export started",
+      "saved": "Settings saved",
+      "cancelled": "Order #{id} cancelled"
+    },
+    "menu": {
+      "label": "More actions",
+      "tag": "Add a tag",
+      "export": "Export to Excel",
+      "cancel": "Cancel orders"
+    },
+    "panel": {
+      "title": "Side panel",
+      "body": "Key facts as a label-value list and the history, newest first. Opens as a drawer on any screen.",
+      "order": "Order #{id}",
+      "open": "Open as drawer",
+      "people": "Customers",
+      "close": "Close",
+      "confirm": "Confirm order",
+      "customer": "Customer",
+      "phone": "Phone",
+      "area": "Area",
+      "payment": "Payment",
+      "total": "Total",
+      "risk": "Risk",
+      "history": "History"
+    },
+    "feedback": {
+      "title": "Feedback",
+      "body": "Alerts explain and suggest the next step. Toasts confirm what just happened. Loading shows the shape of the content.",
+      "infoLead": "Bosta is slow today.",
+      "info": "Pickups may arrive after 4 pm.",
+      "successLead": "Store connected.",
+      "success": "We imported 412 orders from the last 60 days.",
+      "warningLead": "3 orders are waiting for a deposit.",
+      "warning": "Send the link again or call the customer.",
+      "dangerLead": "Bosta rejected 2 shipments.",
+      "danger": "The city is missing. Pick a city and send again.",
+      "showToast": "Save settings",
+      "cancelOrder": "Cancel an order…",
+      "loading": "Loading orders",
+      "progress": "Shipping labels",
+      "progressBody": "{done} of {total} labels ready"
+    },
+    "dialog": {
+      "title": "Cancel order #{id}?",
+      "body": "Bosta will be asked to stop the delivery, and the customer gets a WhatsApp message.",
+      "confirm": "Cancel order"
+    },
+    "timeline": {
+      "call": "Customer confirmed on a call",
+      "callDetail": "By Heba, 1 min 40 s",
+      "risk": "Risk checked",
+      "created": "Order placed on Shopify"
+    }
+  },
+  "problems": {
+    "network": "No connection to the server. Check the internet and try again.",
+    "generic": "Something went wrong and we couldn't finish. Try again.",
+    "retry": "Try again"
+  },
+  "onboarding": {
+    "title": "Set up your store",
+    "subtitle": "Four steps to see your orders and your real profit in Mizan.",
+    "progress": "{done} of {total} done",
+    "stepsLabel": "Setup steps",
+    "ready": {
+      "title": "Your store is ready.",
+      "body": "Orders arrive on their own from now on.",
+      "cta": "Go to home"
+    },
+    "status": {
+      "todo": "To do",
+      "done": "Done",
+      "checking": "Checking",
+      "needs_attention": "Needs attention",
+      "skipped": "Skipped",
+      "waiting": "Waiting",
+      "locked": "After the store"
+    },
+    "store": {
+      "title": "Connect your Shopify store",
+      "body": "Mizan imports the last 60 days of orders and all your products, then receives every new order by itself.",
+      "field": "Store address",
+      "hint": "Write it as it appears in Shopify, like <n>nile-abayas.myshopify.com</n>.",
+      "submit": "Connect Shopify",
+      "connected": "Connected to <n>{shop}</n>.",
+      "importing": "Importing: {orders} orders and {products} products so far…",
+      "imported": "Imported {orders} orders and {products} products.",
+      "invalid": "That address doesn't look like a Shopify store. It ends with .myshopify.com.",
+      "scopesChanged": "Mizan needs new Shopify permissions to edit orders (mark them paid and add offers the customer accepted). Approve them once.",
+      "approveScopes": "Approve the new permissions",
+      "another": "Connect another Shopify store"
+    },
+    "courier": {
+      "title": "Connect your courier",
+      "body": "With Bosta connected, you ship confirmed orders in one click and their status updates by itself.",
+      "field": "Bosta API key",
+      "hint": "In Bosta: Settings → API integration → create a key, then paste it here.",
+      "submit": "Connect Bosta",
+      "checking": "Checking the key with Bosta…",
+      "done": "Bosta is connected.",
+      "replace": "Replace the key",
+      "refused": "Bosta refused this key. Copy it again from Bosta's dashboard and paste it here.",
+      "noPermission": "This key can't create or read deliveries. Create a key with full access in Bosta.",
+      "skip": "Skip: I use another courier",
+      "skipped": "Skipped. You can connect Bosta any time.",
+      "undoSkip": "Connect Bosta now",
+      "needsStore": "Connect your store first."
+    },
+    "costs": {
+      "title": "Enter your product costs",
+      "body": "The cost of each product is what turns sales into real profit. Enter what one piece costs you.",
+      "count": "{missing} of {total} products have no cost yet.",
+      "none": "Your products show here after the store import.",
+      "allSet": "Every product has a cost.",
+      "cost": "Cost",
+      "price": "Price",
+      "save": "Save costs",
+      "saved": "{count, plural, one {Cost saved for # product} other {Costs saved for # products}}",
+      "invalid": "Write the cost as a number, like 250 or 250.50.",
+      "skip": "Skip for now",
+      "skipped": "Skipped. Profit uses a cost of zero until you enter it.",
+      "undoSkip": "Enter costs now",
+      "more": "Show more products"
+    },
+    "firstOrder": {
+      "title": "Your first order",
+      "waiting": "Waiting for your first order",
+      "waitingBody": "As soon as an order reaches Mizan it shows here. New Shopify orders arrive within a minute.",
+      "done": "Your first order arrived",
+      "order": "Order <n>{number}</n> · <m>{total}</m>",
+      "ttfv": "From signing up to your first order: {duration}."
+    },
+    "card": {
+      "title": "Finish setting up Mizan",
+      "body": "{done} of {total} steps done. Next: {next}.",
+      "cta": "Continue setup",
+      "hide": "Hide"
+    },
+    "connect": {
+      "title": "Connecting your Shopify store",
+      "working": "Finishing the connection…",
+      "done": "Shopify store connected",
+      "back": "Back to setup",
+      "errors": {
+        "install_cancelled": "The connection was cancelled in Shopify. Try again when you're ready.",
+        "invalid_signature": "Shopify's answer couldn't be verified. Start again from Mizan.",
+        "invalid_state": "This link expired. Start the connection again from Mizan.",
+        "invalid_shop": "That isn't a Shopify store address.",
+        "scopes_missing": "Mizan didn't get all the permissions it needs. Approve every permission in Shopify.",
+        "shopify_unavailable": "Shopify isn't answering right now. Try again in a few minutes.",
+        "shopify_not_configured": "Shopify isn't set up on this server yet.",
+        "install_failed": "The connection didn't finish. Try again.",
+        "missing": "This page needs a link from Shopify. Start the connection from Mizan."
+      }
+    }
+  },
+  "orders": {
+    "title": "Orders",
+    "subtitle": "Every order from your stores in one list, newest first.",
+    "search": "Search by order number or customer phone",
+    "tabsLabel": "Order status",
+    "all": "All",
+    "status": {
+      "new": "New",
+      "pending_confirmation": "Waiting to confirm",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "returned": "Returned"
+    },
+    "columns": {
+      "order": "Order",
+      "customer": "Customer",
+      "payment": "Payment",
+      "total": "Total",
+      "risk": "Risk",
+      "status": "Status",
+      "age": "Age"
+    },
+    "label": "Orders",
+    "cod": "Collect <m>{amount}</m>",
+    "riskLabel": "Risk {score} of 100",
+    "noRisk": "Not scored",
+    "noCustomer": "No name",
+    "more": "Show more orders",
+    "loading": "Loading orders",
+    "empty": {
+      "title": "No orders yet",
+      "body": "Connect your store and your orders show here within a minute.",
+      "cta": "Set up your store"
+    },
+    "emptyTab": {
+      "title": "No orders here",
+      "body": "Orders with this status show here as they arrive."
+    },
+    "noMatch": {
+      "title": "No order matches",
+      "body": "Search by order number like #1042, or by the customer's phone."
+    },
+    "manual": "Manual",
+    "detail": {
+      "back": "All orders",
+      "notFound": {
+        "title": "Order not found",
+        "body": "It may be in another store, or not one you can open."
+      },
+      "loading": "Loading the order",
+      "placed": "Placed",
+      "store": "Store",
+      "lines": {
+        "title": "Items",
+        "sku": "SKU",
+        "item": "Item",
+        "qty": "Qty",
+        "price": "Price",
+        "total": "Total",
+        "noSku": "No SKU",
+        "empty": "No items on this order."
+      },
+      "money": {
+        "title": "Money",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "discount": "Discount",
+        "total": "Total",
+        "paid": "Paid",
+        "refunded": "Refunded",
+        "balance": "Still owed",
+        "cod": "Courier collects"
+      },
+      "payments": {
+        "title": "Payments",
+        "empty": "No money has moved on this order yet."
+      },
+      "kind": {
+        "authorization": "Authorized",
+        "capture": "Captured",
+        "sale": "Payment",
+        "cod_collection": "Cash collected",
+        "refund": "Refund",
+        "chargeback": "Chargeback",
+        "chargeback_reversal": "Chargeback reversed",
+        "void": "Voided"
+      },
+      "method": {
+        "cod": "Cash on delivery",
+        "card": "Card",
+        "wallet": "Wallet",
+        "apple_pay": "Apple Pay",
+        "bnpl": "Pay later",
+        "bank_transfer": "Bank transfer",
+        "instapay": "InstaPay",
+        "fawry_ref": "Fawry",
+        "store_credit": "Store credit",
+        "cash_pos": "Cash (POS)",
+        "marketplace": "Marketplace"
+      },
+      "customer": {
+        "title": "Customer",
+        "area": "Area",
+        "show": "Show details",
+        "hide": "Hide",
+        "recorded": "Viewing is recorded in the activity log.",
+        "name": "Name",
+        "phone": "Phone",
+        "address": "Address",
+        "map": "Open in Google Maps",
+        "noPin": "No map pin yet",
+        "redacted": "Deleted at the customer's request.",
+        "gone": "These details were deleted on request.",
+        "tooMany": "Too many views in a short time. Try again in a minute.",
+        "none": "No customer details on this order."
+      },
+      "risk": {
+        "title": "Risk",
+        "notScored": "Not scored yet. Scoring comes with confirmation.",
+        "reason": {
+          "delivered_before": "Received orders before",
+          "refused_before": "Refused orders before",
+          "cancelled_before": "Cancelled orders before",
+          "first_order": "First order",
+          "duplicate": "Possible duplicate",
+          "address_incomplete": "Address incomplete",
+          "no_city": "No city",
+          "phone_invalid": "Phone not valid",
+          "high_value": "Above the usual order",
+          "very_high_value": "Far above the usual order",
+          "bulk_quantity": "Many pieces",
+          "velocity": "Several orders in 24 h",
+          "chargeback_before": "Chargeback before",
+          "bnpl": "Paid by instalments",
+          "awaiting_transfer": "Transfer not received",
+          "paid": "Deposit paid"
+        }
+      },
+      "timeline": {
+        "title": "Activity",
+        "empty": "Nothing yet."
+      }
+    },
+    "events": {
+      "created": "Order received from {source}",
+      "updated": "Updated from the store",
+      "statusChanged": "Status: {from} → {to}",
+      "payment_changed": "Payment: {from} → {to}",
+      "awaiting_payment": "Waiting for the online payment",
+      "other": "Order updated",
+      "changed": "Changed: {fields}",
+      "confirmation_started": "Confirmation started",
+      "confirmed": "Confirmed by {channel}",
+      "cancelled": "Cancelled by {channel}",
+      "change_requested": "Change requested by {channel}",
+      "confirmation_escalated": "Handed to an agent",
+      "ship_requested": "Sent to the courier",
+      "shipped": "Shipped: the courier has it",
+      "ship_failed": "The courier booking failed",
+      "shipment_status": "Courier: {status}",
+      "exchanged_into": "Exchanged: replacement {number}",
+      "exchange_of": "Replacement for {number}",
+      "partially_delivered": "Delivered in part: the rest comes back",
+      "refused": "Refused at the door"
+    },
+    "confirmation": {
+      "title": "Confirmation",
+      "loading": "Loading",
+      "none": "No confirmation for this order.",
+      "status": {
+        "running": "Automatic",
+        "needs_agent": "Needs a call",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "stopped": "Stopped"
+      },
+      "reason": {
+        "team_call": "The customer didn't answer on WhatsApp. Call them.",
+        "no_reply": "The customer didn't answer. Call them or send the link.",
+        "no_channel": "WhatsApp isn't connected yet: call the customer or send the link by hand.",
+        "change_requested": "The customer asked for a change. Call them.",
+        "customer_message": "The customer wrote on WhatsApp. Call them.",
+        "unreachable": "Called several times with no answer. Decide whether to keep or cancel.",
+        "manual": "The link was sent by hand. Waiting for the customer.",
+        "high_risk": "High risk score: call the customer before anything is sent.",
+        "hold": "Very high risk score: review this order before confirming it.",
+        "opted_out": "The customer asked for no WhatsApp messages (STOP). Call them."
+      },
+      "nextSend": "Next: {channel}",
+      "waiting": "Waiting for an answer to {channel}, until",
+      "channel": {
+        "whatsapp": "WhatsApp",
+        "call_auto": "Automated call",
+        "call_team": "Call by your team",
+        "sms": "SMS",
+        "agent": "Agent"
+      },
+      "stepStatus": {
+        "pending": "waiting",
+        "running": "sending",
+        "done": "sent",
+        "skipped": "not connected",
+        "cancelled": "not needed",
+        "dead": "failed"
+      },
+      "noVendor": "WhatsApp isn't connected yet: connect it in Settings → Confirmation so customers confirm with one tap in the chat.",
+      "sendWhatsApp": "Send on WhatsApp",
+      "copyLink": "Copy link",
+      "copied": "Link copied",
+      "noPhone": "This order has no phone number.",
+      "markConfirmed": "Mark confirmed",
+      "markCancelled": "Cancel order",
+      "cancelTitle": "Cancel this order?",
+      "cancelBody": "The order won't ship. The customer isn't notified automatically.",
+      "confirmedToast": "Order confirmed",
+      "cancelledToast": "Order cancelled",
+      "chat": {
+        "title": "WhatsApp conversation",
+        "out": {
+          "ask": "Confirmation request sent",
+          "confirmed": "Sent: order confirmed",
+          "change_prompt": "Sent: write your change",
+          "change_received": "Sent: change received",
+          "cancel_reasons": "Sent: cancel reasons",
+          "cancelled": "Sent: order cancelled",
+          "noted": "Sent: our team will call",
+          "already": "Sent: order already recorded",
+          "other": "Message",
+          "confirmed_offer": "Sent: order confirmed + the offer",
+          "offer_added": "Sent: offer will be added",
+          "offer_declined": "Sent: no problem",
+          "offer_expired": "Sent: offer ended",
+          "opted_out": "Sent: no more messages here",
+          "opted_in": "Sent: welcome back"
+        },
+        "in": {
+          "confirm": "Customer tapped: Confirm",
+          "change": "Customer tapped: Change",
+          "cancel": "Customer tapped: Cancel",
+          "reason": "Customer chose a cancel reason",
+          "keep": "Customer chose: keep the order",
+          "note": "Customer wrote the change",
+          "message": "Customer wrote a message",
+          "location": "Customer shared a location",
+          "late": "Tap after the order was recorded",
+          "ignored": "Message not understood",
+          "offer_yes": "Customer tapped: Add it",
+          "offer_no": "Customer tapped: No thanks",
+          "opt_out": "Customer wrote STOP",
+          "opt_in": "Customer wrote START"
+        },
+        "status": {
+          "accepted": "Sent",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "read": "Read",
+          "failed": "Not delivered"
+        }
+      },
+      "calls": {
+        "title": "Confirmation call",
+        "tried": "Called {attempts} of {max}",
+        "phoneHint": "Reveal the customer's number on the customer card, then call.",
+        "after": "Call back",
+        "confirmed": "Customer confirmed",
+        "noAnswer": "No answer",
+        "cancelled": "Customer cancelled",
+        "retryToast": "Done: it comes back on the list at the next call time.",
+        "unreachableToast": "That was the last try. The order stays on the list as unreachable."
+      },
+      "offer": {
+        "title": "Offer",
+        "accept": "Customer accepted",
+        "decline": "Not interested",
+        "acceptedHint": "Mizan is adding it to the store's order now.",
+        "applyingHint": "Being added to the store's order…",
+        "appliedHint": "Added to the store's order: the courier collects the new total.",
+        "failed": {
+          "not_in_store": "Not added: this order or product isn't in a connected store. Add it by hand and tell the customer.",
+          "unavailable": "Not added: the item is sold out or no longer in the store, or the order was cancelled. Call the customer.",
+          "permission": "Not added: the store needs reconnecting to allow order edits (Settings → Integrations). Add it by hand for now.",
+          "failed": "Not added: the store didn't accept the change. Add it by hand and tell the customer."
+        },
+        "status": {
+          "proposed": "Offered",
+          "accepted": "Accepted",
+          "declined": "Declined",
+          "expired": "Ended",
+          "applying": "Adding",
+          "applied": "Added",
+          "failed": "Not added"
+        },
+        "source": {
+          "rule": "From your rule",
+          "auto": "Mizan's suggestion",
+          "ai": "Chosen by AI"
+        },
+        "toast": {
+          "accepted": "Recorded: the customer accepted the offer",
+          "declined": "Recorded: the customer declined the offer",
+          "expired": "This offer has ended"
+        },
+        "qty": "(qty <n>{qty}</n>)"
+      },
+      "optedOut": "This customer wrote STOP: WhatsApp is skipped for them until they write START."
+    },
+    "answerChannel": {
+      "link": "the customer's link",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "voice_ivr": "automatic call",
+      "voice_ai": "AI call",
+      "agent": "an agent",
+      "other": "the store",
+      "call_team": "Team call"
+    },
+    "profit": {
+      "title": "Profit",
+      "loading": "Working out the profit",
+      "failed": "Couldn't load the profit.",
+      "final": "Final",
+      "provisional": "Provisional",
+      "expectedNet": "Expected profit if it delivers",
+      "net": "Profit",
+      "margin": "Margin <n>{pct}%</n>",
+      "movingHint": "Counted for real when the money arrives: on delivery for cash, on payment for prepaid.",
+      "expectedRevenue": "Order total",
+      "revenue": "Revenue",
+      "refunds": "Refunds",
+      "costs": {
+        "productCost": "Product cost",
+        "shipping": "Shipping",
+        "codFee": "Cash collection fee",
+        "paymentFee": "Payment fee",
+        "agent": "Confirmation agent",
+        "packaging": "Packaging",
+        "returns": "Return shipping",
+        "chargebacks": "Chargebacks",
+        "channelFee": "Marketplace fees",
+        "ads": "Ads"
+      },
+      "estimated": "Courier and fee costs are estimates from your rates until the courier's settlement arrives.",
+      "missingTitle": "Missing to be accurate",
+      "missing": {
+        "fx_missing": "Exchange rate for this order's currency and day",
+        "cost_missing": "Product cost for some items",
+        "shipping_rate_missing": "Courier rate for this area",
+        "return_rate_missing": "Courier's return price",
+        "cod_fee_missing": "Cash collection fee %",
+        "payment_fee_missing": "Payment fee for this method",
+        "agent_cost_missing": "Confirmation agent cost",
+        "packaging_cost_missing": "Packaging cost"
+      },
+      "setCosts": "Set costs"
+    },
+    "needsCall": "Needs a call",
+    "emptyCalls": {
+      "title": "No one to call right now",
+      "body": "Orders whose customer didn't answer on WhatsApp, or asked for a change, show here for your team to call."
+    },
+    "duplicates": "Duplicates",
+    "duplicateBadge": "Possible duplicate",
+    "emptyDuplicates": {
+      "title": "No possible duplicates",
+      "body": "When a customer orders the same product again within 48 hours, the order waits here for you to keep or merge it."
+    },
+    "duplicate": {
+      "title": "Possible duplicate",
+      "body": "The same customer ordered <order></order> {minutes, plural, one {# minute} other {# minutes}} earlier with the same products: {items}. It is held from confirmation until you decide.",
+      "keep": "Keep both",
+      "merge": "Merge into the earlier order",
+      "mergeTitle": "Merge this order?",
+      "mergeBody": "This order will be cancelled in Mizan as a duplicate of <order></order> and tagged mizan-duplicate in your store. The earlier order goes on as it is.",
+      "kept": "Kept. It goes on to confirmation.",
+      "merged": "Merged. This order is cancelled as a duplicate.",
+      "wasKept": "Kept as a separate order, though it looked like a duplicate of <order></order>.",
+      "wasMerged": "Merged into <order></order> as a duplicate."
+    },
+    "newOrder": "New order",
+    "bulk": {
+      "assign": "Assign",
+      "tag": "Tag",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "close": "Close",
+      "choose": "Choose…",
+      "assignTitle": "Assign {count, plural, one {# order} other {# orders}}",
+      "assignTo": "Assign to",
+      "unassign": "Nobody (unassign)",
+      "assignGo": "Assign",
+      "tagTitle": "Tag {count, plural, one {# order} other {# orders}}",
+      "tagHint": "Tags are added in Mizan and in Shopify; existing tags stay.",
+      "tags": "Tags",
+      "tagsPlaceholder": "vip, ramadan",
+      "tagsInvalid": "Up to 5 tags, letters and numbers, separated by commas",
+      "tagGo": "Add tags",
+      "confirmTitle": "Confirm {count, plural, one {# order} other {# orders}}",
+      "confirmHint": "Only orders still waiting for confirmation are confirmed; the rest are skipped.",
+      "confirmGo": "Confirm",
+      "cancelTitle": "Cancel {count, plural, one {# order} other {# orders}}",
+      "cancelHint": "They are cancelled in Mizan and in Shopify (restocked, no email to the customer). Paid and shipped orders are skipped: a paid order needs a refund.",
+      "reason": "Reason",
+      "cancelGo": "Cancel orders",
+      "reasons": {
+        "customer_cancelled": "The customer cancelled",
+        "duplicate": "Duplicate",
+        "out_of_stock": "Out of stock",
+        "fraud": "Fraud",
+        "other": "Other"
+      },
+      "name": {
+        "assign": "Assigning",
+        "tag": "Tagging",
+        "confirm": "Confirming",
+        "cancel": "Cancelling",
+        "ship": "Shipping"
+      },
+      "running": "{action} orders…",
+      "finished": "{action} done",
+      "progress": "Progress",
+      "counts": "{done} done · {skipped} skipped · {failed} failed of {total}",
+      "why": {
+        "cancelled": "already cancelled",
+        "unchanged": "nothing to change",
+        "shipped": "already shipped",
+        "paid_needs_refund": "paid: needs a refund",
+        "already_confirmed": "already confirmed",
+        "duplicate_suspected": "a possible duplicate: decide it first",
+        "not_found": "not found",
+        "error": "something went wrong",
+        "already_shipping": "already with the courier",
+        "not_confirmed": "not confirmed",
+        "address_missing": "no address or phone",
+        "payment_blocks_shipping": "the payment doesn't allow shipping yet",
+        "store_not_connected": "connect the store first",
+        "courier_needs_attention": "the courier connection needs attention",
+        "no_courier": "connect a courier first"
+      },
+      "failedHint": "Some orders failed. Try them again in a moment."
+    },
+    "waitingStock": "Waiting for stock",
+    "emptyWaitingStock": {
+      "title": "No order is waiting for stock",
+      "body": "Confirmed orders that couldn't be reserved show here until stock arrives."
+    },
+    "stock": {
+      "short": "Waiting for stock",
+      "reserved": "Stock reserved"
+    },
+    "ledger": {
+      "title": "Payments",
+      "loading": "Loading payments…",
+      "empty": "No money has moved on this order yet.",
+      "record": "Record payment",
+      "dialogTitle": "Record a payment",
+      "type": {
+        "label": "Money",
+        "received": "Received",
+        "refunded": "Given back"
+      },
+      "method": "Method",
+      "amount": "Amount ({currency})",
+      "owed": "Still owed: <n>{amount}</n>",
+      "held": "Held on this order: <n>{amount}</n>",
+      "note": "Note",
+      "noteHint": "A transfer reference or the reason. Never a card number.",
+      "save": "Record",
+      "cancel": "Cancel",
+      "recorded": "Recorded in the payments",
+      "invalidAmount": "Enter an amount like 250 or 250.50",
+      "refused": {
+        "over_payment": "That's more than the customer still owes.",
+        "over_refund": "That's more than this order holds."
+      },
+      "by": "by <b>{name}</b>",
+      "source": {
+        "store": "Store",
+        "gateway": "Gateway",
+        "courier": "Courier",
+        "manual": "Team"
+      },
+      "status": {
+        "pending": "Pending",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "totals": {
+        "paid": "Paid",
+        "refunded": "Refunded",
+        "chargedBack": "Charged back",
+        "net": "Held",
+        "balance": "Still owed"
+      }
+    }
+  },
+  "costs": {
+    "title": "Costs",
+    "subtitle": "What each order costs beyond its products, so profit is real.",
+    "loading": "Loading costs",
+    "loadFailed": "Couldn't load costs. Try again.",
+    "versioning": "Changes apply to orders from today (<d></d>). Older orders keep the cost of their day.",
+    "readOnly": "You can see costs; only the owner, an admin or finance can change them.",
+    "notAllowed": {
+      "title": "Costs are for owners and finance",
+      "body": "Ask the store owner if you need to see them."
+    },
+    "save": "Save",
+    "saved": "Saved. It applies to orders from today.",
+    "notSet": "Not set yet",
+    "since": "Since",
+    "end": "Stop",
+    "invalidAmount": "Enter an amount like 7.50",
+    "invalidPercent": "Enter a percentage like 1.5 (100 at most)",
+    "perOrder": {
+      "title": "Per order",
+      "body": "Costs every order carries, whatever is in it.",
+      "packaging": "Packaging",
+      "packagingHint": "Box, bag, tape, flyer.",
+      "agent": "Confirmation agent",
+      "agentHint": "What one confirmed order costs in agent time or commission."
+    },
+    "cod": {
+      "title": "Cash on delivery",
+      "body": "What the courier takes for collecting cash, as a share of the amount collected.",
+      "pct": "COD fee %"
+    },
+    "payment": {
+      "title": "Online payment fees",
+      "body": "What the gateway or wallet keeps per payment: a percentage plus a fixed amount.",
+      "pct": "Fee %",
+      "fixed": "Fixed",
+      "methods": {
+        "card": "Card",
+        "wallet": "Mobile wallet",
+        "apple_pay": "Apple Pay",
+        "bnpl": "Pay later (BNPL)",
+        "instapay": "InstaPay",
+        "bank_transfer": "Bank transfer"
+      }
+    },
+    "courier": {
+      "title": "Courier rate card",
+      "body": "What each courier charges per delivery and per return. A zone rate wins over the courier's general rate.",
+      "empty": "No courier rates yet.",
+      "courier": "Courier",
+      "zone": "Zone",
+      "zoneHint": "Leave empty for every zone.",
+      "delivery": "Delivery",
+      "return": "Return",
+      "add": "Add rate",
+      "allZones": "All zones",
+      "names": {
+        "bosta": "Bosta",
+        "jt": "J&T Express",
+        "aramex": "Aramex",
+        "mylerz": "Mylerz",
+        "other": "Other courier"
+      }
+    },
+    "monthly": {
+      "title": "Monthly fixed costs",
+      "body": "Rent, salaries, subscriptions: spread over the month's orders in the profit view.",
+      "empty": "No monthly costs yet.",
+      "label": "What it is",
+      "labelHint": "For example: warehouse rent.",
+      "amount": "Per month",
+      "add": "Add cost"
+    },
+    "fx": {
+      "title": "Exchange rates",
+      "body": "Orders in another currency are converted with the rate of the day they were placed. Rates update daily; set your own for a day if your bank's differs.",
+      "missing": "No rate for",
+      "manual": "Your rate",
+      "stale": "Older rate",
+      "currency": "Currency",
+      "day": "Day",
+      "rate": "Rate: 1 {base} =",
+      "set": "Set rate",
+      "invalid": "Enter a rate like 0.0205",
+      "line": "<c>1 {base}</c> = <c>{rate} {quote}</c>"
+    },
+    "recalc": {
+      "title": "Recalculate profit",
+      "body": "After changing costs, update the profit of orders not delivered or returned yet (last {days} days). Final orders keep the costs of their day.",
+      "run": "Recalculate",
+      "done": "{n, plural, =0 {Nothing to update} one {# order updated} other {# orders updated}}",
+      "doneMore": "{n} orders updated; more remain, run it again"
+    }
+  },
+  "confirm": {
+    "title": "Confirm your order",
+    "loading": "Loading your order",
+    "hello": "Hi {name}",
+    "helloNoName": "Hi there",
+    "intro": "Please confirm your order <n>{number}</n> so we can ship it.",
+    "qty": "Qty {count}",
+    "payOnDelivery": "You pay on delivery",
+    "total": "Total",
+    "deliverTo": "Delivery to {city}",
+    "confirm": "Confirm my order",
+    "change": "Change something",
+    "cancel": "Cancel order",
+    "location": {
+      "share": "Share my location for the courier",
+      "added": "Location added",
+      "denied": "Location wasn't shared. That's fine: the courier will call you."
+    },
+    "changeLabel": "What would you like to change?",
+    "changeHint": "Size, color, address, delivery time…",
+    "sendChange": "Send",
+    "back": "Back",
+    "reasonLabel": "Why are you cancelling?",
+    "sendCancel": "Cancel the order",
+    "reasons": {
+      "changed_mind": "I changed my mind",
+      "ordered_by_mistake": "I ordered by mistake",
+      "found_cheaper": "I found it cheaper",
+      "delivery_too_late": "Delivery takes too long",
+      "other": "Another reason"
+    },
+    "already": "This order was already answered.",
+    "privacy": "Only you and the store can see this page.",
+    "invalid": {
+      "title": "This link doesn't work",
+      "body": "Check the message you received, or contact the store."
+    },
+    "failed": {
+      "title": "Something went wrong",
+      "body": "We couldn't load your order. Try again in a moment."
+    },
+    "expired": {
+      "body": "This link has expired. The store will contact you."
+    },
+    "done": {
+      "confirmed": {
+        "title": "Order confirmed",
+        "body": "Thank you! {store} will ship your order soon."
+      },
+      "cancelled": {
+        "title": "Order cancelled",
+        "body": "Your order was cancelled. Nothing will be shipped."
+      },
+      "changed": {
+        "title": "We got your request",
+        "body": "{store} will call you shortly about the change."
+      },
+      "expired": {
+        "title": "This link has expired",
+        "body": "{store} will contact you to confirm your order."
+      },
+      "closed": {
+        "title": "Nothing to confirm",
+        "body": "This order no longer needs your confirmation."
+      }
+    }
+  },
+  "settings": {
+    "label": "Settings",
+    "pages": {
+      "costs": "Costs",
+      "confirmation": "Confirmation",
+      "offers": "Offers",
+      "ads": "Ad spend",
+      "refunds": "Refunds",
+      "usage": "Plan and usage",
+      "storeSync": "Store sync",
+      "team": "Team",
+      "integrations": "Integrations",
+      "audit": "Audit log",
+      "store": "Store",
+      "purchasing": "Purchasing",
+      "payments": "Payments",
+      "orders": "Orders",
+      "privacy": "Privacy"
+    }
+  },
+  "confirmationSettings": {
+    "title": "Confirmation",
+    "subtitle": "How new cash-on-delivery orders get confirmed automatically, before an agent steps in.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load the settings. Try again.",
+    "saved": "Saved. New orders follow these settings.",
+    "save": "Save",
+    "discard": "Discard changes",
+    "notAllowed": {
+      "title": "For owners, admins and ops managers",
+      "body": "Ask the store owner to change how orders are confirmed."
+    },
+    "enabled": "Confirm new cash-on-delivery orders automatically",
+    "enabledHint": "Every new order gets a confirmation request on WhatsApp; the customer confirms, changes or cancels with one tap in the chat. Whoever doesn't answer goes to your team to call.",
+    "channel": {
+      "whatsapp": "WhatsApp",
+      "call_auto": "Automated call",
+      "call_team": "Our team calls"
+    },
+    "channels": {
+      "title": "Channels",
+      "connected": "connected",
+      "notConnected": "not connected",
+      "always": "always available",
+      "none": "WhatsApp isn't connected yet, so new orders go straight to your team to call. Connect the store's WhatsApp number below."
+    },
+    "steps": {
+      "title": "Order of steps",
+      "body": "Mizan tries each step in order and waits for an answer before the next. A channel that isn't connected is skipped. The team call is always the last step.",
+      "channel": "Channel",
+      "wait": "Wait (minutes)",
+      "remove": "Remove step",
+      "add": "Add a step",
+      "agent": "If nobody answers: the order goes on the \"Needs a call\" list",
+      "teamLast": "The team call must be the last step."
+    },
+    "hours": {
+      "title": "Calling hours",
+      "body": "Calls (automated and by your team) only in these hours, store time. WhatsApp messages go out any time.",
+      "start": "From",
+      "end": "Until",
+      "invalid": "Start must be before end"
+    },
+    "link": {
+      "hours": "Hand-sent link works for (hours)",
+      "hint": "For the link your team sends by hand when WhatsApp isn't connected."
+    },
+    "team": {
+      "title": "Team calls",
+      "body": "When your team calls and nobody answers, the order leaves the list and comes back after this time, up to the number of tries.",
+      "attempts": "Tries",
+      "retry": "Back after (minutes)"
+    },
+    "whatsapp": {
+      "title": "The store's WhatsApp number",
+      "body": "Customers confirm their order with one tap in the chat. From your WhatsApp Business account on Meta: the phone number ID, the account ID and a permanent token. The token is stored encrypted and never shown again.",
+      "number": "Phone number ID: <n>{id}</n>",
+      "checking": "Checking the token and that Meta approved the confirmation message…",
+      "phoneNumberId": "Phone number ID",
+      "phoneNumberIdHint": "Digits only, from the API setup page, not the phone number.",
+      "wabaId": "WhatsApp Business Account ID",
+      "token": "Permanent token",
+      "tokenHint": "A system-user token with whatsapp_business_messaging and whatsapp_business_management.",
+      "connect": "Connect WhatsApp",
+      "replace": "Save the new details",
+      "cancel": "Cancel",
+      "check": "Check again",
+      "change": "Change details",
+      "saved": "Saved. Checking it now.",
+      "ownerOnly": "Only the owner or an admin can connect WhatsApp.",
+      "status": {
+        "pending": "Checking",
+        "active": "Connected",
+        "needs_attention": "Needs attention",
+        "disconnected": "Disconnected"
+      },
+      "reason": {
+        "token_refused": "Meta refused the token. Create a new one and enter it again.",
+        "token_lacks_permission": "The token lacks permissions on this account (whatsapp_business_messaging and whatsapp_business_management).",
+        "template_pending": "Meta is still reviewing the confirmation message. WhatsApp confirmation starts as soon as it's approved.",
+        "template_rejected": "Meta rejected the confirmation message. Submit it again with the wording in the setup guide.",
+        "template_missing": "The confirmation message in the store's language (mizan_order_confirm_ar or mizan_order_confirm_en) isn't in the account. Add it in WhatsApp Manager with the wording in the setup guide."
+      }
+    },
+    "routing": {
+      "title": "Route by risk",
+      "enabled": "Route each order by its risk score",
+      "enabledHint": "Off: every cash order goes through the steps above.",
+      "autoMax": "Confirm without asking up to",
+      "autoMaxHint": "Customers who received before",
+      "botMax": "Ask in the chat up to",
+      "botMaxHint": "The steps above",
+      "agentMax": "Team calls up to",
+      "agentMaxHint": "Above it: held for review",
+      "order": "Each number must be at least the one before",
+      "paid": "Paid orders are approved unless above the team's number; instalments are approved; a bank transfer waits for its money."
+    },
+    "results": {
+      "title": "Results",
+      "period": "Period",
+      "days": "{days} days",
+      "loading": "Loading results",
+      "loadFailed": "Couldn't load the results.",
+      "empty": "No orders went through confirmation in this period yet.",
+      "none": "Not yet",
+      "pct": "{pct}%",
+      "minutes": "min",
+      "hours": "hours",
+      "rate": "Confirmation rate",
+      "decided": "{n} decided of {orders}",
+      "confirmed": "Confirmed",
+      "cancelledN": "{n} cancelled",
+      "needsTeam": "Waiting on the team",
+      "pendingN": "{n} not answered yet",
+      "median": "Time to confirm",
+      "medianHint": "Median, orders that were asked",
+      "byRoute": "By route",
+      "byChannel": "Who got the answer",
+      "col": {
+        "route": "Route",
+        "orders": "Orders",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "rate": "Rate"
+      },
+      "route": {
+        "auto": "Confirmed without asking",
+        "bot": "Asked in the chat",
+        "agent": "Team calls",
+        "hold": "Held for review"
+      },
+      "channel": {
+        "auto": "Without asking",
+        "whatsapp": "WhatsApp",
+        "link": "The customer's link",
+        "call_team": "Our team's call",
+        "call_auto": "Automated call",
+        "voice_ai": "AI call",
+        "agent": "An agent",
+        "store": "In the store"
+      },
+      "channelCounts": "{confirmed} confirmed · {cancelled} cancelled",
+      "channelShare": "{pct}% confirmed"
+    },
+    "script": {
+      "title": "Script",
+      "body": "Your own words for what the customer reads after each button, and for the team's call. Leave a box empty to keep the pack's wording. The WhatsApp template itself stays the one Meta approved.",
+      "pack": "Language pack",
+      "packs": {
+        "egyptian": "Egyptian Arabic",
+        "formal": "Formal Arabic"
+      },
+      "language": "Language",
+      "lang": {
+        "ar": "Arabic",
+        "en": "English"
+      },
+      "variables": "Variables:",
+      "keepPack": "Empty: the pack's wording",
+      "preview": "Preview",
+      "previewTitle": "With a sample order",
+      "branch": {
+        "confirm": "When they tap Confirm",
+        "change": "When they tap Change",
+        "cancel": "When they tap Cancel",
+        "call": "The team's call script"
+      },
+      "keys": {
+        "confirmed": "Confirmed",
+        "change_prompt": "Ask for the change",
+        "change_received": "Change received",
+        "cancel_prompt": "Ask why (reasons follow)",
+        "cancelled": "Cancelled",
+        "call": "Lines to read, one per line"
+      }
+    }
+  },
+  "offersSettings": {
+    "title": "Offers",
+    "subtitle": "Offer one more item when a customer confirms: inside the WhatsApp chat and in your team's call script.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load the settings. Try again.",
+    "saved": "Saved. New confirmations follow these settings.",
+    "save": "Save",
+    "discard": "Discard changes",
+    "notAllowed": {
+      "title": "For the owner, admins and ops managers",
+      "body": "Ask the store owner to set up offers."
+    },
+    "enabled": "Offer one more item when the customer confirms",
+    "enabledHint": "One offer per order: your rules first; when none fits, Mizan suggests what customers buy with the same products.",
+    "summary": {
+      "offered": "Offers made",
+      "accepted": "Offers accepted",
+      "added": "Sales added",
+      "period": "Last {days} days",
+      "rate": "{pct}% of offers"
+    },
+    "how": {
+      "title": "How the offer is chosen",
+      "mode": "Method",
+      "maxDiscount": "Maximum discount (%)",
+      "maxDiscountHint": "No offer is ever discounted more than this.",
+      "autoDiscount": "Discount on suggestions (%)",
+      "autoDiscountHint": "On what Mizan suggests. Rules carry their own.",
+      "pctInvalid": "Enter 0 to 50, like 10 or 12.5",
+      "overMax": "Must be at most the maximum discount",
+      "inWhatsApp": "Offer it in the WhatsApp chat after the customer confirms",
+      "inCalls": "Put it in your team's call script",
+      "guards": "Mizan never offers something already in the order, sold out, sold at a loss after the discount, or priced over 60% of the order.",
+      "ai": "Let AI choose and write the offer",
+      "aiHint": "Claude picks from the same suggestions and writes a short message; Mizan sets the price. Your rules stay as they are; it only writes their message when you didn't. No customer data is sent."
+    },
+    "mode": {
+      "rules_then_auto": "My rules first, then Mizan's suggestions",
+      "rules": "My rules only",
+      "auto": "Mizan's suggestions only"
+    },
+    "rules": {
+      "title": "Offer rules",
+      "body": "When the order has a given product, offer another at a discount. A rule for a product beats a rule for any order.",
+      "line": "If the order has <b>{trigger}</b> → offer <b>{offer}</b> at <n>{pct}%</n> off",
+      "anyOrder": "any order",
+      "stopped": "Stopped",
+      "stop": "Stop",
+      "start": "Start",
+      "none": "No rules yet. Mizan suggests on its own if you choose so.",
+      "new": "New rule",
+      "when": "If the order has",
+      "offer": "Offer",
+      "offerPlaceholder": "Choose a product",
+      "noProducts": "No products by that name",
+      "discount": "Discount (%)",
+      "message": "Your message to the customer (optional)",
+      "messageHint": "Leave it empty and Mizan writes it, like: \"🎁 An offer for you: a scarf for EGP 135 instead of EGP 150.\"",
+      "add": "Add the rule",
+      "added": "Rule added"
+    }
+  },
+  "adSpend": {
+    "title": "Ad spend",
+    "subtitle": "What you spend on ads each day. Mizan splits each day's spend over the orders that came in that day, so every order's profit includes its ads.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load ad spend. Try again.",
+    "readOnly": "You can see ad spend; the owner, an admin or finance can change it.",
+    "notAllowed": {
+      "title": "Not for your role",
+      "body": "Ad spend is for the owner, admins, finance and ops managers."
+    },
+    "summary": {
+      "total": "Spend",
+      "period": "Last 30 days",
+      "unallocated": "Not carried by any order",
+      "unallocatedHint": "Days with spend and no orders: still a cost",
+      "platforms": "By platform"
+    },
+    "platform": {
+      "meta": "Meta (Facebook, Instagram)",
+      "tiktok": "TikTok",
+      "google": "Google",
+      "snapchat": "Snapchat",
+      "other": "Other"
+    },
+    "add": {
+      "title": "Enter a day's spend",
+      "body": "Saving replaces what that day and platform had.",
+      "day": "Day",
+      "platform": "Platform",
+      "amount": "Amount",
+      "amountInvalid": "An amount like 2500 or 2500.50",
+      "currency": "Currency",
+      "currencyHint": "As the platform charged you; converted at that day's rate",
+      "save": "Save",
+      "saved": "Saved. That day's orders now carry it."
+    },
+    "import": {
+      "title": "Import a CSV",
+      "body": "A platform's export or your own sheet: a header row with date and spend, plus platform (or choose one below); currency and campaign are optional. Each day and platform in the file replaces what was there.",
+      "file": "Choose a file",
+      "paste": "Or paste it",
+      "pasteHint": "date,platform,spend,currency",
+      "platform": "Platform",
+      "platformFromFile": "From the file",
+      "run": "Import",
+      "done": "Imported {rows} rows for {days} days.",
+      "failed": "Couldn't import the file. Try again.",
+      "invalid": "{count, plural, one {# line} other {# lines}} couldn't be read. Nothing was saved.",
+      "line": "Line <n>{line}</n>",
+      "problem": {
+        "header": "The header needs date and spend, and platform",
+        "columns": "Missing columns",
+        "day": "Not a date (2026-10-22 or 22/10/2026)",
+        "future": "In the future",
+        "too_old": "More than 400 days ago",
+        "platform": "Unknown platform",
+        "spend": "Not an amount",
+        "currency": "Not a currency code",
+        "too_many": "More than 5,000 lines",
+        "empty": "No rows",
+        "other": "Couldn't read it"
+      }
+    },
+    "days": {
+      "title": "By day",
+      "empty": "No spend in the last 30 days.",
+      "day": "Day",
+      "spend": "Spend",
+      "orders": "Orders",
+      "perOrder": "Per order",
+      "unallocated": "No orders",
+      "fxMissing": "Rate missing"
+    },
+    "entries": {
+      "title": "Entries",
+      "empty": "Nothing entered yet.",
+      "day": "Day",
+      "platform": "Platform",
+      "campaign": "Campaign",
+      "dayTotal": "Day total",
+      "spend": "Spend",
+      "source": "Source",
+      "sources": {
+        "manual": "Typed",
+        "csv": "CSV",
+        "api": "Connected"
+      },
+      "actions": "Actions",
+      "remove": "Remove",
+      "removeLabel": "Remove spend on {platform} for {day}",
+      "removed": "Removed. That day's orders were updated."
+    }
+  },
+  "profitHome": {
+    "title": "Overview",
+    "subtitle": "What your store really kept: every order, every cost, every pound.",
+    "loading": "Loading your profit",
+    "loadFailed": "Couldn't load your profit. Try again.",
+    "pct": "{v}%",
+    "period": {
+      "label": "Period",
+      "days": "{days} days"
+    },
+    "kept": {
+      "title": "Kept · last {days} days",
+      "change": "{pct}%",
+      "vsPrev": "vs the {days} days before",
+      "per100": "Of every <hundred></hundred> in revenue, you kept <kept></kept>.",
+      "noRevenue": "No delivered or paid orders in this period yet: revenue counts when the money is real.",
+      "expected": "If the orders on their way deliver: <money></money>."
+    },
+    "where": {
+      "title": "Where every pound went",
+      "revenue": "Revenue",
+      "productCost": "Products",
+      "shippingAndCod": "Shipping and COD",
+      "ads": "Ads",
+      "returns": "Refusals (return leg)",
+      "team": "Confirmation team",
+      "fees": "Fees and packaging",
+      "fixed": "Fixed costs",
+      "kept": "Kept",
+      "share": "{pct}%"
+    },
+    "kpi": {
+      "yesterday": "Yesterday's orders",
+      "yesterdayHint": "{orders, plural, =0 {No orders} one {# order} other {# orders}}, if they deliver",
+      "delivery": "Delivered",
+      "deliveryHint": "{delivered} delivered · {returned} refused",
+      "refusals": "Lost to refusals",
+      "refusalsHint": "{count, plural, =0 {No refusals} one {# refused order, all costs} other {# refused orders, all costs}}",
+      "cash": "Cash with couriers",
+      "cashHint": "{transit} on the way · {held} collected, not paid yet"
+    },
+    "trend": {
+      "title": "Profit per day",
+      "hint": "What each day's orders make if those on their way deliver. Losses in red.",
+      "day": "Day",
+      "profit": "Profit",
+      "orders": "{count, plural, one {# order} other {# orders}}",
+      "tip": "{day} · {money} · {count, plural, one {# order} other {# orders}}",
+      "expected": "Expected",
+      "real": "Real",
+      "explore": "Profit per day: move with the arrow keys"
+    },
+    "leaks": {
+      "title": "Needs attention",
+      "none": "Nothing is leaking. Good.",
+      "open": "Open",
+      "losing_orders": {
+        "title": "{count, plural, one {# order loses money} other {# orders lose money}}",
+        "body": "Together <money></money>, even if they deliver. Check their price, product cost and shipping."
+      },
+      "refusals": {
+        "title": "{count, plural, one {# refused order} other {# refused orders}}",
+        "body": "They cost <money></money>: shipping both ways, ads and fees."
+      },
+      "unallocated_ads": {
+        "title": "Ad spend no order carried",
+        "body": "<money></money> on {count, plural, one {# day} other {# days}} with no orders. Still a cost."
+      },
+      "other_currency": {
+        "title": "{count, plural, one {# order in another currency} other {# orders in other currencies}}",
+        "body": "Not in these totals: add the exchange rate for their days."
+      },
+      "cost_missing": {
+        "title": "Product cost missing",
+        "body": "{count, plural, one {# order has} other {# orders have}} a product without a cost: profit is too high."
+      },
+      "shipping_rate_missing": {
+        "title": "Courier price missing",
+        "body": "{count, plural, one {# order} other {# orders}} without a delivery price for their area."
+      },
+      "cod_fee_missing": {
+        "title": "COD fee missing",
+        "body": "{count, plural, one {# order} other {# orders}} without the courier's collection fee."
+      },
+      "agent_cost_missing": {
+        "title": "Confirmation cost missing",
+        "body": "{count, plural, one {# order} other {# orders}} without the team's cost per order."
+      },
+      "packaging_cost_missing": {
+        "title": "Packaging cost missing",
+        "body": "{count, plural, one {# order} other {# orders}} without a packaging cost."
+      },
+      "payment_fee_missing": {
+        "title": "Payment fee missing",
+        "body": "{count, plural, one {# order} other {# orders}} paid online without the gateway's fee."
+      },
+      "fx_missing": {
+        "title": "Exchange rate missing",
+        "body": "{count, plural, one {# order} other {# orders}} without a rate for their day."
+      },
+      "ads_fx_missing": {
+        "title": "Ad spend without a rate",
+        "body": "Spend in another currency on {count, plural, one {# order's day} other {the days of # orders}} isn't counted yet."
+      },
+      "sync_gap": {
+        "title": "Orders missing from the store sync",
+        "body": "On {count, plural, one {# day} other {# days}} the store had a different number of orders than Mizan, even after the nightly check fetched the missing ones. Check the store connection."
+      }
+    },
+    "live": "Live · updated {time}",
+    "activity": {
+      "title": "Activity",
+      "all": "Full log",
+      "loading": "Loading",
+      "empty": "Nothing yet. Changes and alerts show here as they happen."
+    }
+  },
+  "newOrder": {
+    "title": "New order",
+    "subtitle": "An order taken on the phone, in WhatsApp or Instagram, or in person. It goes through confirmation like any other.",
+    "created": "Order {number} created",
+    "submit": "Create order",
+    "notAllowed": {
+      "title": "You can't create orders",
+      "body": "Ask the store owner for the right role."
+    },
+    "customer": {
+      "title": "Customer",
+      "name": "Name",
+      "phone": "Phone",
+      "phonePlaceholder": "e.g. 01001234567",
+      "source": "Ordered through"
+    },
+    "source": {
+      "phone": "Phone call",
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "tiktok": "TikTok",
+      "walk_in": "In person",
+      "other": "Other"
+    },
+    "address": {
+      "title": "Delivery address",
+      "line1": "Street and building",
+      "line2": "Floor, flat, landmark",
+      "line2Hint": "Optional",
+      "city": "City or area"
+    },
+    "items": {
+      "title": "Items",
+      "pick": "Add a product",
+      "pickPlaceholder": "Search by name or SKU",
+      "noProducts": "No product matches",
+      "empty": "No items yet. Pick a product above.",
+      "quantity": "Quantity",
+      "price": "Price",
+      "remove": "Remove {title}",
+      "custom": "An item not in the catalogue",
+      "customTitle": "Item",
+      "addCustom": "Add item"
+    },
+    "payment": {
+      "title": "Payment and delivery",
+      "mode": "How does the customer pay?",
+      "method": "Paid through",
+      "deposit": "Deposit paid",
+      "transfer": "The transfer",
+      "waiting": "Waiting for it",
+      "received": "Received",
+      "shipping": "Shipping fee",
+      "discount": "Discount"
+    },
+    "mode": {
+      "cod": "Cash on delivery",
+      "partial": "Deposit now, the rest on delivery",
+      "prepaid": "Paid in full",
+      "bank_transfer": "Bank transfer"
+    },
+    "method": {
+      "wallet": "Mobile wallet",
+      "instapay": "InstaPay",
+      "card": "Card"
+    },
+    "summary": {
+      "title": "Summary",
+      "subtotal": "Items",
+      "shipping": "Shipping",
+      "discount": "Discount",
+      "total": "Total",
+      "paid": "Paid already",
+      "collect": "The courier collects",
+      "waitsForTransfer": "It won't ship until the transfer arrives.",
+      "next": "After you create it, confirmation starts as for store orders."
+    },
+    "errors": {
+      "name": "Enter the customer's name",
+      "phone": "Enter a phone number",
+      "line1": "Enter the street and building",
+      "city": "Enter the city or area",
+      "lines": "Add at least one item",
+      "linePrice": "Every item needs a price",
+      "amount": "An amount like 150 or 150.50",
+      "total": "The discount is larger than the order",
+      "deposit": "The deposit must be more than zero and less than the total",
+      "fix": "Fix the highlighted fields first."
+    }
+  },
+  "profitBreakdown": {
+    "title": "Profit breakdown",
+    "subtitle": "Where your profit comes from and where it leaks: by day, product, store, courier or country.",
+    "groupBy": "Group by",
+    "period": "Period",
+    "days": "{days} days",
+    "loading": "Loading profit",
+    "loadFailed": "Couldn't load the breakdown.",
+    "notAllowed": {
+      "title": "You can't see profit",
+      "body": "Ask the store owner for the right role."
+    },
+    "empty": {
+      "title": "No orders in this period",
+      "body": "Profit shows here once orders arrive."
+    },
+    "dimension": {
+      "day": "Day",
+      "product": "Product",
+      "store": "Store",
+      "courier": "Courier",
+      "country": "Country"
+    },
+    "special": {
+      "manual": "Entered by hand",
+      "none": "Not shipped yet",
+      "unknown": "No country",
+      "no_products": "No products"
+    },
+    "col": {
+      "orders": "Orders",
+      "delivered": "Delivered",
+      "returned": "Refused or returned",
+      "revenue": "Revenue",
+      "productCost": "Product cost",
+      "shipping": "Shipping and COD",
+      "ads": "Ads",
+      "returns": "Return shipping",
+      "team": "Team",
+      "fees": "Fees",
+      "net": "Profit",
+      "expectedNet": "Expected profit",
+      "margin": "Margin"
+    },
+    "caption": "Profit by {dimension}",
+    "total": "Total",
+    "outcome": "{delivered} delivered · {returned} refused",
+    "none": "Not yet",
+    "pct": "{pct}%",
+    "export": "Export CSV",
+    "note": "Revenue counts when the money is real (cash on delivery once delivered). Expected profit adds orders on their way if they deliver. A product's share of an order: its own cost, and the rest by its share of the order's value. Rent and ad spend no order carried stay on the home.",
+    "adsLink": "Ads: true ROAS"
+  },
+  "callQueue": {
+    "title": "Confirmation calls",
+    "subtitle": "Orders waiting for the team's call, one at a time: what to say, the customer's phone, and the outcome.",
+    "start": "Start calling",
+    "next": "Next order",
+    "loading": "Loading the order",
+    "notAllowed": {
+      "title": "You can't make confirmation calls",
+      "body": "Ask the store owner for the right role."
+    },
+    "waiting": "Waiting now",
+    "mine": "Mine",
+    "later": "Later",
+    "nextAt": "Next due {at}",
+    "unreachable": "Unreachable",
+    "ready": {
+      "title": "Ready when you are",
+      "body": "Press Start calling: the next order is yours, and nobody else will call that customer."
+    },
+    "empty": {
+      "title": "Nothing to call right now",
+      "body": "New orders and retries show up here when they are due."
+    },
+    "attempt": "Try {n}",
+    "unreachableBadge": "Unreachable so far",
+    "qty": "Qty {n}",
+    "total": "Total",
+    "collect": "The courier collects",
+    "area": "Area"
+  },
+  "products": {
+    "title": "Products",
+    "subtitle": "What your store sells, with the cost of each item (so profit is real) and its barcode (so the warehouse can scan). Names, prices and SKUs come from your store.",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, operations managers and finance can see products and costs."
+    },
+    "count": {
+      "products": "Products",
+      "variants": "Variants",
+      "missingCost": "Missing cost",
+      "missingBarcode": "Missing barcode"
+    },
+    "filterLabel": "Show",
+    "filter": {
+      "all": "All",
+      "cost": "Missing cost",
+      "barcode": "Missing barcode"
+    },
+    "search": "Search by name, SKU or barcode",
+    "loading": "Loading products…",
+    "loadFailed": "Couldn't load products. Try again.",
+    "label": "Products and variants",
+    "more": "Show more",
+    "col": {
+      "product": "Product",
+      "sku": "SKU",
+      "barcode": "Barcode",
+      "price": "Price",
+      "cost": "Cost",
+      "stock": "Stock",
+      "actions": "Actions"
+    },
+    "status": {
+      "draft": "Draft",
+      "archived": "Archived"
+    },
+    "owner": {
+      "store": "From the store",
+      "mizan": "Set in Mizan"
+    },
+    "none": "Not set",
+    "missingCost": "No cost yet",
+    "edit": "Edit",
+    "editLabel": "Edit {sku}",
+    "noMatch": {
+      "title": "No products match",
+      "body": "Try part of the name, the SKU or the barcode."
+    },
+    "empty": {
+      "title": "No products yet",
+      "body": "Products appear here once your store is connected and synced."
+    },
+    "allSet": {
+      "title": "Nothing missing",
+      "body": "Every product here has what this filter looks for."
+    },
+    "ownership": "Name, price, SKU and stock follow your store: change them there. The cost belongs to Mizan. A barcode set here stays even when the store sends another.",
+    "download": "Download list (CSV)",
+    "exportFailed": "Couldn't prepare the file. Try again.",
+    "csv": {
+      "product": "Product",
+      "variant": "Variant",
+      "sku": "SKU",
+      "barcode": "Barcode",
+      "price": "Price",
+      "cost": "Cost"
+    },
+    "editor": {
+      "title": "Edit {sku}",
+      "cost": "Cost per item ({currency})",
+      "costHint": "What one piece costs you: buying or making it. Used for profit.",
+      "costInvalid": "Write an amount like 250 or 250.50",
+      "barcode": "Barcode",
+      "barcodeStore": "From your store. Typing one here makes it Mizan's: store syncs won't change it.",
+      "barcodeMizan": "Set in Mizan: store syncs leave it as it is.",
+      "barcodeInvalid": "Letters, digits and symbols only, no spaces, up to 64",
+      "barcodeTaken": "Another product already has this barcode",
+      "useStore": "Use the store's barcode again",
+      "storeFields": "To change the name, price or SKU, edit the product in your store.",
+      "save": "Save",
+      "close": "Close",
+      "saved": "Saved {sku}."
+    },
+    "import": {
+      "open": "Import costs",
+      "title": "Import costs from a sheet",
+      "body": "Download the list, fill the cost column (and barcodes if you like), then import it here. Shopify's product export works too. Empty cells are left as they are.",
+      "file": "Choose a file",
+      "paste": "Or paste it",
+      "pasteHint": "SKU,Cost,Barcode",
+      "run": "Import",
+      "close": "Close",
+      "failed": "Couldn't import the file. Try again.",
+      "done": "Saved {costs, plural, one {# cost} other {# costs}} and {barcodes, plural, one {# barcode} other {# barcodes}}.",
+      "invalid": "{count, plural, one {# line} other {# lines}} couldn't be read. Nothing was saved.",
+      "line": "Line <n>{line}</n>",
+      "problem": {
+        "header": "The header needs SKU, and cost or barcode",
+        "columns": "Missing columns",
+        "sku": "No SKU",
+        "cost": "Not an amount",
+        "barcode": "Not a barcode (no spaces, up to 64)",
+        "duplicate": "This SKU is already in the file",
+        "too_many": "More than 5,000 lines",
+        "empty": "No rows",
+        "unknown_sku": "No product with this SKU",
+        "barcode_taken": "Another product has this barcode",
+        "other": "Couldn't read it"
+      }
+    }
+  },
+  "stock": {
+    "title": "Stock",
+    "subtitle": "On hand, reserved for confirmed orders, and available, in your main warehouse. Count an item once and Mizan keeps it right: confirmed orders reserve it, cancelled ones give it back, shipped ones take it off the shelf.",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, operations, warehouse and finance can see stock."
+    },
+    "count": {
+      "counted": "Counted in Mizan",
+      "out": "Out of stock",
+      "low": "Low stock",
+      "waiting": "Orders waiting for stock"
+    },
+    "countedOf": "{counted} of {variants}",
+    "waiting": {
+      "title": "{count, plural, one {# confirmed order is} other {# confirmed orders are}} waiting for stock",
+      "body": "They weren't reserved so nothing is sold twice. Receive stock and they're reserved automatically, oldest first.",
+      "cta": "See the orders"
+    },
+    "filterLabel": "Show",
+    "filter": {
+      "all": "All",
+      "counted": "Counted",
+      "not_counted": "Not counted yet",
+      "out": "Out of stock",
+      "low": "Low stock"
+    },
+    "search": "Search by name, SKU or barcode",
+    "loading": "Loading stock…",
+    "loadFailed": "Couldn't load stock. Try again.",
+    "label": "Stock by item",
+    "more": "Show more",
+    "col": {
+      "product": "Product",
+      "sku": "SKU",
+      "onHand": "On hand",
+      "reserved": "Reserved",
+      "available": "Available",
+      "store": "Store says",
+      "actions": "Actions"
+    },
+    "none": "Not set",
+    "notCounted": "Not counted",
+    "update": "Update",
+    "updateLabel": "Update {sku}",
+    "history": "History",
+    "historyLabel": "History of {sku}",
+    "noMatch": {
+      "title": "No items match",
+      "body": "Try part of the name, the SKU or the barcode."
+    },
+    "empty": {
+      "title": "No products yet",
+      "body": "Products appear here once your store is connected and synced."
+    },
+    "emptyTab": {
+      "title": "Nothing here",
+      "body": "No item fits this filter right now."
+    },
+    "rule": "Until an item is counted here, the store's number is shown and orders don't reserve it.",
+    "editor": {
+      "title": "Update {sku}",
+      "now": "Now: <b>{onHand}</b> on hand, <b>{reserved}</b> reserved, <b>{available}</b> available.",
+      "first": "Not counted in Mizan yet. Count what's on the shelf to start.",
+      "kind": "What happened",
+      "kinds": {
+        "receive": "Stock arrived",
+        "count": "I counted the shelf",
+        "adjust": "Add or remove (with a reason)"
+      },
+      "quantity": {
+        "receive": "Pieces that arrived",
+        "count": "Pieces on the shelf",
+        "adjust": "Change (e.g. -2 or 3)"
+      },
+      "hint": {
+        "receive": "Added to on hand.",
+        "count": "On hand becomes this number.",
+        "adjust": "A minus removes pieces, a plus adds them."
+      },
+      "invalid": "Write a whole number",
+      "belowReserved": "That's under the {reserved} reserved for confirmed orders",
+      "reason": "Reason",
+      "choose": "Choose",
+      "reasons": {
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "found": "Found",
+        "correction": "Correction",
+        "other": "Other"
+      },
+      "note": "Note (optional)",
+      "save": "Save",
+      "close": "Close",
+      "saved": "Saved {sku}.",
+      "savedWithOrders": "Saved {sku}. {count, plural, one {# waiting order is} other {# waiting orders are}} reserved now."
+    },
+    "historyDialog": {
+      "title": "History of {sku}",
+      "loading": "Loading…",
+      "close": "Close",
+      "kind": {
+        "receive": "Received",
+        "count": "Counted",
+        "adjust": "Adjusted",
+        "reserve": "Reserved for an order",
+        "release": "Released",
+        "pick": "Shipped",
+        "return_restock": "Returned to stock",
+        "transfer_in": "Transferred in",
+        "transfer_out": "Transferred out",
+        "write_off": "Written off"
+      },
+      "reason": {
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "found": "Found",
+        "correction": "Correction",
+        "other": "Other"
+      }
+    },
+    "threshold": {
+      "label": "Warn me at",
+      "hint": "An alert when available falls to this number or under. Empty: no alert.",
+      "invalid": "Write a whole number",
+      "save": "Save alert",
+      "saved": "You'll be warned when {sku} falls to {n}.",
+      "cleared": "No alert for {sku}."
+    },
+    "sync": {
+      "label": "Send Mizan's stock to my store",
+      "description": "Items counted here show their available number in Shopify (on hand minus what confirmed orders hold), so the store never sells what's gone. Items not counted stay as the store has them.",
+      "on": "Your store now gets Mizan's numbers.",
+      "off": "Your store keeps its own numbers."
+    },
+    "pickLists": "Pick lists"
+  },
+  "automations": {
+    "title": "Automations",
+    "subtitle": "Let Mizan handle the routine: when something happens, check what you want, then act. Start from a ready recipe; every automation runs once per event and stops itself if it keeps failing.",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and operations managers manage automations."
+    },
+    "mine": "Your automations",
+    "loading": "Loading…",
+    "empty": {
+      "title": "No automations yet",
+      "body": "Install a recipe below, then turn it on."
+    },
+    "when": "When {trigger}",
+    "then": "Then: {action}",
+    "stats": "{runs, plural, one {# run} other {# runs}} · {failures, plural, one {# failed} other {# failed}}",
+    "lastRun": "last",
+    "runLog": "Run log",
+    "paused": "Paused: too many recent runs failed. Check the run log, then turn it on again.",
+    "recipes": "Recipes",
+    "recipesHint": "Installing makes your own copy, off until you turn it on.",
+    "install": "Install",
+    "isInstalled": "Installed",
+    "installed": "Installed \"{name}\". Turn it on when you're ready.",
+    "on": "\"{name}\" is on.",
+    "off": "\"{name}\" is off.",
+    "domain": {
+      "orders": "Orders",
+      "verification": "Verification",
+      "fulfilment": "Fulfilment",
+      "platform": "Platform"
+    },
+    "trigger": {
+      "order_created": "a new order arrives",
+      "order_scored": "an order's risk is scored",
+      "order_duplicate_found": "an order looks like a duplicate",
+      "order_store_cancel_failed": "a cancel didn't reach the store",
+      "order_assigned": "an order is assigned",
+      "order_tagged": "an order is tagged",
+      "order_confirmed": "an order is confirmed",
+      "order_cancelled": "an order is cancelled",
+      "stock_short": "a confirmed order waits for stock",
+      "stock_low": "an item runs low",
+      "stock_out": "an item runs out",
+      "connection_needs_attention": "a connection needs attention",
+      "offer_accepted": "a customer accepts an offer",
+      "payment_received": "a payment arrives",
+      "ticket_created": "a ticket is opened",
+      "ticket_status_changed": "a ticket's status changes",
+      "ticket_assigned": "a ticket is assigned"
+    },
+    "action": {
+      "order_add_tag": "tag the order",
+      "order_assign": "assign the order",
+      "order_convert_to_prepaid": "offer to pay before delivery",
+      "notify_team": "notify the team"
+    },
+    "log": {
+      "title": "Run log · {name}",
+      "loading": "Loading…",
+      "empty": "No runs yet.",
+      "close": "Close",
+      "order": "Open the order",
+      "status": {
+        "succeeded": "Ran",
+        "skipped": "Skipped",
+        "failed": "Failed"
+      },
+      "reason": {
+        "conditions": "The conditions didn't match",
+        "loop_guard": "Stopped: too many automations in a chain",
+        "invalid_conditions": "The conditions can't be read"
+      }
+    },
+    "try": {
+      "open": "Try it",
+      "title": "Try {name}",
+      "body": "Pick an order to see whether the rules match it and what would run. Nothing is done.",
+      "close": "Close",
+      "order": "Order number",
+      "orderHint": "As on the orders screen, e.g. M-1001",
+      "run": "Try",
+      "noOrder": "No order with this number.",
+      "matched": "Would run",
+      "notMatched": "Would not run",
+      "actual": "This order:",
+      "pass": "Matches",
+      "fail": "Doesn't match",
+      "noRules": "No rules: it runs on every order.",
+      "wouldRun": "What would happen",
+      "wouldNotRun": "What would happen if it matched",
+      "noOrderStep": "This step needs an order and would fail."
+    }
+  },
+  "notifications": {
+    "title": "Notifications",
+    "label": "Notifications",
+    "labelUnread": "Notifications, {count} unread",
+    "empty": "Nothing new.",
+    "paused": "Automation \"{name}\" paused itself: too many runs failed.",
+    "plan": {
+      "orders_near": "This month's orders are near the plan's limit: {used} of {limit}",
+      "orders_over": "This month's orders passed the plan's limit: {used} of {limit}",
+      "stores_near": "Stores are at the plan's limit: {used} of {limit}",
+      "stores_over": "Stores passed the plan's limit: {used} of {limit}",
+      "users_near": "Team members are at the plan's limit: {used} of {limit}",
+      "users_over": "Team members passed the plan's limit: {used} of {limit}"
+    }
+  },
+  "tickets": {
+    "title": "Tickets",
+    "subtitle": "Complaints, exchanges, refunds and returns, each to its end.",
+    "search": "Ticket or order number",
+    "newTicket": "New ticket",
+    "openOne": "Open ticket",
+    "tabsLabel": "Ticket views",
+    "loading": "Loading tickets…",
+    "more": "Show more",
+    "noOrder": "No order",
+    "noReason": "No reason yet",
+    "unassigned": "Unassigned",
+    "member": "Team member",
+    "late": "Late",
+    "back": "Tickets",
+    "notFound": "This ticket isn't here, or isn't yours to see.",
+    "details": "Details",
+    "workOn": "Work on it",
+    "save": "Save",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "closedHint": "This ticket is closed. Notes still go on its history; for anything new, open a new ticket.",
+    "noteLabel": "Add a note",
+    "noteHint": "What you did or learned. Never card numbers.",
+    "addNote": "Add note",
+    "created": "Ticket {number} opened",
+    "alreadyOpen": "A ticket of this kind is already open for this order. Work on that one.",
+    "noneForOrder": "No tickets for this order.",
+    "new": {
+      "title": "New ticket",
+      "forOrder": "For order {number}",
+      "save": "Open ticket",
+      "orderHint": "Optional: the order number, like #1042 or M-1001",
+      "orderMissing": "No order with this number in this store",
+      "descriptionHint": "What happened, in your words"
+    },
+    "columns": {
+      "ticket": "Ticket",
+      "order": "Order",
+      "type": "Type",
+      "status": "Status",
+      "assignee": "With",
+      "due": "Due"
+    },
+    "fields": {
+      "type": "Type",
+      "reason": "Reason",
+      "order": "Order",
+      "source": "Came from",
+      "description": "Description",
+      "status": "Status",
+      "assignedTo": "Assigned to",
+      "createdBy": "Opened by",
+      "due": "Due",
+      "resolvedAt": "Resolved"
+    },
+    "view": {
+      "active": "Open now",
+      "late": "Late",
+      "open": "New",
+      "waiting": "Waiting",
+      "inspection": "Inspection",
+      "resolved": "Resolved",
+      "closed": "Closed",
+      "all": "All"
+    },
+    "status": {
+      "open": "Open",
+      "waiting_customer": "Waiting for customer",
+      "waiting_courier": "Waiting for courier",
+      "in_inspection": "In inspection",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "type": {
+      "complaint": "Complaint",
+      "exchange": "Exchange",
+      "refund": "Refund",
+      "delivery_issue": "Delivery issue",
+      "return": "Return",
+      "refused": "Refused at the door"
+    },
+    "reason": {
+      "wrong_size": "Wrong size",
+      "wrong_item": "Wrong item",
+      "damaged": "Damaged",
+      "missing_item": "Missing item",
+      "not_as_described": "Not as described",
+      "quality": "Quality",
+      "changed_mind": "Changed their mind",
+      "late_delivery": "Late delivery",
+      "courier_behaviour": "Courier's behaviour",
+      "not_delivered": "Not delivered",
+      "price": "Price",
+      "other": "Other"
+    },
+    "source": {
+      "team": "Team",
+      "whatsapp": "WhatsApp",
+      "phone": "Phone",
+      "courier": "Courier",
+      "automation": "Automation"
+    },
+    "history": {
+      "title": "History",
+      "created": "Opened",
+      "status": "{from} → {to}",
+      "assigned": "Assigned to {name}",
+      "unassigned": "Unassigned",
+      "updated": "Changed: {fields}",
+      "note": "Note",
+      "refund": "Refund {refund}: {step}"
+    },
+    "empty": {
+      "title": "Nothing open",
+      "body": "Complaints, exchanges and returns show up here when the team opens them."
+    },
+    "emptyLate": {
+      "title": "Nothing late",
+      "body": "Every open ticket is within its 24 hours."
+    },
+    "noMatch": {
+      "title": "No ticket matches",
+      "body": "Try the ticket number (T-1001) or the order's number."
+    }
+  },
+  "paymentsScreen": {
+    "title": "Payments",
+    "subtitle": "Every order by where its money stands: waiting for money, cash still to collect, paid, refunded, disputed.",
+    "search": "Order number",
+    "tabsLabel": "Payment views",
+    "loading": "Loading payments…",
+    "more": "Show more",
+    "refunded": "<m></m> back",
+    "cod": "courier collects <m></m>",
+    "view": {
+      "all": "All",
+      "unpaid": "Waiting for money",
+      "cod_due": "Cash to collect",
+      "paid": "Paid",
+      "refunds": "Refunds",
+      "disputes": "Disputes"
+    },
+    "columns": {
+      "order": "Order",
+      "method": "Method",
+      "total": "Total",
+      "paid": "Paid",
+      "balance": "Still owed",
+      "status": "Status"
+    },
+    "totals": {
+      "total": "Total",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "balance": "Still owed",
+      "cod": "Cash couriers collect"
+    },
+    "noMatch": {
+      "title": "No order matches",
+      "body": "Try the order's number as the store shows it."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, finance and ops managers see payments."
+    },
+    "empty": {
+      "all": {
+        "title": "No orders yet",
+        "body": "Orders and their payments show up here as they arrive."
+      },
+      "unpaid": {
+        "title": "Nothing waiting for money",
+        "body": "Orders paid by transfer, card or link that haven't paid yet show up here."
+      },
+      "cod_due": {
+        "title": "No cash to collect",
+        "body": "Cash-on-delivery orders before delivery show up here with what the courier collects."
+      },
+      "paid": {
+        "title": "No paid orders",
+        "body": "Fully paid orders show up here."
+      },
+      "refunds": {
+        "title": "No refunds",
+        "body": "Orders with money given back show up here."
+      },
+      "disputes": {
+        "title": "No disputes",
+        "body": "Chargebacks from gateways show up here."
+      }
+    },
+    "mix": {
+      "title": "How customers paid · {days} days",
+      "open": "All payments",
+      "share": "<n>{pct}%</n> · {orders, plural, one {# order} other {# orders}}",
+      "received": "Money in by method",
+      "orders": "orders"
+    }
+  },
+  "refunds": {
+    "title": "Refunds",
+    "none": "No refunds on this order.",
+    "request": "Refund",
+    "requestTitle": "Refund money",
+    "loading": "Loading…",
+    "amount": "Amount ({currency})",
+    "refundable": "Up to <n>{amount}</n> can go back",
+    "destinationLabel": "Back to",
+    "reasonLabel": "Reason",
+    "threshold": "Over <n>{amount} {currency}</n> needs owner, admin or finance to approve.",
+    "nothingToRefund": "Nothing was paid on this order, so nothing can go back.",
+    "approve": "Approve",
+    "reject": "Reject",
+    "markSent": "Mark as sent",
+    "cancel": "Cancel",
+    "rejectTitle": "Reject {number}",
+    "sentTitle": "{number} sent",
+    "rejectReason": "Why",
+    "referenceLabel": "Reference",
+    "referenceHint": "The transfer or gateway reference, if there is one",
+    "reference": "Ref.",
+    "rejectedBecause": "Rejected: {reason}",
+    "waitsForApproval": "Waiting for approval by someone other than who asked.",
+    "fromStore": "Refund it in the store; it completes here when the store reports it.",
+    "queueTitle": "Refunds to handle · {count}",
+    "status": {
+      "requested": "Waiting for approval",
+      "approved": "Approved",
+      "completed": "Money back",
+      "rejected": "Rejected",
+      "failed": "Failed"
+    },
+    "destination": {
+      "original_method": "Same way it was paid",
+      "store_credit": "Store credit",
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash"
+    },
+    "toast": {
+      "requested": "{number} is waiting for approval",
+      "approved": "{number} approved",
+      "rejected": "{number} rejected",
+      "completed": "{number}: money back"
+    },
+    "errors": {
+      "over_refund": "That's more than this order holds, less refunds still open.",
+      "own_refund": "Someone other than who asked approves a refund.",
+      "destination_unavailable": "The money can't go back that way for this order.",
+      "completes_from_store": "Refund it in the store; it completes here when the store reports it.",
+      "refund_not_pending": "This refund isn't waiting for approval any more.",
+      "refund_not_approved": "Only an approved refund can be marked as sent."
+    }
+  },
+  "refundSettings": {
+    "title": "Refunds",
+    "subtitle": "Who approves money going back to customers.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "approveOver": "Approval needed over (store currency)",
+    "approveOverHint": "0 means every refund needs approval",
+    "rules": {
+      "under": "Under it, a refund is approved as soon as it's asked for.",
+      "over": "Over it (or in another currency), owner, admin or finance approve.",
+      "fourEyes": "Whoever asked doesn't approve their own, except the owner.",
+      "store": "Money back to the card or wallet of a store order is done in the store; Mizan completes it when the store reports it."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, finance and ops managers see refund settings."
+    }
+  },
+  "returns": {
+    "title": "Returned goods",
+    "inspect": "Inspect",
+    "inspectTitle": "Inspect returned goods",
+    "inspectHint": "How many units of each item came back sellable, damaged or to throw away.",
+    "left": "{count, plural, one {# unit still to inspect} other {# units still to inspect}}",
+    "done": "Everything that came back is inspected.",
+    "counts": "{restock} sellable · {damaged} damaged · {writeOff} written off · {remaining} left",
+    "record": "{quantity} × {title}: {outcome}",
+    "ofRemaining": "{remaining} to inspect",
+    "note": "Note",
+    "save": "Save inspection",
+    "cancel": "Cancel",
+    "saved": "Inspection saved",
+    "over": "That's more units than are left to inspect.",
+    "outcome": {
+      "restock": "Sellable",
+      "damaged": "Damaged",
+      "write_off": "Written off"
+    }
+  },
+  "usage": {
+    "title": "Plan and usage",
+    "subtitle": "What your store used this month against its plan.",
+    "loading": "Loading",
+    "thisMonth": "This month · {month}",
+    "ofLimit": "<n>{used}</n> of <n>{limit}</n>",
+    "unlimited": "<n>{used}</n> · no limit",
+    "over": "Over the plan's limit: nothing stops, and we'll suggest a bigger plan.",
+    "atCost": "<n>{messages}</n> WhatsApp messages and <n>{ai}</n> AI offers this month, charged at cost.",
+    "soft": "Limits never stop orders. Past months are frozen once they end.",
+    "history": "Last six months",
+    "closed": "Closed",
+    "columns": {
+      "month": "Month",
+      "orders": "Orders",
+      "messages": "WhatsApp messages",
+      "ai": "AI offers"
+    },
+    "meters": {
+      "orders": "Orders this month",
+      "stores": "Stores",
+      "users": "Team members"
+    },
+    "plan": {
+      "free": "Free",
+      "growth": "Growth",
+      "scale": "Scale",
+      "enterprise": "Enterprise"
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and finance see the plan and usage."
+    },
+    "alert": {
+      "orders_near": "This month's orders are near the plan's limit: {used} of {limit}",
+      "orders_over": "This month's orders passed the plan's limit: {used} of {limit}",
+      "stores_near": "Stores are at the plan's limit: {used} of {limit}",
+      "stores_over": "Stores passed the plan's limit: {used} of {limit}",
+      "users_near": "Team members are at the plan's limit: {used} of {limit}",
+      "users_over": "Team members passed the plan's limit: {used} of {limit}"
+    },
+    "upgrade": {
+      "title": "Move up to {plan}",
+      "limits": "{orders} orders a month · {stores} stores · {users} team members",
+      "noLimit": "unlimited",
+      "ask": "Ask to move to {plan}",
+      "sent": "Request sent. We'll contact you.",
+      "requested": "You asked to move to {plan} on",
+      "ownerOnly": "The owner or an admin can ask for a bigger plan."
+    }
+  },
+  "planBanner": {
+    "orders": {
+      "near": "This month's orders: <n>{used}</n> of <n>{limit}</n> on {plan}. Nothing stops when you pass it.",
+      "over": "This month's orders passed your {plan} plan: <n>{used}</n> of <n>{limit}</n>. Orders keep coming in."
+    },
+    "stores": {
+      "near": "Stores: <n>{used}</n> of <n>{limit}</n> on {plan}.",
+      "over": "Stores passed your {plan} plan: <n>{used}</n> of <n>{limit}</n>."
+    },
+    "users": {
+      "near": "Team members: <n>{used}</n> of <n>{limit}</n> on {plan}.",
+      "over": "Team members passed your {plan} plan: <n>{used}</n> of <n>{limit}</n>."
+    },
+    "see": "See plan",
+    "hide": "Hide",
+    "plan": {
+      "free": "Free",
+      "growth": "Growth",
+      "scale": "Scale",
+      "enterprise": "Enterprise"
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Ready dashboards with the same numbers as every other screen. Download any of them as Excel or CSV.",
+    "loading": "Loading",
+    "loadFailed": "The report didn't load. Try again.",
+    "tabsLabel": "Dashboards",
+    "period": {
+      "label": "Period",
+      "days": "Last {days} days"
+    },
+    "range": "From <from></from> to <to></to>",
+    "none": {
+      "title": "No reports for your role",
+      "body": "Ask the store owner if you need to see reports."
+    },
+    "pct": "{v}%",
+    "days": "{v} days",
+    "total": "Total {n}",
+    "day": "Day",
+    "excel": "Excel",
+    "csv": "CSV",
+    "tip": "{day}: {value}",
+    "times": "<n>{v}</n>×",
+    "daysUnit": "days",
+    "timesUnit": "×",
+    "metrics": {
+      "tab": "All metrics",
+      "module": {
+        "M1": "Orders",
+        "M3": "Shipping",
+        "M4": "Warehouse",
+        "M5": "Profit",
+        "M7": "Ads",
+        "M15": "Payments"
+      }
+    }
+  },
+  "shipping": {
+    "title": "Shipping",
+    "ship": "Ship it",
+    "again": "Try shipping again",
+    "ready": "Confirmed and ready: book the courier.",
+    "track": "Track",
+    "cod": "Courier collects <m></m>",
+    "noCod": "Nothing to collect (paid)",
+    "booking": {
+      "pending": "Booking the courier…",
+      "failed": "Booking failed"
+    },
+    "status": {
+      "created": "Created",
+      "pickup_requested": "Pickup requested",
+      "picked_up": "Picked up",
+      "in_transit": "In transit",
+      "out_for_delivery": "Out for delivery",
+      "failed_attempt": "Delivery attempt failed",
+      "delivered": "Delivered",
+      "returning": "Returning",
+      "returned": "Returned",
+      "cancelled": "Cancelled",
+      "lost": "Lost",
+      "unknown": "Needs review"
+    },
+    "error": {
+      "city_unknown": "The courier doesn't know this city. Fix the city, then try again.",
+      "address_invalid": "The courier refused the address or phone. Fix them, then try again.",
+      "payment_blocks": "The payment doesn't allow shipping yet.",
+      "cancelled": "The order was cancelled.",
+      "not_found": "The order wasn't found.",
+      "courier_refused_key": "The courier refused the account key: check Settings → Integrations.",
+      "courier_failed": "The courier refused the booking. Try again."
+    },
+    "manual": {
+      "open": "Record by hand",
+      "title": "Record a shipment",
+      "body": "For a courier Mizan doesn't book itself: record who has the parcel and its tracking number. Its statuses come from the courier's report.",
+      "courier": "Courier",
+      "courierHint": "As your team calls it: J&T, Aramex, our driver…",
+      "tracking": "Tracking number",
+      "save": "Record",
+      "cancel": "Cancel"
+    }
+  },
+  "shipments": {
+    "title": "Shipping",
+    "subtitle": "Every shipment with the courier and where it is. Statuses Mizan can't read wait for review: a delivery is never guessed.",
+    "search": "Tracking or order number",
+    "tabsLabel": "Shipments",
+    "loading": "Loading",
+    "more": "Show more",
+    "openOrder": "Open the order",
+    "courierSaid": "The courier said:",
+    "view": {
+      "ready": "Ready to ship",
+      "active": "With the courier",
+      "review": "Needs review",
+      "delivered": "Delivered",
+      "returned": "Returned",
+      "all": "All"
+    },
+    "columns": {
+      "order": "Order",
+      "tracking": "Tracking",
+      "area": "Area",
+      "status": "Status",
+      "cod": "To collect",
+      "action": "Action"
+    },
+    "noMatch": {
+      "title": "No shipment matches",
+      "body": "Check the tracking or order number."
+    },
+    "empty": {
+      "active": {
+        "title": "Nothing with the courier",
+        "body": "Ship a confirmed order from its page."
+      },
+      "review": {
+        "title": "Nothing to review",
+        "body": "Statuses Mizan couldn't read and refused bookings show here."
+      },
+      "delivered": {
+        "title": "No deliveries yet",
+        "body": "Delivered shipments show here."
+      },
+      "returned": {
+        "title": "No returns",
+        "body": "Shipments coming back or returned show here."
+      },
+      "all": {
+        "title": "No shipments yet",
+        "body": "Ship a confirmed order from its page."
+      }
+    },
+    "set": {
+      "open": "Set status",
+      "title": "Status of {number}",
+      "body": "Set it once you know: what the courier said on the phone, or the label you saw. It's recorded with your name.",
+      "courierSaid": "The courier sent:",
+      "status": "Status",
+      "pick": "Pick a status",
+      "note": "Note",
+      "noteHint": "Optional: how you know",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Status saved"
+    },
+    "import": {
+      "open": "Import statuses",
+      "title": "Import the courier's statuses",
+      "body": "A CSV with the tracking number and the status (Arabic or English), date and note optional. Every row is recorded with your name; if any line can't be read, nothing is saved.",
+      "file": "CSV file",
+      "paste": "Or paste it",
+      "pasteHint": "First row: the column names (tracking, status)",
+      "run": "Import",
+      "close": "Close",
+      "done": "{changed} updated, {unchanged} already up to date",
+      "failed": "The import didn't go through",
+      "invalid": "{count, plural, one {# line} other {# lines}} couldn't be applied; nothing was saved",
+      "line": "Line <n>{line}</n>",
+      "problem": {
+        "header": "the header needs tracking and status columns",
+        "columns": "missing cells",
+        "tracking": "not a tracking number",
+        "status": "status not understood",
+        "date": "date not understood (YYYY-MM-DD) or in the future",
+        "duplicate": "the same tracking number twice",
+        "too_many": "too many rows (5,000 at most)",
+        "empty": "no rows",
+        "unknown_tracking": "no shipment with this number",
+        "not_booked": "the shipment isn't booked yet",
+        "other": "can't be applied"
+      }
+    },
+    "scorecard": {
+      "title": "Couriers by zone",
+      "hint": "Shipments booked in the period: delivered rate (delivered of those that ended), returns, still out and days to deliver.",
+      "period": "Period",
+      "lastDays": "{days} days",
+      "zone": "Zone",
+      "unknownZone": "No zone",
+      "shipments": "Shipments",
+      "deliveredRate": "Delivered",
+      "inFlight": "Still out",
+      "days": "Days to deliver",
+      "pct": "{v}%",
+      "counts": "{delivered} delivered · {returned} back",
+      "summary": "{shipments} shipments · {rate} delivered · {rto} back",
+      "empty": {
+        "title": "No shipments in this period",
+        "body": "The scorecard fills as couriers deliver."
+      }
+    },
+    "ready": {
+      "title": "Ready to ship",
+      "loading": "Loading orders ready to ship",
+      "cod": "To collect",
+      "ship": "Ship with the courier",
+      "more": "Show more",
+      "empty": {
+        "title": "Nothing waiting to ship",
+        "body": "Confirmed orders with stock show here, ready for the courier."
+      },
+      "askTitle": "Ship {count, plural, one {# order} other {# orders}}?",
+      "askBody": "Mizan books the courier for each order with the cash it should collect. Orders that can't ship yet are skipped, and you'll see why.",
+      "go": "Ship them",
+      "close": "Not now"
+    },
+    "history": {
+      "open": "History",
+      "title": "History of {number}",
+      "close": "Close",
+      "loading": "Loading…",
+      "empty": "No status yet.",
+      "courierSaid": "The courier sent:",
+      "source": {
+        "webhook": "From the courier",
+        "poll": "Checked with the courier",
+        "ops": "Set by the team"
+      }
+    }
+  },
+  "exchanges": {
+    "title": "Exchanges",
+    "new": "Exchange",
+    "none": "Nothing exchanged from this order.",
+    "replacementOf": "Replacement in an exchange for <link></link>",
+    "to": "Exchanged for <link></link>",
+    "credit": "Credit moved <m></m>",
+    "collect": "to collect <m></m>",
+    "refundDue": "refund due <m></m>",
+    "status": {
+      "awaiting_return": "Waiting for the items",
+      "returned": "Items back"
+    },
+    "form": {
+      "title": "Exchange from {number}",
+      "body": "What comes back, and what the customer gets instead. What they already paid moves as credit; the difference is collected on delivery.",
+      "back": "Coming back",
+      "of": "of {n}",
+      "backQty": "Units of {title} coming back",
+      "instead": "Instead",
+      "pick": "Pick a product",
+      "qty": "Qty",
+      "shipping": "Shipping the customer pays",
+      "shippingHint": "0 when the store pays",
+      "reason": "Reason",
+      "note": "Note",
+      "money": "The replacement is a new confirmed order linked to",
+      "save": "Create the exchange",
+      "cancel": "Cancel",
+      "created": "Replacement {number} created",
+      "other": "Another item (not in the catalogue)",
+      "itemTitle": "Item",
+      "unitPrice": "Unit price"
+    }
+  },
+  "door": {
+    "title": "At the door",
+    "none": "Record what happened if the customer kept only part, or refused.",
+    "partial": {
+      "open": "Kept part",
+      "title": "The customer kept part of the order",
+      "body": "Pick what they kept. They owe for that (plus shipping); the courier's cash goes in the ledger and the rest comes back for inspection.",
+      "kept": "Kept",
+      "of": "of {n}",
+      "keptQty": "Units of {title} kept",
+      "all": "They kept everything: that is a full delivery.",
+      "note": "Note",
+      "save": "Record",
+      "cancel": "Cancel",
+      "saved": "Partial delivery recorded",
+      "done": "Delivered in part: {n} kept, owes <m></m>"
+    },
+    "refusal": {
+      "open": "Refused",
+      "correct": "Correct the refusal",
+      "title": "Refused at the door",
+      "body": "Why the customer refused, and whether they opened the parcel first.",
+      "reason": "Reason",
+      "openBoxLabel": "They opened the box to inspect it first",
+      "note": "Note",
+      "save": "Record",
+      "cancel": "Cancel",
+      "saved": "Refusal recorded",
+      "done": "Refused: {reason}",
+      "openBox": "Opened the box"
+    }
+  },
+  "supportBanner": {
+    "read": "Mizan support can view your store until <n>{until}</n> (read only): <r>{reason}</r>",
+    "write": "Mizan support can view and change your store until <n>{until}</n>: <r>{reason}</r>",
+    "end": "End access"
+  },
+  "announcements": {
+    "more": "Read more",
+    "hide": "Hide"
+  },
+  "storeSync": {
+    "title": "Store sync",
+    "subtitle": "What Mizan writes back to each Shopify store as the courier reports. The customer sees it on their order page and in Shopify's shipping emails.",
+    "loading": "Loading…",
+    "saved": "Saved",
+    "progressEvents": {
+      "label": "Courier progress on the order",
+      "hint": "Picked up, in transit, out for delivery, delivery attempts, delivered, and failures (refused, lost)."
+    },
+    "markPaidOnDelivery": {
+      "label": "Mark cash on delivery orders paid",
+      "hint": "When the courier delivers and collects the cash."
+    },
+    "tagReturned": {
+      "label": "Tag returned orders",
+      "hint": "Adds the tag mizan-returned when the parcel is back."
+    },
+    "tagLost": {
+      "label": "Tag lost orders",
+      "hint": "Adds the tag mizan-lost when the courier loses the parcel."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners and admins manage store sync."
+    },
+    "none": {
+      "title": "No Shopify store connected",
+      "body": "Connect a store first; its switches show here."
+    }
+  },
+  "team": {
+    "title": "Team",
+    "subtitle": "Who works in your store and what each can do. An invitation link only works for the email or phone it was sent to.",
+    "loading": "Loading the team…",
+    "inviteBy": "Invite by",
+    "via": {
+      "phone": "Phone",
+      "email": "Email"
+    },
+    "phoneHint": "Egyptian, Saudi or Emirati mobile: 010…, +966…, +971…",
+    "role": "Role",
+    "invite": "Send invitation",
+    "invited": "Invitation created. Share its link with them.",
+    "saved": "Saved",
+    "removed": "Removed from the store",
+    "revoked": "Invitation revoked",
+    "col": {
+      "person": "Person",
+      "role": "Role",
+      "status": "Status",
+      "joined": "Joined"
+    },
+    "status": {
+      "active": "Active",
+      "invited": "Invited",
+      "disabled": "Disabled"
+    },
+    "you": "You",
+    "disable": "Disable",
+    "enable": "Enable",
+    "remove": "Remove",
+    "pending": "Pending invitations",
+    "noPending": "No pending invitations.",
+    "expires": "Expires <date></date>",
+    "copyLink": "Copy link",
+    "copied": "Link copied",
+    "revoke": "Revoke",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners and admins manage the team."
+    }
+  },
+  "integrationsSettings": {
+    "title": "Integrations",
+    "subtitle": "Your store, courier and WhatsApp connections, and anything that needs you.",
+    "loading": "Loading…",
+    "updated": "Updated",
+    "fix": "Fix it",
+    "missingScopes": "Shopify needs your approval for:",
+    "replayed": "Queued again",
+    "providers": {
+      "shopify": "Shopify",
+      "bosta": "Bosta",
+      "meta_whatsapp": "WhatsApp",
+      "whatsapp": "WhatsApp",
+      "woocommerce": "WooCommerce"
+    },
+    "status": {
+      "active": "Connected",
+      "pending": "Checking",
+      "needs_attention": "Needs attention",
+      "disconnected": "Disconnected"
+    },
+    "reasons": {
+      "key_refused": "The courier refused the key. Paste a new one.",
+      "key_lacks_permission": "The key lacks a permission Mizan needs.",
+      "app_uninstalled": "The Mizan app was removed from Shopify. Connect again.",
+      "scopes_changed": "Mizan needs new permissions in Shopify. Connect again to approve them."
+    },
+    "none": {
+      "title": "Nothing connected yet",
+      "body": "Connect your Shopify store and your courier to start.",
+      "action": "Go to setup"
+    },
+    "dead": {
+      "title": "Jobs that need you",
+      "subtitle": "Work that failed after its retries (for example a city the courier didn't know). Fix the cause, then send it again.",
+      "none": "Nothing waiting.",
+      "replay": "Send again"
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and ops managers see integrations."
+    },
+    "woo": {
+      "open": "Connect a WooCommerce store",
+      "newKeys": "Paste new keys",
+      "title": "Connect WooCommerce",
+      "body": "Mizan reads your orders with REST API keys and sets up the store's webhooks itself.",
+      "steps": {
+        "one": "In WordPress, open WooCommerce → Settings → Advanced → REST API, and choose Add key.",
+        "two": "Give it a name (Mizan), pick your user, set Permissions to Read/Write, then Generate API key.",
+        "three": "Copy the consumer key and secret here. WooCommerce shows the secret once."
+      },
+      "site": "Store address",
+      "sitePlaceholder": "https://shop.example.com",
+      "key": "Consumer key",
+      "secret": "Consumer secret",
+      "secretHint": "Stored encrypted; never shown again.",
+      "keyInvalid": "A consumer key starts with ck_",
+      "secretInvalid": "A consumer secret starts with cs_",
+      "connect": "Connect",
+      "cancel": "Not now",
+      "saved": "Saved. Mizan is checking the keys and bringing in your orders.",
+      "reasons": {
+        "key_refused": "The store refused the keys. Create new Read/Write keys and paste them.",
+        "key_lacks_permission": "The keys are read-only or blocked by the site's firewall. Use Read/Write keys."
+      },
+      "approveBody": "Approve Mizan in your WooCommerce admin. Mizan gets Read/Write keys by itself and sets up the store's webhooks.",
+      "approveHint": "You'll sign in to WordPress if needed, approve, and come back here.",
+      "approve": "Approve in WooCommerce",
+      "useKeys": "Paste keys instead",
+      "useApprove": "Approve in WooCommerce instead",
+      "approved": "WooCommerce approved Mizan. Checking the store and bringing in your orders.",
+      "denied": "WooCommerce didn't approve Mizan. Try again or paste keys."
+    },
+    "engine": {
+      "title": "Sync engine",
+      "subtitle": "Whether calls to the store and the courier are going through, the queue, and fields that changed shape.",
+      "loading": "Loading",
+      "notConnected": "Connect a store to see the sync engine.",
+      "store": "Store",
+      "courier": "Courier",
+      "pending": "Jobs waiting",
+      "dead": "Jobs that need you",
+      "drift": "Changed fields",
+      "noDrift": "Nothing changed shape.",
+      "times": "{n, plural, one {once} other {# times}}",
+      "circuit": {
+        "closed": "Working",
+        "half_open": "Trying again",
+        "open": "Paused after errors"
+      }
+    },
+    "city": {
+      "open": "Pick the city",
+      "title": "Pick the courier's city",
+      "body": "The courier didn't recognise <b>{text}</b>. Pick its city once; Mizan remembers it for every later order and sends this shipment again.",
+      "search": "Search the courier's cities",
+      "pick": "Cities",
+      "loading": "Loading",
+      "cancel": "Cancel",
+      "save": "Save and send again",
+      "saved": "City saved; the shipment is on its way again"
+    }
+  },
+  "auditLog": {
+    "title": "Audit log",
+    "subtitle": "Who did what in your store, newest first, including anything Mizan's team did.",
+    "loading": "Loading…",
+    "filter": "Show",
+    "all": "Everything",
+    "more": "Older",
+    "families": {
+      "member": "Team",
+      "connection": "Integrations",
+      "customer": "Customer data",
+      "order": "Orders",
+      "refund": "Refunds",
+      "payment": "Payments",
+      "shipment": "Shipping",
+      "store": "Store and plan",
+      "support": "Mizan support access",
+      "user": "Sign-in"
+    },
+    "col": {
+      "when": "When",
+      "who": "Who",
+      "what": "What",
+      "on": "On"
+    },
+    "actor": {
+      "mizan": "Mizan team",
+      "someone": "A team member",
+      "system": "Mizan",
+      "api_key": "API key",
+      "automation": "Automation"
+    },
+    "actions": {
+      "member": {
+        "invited": "Invited someone",
+        "invitation_revoked": "Revoked an invitation",
+        "joined": "Joined the store",
+        "updated": "Changed a member",
+        "removed": "Removed a member"
+      },
+      "connection": {
+        "connected": "Connected an integration",
+        "disconnected": "Disconnected an integration",
+        "needs_attention": "An integration needs attention",
+        "sync_updated": "Changed store sync",
+        "key_saved": "Saved a key",
+        "secret_rotated": "Rotated a key"
+      },
+      "customer": {
+        "pii_viewed": "Viewed a customer's contact"
+      },
+      "store": {
+        "suspended": "Suspended the store",
+        "reactivated": "Reactivated the store",
+        "plan_changed": "Changed the plan"
+      },
+      "support": {
+        "access_started": "Opened support access",
+        "access_ended": "Ended support access"
+      },
+      "user": {
+        "sign_in_disabled": "Stopped someone's sign-in",
+        "sign_in_enabled": "Allowed someone's sign-in again"
+      },
+      "refund": {
+        "requested": "Requested a refund",
+        "approved": "Approved a refund",
+        "rejected": "Rejected a refund",
+        "completed": "Completed a refund"
+      },
+      "export": {
+        "created": "Exported data"
+      },
+      "tenant": {
+        "created": "Created the store",
+        "updated": "Changed the store",
+        "settings_updated": "Changed store settings"
+      }
+    },
+    "empty": {
+      "title": "Nothing yet",
+      "body": "Changes to your store show here."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners and admins see the audit log."
+    }
+  },
+  "storeProfile": {
+    "title": "Store",
+    "subtitle": "Your store's name, time zone and the language of messages to your customers.",
+    "loading": "Loading…",
+    "saved": "Saved",
+    "name": "Store name",
+    "timezone": "Time zone",
+    "timezoneHint": "Where a day starts and ends for reports and plan usage.",
+    "locale": "Customer messages",
+    "localeHint": "The language of WhatsApp confirmations and documents your customers get.",
+    "locales": {
+      "ar": "Arabic",
+      "en": "English"
+    },
+    "save": "Save",
+    "readOnly": "Owners and admins change these.",
+    "country": "Country",
+    "currency": "Currency",
+    "address": "Store address",
+    "fixed": "Country and currency stay as you signed up: prices, costs and profit are kept in this currency.",
+    "zones": {
+      "Africa_Cairo": "Cairo",
+      "Asia_Riyadh": "Riyadh",
+      "Asia_Dubai": "Dubai",
+      "Asia_Kuwait": "Kuwait",
+      "Asia_Qatar": "Doha",
+      "Asia_Bahrain": "Bahrain",
+      "Asia_Muscat": "Muscat",
+      "Asia_Amman": "Amman",
+      "Africa_Casablanca": "Casablanca"
+    }
+  },
+  "purchasing": {
+    "title": "Purchase orders",
+    "subtitle": "What you're buying, from whom, and what has arrived.",
+    "loading": "Loading",
+    "back": "Purchase orders",
+    "notFound": "This purchase order isn't in this store",
+    "newPo": "New PO",
+    "suppliers": "Suppliers",
+    "tabsLabel": "Purchase orders by status",
+    "late": "Late",
+    "itemsUnits": "{items, plural, one {# item} other {# items}} · {units, plural, one {# unit} other {# units}}",
+    "receivedPct": "{pct}% received",
+    "details": "Details",
+    "lines": "Items",
+    "needsOwner": "Above the approval limit or in another currency: the owner or an admin approves it.",
+    "needsOwnerTag": "Owner approves",
+    "cancel": "Cancel",
+    "cancelConfirm": "Cancel {number}? It can't be undone.",
+    "created": "{number} saved as a draft",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers, finance and the warehouse see purchase orders.",
+      "managers": "Owners, admins and ops managers create purchase orders.",
+      "suppliers": "Owners, admins, ops managers and finance see suppliers."
+    },
+    "view": {
+      "open": "Coming",
+      "draft": "Drafts",
+      "received": "Received",
+      "cancelled": "Cancelled",
+      "all": "All"
+    },
+    "status": {
+      "draft": "Draft",
+      "approved": "Approved",
+      "sent": "Sent",
+      "partially_received": "Partly received",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
+    "columns": {
+      "po": "PO",
+      "supplier": "Supplier",
+      "items": "Items",
+      "total": "Total",
+      "expected": "Expected",
+      "received": "Received",
+      "status": "Status",
+      "item": "Item",
+      "ordered": "Ordered",
+      "receivedQty": "Received",
+      "damaged": "Damaged",
+      "unitCost": "Unit cost",
+      "withLanded": "With landed"
+    },
+    "empty": {
+      "title": "No purchase orders here",
+      "body": "Purchase orders you create show up here."
+    },
+    "emptyOpen": {
+      "title": "Nothing on its way",
+      "body": "Approved and sent purchase orders wait here until everything arrives."
+    },
+    "noSuppliers": {
+      "title": "Add a supplier first",
+      "body": "A purchase order is from a supplier: add who you buy from, their currency and lead time.",
+      "cta": "Add a supplier"
+    },
+    "fields": {
+      "supplier": "Supplier",
+      "currency": "Currency",
+      "expectedAt": "Expected on",
+      "notes": "Notes",
+      "quantity": "Qty",
+      "unitCost": "Unit cost ({currency})",
+      "created": "Created",
+      "approvedAt": "Approved",
+      "sentAt": "Sent",
+      "receivedAt": "Fully received"
+    },
+    "new": {
+      "title": "New purchase order",
+      "subtitle": "Saved as a draft; approve it, then mark it sent.",
+      "supplier": "Supplier and delivery",
+      "pickSupplier": "Choose a supplier",
+      "currencyHint": "The supplier's currency unless you change it",
+      "items": "Items",
+      "pickItem": "Add an item",
+      "noProducts": "No product matches",
+      "pickPlaceholder": "Product name or SKU",
+      "remove": "Remove {title}",
+      "empty": "No items yet: add what you're buying.",
+      "summary": "Summary",
+      "draftHint": "Nothing is ordered until it's approved and sent.",
+      "save": "Save draft"
+    },
+    "errors": {
+      "supplier": "Choose a supplier",
+      "lines": "Add at least one item",
+      "fixLines": "Fix the items marked above",
+      "quantity": "A whole number from 1",
+      "amount": "An amount like 90 or 90.50",
+      "count": "A whole number",
+      "name": "Enter the supplier's name",
+      "currency": "3 letters, like EGP or USD"
+    },
+    "receipts": {
+      "title": "Deliveries",
+      "number": "Delivery {n}",
+      "units": "{units, plural, one {# unit} other {# units}} into stock",
+      "damaged": "{n} damaged",
+      "viaApp": "Ops app",
+      "over": "More than ordered",
+      "fxMissing": "Cost waiting for an FX rate",
+      "rate": "Rate",
+      "none": "Nothing received yet."
+    },
+    "next": {
+      "title": "Next step",
+      "draft": "Check the items and prices, then approve.",
+      "draftOwner": "This one needs the owner or an admin to approve.",
+      "approved": "Approved. Mark it sent once the supplier has it.",
+      "receive": "When the delivery arrives, receive it here or scan it in the ops app.",
+      "received": "Everything arrived. Stock and costs are updated.",
+      "cancelled": "Cancelled."
+    },
+    "actions": {
+      "approve": "Approve",
+      "send": "Mark as sent",
+      "receive": "Receive delivery",
+      "cancel": "Cancel PO",
+      "cancelYes": "Yes, cancel",
+      "keep": "Keep it",
+      "edit": "Edit draft"
+    },
+    "done": {
+      "approve": "Approved",
+      "send": "Marked as sent",
+      "cancel": "Cancelled"
+    },
+    "receive": {
+      "title": "Receive {number}",
+      "description": "Count what arrived. Good units go into stock; damaged ones are recorded only.",
+      "left": "{n} still expected",
+      "good": "Good",
+      "damaged": "Damaged",
+      "allowOver": "Take in more than ordered (manager)",
+      "overError": "That's more than ordered. A manager can take it in.",
+      "costHint": "Each item's cost moves to the average with this delivery, at today's exchange rate.",
+      "save": "Receive",
+      "done": "Delivery received",
+      "doneAll": "Delivery received: the PO is complete"
+    },
+    "supplier": {
+      "name": "Name",
+      "leadTime": "Lead time (days)",
+      "days": "{n, plural, one {# day} other {# days}}",
+      "contact": "Contact",
+      "openOrders": "Open POs",
+      "edit": "Edit",
+      "subtitle": "Who you buy from, in which currency, and how long they take.",
+      "new": "Add supplier",
+      "active": "Active",
+      "archived": "Archived",
+      "noneArchived": "No archived suppliers",
+      "editTitle": "Edit supplier",
+      "archive": "Archive",
+      "restore": "Restore",
+      "save": "Save",
+      "archivedDone": "Supplier archived",
+      "restored": "Supplier restored",
+      "saved": "Saved",
+      "exists": "A supplier with this name already exists",
+      "currencyHint": "What they invoice in, like EGP or USD",
+      "leadTimeHint": "From sending the PO to delivery",
+      "contactName": "Contact person",
+      "phone": "Phone",
+      "email": "Email",
+      "terms": "Payment terms"
+    },
+    "saved": "Saved",
+    "edit": {
+      "title": "Edit {number}",
+      "subtitle": "Only a draft can change; approval checks the new total.",
+      "save": "Save changes",
+      "notDraft": {
+        "title": "Only a draft can be edited",
+        "body": "This purchase order was approved: its items and prices are final."
+      }
+    },
+    "landed": {
+      "title": "Landed costs",
+      "hint": "Freight, customs and fees, spread into the unit cost of what arrives after they are added.",
+      "atReceipt": "At receipt",
+      "added": "Landed cost added",
+      "removed": "Landed cost removed",
+      "kindLabel": "Kind",
+      "amount": "Amount",
+      "allocate": "Spread by",
+      "description": "Note",
+      "add": "Add cost",
+      "remove": "Remove {kind}",
+      "kind": {
+        "freight": "Freight",
+        "customs": "Customs",
+        "insurance": "Insurance",
+        "clearance": "Clearance",
+        "other": "Other"
+      },
+      "by": {
+        "value": "By value",
+        "quantity": "By quantity"
+      }
+    },
+    "reorder": {
+      "title": "Reorder",
+      "subtitle": "Items that will run out before a new delivery could arrive: sales over the last {velocity} days, the supplier's lead time and {safety} days of safety stock. The quantity covers lead time plus {target} days.",
+      "empty": {
+        "title": "Nothing to reorder",
+        "body": "Every counted item has enough stock, or stock on its way, for its lead time and safety days."
+      },
+      "noSupplier": "No supplier yet",
+      "noSupplierHint": "These were never on a purchase order: add them to one by hand and next time they show under their supplier.",
+      "pick": "Order {title}",
+      "numbers": "{available} available · {incoming} on the way · {velocity} a day · {lead} days lead time",
+      "lastPrice": "last price",
+      "cover": "{days, plural, =0{Out now} =1{1 day left} other{# days left}}",
+      "quantity": "Quantity",
+      "pack": "In packs of {n}",
+      "draft": "{count, plural, =1{Draft a PO with 1 item} other{Draft a PO with # items}}"
+    }
+  },
+  "purchasingSettings": {
+    "title": "Purchasing",
+    "subtitle": "Who approves what the store buys.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "approveOver": "Owner approval over (store currency)",
+    "approveOverHint": "0 means every purchase order needs the owner or an admin",
+    "rules": {
+      "under": "Under it, an ops manager can approve a purchase order too.",
+      "over": "Over it, only the owner or an admin approves.",
+      "foreign": "A purchase order in another currency always needs the owner or an admin."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers and finance see purchasing settings."
+    },
+    "reorder": {
+      "title": "Reorder rule",
+      "hint": "How Mizan decides what to suggest buying.",
+      "velocityDays": "Sales window (days)",
+      "safetyDays": "Safety stock (days)",
+      "targetCoverDays": "Target cover (days)",
+      "days": "Days, a whole number"
+    }
+  },
+  "conversion": {
+    "title": "Convert to prepaid",
+    "hint": "Ask the customer to pay all, or a deposit, before shipping: fewer refusals at the door.",
+    "offered": "Offer ready: send the message",
+    "cancelled": "Offer withdrawn",
+    "copied": "Copied",
+    "copy": "Copy message",
+    "cancel": "Withdraw offer",
+    "whenPaid": "When the money arrives, record it in Payments on this order: the offer closes and the courier collects less.",
+    "setUp": "Set up where customers pay first:",
+    "setUpLink": "Settings → Payments",
+    "owed": "The courier would collect",
+    "what": "Ask for",
+    "depositAmount": "Deposit",
+    "depositHint": "Default <amount></amount>",
+    "how": "Pay by",
+    "offer": "Make the offer",
+    "until": "Open until",
+    "noInstructions": "Add where to pay by this method in Settings → Payments.",
+    "status": {
+      "open": "Waiting for payment",
+      "paid": "Paid",
+      "expired": "Expired",
+      "cancelled": "Withdrawn"
+    },
+    "purpose": {
+      "full": "All of it",
+      "deposit": "A deposit"
+    },
+    "method": {
+      "instapay": "InstaPay",
+      "wallet": "Mobile wallet",
+      "bank_transfer": "Bank transfer",
+      "link": "Payment link"
+    },
+    "reason": {
+      "not_cod": "Only cash-on-delivery orders are converted.",
+      "nothing_owed": "Nothing is left to collect.",
+      "already_shipped": "This order has already left.",
+      "closed": "This order is cancelled."
+    }
+  },
+  "conversionSettings": {
+    "title": "Payments",
+    "subtitle": "Converting COD orders: where customers pay, the deposit and how long an offer stays open.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "methodsTitle": "Where customers pay",
+    "methodsHint": "Only what you fill in is offered. These are the store's details, shown to the customer.",
+    "hints": {
+      "instapay": "Your InstaPay address, e.g. store@instapay",
+      "wallet": "The wallet number",
+      "bank_transfer": "Bank, account name and IBAN",
+      "link": "A payment page you already have (https://…)"
+    },
+    "depositPct": "Deposit (% of what is owed)",
+    "expiresHours": "Offer open for (hours)",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers and finance see payment settings."
+    }
+  },
+  "disputes": {
+    "title": "Chargebacks",
+    "none": "No chargebacks on this order.",
+    "record": "Record a chargeback",
+    "queueTitle": "Chargebacks to answer ({count})",
+    "missed": "Deadline missed",
+    "daysLeft": "{days, plural, =0 {Due today} one {# day left} other {# days left}}",
+    "evidenceSent": "Evidence sent",
+    "feeShort": "Fee",
+    "pack": "Evidence pack",
+    "markSent": "Evidence sent",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Record",
+    "recordTitle": "Record a chargeback",
+    "recordHint": "The gateway or bank took money back from this order. It leaves the payments and counts against profit.",
+    "amount": "Amount taken back ({currency})",
+    "held": "The store holds <amount></amount> on this order",
+    "fee": "Chargeback fee ({currency})",
+    "feeHint": "What the gateway charges for the case; a cost in profit",
+    "reasonLabel": "Reason given",
+    "respondBy": "Respond by",
+    "caseId": "Case number",
+    "caseHint": "From the gateway: the same case is never recorded twice",
+    "note": "Note",
+    "recorded": "{number} recorded",
+    "errors": {
+      "overChargeback": "That is more than the store holds on this order.",
+      "otherOrder": "This case number is already on another order.",
+      "amount": "Enter an amount like 250 or 250.50."
+    },
+    "sent": "Marked as sent",
+    "sentTitle": "Evidence for {number}",
+    "sentNote": "How it was sent",
+    "sentNoteHint": "For example: uploaded on the gateway's portal. No card numbers.",
+    "closeTitle": "Close {number}",
+    "outcome": "Outcome",
+    "outcomeHint": {
+      "won": "The gateway gave the money back: it returns to the payments. The fee stays a cost.",
+      "lost": "The gateway kept the money.",
+      "accepted": "Not contested: the money stays out."
+    },
+    "closed": {
+      "won": "Won: the money is back",
+      "lost": "Closed as lost",
+      "accepted": "Closed as accepted"
+    },
+    "status": {
+      "open": "Open",
+      "evidence_submitted": "Evidence sent",
+      "won": "Won",
+      "lost": "Lost",
+      "accepted": "Accepted"
+    },
+    "reason": {
+      "fraud": "Fraud (not the cardholder)",
+      "not_received": "Not received",
+      "not_as_described": "Not as described",
+      "duplicate": "Charged twice",
+      "cancelled": "Cancelled order",
+      "other": "Other"
+    },
+    "notAllowed": "Owners, admins and finance open evidence packs.",
+    "loading": "Loading",
+    "backToOrder": "Back to the order",
+    "print": "Print or save as PDF",
+    "generated": "prepared",
+    "packTitle": "Evidence for chargeback {number}",
+    "packFor": "Order",
+    "sections": {
+      "order": "The order",
+      "customer": "Delivered to",
+      "delivery": "Delivery",
+      "chat": "Confirmation with the customer",
+      "payments": "Payments"
+    },
+    "fields": {
+      "placed": "Placed",
+      "status": "Status",
+      "confirmed": "Confirmed",
+      "shipped": "Shipped",
+      "delivered": "Delivered",
+      "total": "Total",
+      "name": "Name",
+      "phone": "Phone",
+      "address": "Address"
+    },
+    "redacted": "The customer's details were deleted on their request.",
+    "noShipment": "No shipment recorded.",
+    "noChat": "No confirmation messages.",
+    "confirmationRun": "Confirmation",
+    "fromCustomer": "From the customer",
+    "toCustomer": "To the customer",
+    "outcomes": {
+      "confirmed": "confirmed",
+      "changed": "asked for a change",
+      "cancelled": "cancelled",
+      "wrong_number": "wrong number",
+      "no_reply": "no reply"
+    },
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "call_team": "team call",
+      "call_auto": "automatic call",
+      "voice": "call",
+      "agent": "team",
+      "link": "link"
+    },
+    "actions": {
+      "confirm": "confirmed",
+      "change": "asked for a change",
+      "cancel": "cancelled",
+      "keep": "kept the order",
+      "reason": "gave a reason",
+      "note": "sent a note"
+    },
+    "messageStatus": {
+      "accepted": "accepted",
+      "sent": "sent",
+      "delivered": "delivered",
+      "read": "read",
+      "failed": "failed",
+      "received": "received"
+    },
+    "footer": "Prepared by Mizan from the store's records. Message contents are not stored; the exchange shows what was sent and tapped.",
+    "times": "× {n}",
+    "phoneEnds": "ending <n>{last4}</n>"
+  },
+  "adsRoas": {
+    "title": "Ads: true ROAS",
+    "subtitle": "What your ads really brought: orders followed to delivery and cash, not the checkouts the ad platform counts.",
+    "enterSpend": "Enter ad spend",
+    "period": "Period",
+    "days": "{days} days",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load ROAS.",
+    "notAllowed": {
+      "title": "You can't see ad results",
+      "body": "Owners, admins, ops managers and finance see them."
+    },
+    "empty": {
+      "title": "No ad spend in this period",
+      "body": "Enter each day's spend per platform, or import the CSV from Ads Manager, and Mizan follows those days' orders to the cash."
+    },
+    "fxMissing": "Some spend is in a currency without an exchange rate for its day; it is left out until you add the rate.",
+    "none": "—",
+    "times": "<n>{v}</n>×",
+    "kpi": {
+      "true": "True ROAS",
+      "trueHint": "<real></real> arrived ÷ <spend></spend> spent",
+      "reported": "What the platform would show",
+      "reportedHint": "Every checkout at full value ÷ spend",
+      "projected": "Expected when all arrive",
+      "projectedHint": "{moving, plural, =0 {No orders still on their way} one {# order still on its way, at your delivery rate} other {# orders still on their way, at your delivery rate}}",
+      "perDelivered": "Ad cost per delivered order",
+      "perOrder": "<cost></cost> per order placed"
+    },
+    "gap": "<b>{lost}</b>% of the {placed} orders from these days never paid (cancelled, refused or returned). The platform would show <b>{reported}</b>×; what arrived is <b>{real}</b>×.",
+    "daysTitle": "By day",
+    "col": {
+      "day": "Day",
+      "spend": "Spend",
+      "orders": "Orders",
+      "delivered": "Delivered",
+      "real": "Arrived",
+      "roas": "True ROAS"
+    },
+    "platformsTitle": "Spend by platform",
+    "share": "{pct}%",
+    "platform": {
+      "meta": "Meta",
+      "tiktok": "TikTok",
+      "google": "Google",
+      "snapchat": "Snapchat",
+      "other": "Other"
+    },
+    "perCampaignSoon": "Each order's source is below. ROAS per campaign needs spend per campaign (the CSV with campaign columns), the next step.",
+    "ordersTitle": "These days' orders",
+    "orders": {
+      "placed": "Placed",
+      "delivered": "Delivered",
+      "moving": "Still on their way",
+      "returned": "Refused or returned",
+      "cancelled": "Cancelled",
+      "net": "Net profit, ads included"
+    },
+    "note": "Orders count on the day they were placed, like the profit screen. Money that arrived = paid before delivery, or cash delivered, less refunds.",
+    "timesUnit": "×"
+  },
+  "sources": {
+    "title": "Where orders came from",
+    "subtitle": "Each order's source from the store's own records: the ad click, the campaign tags, the site that sent the visitor.",
+    "known": "We know the source of <b>{pct}</b>% of the <b>{orders}</b> orders placed in these days.",
+    "loading": "Loading",
+    "loadFailed": "Couldn't load where orders came from.",
+    "none": "—",
+    "times": "<n>{v}</n>×",
+    "pct": "{pct}%",
+    "paidOf": "{n} from ads",
+    "platformsTitle": "By source",
+    "campaignsTitle": "By campaign",
+    "col": {
+      "platform": "Source",
+      "orders": "Orders",
+      "share": "Share",
+      "delivered": "Delivered",
+      "rate": "Delivered rate",
+      "real": "Arrived",
+      "net": "Net profit",
+      "roas": "True ROAS",
+      "campaign": "Campaign"
+    },
+    "empty": {
+      "title": "No orders in these days",
+      "body": "Once orders arrive, each one's source shows here."
+    },
+    "noCampaigns": {
+      "title": "No campaign tags yet",
+      "body": "Add UTM tags to your ad links (utm_source, utm_campaign) and each campaign's orders and delivered money show here."
+    },
+    "backfill": "Read recent orders again",
+    "backfillStarted": "Reading the last {days} days of orders again. Their sources fill in over the next minutes.",
+    "backfillFailed": "Couldn't start reading orders again. Try again.",
+    "card": {
+      "title": "Where it came from",
+      "unknown": "The store didn't record where this order came from.",
+      "paid": "Ad",
+      "organic": "Organic",
+      "rule": "How we know",
+      "campaign": "Campaign",
+      "ad": "Ad",
+      "tags": "Tags",
+      "referrer": "Came from",
+      "landing": "Landed on",
+      "first": "First visit from",
+      "codes": "Codes",
+      "rules": {
+        "click_id": "Ad click",
+        "utm": "Campaign tags",
+        "referrer": "The site that sent them",
+        "store": "The store's records",
+        "channel": "Sales channel",
+        "none": "Nothing recorded"
+      }
+    },
+    "platform": {
+      "meta": "Meta (Facebook, Instagram)",
+      "tiktok": "TikTok",
+      "snapchat": "Snapchat",
+      "google": "Google",
+      "microsoft": "Microsoft Bing",
+      "x": "X (Twitter)",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "sms": "SMS",
+      "search": "Other search",
+      "social": "Other social",
+      "referral": "Another website",
+      "direct": "Direct visit",
+      "pos": "In store",
+      "manual": "Typed by the team",
+      "unknown": "Unknown"
+    }
+  },
+  "orderSettings": {
+    "title": "Orders",
+    "subtitle": "How orders are handled as they arrive.",
+    "loading": "Loading",
+    "save": "Save",
+    "saved": "Saved",
+    "window": "Likely duplicate within (hours)",
+    "windowHint": "0 turns the check off; at most 168 (7 days)",
+    "windowInvalid": "A whole number from 0 to 168",
+    "rules": {
+      "same": "The same customer ordering the same product again within this time is flagged as a likely duplicate.",
+      "keep": "The team keeps both or merges the newer into the earlier; nothing is cancelled on its own.",
+      "off": "Confirmation never messages the customer twice for a flagged order.",
+      "from": "A change applies to orders that arrive from now on."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and ops managers set how orders are handled."
+    }
+  },
+  "privacySettings": {
+    "title": "Privacy",
+    "subtitle": "Customers' requests to see or delete their data, and when each is due. Mizan carries them out; this is the record.",
+    "loading": "Loading",
+    "completed": "Done",
+    "download": "Download",
+    "columns": {
+      "source": "Request",
+      "status": "Status",
+      "due": "Due",
+      "export": "Their data"
+    },
+    "source": {
+      "shopify_customers_data_request": "Data request (Shopify)",
+      "shopify_customers_redact": "Delete a customer (Shopify)",
+      "shopify_shop_redact": "Delete the store's data (Shopify)",
+      "merchant": "From the store",
+      "customer": "From the customer"
+    },
+    "status": {
+      "received": "Received",
+      "in_progress": "In progress",
+      "done": "Done",
+      "rejected": "Rejected"
+    },
+    "empty": {
+      "title": "No requests",
+      "body": "When a customer asks for their data or to be deleted, the request shows here."
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Only owners and admins see privacy requests."
+    }
+  },
+  "pickLists": {
+    "title": "Pick lists",
+    "subtitle": "Batch the confirmed orders ready to pack, pick by shelf, and pack by scan in the ops app.",
+    "backToStock": "Stock",
+    "backToLists": "Pick lists",
+    "loading": "Loading",
+    "tabsLabel": "Pick lists by status",
+    "size": "Orders in the list",
+    "sizeHint": "The oldest confirmed orders ready to pack, up to 100",
+    "create": "New pick list",
+    "nothing": "No confirmed order is waiting to be picked.",
+    "number": "List #{n}",
+    "packedOf": "{packed} of {orders} packed",
+    "columns": {
+      "number": "List",
+      "packed": "Packed"
+    },
+    "status": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "empty": {
+      "open": {
+        "title": "No open lists",
+        "body": "Make one from the orders ready to pack."
+      },
+      "closed": {
+        "title": "No closed lists",
+        "body": "Lists show here once they're closed."
+      }
+    },
+    "print": "Print",
+    "close": "Close list",
+    "closed": "List closed",
+    "closeTitle": "Close list #{n}?",
+    "closeBody": "Orders not packed yet can go on a new list.",
+    "pick": "To pick",
+    "bin": "Shelf",
+    "item": "Item",
+    "qty": "Qty",
+    "allPacked": "Everything on this list is packed.",
+    "orders": "Orders",
+    "packed": "Packed",
+    "toPack": "To pack",
+    "times": "× {n}",
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins, ops managers and the warehouse work with pick lists."
+    }
+  },
+  "legal": {
+    "home": "Mizan home",
+    "description": "Mizan's terms of service, privacy policy and data processing agreement.",
+    "docs": {
+      "terms": "Terms of service",
+      "privacy": "Privacy policy",
+      "dpa": "Data processing agreement"
+    },
+    "draft": {
+      "title": "Draft under legal review — not in force yet.",
+      "body": "This text is being reviewed by our lawyers and may change before it applies."
+    },
+    "version": "Version <n>{version}</n>",
+    "nav": "Legal documents",
+    "otherLanguage": "Read in Arabic",
+    "newTab": "(opens in a new tab)",
+    "agree": "I agree to the <terms>Terms of service</terms> and the <dpa>Data processing agreement</dpa>",
+    "versionChanged": "The terms were just updated. Reload the page, read them, then try again.",
+    "gate": {
+      "title": "Accept the updated terms to continue",
+      "body": "<b>{store}</b> uses Mizan under these documents. Read them, then accept to keep using the store.",
+      "read": "Read the {doc}",
+      "accept": "Accept and continue",
+      "error": "We couldn't save your acceptance. Try again.",
+      "switchStore": "Or open another store",
+      "signOut": "Sign out"
+    },
+    "banner": "The store owner needs to accept the updated terms.",
+    "card": {
+      "title": "Legal",
+      "subtitle": "The terms and the data processing agreement your store accepted.",
+      "draft": "These documents are drafts under legal review and not in force yet.",
+      "notAccepted": "Not accepted yet",
+      "accepted": "Version <n>{version}</n>, accepted <n>{date}</n>",
+      "acceptedBy": "Version <n>{version}</n>, accepted <n>{date}</n> by <n>{name}</n>",
+      "privacy": "Privacy policy (a notice, nothing to accept)",
+      "loading": "Loading…"
+    }
+  }
+}

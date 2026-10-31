@@ -130,6 +130,11 @@ Ad platforms learn from the moment money is real, which depends on how the custo
 | Order delivered after the window | Delivered event still sent if platform accepts |
 | Same order clicked two ads | Last click wins by default |
 
+## Built so far
+
+- ✅ **M7-1 True ROAS** (`apps/api/src/modules/attribution/`, `GET /v1/attribution/roas`; web *Profit → Ads: true ROAS*, `/profit/ads`): the period's ad spend (entered by hand or CSV, E9-3; each day at its FX rate) against the orders placed in it, followed to the money. **True ROAS** = money that arrived (paid before delivery, or cash delivered, less refunds) ÷ spend; **reported ROAS** = every checkout at full value ÷ spend (what an ad platform credits); **projected** = true plus the still-moving orders' remaining value at the period's delivered rate; **ad cost per delivered order** next to per order placed; the share of orders that never paid; by day and platform. One formula in `roas.ts`, also in the metric layer (`true_roas`, `cost_per_delivered_order`, `ad_spend`) so reports agree. Per platform and campaign ROAS waits for M7-2.
+- Next: **M7-2** order source capture (UTM, fbclid/ttclid/gclid/ScCid from the store's order) and ROAS per platform and campaign, unattributed shown; **M7-3** conversion events (confirmed, delivered) to Meta, TikTok and Snap with the merchant's own token, hashed; **M7-4** spend import from the platforms' APIs (needs each platform's app approval, D-3).
+
 ## Acceptance criteria
 
 - [ ] Delivered ROAS per campaign matches a manual check on pilot data.

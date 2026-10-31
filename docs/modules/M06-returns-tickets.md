@@ -142,8 +142,10 @@ Every return or exchange settles money through M15. The ticket stays open until 
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/v1/tickets` | Open a ticket |
-| PATCH | `/v1/tickets/{id}` | Status, reason, assignee |
+| GET | `/v1/tickets` | List with status groups, late, search ✅ E10-1 |
+| POST | `/v1/tickets` | Open a ticket ✅ E10-1 |
+| GET | `/v1/tickets/{id}` | One ticket and its history ✅ E10-1 |
+| PATCH | `/v1/tickets/{id}` | Status, type, reason, assignee, note ✅ E10-1 |
 | POST | `/v1/returns/{id}/inspect` | Record inspection outcome |
 | POST | `/v1/exchanges` | Create linked replacement order |
 | POST | `/v1/refunds` | Request or issue a refund |
@@ -154,6 +156,27 @@ Conventions: `docs/05-api.md`.
 ## Entities
 
 `Ticket`, `Return`, `Inspection`, `Exchange`, `Refund`, `ReasonCode` — tables in `packages/db/migrations/`, mapping in `docs/04-data-model.md`.
+
+## Built (E10-1)
+
+- Tickets numbered per store (T-1001), types complaint, exchange, refund, delivery issue, return and **refused at the door** (open-box), the fixed reason codes above, where the case came from, an assignee and a 24-hour deadline (the default SLA; per-store setting later).
+- Statuses: open, waiting for customer, waiting for courier, in inspection, resolved, closed. Any working status to any other; resolved can be reopened; closed is final (notes still go on).
+- One open case of a kind per order: a second one points to the first (this covers "Duplicate ticket from same customer" for the same order).
+- History per ticket (`ticket_events`): opened, status, assigned, changed fields, notes. The description and notes stay on the ticket, never in events or the audit log.
+- Web: Tickets in the menu (tabs: open now, late, new, waiting, inspection, resolved, closed, all; search by ticket or order number), the ticket page (work on it, add a note, history), and the order's tickets card with "Open ticket".
+
+## Built (E10-3)
+
+- Inspection per order line (sellable, damaged, written off), never past what was shipped, from the order screen or the ops app (scan the item). Sellable units go back into stock; lost units' product cost lands on the order's profit; a returned order shows "awaiting inspection" until every unit is inspected; a delivered order's units sent back sellable come off its cost.
+- Damaged and written off both count as lost for now: B-grade stock is still an open question below.
+
+## Built (E10-2)
+
+Exchanges from a delivered order (`POST /v1/exchanges`, the order's Exchanges card): what comes back (never more than the order has left), what the customer gets instead (catalogue products or an item typed with its price), shipping they pay, a reason and a note. The replacement is a confirmed order linked both ways (`{original}-X1`), with the same customer and address; stock reserves it and it ships like any order. What the customer already paid for the returned items moves as store credit (a refund line on the original, a sale line on the replacement), so revenue is counted once; the difference is collected on delivery and a cheaper replacement shows the refund due. The exchange waits for the items until the return inspection on the original covers them (earlier exchanges first). Partial delivery and the open-box outcome follow as E10-4.
+
+## Built (E10-4)
+
+At the door, on the order: **kept part** — the order is delivered, the customer owes for what they kept (plus shipping, less discount); the courier's cash is a ledger line, a deposit beyond it is a refund due, and the rest comes back for inspection (stock and product cost follow E10-3). **Refused** — the reason and whether the customer opened the box first (المعاينة), on the order and in `order.refused`, so refusals are told apart from plain RTO (a later call corrects it).
 
 ## Open questions
 

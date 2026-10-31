@@ -14,6 +14,11 @@ import { AdaptiveBucket } from "../../resilience/limiter.js";
 import { CityResolver, normalize, type BostaCity } from "./cities.js";
 import { BOSTA_STATUS_CONFIG } from "./states.js";
 
+export interface BostaLearned {
+  codes: Record<string, LearnedStatus>;
+  cities: Record<string, string>;
+}
+
 export interface BostaConfig {
   apiKey: string;
   /** Production default; staging/sandbox URL comes from your Bosta account. */
@@ -134,7 +139,7 @@ export class BostaConnector {
     for (const [k, v] of Object.entries(state.cities ?? {})) this.learnedCities.set(k, v);
   }
 
-  exportLearned() {
+  exportLearned(): BostaLearned {
     return { codes: Object.fromEntries(this.learnedCodes), cities: Object.fromEntries(this.learnedCities) };
   }
 

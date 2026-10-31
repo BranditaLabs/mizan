@@ -15,12 +15,14 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 | One module in depth | `docs/modules/Mxx-*.md` |
 | Payment methods, ledger, cash rule, refunds, fees | `docs/12-payments.md` |
 | Events, actions, recipes, automation guarantees | `docs/13-automation-platform.md` |
+| Growth hub plan: attribution, ad feedback loop, CRM, marketing toolkit | `docs/14-growth-hub-plan.md` |
+| **Go-live plan: launch track and feature track in parallel** | `docs/15-go-live-plan.md` |
 | Deployables, module layout, events, tenancy | `docs/03-architecture.md` |
 | Tables, money, profit rules | `docs/04-data-model.md` + `packages/db/migrations/` |
 | Endpoint conventions and list | `docs/05-api.md` |
 | Provider access, quirks, what to apply for | `docs/06-integrations.md` |
 | Security, PII, Shopify GDPR webhooks, laws | `docs/07-security-compliance.md` |
-| Tokens, RTL, components | `docs/08-design-system.md` + `design/prototype.html` |
+| Tokens, RTL, components, logo, icons | `packages/design-system` (source of truth; `reference/index.html`, `docs/components.md`) + `docs/08-design-system.md`; `design/prototype.html` for layouts only |
 | Environments, CI/CD, monitoring, runbooks | `docs/09-infrastructure.md` |
 | **What to build next** | `docs/10-backlog.md` |
 | Terms (EN/AR) | `docs/11-glossary.md` |
@@ -29,16 +31,19 @@ Mizan (ميزان, "the scale") is the **complete commerce operating system** fo
 ## Repository map
 
 ```
-packages/engine/   ✅ BUILT — integration engine: Shopify + Bosta connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
-packages/db/       ✅ BUILT — PostgreSQL schema (0001_core, 0002_commerce_os) with RLS on every tenant table (8 tests)
+packages/engine/   ✅ BUILT — integration engine: Shopify + WooCommerce + Bosta + WhatsApp Cloud connectors, every payment method (cashToCollect), outbox, resilience, adaptation (85 tests)
+packages/db/       ✅ BUILT — SQL migrations with RLS, migration runner (`mizan-db migrate`), generated Kysely types, withTenant (22 tests incl. real Postgres)
+packages/design-system/ ✅ BUILT — Brandita identity (ink, paper, one red point): tokens for CSS/Tailwind/TS/Flutter, Geist + Alexandria + Plex Arabic fonts, 124 icons, wordmark, app icons (70 tests: contrast, brand fidelity)
 packages/shared/   ✅ BUILT — canonical types, zod schemas, exact money (toMinor/fromMinor), EG/KSA/UAE phone normalization (122 tests)
-apps/api/          ⏳ planned — NestJS modular monolith (REST API, auth, tenants, modules M1–M22)
-apps/web/          ⏳ planned — Next.js dashboard, Arabic + English, RTL; visual reference: design/prototype.html
-apps/ops/          ⏳ planned — Flutter app for warehouse, agents, receiving and later POS (offline-first)
+apps/api/          🚧 FOUNDATIONS (E1) — NestJS 12: config, redacting logger, problem+json, OpenAPI, tenant DB, Firebase auth + roles, signup, team, domain events + worker, audit log, Key Vault secrets; modules M1–M22 next; back-office staff identity, PlatformGuard and the staff trail (A-1); back-office stores: search, health, suspend/reactivate, plan, notes (A-2); support access with reason, expiry and the store's banner (A-3); system health matching /metrics with cross-store dead-letter replay (A-4); users: search, stores, disable sign-in (A-5); feature flags per store and globally, announcements banner (A-6)
+apps/web/          🚧 FOUNDATION (E4-1…E4-3) — Next.js 16 + Tailwind 4 dashboard on @mizan/design-system, next-intl AR (default) / EN with RTL, light/dark/system theme, lint rules; Firebase sign-in (email + SMS second step, phone OTP), store gate and switcher; UI kit in src/components/ui (gallery at /ar/ui, /en/ui); typed API client + TanStack Query (src/lib/api); onboarding wizard (E4-5); orders list and detail with audited reveal (E5-1, E5-2); Settings → Costs with daily FX (E9-1); automated confirmation (E6-7) inside the WhatsApp chat with the team's "Needs a call" list and Settings → Confirmation (E6-10); profit per order on the order screen (E9-2); profit home (E9-4) and breakdown (E9-5); products with costs, barcodes and CSV import (E8-1); stock with reservations, oversell block, low-stock alerts and the store's count (E8-2, E8-5); ops-app sync API (E8-3); automations with recipes, run log and the notification bell (E11); payment ledger with the team's entries on the order screen (E14-1); tickets with history and the order's tickets card (E10-1); payments screen and the home's payment mix (E14-6); refunds with approval, store credit and Settings → Refunds (E14-4); return inspection to stock and profit (E10-3); usage per month against the plan (E12-3) with soft limits, the plan banner and upgrade requests (E12-1); the semantic metric layer behind every number (E15-1); reports with built-in dashboards and Excel/CSV export (E15-2); shipping an order with the courier from the order screen (E7-1); the shipping screen with courier statuses and the review queue (E7-3); couriers without an API: recorded by hand, statuses by CSV (E7-6); courier scorecard by zone (E7-4); exchanges with a linked replacement and store credit (E10-2); partial delivery and refusals at the door (E10-4); the store's confirmation script with packs and preview (E6-5); store admin area: team, integrations with replay, audit log (A-8); Settings → Store sync (E7-7); purchasing: suppliers, purchase orders, receiving and Settings → Purchasing (M16-2)
+apps/admin/        ✅ BACK OFFICE (A-7) — Next.js 16 + Tailwind 4 on @mizan/design-system, AR/EN + RTL, staff sign-in with the SMS second step; stores, support access, system health, users, flags, announcements, staff and the staff trail on /v1/platform (e2e on the emulator stack)
+apps/ops/          🚧 Flutter 3.47.9 ops app, offline-first: drift queue + exactly-once sync to /v1/ops/sync (chaos-tested), count screen AR/EN (E8-4a), pick lists offline + camera scan-to-pack with wrong items blocked (E8-4c), receiving purchase orders offline by scan (M16-3); sign-in next (E8-4b)
 design/            prototype.html — the approved UI direction (open it in a browser)
 docs/              everything below
 .claude/commands/  slash commands for recurring work
-.github/workflows/ ci.yml — typecheck + tests + gitleaks on every PR (renovate.json for deps)
+infra/             🚧 Terraform for Azure UAE North (E1-11) + bootstrap.sh for Azure Cloud Shell; waiting for the owner's first run
+.github/workflows/ ci.yml — typecheck + tests + gitleaks + image and infra checks on every PR; deploy-staging.yml (renovate.json for deps)
 ```
 
 ## Commands
@@ -47,7 +52,18 @@ docs/              everything below
 npm install                 # once, at the repo root (npm workspaces)
 npm test                    # all packages
 npm run typecheck
+npm run build                # shared → dist, api → dist (CI runs it before tests)
+npm run dev -w @mizan/api    # API on :8080 with reload (cp apps/api/.env.example apps/api/.env first); in-memory PGlite DB
+npm run codegen -w @mizan/db # after adding a migration: regenerate packages/db/src/schema.ts
+npm run openapi -w @mizan/api && npm run gen:api -w @mizan/web && npm run gen:api -w @mizan/admin  # after changing an API route or schema: openapi.json + web and admin client types
 npm run demo                # engine demo against misbehaving fake Shopify and Bosta
+npm run dev -w @mizan/web    # dashboard on :3000 (/ar, /en); sign-in needs Firebase config or the emulator (apps/web/.env.example)
+npm run build:api && npm run build:e2e -w @mizan/web && npm run e2e -w @mizan/web   # e2e: Auth emulator (Java 21) + API + web
+npm test -w @mizan/design-system  # tokens: WCAG contrast both themes, brand fidelity, generated files current (build after editing tokens.json)
+npm run lint                # ESLint (web, admin: no physical directions, no literal UI strings)
+npm run dev -w @mizan/admin  # back office on :3001 (staff only; API needs ADMIN_URL for CORS); gen:api, build:e2e, e2e as for web
+npm run load -w @mizan/perf # load test vs real API on Postgres (needs npm run build + TEST_DATABASE_URL); see docs/perf
+docker compose up --build   # prod-like stack: Postgres 16, migrations, API :8080, worker :8081 (deploy/compose/smoke.sh checks it)
 npm test -w @mizan/engine   # one package (or -w @mizan/db, -w @mizan/shared)
 ```
 
@@ -58,7 +74,7 @@ Node 22+. TypeScript strict everywhere. Tests use vitest.
 | Layer | Choice |
 | --- | --- |
 | Language | TypeScript (strict) for backend and web; Dart for the ops app |
-| API | NestJS modular monolith, one deployable, modules map to M1–M22 |
+| API | NestJS modular monolith on Fastify (ADR-0013), one deployable, modules map to M1–M22 |
 | Web | Next.js (App Router) + Tailwind CSS; RTL first-class; next-intl for AR/EN |
 | Mobile ops app | Flutter, offline-first (local queue, sync on reconnect) |
 | Database | PostgreSQL with row-level security per tenant |
@@ -66,7 +82,7 @@ Node 22+. TypeScript strict everywhere. Tests use vitest.
 | Auth | Firebase Authentication (email + phone OTP) for users; API verifies Firebase ID tokens |
 | Push | Firebase Cloud Messaging |
 | Analytics store | PostgreSQL materialized views first; ClickHouse/BigQuery only when needed |
-| Hosting | Google Cloud, Middle East region (Doha `me-central1` or Dammam `me-central2`) |
+| Hosting | Azure UAE North (`uaenorth`) |
 
 Pin exact versions in `package.json` when creating each app.
 
@@ -95,7 +111,7 @@ Pin exact versions in `package.json` when creating each app.
 - Code typechecks; tests added and passing; chaos suite still green when engine code changed.
 - Arabic and English strings present; RTL checked for UI.
 - No secrets, no PII in logs.
-- Docs updated when behaviour, schema or API changed (`docs/04`, `docs/05`, module doc). Schema changes = new migration + test in `packages/db`.
+- Docs updated when behaviour, schema or API changed (`docs/04`, `docs/05`, module doc). Schema changes = new migration + test in `packages/db`. API changes = zod schemas on the route (`@ApiJson…`), regenerated `openapi.json` and web types.
 - Backlog item ticked in `docs/10-backlog.md`.
 
 ## Facts to confirm before production (do not hard-code assumptions)
@@ -105,6 +121,16 @@ Pin exact versions in `package.json` when creating each app.
 - WhatsApp: Embedded Signup v4 (v2 deprecated 15 Oct 2026). Per-message pricing since 1 Jul 2025.
 - Each gateway, BNPL and marketplace: authentication, webhook signing, refunds and payout report formats — confirm from the provider's docs before building (`docs/06-integrations.md`).
 - All prices in `docs/01-business-model.md` are proposals to validate with pilot merchants.
+
+## Agent tools
+
+- **System map (graphify):** `graphify-out/GRAPH_REPORT.md` (communities, hubs, surprising links) and `graphify-out/graph.html` (open in a browser). The `graphify` skill answers architecture questions from it. Rebuild after code changes, no LLM needed (~45 s): `uvx --from 'graphifyy[sql]==0.9.97' graphify update .` (writes `graph.json` locally; only the report and HTML are committed). Then `graphify query "…"`, `graphify path "A" "B"`, `graphify explain "X"`.
+- **Skills in `.claude/skills/`:** `graphify`, Vercel agent skills `react-best-practices`, `composition-patterns`, `react-view-transitions`, `web-design-guidelines` (for apps/web and apps/admin; RTL and i18n rules here still win).
+- **MCP servers (`.mcp.json`):** `context7` (current library docs; optional `CONTEXT7_API_KEY`), `21st-magic` (UI component generation; needs `API_KEY_21ST`). Keys come from the environment, never from the repo or chat. Generated components must still use `@mizan/design-system`, logical CSS and i18n.
+- **Claude Code plugins (`.claude/settings.json`, from the built-in Anthropic directory):** `typescript-lsp` (go-to-definition and type errors; needs `npm i -g typescript-language-server@6.0.2`), `security-guidance` (warns on risky patterns while editing), `code-review-anthropics` (PR review), `code-simplifier`. The built-in `/code-review` and `/security-review` commands work too.
+- **Design for agents:** `DESIGN.md` (root, awesome-design-md format) sums up the Brandita identity from `packages/design-system` for UI skills; the package stays the source of truth. Skills `impeccable` (UI critique, audit, polish; its edit/stop hooks are not enabled here, run it on request) and `taste-skill` (anti-slop art direction; for apps/web and apps/admin keep the design system and RTL rules above its house style).
+- **Browser (Playwright CLI):** `npm i -g @playwright/cli@0.1.22`; skill `playwright-cli`; `.playwright/cli.config.json` points it at the pre-installed Chromium (`/opt/pw-browsers/chromium`). Use it against the local apps (`npm run dev -w @mizan/web`), never `playwright install`.
+- **Security testing (Strix):** `uv tool install strix-agent==1.7.0`; needs Docker plus `STRIX_LLM` and `LLM_API_KEY` in the environment. Run only against this repo or our own staging: `strix --target ./ -n`.
 
 ## How to work here
 

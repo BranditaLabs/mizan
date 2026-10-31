@@ -13,6 +13,11 @@ export interface GqlOperation {
   /** Estimated cost in points, reserved in the limiter before sending. */
   cost: number;
   variants: string[];
+  /**
+   * Fields a variant may ask for that the shop can refuse (an API version without them, or access
+   * the app lacks): an error about these only moves on to the next variant instead of failing.
+   */
+  optional?: string[];
 }
 
 const MONEY = `shopMoney { amount currencyCode }`;
@@ -24,7 +29,7 @@ const ORDER_BASE = `
   subtotalPriceSet { ${MONEY} }
   totalShippingPriceSet { ${MONEY} }
   shippingAddress { name firstName lastName phone address1 address2 city province zip countryCodeV2 }
-  lineItems(first: 100) { nodes { id title sku quantity originalUnitPriceSet { ${MONEY} } } }
+  lineItems(first: 100) { nodes { id title sku quantity variant { id } originalUnitPriceSet { ${MONEY} } } }
   fulfillmentOrders(first: 10) { nodes { id status lineItems(first: 100) { nodes { id lineItem { id } } } } }
   fulfillments(first: 10) { id status trackingInfo { company number url } }
 `;
@@ -42,16 +47,25 @@ const ORDER_V1 = `${ORDER_CORE} customer { displayName firstName lastName email 
 /** Last resort for shops on versions without the money fields: the mapper derives amounts from status. */
 const ORDER_V2 = `${ORDER_BASE} customer { displayName firstName lastName email phone }`;
 
+/** Where the order came from (M7-2): the customer journey, codes, note attributes and the sales channel. */
+const VISIT = `landingPage referrerUrl source sourceType occurredAt utmParameters { source medium campaign content term }`;
+const ORDER_SOURCE = `sourceName discountCodes customAttributes { key value } customerJourneySummary { ready firstVisit { ${VISIT} } lastVisit { ${VISIT} } }`;
+const SOURCE_FIELDS = ["customerJourneySummary", "discountCodes", "customAttributes", "sourceName", "landingPage", "referrerUrl", "utmParameters"];
+/** With the source first; a shop that refuses those fields falls back to the variants without them. */
+const ORDER_VARIANTS = [`${ORDER_V0} ${ORDER_SOURCE}`, `${ORDER_V1} ${ORDER_SOURCE}`, ORDER_V0, ORDER_V1, ORDER_V2];
+
 export const ORDER_BY_ID: GqlOperation = {
   name: "MizanOrder",
   cost: 40,
-  variants: [ORDER_V0, ORDER_V1, ORDER_V2].map((f) => `query MizanOrder($id: ID!) { order(id: $id) { ${f} } }`),
+  variants: ORDER_VARIANTS.map((f) => `query MizanOrder($id: ID!) { order(id: $id) { ${f} } }`),
+  optional: SOURCE_FIELDS,
 };
 
 export const ORDERS_UPDATED: GqlOperation = {
   name: "MizanOrders",
   cost: 250,
-  variants: [ORDER_V0, ORDER_V1, ORDER_V2].map(
+  optional: SOURCE_FIELDS,
+  variants: ORDER_VARIANTS.map(
     (f) => `query MizanOrders($first: Int!, $after: String, $query: String) {
       orders(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
         pageInfo { hasNextPage endCursor }
@@ -63,7 +77,7 @@ export const ORDERS_UPDATED: GqlOperation = {
 
 const PRODUCT_FIELDS = `
   id title status vendor productType tags descriptionHtml updatedAt
-  variants(first: 100) { nodes { id sku title price compareAtPrice inventoryQuantity inventoryItem { id } } }
+  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity inventoryItem { id inventoryLevels(first: 10) { nodes { location { id } } } } } }
 `;
 
 export const PRODUCT_BY_ID: GqlOperation = {
@@ -149,6 +163,31 @@ export const FULFILLMENT_CREATE: GqlOperation = {
   ],
 };
 
+/** A fulfillment's tracking events (E7-7): read before writing one, so a retried write never doubles it. */
+export const FULFILLMENT_EVENTS: GqlOperation = {
+  name: "MizanFulfillmentEvents",
+  cost: 5,
+  variants: [
+    `query MizanFulfillmentEvents($id: ID!) {
+      fulfillment(id: $id) { id status events(first: 100) { nodes { id status happenedAt } } }
+    }`,
+  ],
+};
+
+/** One courier step on the customer's order page in Shopify (E7-7). Not idempotent: read first. */
+export const FULFILLMENT_EVENT_CREATE: GqlOperation = {
+  name: "MizanFulfillmentEventCreate",
+  cost: 10,
+  variants: [
+    `mutation MizanFulfillmentEventCreate($fulfillmentEvent: FulfillmentEventInput!) {
+      fulfillmentEventCreate(fulfillmentEvent: $fulfillmentEvent) {
+        fulfillmentEvent { id status happenedAt }
+        userErrors { field message }
+      }
+    }`,
+  ],
+};
+
 export const ORDER_MARK_PAID: GqlOperation = {
   name: "MizanOrderMarkPaid",
   cost: 10,
@@ -165,6 +204,104 @@ export const TAGS_ADD: GqlOperation = {
   variants: [
     `mutation MizanTagsAdd($id: ID!, $tags: [String!]!) {
       tagsAdd(id: $id, tags: $tags) { node { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+/**
+ * Cancel an order (E5-4: bulk cancel, a merged duplicate). Never refunds (money goes back through
+ * refunds, with a ledger line) and never emails the customer; restocks. Needs write_orders.
+ * Shopify runs the cancellation as a job: the order reads cancelled shortly after. Confirm the
+ * 2026-10 shape (orderCancelUserErrors) on a dev store.
+ */
+export const ORDER_CANCEL: GqlOperation = {
+  name: "MizanOrderCancel",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderCancel($orderId: ID!, $reason: OrderCancelReason!, $staffNote: String) {
+      orderCancel(orderId: $orderId, reason: $reason, refund: false, restock: true, notifyCustomer: false, staffNote: $staffNote) {
+        job { id } orderCancelUserErrors { field message code } userErrors { field message }
+      }
+    }`,
+  ],
+};
+
+/**
+ * Order editing (E6-13: an accepted offer joins the customer's order). Needs write_order_edits.
+ * begin → add the variant → discount it → commit; nothing changes in the store until the commit,
+ * and an uncommitted edit is simply abandoned. Confirm the 2026-10 shapes on a dev store.
+ */
+export const ORDER_EDIT_BEGIN: GqlOperation = {
+  name: "MizanOrderEditBegin",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditBegin($id: ID!) {
+      orderEditBegin(id: $id) { calculatedOrder { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_ADD_VARIANT: GqlOperation = {
+  name: "MizanOrderEditAddVariant",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditAddVariant($id: ID!, $variantId: ID!, $quantity: Int!) {
+      orderEditAddVariant(id: $id, variantId: $variantId, quantity: $quantity, allowDuplicates: false) {
+        calculatedLineItem { id } calculatedOrder { id } userErrors { field message }
+      }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_ADD_DISCOUNT: GqlOperation = {
+  name: "MizanOrderEditAddLineItemDiscount",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditAddLineItemDiscount($id: ID!, $lineItemId: ID!, $discount: OrderEditAppliedDiscountInput!) {
+      orderEditAddLineItemDiscount(id: $id, lineItemId: $lineItemId, discount: $discount) { calculatedOrder { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_COMMIT: GqlOperation = {
+  name: "MizanOrderEditCommit",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditCommit($id: ID!, $notifyCustomer: Boolean, $staffNote: String) {
+      orderEditCommit(id: $id, notifyCustomer: $notifyCustomer, staffNote: $staffNote) { order { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+/**
+ * Webhook subscriptions of this app on this shop (the API only returns our own).
+ * `uri` replaced `endpoint { callbackUrl }` in 2025-04; variant 1 keeps the older shape.
+ */
+export const WEBHOOK_SUBSCRIPTIONS: GqlOperation = {
+  name: "MizanWebhookSubscriptions",
+  cost: 5,
+  variants: [
+    `query MizanWebhookSubscriptions($first: Int!) { webhookSubscriptions(first: $first) { nodes { id topic uri } } }`,
+    `query MizanWebhookSubscriptions($first: Int!) { webhookSubscriptions(first: $first) { nodes { id topic endpoint { __typename ... on WebhookHttpEndpoint { callbackUrl } } } } }`,
+  ],
+};
+
+export const WEBHOOK_CREATE: GqlOperation = {
+  name: "MizanWebhookCreate",
+  cost: 10,
+  variants: [
+    `mutation MizanWebhookCreate($topic: WebhookSubscriptionTopic!, $sub: WebhookSubscriptionInput!) {
+      webhookSubscriptionCreate(topic: $topic, webhookSubscription: $sub) { webhookSubscription { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const WEBHOOK_DELETE: GqlOperation = {
+  name: "MizanWebhookDelete",
+  cost: 10,
+  variants: [
+    `mutation MizanWebhookDelete($id: ID!) {
+      webhookSubscriptionDelete(id: $id) { deletedWebhookSubscriptionId userErrors { field message } }
     }`,
   ],
 };
