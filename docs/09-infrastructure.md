@@ -210,6 +210,7 @@ Restore runbook and quarterly drill: `docs/runbooks/database-restore.md` (✅ E1
 - Schema drift alert: read drift report; update adapter candidate paths; add a test with the new payload shape; deploy.
 - Dead-letter spike: group by `last_error`; fix cause; bulk replay.
 - Database restore: follow Azure PostgreSQL Flexible Server PITR steps; re-run reconciliation polls for the gap window.
+- Custom domains on Cloudflare DNS (records, "DNS only" for managed certificates, binding): `docs/runbooks/dns-cloudflare.md`.
 
 ## 8. Cost control
 
