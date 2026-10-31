@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
@@ -25,10 +25,12 @@ export default async function LocaleLayout({ children, params }: Props) {
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
   const theme = themeAttribute(parseTheme((await cookies()).get(THEME_COOKIE)?.value));
+  // The public landing page has its own root layout ((marketing)); its copy stays out of the dashboard.
+  const messages = Object.fromEntries(Object.entries(await getMessages()).filter(([ns]) => ns !== "landing"));
   return (
     <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
-        <NextIntlClientProvider>
+        <NextIntlClientProvider messages={messages}>
           <ToastProvider>
             <QueryProvider>
               <SessionProvider>{children}</SessionProvider>

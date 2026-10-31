@@ -5,5 +5,8 @@ import { routing } from "./routing";
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale;
   const locale = hasLocale(routing.locales, requested) ? requested : routing.defaultLocale;
-  return { locale, messages: (await import(`../../messages/${locale}.json`)).default };
+  const main = (await import(`../../messages/${locale}.json`)).default;
+  // The public landing page keeps its copy in its own files (namespace "landing").
+  const landing = (await import(`../../messages/landing/${locale}.json`)).default;
+  return { locale, messages: { ...main, landing } };
 });

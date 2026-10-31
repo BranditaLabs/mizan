@@ -21,7 +21,7 @@ export default async function SignInPage({ params, searchParams }: Props) {
   const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   return (
     <AuthSplit theme={theme}>
-      <SignIn next={safeNext(q.next)} enrolled={q.enrolled === "1"} />
+      <SignIn next={safeNext(q.next)} enrolled={q.enrolled === "1"} signup={q.mode === "signup"} />
     </AuthSplit>
   );
 }

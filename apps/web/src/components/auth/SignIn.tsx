@@ -38,7 +38,8 @@ type StepName = "start" | "phoneCode" | "mfa" | "reset" | "sso";
  * (owners and admins must: the API answers mfa_required otherwise), or a password reset link. Once
  * signed in, the scale weighs while the store gate opens the store.
  */
-export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) {
+/** `signup`: open on "create an account" (the landing page's "Start free" links here with ?mode=signup). */
+export function SignIn({ next, enrolled, signup = false }: { next: string; enrolled: boolean; signup?: boolean }) {
   const t = useTranslations("auth");
   const locale = useLocale();
   const router = useRouter();
@@ -47,7 +48,7 @@ export function SignIn({ next, enrolled }: { next: string; enrolled: boolean }) 
 
   const [step, setStep] = useState<StepName>("start");
   const [method, setMethod] = useState<"email" | "phone">("email");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState(signup);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [country, setCountry] = useState<Country>("EG");

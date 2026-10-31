@@ -1,0 +1,345 @@
+{
+  "meta": {
+    "title": "Mizan · The commerce operating system for MENA brands",
+    "description": "Mizan confirms orders on WhatsApp, ships with the right courier, collects only what’s owed and shows the real profit of every order. Every payment method, one system, in Arabic and English.",
+    "siteName": "Mizan"
+  },
+  "logoAlt": "Mizan",
+  "money": "EGP {amount}",
+  "nav": {
+    "label": "Main",
+    "product": "Product",
+    "payments": "Payments",
+    "automations": "Automations",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "lang": "عربي",
+    "langLabel": "Read this page in Arabic",
+    "theme": "Switch theme",
+    "signIn": "Sign in",
+    "start": "Start free"
+  },
+  "skip": "Skip to content",
+  "hero": {
+    "eyebrow": "The commerce operating system for MENA brands",
+    "eyebrowCta": "How it works",
+    "h1a": "Run every order.",
+    "h1b": "Keep every pound.",
+    "sub": "Mizan confirms orders on WhatsApp, ships with the right courier, collects only what’s owed and shows the real profit of every order. Every payment method, one system, in Arabic and English.",
+    "demo": "Book a demo",
+    "note": "Free up to 300 orders a month · No card needed · Built in Cairo",
+    "preview": "A preview of the Mizan dashboard",
+    "kpiProfit": "Net profit · 30 days",
+    "kpiDelivered": "Delivered rate",
+    "kpiCash": "Cash with couriers",
+    "menu": {
+      "home": "Home",
+      "orders": "Orders",
+      "verification": "Verification",
+      "payments": "Payments",
+      "shipping": "Shipping",
+      "profit": "Profit",
+      "automations": "Automations"
+    },
+    "f1a": "Mona confirmed on WhatsApp",
+    "f1b": "Order <id>#EO-48213</id> shipped automatically",
+    "f2chip": "Shipped",
+    "f2a": "Bosta will collect",
+    "f2b": "not <n>2,100</n>: the deposit is already paid",
+    "f3": "Deposit link sent · risk <n>66</n>"
+  },
+  "integrations": {
+    "label": "Connects to the tools you already use",
+    "note": "Solid: live today. Dashed: next on the roadmap.",
+    "live": "live today",
+    "soon": "on the roadmap"
+  },
+  "leak": {
+    "eyebrow": "The leak",
+    "title": "Your sales say one number. Your bank says another.",
+    "lead": "The gap is refused orders, cash stuck with couriers and costs scattered across five tools. Most dashboards report it after it happens. Mizan stops it before the parcel leaves.",
+    "door": {
+      "title": "Refused at the door",
+      "body": "Unconfirmed COD orders ship, get refused, and you pay shipping both ways."
+    },
+    "cash": {
+      "title": "Cash stuck with couriers",
+      "body": "Collected money sits with couriers for weeks, and short payments go unnoticed."
+    },
+    "profit": {
+      "title": "Profit nobody can see",
+      "body": "Fees, returns, ads and product costs live in different tools, so no one knows what an order really earned."
+    }
+  },
+  "how": {
+    "eyebrow": "How it works",
+    "title": "From checkout to cash, on autopilot.",
+    "order": {
+      "title": "Order arrives",
+      "body": "From Shopify, your POS or social. Every order gets its payment method and a risk score."
+    },
+    "confirm": {
+      "title": "Confirmed on WhatsApp",
+      "body": "Customers confirm in one tap, in Egyptian Arabic. Risky orders get a deposit link first."
+    },
+    "ship": {
+      "title": "Shipped right",
+      "body": "Mizan books the courier and tells them to collect only the balance still owed."
+    },
+    "reconcile": {
+      "title": "Reconciled to the pound",
+      "body": "Settlements are matched order by order, and you see the real profit of each one."
+    }
+  },
+  "payments": {
+    "eyebrow": "Every payment method",
+    "title": "Not just COD. Every way your customers pay.",
+    "lead": "Each order carries its payment method and status, so shipping, collection and refunds always match what was actually paid.",
+    "cod": {
+      "title": "Cash on delivery",
+      "body": "Confirmed before it ships. The courier collects the exact amount due."
+    },
+    "card": {
+      "title": "Cards",
+      "body": "Paid orders ship straight away. Refunds are tracked to the order."
+    },
+    "wallet": {
+      "title": "Mobile wallets",
+      "body": "Wallet payments are matched to the order automatically."
+    },
+    "deposit": {
+      "title": "Deposit + COD",
+      "body": "Risky orders pay a deposit; the courier collects only the rest."
+    },
+    "bnpl": {
+      "title": "Buy now, pay later",
+      "body": "Instalment providers settle to you; Mizan tracks the fee."
+    },
+    "bank": {
+      "title": "Bank transfer",
+      "body": "Held until the money arrives, then shipped automatically."
+    },
+    "rule": "Unpaid or unknown payments never ship.",
+    "ruleSub": "It’s a rule in the engine, not a setting someone can forget."
+  },
+  "automations": {
+    "eyebrow": "Automation Studio",
+    "title": "When this happens, do that. Across every module.",
+    "lead": "Start from ready recipes or build your own. Every automation is logged, safe to repeat and easy to switch off.",
+    "recipes": {
+      "paid": "Ship when paid",
+      "deposit": "Deposit link for risky orders",
+      "chase": "Chase overdue courier cash",
+      "lowStock": "Low-stock alert",
+      "winBack": "Win back after 60 days",
+      "short": "Flag short settlements"
+    },
+    "recipe": "Recipe · Deposit for risky COD",
+    "running": "Running",
+    "flow": {
+      "when": {
+        "kind": "When",
+        "title": "Order created"
+      },
+      "if": {
+        "kind": "If",
+        "title": "Risk ≥ 60 and COD"
+      },
+      "send": {
+        "kind": "Then",
+        "title": "Send deposit link on WhatsApp"
+      },
+      "ship": {
+        "kind": "Then",
+        "title": "Ship when the deposit is paid"
+      }
+    }
+  },
+  "modules": {
+    "eyebrow": "One system",
+    "title": "22 modules. One source of truth.",
+    "domains": {
+      "operate": "Operate",
+      "money": "Money",
+      "grow": "Grow",
+      "platform": "Platform"
+    },
+    "profit": {
+      "kicker": "Profit engine",
+      "title": "The real profit of every order.",
+      "body": "After shipping, gateway fees, returns, ads and product cost. Per order, product, channel and day.",
+      "total": "Order total",
+      "cost": "Product cost",
+      "shipping": "Shipping",
+      "fees": "Payment fees",
+      "ads": "Ad spend share",
+      "net": "Net profit"
+    },
+    "warehouse": {
+      "title": "Warehouse and ops app",
+      "body": "Pick, pack and receive with a scanner app that keeps working offline."
+    },
+    "inbox": {
+      "title": "Customer inbox",
+      "body": "WhatsApp and calls in one shared queue, linked to the order."
+    },
+    "recon": {
+      "title": "Reconciliation",
+      "body": "Courier and gateway settlements matched order by order, with claims for short payments."
+    },
+    "pos": {
+      "title": "Point of sale",
+      "body": "Sell in store with the same stock, customers and reports."
+    },
+    "ai": {
+      "title": "AI analyst",
+      "body": "Ask in Arabic or English: why did profit drop last week?"
+    },
+    "returns": {
+      "title": "Returns and exchanges",
+      "body": "Returns go back to stock, and refunds go back the way the customer paid."
+    },
+    "purchasing": {
+      "title": "Purchasing and suppliers",
+      "body": "Purchase orders, goods received and the true cost of every product."
+    }
+  },
+  "arabic": {
+    "eyebrow": "Arabic first",
+    "title": "Built in Arabic, not translated into it.",
+    "lead": "Right to left from the first line of code, Egyptian Arabic in every customer message, and Gulf dialects for the GCC.",
+    "screens": "Every screen in Arabic and English, web and mobile",
+    "dialect": "Customer messages in the dialect your customers speak",
+    "numbers": "Numbers, phones and order IDs that never break in RTL",
+    "chatLabel": "An example WhatsApp confirmation in Egyptian Arabic",
+    "chat": {
+      "name": "متجرك على واتساب",
+      "sub": "رسالة تأكيد تلقائية من ميزان",
+      "hello": "أهلاً يا منى، أوردرك رقم <id>EO-48213</id> بـ <n>1,150</n> ج.م جاهز. نأكّده ونشحنه النهارده؟",
+      "confirm": "أكّد الأوردر",
+      "edit": "عايزة أعدّل",
+      "done": "تمام، اتأكّد. هيوصلك مع بوسطة خلال يومين، وهتدفعي <n>1,150</n> ج.م عند الاستلام.",
+      "status": "اتأكّد تلقائياً · اتبعت لبوسطة"
+    }
+  },
+  "tools": {
+    "eyebrow": "Fewer tools",
+    "title": "One system instead of five.",
+    "lead": "Stop copying orders between apps. Mizan replaces the patchwork and keeps every number in one place.",
+    "confirm": "Order confirmation app",
+    "couriers": "Courier dashboards",
+    "stock": "Inventory spreadsheet",
+    "inbox": "Shared inbox",
+    "profit": "Profit spreadsheet",
+    "one": "Mizan"
+  },
+  "pricing": {
+    "eyebrow": "Pricing",
+    "title": "Priced by orders, never by percentage.",
+    "lead": "Mizan never takes a cut of your sales. Your gateways and their fees stay yours. Annual billing gets 2 months free.",
+    "billing": "Billing period",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "region": "Region",
+    "egypt": "Egypt",
+    "gcc": "GCC",
+    "recommended": "Recommended",
+    "unitEgMonthly": "EGP / month",
+    "unitEgAnnual": "EGP / month, billed yearly",
+    "unitGccMonthly": "/ month",
+    "unitGccAnnual": "/ month, billed yearly",
+    "custom": "Custom",
+    "talk": "Talk to us",
+    "start": "Start free",
+    "trial": "Start 14-day trial",
+    "free": {
+      "name": "Free",
+      "orders": "Up to 300 orders a month",
+      "f1": "1 store, 2 users",
+      "f2": "Orders, verification and payments",
+      "f3": "1 courier",
+      "f4": "3 automation recipes"
+    },
+    "growth": {
+      "name": "Growth",
+      "orders": "Up to 3,000 orders a month",
+      "f1": "3 stores, 8 users",
+      "f2": "All couriers and gateways",
+      "f3": "Warehouse and returns",
+      "f4": "Profit engine",
+      "f5": "Automation recipes and reports"
+    },
+    "scale": {
+      "name": "Scale",
+      "orders": "Up to 10,000 orders a month",
+      "f1": "Unlimited stores, 25 users",
+      "f2": "Reconciliation and purchasing",
+      "f3": "Inbox, CRM and loyalty",
+      "f4": "Attribution",
+      "f5": "Custom automations, API and webhooks"
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "orders": "Any volume, any country",
+      "f1": "Multi-country",
+      "f2": "Risk network",
+      "f3": "SLA and account manager",
+      "f4": "Raised API limits and sandbox"
+    },
+    "note": "Prices exclude VAT. Messaging is billed at cost. Above your plan limit, a small per-order fee applies; no forced upgrade.",
+    "announce": "{billing}, {region}. {plan}: {price} {unit}"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Questions merchants ask us.",
+    "cod": {
+      "q": "Is Mizan only for cash on delivery?",
+      "a": "No. Mizan handles COD, cards, wallets, deposits, buy now pay later and bank transfers. Every order carries its payment method and status, and the courier collects only what’s still owed."
+    },
+    "store": {
+      "q": "Do I need to change my store?",
+      "a": "No. Connect Shopify in a few clicks and keep your storefront. Mizan reads your orders and writes back fulfilments and statuses."
+    },
+    "couriers": {
+      "q": "Which couriers do you support?",
+      "a": "Bosta is live today. More Egyptian and Gulf couriers are on the roadmap. Tell us which one you use and we’ll prioritise it."
+    },
+    "cut": {
+      "q": "Does Mizan take a percentage of my sales?",
+      "a": "No. You pay a monthly plan based on your order volume. Payment gateways and their fees stay between you and them."
+    },
+    "data": {
+      "q": "Is my customers’ data safe?",
+      "a": "Customer data is encrypted, every access is logged, and Mizan is built to follow Egypt’s Personal Data Protection Law and Saudi Arabia’s PDPL."
+    },
+    "team": {
+      "q": "Can my team work in Arabic?",
+      "a": "Yes. Every screen works in Arabic and English, right to left, on the web and in the ops app."
+    }
+  },
+  "cta": {
+    "title": "Every order, in balance.",
+    "lead": "Start free, connect your store in minutes and see your first real-profit report today.",
+    "launch": "Launch offer: the first 50 merchants get 3 months free"
+  },
+  "footer": {
+    "about": "The commerce operating system for MENA brands. Powered by Brandita, Cairo.",
+    "product": "Product",
+    "orders": "Orders and verification",
+    "payments": "Payments",
+    "shipping": "Shipping",
+    "profit": "Profit engine",
+    "automations": "Automation Studio",
+    "company": "Company",
+    "brandita": "About Brandita",
+    "contact": "Contact",
+    "partners": "Partners",
+    "legal": "Legal",
+    "privacy": "Privacy",
+    "terms": "Terms",
+    "dpa": "Data processing",
+    "copy": "© {year} Mizan. All rights reserved.",
+    "made": "Made in Cairo for MENA commerce.",
+    "signIn": "Sign in"
+  }
+}
