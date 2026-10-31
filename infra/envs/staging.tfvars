@@ -21,3 +21,6 @@ marketing_domain = "mizan.brandita.net"       # landing page, a second host on t
 # platform_bootstrap_emails = "you@example.com"
 # alert_emails = ["ops@example.com"]
 # provider_secrets = ["SHOPIFY_API_SECRET", "META_APP_SECRET"]
+api_env = {
+  SHOPIFY_API_KEY = "3aaaa43e0229a13ae9f56c7198d55d94" # the Shopify app's Client ID (public); its secret is in Key Vault
+}
