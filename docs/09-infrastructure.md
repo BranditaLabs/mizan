@@ -71,6 +71,8 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 
 **Database roles:** migrations run as the schema owner (`DATABASE_URL_MIGRATOR`, `mizan-db migrate`); with `DATABASE_APP_LOGIN` + `DATABASE_APP_PASSWORD` the same run creates or updates the API login (✅ E1-11; on Cloud SQL this keeps it out of `cloudsqlsuperuser`). The API and worker log in as a separate user that is a member of `mizan_app` (tenant data under RLS) and `mizan_worker` (event dispatch across tenants on `domain_events` only), and is neither owner nor `BYPASSRLS`: `CREATE ROLE mizan_api LOGIN … IN ROLE mizan_app, mizan_worker` (Terraform, E1-11).
 
+**Own domains (`infra/domains.tf`):** with `api_domain` and `web_domain` set, a global external HTTPS load balancer with a fixed IP and Google-managed certificates sits in front of the Cloud Run services (serverless NEGs, host rules per domain, http → https redirect), and `PUBLIC_URL`/`WEB_URL` follow the domains. DNS stays with the registrar (Hostinger for brandita.net): one A record per host to `terraform output lb_ip` (`dns_records` lists them); certificates turn active once the records resolve. Staging: `api.mizan.brandita.net`, `app.mizan.brandita.net`. The deploy builds the dashboard against the GitHub variable `API_URL` when set.
+
 ## 4. CI/CD (GitHub Actions)
 
 | Workflow | Trigger | Steps |

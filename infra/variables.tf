@@ -36,6 +36,30 @@ variable "admin_url" {
   default     = ""
 }
 
+variable "api_domain" {
+  description = "The API's own host (e.g. api.mizan.brandita.net); with web_domain, puts the load balancer in front (domains.tf)"
+  type        = string
+  default     = ""
+}
+
+variable "web_domain" {
+  description = "The dashboard's own host (e.g. app.mizan.brandita.net)"
+  type        = string
+  default     = ""
+}
+
+variable "admin_domain" {
+  description = "The back office's own host (e.g. admin.mizan.brandita.net); needs admin_service"
+  type        = string
+  default     = ""
+}
+
+variable "admin_service" {
+  description = "Cloud Run service name of the back office, once it is deployed (L0-3)"
+  type        = string
+  default     = ""
+}
+
 variable "platform_bootstrap_emails" {
   description = "Emails that become the first Mizan staff super admins"
   type        = string

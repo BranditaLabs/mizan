@@ -40,7 +40,10 @@ jobs:
 
       - name: API URL (the dashboard is built against it)
         id: urls
-        run: echo "api=$(gcloud run services describe mizan-api --region "$REGION" --format='value(status.url)')" >> "$GITHUB_OUTPUT"
+        # The API's own domain (environment variable API_URL, e.g. https://api.mizan.brandita.net) once DNS is live; else the run.app URL.
+        env:
+          API_URL: ${{ vars.API_URL }}
+        run: echo "api=${API_URL:-$(gcloud run services describe mizan-api --region "$REGION" --format='value(status.url)')}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push the API image (API, worker, migrations)
         uses: docker/build-push-action@v6

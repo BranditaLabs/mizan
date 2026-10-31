@@ -1,12 +1,13 @@
 # Cloud Run: api, worker, web, and the migrate job. Deterministic URLs
 # (https://<service>-<project number>.<region>.run.app) let PUBLIC_URL and WEB_URL be known before
-# the first deploy; map domains later and set public_url / web_url.
+# the first deploy. With api_domain and web_domain set (domains.tf) the URLs follow the domains;
+# public_url / web_url still override both.
 
 locals {
   project_number = data.google_project.this.number
   run_url        = { for s in ["mizan-api", "mizan-web"] : s => "https://${s}-${local.project_number}.${var.region}.run.app" }
-  public_url     = var.public_url != "" ? var.public_url : local.run_url["mizan-api"]
-  web_url        = var.web_url != "" ? var.web_url : local.run_url["mizan-web"]
+  public_url     = var.public_url != "" ? var.public_url : var.api_domain != "" ? "https://${var.api_domain}" : local.run_url["mizan-api"]
+  web_url        = var.web_url != "" ? var.web_url : var.web_domain != "" ? "https://${var.web_domain}" : local.run_url["mizan-web"]
   api_plain_env = merge({
     LOG_FORMAT                = "json"
     LOG_LEVEL                 = "info"
@@ -18,7 +19,7 @@ locals {
     DATABASE_POOL_MAX         = "10"
     FX_SOURCE                 = "open-er-api"
     PLATFORM_BOOTSTRAP_EMAILS = var.platform_bootstrap_emails
-    ADMIN_URL                 = var.admin_url
+    ADMIN_URL                 = var.admin_url != "" ? var.admin_url : var.admin_domain != "" ? "https://${var.admin_domain}" : ""
   }, var.api_env)
   # Empty values are left out: the API validates every variable it is given.
   api_env         = { for k, v in local.api_plain_env : k => v if v != "" }
