@@ -59,6 +59,8 @@ _Sample data. Full visual in `design/prototype.html`._
 | Metric | Definition | Module |
 | --- | --- | --- |
 | Delivered rate | Delivered ÷ shipped | M3 |
+| Profit per completed order | Net profit of the orders that reached an end ÷ those orders (orders still moving left out of both) ✅ L1-7 | M5 |
+| Confirmed automatically | Orders confirmed with nobody involved ÷ confirmed orders ✅ L1-7 | M2 |
 | Prepaid share | Prepaid orders ÷ all orders | M15 |
 | Net profit | Sum of order net profit | M5 |
 | Days of cover | Available ÷ avg daily sales | M4 |
@@ -79,6 +81,8 @@ _Sample data. Full visual in `design/prototype.html`._
 ✅ Built (E15-1, `apps/api/src/modules/reports/metrics.ts`): orders, delivered rate, RTO rate, prepaid share, COD share, net profit, average order value, days of cover; each versioned, in Arabic and English, with the roles that see it; one set of facts per period of store days (the profit home's rows and filters, so its delivered rate and net profit are the same numbers, tested). First response time waits for the inbox (M17).
 
 ✅ Built (E15-2, `apps/api/src/modules/reports/dashboards.ts`, web `/reports`): five built-in dashboards (overview, operations, profit, payments, stock) whose tiles are metric-layer values, plus daily series (orders per day, net profit per day). A role sees a dashboard only when it may see at least one of its metrics, and inside it only those tiles; the profit series is for money readers. Periods: the last 7, 30 or 90 store days, or a range. Every dashboard downloads as Excel (one sheet, right-to-left for Arabic readers, numbers as numbers) or CSV (UTF-8 with BOM so Excel reads Arabic; cells starting with `= + - @` are defused). The files are written in-process (`platform/xlsx.ts`, no dependency). The team dashboard waits for agent performance (M10); PDF export and saved reports are V2.
+
+✅ Built (L1-7, pilot measurement baseline): a sixth built-in dashboard, **Pilot** (`pilot`, AR "متابعة التجربة"): orders, delivered rate, RTO rate, ad cost per delivered order, profit per completed order and confirmed automatically, with orders and net profit per day; each role sees the tiles it may (an agent sees orders only). Two metrics joined the layer: **profit per completed order** (`profit_per_completed_order`, M5, money: the net profit of the period's orders that reached an end (delivered, or refused and returned) ÷ those orders; orders still moving are left out of both, since their costs are booked before their cash arrives; the same rows as net profit and delivered rate; minor units rounded half away from zero, so a loss stays exact) and **confirmed automatically** (`automation_share`, M2, percent: orders of the period with a confirmed attempt in `confirmations` made with nobody involved, the routing rule (`auto`) or the customer answering the WhatsApp bot, the link page, an SMS link or an automated/AI call, with no `agent_id`, ÷ confirmed orders of the period, counted as the confirmation report counts them (confirmed or further, or confirmed then cancelled); the team's calls, the order screen, bulk confirmation and orders confirmed with no attempt (from the store, an exchange's replacement) are not automated). Every period can also be an ISO week: `week=YYYY-Www` (Monday–Sunday in store days) or `week=last` (the last full week), so the weekly CSV is `/v1/dashboards/pilot/export?format=csv&week=2026-W43` (`mizan-pilot-2026-W43.csv`); Reports offers "Last full week" next to 7/30/90 days. The settings table's "Week starts Saturday (EG)" is for scheduled reports (V2); the pilot's week is ISO so weeks compare across stores.
 
 ## Events emitted
 
@@ -133,7 +137,7 @@ _Sample data. Full visual in `design/prototype.html`._
 | POST | `/v1/reports/{id}/schedules` | Schedule |
 | GET | `/v1/metrics/catalogue` · `/v1/metrics/values` | Semantic metric catalogue and values ✅ E15-1 (`/metrics` itself is the Prometheus endpoint) |
 | GET | `/v1/dashboards` · `/v1/dashboards/{id}` | Built-in dashboards the caller may see, with tiles and daily series ✅ E15-2 |
-| GET | `/v1/dashboards/{id}/export?format=xlsx\|csv` | The dashboard as an Excel or CSV file ✅ E15-2 |
+| GET | `/v1/dashboards/{id}/export?format=xlsx\|csv` | The dashboard as an Excel or CSV file ✅ E15-2; `&week=YYYY-Www\|last` for one ISO week ✅ L1-7 |
 
 Conventions: `docs/05-api.md`.
 

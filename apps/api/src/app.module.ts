@@ -27,6 +27,7 @@ import { ConfirmationModule } from "./modules/confirmation/confirmation.module.j
 import { ConnectionsModule } from "./modules/connections/connections.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
 import { LegalModule } from "./modules/legal/legal.module.js";
+import { FeedbackModule } from "./modules/feedback/feedback.module.js";
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 import { IdempotencyInterceptor } from "./platform/http/idempotency.interceptor.js";
 import type { AppConfig } from "./platform/config.js";
@@ -67,7 +68,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, BillingModule, ReportsModule, AttributionModule, PickingModule, PurchasingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, LegalModule.forRoot(options.legalStatus), MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, FeedbackModule, BillingModule, ReportsModule, AttributionModule, PickingModule, PurchasingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, LegalModule.forRoot(options.legalStatus), MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }, FastifyReady],
     };
   }

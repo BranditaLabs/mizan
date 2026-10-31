@@ -24,6 +24,8 @@ export interface MetricFacts {
   returned: bigint;
   /** Base currency minor units, from order profit. */
   net: bigint;
+  /** Of that, the orders that reached an end (delivered, or refused and returned): no order still moving. */
+  netEnded: bigint;
   revenue: bigint;
   refunds: bigint;
   /** Ad spend in the period, base currency (each day at its rate; days without a rate left out). */
@@ -34,6 +36,16 @@ export interface MetricFacts {
   /** Units available in stock now (counted items), and units shipped in the period. */
   available: bigint;
   unitsShipped: bigint;
+  /**
+   * Orders placed in the period that were confirmed (confirmed or further, or confirmed then
+   * cancelled: the confirmation analytics' test), and of those the ones confirmed with no person
+   * involved: a confirmed attempt (`confirmations`) by the routing rule, or the customer answering an
+   * automated channel (WhatsApp bot, link page, SMS link, automated or AI call). An attempt with a
+   * team member, by the team's call or the order screen, or no attempt at all (confirmed from the
+   * store, an exchange's replacement) is not automated.
+   */
+  confirmed: bigint;
+  confirmedAuto: bigint;
 }
 
 export type MetricUnit = "count" | "percent" | "money" | "days" | "multiple";
@@ -61,6 +73,16 @@ function divide(a: bigint, b: bigint): string | null {
   if (b === 0n) return null;
   const tenths = (a * 20n + b) / (2n * b);
   return `${tenths / 10n}.${tenths % 10n}`;
+}
+
+/** a ÷ b in minor units, half away from zero (net profit can be a loss); null when b is 0. */
+export function perUnitSigned(a: bigint, b: bigint): bigint | null {
+  if (b === 0n) return null;
+  const neg = (a < 0n) !== (b < 0n);
+  const x = a < 0n ? -a : a;
+  const y = b < 0n ? -b : b;
+  const q = (x * 2n + y) / (2n * y);
+  return neg ? -q : q;
 }
 
 /** The delivered share of orders that reached an end: the one formula every screen uses. */
@@ -134,6 +156,28 @@ export const METRICS: readonly MetricDefinition[] = [
       const m = v === null ? null : fromMinor(v, f.base);
       return { value: m?.amount ?? null, money: m, numerator: String(f.spend), denominator: String(f.delivered) };
     },
+  },
+  {
+    key: "profit_per_completed_order", version: 1, unit: "money", module: "M5", roles: MONEY_READERS,
+    name: { en: "Profit per completed order", ar: "الربح لكل أوردر خلص" },
+    definition: {
+      en: "Net profit of the period's orders that reached an end (delivered, or refused and returned) ÷ those orders: what each finished order really left, returns' losses included. Orders still moving are left out of both.",
+      ar: "صافي ربح أوردرات الفترة اللي وصلت لنهاية (اتسلّمت، أو اترفضت ورجعت) ÷ عدد الأوردرات دي: اللي كل أوردر خلص سابه فعلاً، وخسارة المرتجع محسوبة. الأوردرات اللي لسه في الطريق مش محسوبة في الاتنين.",
+    },
+    compute: (f) => {
+      const v = perUnitSigned(f.netEnded, f.delivered + f.returned);
+      const m = v === null ? null : fromMinor(v, f.base);
+      return { value: m?.amount ?? null, money: m, numerator: String(f.netEnded), denominator: String(f.delivered + f.returned) };
+    },
+  },
+  {
+    key: "automation_share", version: 1, unit: "percent", module: "M2", roles: MANAGERS,
+    name: { en: "Confirmed automatically", ar: "اتأكّد أوتوماتيك" },
+    definition: {
+      en: "Orders confirmed with no person involved (by the routing rule, or the customer answering the WhatsApp bot, the link, an SMS or an automated call) ÷ confirmed orders of the period, as on the confirmation report. Orders confirmed from the store or by the team count as not automated.",
+      ar: "الأوردرات اللي اتأكّدت من غير ما حد من الفريق يتدخّل (بقاعدة التوجيه، أو العميل ردّ على بوت واتساب أو اللينك أو رسالة أو مكالمة أوتوماتيك) ÷ الأوردرات اللي اتأكّدت في الفترة، زي تقرير التأكيد. اللي اتأكّد من المتجر أو من الفريق مش أوتوماتيك.",
+    },
+    compute: (f) => ratio(f.confirmedAuto, f.confirmed),
   },
   {
     key: "days_of_cover", version: 1, unit: "days", module: "M4", roles: STOCK_READERS,

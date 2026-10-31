@@ -7,13 +7,14 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { useSession } from "@/lib/session";
 import { chooseTheme, THEMES } from "@/lib/theme";
+import { openFeedback } from "./FeedbackButton";
 import { CommandPalette, useCommandPalette, type Command } from "./ui/CommandPalette";
 
 const noop = () => () => {};
 const SHORTCUT = { mac: "⌘K", other: "Ctrl K" } as const;
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-/** Header search button + the ⌘K palette: pages, theme, language, stores, sign-out. */
+/** Header search button + the ⌘K palette: pages, theme, language, stores, feedback, sign-out. */
 export function ShellCommands() {
   const t = useTranslations("ui.palette");
   const locale = useLocale();
@@ -34,6 +35,7 @@ export function ShellCommands() {
     ...routing.locales.filter((l) => l !== locale).map((l): Command => ({
       id: `lang-${l}`, group: t("groups.preferences"), label: t(`commands.language.${l}`), icon: "language", keywords: "language لغة", run: () => router.replace(pathname, { locale: l }),
     })),
+    ...(store ? [{ id: "feedback", group: t("groups.account"), label: t("commands.feedback"), icon: "message", keywords: "feedback idea problem bug رأي فكرة مشكلة", run: openFeedback } satisfies Command] : []),
     { id: "sign-out", group: t("groups.account"), label: t("commands.signOut"), icon: "logout", run: () => void signOut() },
   ], [t, router, pathname, locale, stores, store, selectStore, signOut]);
 

@@ -28,7 +28,11 @@
     "language": {
       "label": "Language",
       "ar": "عربي",
-      "en": "English"
+      "en": "English",
+      "short": {
+        "ar": "ع",
+        "en": "EN"
+      }
     },
     "theme": {
       "label": "Theme",
@@ -284,7 +288,8 @@
           "ar": "Arabic (عربي)",
           "en": "English"
         },
-        "signOut": "Sign out"
+        "signOut": "Sign out",
+        "feedback": "Send feedback"
       }
     }
   },
@@ -2619,7 +2624,8 @@
     "tabsLabel": "Dashboards",
     "period": {
       "label": "Period",
-      "days": "Last {days} days"
+      "days": "Last {days} days",
+      "lastWeek": "Last full week"
     },
     "range": "From <from></from> to <to></to>",
     "none": {
@@ -2644,7 +2650,8 @@
         "M4": "Warehouse",
         "M5": "Profit",
         "M7": "Ads",
-        "M15": "Payments"
+        "M15": "Payments",
+        "M2": "Confirmation"
       }
     }
   },
@@ -3932,5 +3939,28 @@
       "privacy": "Privacy policy (a notice, nothing to accept)",
       "loading": "Loading…"
     }
+  },
+  "feedback": {
+    "open": "Send feedback",
+    "title": "Send feedback to the Mizan team",
+    "description": "An idea, a problem or a question: it goes straight to the team building Mizan.",
+    "kindLabel": "What is it?",
+    "kind": {
+      "idea": "Idea",
+      "problem": "Problem",
+      "question": "Question"
+    },
+    "messageLabel": "Your message",
+    "placeholder": {
+      "idea": "What would make your work easier?",
+      "problem": "What happened, and what did you expect?",
+      "question": "What would you like to know?"
+    },
+    "left": "{n, plural, one {<num>#</num> character left} other {<num>#</num> characters left}}",
+    "page": "We'll include the page you're on: <path></path>",
+    "send": "Send",
+    "cancel": "Cancel",
+    "sent": "Feedback sent. Thank you!",
+    "tooMany": "You've sent a lot of feedback this hour. Try again a little later."
   }
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { NavLinks } from "./NavLinks";
+import { FeedbackButton } from "./FeedbackButton";
 import { NotificationBell } from "./NotificationBell";
 import { PlanBanner } from "./PlanBanner";
 import { RouteMotion } from "./RouteMotion";
@@ -38,11 +39,12 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
         <div className="mz-scroll min-h-0 flex-1 px-3 pb-4"><NavLinks /></div>
       </aside>
       <div className="flex min-h-0 min-w-0 flex-col print:block">
-        <header className="g print:hidden sticky top-0 z-30 mx-3 mt-3 flex h-14 items-center gap-3 px-4 md:px-5 lg:mx-0 lg:mt-0">
+        <header className="g print:hidden sticky top-0 z-30 mx-3 mt-3 flex h-14 items-center gap-2 px-3 sm:px-4 md:gap-3 md:px-5 lg:mx-0 lg:mt-0">
           <ThemedWordmark className="shrink-0 lg:hidden" />
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
           <span className="flex-1" />
+          <FeedbackButton />
           <NotificationBell />
           <LocaleSwitch />
           <span className="hidden md:contents"><ThemeSwitch initial={theme} /></span>

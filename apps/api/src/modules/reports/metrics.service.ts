@@ -8,9 +8,12 @@ import { AdSpendService } from "../profit/ads/ad-spend.service.js";
 import { addDays, asDate, localDay, storeClock } from "../profit/store-day.js";
 import { METRICS, metricByKey, type MetricFacts } from "./metrics.js";
 import type { MetricValuesQuery } from "./metrics.dto.js";
+import { isoWeekRange, lastFullWeek } from "./week.js";
 
 const PREPAID = ["prepaid", "bnpl", "bank_transfer", "store_credit"];
 const COD = ["cod", "partial"];
+/** Confirmation channels with no person on Mizan's side: the routing rule, the bot, the link page, an SMS link, an automated or AI call. */
+export const AUTOMATED_CONFIRMATION = ["auto", "whatsapp", "link", "sms", "voice_ivr", "voice_ai", "voice_bot"];
 
 /**
  * Serves the metric layer (E15-1): the catalogue in the reader's language, and values for a
@@ -55,21 +58,35 @@ export class MetricsService {
       sql<string>`count(*) filter (where o.currency = ${base})`.as("orders_base"),
     ]).where(sql<boolean>`${local} between ${asDate(from)} and ${asDate(to)}`).where("o.status", "!=", "cancelled").executeTakeFirstOrThrow();
     // The same rows and filters as the profit home (orders by store day, profit in the base currency).
+    const ended = sql<boolean>`(o.status = 'delivered' or o.status = 'returned' or (o.status = 'cancelled' and o.shipped_at is not null))`;
     const p = await trx.selectFrom("order_pnl as p").innerJoin("orders as o", "o.id", "p.order_id").select([
       sql<string>`count(*) filter (where o.status = 'delivered')`.as("delivered"),
       sql<string>`count(*) filter (where o.status = 'returned' or (o.status = 'cancelled' and o.shipped_at is not null))`.as("returned"),
       sql<string>`coalesce(sum(p.net_minor), 0)`.as("net"),
+      // Only the orders that ended: one still moving carries its costs but not yet its cash.
+      sql<string>`coalesce(sum(p.net_minor) filter (where ${ended}), 0)`.as("net_ended"),
       sql<string>`coalesce(sum(p.revenue_minor), 0)`.as("revenue"),
       sql<string>`coalesce(sum(p.refund_minor), 0)`.as("refunds"),
     ]).where("p.day", ">=", asDate(from)).where("p.day", "<=", asDate(to)).where("p.currency", "=", base).executeTakeFirstOrThrow();
+    // Automation share (L1-7): orders of the period that were confirmed, the same test as the
+    // confirmation analytics (E6-6: confirmed or further, or confirmed then cancelled), and of those
+    // the ones with a confirmed attempt where nobody was involved. No attempt (confirmed from the
+    // store, an exchange's replacement) counts as not automated.
+    const confirmedOrder = sql<boolean>`(o.status in ('confirmed', 'shipped', 'delivered', 'returned') or o.confirmed_at is not null)`;
+    const automated = sql<boolean>`exists (select 1 from confirmations c where c.order_id = o.id and c.outcome = 'confirmed' and c.agent_id is null and c.channel in (${sql.join(AUTOMATED_CONFIRMATION)}))`;
+    const c = await trx.selectFrom("orders as o").select([
+      sql<string>`count(*) filter (where ${confirmedOrder})`.as("confirmed"),
+      sql<string>`count(*) filter (where ${confirmedOrder} and ${automated})`.as("auto"),
+    ]).where(sql<boolean>`${local} between ${asDate(from)} and ${asDate(to)}`).executeTakeFirstOrThrow();
     const stock = await trx.selectFrom("stock_levels").select(sql<string>`coalesce(sum(greatest(on_hand - reserved, 0)), 0)`.as("n")).executeTakeFirstOrThrow();
     const shipped = await trx.selectFrom("stock_movements").select(sql<string>`coalesce(-sum(delta), 0)`.as("n"))
       .where("reason", "=", "pick").where(sql<boolean>`(created_at AT TIME ZONE ${timezone})::date between ${asDate(from)} and ${asDate(to)}`).executeTakeFirstOrThrow();
     return {
       base, days, live: BigInt(o.live), prepaid: BigInt(o.prepaid), cod: BigInt(o.cod), totalBase: BigInt(o.total_base), ordersBase: BigInt(o.orders_base),
-      delivered: BigInt(p.delivered), returned: BigInt(p.returned), net: BigInt(p.net), revenue: BigInt(p.revenue), refunds: BigInt(p.refunds),
+      delivered: BigInt(p.delivered), returned: BigInt(p.returned), net: BigInt(p.net), netEnded: BigInt(p.net_ended), revenue: BigInt(p.revenue), refunds: BigInt(p.refunds),
       spend: (await this.adSpend.spendInBase(trx, tenantId, base, from, to)).total,
       available: BigInt(stock.n), unitsShipped: BigInt(shipped.n),
+      confirmed: BigInt(c.confirmed), confirmedAuto: BigInt(c.auto),
     };
   }
 
@@ -88,7 +105,12 @@ export class MetricsService {
   }
 
   /** The period a query asks for, in store days. */
-  period(q: { days?: number; from?: string; to?: string }, timezone: string, now = new Date()): { from: string; to: string } {
+  period(q: { days?: number; from?: string; to?: string; week?: string }, timezone: string, now = new Date()): { from: string; to: string } {
+    if (q.week) {
+      const range = isoWeekRange(q.week === "last" ? lastFullWeek(localDay(now, timezone)) : q.week);
+      if (!range) throw new ProblemError(422, "validation_failed", "an ISO week such as 2026-W43, or last", [{ path: "week", code: "invalid_week" }]);
+      return range;
+    }
     if (q.from && q.to) {
       const span = (Date.parse(`${q.to}T00:00:00Z`) - Date.parse(`${q.from}T00:00:00Z`)) / 86_400_000 + 1;
       if (span < 1 || span > 366) throw new ProblemError(422, "validation_failed", "from must be before to, at most 366 days", [{ path: "to", code: "range" }]);

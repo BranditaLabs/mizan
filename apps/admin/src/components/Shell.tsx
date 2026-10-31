@@ -16,6 +16,7 @@ export const NAV: ReadonlyArray<{ href: string; key: string; roles?: StaffRole[]
   { href: "/health", key: "health", roles: ["super_admin", "engineer"] },
   { href: "/users", key: "users", roles: ["super_admin", "support", "engineer"] },
   { href: "/flags", key: "flags", roles: ["super_admin", "engineer", "support"] },
+  { href: "/feedback", key: "feedback" },
   { href: "/announcements", key: "announcements", roles: ["super_admin", "support", "engineer"] },
   { href: "/staff", key: "staff", roles: ["super_admin"] },
   { href: "/audit", key: "audit", roles: ["super_admin", "engineer"] },

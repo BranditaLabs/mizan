@@ -7,7 +7,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPgDb, pgMigrationClient } from "../src/clients.js";
 import { ensureAppLogin, loadMigrations, migrate } from "../src/migrate.js";
-import { asWorker, withTenant } from "../src/tenant.js";
+import { asPlatformStaff, asWorker, withTenant } from "../src/tenant.js";
 
 /**
  * Same guarantees as tenant.test.ts, on a real PostgreSQL server with the
@@ -209,6 +209,34 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
       // Retention may delete only finished rows: these events are not dispatched yet (0012).
       const deleted = await asWorker(db, (trx) => trx.deleteFrom("domain_events").executeTakeFirst());
       expect(deleted.numDeletedRows).toBe(0n);
+    } finally {
+      await db.destroy();
+    }
+  });
+
+  it("feedback: the app adds a line for its own store and reads nothing back; the back office reads it and changes only the status (L1-8)", async () => {
+    await admin.query(`GRANT mizan_platform TO ${loginRole}`);
+    const db = createPgDb(appUrl, { max: 2 });
+    const id = "cccccccc-0000-4000-8000-000000000003";
+    const line = { kind: "problem", message: "the export button does nothing", page: "/ar/reports", locale: "ar" } as const;
+    try {
+      // A column grant without SELECT: a plain INSERT works, RETURNING would not.
+      await withTenant(db, A, (trx) => trx.insertInto("feedback").values({ id, store_id: A, ...line }).execute());
+      await expect(withTenant(db, A, (trx) => trx.insertInto("feedback").values({ id: "cccccccc-0000-4000-8000-000000000004", store_id: A, ...line }).returning("id").execute()))
+        .rejects.toThrow(/permission denied/);
+      await expect(withTenant(db, A, (trx) => trx.selectFrom("feedback").select("id").execute())).rejects.toThrow(/permission denied/);
+      await expect(withTenant(db, A, (trx) => trx.insertInto("feedback").values({ id: "cccccccc-0000-4000-8000-000000000005", store_id: B, ...line }).execute()))
+        .rejects.toThrow(/row-level security/);
+      // The back office locks the line and moves its status, as the PATCH route does.
+      const before = await asPlatformStaff(db, async (trx) => {
+        const row = await trx.selectFrom("feedback").select(["store_id", "status"]).where("id", "=", id).forUpdate().executeTakeFirstOrThrow();
+        await trx.updateTable("feedback").set({ status: "seen", updated_at: new Date() }).where("id", "=", id).execute();
+        return row;
+      });
+      expect(before).toEqual({ store_id: A, status: "new" });
+      expect(await asPlatformStaff(db, (trx) => trx.selectFrom("feedback").select("status").where("id", "=", id).executeTakeFirstOrThrow())).toEqual({ status: "seen" });
+      await expect(asPlatformStaff(db, (trx) => trx.updateTable("feedback").set({ message: "edited" }).where("id", "=", id).execute())).rejects.toThrow(/permission denied/);
+      await expect(asPlatformStaff(db, (trx) => trx.deleteFrom("feedback").where("id", "=", id).execute())).rejects.toThrow(/permission denied/);
     } finally {
       await db.destroy();
     }

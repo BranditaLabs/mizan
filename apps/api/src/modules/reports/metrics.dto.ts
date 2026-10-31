@@ -1,5 +1,6 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
+import { isWeekParam } from "./week.js";
 
 export const MetricCatalogueSchema = z.object({
   data: z.array(z.object({
@@ -17,7 +18,9 @@ export const MetricValuesQuerySchema = z.object({
   days: z.coerce.number().int().refine((d) => [7, 30, 90].includes(d), "7, 30 or 90").optional().describe("The last 7, 30 or 90 store days, today included (default 30)"),
   from: z.iso.date().optional().describe("Or a range of store days (with `to`, at most 366)"),
   to: z.iso.date().optional(),
-}).refine((q) => Boolean(q.from) === Boolean(q.to), { message: "give from and to together", path: ["to"] });
+  week: z.string().max(8).refine(isWeekParam, "an ISO week such as 2026-W43, or last").optional()
+    .describe("Or an ISO week, Monday to Sunday in store days (\"2026-W43\"); \"last\" for the last full week"),
+}).refine((q) => Boolean(q.from) === Boolean(q.to) && (!q.week || (!q.from && q.days === undefined)), { message: "give from and to together; a week alone", path: ["to"] });
 export type MetricValuesQuery = z.output<typeof MetricValuesQuerySchema>;
 
 export const MetricValuesSchema = z.object({

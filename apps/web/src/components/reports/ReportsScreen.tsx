@@ -12,13 +12,17 @@ import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { isoWeekOf } from "@/lib/week";
 
 type Dashboard = Schemas["Dashboard"];
 type DashboardId = Dashboard["id"];
 type Tile = Dashboard["tiles"][number];
 type Series = Dashboard["series"][number];
-const PERIODS = [7, 30, 90] as const;
-const MODULES = new Set(["M1", "M3", "M4", "M5", "M7", "M15"]);
+const PERIODS = [7, 30, 90, "week"] as const;
+/** A period choice: the last 7, 30 or 90 store days, or the last full ISO week (Monday–Sunday, L1-7). */
+type Period = (typeof PERIODS)[number];
+const periodQuery = (p: Period) => (p === "week" ? { week: "last" } : { days: p });
+const MODULES = new Set(["M1", "M2", "M3", "M4", "M5", "M7", "M15"]);
 /** A store day shown without shifting through a midnight. */
 const noon = (day: string) => new Date(`${day}T12:00:00Z`);
 
@@ -32,7 +36,7 @@ export function ReportsScreen() {
   const locale = useLocale();
   const { api, user, store } = useSession();
   const [picked, setPicked] = useState<DashboardId | "metrics" | null>(null);
-  const [days, setDays] = useState<(typeof PERIODS)[number]>(30);
+  const [days, setDays] = useState<Period>(30);
   const list = useQuery({
     queryKey: ["dashboards", user?.uid ?? "", store?.tenantId ?? "", locale],
     queryFn: () => ok(api.GET("/v1/dashboards")),
@@ -43,7 +47,7 @@ export function ReportsScreen() {
   const tab = picked === "metrics" ? "metrics" : id;
   const dash = useQuery({
     queryKey: ["dashboard", user?.uid ?? "", store?.tenantId ?? "", id, days, locale],
-    queryFn: () => ok(api.GET("/v1/dashboards/{id}", { params: { path: { id: id! }, query: { days } } })),
+    queryFn: () => ok(api.GET("/v1/dashboards/{id}", { params: { path: { id: id! }, query: periodQuery(days) } })),
     enabled: Boolean(store) && id !== null && tab !== "metrics",
     placeholderData: (prev) => prev,
   });
@@ -57,7 +61,9 @@ export function ReportsScreen() {
         </div>
         <nav aria-label={t("period.label")} className="mz-tabs">
           {PERIODS.map((d) => (
-            <button key={d} type="button" className="mz-tab" aria-current={days === d ? "true" : undefined} onClick={() => setDays(d)}>{t("period.days", { days: d })}</button>
+            <button key={d} type="button" className="mz-tab" aria-current={days === d ? "true" : undefined} onClick={() => setDays(d)} data-testid={`period-${d}`}>
+              {d === "week" ? t("period.lastWeek") : t("period.days", { days: d })}
+            </button>
           ))}
         </nav>
       </header>
@@ -76,7 +82,7 @@ export function ReportsScreen() {
   );
 }
 
-function DashboardView({ d, days }: { d: Dashboard; days: number }) {
+function DashboardView({ d, days }: { d: Dashboard; days: Period }) {
   const t = useTranslations("reports");
   return (
     <div className="flex flex-col gap-4" data-testid={`dashboard-${d.id}`}>
@@ -103,7 +109,7 @@ function DashboardView({ d, days }: { d: Dashboard; days: number }) {
  * Every metric the caller may see (E15-1), with its definition and its value for the period: the
  * dictionary behind every number on every screen, so a team can check what a figure means.
  */
-function MetricsView({ days }: { days: number }) {
+function MetricsView({ days }: { days: Period }) {
   const t = useTranslations("reports");
   const locale = useLocale();
   const { api, user, store } = useSession();
@@ -111,7 +117,7 @@ function MetricsView({ days }: { days: number }) {
   const catalogue = useQuery({ queryKey: ["metricCatalogue", ...scope, locale], queryFn: () => ok(api.GET("/v1/metrics/catalogue")), staleTime: 3_600_000 });
   const values = useQuery({
     queryKey: ["metricValues", ...scope, days],
-    queryFn: () => ok(api.GET("/v1/metrics/values", { params: { query: { days } } })),
+    queryFn: () => ok(api.GET("/v1/metrics/values", { params: { query: periodQuery(days) } })),
     placeholderData: (prev) => prev,
   });
   if (catalogue.isPending || values.isPending) return <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>;
@@ -203,16 +209,16 @@ function SeriesChart({ s, currency }: { s: Series; currency: string }) {
 }
 
 /** The dashboard as a file, fetched with the session (the API needs the bearer token), then saved. */
-function Downloads({ d, days }: { d: Dashboard; days: number }) {
+function Downloads({ d, days }: { d: Dashboard; days: Period }) {
   const t = useTranslations("reports");
   const { api } = useSession();
   const download = useMutation({
     mutationFn: async (format: "xlsx" | "csv") => {
-      const blob = await ok(api.GET("/v1/dashboards/{id}/export", { params: { path: { id: d.id }, query: { days, format } }, parseAs: "blob" })) as Blob;
+      const blob = await ok(api.GET("/v1/dashboards/{id}/export", { params: { path: { id: d.id }, query: { ...periodQuery(days), format } }, parseAs: "blob" })) as Blob;
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `mizan-${d.id}-${d.from}-${d.to}.${format}`;
+      a.download = `mizan-${d.id}-${days === "week" ? isoWeekOf(d.from) : `${d.from}-${d.to}`}.${format}`; // the API's name
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     },

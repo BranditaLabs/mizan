@@ -98,7 +98,7 @@ describe("schema", () => {
     for (const ix of [
       "memberships_user", "order_lines_order", "orders_queue", "mz_outbox_due", "mz_outbox_done",
       "mz_inbound_events_received", "domain_events_due", "domain_events_dispatched", "audit_log_tenant_recent", "idempotency_keys_expiry",
-      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "feature_flag_stores_tenant", "announcements_live", "whatsapp_messages_out", "pick_lists_open", "pick_list_orders_order", "suppliers_name", "purchase_orders_status", "purchase_orders_supplier", "purchase_order_lines_variant", "purchase_receipts_po", "purchase_receipt_lines_receipt", "landed_costs_po", "payment_links_open_conversion", "payment_links_order", "disputes_number", "disputes_external", "disputes_order", "disputes_due", "sso_domains_store", "sso_domains_provider", "order_sources_campaign", "order_sources_order",
+      "products_external", "variants_missing_cost", "product_events_dedupe", "orders_recent", "orders_number", "cost_rules_active", "confirmation_runs_live", "confirmation_steps_due", "order_pnl_day", "order_lines_unlinked", "confirmation_runs_customer", "confirmation_runs_needs_call", "whatsapp_messages_run", "connections_whatsapp_number", "offer_rules_active", "order_offers_order", "order_lines_variant", "ad_spend_day", "orders_duplicates", "orders_customer_recent", "order_reconciliations_recent", "bulk_actions_recent", "bulk_action_items_pending", "variants_barcode", "products_title", "orders_stock_short", "stock_movements_ref", "stock_movements_variant", "ops_operations_device", "mz_outbox_scope_due", "automations_trigger", "automation_runs_recent", "notifications_recent", "payments_ref", "tickets_number", "tickets_queue", "tickets_order", "ticket_events_ticket", "refunds_number", "refunds_queue", "refunds_order", "ticket_events_dedupe", "return_inspections_order", "return_inspections_recent", "shipments_one_live", "shipments_recent", "shipments_review", "shipment_events_shipment", "exchanges_original", "platform_audit_recent", "platform_audit_staff", "platform_store_notes_store", "support_access_open", "support_access_staff", "users_email_lower", "feature_flag_stores_tenant", "announcements_live", "whatsapp_messages_out", "pick_lists_open", "pick_list_orders_order", "suppliers_name", "purchase_orders_status", "purchase_orders_supplier", "purchase_order_lines_variant", "purchase_receipts_po", "purchase_receipt_lines_receipt", "landed_costs_po", "payment_links_open_conversion", "payment_links_order", "disputes_number", "disputes_external", "disputes_order", "disputes_due", "sso_domains_store", "sso_domains_provider", "order_sources_campaign", "order_sources_order", "feedback_recent", "feedback_open", "confirmations_confirmed",
     ]) expect(have, ix).toContain(ix);
   });
 
@@ -293,6 +293,28 @@ describe("schema", () => {
     expect(seen.rows).toEqual([{ provider_id: "saml.acme" }]);
     await expect(asRole("mizan_app", () => db.query(`SELECT store_id FROM sso_domains`))).rejects.toThrow(/permission denied/);
     await expect(asRole("mizan_app", () => db.query(`INSERT INTO sso_domains (domain, store_id, provider_id) VALUES ('evil.test', $1, 'saml.evil')`, [t]))).rejects.toThrow(/permission denied/);
+  });
+
+  it("feedback is added by a store member for their own store, never read back; the back office reads it and changes only its status (L1-8)", async () => {
+    const user = (await db.query<{ id: string }>(`INSERT INTO users (firebase_uid, email) VALUES ('fb-feedback-l18', 'mona@shop.test') RETURNING id`)).rows[0]!.id;
+    const id = "0f0f0f0f-0000-4000-8000-000000000001";
+    const add = (tenant: string, store: string, cols = "", vals = "", fid = id) => asTenant(tenant, () => db.query(
+      `INSERT INTO feedback (id, store_id, user_id, kind, message, page, locale${cols}) VALUES ($1, $2, $3, 'problem', 'the export button does nothing', '/ar/reports', 'ar'${vals})`, [fid, store, user]));
+    await add(T1, T1); // no RETURNING: the app generated the id
+    await expect(add(T1, T2, "", "", "0f0f0f0f-0000-4000-8000-000000000002")).rejects.toThrow(/row-level security/);
+    await expect(add(T1, T1, ", status", ", 'done'", "0f0f0f0f-0000-4000-8000-000000000003")).rejects.toThrow(/permission denied/);
+    await expect(asTenant(T1, () => db.query(`SELECT id FROM feedback`))).rejects.toThrow(/permission denied/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO feedback (id, store_id, kind, message, page, locale) VALUES (gen_random_uuid(), $1, 'idea', 'x', '/ar/orders?phone=010', 'ar')`, [T1]))).rejects.toThrow(/page_check/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO feedback (id, store_id, kind, message, page, locale) VALUES (gen_random_uuid(), $1, 'rant', 'x', '/', 'ar')`, [T1]))).rejects.toThrow(/kind_check/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO feedback (id, store_id, kind, message, page, locale) VALUES (gen_random_uuid(), $1, 'idea', '', '/', 'fr')`, [T1]))).rejects.toThrow(/check/);
+    await expect(asTenant(T1, () => db.query(`UPDATE feedback SET status = 'done'`))).rejects.toThrow(/permission denied/);
+    const seen = await asRole("mizan_platform", () => db.query<{ store_id: string; status: string }>(`SELECT store_id, status FROM feedback WHERE id = $1`, [id]));
+    expect(seen.rows).toEqual([{ store_id: T1, status: "new" }]);
+    await asRole("mizan_platform", () => db.query(`UPDATE feedback SET status = 'seen', updated_at = now() WHERE id = $1`, [id]));
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE feedback SET status = 'closed' WHERE id = $1`, [id]))).rejects.toThrow(/status_check/);
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE feedback SET message = 'edited' WHERE id = $1`, [id]))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_platform", () => db.query(`DELETE FROM feedback`))).rejects.toThrow(/permission denied/);
+    await expect(asRole("mizan_worker", () => db.query(`SELECT id FROM feedback`))).rejects.toThrow(/permission denied/);
   });
 
   it("support access is time-limited, opened only by the back office, and visible to the store, which may end it (A-3)", async () => {

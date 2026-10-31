@@ -9,6 +9,7 @@ import { DASHBOARDS, dashboardById, SERIES_NAMES, SERIES_ROLES, type DashboardId
 import type { Dashboard, DashboardQuery } from "./dashboards.dto.js";
 import { metricByKey } from "./metrics.js";
 import { MetricsService } from "./metrics.service.js";
+import { isoWeekOf } from "./week.js";
 
 /**
  * The built-in dashboards (E15-2): tiles from the metric layer and daily series, in the reader's
@@ -64,7 +65,7 @@ export class DashboardsService {
       : { metric: "Metric", value: "Value", unit: "Unit", definition: "Definition", day: "Day", period: "Period", units: { count: "count", percent: "%", money: d.currency, days: "days", multiple: "×" } };
     const num = (v: string | null): Cell => (v === null ? null : format === "xlsx" ? Number(v) : v);
     const rows: Cell[][] = [
-      [d.name, `${L.period}: ${d.from} → ${d.to}`],
+      [d.name, `${L.period}: ${q.week ? `${isoWeekOf(d.from)} · ` : ""}${d.from} → ${d.to}`],
       [],
       [L.metric, L.value, L.unit, L.definition],
       ...d.tiles.map((t) => [t.name, num(t.value), L.units[t.unit], t.definition] as Cell[]),
@@ -73,7 +74,7 @@ export class DashboardsService {
       rows.push([], [L.day, ...d.series.map((s) => s.name)]);
       for (let i = 0; i < d.series[0]!.points.length; i++) rows.push([d.series[0]!.points[i]!.day, ...d.series.map((s) => num(s.points[i]!.value))]);
     }
-    const name = `mizan-${d.id}-${d.from}-${d.to}`;
+    const name = q.week ? `mizan-${d.id}-${isoWeekOf(d.from)}` : `mizan-${d.id}-${d.from}-${d.to}`;
     return format === "csv"
       ? { filename: `${name}.csv`, type: "text/csv; charset=utf-8", body: Buffer.from(csv(rows), "utf8") }
       : { filename: `${name}.xlsx`, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", body: Buffer.from(xlsx(d.name, rows, { rtl: ar })) };

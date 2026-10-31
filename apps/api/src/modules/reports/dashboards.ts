@@ -2,7 +2,7 @@
  * The built-in dashboards (M20, E15-2): which metrics each shows, and which daily series. Every
  * number comes from the metric layer (metrics.ts), so a tile shows what every other screen shows.
  */
-export const DASHBOARD_IDS = ["home", "operations", "profit", "payments", "stock"] as const;
+export const DASHBOARD_IDS = ["home", "operations", "profit", "payments", "stock", "pilot"] as const;
 export type DashboardId = (typeof DASHBOARD_IDS)[number];
 export const SERIES = ["orders", "net_profit"] as const;
 export type SeriesKey = (typeof SERIES)[number];
@@ -20,6 +20,11 @@ export const DASHBOARDS: readonly DashboardDefinition[] = [
   { id: "profit", name: { en: "Profit", ar: "الأرباح" }, metrics: ["net_profit", "average_order_value", "delivered_rate", "rto_rate"], series: ["net_profit"] },
   { id: "payments", name: { en: "Payments", ar: "المدفوعات" }, metrics: ["prepaid_share", "cod_share", "orders", "average_order_value"], series: ["orders"] },
   { id: "stock", name: { en: "Stock", ar: "المخزون" }, metrics: ["days_of_cover", "orders"], series: ["orders"] },
+  // L1-7: what the pilot measures against its baseline, week by week (export ?week=YYYY-Www).
+  {
+    id: "pilot", name: { en: "Pilot", ar: "متابعة التجربة" },
+    metrics: ["orders", "delivered_rate", "rto_rate", "cost_per_delivered_order", "profit_per_completed_order", "automation_share"], series: ["orders", "net_profit"],
+  },
 ];
 export const dashboardById = new Map(DASHBOARDS.map((d) => [d.id, d]));
 /** Daily series a role may see: profit only for those who see money. */

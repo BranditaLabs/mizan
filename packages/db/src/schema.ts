@@ -380,6 +380,19 @@ export interface FeatureFlags {
   updated_at: Generated<Timestamp>;
 }
 
+export interface Feedback {
+  id: Generated<string>;
+  store_id: string;
+  user_id: string | null;
+  kind: string;
+  message: string;
+  page: Generated<string>;
+  locale: string;
+  status: Generated<string>;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface FxRateOverrides {
   tenant_id: string;
   day: Timestamp;
@@ -1385,6 +1398,7 @@ export interface DB {
   external_variants: ExternalVariants;
   feature_flag_stores: FeatureFlagStores;
   feature_flags: FeatureFlags;
+  feedback: Feedback;
   fx_rate_overrides: FxRateOverrides;
   fx_rates: FxRates;
   idempotency_keys: IdempotencyKeys;

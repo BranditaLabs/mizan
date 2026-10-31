@@ -1329,6 +1329,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FeedbackController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PlatformFeedbackController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/platform/feedback/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["PlatformFeedbackController_update"];
+        trace?: never;
+    };
     "/v1/usage": {
         parameters: {
             query?: never;
@@ -3831,7 +3879,7 @@ export interface components {
         };
         Dashboard: {
             /** @enum {string} */
-            id: "home" | "operations" | "profit" | "payments" | "stock";
+            id: "home" | "operations" | "profit" | "payments" | "stock" | "pilot";
             name: string;
             /** Format: date */
             from: string;
@@ -3868,7 +3916,7 @@ export interface components {
         DashboardList: {
             data: {
                 /** @enum {string} */
-                id: "home" | "operations" | "profit" | "payments" | "stock";
+                id: "home" | "operations" | "profit" | "payments" | "stock" | "pilot";
                 name: string;
             }[];
         };
@@ -4216,6 +4264,10 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             returnedAt: string | null;
+        };
+        FeedbackCreated: {
+            /** Format: uuid */
+            id: string;
         };
         FxRate: {
             quote: string;
@@ -6005,6 +6057,67 @@ export interface components {
                 failedAt: string;
             }[];
         };
+        PlatformFeedback: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "idea" | "problem" | "question";
+            message: string;
+            page: string;
+            /** @enum {string} */
+            locale: "ar" | "en";
+            /** @enum {string} */
+            status: "new" | "seen" | "done";
+            store: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+            };
+            /** @description Who sent it; null once their account is gone */
+            person: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+                email: string | null;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PlatformFeedbackPage: {
+            /** @description Newest first */
+            data: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "idea" | "problem" | "question";
+                message: string;
+                page: string;
+                /** @enum {string} */
+                locale: "ar" | "en";
+                /** @enum {string} */
+                status: "new" | "seen" | "done";
+                store: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string;
+                };
+                /** @description Who sent it; null once their account is gone */
+                person: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                    email: string | null;
+                } | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            total: number;
+            nextOffset: number | null;
+        };
         PlatformFlag: {
             key: string;
             description: string;
@@ -7287,6 +7400,16 @@ export interface components {
              */
             orderId?: string;
         };
+        SendFeedback: {
+            /** @enum {string} */
+            kind: "idea" | "problem" | "question";
+            message: string;
+            /**
+             * @description The screen it was sent from; only the path is kept (query string and fragment dropped, at most 300 characters)
+             * @default /
+             */
+            page: string;
+        };
         SetAdSpend: {
             /**
              * Format: date
@@ -8008,6 +8131,10 @@ export interface components {
                 late: number;
             };
             nextCursor: string | null;
+        };
+        UpdateFeedback: {
+            /** @enum {string} */
+            status: "new" | "seen" | "done";
         };
         UpdateMember: {
             /** @enum {string} */
@@ -13429,6 +13556,182 @@ export interface operations {
             };
         };
     };
+    FeedbackController_send: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendFeedback"];
+            };
+        };
+        responses: {
+            /** @description Sent to the Mizan team with the store, the person, the page (path only) and the language. 10 per person per hour. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeedbackCreated"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests (rate_limited; see Retry-After) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PlatformFeedbackController_list: {
+        parameters: {
+            query?: {
+                status?: "new" | "seen" | "done";
+                limit?: number;
+                offset?: number;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Feedback from every store, newest first; ?status= to filter */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformFeedbackPage"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PlatformFeedbackController_update: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFeedback"];
+            };
+        };
+        responses: {
+            /** @description New, seen or done; a change is a line in the staff trail */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformFeedback"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     BillingController_get: {
         parameters: {
             query?: {
@@ -13554,6 +13857,8 @@ export interface operations {
                 /** @description Or a range of store days (with `to`, at most 366) */
                 from?: string;
                 to?: string;
+                /** @description Or an ISO week, Monday to Sunday in store days ("2026-W43"); "last" for the last full week */
+                week?: string;
             };
             header?: {
                 "Accept-Language"?: "ar" | "en";
@@ -13635,6 +13940,8 @@ export interface operations {
                 /** @description Or a range of store days (with `to`, at most 366) */
                 from?: string;
                 to?: string;
+                /** @description Or an ISO week, Monday to Sunday in store days ("2026-W43"); "last" for the last full week */
+                week?: string;
             };
             header?: {
                 "Accept-Language"?: "ar" | "en";
@@ -13694,6 +14001,8 @@ export interface operations {
                 /** @description Or a range of store days (with `to`, at most 366) */
                 from?: string;
                 to?: string;
+                /** @description Or an ISO week, Monday to Sunday in store days ("2026-W43"); "last" for the last full week */
+                week?: string;
                 /** @description Excel (default) or CSV (UTF-8 with BOM) */
                 format?: "csv" | "xlsx";
             };

@@ -50,7 +50,8 @@
       "flags": "Feature flags",
       "announcements": "Announcements",
       "staff": "Staff",
-      "audit": "Staff trail"
+      "audit": "Staff trail",
+      "feedback": "Feedback"
     },
     "roles": {
       "super_admin": "Super admin",
@@ -331,5 +332,42 @@
     },
     "open": "Open store",
     "more": "Older"
+  },
+  "feedback": {
+    "title": "Feedback",
+    "subtitle": "Ideas, problems and questions store teams sent from the dashboard, newest first.",
+    "filter": "Status",
+    "all": "All",
+    "total": "{n, plural, one {<b>#</b> message} other {<b>#</b> messages}}",
+    "loading": "Loading",
+    "empty": {
+      "title": "Nothing here",
+      "body": "No feedback with this status."
+    },
+    "col": {
+      "kind": "Kind",
+      "message": "Message",
+      "store": "Store",
+      "person": "From",
+      "page": "Page",
+      "time": "Sent",
+      "status": "Status"
+    },
+    "kind": {
+      "idea": "Idea",
+      "problem": "Problem",
+      "question": "Question"
+    },
+    "status": {
+      "new": "New",
+      "seen": "Seen",
+      "done": "Done"
+    },
+    "change": "Change status",
+    "noName": "No name",
+    "gone": "Account deleted",
+    "newer": "Newer",
+    "older": "Older",
+    "loadFailed": "We couldn't load the feedback. Try again."
   }
 }

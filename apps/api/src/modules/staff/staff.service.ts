@@ -48,6 +48,11 @@ export class StaffService {
     return this.db.staff((trx) => this.write(trx, line));
   }
 
+  /** One line in the staff trail inside the caller's back-office transaction: it lands with the change, or not at all. */
+  record(trx: Trx, line: AuditLine): Promise<void> {
+    return this.write(trx, line);
+  }
+
   async list(): Promise<StaffView[]> {
     return this.db.staff(async (trx) => (await this.rows(trx)).map(view));
   }
