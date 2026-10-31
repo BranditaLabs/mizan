@@ -54,6 +54,7 @@ resource "azurerm_container_app" "api" {
   name                         = "ca-mizan-api"
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   tags                         = local.labels
 
@@ -141,6 +142,7 @@ resource "azurerm_container_app" "worker" {
   name                         = "ca-mizan-worker"
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   tags                         = local.labels
 
@@ -210,6 +212,7 @@ resource "azurerm_container_app" "web" {
   name                         = "ca-mizan-web"
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   tags                         = local.labels
 
@@ -266,6 +269,7 @@ resource "azurerm_container_app" "admin" {
   name                         = "ca-mizan-admin"
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   revision_mode                = "Single"
   tags                         = local.labels
 
@@ -321,6 +325,7 @@ resource "azurerm_container_app_job" "migrate" {
   location                     = azurerm_resource_group.main.location
   resource_group_name          = azurerm_resource_group.main.name
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   replica_timeout_in_seconds   = 900
   replica_retry_limit          = 0
   tags                         = local.labels

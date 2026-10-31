@@ -126,7 +126,7 @@ resource "azurerm_monitor_metric_alert" "worker_down" {
 }
 
 resource "azurerm_monitor_metric_alert" "postgres_cpu" {
-  name                = "[${var.env}] PostgreSQL CPU over 80%"
+  name                = "[${var.env}] PostgreSQL CPU over 80 percent"
   resource_group_name = azurerm_resource_group.main.name
   scopes              = [azurerm_postgresql_flexible_server.main.id]
   description         = "PostgreSQL Flexible Server CPU utilization"
@@ -146,7 +146,7 @@ resource "azurerm_monitor_metric_alert" "postgres_cpu" {
 }
 
 resource "azurerm_monitor_metric_alert" "postgres_storage" {
-  name                = "[${var.env}] PostgreSQL storage over 85%"
+  name                = "[${var.env}] PostgreSQL storage over 85 percent"
   resource_group_name = azurerm_resource_group.main.name
   scopes              = [azurerm_postgresql_flexible_server.main.id]
   description         = "PostgreSQL Flexible Server storage utilization"

@@ -35,6 +35,13 @@ resource "azurerm_container_app_environment" "main" {
   resource_group_name        = azurerm_resource_group.main.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
   tags                       = local.labels
+
+  # Azure now creates every environment with the serverless Consumption profile; declaring it (and
+  # naming it on each app and job) keeps plans clean. It is the same pay-per-use plan.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 resource "azurerm_container_registry" "images" {
