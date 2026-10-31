@@ -44,7 +44,7 @@ variable "web_url" {
 }
 
 variable "admin_url" {
-  description = "Public URL of the back office (CORS); empty until it is deployed"
+  description = "Public URL of the back office (CORS); defaults to admin_domain once bound, else the admin app's FQDN"
   type        = string
   default     = ""
 }
@@ -62,13 +62,13 @@ variable "web_domain" {
 }
 
 variable "admin_domain" {
-  description = "Back-office host; empty until the admin app is deployed"
+  description = "Back-office host (ca-mizan-admin, L0-3), bound with an Azure managed certificate"
   type        = string
   default     = ""
 }
 
-variable "admin_app" {
-  description = "Container App resource name for the back office, once deployed (L0-3)"
+variable "marketing_domain" {
+  description = "Landing-page host (L1-9): a second hostname on the web app, which shows the landing page at its root (MARKETING_HOST)"
   type        = string
   default     = ""
 }
@@ -127,6 +127,22 @@ variable "worker_min_instances" {
 variable "worker_max_instances" {
   type    = number
   default = 2
+}
+
+# The worker never scales to zero (the outbox and event dispatch run between requests), so its size
+# is most of an environment's bill. Consumption plan pairs: 0.25/0.5Gi, 0.5/1Gi, 1/2Gi.
+variable "worker_cpu" {
+  type    = number
+  default = 1
+}
+
+variable "worker_memory" {
+  type    = string
+  default = "2Gi"
+  validation {
+    condition     = contains(["0.5Gi", "1Gi", "1.5Gi", "2Gi", "3Gi", "4Gi"], var.worker_memory)
+    error_message = "worker_memory must be a Container Apps size such as 0.5Gi, 1Gi or 2Gi (twice worker_cpu)."
+  }
 }
 
 variable "provider_secrets" {

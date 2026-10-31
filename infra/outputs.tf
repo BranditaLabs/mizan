@@ -7,7 +7,7 @@ output "acr_name" {
 }
 
 output "acr_login_server" {
-  description = "Push images here: <this>/api:<sha>, <this>/web:<sha>"
+  description = "Push images here: <this>/api:<sha>, <this>/web:<sha>, <this>/admin:<sha>"
   value       = azurerm_container_registry.images.login_server
 }
 
@@ -19,12 +19,26 @@ output "web_url" {
   value = local.dashboard_url
 }
 
+output "admin_url" {
+  description = "Back office (also the API's ADMIN_URL for CORS)"
+  value       = local.admin_url
+}
+
+output "marketing_host" {
+  description = "Landing-page host (MARKETING_HOST on the web app and in its build); empty when unset"
+  value       = var.marketing_domain
+}
+
 output "api_fqdn" {
   value = local.api_fqdn
 }
 
 output "web_fqdn" {
   value = local.web_fqdn
+}
+
+output "admin_fqdn" {
+  value = local.admin_fqdn
 }
 
 output "key_vault_name" {
@@ -46,8 +60,9 @@ output "dns_records" {
           value = "CNAME ${domain.domain} ${trimsuffix(domain.app.ingress[0].fqdn, ".")}"
         },
         {
-          name  = "asuid.${domain.domain}"
-          value = "TXT ${domain.app.custom_domain_verification_id}"
+          name = "asuid.${domain.domain}"
+          # Sensitive in azurerm, but it is published in public DNS by design.
+          value = "TXT ${nonsensitive(domain.app.custom_domain_verification_id)}"
         },
       ]
     ]) : record.name => record.value

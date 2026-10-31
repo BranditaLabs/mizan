@@ -84,6 +84,7 @@ resource "azurerm_monitor_metric_alert" "replica_restarts" {
     api    = azurerm_container_app.api.id
     worker = azurerm_container_app.worker.id
     web    = azurerm_container_app.web.id
+    admin  = azurerm_container_app.admin.id
   }
   name                = "[${var.env}] ${each.key} replica restarts"
   resource_group_name = azurerm_resource_group.main.name

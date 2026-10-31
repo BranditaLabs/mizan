@@ -60,6 +60,14 @@ resource "azurerm_user_assigned_identity" "web" {
   tags                = local.labels
 }
 
+# The back office pulls its image and nothing else: no Key Vault, no database (L0-3).
+resource "azurerm_user_assigned_identity" "admin" {
+  name                = "id-mizan-admin"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.labels
+}
+
 resource "azurerm_user_assigned_identity" "migrate" {
   name                = "id-mizan-migrate"
   location            = azurerm_resource_group.main.location
@@ -71,6 +79,7 @@ resource "azurerm_role_assignment" "acr_pull" {
   for_each = {
     api     = azurerm_user_assigned_identity.api.principal_id
     web     = azurerm_user_assigned_identity.web.principal_id
+    admin   = azurerm_user_assigned_identity.admin.principal_id
     migrate = azurerm_user_assigned_identity.migrate.principal_id
   }
   scope                = azurerm_container_registry.images.id

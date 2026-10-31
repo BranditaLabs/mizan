@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Mizan dashboard image (apps/web, docs/09): Next.js standalone server on distroless, uid 65532.
-#   docker build -f apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL=https://api.staging.example .
+#   docker build -f apps/web/Dockerfile --build-arg NEXT_PUBLIC_API_URL=https://api.staging.example \
+#     --build-arg MARKETING_HOST=mizan.staging.example --build-arg NEXT_PUBLIC_APP_URL=https://app.staging.example .
 # NEXT_PUBLIC_* are baked into the browser bundle at build time; none of them is a secret.
 # Behind a TLS-intercepting proxy, pass its CA: --secret id=ca,src=/path/ca.crt
 
@@ -16,6 +17,12 @@ ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_FIREBASE_API_KEY
 ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
 ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
+# Landing page (L1-9), all optional. It is prerendered, so MARKETING_HOST is read here for its canonical
+# URLs and must also be set at runtime (proxy.ts serves it at that host's root). NEXT_PUBLIC_APP_URL is
+# the dashboard URL for its Sign in / Start free links; NEXT_PUBLIC_DEMO_URL its "Book a demo" link.
+ARG MARKETING_HOST
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_DEMO_URL
 RUN --mount=type=cache,target=/root/.npm --mount=type=secret,id=ca,required=false \
     if [ -f /run/secrets/ca ]; then export npm_config_cafile=/run/secrets/ca; fi; \
     test -n "$NEXT_PUBLIC_API_URL" || { echo "NEXT_PUBLIC_API_URL is required" >&2; exit 1; }; \

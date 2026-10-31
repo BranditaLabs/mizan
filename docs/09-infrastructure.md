@@ -17,7 +17,8 @@ Each environment uses a separate Azure subscription and resource group (`rg-miza
 | --- | --- | --- |
 | API | Azure Container Apps (`ca-mizan-api`) | Min 2 production replicas; external HTTPS ingress |
 | Worker | Azure Container Apps (`ca-mizan-worker`) | Min 1 replica; shares the API managed identity |
-| Web | Azure Container Apps (`ca-mizan-web`) | Next.js standalone output (`apps/web`) |
+| Web | Azure Container Apps (`ca-mizan-web`) | Next.js standalone output (`apps/web`): dashboard, and the landing page on the marketing host |
+| Back office | Azure Container Apps (`ca-mizan-admin`) | Next.js standalone output (`apps/admin`, staff only, L0-3); scale 0–2; own identity with AcrPull only (no Key Vault, no database) |
 | Migrations | Container Apps Job (`caj-mizan-migrate`) | Manually triggered by CI before app updates; schema owner |
 | Database | Azure Database for PostgreSQL Flexible Server 16 | Zone-redundant HA in production; 14-day backups; TLS required |
 | Secrets | Azure Key Vault (RBAC) | Generated application secrets; per-secret access for runtime identities |
@@ -76,11 +77,22 @@ SENTRY_DSN, LOG_LEVEL, LOG_FORMAT
 
 Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table, never in env.
 
-**Web (`apps/web`, build time):** `NEXT_PUBLIC_API_URL` and the Firebase web config `NEXT_PUBLIC_FIREBASE_{API_KEY,AUTH_DOMAIN,PROJECT_ID}` (public by design; restrict the API key to the web origins and Identity Toolkit API in Google Cloud). `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL` only for local development and the `web-e2e` job. See `apps/web/.env.example`.
+**Web (`apps/web`, build time):** `NEXT_PUBLIC_API_URL` and the Firebase web config `NEXT_PUBLIC_FIREBASE_{API_KEY,AUTH_DOMAIN,PROJECT_ID}` (public by design; in Google Cloud restrict the API key to the Identity Toolkit API and to the HTTP referrers of every app that signs in with it: `app.`, `admin.` and `mizan.` on `brandita.net`, plus the `ca-mizan-web` and `ca-mizan-admin` FQDNs until the domains are bound; the back office uses the same key). `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL` only for local development and the `web-e2e` job. Landing page (L1-9): `MARKETING_HOST` (build arg for the prerendered page's canonical URLs, and runtime env set by Terraform from `marketing_domain` for `proxy.ts`), `NEXT_PUBLIC_APP_URL` (the dashboard, for its sign-in links) and optional `NEXT_PUBLIC_DEMO_URL`; CI passes them from the GitHub variables `MARKETING_HOST`, `APP_URL`, `DEMO_URL`. See `apps/web/.env.example`.
+
+**Back office (`apps/admin`, build time):** `NEXT_PUBLIC_API_URL` and the same Firebase web config (`apps/admin/Dockerfile`); the API must allow its origin in `ADMIN_URL`, which Terraform sets from `admin_domain` once bound, else the `ca-mizan-admin` FQDN.
 
 **Database roles:** migrations run as the schema owner (`DATABASE_URL_MIGRATOR`, `mizan-db migrate`); with `DATABASE_APP_LOGIN` + `DATABASE_APP_PASSWORD` the same run creates or updates the API login. The API and worker log in as a separate user that is a member of `mizan_app` (tenant data under RLS), `mizan_worker` (event dispatch across tenants on `domain_events` only) and `mizan_platform` (the back office's cross-store reads), and is neither owner nor `BYPASSRLS`. The migrator is not a superuser on Azure: it creates the login once (`NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE`) and afterwards only sets its password, refusing to continue if the login ever gained `SUPERUSER` or `BYPASSRLS`.
 
-**Own domains (`infra/domains.tf`):** domains bind directly to Azure Container Apps; no load balancer is used. Terraform prints the CNAME target (the app FQDN) and TXT record (`asuid.<host>` equals the app's custom-domain verification id). DNS stays at Hostinger. Add both records first, set `bind_custom_domains = true`, then re-run `infra/bootstrap.sh`: Terraform adds the hostname and issues the free managed certificate, and the script binds it (`az containerapp hostname bind`, SNI), which Terraform cannot do. `PUBLIC_URL`, `WEB_URL` and `ADMIN_URL` use the domains only once they are bound; before that they are the Container Apps FQDNs. Staging uses `api.mizan.brandita.net` and `app.mizan.brandita.net`; the dashboard build uses the GitHub variable `API_URL` when set (set it to the custom domain after binding).
+**Own domains (`infra/domains.tf`):** domains bind directly to Azure Container Apps; no load balancer is used. Terraform prints the CNAME target (the app FQDN) and TXT record (`asuid.<host>` equals the app's custom-domain verification id). DNS stays at Hostinger. Add both records first, set `bind_custom_domains = true`, then re-run `infra/bootstrap.sh`: Terraform adds the hostname and issues the free managed certificate, and the script binds it (`az containerapp hostname bind`, SNI), which Terraform cannot do. `PUBLIC_URL`, `WEB_URL` and `ADMIN_URL` use the domains only once they are bound; before that they are the Container Apps FQDNs. Four hosts per environment:
+
+| Variable | Staging host | App |
+| --- | --- | --- |
+| `api_domain` | `api.mizan.brandita.net` | `ca-mizan-api` |
+| `web_domain` | `app.mizan.brandita.net` | `ca-mizan-web` (dashboard) |
+| `admin_domain` | `admin.mizan.brandita.net` | `ca-mizan-admin` (back office) |
+| `marketing_domain` | `mizan.brandita.net` | `ca-mizan-web` again: its root shows the landing page (`MARKETING_HOST`) |
+
+The landing host is added after the dashboard host (two hostnames on one app are not added at once). The dashboard and back-office builds use the GitHub variable `API_URL` when set, and the landing page `APP_URL` (set both to the custom domains after binding).
 
 ## 4. CI/CD (GitHub Actions)
 
@@ -88,7 +100,7 @@ Per-merchant credentials (Bosta key, Shopify token) live in the `secrets` table,
 | --- | --- | --- |
 | `ci.yml` ✅ | PR, push to `main` | job `build-test`: `npm ci` → typecheck → build → tests for all workspaces (engine incl. chaos suite, db schema + RLS, api against PGlite and Postgres). Lint runs in `build-test`. Job `web-e2e`: Playwright smoke of the dashboard's production build (Arabic default, RTL/LTR, theme cookie, system dark, security headers, no external requests). Job `image`: build the production image, `docker compose up`, `deploy/compose/smoke.sh`. Job `ops-app`: Flutter 3.47.9 in `apps/ops` — generated code (drift, l10n) must be current, `flutter analyze`, `flutter test` (incl. the offline-sync chaos run). Job `secrets-scan`: gitleaks over full history. |
 | `nightly-load.yml` ✅ | Daily 03:17 Cairo, manual | Build, then `npm run load -w @mizan/perf` (2 API instances, 2,000 stores, Postgres service); fails on a missed latency/throughput gate or a lost webhook; table in the job summary, JSON as artifact |
-| `deploy-staging.yml` ✅ | Merge to `main`, manual | Azure OIDC (no client secrets) → build `api` and `web` images → push to ACR → migration Container Apps Job (must succeed) → update worker, API, dashboard → smoke test (`/health/ready`, 401 on `/v1/me`, `/ar` in RTL). Skipped until `infra/bootstrap.sh` has run and its variables are set |
+| `deploy-staging.yml` ✅ | Merge to `main`, manual | Azure OIDC (no client secrets) → build `api`, `web` and `admin` images → push to ACR → migration Container Apps Job (must succeed) → update worker, API, dashboard, back office → smoke test (`/health/ready`, 401 on `/v1/me`, `/ar` in RTL on the dashboard and back office, `/ar/landing`). Skipped until `infra/bootstrap.sh` has run and its variables are set |
 | `deploy-prod.yml` ✅ | Git tag `v*` (approval by the `production` environment's reviewers) | same as staging, against production; migrations must be backward compatible with the previous release |
 | `ops-app.yml` | Tag `ops-v*` | Flutter build → Play internal track / TestFlight |
 
@@ -163,7 +175,7 @@ Queue gauges are global counts read at scrape time (one cheap query each, under 
 
 ### Capacity planning (from H-11)
 
-Measured per API process (1 core, shared VM, `docs/perf/README.md`): ~450 webhooks/s or ~400 authenticated reads/s at saturation; latency targets hold with wide margin at half of that. Container Apps start at **1 vCPU / 2 GiB**; scale limits are per environment in Terraform and must be adjusted after **H-13** load testing. One Node process per replica (no in-process cluster): rate limits, caches and metrics stay per replica as designed. Keep maximum API and worker replicas × `DATABASE_POOL_MAX` within the §5b budget.
+Measured per API process (1 core, shared VM, `docs/perf/README.md`): ~450 webhooks/s or ~400 authenticated reads/s at saturation; latency targets hold with wide margin at half of that. Container Apps start at **1 vCPU / 2 GiB** for the API, worker and migrate job and **0.5 vCPU / 1 GiB** for web and the back office (the consumption plan requires memory = 2 × CPU); scale limits are per environment in Terraform and must be adjusted after **H-13** load testing. One Node process per replica (no in-process cluster): rate limits, caches and metrics stay per replica as designed. Keep maximum API and worker replicas × `DATABASE_POOL_MAX` within the §5b budget.
 
 ## 5a. Table hygiene (✅ H-7)
 

@@ -1,13 +1,16 @@
-# Container Apps run API, worker, dashboard, and a manually triggered migration job.
+# Container Apps run API, worker, dashboard (and the landing page), back office, and a manually
+# triggered migration job.
 
 locals {
-  api_fqdn = azurerm_container_app.api.ingress[0].fqdn
-  web_fqdn = azurerm_container_app.web.ingress[0].fqdn
+  api_fqdn   = azurerm_container_app.api.ingress[0].fqdn
+  web_fqdn   = azurerm_container_app.web.ingress[0].fqdn
+  admin_fqdn = azurerm_container_app.admin.ingress[0].fqdn
   # The apps' own FQDNs are <name>.<environment default domain>; computed from the environment so
   # the API's PUBLIC_URL/WEB_URL never reference the app itself. Custom domains are used only once
   # they are bound (bind_custom_domains), so nothing points at a host without DNS or a certificate.
-  default_api_url = "https://ca-mizan-api.${azurerm_container_app_environment.main.default_domain}"
-  default_web_url = "https://ca-mizan-web.${azurerm_container_app_environment.main.default_domain}"
+  default_api_url   = "https://ca-mizan-api.${azurerm_container_app_environment.main.default_domain}"
+  default_web_url   = "https://ca-mizan-web.${azurerm_container_app_environment.main.default_domain}"
+  default_admin_url = "https://ca-mizan-admin.${azurerm_container_app_environment.main.default_domain}"
   public_url = var.public_url != "" ? var.public_url : (
     var.bind_custom_domains && var.api_domain != "" ? "https://${var.api_domain}" : local.default_api_url
   )
@@ -16,9 +19,15 @@ locals {
   )
   api_url       = local.public_url
   dashboard_url = local.web_url
+  # The back office's origin, for the API's CORS (ADMIN_URL).
   admin_url = var.admin_url != "" ? var.admin_url : (
-    var.bind_custom_domains && var.admin_domain != "" ? "https://${var.admin_domain}" : ""
+    var.bind_custom_domains && var.admin_domain != "" ? "https://${var.admin_domain}" : local.default_admin_url
   )
+  # The landing page's host (L1-9): the web app shows the landing page at its root (MARKETING_HOST).
+  web_plain_env = merge(local.placeholder_env, {
+    MARKETING_HOST = var.marketing_domain
+  })
+  web_env = { for key, value in local.web_plain_env : key => value if value != "" }
   # First-apply placeholder until CI deploys the real images (image is in ignore_changes). It must
   # answer HTTP 200 on 8080 for /health and /health/ready like the real API, worker and dashboard,
   # and ignore the worker/migration args; traefik/whoami does both (port from WHOAMI_PORT_NUMBER).
@@ -161,8 +170,8 @@ resource "azurerm_container_app" "worker" {
       name   = "worker"
       image  = local.placeholder_image
       args   = ["apps/api/dist/worker.js"]
-      cpu    = 1
-      memory = "2Gi"
+      cpu    = var.worker_cpu
+      memory = var.worker_memory
 
       dynamic "env" {
         for_each = local.api_env
@@ -220,7 +229,63 @@ resource "azurerm_container_app" "web" {
     container {
       name   = "web"
       image  = local.placeholder_image
-      cpu    = 1
+      cpu    = 0.5
+      memory = "1Gi"
+
+      dynamic "env" {
+        for_each = local.web_env
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+    }
+  }
+
+  ingress {
+    external_enabled           = true
+    allow_insecure_connections = false
+    target_port                = 8080
+    transport                  = "http"
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [template[0].container[0].image]
+  }
+
+  depends_on = [time_sleep.runtime_rbac]
+}
+
+# Back office for Mizan staff (apps/admin, L0-3). It serves no data itself: the browser calls the
+# API's /v1/platform routes, which check staff, roles and the second factor.
+resource "azurerm_container_app" "admin" {
+  name                         = "ca-mizan-admin"
+  resource_group_name          = azurerm_resource_group.main.name
+  container_app_environment_id = azurerm_container_app_environment.main.id
+  revision_mode                = "Single"
+  tags                         = local.labels
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.admin.id]
+  }
+
+  registry {
+    server   = azurerm_container_registry.images.login_server
+    identity = azurerm_user_assigned_identity.admin.id
+  }
+
+  template {
+    min_replicas = 0
+    max_replicas = 2
+    container {
+      name   = "admin"
+      image  = local.placeholder_image
+      cpu    = 0.5
       memory = "1Gi"
 
       dynamic "env" {

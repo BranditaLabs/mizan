@@ -6,7 +6,7 @@ then creates the GitHub OIDC identity. No deploy client secret is generated.
 
 | What | Where |
 | --- | --- |
-| API, worker, dashboard | Azure Container Apps: `ca-mizan-api`, `ca-mizan-worker`, `ca-mizan-web` |
+| API, worker, dashboard, back office | Azure Container Apps: `ca-mizan-api`, `ca-mizan-worker`, `ca-mizan-web` (dashboard and landing page), `ca-mizan-admin` (staff back office, its own identity with AcrPull only) |
 | Migrations | Manually triggered Container Apps Job `caj-mizan-migrate`, run before each deployment as `mizan_migrator`; it creates/updates `mizan_api` with RLS roles only |
 | Database | Azure Database for PostgreSQL Flexible Server 16; 14-day backups, TLS required, 200 connections; zone-redundant HA in production |
 | Secrets | Azure Key Vault with RBAC, soft delete and purge protection; public endpoint (no stable Container Apps egress IPs without a VNet), Entra RBAC only; generated database URLs, app password, link key and metrics token |
@@ -14,7 +14,7 @@ then creates the GitHub OIDC identity. No deploy client secret is generated.
 | Images | Basic Azure Container Registry, admin disabled; runtime identities have AcrPull |
 | Deploys | `deploy-staging.yml` on `main`; `deploy-prod.yml` on `v*` tags only, after production environment approval; GitHub OIDC with the environment as subject, no client secrets |
 | Monitoring | Azure Monitor action group, standard availability tests, metric alerts for API 5xx, worker replicas, per-app restarts and PostgreSQL CPU/storage/connections |
-| Domains | Container Apps custom domains and free Azure managed certificates; DNS remains at Hostinger |
+| Domains | Container Apps custom domains and free Azure managed certificates; DNS remains at Hostinger. Four hosts: `api_domain` → API, `web_domain` → dashboard, `admin_domain` → back office, `marketing_domain` → landing page (a second host on the web app, `MARKETING_HOST`) |
 
 ## First time
 
@@ -24,13 +24,13 @@ then creates the GitHub OIDC identity. No deploy client secret is generated.
    bash infra/bootstrap.sh <subscription-id> [uaenorth] [staging]
    ```
    Run once per environment, using `production` for the production subscription. The script gives you **Storage Blob Data Contributor** on the state account (shared keys are off) and waits for it. The first apply waits about two minutes twice for Key Vault and runtime role assignments to propagate; if Azure still answers 403, re-run the script (it is idempotent). The apps start on a placeholder image (`traefik/whoami` on port 8080) until the first CI deploy.
-2. Add the printed values under **GitHub → Settings → Environments → staging** (or `production`) → **Environment variables**. They are identifiers; copy the Firebase web API key directly from Firebase Console. Then:
+2. Add the printed values under **GitHub → Settings → Environments → staging** (or `production`) → **Environment variables**. They are identifiers; copy the Firebase web API key directly from Firebase Console. `APP_URL` (the dashboard, for the landing page's sign-in links) and `MARKETING_HOST` (the landing page's host) are baked into the dashboard image; `DEMO_URL` (a booking page for "Book a demo") is optional. The back office is built with the same `API_URL` and Firebase values. Then:
    - Add the **repository** variable `AZURE_DEPLOY_STAGING=true` (or `AZURE_DEPLOY_PRODUCTION=true`). A job-level `if` cannot read environment variables, so the deploy switch is repository-level.
    - Set the environment's **Deployment branches and tags** rule: staging → branch `main`; production → tag `v*`. The OIDC federated credential trusts the environment (`repo:BranditaLabs/mizan:environment:<env>`), so this rule is what keeps other refs out.
    - Add required reviewers to the production environment.
-3. Configure Firebase Authentication providers as before (email/password, phone and SMS MFA), and add the dashboard domain to Firebase Authorized domains. Firebase Authentication remains the identity service.
-4. The first run prints the CNAME and `asuid` TXT records. Until they are bound, `PUBLIC_URL`, `WEB_URL` and the printed `API_URL` are the Container Apps FQDNs. Add both records at Hostinger, set `bind_custom_domains = true` in the environment tfvars and **re-run `infra/bootstrap.sh`**: Terraform adds the hostnames and issues the managed certificates, then the script binds each one with `az containerapp hostname bind` (Terraform cannot set that SNI binding). Update `API_URL` in the GitHub environment to the printed custom domain and redeploy so the dashboard is rebuilt against it.
-5. Push to `main` or publish a `v*` release tag. CI builds both images, runs the migration job, updates the apps and smoke-tests the deployment.
+3. Configure Firebase Authentication providers as before (email/password, phone and SMS MFA), and add the dashboard and back-office domains to Firebase Authorized domains. Firebase Authentication remains the identity service.
+4. The first run prints the CNAME and `asuid` TXT records for each host (api, app, admin and the landing host). Until they are bound, `PUBLIC_URL`, `WEB_URL`, `ADMIN_URL` and the printed `API_URL`/`APP_URL` are the Container Apps FQDNs. Add the records at Hostinger, set `bind_custom_domains = true` in the environment tfvars and **re-run `infra/bootstrap.sh`**: Terraform adds the hostnames and issues the managed certificates, then the script binds each one with `az containerapp hostname bind` (Terraform cannot set that SNI binding). Update `API_URL` and `APP_URL` in the GitHub environment to the printed custom domains and redeploy so the dashboard and back office are rebuilt against them.
+5. Push to `main` or publish a `v*` release tag. CI builds the `api`, `web` and `admin` images, runs the migration job, updates worker, API, dashboard and back office, and smoke-tests the deployment (API health, `/ar` on the dashboard and back office, `/ar/landing`).
 
 ## Provider secrets
 

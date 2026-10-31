@@ -1,6 +1,7 @@
 name: Deploy staging
 
-# Build and push both images → migrate → update worker, API and web → smoke test.
+# Build and push the API, dashboard and back-office images → migrate → update worker, API, web and
+# admin → smoke test.
 # OIDC variables come from infra/bootstrap.sh (staging environment variables). The job runs only
 # when the repository variable AZURE_DEPLOY_STAGING is "true": a job-level `if` cannot read
 # environment variables. The staging environment's branch rule allows main only.
@@ -22,7 +23,7 @@ jobs:
     name: Deploy to staging
     if: vars.AZURE_DEPLOY_STAGING == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     environment: staging
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
@@ -33,6 +34,9 @@ jobs:
       REGISTRY: ${{ vars.ACR_NAME }}.azurecr.io
       TAG: ${{ github.sha }}
       API_URL: ${{ vars.API_URL }}
+      # Landing page (L1-9): the dashboard URL for its links and its own host (both optional).
+      APP_URL: ${{ vars.APP_URL }}
+      MARKETING_HOST: ${{ vars.MARKETING_HOST }}
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -70,8 +74,25 @@ jobs:
             NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }}
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.FIREBASE_AUTH_DOMAIN }}
             NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}
+            MARKETING_HOST=${{ env.MARKETING_HOST }}
+            NEXT_PUBLIC_APP_URL=${{ env.APP_URL }}
+            NEXT_PUBLIC_DEMO_URL=${{ vars.DEMO_URL }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
+      - name: Build and push the back-office image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/admin/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/admin:${{ env.TAG }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.urls.outputs.api }}
+            NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }}
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.FIREBASE_AUTH_DOMAIN }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
 
       - name: Migrate (must succeed before anything is deployed)
         run: |
@@ -92,7 +113,7 @@ jobs:
           echo "Migration execution $execution did not finish in 20 minutes; check it before re-running." >&2
           exit 1
 
-      - name: Deploy worker, API, dashboard
+      - name: Deploy worker, API, dashboard, back office
         run: |
           # In single-revision mode a failing revision gets no traffic, so the old one would still
           # answer the smoke test. Wait until the new revision is the latest ready one.
@@ -125,14 +146,22 @@ jobs:
           deploy ca-mizan-worker "$REGISTRY/api:$TAG"
           deploy ca-mizan-api "$REGISTRY/api:$TAG"
           deploy ca-mizan-web "$REGISTRY/web:$TAG"
+          deploy ca-mizan-admin "$REGISTRY/admin:$TAG"
 
       - name: Smoke test
         run: |
           api="${{ steps.urls.outputs.api }}"
           web="https://$(az containerapp show --name ca-mizan-web --resource-group "$AZURE_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)"
+          admin="https://$(az containerapp show --name ca-mizan-admin --resource-group "$AZURE_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)"
           curl -fsS "$api/health/ready"
           test "$(curl -s -o /dev/null -w '%{http_code}' "$api/v1/me")" = "401"
-          curl -fsS "$web/ar" | grep -q 'dir="rtl"'
+          # grep reads the whole page. "grep -q" would stop at the first match and close the pipe; under
+          # pipefail, curl's write error on a large page would then fail the step.
+          curl -fsS "$web/ar" | grep 'dir="rtl"' >/dev/null
+          curl -fsS "$web/ar/landing" | grep 'dir="rtl"' >/dev/null
+          curl -fsS "$admin/ar" | grep 'dir="rtl"' >/dev/null
           echo "### Staging deployed: \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- API: $api" >> "$GITHUB_STEP_SUMMARY"
           echo "- Dashboard: $web" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Landing page: $web/ar/landing" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Back office: $admin" >> "$GITHUB_STEP_SUMMARY"

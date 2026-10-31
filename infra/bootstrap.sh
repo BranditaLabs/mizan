@@ -207,6 +207,9 @@ ensure_role "AcrPush" "${ACR_ID}"
 ensure_role "Contributor" "${RESOURCE_GROUP_ID}"
 
 API_URL="$(terraform -chdir=infra output -raw api_url)"
+APP_URL="$(terraform -chdir=infra output -raw web_url)"
+MARKETING_HOST="$(terraform -chdir=infra output -raw marketing_host)"
+ADMIN_URL="$(terraform -chdir=infra output -raw admin_url)"
 FIREBASE_PROJECT_ID="$(grep -E '^firebase_project_id[[:space:]]*=' "infra/envs/${ENV}.tfvars" | head -1 | cut -d '"' -f2 || true)"
 FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID:-mizan-8f906}"
 FIREBASE_AUTH_DOMAIN="${FIREBASE_PROJECT_ID}.firebaseapp.com"
@@ -222,8 +225,13 @@ cat <<EOF
   FIREBASE_AUTH_DOMAIN  = ${FIREBASE_AUTH_DOMAIN}
   FIREBASE_PROJECT_ID   = ${FIREBASE_PROJECT_ID}
   API_URL               = ${API_URL}
+  APP_URL               = ${APP_URL}
+  MARKETING_HOST        = ${MARKETING_HOST:-(leave unset: no landing-page host)}
+  DEMO_URL              = (optional: a booking page for the landing page's "Book a demo"; unset = mailto)
 EOF
-echo "API_URL is the Container Apps FQDN until the custom domains are bound; re-running this script after binding prints the custom domain."
+echo "API_URL and APP_URL are Container Apps FQDNs until the custom domains are bound; re-running this script after binding prints the custom domains (then update both variables)."
+echo "Back office: ${ADMIN_URL} (the API's ADMIN_URL follows it)."
+echo "Firebase: allow ${APP_URL} and ${ADMIN_URL} (and the landing host) in the web API key's HTTP referrer restriction, or staff sign-in is rejected."
 say "Then, in GitHub settings:"
 cat <<EOF
   Repository variable (Secrets and variables > Actions > Variables): ${DEPLOY_FLAG} = true
