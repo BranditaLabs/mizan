@@ -19,7 +19,7 @@ test("owner in Arabic: dashboards from the metric layer, downloaded as Excel and
   await expect(page).toHaveURL(/\/ar\/reports$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("التقارير");
   const tabs = page.getByRole("tablist", { name: "اللوحات" });
-  await expect(tabs.getByRole("tab")).toHaveText(["نظرة عامة", "التشغيل", "الأرباح", "المدفوعات", "المخزون"]);
+  await expect(tabs.getByRole("tab")).toHaveText(["نظرة عامة", "التشغيل", "الأرباح", "المدفوعات", "المخزون", "كل المقاييس"]);
   const home = page.getByTestId("dashboard-home");
   await expect(home.getByTestId("tiles")).toContainText("2");
   await expect(home.getByTestId("series-orders")).toContainText("الإجمالي 2");
@@ -46,7 +46,7 @@ test("agent in Arabic: no profit dashboard, no profit series", async ({ page }) 
   await signInWithPhone(page, phone, "ar");
   await expect(page).toHaveURL(/\/ar$/);
   await page.goto("/ar/reports");
-  await expect(page.getByRole("tablist", { name: "اللوحات" }).getByRole("tab")).toHaveText(["نظرة عامة", "التشغيل", "المدفوعات", "المخزون"]);
+  await expect(page.getByRole("tablist", { name: "اللوحات" }).getByRole("tab")).toHaveText(["نظرة عامة", "التشغيل", "المدفوعات", "المخزون", "كل المقاييس"]);
   const home = page.getByTestId("dashboard-home");
   await expect(home.getByTestId("series-orders")).toBeVisible();
   await expect(home.getByTestId("series-net_profit")).toHaveCount(0);
