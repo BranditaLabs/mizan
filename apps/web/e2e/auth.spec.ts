@@ -22,6 +22,8 @@ test("owner: new account → store → two-step verification → signs in with t
   await expect(page).toHaveURL(/\/en\/welcome$/);
   await page.getByLabel("Store name").fill("Nile Threads");
   await expect(page.getByLabel("Country")).toHaveValue("EG");
+  await expect(page.getByRole("button", { name: "Create store" })).toBeDisabled(); // until the terms are accepted (L1-3)
+  await page.getByTestId("accept-legal").check();
   await page.getByRole("button", { name: "Create store" }).click();
 
   // The API refuses an owner without a second factor (mfa_required): turn it on.

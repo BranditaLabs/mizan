@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 import { Bdi } from "@/components/Bdi";
+import { LegalCard } from "@/components/legal/LegalCard";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { KeyValue, SkeletonRows } from "@/components/ui/Surface";
@@ -19,7 +20,7 @@ const ZONES = ["Africa/Cairo", "Asia/Riyadh", "Asia/Dubai", "Asia/Kuwait", "Asia
 /**
  * Settings → Store (A-8): the store's name, time zone (where a day starts for reports and usage)
  * and the language of customer messages. Country and currency stay as signed up. Everyone sees it;
- * owners and admins change it.
+ * owners and admins change it. The "Legal" card shows the terms and DPA the store accepted (L1-3).
  */
 export function StoreProfileScreen() {
   const t = useTranslations("storeProfile");
@@ -72,6 +73,7 @@ export function StoreProfileScreen() {
             ]} />
             <p className="mt-3 text-caption text-text-2">{t("fixed")}</p>
           </div>
+          <LegalCard />
         </div>
       )}
     </div>

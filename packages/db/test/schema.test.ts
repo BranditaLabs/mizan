@@ -269,6 +269,21 @@ describe("schema", () => {
     expect((await asTenant(T1, () => db.query(`SELECT * FROM order_sources WHERE order_id = $1`, [o]))).rows).toEqual([]); // goes with its order
   });
 
+  it("keeps a store's legal acceptances once per document and version, as evidence the app cannot change (L1-3)", async () => {
+    const accept = (t: string, document: string, version: string) => asTenant(t, () => db.query(`INSERT INTO legal_acceptances (tenant_id, document, version, language) VALUES ($1, $2, $3, 'ar') ON CONFLICT (tenant_id, document, version) DO NOTHING RETURNING id`, [t, document, version]));
+    expect((await accept(T1, "terms", "0.1")).rows).toHaveLength(1);
+    expect((await accept(T1, "terms", "0.1")).rows).toHaveLength(0); // accepting twice is fine
+    await accept(T1, "dpa", "0.1");
+    await accept(T1, "terms", "1.0"); // a new version is a new row
+    await expect(accept(T1, "privacy", "0.1")).rejects.toThrow(/document_check/); // a notice, not accepted
+    await expect(accept(T1, "terms", "v2")).rejects.toThrow(/version_check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM legal_acceptances`))).rows).toEqual([]);
+    await expect(asTenant(T2, () => db.query(`INSERT INTO legal_acceptances (tenant_id, document, version) VALUES ($1, 'terms', '0.1')`, [T1]))).rejects.toThrow(/row-level security/);
+    await expect(asTenant(T1, () => db.query(`UPDATE legal_acceptances SET version = '9.9'`))).rejects.toThrow(/permission denied/);
+    await expect(asTenant(T1, () => db.query(`DELETE FROM legal_acceptances`))).rejects.toThrow(/permission denied/);
+    expect((await asTenant(T1, () => db.query(`SELECT * FROM legal_acceptances`))).rows).toHaveLength(3);
+  });
+
   it("company sign-in domains are set by the back office; sign-in reads only the provider, never the store (A-9)", async () => {
     const t = (await db.query<{ id: string }>(`INSERT INTO tenants (name, slug) VALUES ('SSO Store', 'sso-a9') RETURNING id`)).rows[0]!.id;
     await asRole("mizan_platform", () => db.query(`INSERT INTO sso_domains (domain, store_id, provider_id) VALUES ('acme.test', $1, 'saml.acme')`, [t]));

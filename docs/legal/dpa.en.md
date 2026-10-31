@@ -30,7 +30,7 @@ The merchant authorises the sub-processors in Annex 3. Mizan tells the merchant 
 
 ## 7. Transfers
 
-Data is hosted in Google Cloud's Middle East regions: Doha (`me-central1`), and Dammam (`me-central2`) for Saudi merchants when required. Where a sub-processor processes data in another country, Mizan relies on `[CONFIRM: licence/permit from the Personal Data Protection Center, adequacy, or contractual safeguards; SDAIA transfer conditions for KSA]`.
+Data is hosted in Microsoft Azure's UAE North region (Dubai, UAE); for Saudi merchants, in an in-Kingdom region when required `[CONFIRM]`. Where a sub-processor processes data in another country, Mizan relies on `[CONFIRM: licence/permit from the Personal Data Protection Center, adequacy, or contractual safeguards; SDAIA transfer conditions for KSA]`.
 
 ## 8. Data subjects' requests
 
@@ -72,7 +72,7 @@ Liability under this agreement follows the terms of service `[CONFIRM: whether d
 ## Annex 2 — Security measures (as built)
 
 1. **Isolation:** every store's data carries its own identifier and the database enforces row-level security per store on every query.
-2. **Encryption:** TLS in transit; database and backups encrypted at rest by the cloud provider; shoppers' name, phone and street address additionally encrypted per store (AES-256-GCM), with keys wrapped by Google Cloud KMS; provider tokens and API keys encrypted the same way and never logged.
+2. **Encryption:** TLS in transit; database and backups encrypted at rest by the cloud provider; shoppers' name, phone and street address additionally encrypted per store (AES-256-GCM), with keys wrapped by Azure Key Vault; provider tokens and API keys encrypted the same way and never logged.
 3. **Minimisation in use:** lists and searches never decrypt names or phones (a short label and last four digits; phone search by keyed hash); full contact details only on an explicit, rate-limited, recorded request by permitted roles; logs and analytics carry identifiers, not personal data.
 4. **Access control:** sign-in through Firebase Authentication; two-step sign-in required for owners and admins; roles (owner, admin, operations manager, agent, warehouse, finance) with least privilege; disabled users refused at once.
 5. **Accountability:** append-only audit log of changes and of every access to full personal data, visible to the store's owner and admins; Mizan staff access just-in-time with a reason and expiry, shown to the merchant.
@@ -84,7 +84,7 @@ Liability under this agreement follows the terms of service `[CONFIRM: whether d
 
 | Sub-processor | Service | Data | Location |
 | --- | --- | --- | --- |
-| Google Cloud (Google LLC / `[CONFIRM contracting entity]`) | Hosting, database, key management, logs, monitoring | All service data | Doha, Qatar; Dammam, KSA where required |
-| Google Firebase | Authentication of the merchant's team; push notifications to the staff app | Team members' email and phone; device tokens | `[CONFIRM]` |
+| Microsoft Azure (Microsoft Corporation / `[CONFIRM contracting entity]`) | Hosting, database, key management, logs, monitoring | All service data | UAE North (Dubai, UAE); an in-Kingdom region for Saudi merchants when required `[CONFIRM]` |
+| Google Firebase (Google LLC) | Authentication of the merchant's team; push notifications to the staff app | Team members' email and phone; device tokens | `[CONFIRM]` |
 | Meta Platforms (WhatsApp Cloud API) | Sending confirmation messages from the merchant's WhatsApp number, when connected | Shopper's phone, first name, order number, items and amount | `[CONFIRM]` |
 | Anthropic | Writing upsell offer text, when the merchant enables it | Store name, product titles, prices and quantities. No shoppers' personal data | USA `[CONFIRM]` |

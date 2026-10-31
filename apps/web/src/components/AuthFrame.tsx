@@ -1,5 +1,7 @@
 import { useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode } from "react";
+import { Link } from "@/i18n/navigation";
+import { legalPath } from "@/lib/legal";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { ThemeSwitch } from "./ThemeSwitch";
@@ -53,7 +55,11 @@ export function AuthSplit({ theme, children }: { theme: Theme; children: ReactNo
           </main>
           <footer className="faint flex flex-wrap justify-between gap-3 text-caption [@media(max-height:680px)]:hidden">
             <span>{t("footer.rights")}</span>
-            <span className="flex gap-4"><span>{t("footer.privacy")}</span><span>{t("footer.terms")}</span></span>
+            <nav aria-label={t("footer.legal")} className="flex gap-4">
+              {(["privacy", "terms", "dpa"] as const).map((d) => (
+                <Link key={d} href={legalPath(d)} className="hover:underline hover:underline-offset-2">{t(`footer.${d}`)}</Link>
+              ))}
+            </nav>
           </footer>
         </div>
         <aside className="g auth-brand rise flex min-w-0 flex-[1.15_1_520px] flex-col justify-between gap-[clamp(12px,2vh,24px)] p-[clamp(24px,5vh,48px)]" style={{ "--d": ".1s" } as CSSProperties}>

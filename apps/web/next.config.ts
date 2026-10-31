@@ -29,6 +29,8 @@ const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   transpilePackages: ["@mizan/shared", "@mizan/design-system"],
+  // The legal pages read their Markdown at render time (L1-3): ship it with the standalone server.
+  outputFileTracingIncludes: { "/[locale]/legal/[doc]": ["./content/legal/**"] },
   async headers() {
     return [{
       source: "/:path*",

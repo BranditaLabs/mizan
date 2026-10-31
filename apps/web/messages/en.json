@@ -159,7 +159,9 @@
     "footer": {
       "rights": "© 2026 Mizan · powered by Brandita",
       "privacy": "Privacy",
-      "terms": "Terms"
+      "terms": "Terms",
+      "dpa": "Data processing",
+      "legal": "Legal"
     },
     "brand": {
       "kicker": "The commerce operating system",
@@ -3890,6 +3892,45 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners, admins, ops managers and the warehouse work with pick lists."
+    }
+  },
+  "legal": {
+    "home": "Mizan home",
+    "description": "Mizan's terms of service, privacy policy and data processing agreement.",
+    "docs": {
+      "terms": "Terms of service",
+      "privacy": "Privacy policy",
+      "dpa": "Data processing agreement"
+    },
+    "draft": {
+      "title": "Draft under legal review — not in force yet.",
+      "body": "This text is being reviewed by our lawyers and may change before it applies."
+    },
+    "version": "Version <n>{version}</n>",
+    "nav": "Legal documents",
+    "otherLanguage": "Read in Arabic",
+    "newTab": "(opens in a new tab)",
+    "agree": "I agree to the <terms>Terms of service</terms> and the <dpa>Data processing agreement</dpa>",
+    "versionChanged": "The terms were just updated. Reload the page, read them, then try again.",
+    "gate": {
+      "title": "Accept the updated terms to continue",
+      "body": "<b>{store}</b> uses Mizan under these documents. Read them, then accept to keep using the store.",
+      "read": "Read the {doc}",
+      "accept": "Accept and continue",
+      "error": "We couldn't save your acceptance. Try again.",
+      "switchStore": "Or open another store",
+      "signOut": "Sign out"
+    },
+    "banner": "The store owner needs to accept the updated terms.",
+    "card": {
+      "title": "Legal",
+      "subtitle": "The terms and the data processing agreement your store accepted.",
+      "draft": "These documents are drafts under legal review and not in force yet.",
+      "notAccepted": "Not accepted yet",
+      "accepted": "Version <n>{version}</n>, accepted <n>{date}</n>",
+      "acceptedBy": "Version <n>{version}</n>, accepted <n>{date}</n> by <n>{name}</n>",
+      "privacy": "Privacy policy (a notice, nothing to accept)",
+      "loading": "Loading…"
     }
   }
 }

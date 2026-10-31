@@ -28,6 +28,7 @@ const PROBLEM_TITLES = {
   insufficient_role: { en: "Your role cannot do this", ar: "صلاحيتك متسمحش بالإجراء ده" },
   slug_taken: { en: "Store address taken", ar: "عنوان المتجر ده مستخدم" },
   tenant_limit_reached: { en: "Store limit reached", ar: "وصلت للحد الأقصى من المتاجر" },
+  legal_version_changed: { en: "The terms were updated", ar: "الشروط اتحدّثت، اعمل تحديث للصفحة واقراها تاني" },
   already_member: { en: "Already a member", ar: "الشخص ده عضو بالفعل" },
   invitation_not_found: { en: "Invitation not found", ar: "الدعوة مش موجودة أو انتهت" },
   member_not_found: { en: "Member not found", ar: "العضو مش موجود" },

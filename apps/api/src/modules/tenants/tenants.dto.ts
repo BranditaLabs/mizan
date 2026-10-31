@@ -1,5 +1,6 @@
 import { COUNTRY_CODES, MEMBER_ROLES } from "@mizan/shared";
 import { z } from "zod";
+import { LegalVersionsSchema } from "../legal/legal.dto.js";
 
 export const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
@@ -10,6 +11,8 @@ export const CreateTenantSchema = z.strictObject({
   slug: z.string().regex(SLUG, "3–40 characters: a-z, 0-9 and dashes").optional(),
   /** Dashboard language; default Arabic. */
   language: z.enum(["ar", "en"]).default("ar"),
+  /** The terms and DPA versions the owner ticked; recorded with the store (L1-3). */
+  acceptLegal: LegalVersionsSchema.optional().describe("The terms of service and DPA versions the owner accepted; 409 legal_version_changed when not current"),
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantSchema>;
 

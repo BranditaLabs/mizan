@@ -1,5 +1,6 @@
 import { Module, type DynamicModule, type Type } from "@nestjs/common";
 import type { DestinationStream } from "pino";
+import type { LegalStatus } from "@mizan/shared";
 import { AuthModule } from "./platform/auth/auth.module.js";
 import type { TokenVerifier } from "./platform/auth/token-verifier.js";
 import { MembersModule } from "./modules/members/members.module.js";
@@ -25,6 +26,7 @@ import { AutomationsModule } from "./modules/automations/automations.module.js";
 import { ConfirmationModule } from "./modules/confirmation/confirmation.module.js";
 import { ConnectionsModule } from "./modules/connections/connections.module.js";
 import { UsersModule } from "./modules/users/users.module.js";
+import { LegalModule } from "./modules/legal/legal.module.js";
 import { APP_FILTER, APP_INTERCEPTOR } from "@nestjs/core";
 import { IdempotencyInterceptor } from "./platform/http/idempotency.interceptor.js";
 import type { AppConfig } from "./platform/config.js";
@@ -54,6 +56,8 @@ export interface AppOptions {
   keyWrapper?: KeyWrapper;
   /** Engine runtime per tenant (tests: fake providers). */
   engineRuntime?: RuntimeFactory;
+  /** Whether the legal documents are in force (tests; default @mizan/shared LEGAL_STATUS). */
+  legalStatus?: LegalStatus;
   /** Extra modules (tests). */
   modules?: Array<Type | DynamicModule>;
 }
@@ -63,7 +67,7 @@ export class AppModule {
   static forRoot(config: AppConfig, options: AppOptions = {}): DynamicModule {
     return {
       module: AppModule,
-      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, BillingModule, ReportsModule, AttributionModule, PickingModule, PurchasingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
+      imports: [ConfigModule.forRoot(config), LoggingModule.forRoot(options.logDestination), DatabaseModule.forRoot(), EventsModule, AuditModule, MaintenanceModule, MetricsModule, SecretsModule.forRoot(options.keyWrapper), PaymentsModule, OrdersModule, OnboardingModule, CatalogModule, StockModule, TicketsModule, ReturnsModule, ShippingModule, StaffModule, FlagsModule, BillingModule, ReportsModule, AttributionModule, PickingModule, PurchasingModule, OpsModule, AutomationsModule, ProfitModule, ConfirmationModule, IntegrationsModule.forRoot(options.engineRuntime), AuthModule.forRoot(options.tokenVerifier), HealthModule, UsersModule, TenantsModule, LegalModule.forRoot(options.legalStatus), MembersModule, AuditLogModule, ConnectionsModule, PrivacyModule, ...(options.modules ?? [])],
       providers: [{ provide: APP_FILTER, useClass: ProblemFilter }, { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor }, FastifyReady],
     };
   }

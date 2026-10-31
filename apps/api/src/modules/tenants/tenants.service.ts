@@ -7,6 +7,7 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { AuditService, auditActor } from "../../platform/audit/audit.service.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ProblemError } from "../../platform/http/problem.js";
+import { assertCurrentLegal, recordAcceptance } from "../legal/legal.store.js";
 import type { CreateTenantBody, TenantView, UpdateTenantBody } from "./tenants.dto.js";
 
 /** A user can own this many stores (abuse guard; raise per account on request). */
@@ -62,9 +63,11 @@ export class TenantsService {
 
   /**
    * Signup: the store, its owner membership and a default warehouse, in one
-   * transaction scoped to the new tenant (RLS applies from the first row).
+   * transaction scoped to the new tenant (RLS applies from the first row). The owner's acceptance
+   * of the terms and DPA, when sent, is recorded in the same transaction; a stale version creates nothing.
    */
   async create(userId: string, body: CreateTenantBody, ip?: string): Promise<TenantView> {
+    if (body.acceptLegal) assertCurrentLegal(body.acceptLegal);
     const owned = await this.db.platform(async (trx) => {
       await setActingUser(trx, userId);
       const r = await trx.selectFrom("memberships").select((eb) => eb.fn.countAll<number>().as("n"))
@@ -98,6 +101,7 @@ export class TenantsService {
           }).returningAll().executeTakeFirstOrThrow();
           await trx.insertInto("memberships").values({ tenant_id: id, user_id: userId, role: "owner", status: "active" }).execute();
           await trx.insertInto("warehouses").values({ tenant_id: id, name: DEFAULT_WAREHOUSE[body.language], is_default: true }).execute();
+          if (body.acceptLegal) await recordAcceptance(trx, id, userId, body.language);
           await this.events.emit(trx, {
             type: "tenant.created", tenantId: id, entity: { type: "tenant", id },
             actor: { type: "user", id: userId }, data: { country, plan: tenant.plan },
@@ -106,6 +110,12 @@ export class TenantsService {
             action: "tenant.created", tenantId: id, actor: { type: "user", id: userId }, ip,
             entity: { type: "tenant", id }, after: { slug, country, currency: defaults.currency },
           });
+          if (body.acceptLegal) {
+            await this.audit.record(trx, {
+              action: "tenant.legal_accepted", tenantId: id, actor: { type: "user", id: userId }, ip,
+              entity: { type: "tenant", id }, after: { ...body.acceptLegal, language: body.language },
+            });
+          }
           return toView(tenant, "owner");
         });
       } catch (err) {

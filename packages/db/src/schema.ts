@@ -436,6 +436,16 @@ export interface LandedCosts {
   created_at: Generated<Timestamp>;
 }
 
+export interface LegalAcceptances {
+  id: Generated<string>;
+  tenant_id: string;
+  document: string;
+  version: string;
+  accepted_by: string | null;
+  language: string | null;
+  accepted_at: Generated<Timestamp>;
+}
+
 export interface Listings {
   id: Generated<string>;
   tenant_id: string;
@@ -1380,6 +1390,7 @@ export interface DB {
   idempotency_keys: IdempotencyKeys;
   invitations: Invitations;
   landed_costs: LandedCosts;
+  legal_acceptances: LegalAcceptances;
   listings: Listings;
   memberships: Memberships;
   messages: Messages;

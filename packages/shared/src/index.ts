@@ -6,3 +6,4 @@ export * from "./roles.js";
 export * from "./countries.js";
 export * from "./events.js";
 export * from "./attribution.js";
+export * from "./legal.js";

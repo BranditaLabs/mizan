@@ -11,6 +11,14 @@
 
 The Arabic versions are in Modern Standard Arabic (legal register), not the Egyptian Arabic used in the app's interface. Which language prevails is a `[CONFIRM]` (draft: Arabic for Egyptian merchants, as Egyptian courts work in Arabic).
 
+## How they reach the app (L1-3)
+
+**These files are the source of truth.** The web app shows copies of them at `/{ar,en}/legal/terms`, `/privacy` and `/dpa` (`apps/web/content/legal/`, rendered as plain Markdown, no HTML); a web test fails when a copy differs from its file here, so change the text here and copy it over (`cp docs/legal/*.{ar,en}.md apps/web/content/legal/`).
+
+- **Versions and status** live in `packages/shared/src/legal.ts`: `LEGAL_VERSIONS` (bump a document's version whenever its text changes) and `LEGAL_STATUS`, `"draft"` until counsel approves and the placeholders are filled. While it is a draft, the pages carry a "draft under legal review, not in force" banner and nobody is asked to accept.
+- **Acceptance:** the owner ticks "I agree to the Terms of service and the Data processing agreement" when creating a store; the API records each document's version, the time, who and in which language (`legal_acceptances`, audited `tenant.legal_accepted`). Settings → Store shows what was accepted.
+- **Going live** is one change in `legal.ts`: set the approved versions (`LEGAL_VERSIONS` to `"1.0"`; drafts are `0.x`) **and** `LEGAL_STATUS = "published"`. The version bump is required, not optional: owners who ticked the box at store creation while the texts were drafts accepted `0.1`, and that must not count as accepting the approved text (a shared test fails on `"published"` with a `0.x` version). From then on an owner whose store has not accepted the current versions sees a full-page "Accept and continue" in the dashboard before using the store, and the rest of the team sees a banner. Bumping a version later asks every owner again. The API does not refuse requests from a store that has not accepted yet (follow-up in `docs/10-backlog.md`, L1-3).
+
 ## What the owner must fill in `[PLACEHOLDER]`
 
 1. The contracting company: legal name, commercial registration number, tax ID, registered address (Brandita entity or a dedicated Mizan company).
@@ -20,8 +28,8 @@ The Arabic versions are in Modern Standard Arabic (legal register), not the Egyp
 
 ## Points for counsel `[CONFIRM]`
 
-1. **Egypt Law 151/2020:** whether Mizan must obtain a licence or permit from the Personal Data Protection Center as a processor, and appoint a DPO; status of the executive regulations; cross-border transfer rules (hosting is in Google Cloud Doha `me-central1`, outside Egypt).
-2. **KSA PDPL:** whether Saudi stores must be hosted in the Kingdom (we can: Dammam `me-central2`, `infra/envs/production.tfvars`), registration with SDAIA, transfer conditions.
+1. **Egypt Law 151/2020:** whether Mizan must obtain a licence or permit from the Personal Data Protection Center as a processor, and appoint a DPO; status of the executive regulations; cross-border transfer rules (hosting is in Microsoft Azure UAE North, Dubai, outside Egypt).
+2. **KSA PDPL:** whether Saudi stores must be hosted in the Kingdom (draft: an in-Kingdom region when required `[CONFIRM]`), registration with SDAIA, transfer conditions.
 3. **Retention:** shoppers' personal data kept while the merchant is active + 90 days after the account closes, then deleted (financial records kept without personal data). Is 90 days right, and what do tax and e-commerce rules require the *merchant* to keep?
 4. **Breach notification:** the law's deadline to the authority (draft says we tell the merchant without undue delay and within 24 hours of confirming a breach, so the merchant can meet 72 hours).
 5. **Liability cap** (draft: fees paid in the previous 12 months), governing law and courts (draft: Egypt, Cairo courts, or arbitration at CRCICA), consumer-law carve-outs.
@@ -33,7 +41,7 @@ The Arabic versions are in Modern Standard Arabic (legal register), not the Egyp
 
 | Sub-processor | What for | Data | Where |
 | --- | --- | --- | --- |
-| Google Cloud (Cloud Run, Cloud SQL, Secret Manager, Cloud KMS, Cloud Logging, Monitoring) | Hosting, database, keys, logs | All service data; logs carry no names, phones or addresses | Doha, Qatar (`me-central1`); Dammam, KSA (`me-central2`) for Saudi stores when required |
+| Microsoft Azure (Microsoft Corporation / `[CONFIRM contracting entity]`): Container Apps, Database for PostgreSQL, Key Vault, Monitor and Log Analytics | Hosting, database, key management, logs, monitoring | All service data; logs carry no names, phones or addresses | UAE North (Dubai, UAE); for Saudi stores, an in-Kingdom region when required `[CONFIRM]` |
 | Google Firebase Authentication | Sign-in for merchants' teams (email, phone one-time codes, second step) | Team members' email, phone, sign-in events | Google global infrastructure `[CONFIRM region]` |
 | Google Firebase Cloud Messaging | Push notifications to the ops app | Device tokens, notification text (no shopper data) | Global |
 | Meta Platforms (WhatsApp Cloud API) | Order confirmation messages, only when the merchant connects their WhatsApp Business number | Shopper's phone, first name, order number, items, amount | Meta's infrastructure, global |
@@ -59,6 +67,7 @@ When the public marketing site is built, any analytics there must be added to th
 ## Before publishing (checklist)
 
 - [ ] Placeholders filled; counsel's review applied to both languages; the two versions checked against each other.
-- [ ] Published at `/ar/legal/…` and `/en/legal/…` (and in the Shopify App Store listing: privacy policy URL is required).
-- [ ] Sign-up asks the owner to accept the terms and the DPA (record version and time per tenant).
+- [x] Pages at `/ar/legal/…` and `/en/legal/…` (L1-3); still to do: the Shopify App Store listing's privacy policy URL.
+- [x] Sign-up asks the owner to accept the terms and the DPA; version and time recorded per store (L1-3).
+- [ ] `LEGAL_STATUS` set to `"published"` in `packages/shared/src/legal.ts` (and the versions set to the approved ones).
 - [ ] A change log; merchants told 30 days before material changes.

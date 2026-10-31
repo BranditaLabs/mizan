@@ -1,25 +1,30 @@
 "use client";
 
-import { COUNTRY_CODES } from "@mizan/shared";
+import { COUNTRY_CODES, LEGAL_VERSIONS } from "@mizan/shared";
 import { useMutation } from "@tanstack/react-query";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useId, useState, type FormEvent } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/ui/Choice";
+import { LegalLink } from "@/components/legal/LegalLink";
 import { Field } from "@/components/ui/Field";
 import { useRouter } from "@/i18n/navigation";
 import { AuthHeading, Step } from "./kit";
 import { ApiError, idempotency, ok, type MyInvitation, type Schemas } from "@/lib/api/client";
+import { isLegalVersionChanged } from "@/lib/legal";
 import { useSession } from "@/lib/session";
 
 /**
  * After sign-in without a store: join a store you were invited to (the API matches the invitation
- * to your verified email or phone), or create one (you become its owner).
+ * to your verified email or phone), or create one (you become its owner, and accept the terms of
+ * service and the DPA for it: their versions are recorded with the store, L1-3).
  */
 export function Welcome() {
   const t = useTranslations("welcome");
   const tr = useTranslations("roles");
+  const tl = useTranslations("legal");
   const tc = useTranslations("countries");
   const ts = useTranslations("shell");
   const format = useFormatter();
@@ -30,6 +35,7 @@ export function Welcome() {
 
   const [name, setName] = useState("");
   const [country, setCountry] = useState<Schemas["CreateTenant"]["country"]>("EG");
+  const [agreed, setAgreed] = useState(false);
   // One key per attempt: a retried create (network, 5xx) never makes two stores.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
@@ -45,7 +51,9 @@ export function Welcome() {
     onError: () => void refreshMe(), // gone or expired: the list updates
   });
   const create = useMutation({
-    mutationFn: () => ok(api.POST("/v1/tenants", { body: { name: name.trim(), country, language: locale === "en" ? "en" : "ar" }, headers: idempotency(idempotencyKey) })),
+    mutationFn: () => ok(api.POST("/v1/tenants", { body: {
+      name: name.trim(), country, language: locale === "en" ? "en" : "ar", acceptLegal: { terms: LEGAL_VERSIONS.terms, dpa: LEGAL_VERSIONS.dpa },
+    }, headers: idempotency(idempotencyKey) })),
     onSuccess: (tenant) => open(tenant.id),
     // A refused create (4xx) is final for this key; the next try is a new attempt.
     onError: (err) => { if (err instanceof ApiError && err.status >= 400 && err.status < 500) setIdempotencyKey(crypto.randomUUID()); },
@@ -53,6 +61,7 @@ export function Welcome() {
   });
   const busy = accept.isPending ? accept.variables?.id ?? null : create.isPending ? "create" : null;
   const createError = create.error instanceof ApiError && create.error.code === "tenant_limit_reached" ? "tenantLimit" : create.error ? "generic" : null;
+  const versionChanged = isLegalVersionChanged(create.error);
 
   if (!user || !me) return null;
   const who = me.user.email ?? me.user.phone ?? "";
@@ -100,8 +109,10 @@ export function Welcome() {
             </select>
             <p id={`${countryId}-hint`} className="text-caption text-text-3">{t("create.countryHint")}</p>
           </div>
-          {createError ? <Alert tone="danger">{t(`errors.${createError}`)}</Alert> : null}
-          <Button type="submit" size="lg" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2}>{t("create.submit")}</Button>
+          <Checkbox required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="accept-legal"
+            label={<span className="text-body-sm">{tl.rich("agree", { terms: (c) => <LegalLink doc="terms">{c}</LegalLink>, dpa: (c) => <LegalLink doc="dpa">{c}</LegalLink> })}</span>} />
+          {versionChanged ? <Alert tone="warning">{tl("versionChanged")}</Alert> : createError ? <Alert tone="danger">{t(`errors.${createError}`)}</Alert> : null}
+          <Button type="submit" size="lg" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2 || !agreed}>{t("create.submit")}</Button>
         </form>
       </section>
 

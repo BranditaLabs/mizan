@@ -15058,11 +15058,21 @@
         },
         "responses": {
           "201": {
-            "description": "The new store, with the caller as owner",
+            "description": "The new store, with the caller as owner (and their acceptance of the terms and DPA when sent)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Tenant"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -15195,6 +15205,208 @@
           },
           "403": {
             "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/v1/public/legal": {
+      "get": {
+        "operationId": "PublicLegalController_current",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current version of each legal document and whether they are in force",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicLegal"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/tenant/legal": {
+      "get": {
+        "operationId": "StoreLegalController_get",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What the store accepted, and whether the owner must accept the current versions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreLegal"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "platform"
+        ]
+      }
+    },
+    "/v1/tenant/legal/accept": {
+      "post": {
+        "operationId": "StoreLegalController_accept",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptLegal"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted; audited (tenant.legal_accepted). Accepting the same versions again changes nothing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreLegal"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -16899,6 +17111,34 @@
         "required": [
           "tenantId",
           "role"
+        ],
+        "additionalProperties": false
+      },
+      "AcceptLegal": {
+        "type": "object",
+        "properties": {
+          "terms": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$",
+            "description": "The terms of service version shown"
+          },
+          "dpa": {
+            "type": "string",
+            "pattern": "^[0-9]+\\.[0-9]+$",
+            "description": "The data processing agreement version shown"
+          },
+          "language": {
+            "description": "The language the documents were read in",
+            "type": "string",
+            "enum": [
+              "ar",
+              "en"
+            ]
+          }
+        },
+        "required": [
+          "terms",
+          "dpa"
         ],
         "additionalProperties": false
       },
@@ -20989,6 +21229,25 @@
               "ar",
               "en"
             ]
+          },
+          "acceptLegal": {
+            "description": "The terms of service and DPA versions the owner accepted; 409 legal_version_changed when not current",
+            "type": "object",
+            "properties": {
+              "terms": {
+                "type": "string",
+                "pattern": "^[0-9]+\\.[0-9]+$"
+              },
+              "dpa": {
+                "type": "string",
+                "pattern": "^[0-9]+\\.[0-9]+$"
+              }
+            },
+            "required": [
+              "terms",
+              "dpa"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -31906,6 +32165,49 @@
         ],
         "additionalProperties": false
       },
+      "PublicLegal": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "description": "draft: under legal review, not in force; published: owners must accept the current terms and DPA"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "terms",
+                    "privacy",
+                    "dpa"
+                  ]
+                },
+                "version": {
+                  "type": "string",
+                  "pattern": "^[0-9]+\\.[0-9]+$"
+                }
+              },
+              "required": [
+                "key",
+                "version"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "status",
+          "documents"
+        ],
+        "additionalProperties": false
+      },
       "PurchaseOrder": {
         "type": "object",
         "properties": {
@@ -35691,6 +35993,78 @@
         },
         "required": [
           "flags"
+        ],
+        "additionalProperties": false
+      },
+      "StoreLegal": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "description": "draft: under legal review, not in force; published: owners must accept the current terms and DPA"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "document": {
+                  "type": "string",
+                  "enum": [
+                    "terms",
+                    "dpa"
+                  ]
+                },
+                "version": {
+                  "type": "string",
+                  "pattern": "^[0-9]+\\.[0-9]+$",
+                  "description": "The current version"
+                },
+                "acceptedAt": {
+                  "nullable": true,
+                  "description": "When the store accepted the current version; null when it has not",
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "acceptedBy": {
+                  "nullable": true,
+                  "description": "Who accepted it; null when not accepted or the person was erased",
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "document",
+                "version",
+                "acceptedAt",
+                "acceptedBy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "needsAcceptance": {
+            "type": "boolean",
+            "description": "The documents are in force and the store has not accepted a current version: the owner must accept before using the store"
+          }
+        },
+        "required": [
+          "status",
+          "documents",
+          "needsAcceptance"
         ],
         "additionalProperties": false
       },

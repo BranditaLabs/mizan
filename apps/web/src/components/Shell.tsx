@@ -9,6 +9,7 @@ import { RouteMotion } from "./RouteMotion";
 import { AnnouncementsBanner } from "./AnnouncementsBanner";
 import { ShellCommands } from "./ShellCommands";
 import { SupportBanner } from "./SupportBanner";
+import { LegalBanner } from "./legal/LegalGate";
 import { StoreSwitcher, UserMenu } from "./StoreSwitcher";
 import { ThemeSwitch } from "./ThemeSwitch";
 import { ThemedWordmark } from "./Wordmark";
@@ -51,6 +52,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <AnnouncementsBanner />
           <SupportBanner />
           <PlanBanner />
+          <LegalBanner />
         </div>
         <main id="main" className="min-h-0 flex-1 overflow-y-auto print:overflow-visible"><RouteMotion>{children}</RouteMotion></main>
       </div>

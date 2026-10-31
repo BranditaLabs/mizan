@@ -2417,6 +2417,54 @@ export interface paths {
         patch: operations["TenantsController_update"];
         trace?: never;
     };
+    "/v1/public/legal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PublicLegalController_current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/legal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StoreLegalController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tenant/legal/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StoreLegalController_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/members": {
         parameters: {
             query?: never;
@@ -2746,6 +2794,17 @@ export interface components {
             tenantId: string;
             /** @enum {string} */
             role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
+        };
+        AcceptLegal: {
+            /** @description The terms of service version shown */
+            terms: string;
+            /** @description The data processing agreement version shown */
+            dpa: string;
+            /**
+             * @description The language the documents were read in
+             * @enum {string}
+             */
+            language?: "ar" | "en";
         };
         AddStaff: {
             /**
@@ -3764,6 +3823,11 @@ export interface components {
              * @enum {string}
              */
             language: "ar" | "en";
+            /** @description The terms of service and DPA versions the owner accepted; 409 legal_version_changed when not current */
+            acceptLegal?: {
+                terms: string;
+                dpa: string;
+            };
         };
         Dashboard: {
             /** @enum {string} */
@@ -6568,6 +6632,18 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        PublicLegal: {
+            /**
+             * @description draft: under legal review, not in force; published: owners must accept the current terms and DPA
+             * @enum {string}
+             */
+            status: "draft" | "published";
+            documents: {
+                /** @enum {string} */
+                key: "terms" | "privacy" | "dpa";
+                version: string;
+            }[];
+        };
         PurchaseOrder: {
             /** Format: uuid */
             id: string;
@@ -7547,6 +7623,30 @@ export interface components {
             flags: {
                 [key: string]: boolean;
             };
+        };
+        StoreLegal: {
+            /**
+             * @description draft: under legal review, not in force; published: owners must accept the current terms and DPA
+             * @enum {string}
+             */
+            status: "draft" | "published";
+            documents: {
+                /** @enum {string} */
+                document: "terms" | "dpa";
+                /** @description The current version */
+                version: string;
+                /**
+                 * Format: date-time
+                 * @description When the store accepted the current version; null when it has not
+                 */
+                acceptedAt: string | null;
+                /** @description Who accepted it; null when not accepted or the person was erased */
+                acceptedBy: {
+                    name: string | null;
+                } | null;
+            }[];
+            /** @description The documents are in force and the store has not accepted a current version: the owner must accept before using the store */
+            needsAcceptance: boolean;
         };
         StoreNote: {
             /** Format: uuid */
@@ -17058,13 +17158,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The new store, with the caller as owner */
+            /** @description The new store, with the caller as owner (and their acceptance of the terms and DPA when sent) */
             201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Tenant"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Understood but refused (a business rule) */
@@ -17148,6 +17257,136 @@ export interface operations {
             };
             /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PublicLegalController_current: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The current version of each legal document and whether they are in force */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicLegal"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreLegalController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What the store accepted, and whether the owner must accept the current versions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreLegal"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreLegalController_accept: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptLegal"];
+            };
+        };
+        responses: {
+            /** @description Accepted; audited (tenant.legal_accepted). Accepting the same versions again changes nothing */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreLegal"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

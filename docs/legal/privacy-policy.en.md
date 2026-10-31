@@ -27,7 +27,7 @@ We do **not** use advertising trackers or sell personal data. We do not use your
 ## 4. How shoppers' data is handled (summary of the processor role)
 
 - **What:** name, phone, delivery address and location pin, order contents, amounts, payment method and status, delivery and return events, confirmation messages' status (sent, read, button tapped; message bodies are not stored).
-- **How it is protected:** phone, name and street address are encrypted in the database with a key unique to each store (AES-256-GCM, keys wrapped by Google Cloud KMS). Lists show a short label and the phone's last four digits only. Seeing a full contact is limited by role and is recorded each time.
+- **How it is protected:** phone, name and street address are encrypted in the database with a key unique to each store (AES-256-GCM, keys wrapped by Azure Key Vault). Lists show a short label and the phone's last four digits only. Seeing a full contact is limited by role and is recorded each time.
 - **Payment cards:** Mizan never receives card numbers or CVV. Payments happen on the gateway's own pages.
 - **Messages:** if the merchant connects WhatsApp, Mizan sends order confirmation messages from the merchant's number and records the shopper's consent or "stop" request.
 - **AI:** if the merchant turns on AI-written offers, only product names, prices and quantities are sent to the AI provider, never a shopper's name, phone or address.
@@ -39,7 +39,7 @@ We share data only with service providers that help us run Mizan (sub-processors
 
 | Provider | Purpose | Location |
 | --- | --- | --- |
-| Google Cloud | Hosting, database, encryption keys, logs | Doha, Qatar; Dammam, KSA for Saudi stores where required |
+| Microsoft Azure (Microsoft Corporation / `[CONFIRM contracting entity]`) | Hosting, database, encryption keys, logs, monitoring | UAE North (Dubai, UAE); an in-Kingdom region for Saudi stores when required `[CONFIRM]` |
 | Google Firebase | Sign-in; push notifications to the staff app | `[CONFIRM]` |
 | Meta (WhatsApp Cloud API) | Confirmation messages, only if the merchant connects WhatsApp | Global |
 | Anthropic | Writing offers, only if enabled; no shopper data | USA `[CONFIRM]` |
@@ -48,7 +48,7 @@ Services the merchant connects (their store platform, couriers, payment gateways
 
 ## 6. Where data is stored and transfers
 
-Data is hosted in Google Cloud's Middle East regions (Doha; Dammam for Saudi stores where required). Some providers above may process data in other countries. Where the law restricts transfers, we rely on `[CONFIRM: permit / adequacy / contractual safeguards under Law 151/2020 and PDPL]`.
+Data is hosted in Microsoft Azure's UAE North region (Dubai, UAE; for Saudi stores, an in-Kingdom region when required `[CONFIRM]`). Some providers above may process data in other countries. Where the law restricts transfers, we rely on `[CONFIRM: permit / adequacy / contractual safeguards under Law 151/2020 and PDPL]`.
 
 ## 7. How long we keep data
 

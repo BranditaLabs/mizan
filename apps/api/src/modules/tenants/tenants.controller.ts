@@ -17,8 +17,8 @@ export class TenantsController {
   @NoTenant()
   @HttpCode(201)
   @ApiJsonBody("CreateTenant", CreateTenantSchema)
-  @ApiJson(201, "Tenant", TenantViewSchema, "The new store, with the caller as owner")
-  @ApiProblems(422)
+  @ApiJson(201, "Tenant", TenantViewSchema, "The new store, with the caller as owner (and their acceptance of the terms and DPA when sent)")
+  @ApiProblems(409, 422)
   create(@Auth() auth: AuthContext, @Body(new ZodPipe(CreateTenantSchema)) body: CreateTenantBody): Promise<TenantView> {
     return this.tenants.create(auth.user.id, body, auth.ip);
   }
