@@ -9,7 +9,7 @@ import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { LocalKeyWrapper, type KeyWrapper } from "../src/platform/secrets/key-wrapper.js";
-import { CloudKmsKeyWrapper } from "../src/platform/secrets/kms-wrapper.js";
+import { KeyVaultKeyWrapper } from "../src/platform/secrets/keyvault-wrapper.js";
 import { SecretValue } from "../src/platform/secrets/secret-value.js";
 import { keyWrapperFor } from "../src/platform/secrets/secrets.module.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
@@ -155,68 +155,95 @@ describe("LocalKeyWrapper", () => {
   });
 });
 
-describe("CloudKmsKeyWrapper (fake KMS)", () => {
-  const KEY = "projects/mizan/locations/me-central1/keyRings/mizan/cryptoKeys/tenant-data";
+describe("KeyVaultKeyWrapper (fake Key Vault)", () => {
+  const KEY = "https://mizan-test-kv.vault.azure.net/keys/tenant-secrets";
+  const V1 = `${KEY}/${"a".repeat(32)}`;
+  const V2 = `${KEY}/${"b".repeat(32)}`;
+  const identity = { endpoint: "http://localhost:42356/msi/token", header: "id-header", clientId: "client-1" };
 
-  function fakeKms(opts: { failFirst?: number; status?: number } = {}) {
-    const kek = randomBytes(32);
+  // RSA-OAEP stands in as AES-GCM per version: what matters is the REST shape and the version each wrap carries.
+  function fakeVault(opts: { failFirst?: number; status?: number } = {}) {
+    const keks = new Map([[V1, randomBytes(32)], [V2, randomBytes(32)]]);
+    let current = V1;
     const calls: string[] = [];
     let fail = opts.failFirst ?? 0;
     const http = (async (url: string | URL, init?: RequestInit) => {
-      const u = String(url);
-      calls.push(`${init?.method ?? "GET"} ${u.replace("https://cloudkms.googleapis.com/v1/", "")}`);
+      const u = new URL(String(url));
       const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
-      if (u.startsWith("http://metadata.google.internal")) return json(200, { access_token: "ya29.token", expires_in: 3600 });
-      if ((init?.headers as Record<string, string>).Authorization !== "Bearer ya29.token") return json(401, {});
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      if (u.host === "localhost:42356") {
+        calls.push(`token ${u.searchParams.get("resource")} ${u.searchParams.get("client_id")}`);
+        if (headers["X-IDENTITY-HEADER"] !== "id-header") return json(401, {});
+        return json(200, { access_token: "kv.token", expires_on: String(Math.floor(Date.now() / 1000) + 3600) });
+      }
+      calls.push(`${init?.method ?? "GET"} ${u.pathname}`);
+      if (u.searchParams.get("api-version") !== "7.4") return json(400, {});
+      if (headers.Authorization !== "Bearer kv.token") return json(401, {});
       if (fail-- > 0) return json(opts.status ?? 503, { error: { message: "echo of input would go here" } });
       const body = init?.body ? JSON.parse(String(init.body)) : {};
-      if (u.endsWith(":encrypt")) {
+      const kid = `https://${u.host}${u.pathname.replace(/\/(wrapkey|unwrapkey)$/, "")}`;
+      if (u.pathname.endsWith("/wrapkey")) {
+        expect(body.alg).toBe("RSA-OAEP-256");
         const iv = randomBytes(12);
-        const c = createCipheriv("aes-256-gcm", kek, iv);
-        const ct = Buffer.concat([c.update(Buffer.from(body.plaintext, "base64")), c.final()]);
-        return json(200, { name: `${KEY}/cryptoKeyVersions/3`, ciphertext: Buffer.concat([iv, c.getAuthTag(), ct]).toString("base64") });
+        const c = createCipheriv("aes-256-gcm", keks.get(kid)!, iv);
+        const ct = Buffer.concat([c.update(Buffer.from(body.value, "base64url")), c.final()]);
+        return json(200, { kid, value: Buffer.concat([iv, c.getAuthTag(), ct]).toString("base64url") });
       }
-      if (u.endsWith(":decrypt")) {
-        const raw = Buffer.from(body.ciphertext, "base64");
-        const d = createDecipheriv("aes-256-gcm", kek, raw.subarray(0, 12));
+      if (u.pathname.endsWith("/unwrapkey")) {
+        const raw = Buffer.from(body.value, "base64url");
+        const d = createDecipheriv("aes-256-gcm", keks.get(kid)!, raw.subarray(0, 12));
         d.setAuthTag(raw.subarray(12, 28));
-        return json(200, { plaintext: Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString("base64") });
+        return json(200, { kid, value: Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString("base64url") });
       }
-      return json(200, { primary: { name: `${KEY}/cryptoKeyVersions/3` } });
+      return json(200, { key: { kid: current } });
     }) as typeof fetch;
-    return { http, calls };
+    return { http, calls, rotate: () => { current = V2; } };
   }
 
-  it("wraps and unwraps through KMS, caching the access token", async () => {
-    const { http, calls } = fakeKms();
-    const kms = new CloudKmsKeyWrapper(KEY, http);
+  it("wraps with the current version, unwraps with the version that wrapped, caching the token", async () => {
+    let now = Date.now();
+    const vault = fakeVault();
+    const kv = new KeyVaultKeyWrapper(KEY, identity, vault.http, () => now);
     const dk = randomBytes(32);
-    const { wrapped, keyVersion } = await kms.wrap(dk);
-    expect(keyVersion).toBe(`${KEY}/cryptoKeyVersions/3`);
-    expect(await kms.unwrap(wrapped)).toEqual(dk);
-    expect(await kms.currentVersion()).toBe(keyVersion);
-    await kms.currentVersion();
-    expect(calls.filter((c) => c.includes("metadata")).length).toBe(1);
-    expect(calls.filter((c) => c.startsWith("GET projects")).length).toBe(1);
+    const { wrapped, keyVersion } = await kv.wrap(dk);
+    expect(keyVersion).toBe(V1);
+    expect(await kv.unwrap(wrapped, keyVersion)).toEqual(dk);
+    expect(vault.calls.filter((c) => c.startsWith("token"))).toEqual(["token https://vault.azure.net client-1"]);
+
+    vault.rotate();
+    now += 301_000; // the current version is re-read every 5 minutes
+    expect(await kv.currentVersion()).toBe(V2);
+    const again = await kv.wrap(dk);
+    expect(again.keyVersion).toBe(V2);
+    expect(await kv.unwrap(wrapped, V1)).toEqual(dk); // older secrets still open until rewrapStale()
+  });
+
+  it("never calls anything but the configured key with a version from the database", async () => {
+    const kv = new KeyVaultKeyWrapper(KEY, identity, fakeVault().http);
+    await expect(kv.unwrap(randomBytes(40), "https://evil.example/keys/x/" + "a".repeat(32))).rejects.toThrow(/not a version of the configured/);
+    await expect(kv.unwrap(randomBytes(40), `${KEY}-other/${"a".repeat(32)}`)).rejects.toThrow(/not a version of the configured/);
+    await expect(kv.unwrap(randomBytes(40), `${KEY}/../x`)).rejects.toThrow(/not a version of the configured/);
   });
 
   it("retries once on 503, then fails without echoing the response", async () => {
-    const ok = new CloudKmsKeyWrapper(KEY, fakeKms({ failFirst: 1 }).http);
+    const ok = new KeyVaultKeyWrapper(KEY, identity, fakeVault({ failFirst: 1 }).http);
     await expect(ok.wrap(randomBytes(32))).resolves.toBeDefined();
-    const down = new CloudKmsKeyWrapper(KEY, fakeKms({ failFirst: 5 }).http);
+    const down = new KeyVaultKeyWrapper(KEY, identity, fakeVault({ failFirst: 5 }).http);
     const err = await down.wrap(randomBytes(32)).catch((e: Error) => e);
-    expect((err as Error).message).toBe("Cloud KMS POST encrypt failed: 503");
-    const denied = new CloudKmsKeyWrapper(KEY, fakeKms({ failFirst: 1, status: 403 }).http);
+    expect((err as Error).message).toBe("Key Vault GET key failed: 503");
+    const denied = new KeyVaultKeyWrapper(KEY, identity, fakeVault({ failFirst: 1, status: 403 }).http);
     await expect(denied.wrap(randomBytes(32))).rejects.toThrow("failed: 403");
+    await expect(new KeyVaultKeyWrapper(KEY, null, fakeVault().http).wrap(randomBytes(32))).rejects.toThrow(/no managed identity/);
   });
 
-  it("validates the key name", () => {
-    expect(() => new CloudKmsKeyWrapper("tenant-data")).toThrow(/KMS_KEY_NAME must look like/);
+  it("validates the key id", () => {
+    expect(() => new KeyVaultKeyWrapper("tenant-secrets", identity)).toThrow(/KEY_VAULT_KEY_ID must look like/);
+    expect(() => new KeyVaultKeyWrapper(`${KEY}/${"a".repeat(32)}`, identity)).toThrow(/no version/);
   });
 
-  it("is chosen when KMS_KEY_NAME is set; local or ephemeral otherwise", () => {
+  it("is chosen when KEY_VAULT_KEY_ID is set; local or ephemeral otherwise", () => {
     const base = loadConfig({ PUBLIC_URL: "http://x", WEB_URL: "http://y" });
-    expect(keyWrapperFor({ ...base, KMS_KEY_NAME: KEY })).toBeInstanceOf(CloudKmsKeyWrapper);
+    expect(keyWrapperFor({ ...base, KEY_VAULT_KEY_ID: KEY }, undefined, { IDENTITY_ENDPOINT: identity.endpoint, IDENTITY_HEADER: "h" })).toBeInstanceOf(KeyVaultKeyWrapper);
     expect(keyWrapperFor({ ...base, SECRETS_DEV_KEY: Buffer.alloc(32, 1).toString("base64") })).toBeInstanceOf(LocalKeyWrapper);
     expect(keyWrapperFor(base, { warn: () => {} } as unknown as Logger)).toBeInstanceOf(LocalKeyWrapper);
   });

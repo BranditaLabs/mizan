@@ -2,7 +2,7 @@
 
 Everything the code cannot do by itself: accounts, approvals, keys and decisions. The items are in priority order. Each one says **what to do**, **where to do it**, and **what to give back** (and where to put it).
 
-> ⚠️ **Never paste a secret (token, API key, app secret) in chat, an issue or a commit.** Each secret has its place below: Google Secret Manager, or the form inside Mizan where a merchant pastes their own key. Mizan stores them encrypted and never shows them again.
+> ⚠️ **Never paste a secret (token, API key, app secret) in chat, an issue or a commit.** Each secret has its place below: Azure Key Vault, or the form inside Mizan where a merchant pastes their own key. Mizan stores them encrypted and never shows them again.
 
 Legend: 🔴 blocks the pilot · 🟡 needed before launch · 🟢 later phase
 
@@ -15,7 +15,7 @@ Meta, Shopify, payment gateways and couriers all ask for these before granting a
 - [ ] Commercial registration and tax card (Egypt) for the company that owns Mizan / Brandita.
 - [ ] A public website on Mizan's domain with a **privacy policy** and **terms of service** (Arabic and English).
 - [ ] A short **data protection document**:
-  - encryption (we have it: KMS + per-store keys);
+  - encryption (Azure Key Vault RSA key + per-store keys);
   - retention;
   - who can see customer data (access is logged);
   - incident response.
@@ -36,8 +36,8 @@ This is what E6-10 needs to work for real. Until it's done, confirmation goes st
 |---|----|-------|-----------|
 | 1 | Create / verify the **Meta Business portfolio** (Brandita). Verification needs the company papers above. | business.facebook.com → Settings → Security Centre | Tell me when it's verified |
 | 2 | Create a **Meta developer app** (type *Business*), add the **WhatsApp** product | developers.facebook.com → My Apps | The **App ID** (not secret) |
-| 3 | Copy the **App Secret** | App → Settings → Basic | Put it in Secret Manager as `META_APP_SECRET` |
-| 4 | Choose a random **verify token** (any long random string, e.g. `openssl rand -hex 24`) | — | Secret Manager: `WHATSAPP_VERIFY_TOKEN` |
+| 3 | Copy the **App Secret** | App → Settings → Basic | Put it in Azure Key Vault as `meta-app-secret` (env `META_APP_SECRET`; see "Values to create") |
+| 4 | Choose a random **verify token** (any long random string, e.g. `openssl rand -hex 24`) | — | Azure Key Vault: `whatsapp-verify-token` (env `WHATSAPP_VERIFY_TOKEN`) |
 | 5 | Set the **webhook**: Callback URL `https://<api-domain>/webhooks/whatsapp`, Verify token = #4, subscribe to the **`messages`** field | App → WhatsApp → Configuration | Tell me when Meta shows "verified" |
 | 6 | Apply to be a **Tech Provider** and for **Embedded Signup v4**, so merchants connect their own numbers in one click (story E6-4b). Not needed for the first pilot stores. | App → App Review → Permissions (`whatsapp_business_management`, `whatsapp_business_messaging`) | Approval status |
 
@@ -96,7 +96,7 @@ Quick-reply buttons: **Confirm order** · **I want a change** · **Cancel order*
 | 1 | Create a **Shopify Partner** account and an **app** | partners.shopify.com → Apps | — |
 | 2 | Set the **App URL** `https://<api-domain>/v1/connections/shopify/entry` and the **redirect URL** `https://<api-domain>/v1/connections/shopify/callback` | App → Configuration | — |
 | 3 | Set the compliance webhooks (customers/data_request, customers/redact, shop/redact) to `https://<api-domain>/webhooks/shopify/gdpr` | App → Configuration → Compliance webhooks | — |
-| 4 | Copy **Client ID** and **Client secret** | App → Client credentials | Secret Manager: `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` |
+| 4 | Copy **Client ID** and **Client secret** | App → Client credentials | Configure `SHOPIFY_API_KEY` as plain API environment; put the secret in Azure Key Vault as `shopify-api-secret` (env `SHOPIFY_API_SECRET`) |
 | 5 | Request **Protected customer data – Level 2** (name, phone, address): we need it to confirm and ship. Justification: order confirmation and delivery; data encrypted; access logged. | App → API access → Protected customer data | Approval status |
 | 6 | Create a **development store** with a few products (with SKUs) and COD enabled, for the end-to-end test | Partners → Stores | The store's `.myshopify.com` address |
 | 7 | Later 🟡: submit for **App Store review** | Partners → App listing | — |
@@ -115,36 +115,46 @@ Scopes Mizan asks for (already in the code): `read_orders, write_orders, write_o
 
 ---
 
-## 4. Google Cloud + Firebase (hosting, sign-in, secrets) 🔴
+## 4. Azure + Firebase (hosting, sign-in, secrets) 🔴
 
 | # | Do | Where | Give back |
 |---|----|-------|-----------|
-| 1 | A **Google Cloud project** with billing, region **`me-central1` (Doha)** or `me-central2` (Dammam) | console.cloud.google.com | Project ID |
-| 2 | **Cloud SQL for PostgreSQL 16**: one instance, staging and production databases | Cloud SQL | Connection names (the passwords go to Secret Manager) |
-| 3 | A **Cloud KMS** key ring + key for Mizan's secrets | Security → Key Management | Key resource name → `KMS_KEY_NAME` |
-| 4 | **Secret Manager** for the values below; Cloud Run reads them | Security → Secret Manager | — |
-| 5 | 🚧 **Firebase**: project `mizan-8f906` created and web config received (Oct 2026). Still to do: on the same project as hosting: Authentication → Email/Password + Phone; upgrade to **Identity Platform** for SMS second factor (owners); add the dashboard domain to **Authorized domains**; allow SMS only to +20/+966/+971 (Authentication → Settings → SMS region policy); restrict the web API key to the dashboard domains and the Identity Toolkit API (Google Cloud → APIs & Services → Credentials). No Google Analytics (consent rules; Mizan keeps its own product events) | console.firebase.google.com | `FIREBASE_PROJECT_ID` and the web config (`NEXT_PUBLIC_FIREBASE_API_KEY`, `…_AUTH_DOMAIN`, `…_PROJECT_ID`; these are public) |
-| 6 | **Domain + DNS**: e.g. `app.<domain>` (dashboard) and `api.<domain>` (API) | Your registrar | The domains (`WEB_URL`, `PUBLIC_URL`) |
-| 7 | A **Google Maps Platform** key restricted to the dashboard domain 🟡 | APIs & Services | Secret Manager |
-| 8 | The **email of the first Mizan staff super admin** (the back office, A-1). That person signs in with the email verified and a second factor; they then add the rest of the staff | — | `PLATFORM_BOOTSTRAP_EMAILS` (not a secret: a Cloud Run environment variable) |
+| 1 | An **Azure subscription** with billing in **UAE North (`uaenorth`)**; run the bootstrap script once per environment | Azure Cloud Shell | Subscription ID |
+| 2 | **Azure Database for PostgreSQL Flexible Server 16**: Terraform creates the server, `mizan` database and generated credentials | `infra/bootstrap.sh` | No database passwords to send; Terraform stores generated values in Key Vault |
+| 3 | **Azure Key Vault** with RBAC, soft delete and purge protection; Terraform creates the RSA 3072 `tenant-secrets` key | `infra/bootstrap.sh` | `KEY_VAULT_KEY_ID` is output by Terraform |
+| 4 | 🚧 **Firebase**: project `mizan-8f906` and web config already exist. Firebase Authentication remains separate from Azure hosting: configure Email/Password + Phone, SMS second factor (owners), add the dashboard domain to **Authorized domains**, allow SMS only to +20/+966/+971 (Authentication → Settings → SMS region policy), and restrict the public web API key to dashboard origins and Identity Toolkit (Google Cloud → APIs & Services → Credentials). No Google Analytics (consent rules; Mizan keeps its own product events) | console.firebase.google.com | `FIREBASE_PROJECT_ID` and web config (`NEXT_PUBLIC_FIREBASE_API_KEY`, `…_AUTH_DOMAIN`, `…_PROJECT_ID`; public by design) |
+| 5 | **Domain + DNS**: `api.mizan.brandita.net`, `app.mizan.brandita.net` (later `admin.mizan.brandita.net`); add the Terraform CNAME and `asuid` TXT records, set `bind_custom_domains = true`, then re-run `infra/bootstrap.sh` to bind the certificates | Hostinger | After binding, set GitHub `API_URL` to the API's HTTPS domain |
+| 6 | A **Google Maps Platform** key restricted to the dashboard domain 🟡 | APIs & Services | Azure Key Vault |
+| 7 | The **email of the first Mizan staff super admin** (the back office, A-1). That person signs in with the email verified and a second factor; they then add the rest of the staff | — | `PLATFORM_BOOTSTRAP_EMAILS` (not a secret: an Azure Container App environment variable) |
 
-### Values to create (Secret Manager, never in git)
+### Values to create (Azure Key Vault, never in git)
 
-| Name | How to make it |
-|------|----------------|
-| `LINK_SIGNING_KEY` | `openssl rand -base64 32` (signs confirm links and WhatsApp buttons; rotating it breaks buttons already sent) |
-| `META_APP_SECRET` | §1.1 #3 |
-| `WHATSAPP_VERIFY_TOKEN` | §1.1 #4 |
-| `SHOPIFY_API_KEY`, `SHOPIFY_API_SECRET` | §2 #4 |
-| `DATABASE_URL`, `DATABASE_URL_MIGRATOR` | Cloud SQL users: the API user is *not* the owner (see `docs/09-infrastructure.md` §3) |
-| `ANTHROPIC_API_KEY` | §5 (when we build E6-12) |
+Key Vault secret names allow only letters, digits and dashes, so each value goes in under the
+kebab-case name below. For each one: `az keyvault secret set --vault-name <vault> --name <key-vault-name> --value '<value>'`
+(Cloud Shell; `terraform output provider_secrets_to_fill` prints the exact commands), then add the
+env name to `provider_secrets` in `infra/envs/<env>.tfvars` and re-run `infra/bootstrap.sh`. The
+API only receives secrets listed there.
+
+| Key Vault name | Env name | How to make it |
+|----------------|----------|----------------|
+| `meta-app-secret` | `META_APP_SECRET` | §1.1 #3 |
+| `whatsapp-verify-token` | `WHATSAPP_VERIFY_TOKEN` | §1.1 #4 |
+| `shopify-api-secret` | `SHOPIFY_API_SECRET` | §2 #4 |
+| `anthropic-api-key` | `ANTHROPIC_API_KEY` | §5 (when we build E6-12) |
+| `sentry-dsn` | `SENTRY_DSN` | Optional |
+
+**Generated by Terraform, nothing to create:** `LINK_SIGNING_KEY` (signs confirm links and
+WhatsApp buttons; rotating it breaks buttons already sent), `METRICS_TOKEN`, `DATABASE_URL`,
+`DATABASE_URL_MIGRATOR` and `DATABASE_APP_PASSWORD`. Migrations use the schema-owner login and the
+API login is a separate RLS-scoped role (see `docs/09-infrastructure.md` §3). Do not create these
+by hand: Terraform owns them and would overwrite or conflict with a manual value.
 
 ---
 
 ## 5. Claude (Anthropic API): AI-written offers (E6-12) 🟡
 
 - [ ] Create an **Anthropic Console** organization for Brandita at console.anthropic.com. Add billing and set a **monthly spend limit** (suggestion: start at USD 50 for the pilot).
-- [ ] Create an **API key** for production. Put it in Secret Manager as `ANTHROPIC_API_KEY`.
+- [ ] Create an **API key** for production. Put it in Azure Key Vault as `anthropic-api-key` (env `ANTHROPIC_API_KEY`), see "Values to create".
 - [ ] Decision: per-store AI switch **on** or **off** by default. It's built **off**; each store turns it on in Settings → Offers. Model: `claude-opus-5-5` (change with `ANTHROPIC_MODEL`).
 
 Mizan never sends customer names, phones or addresses to Claude; only products, prices and the store name.

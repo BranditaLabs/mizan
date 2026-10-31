@@ -1,8 +1,9 @@
 name: Deploy staging
 
-# Build → push to Artifact Registry → migrate (Cloud Run job, schema owner) → deploy api, worker
-# and web → smoke test. Authenticates with Workload Identity Federation (no keys); the variables
-# come from infra/bootstrap.sh. Until they are set, the job is skipped.
+# Build and push both images → migrate → update worker, API and web → smoke test.
+# OIDC variables come from infra/bootstrap.sh (staging environment variables). The job runs only
+# when the repository variable AZURE_DEPLOY_STAGING is "true": a job-level `if` cannot read
+# environment variables. The staging environment's branch rule allows main only.
 on:
   push:
     branches: [main]
@@ -19,31 +20,35 @@ concurrency:
 jobs:
   deploy:
     name: Deploy to staging
-    if: vars.GCP_PROJECT_ID != '' && vars.MIZAN_ENV != 'production'
+    if: vars.AZURE_DEPLOY_STAGING == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     environment: staging
     env:
-      PROJECT: ${{ vars.GCP_PROJECT_ID }}
-      REGION: ${{ vars.GCP_REGION }}
-      REGISTRY: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/mizan
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      REGISTRY: ${{ vars.ACR_NAME }}.azurecr.io
       TAG: ${{ github.sha }}
+      API_URL: ${{ vars.API_URL }}
     steps:
       - uses: actions/checkout@v4
-      - uses: google-github-actions/auth@v2
+      - uses: azure/login@v2
         with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOYER_SA }}
-      - uses: google-github-actions/setup-gcloud@v2
-      - run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - name: Log in to Azure Container Registry
+        run: az acr login --name "$ACR_NAME"
       - uses: docker/setup-buildx-action@v3
 
       - name: API URL (the dashboard is built against it)
         id: urls
-        # The API's own domain (environment variable API_URL, e.g. https://api.mizan.brandita.net) once DNS is live; else the run.app URL.
-        env:
-          API_URL: ${{ vars.API_URL }}
-        run: echo "api=${API_URL:-$(gcloud run services describe mizan-api --region "$REGION" --format='value(status.url)')}" >> "$GITHUB_OUTPUT"
+        run: |
+          api="${API_URL:-https://$(az containerapp show --name ca-mizan-api --resource-group "$AZURE_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)}"
+          echo "api=$api" >> "$GITHUB_OUTPUT"
 
       - name: Build and push the API image (API, worker, migrations)
         uses: docker/build-push-action@v6
@@ -64,25 +69,67 @@ jobs:
             NEXT_PUBLIC_API_URL=${{ steps.urls.outputs.api }}
             NEXT_PUBLIC_FIREBASE_API_KEY=${{ vars.FIREBASE_API_KEY }}
             NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ vars.FIREBASE_AUTH_DOMAIN }}
-            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.GCP_PROJECT_ID }}
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ vars.FIREBASE_PROJECT_ID }}
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
 
       - name: Migrate (must succeed before anything is deployed)
         run: |
-          gcloud run jobs update mizan-migrate --region "$REGION" --image "$REGISTRY/api:$TAG" --quiet
-          gcloud run jobs execute mizan-migrate --region "$REGION" --wait
+          image="$REGISTRY/api:$TAG"
+          az containerapp job update --name caj-mizan-migrate --resource-group "$AZURE_RESOURCE_GROUP" --image "$image" --output none
+          execution="$(az containerapp job start --name caj-mizan-migrate --resource-group "$AZURE_RESOURCE_GROUP" --query name -o tsv)"
+          # Longer than the job's 900 s replica timeout plus image pull and scheduling.
+          deadline=$((SECONDS + 1200))
+          while (( SECONDS < deadline )); do
+            # A transient read error (e.g. execution not visible yet) retries instead of failing.
+            status="$(az containerapp job execution show --name caj-mizan-migrate --resource-group "$AZURE_RESOURCE_GROUP" --job-execution-name "$execution" --query properties.status -o tsv || echo Unknown)"
+            case "$status" in
+              Succeeded) echo "Migration execution succeeded."; exit 0 ;;
+              Failed|Stopped|Degraded) echo "Migration execution ended with status: $status" >&2; exit 1 ;;
+            esac
+            sleep 10
+          done
+          echo "Migration execution $execution did not finish in 20 minutes; check it before re-running." >&2
+          exit 1
 
       - name: Deploy worker, API, dashboard
         run: |
-          gcloud run deploy mizan-worker --region "$REGION" --image "$REGISTRY/api:$TAG" --quiet
-          gcloud run deploy mizan-api --region "$REGION" --image "$REGISTRY/api:$TAG" --quiet
-          gcloud run deploy mizan-web --region "$REGION" --image "$REGISTRY/web:$TAG" --quiet
+          # In single-revision mode a failing revision gets no traffic, so the old one would still
+          # answer the smoke test. Wait until the new revision is the latest ready one.
+          deploy() {
+            local app="$1" image="$2" latest ready revision_image state
+            az containerapp update --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" --image "$image" --output none
+            latest="$(az containerapp show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" --query properties.latestRevisionName -o tsv)"
+            local deadline=$((SECONDS + 600))
+            while (( SECONDS < deadline )); do
+              state="$(az containerapp revision show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" --revision "$latest" --query properties.provisioningState -o tsv || echo Unknown)"
+              if [[ "$state" == "Failed" ]]; then
+                echo "$app revision $latest failed to provision." >&2
+                return 1
+              fi
+              ready="$(az containerapp show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" --query properties.latestReadyRevisionName -o tsv || true)"
+              if [[ "$ready" == "$latest" ]]; then
+                revision_image="$(az containerapp revision show --name "$app" --resource-group "$AZURE_RESOURCE_GROUP" --revision "$latest" --query 'properties.template.containers[0].image' -o tsv)"
+                if [[ "$revision_image" != "$image" ]]; then
+                  echo "$app revision $latest runs $revision_image, expected $image." >&2
+                  return 1
+                fi
+                echo "$app: $latest ready on $image"
+                return 0
+              fi
+              sleep 10
+            done
+            echo "$app revision $latest was not ready after 10 minutes." >&2
+            return 1
+          }
+          deploy ca-mizan-worker "$REGISTRY/api:$TAG"
+          deploy ca-mizan-api "$REGISTRY/api:$TAG"
+          deploy ca-mizan-web "$REGISTRY/web:$TAG"
 
       - name: Smoke test
         run: |
           api="${{ steps.urls.outputs.api }}"
-          web=$(gcloud run services describe mizan-web --region "$REGION" --format='value(status.url)')
+          web="https://$(az containerapp show --name ca-mizan-web --resource-group "$AZURE_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)"
           curl -fsS "$api/health/ready"
           test "$(curl -s -o /dev/null -w '%{http_code}' "$api/v1/me")" = "401"
           curl -fsS "$web/ar" | grep -q 'dir="rtl"'

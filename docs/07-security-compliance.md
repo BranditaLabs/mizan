@@ -9,7 +9,7 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 | Threat | Control |
 | --- | --- |
 | Tenant A reads tenant B's data | Postgres RLS (FORCE) on every table; app role without BYPASSRLS; tenant set per transaction; tests in `packages/db/test` |
-| Stolen provider tokens (Shopify, Bosta, Meta) | Envelope encryption (Cloud KMS) in `secrets`; decrypted only in worker memory; rotated on disconnect; never logged. ✅ `SecretsService` (E1-10): per-secret AES-256-GCM data key, AAD binds ciphertext to tenant + row, data key wrapped by Cloud KMS (REST, metadata-server credentials); `SecretValue` prints `[secret]`; create/rotate/delete audited; `rewrapStale()` after KMS key rotation |
+| Stolen provider tokens (Shopify, Bosta, Meta) | Envelope encryption (Azure Key Vault key) in `secrets`; decrypted only in worker memory; rotated on disconnect; never logged. ✅ `SecretsService` (E1-10): per-secret AES-256-GCM data key, AAD binds ciphertext to tenant + row, data key wrapped by the Azure Key Vault RSA key `tenant-secrets` (REST, the API's user-assigned managed identity); `SecretValue` prints `[secret]`; create/rotate/delete audited; `rewrapStale()` after Key Vault key rotation |
 | Store connected to the wrong account (OAuth CSRF / login CSRF) | ✅ Shopify install (E3-1): `state` is HMAC-signed (key derived from the client secret), expires in 10 min and names the shop; an install started inside Mizan also names the user and store, and only they can claim it. The callback never creates a connection: it seals the token as a pending install (`shopify_installs`, envelope-encrypted, AAD = install id, 1 h) and hands the browser a one-time claim token (only its SHA-256 is stored); a signed-in owner/admin claims it. App Store installs (OAuth before any Mizan sign-in, as Shopify requires) are claimable by whoever completes sign-in in that browser. Codes and tokens go only to `*.myshopify.com` (no SSRF via `shop`); one Shopify store belongs to one account; redirects send `Referrer-Policy: no-referrer` |
 | Forged webhooks | Shopify HMAC, Meta `X-Hub-Signature-256`, WooCommerce `X-WC-Webhook-Signature` with a secret Mizan generates per store (E5-7) and, for its one-click key handover, a signed 30-minute `user_id` naming the store, member and site, per-connection tokens for unsigned providers; **thin webhook, fat fetch** (re-read from API before acting) |
 | Account takeover (owner) | Firebase Auth; 2FA required for owner and admin (✅ enforced by `AuthGuard` from the token's `sign_in_second_factor`, `AUTH_REQUIRE_MFA`, on by default in production). The dashboard (E4-2) signs owners and admins in with email + password, then an SMS code (Firebase phone second factor); an owner without it is sent to turn it on (verify email → enrol phone → sign in again with the code). Agents and warehouse staff may sign in with phone + SMS code alone. Firebase errors are shown in our words, never Firebase's text; the post-sign-in redirect accepts in-app paths only; session revocation (ID tokens verified locally, 1 h lifetime; disabling a membership takes effect on the next request; refresh-token revocation check is a follow-up); login alerts |
@@ -27,11 +27,11 @@ Mizan holds customer phones, addresses and payment data for many merchants at on
 
 | Data | Where | Protection |
 | --- | --- | --- |
-| Customer phone | `customers.phone_e164`, `orders.ship_phone` | Application-level encryption (AES-256-GCM, tenant data key); `phone_hash` = HMAC-SHA256 with a tenant pepper for lookups. ✅ `apps/api/src/platform/pii/pii-cipher.ts`: one random key per tenant (KMS-wrapped in `secrets`), HKDF → encryption key + pepper; deleting the tenant key crypto-shreds all its PII |
+| Customer phone | `customers.phone_e164`, `orders.ship_phone` | Application-level encryption (AES-256-GCM, tenant data key); `phone_hash` = HMAC-SHA256 with a tenant pepper for lookups. ✅ `apps/api/src/platform/pii/pii-cipher.ts`: one random key per tenant (Key Vault-wrapped in `secrets`), HKDF → encryption key + pepper; deleting the tenant key crypto-shreds all its PII |
 | Name, address, location pin | `orders.ship_*`, `customers.name` | Same as phone; masked in lists; full view logged as `customer.pii_viewed`. ✅ E5-1: the order list never decrypts names or phones: it reads a separate encrypted label (`Mona A.`) and the phone's last four digits; search covers order numbers and phones (by hash) only, never names. ✅ E6-7: the customer's confirm link is a signed token (run id + 96-bit HMAC, key `LINK_SIGNING_KEY`), expires (72 h default), answers only once, shows the order and a first name but never the phone or address, is IP rate-limited, `no-store`, `noindex`, `no-referrer`; messages to customers carry store, order number, amount and link only; a change request's note is encrypted (`confirmations.notes`); logs mask numbers and never contain message text. ✅ E5-2: the order detail is masked the same way; full name, phone, street and map pin come only from `POST /orders/{id}/reveal`, decrypted on the server for that person, recorded as `customer.pii_viewed` (field names, never values) in the same transaction, rate-limited, `no-store`, never stored by the idempotency layer, refused for finance and after redaction (410). The web keeps revealed details in component state only |
 | Email | `customers.email`, `users.email` | Encrypted at rest (DB-level) |
 | Payment data | Never stored: no card numbers, CVV or bank credentials | PSP-hosted payment pages only; Mizan stores amounts, method, status and the gateway reference |
-| Provider credentials | `secrets` | Envelope encryption, KMS |
+| Provider credentials | `secrets` | Envelope encryption, Key Vault key |
 
 **Retention:** order PII kept while the merchant is active + 90 days after cancellation, then deleted or anonymized (keep financial aggregates). Configurable per tenant for legal holds. `[CONFIRM with counsel]`
 
@@ -47,7 +47,7 @@ Legal drafts for counsel (privacy policy, terms, DPA with security annex and sub
 | UAE PDPL and others | Before launch there | Map before launch |
 | **Shopify** protected customer data | Shopify merchants | Level 2 approval; minimum fields; encryption; access logs; incident policy; **mandatory compliance webhooks** |
 | **WhatsApp Business** policy | All confirmation and campaigns | Opt-in recorded (`customers.whatsapp_opt_in`, `opt_in_at`, `opt_in_source`) ✅ E6-4b from a reply or tap in the chat; STOP/«إيقاف» opts out (`whatsapp_opt_out_at`), honoured by every later confirmation until START (docs/modules/M02); approved templates; opt-out on every marketing message |
-| **ZATCA** e-invoicing | KSA merchants (V2) | Phase 2 integration per merchant; private keys in KMS |
+| **ZATCA** e-invoicing | KSA merchants (V2) | Phase 2 integration per merchant; private keys in Key Vault |
 | Egypt ETA e-receipt | Obligated merchants | Decision-based; per-merchant onboarding |
 
 ### Shopify compliance webhooks (required for the App Store)
@@ -71,7 +71,7 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 ## 4. Risk network (M11) privacy design
 
 - Shared data = salted phone hash + outcome (delivered / refused / fake) + date + region. **No tenant id, no name, no address, no order value.**
-- Hash salt is global per region, stored in KMS, rotated yearly (scores recomputed).
+- Hash salt is global per region, stored in Key Vault, rotated yearly (scores recomputed).
 - Merchants opt in; source stores are never revealed; minimum k-anonymity (e.g. only show a score after outcomes from ≥ 3 stores).
 - Data kept in its region; limited retention (e.g. 12 months) `[CONFIRM]`.
 - Separate schema and service; no joins to tenant tables.
@@ -84,7 +84,7 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 - [ ] CSRF: API uses bearer tokens, no cookies for auth; web app uses `SameSite=Lax` session cookie only for Next.js server actions if used.
 - [ ] Security headers on web (CSP, HSTS, frame-ancestors none).
 - [ ] Rate limits on auth, OTP, exports, webhooks.
-- [ ] Secrets only from Secret Manager / env; `.env` gitignored; secret scanning in CI (gitleaks).
+- [ ] Secrets only from Azure Key Vault / env; `.env` gitignored; secret scanning in CI (gitleaks).
 - [ ] Dependency audit in CI.
 - [ ] Penetration test before public launch.
 
@@ -117,4 +117,4 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 
 - Claude receives the store's name, product titles, prices, quantities and margin bands: never the customer's name, phone, address or anything they typed. The request is built from product rows only (tested: no customer data in what is sent).
 - Claude's answer is validated, never trusted: only a shortlisted item, a discount within the store's maximum, no links or phone numbers; the price is Mizan's. The owner's rules cannot be changed by it.
-- `ANTHROPIC_API_KEY` is a platform secret (Secret Manager), never logged; Anthropic's data handling terms apply (check retention settings for the organization before production).
+- `ANTHROPIC_API_KEY` is a platform secret (Azure Key Vault), never logged; Anthropic's data handling terms apply (check retention settings for the organization before production).

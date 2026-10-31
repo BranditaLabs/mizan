@@ -5,5 +5,6 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   plugins: [swc.vite({ module: { type: "es6" } })],
   resolve: { conditions: ["source"] },
-  test: { testTimeout: 20_000 },
+  // Boot hooks build the app and apply every migration to PGlite (~10 s on a slow machine).
+  test: { testTimeout: 20_000, hookTimeout: 60_000 },
 });

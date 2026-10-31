@@ -105,8 +105,11 @@ export const ConfigSchema = z.object({
   BOSTA_BASE_URL: url.optional(),
   BOSTA_TRACKING_URL_TEMPLATE: z.string().includes("{tn}", { error: "must contain {tn}" }).optional(),
 
-  // Secrets: Cloud KMS key that wraps per-secret data keys (required in production).
-  KMS_KEY_NAME: optionalString,
+  // Secrets: Azure Key Vault key that wraps per-secret data keys (required in production), e.g.
+  // https://mizan-staging-kv.vault.azure.net/keys/tenant-secrets; read with the managed identity
+  // whose client id is AZURE_CLIENT_ID (user-assigned).
+  KEY_VAULT_KEY_ID: optionalString,
+  AZURE_CLIENT_ID: optionalString,
   // Development only: base64 of 32 random bytes (openssl rand -base64 32). Unset = ephemeral key.
   SECRETS_DEV_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
 
@@ -124,11 +127,11 @@ export const ConfigSchema = z.object({
   if (env.NODE_ENV === "production" && env.MESSAGING_PROVIDER === "log") {
     ctx.addIssue({ code: "custom", path: ["MESSAGING_PROVIDER"], message: "log is for development only" });
   }
-  if (env.NODE_ENV === "production" && !env.KMS_KEY_NAME) {
-    ctx.addIssue({ code: "custom", path: ["KMS_KEY_NAME"], message: "is required in production" });
+  if (env.NODE_ENV === "production" && !env.KEY_VAULT_KEY_ID) {
+    ctx.addIssue({ code: "custom", path: ["KEY_VAULT_KEY_ID"], message: "is required in production" });
   }
   if (env.NODE_ENV === "production" && env.SECRETS_DEV_KEY) {
-    ctx.addIssue({ code: "custom", path: ["SECRETS_DEV_KEY"], message: "must not be set in production (use KMS_KEY_NAME)" });
+    ctx.addIssue({ code: "custom", path: ["SECRETS_DEV_KEY"], message: "must not be set in production (use KEY_VAULT_KEY_ID)" });
   }
   if (env.NODE_ENV === "production" && env.FIREBASE_AUTH_EMULATOR_HOST) {
     ctx.addIssue({ code: "custom", path: ["FIREBASE_AUTH_EMULATOR_HOST"], message: "must not be set in production (unsigned tokens)" });

@@ -1,18 +1,21 @@
-# terraform -chdir=infra plan -var-file=envs/staging.tfvars -var="project_id=<your staging project id>"
-env                  = "staging"
-region               = "me-central1"
-db_tier              = "db-custom-1-3840"
-db_high_availability = false
-api_min_instances    = 0
-api_max_instances    = 4
-worker_min_instances = 1
-# Own domains (domains.tf): DNS stays at Hostinger; add the A records from `terraform output dns_records`.
+# terraform -chdir=infra plan -var-file=envs/staging.tfvars -var="subscription_id=<subscription-id>"
+env                     = "staging"
+region                  = "uaenorth"
+firebase_project_id     = "mizan-8f906"
+db_sku                  = "B_Standard_B1ms"
+db_high_availability    = false
+api_min_instances       = 0
+api_max_instances       = 4
+worker_min_instances    = 1
+worker_max_instances    = 2
+bind_custom_domains     = false
+db_allow_azure_services = true # Container Apps reach PostgreSQL without a VNet
+# Add these DNS records from `terraform output dns_records` at Hostinger, then set
+# bind_custom_domains = true and re-run infra/bootstrap.sh (it applies, then binds the certificates).
 api_domain = "api.mizan.brandita.net"
 web_domain = "app.mizan.brandita.net"
-# admin_domain  = "admin.mizan.brandita.net"   # with admin_service once the back office is deployed (L0-3)
-# Without domains, set these to the Cloud Run URLs from `terraform output`:
-# public_url = "https://api-xxxxx-ww.a.run.app"
-# web_url    = "https://web-xxxxx-ww.a.run.app"
+# admin_domain = "admin.mizan.brandita.net"
+# admin_app    = "ca-mizan-admin" # once the back office is deployed (L0-3)
 # platform_bootstrap_emails = "you@example.com"
-# Alerts by email (an on-call or team address):
 # alert_emails = ["ops@example.com"]
+# provider_secrets = ["SHOPIFY_API_SECRET", "META_APP_SECRET"]

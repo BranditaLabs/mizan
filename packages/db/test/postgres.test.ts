@@ -81,7 +81,7 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
     const role = (await admin.query(`SELECT rolcanlogin, rolbypassrls, rolsuper, rolcreaterole, rolcreatedb FROM pg_roles WHERE rolname = $1`, [name])).rows[0];
     expect(role).toEqual({ rolcanlogin: true, rolbypassrls: false, rolsuper: false, rolcreaterole: false, rolcreatedb: false });
     const member = (await admin.query(`SELECT r.rolname FROM pg_auth_members m JOIN pg_roles r ON r.oid = m.roleid JOIN pg_roles u ON u.oid = m.member WHERE u.rolname = $1 ORDER BY 1`, [name])).rows.map((r) => r.rolname);
-    expect(member).toEqual(["mizan_app", "mizan_worker"]);
+    expect(member).toEqual(["mizan_app", "mizan_platform", "mizan_worker"]);
     const as = (pw: string) => { const u = new URL(migratorUrl); u.username = name; u.password = pw; return u.toString(); };
     const c1 = new pg.Client({ connectionString: as(first) });
     await c1.connect();
@@ -94,6 +94,10 @@ describe.skipIf(!ADMIN_URL)("PostgreSQL (node-postgres)", () => {
     await ensureAppLogin(client, name, second);
     await expect(ensureAppLogin(client, "Robert'); DROP TABLE x;--", second)).rejects.toThrow(/not a role name/);
     await expect(ensureAppLogin(client, name, "short")).rejects.toThrow(/at least 24/);
+    // A login that gained BYPASSRLS by hand is refused, never silently kept.
+    await admin.query(`ALTER ROLE ${name} BYPASSRLS`);
+    await expect(ensureAppLogin(client, name, second)).rejects.toThrow(/must not be a superuser or bypass RLS/);
+    await admin.query(`ALTER ROLE ${name} NOBYPASSRLS`);
     await client.close();
     expect(await hash()).not.toBe(before);
   });

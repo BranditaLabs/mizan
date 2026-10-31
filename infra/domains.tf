@@ -1,133 +1,45 @@
-# Own domains (L0-4): one global external HTTPS load balancer with a fixed IP and Google-managed
-# certificates in front of the Cloud Run services. The DNS stays wherever the domain is (Hostinger
-# for brandita.net): add an A record per host to `lb_ip`; certificates turn ACTIVE once the records
-# resolve (up to an hour). Cloud Run domain mappings are not used: they are not offered in every
-# Middle East region, and a load balancer is where Cloud Armor goes later.
-#
-# The run.app URLs keep working; PUBLIC_URL and WEB_URL follow the domains once they are set.
+# Custom domains attach directly to each Container App. Add DNS records first; the next apply adds
+# the hostname to the app and issues a free managed certificate in the environment. Terraform
+# cannot set the SNI binding to a managed certificate, so bootstrap.sh then runs
+# `az containerapp hostname bind` for each entry of the custom_domain_bindings output (the
+# binding fields are ignored below so Terraform does not undo it).
 
 locals {
-  lb_on = var.api_domain != "" && var.web_domain != ""
-  lb_hosts = local.lb_on ? merge(
-    { api = { domain = var.api_domain, service = google_cloud_run_v2_service.api.name } },
-    { web = { domain = var.web_domain, service = google_cloud_run_v2_service.web.name } },
-    var.admin_domain != "" && var.admin_service != "" ? { admin = { domain = var.admin_domain, service = var.admin_service } } : {},
-  ) : {}
+  requested_domains = merge(
+    var.api_domain != "" ? { api = { domain = var.api_domain, app = azurerm_container_app.api } } : {},
+    var.web_domain != "" ? { web = { domain = var.web_domain, app = azurerm_container_app.web } } : {},
+    var.admin_domain != "" && var.admin_app != "" ? {
+      admin = {
+        domain = var.admin_domain
+        app    = data.azurerm_container_app.admin[0]
+      }
+    } : {},
+  )
+  custom_domains = var.bind_custom_domains ? local.requested_domains : {}
 }
 
-resource "google_project_service" "compute" {
-  count              = local.lb_on ? 1 : 0
-  service            = "compute.googleapis.com"
-  disable_on_destroy = false
+data "azurerm_container_app" "admin" {
+  count               = var.admin_domain != "" && var.admin_app != "" ? 1 : 0
+  name                = var.admin_app
+  resource_group_name = azurerm_resource_group.main.name
 }
 
-resource "google_compute_global_address" "lb" {
-  count      = local.lb_on ? 1 : 0
-  name       = "mizan-lb"
-  labels     = local.labels
-  depends_on = [google_project_service.compute]
-}
+resource "azurerm_container_app_custom_domain" "domain" {
+  for_each         = local.custom_domains
+  name             = each.value.domain
+  container_app_id = each.value.app.id
 
-resource "google_compute_region_network_endpoint_group" "run" {
-  for_each              = local.lb_hosts
-  name                  = "mizan-${each.key}-neg"
-  region                = var.region
-  network_endpoint_type = "SERVERLESS"
-  cloud_run {
-    service = each.value.service
-  }
-  depends_on = [google_project_service.compute]
-}
-
-resource "google_compute_backend_service" "run" {
-  for_each              = local.lb_hosts
-  name                  = "mizan-${each.key}"
-  load_balancing_scheme = "EXTERNAL_MANAGED"
-  protocol              = "HTTPS"
-  backend {
-    group = google_compute_region_network_endpoint_group.run[each.key].id
-  }
-  log_config {
-    enable      = true
-    sample_rate = 0.1
-  }
-}
-
-resource "google_compute_url_map" "https" {
-  count           = local.lb_on ? 1 : 0
-  name            = "mizan-https"
-  default_service = google_compute_backend_service.run["web"].id
-
-  dynamic "host_rule" {
-    for_each = local.lb_hosts
-    content {
-      hosts        = [host_rule.value.domain]
-      path_matcher = host_rule.key
-    }
-  }
-
-  dynamic "path_matcher" {
-    for_each = local.lb_hosts
-    content {
-      name            = path_matcher.key
-      default_service = google_compute_backend_service.run[path_matcher.key].id
-    }
-  }
-}
-
-# A new certificate per change of hosts: managed certificates can't be edited in place.
-resource "google_compute_managed_ssl_certificate" "lb" {
-  count = local.lb_on ? 1 : 0
-  name  = "mizan-cert-${substr(sha256(join(",", sort([for h in local.lb_hosts : h.domain]))), 0, 8)}"
-  managed {
-    domains = sort([for h in local.lb_hosts : h.domain])
-  }
   lifecycle {
-    create_before_destroy = true
-  }
-  depends_on = [google_project_service.compute]
-}
-
-resource "google_compute_target_https_proxy" "lb" {
-  count            = local.lb_on ? 1 : 0
-  name             = "mizan-https"
-  url_map          = google_compute_url_map.https[0].id
-  ssl_certificates = [google_compute_managed_ssl_certificate.lb[0].id]
-}
-
-resource "google_compute_global_forwarding_rule" "https" {
-  count                 = local.lb_on ? 1 : 0
-  name                  = "mizan-https"
-  load_balancing_scheme = "EXTERNAL_MANAGED"
-  ip_address            = google_compute_global_address.lb[0].id
-  port_range            = "443"
-  target                = google_compute_target_https_proxy.lb[0].id
-  labels                = local.labels
-}
-
-# Plain http only redirects to https.
-resource "google_compute_url_map" "redirect" {
-  count = local.lb_on ? 1 : 0
-  name  = "mizan-http-redirect"
-  default_url_redirect {
-    https_redirect         = true
-    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
-    strip_query            = false
+    ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
   }
 }
 
-resource "google_compute_target_http_proxy" "redirect" {
-  count   = local.lb_on ? 1 : 0
-  name    = "mizan-http-redirect"
-  url_map = google_compute_url_map.redirect[0].id
-}
+resource "azurerm_container_app_environment_managed_certificate" "domain" {
+  for_each                     = local.custom_domains
+  name                         = "cert-${each.key}-${var.env}"
+  container_app_environment_id = azurerm_container_app_environment.main.id
+  subject_name                 = each.value.domain
+  domain_control_validation    = "CNAME"
 
-resource "google_compute_global_forwarding_rule" "http" {
-  count                 = local.lb_on ? 1 : 0
-  name                  = "mizan-http-redirect"
-  load_balancing_scheme = "EXTERNAL_MANAGED"
-  ip_address            = google_compute_global_address.lb[0].id
-  port_range            = "80"
-  target                = google_compute_target_http_proxy.redirect[0].id
-  labels                = local.labels
+  depends_on = [azurerm_container_app_custom_domain.domain]
 }

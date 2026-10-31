@@ -1,6 +1,6 @@
 # ADR-0009: Host in a Google Cloud Middle East region
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-0014
 - **Date:** 2026-10-20
 
 ## Context

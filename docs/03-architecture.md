@@ -9,7 +9,7 @@ flowchart TB
     O[Ops app<br/>Flutter · offline-first]
     P[Public API clients<br/>REST + webhooks]
   end
-  subgraph Mizan["Mizan platform (Google Cloud, Middle East region)"]
+  subgraph Mizan["Mizan platform (Azure UAE North)"]
     API[apps/api<br/>NestJS modular monolith]
     WK[Workers<br/>outbox + schedulers]
     ENG[packages/engine<br/>connectors · resilience · adaptation]
@@ -41,12 +41,13 @@ flowchart TB
 
 | Unit | Code | Runs | Scales by |
 | --- | --- | --- | --- |
-| API | `apps/api` (`main.ts`) | Cloud Run service, ≥ 2 instances | Requests |
-| Worker | `apps/api` (`worker.ts`, same image, different entry) | Cloud Run service, always-on, ≥ 1 | Outbox backlog |
-| Scheduler | Cloud Scheduler → `POST /internal/cron/*` on the worker | — | — |
-| Web | `apps/web` | Cloud Run (or Vercel if preferred; keep ME data residency for APIs) | Requests |
+| API | `apps/api` (`main.ts`) | Azure Container App `ca-mizan-api`, ≥ 2 replicas in production | Requests |
+| Worker | `apps/api` (`worker.ts`, same image, different entry) | Azure Container App `ca-mizan-worker`, always-on, ≥ 1 | Outbox backlog |
+| Scheduler | None: the worker runs its own polls | — | — |
+| Web | `apps/web` | Azure Container App `ca-mizan-web` | Requests |
 | Ops app (warehouse, agents, POS in V3) | `apps/ops` | Play Store / App Store; internal testing tracks first | — |
-| Database | Cloud SQL for PostgreSQL 16+, HA, PITR | ME region | Vertical first, read replica for reports |
+| Migrations | `packages/db` (`cli.js migrate`, same image) | Container Apps Job `caj-mizan-migrate`, run by CI before each deploy | — |
+| Database | Azure Database for PostgreSQL Flexible Server 16, zone-redundant HA in production, PITR | UAE North | Vertical first, read replica for reports |
 
 One image, two entry points, keeps the modular monolith simple: the API never runs long jobs; the worker never serves user traffic.
 
@@ -63,7 +64,7 @@ apps/api/src/
     events/               domain event bus (in-process) + outbox writer
     i18n/                 server-side messages (AR/EN)
     audit/                append-only audit log
-    secrets/              encrypt/decrypt credentials (Cloud KMS envelope)
+    secrets/              encrypt/decrypt credentials (envelope; data keys wrapped by the Key Vault key `tenant-secrets`)
     http/                 error filter, problem+json, pagination, idempotency-key middleware
   modules/
     tenants/  users/  billing/
@@ -170,8 +171,8 @@ See backlog epic **E2** in `docs/10-backlog.md`.
 
 ## 8. Data residency
 
-- Primary region: Google Cloud `me-central1` (Doha) or `me-central2` (Dammam). Decide in ADR-0009 after checking service availability (Cloud SQL, Cloud Run, KMS) and latency from Cairo.
-- KSA merchants: add a KSA-hosted deployment (Dammam) when PDPL or customer contracts require it. The schema is region-agnostic; `tenants.region` routes the tenant.
+- Primary region: Azure UAE North (`uaenorth`), decided in ADR-0014 (supersedes ADR-0009).
+- KSA merchants: add a KSA-hosted deployment in an Azure Saudi region when PDPL or customer contracts require it. The schema is region-agnostic; `tenants.region` routes the tenant.
 
 ## 9. Key technical decisions
 

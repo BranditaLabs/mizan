@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 
 /**
  * Wraps (encrypts) and unwraps per-secret data keys with a key-encryption key.
- * Production: Cloud KMS (the KEK never leaves Google). Dev/test: a local AES key.
+ * Production: Azure Key Vault (the KEK never leaves the vault). Dev/test: a local AES key.
  */
 export interface KeyWrapper {
   wrap(dataKey: Buffer): Promise<{ wrapped: Buffer; keyVersion: string }>;

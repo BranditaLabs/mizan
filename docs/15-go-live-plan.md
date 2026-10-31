@@ -37,10 +37,10 @@ The launch track never waits for the feature track. Features go to production be
 
 | # | Task | Who | Status / needs |
 | --- | --- | --- | --- |
-| L0-1 | Run `infra/bootstrap.sh mizan-8f906 me-central1 staging` in Cloud Shell; paste the printed GitHub variables into the **staging** environment | O | Waiting on the run |
-| L0-2 | First deploy from `main`; fill `public_url`/`web_url` from the outputs; second apply | E + O | After L0-1 |
-| L0-3 | **Deploy the back office** (`apps/admin`) as a Cloud Run service, with its URL in the API's CORS (`ADMIN_URL`) | E | Terraform not written yet; can start now |
-| L0-4a | **Own domains** on brandita.net (DNS stays at Hostinger): `api.mizan.brandita.net`, `app.mizan.brandita.net` (later `admin.mizan.brandita.net`). `infra/domains.tf`: one HTTPS load balancer, fixed IP, Google-managed certificates; `api_domain`/`web_domain` in `envs/staging.tfvars` make `PUBLIC_URL`/`WEB_URL` follow. After apply: add the A records from `terraform output dns_records` in Hostinger, set the GitHub variable `API_URL=https://api.mizan.brandita.net`, add `app.mizan.brandita.net` to Firebase authorised domains, paste `terraform output shopify_app_urls` into the Shopify app | E ✅ + O | Terraform done; DNS records after L0-1 |
+| L0-1 | Run `bash infra/bootstrap.sh <azure-subscription-id> uaenorth staging` in Azure Cloud Shell; paste the printed GitHub variables into the **staging** environment, add the repository variable `AZURE_DEPLOY_STAGING=true` and limit the staging environment to branch `main` | O | Waiting on the run |
+| L0-2 | First deploy from `main`; Terraform supplies the Container Apps FQDNs, so no URL override is needed before custom domains | E + O | After L0-1 |
+| L0-3 | **Deploy the back office** (`apps/admin`) as an Azure Container App and configure its URL in API CORS (`ADMIN_URL`); set `admin_app` when attaching its custom domain | E | Can start now |
+| L0-4a | **Own domains** on brandita.net (DNS stays at Hostinger): `api.mizan.brandita.net`, `app.mizan.brandita.net` (later `admin.mizan.brandita.net`). Terraform outputs each app's CNAME target and TXT verification id (`asuid.<host>`). Add both records at Hostinger first, then set `bind_custom_domains = true` and re-run `infra/bootstrap.sh` (it applies, then binds the free Azure managed certificates). Set GitHub variable `API_URL=https://api.mizan.brandita.net`, add `app.mizan.brandita.net` to Firebase authorised domains, and paste `terraform output shopify_app_urls` into the Shopify app | E ✅ + O | Terraform done; add DNS records after L0-1, then bind |
 | L0-4 | Firebase: Auth providers on the staging project — email, phone, the SMS second step and **Google** (the redesigned sign-in offers it); authorised domains (for the Google popup too); SMS region policy allows Egypt | O + E | Firebase console |
 | L0-5 | Staging smoke: `deploy/compose/smoke.sh` against the URLs; the web and admin browser suites against staging | E | After L0-2 |
 | L0-6 | **H-13 load test** at full targets (1,000 reads/s, 500 writes/s) on staging | E | After L0-2 |
@@ -62,9 +62,9 @@ The launch track never waits for the feature track. Features go to production be
 
 | # | Task | Who | Notes |
 | --- | --- | --- | --- |
-| L2-1 | `bootstrap.sh <prod-project> me-central1 production`; GitHub **production** environment with required reviewers; deploy by `v*` tag | O + E | `deploy-prod.yml` built |
-| L2-2 | **Domains:** `app.`, `api.`, `admin.` on the chosen domain, mapped to Cloud Run; HTTPS; Firebase authorised domains | O + E | Domain choice (O) |
-| L2-3 | Secrets in Secret Manager (Shopify app keys, Anthropic, link signing, etc.); alert emails for monitoring | O + E | Never in chat or the repo |
+| L2-1 | `bash infra/bootstrap.sh <azure-subscription-id> uaenorth production`; GitHub **production** environment with required reviewers; deploy by `v*` tag | O + E | `deploy-prod.yml` built |
+| L2-2 | **Domains:** `app.`, `api.`, `admin.` bound directly to Azure Container Apps with managed HTTPS certificates; Firebase authorised domains | O + E | DNS CNAME + asuid TXT records first |
+| L2-3 | Secrets in Azure Key Vault (Shopify app keys, Anthropic, link signing, etc.); alert emails for monitoring | O + E | Never in chat or the repo |
 | L2-4 | **Restore drill** from backup into a scratch instance (`docs/runbooks/database-restore.md`), timed and written down | E | Before the first real order |
 | L2-5 | **Go / no-go review** (section 5) | O + E | |
 
@@ -113,7 +113,7 @@ Engineering split from week 1: **launch tasks first each day, features in the re
 | **Week 1** | Meta business verification; the WhatsApp number per pilot store; Bosta business account (labels) | WhatsApp confirmation, labels |
 | **Week 1–2** | TikTok, Google Ads, Snap developer apps; Paymob merchant account | Feature track G3+, payments |
 | **Week 2** | Pick and sign the 10 pilots (D-5); collect their product costs and Bosta keys | L3 |
-| **Week 3** | Production Google Cloud project (Doha) and billing | L2 |
+| **Week 3** | Production Azure subscription and billing in UAE North | L2 |
 
 ## 7. Risks to the date
 

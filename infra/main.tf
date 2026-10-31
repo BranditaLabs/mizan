@@ -1,201 +1,134 @@
-# Mizan on Google Cloud (E1-11, docs/09). One project per environment, Middle East region.
-# Cloud Run runs the API, the worker and the dashboard from images CI pushes to Artifact
-# Registry; a Cloud Run job runs migrations as the schema owner and keeps the API's login (RLS
-# roles only). Images are deployed by .github/workflows/deploy-staging.yml, so Terraform starts
-# each service on a placeholder image and ignores the image afterwards.
+# Azure resources for one environment. Container Apps start on a placeholder image; CI owns
+# image releases. Runtime identities are separate from the GitHub deploy identity.
 
 locals {
-  name        = "mizan"
-  labels      = { app = "mizan", env = var.env }
-  placeholder = "us-docker.pkg.dev/cloudrun/container/hello"
-  services = [
-    "run.googleapis.com", "sqladmin.googleapis.com", "secretmanager.googleapis.com", "cloudkms.googleapis.com",
-    "artifactregistry.googleapis.com", "storage.googleapis.com", "iam.googleapis.com", "logging.googleapis.com",
-    "monitoring.googleapis.com", "cloudtrace.googleapis.com", "identitytoolkit.googleapis.com",
-  ]
+  name   = "mizan"
+  labels = { app = "mizan", env = var.env }
 }
 
-data "google_project" "this" {}
-
-resource "google_project_service" "enabled" {
-  for_each           = toset(local.services)
-  service            = each.value
-  disable_on_destroy = false
+resource "random_string" "suffix" {
+  length  = 5
+  lower   = true
+  upper   = false
+  numeric = true
+  special = false
 }
 
-# ───────────── Images ─────────────
+resource "azurerm_resource_group" "main" {
+  name     = "rg-mizan-${var.env}"
+  location = var.region
+  tags     = local.labels
+}
 
-resource "google_artifact_registry_repository" "images" {
-  location      = var.region
-  repository_id = local.name
-  format        = "DOCKER"
-  description   = "Mizan images (api: API, worker and migrations; web: dashboard)"
-  labels        = local.labels
-  cleanup_policies {
-    id     = "keep-recent"
-    action = "KEEP"
-    most_recent_versions {
-      keep_count = 20
-    }
+resource "azurerm_log_analytics_workspace" "main" {
+  name                = "law-mizan-${var.env}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  sku                 = "PerGB2018"
+  retention_in_days   = 30
+  tags                = local.labels
+}
+
+resource "azurerm_container_app_environment" "main" {
+  name                       = "cae-mizan-${var.env}"
+  location                   = azurerm_resource_group.main.location
+  resource_group_name        = azurerm_resource_group.main.name
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  tags                       = local.labels
+}
+
+resource "azurerm_container_registry" "images" {
+  name                = "mizan${var.env}${random_string.suffix.result}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  sku                 = "Basic"
+  admin_enabled       = false
+  tags                = local.labels
+}
+
+resource "azurerm_user_assigned_identity" "api" {
+  name                = "id-mizan-api"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.labels
+}
+
+resource "azurerm_user_assigned_identity" "web" {
+  name                = "id-mizan-web"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.labels
+}
+
+resource "azurerm_user_assigned_identity" "migrate" {
+  name                = "id-mizan-migrate"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.labels
+}
+
+resource "azurerm_role_assignment" "acr_pull" {
+  for_each = {
+    api     = azurerm_user_assigned_identity.api.principal_id
+    web     = azurerm_user_assigned_identity.web.principal_id
+    migrate = azurerm_user_assigned_identity.migrate.principal_id
   }
-  cleanup_policies {
-    id     = "delete-old"
-    action = "DELETE"
-    condition {
-      older_than = "2592000s" # 30 days
-    }
+  scope                = azurerm_container_registry.images.id
+  role_definition_name = "AcrPull"
+  principal_id         = each.value
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_key_vault" "main" {
+  name                       = "mizan${var.env}${random_string.suffix.result}"
+  location                   = azurerm_resource_group.main.location
+  resource_group_name        = azurerm_resource_group.main.name
+  tenant_id                  = data.azurerm_client_config.current.tenant_id
+  sku_name                   = "standard"
+  rbac_authorization_enabled = true
+  purge_protection_enabled   = true
+  soft_delete_retention_days = 90
+  # Public endpoint on purpose: Consumption Container Apps without a VNet have no stable egress
+  # IPs, so access is Entra RBAC only. Move to a private endpoint with the production VNet.
+  public_network_access_enabled = true
+  tags                          = local.labels
+
+  network_acls {
+    default_action = "Allow"
+    bypass         = "AzureServices"
   }
-  depends_on = [google_project_service.enabled]
 }
 
-# ───────────── Identities (least privilege) ─────────────
+data "azurerm_client_config" "current" {}
 
-resource "google_service_account" "api" {
-  account_id   = "mizan-api"
-  display_name = "Mizan API and worker"
-}
+resource "azurerm_key_vault_key" "tenant_secrets" {
+  name         = "tenant-secrets"
+  key_vault_id = azurerm_key_vault.main.id
+  key_type     = "RSA"
+  key_size     = 3072
+  key_opts     = ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
 
-resource "google_service_account" "web" {
-  account_id   = "mizan-web"
-  display_name = "Mizan dashboard (serves pages only)"
-}
+  depends_on = [time_sleep.key_vault_rbac]
 
-resource "google_service_account" "migrate" {
-  account_id   = "mizan-migrate"
-  display_name = "Mizan migrations (schema owner)"
-}
-
-resource "google_project_iam_member" "api" {
-  for_each = toset(["roles/cloudsql.client", "roles/logging.logWriter", "roles/monitoring.metricWriter", "roles/cloudtrace.agent"])
-  project  = var.project_id
-  role     = each.value
-  member   = "serviceAccount:${google_service_account.api.email}"
-}
-
-resource "google_project_iam_member" "migrate" {
-  for_each = toset(["roles/cloudsql.client", "roles/logging.logWriter"])
-  project  = var.project_id
-  role     = each.value
-  member   = "serviceAccount:${google_service_account.migrate.email}"
-}
-
-resource "google_project_iam_member" "web" {
-  for_each = toset(["roles/logging.logWriter", "roles/monitoring.metricWriter"])
-  project  = var.project_id
-  role     = each.value
-  member   = "serviceAccount:${google_service_account.web.email}"
-}
-
-# ───────────── Cloud KMS: wraps the per-secret data keys of merchant credentials ─────────────
-
-resource "google_kms_key_ring" "mizan" {
-  name       = "${local.name}-${var.env}"
-  location   = var.region
-  depends_on = [google_project_service.enabled]
-}
-
-resource "google_kms_crypto_key" "secrets" {
-  name            = "tenant-secrets"
-  key_ring        = google_kms_key_ring.mizan.id
-  rotation_period = "7776000s" # 90 days; old versions keep decrypting
-  labels          = local.labels
   lifecycle {
     prevent_destroy = true
   }
 }
 
-resource "google_kms_crypto_key_iam_member" "api" {
-  crypto_key_id = google_kms_crypto_key.secrets.id
-  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
-  member        = "serviceAccount:${google_service_account.api.email}"
+resource "azurerm_role_assignment" "api_crypto" {
+  scope                = "${azurerm_key_vault.main.id}/keys/tenant-secrets"
+  role_definition_name = "Key Vault Crypto User"
+  principal_id         = azurerm_user_assigned_identity.api.principal_id
+  principal_type       = "ServicePrincipal"
+  depends_on           = [azurerm_key_vault_key.tenant_secrets]
 }
 
-# ───────────── Files: labels, exports, settlement uploads (signed URLs) ─────────────
-
-resource "google_storage_bucket" "files" {
-  name                        = "${var.project_id}-files"
-  location                    = var.region
-  uniform_bucket_level_access = true
-  public_access_prevention    = "enforced"
-  labels                      = local.labels
-  lifecycle_rule {
-    condition {
-      age = 180
-    }
-    action {
-      type = "Delete"
-    }
-  }
-  depends_on = [google_project_service.enabled]
-}
-
-resource "google_storage_bucket_iam_member" "api_files" {
-  bucket = google_storage_bucket.files.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.api.email}"
-}
-
-# ───────────── Database: Cloud SQL PostgreSQL 16 ─────────────
-# Reached only through the Cloud SQL connector (Cloud Run's /cloudsql socket, IAM checked): no
-# authorized networks. Production moves to private IP with HA (docs/09 §2).
-
-resource "google_sql_database_instance" "main" {
-  name                = "${local.name}-${var.env}"
-  database_version    = "POSTGRES_16"
-  region              = var.region
-  deletion_protection = true
-  settings {
-    tier              = var.db_tier
-    edition           = "ENTERPRISE"
-    availability_type = var.db_high_availability ? "REGIONAL" : "ZONAL"
-    disk_autoresize   = true
-    user_labels       = local.labels
-    backup_configuration {
-      enabled                        = true
-      point_in_time_recovery_enabled = true
-      start_time                     = "00:00" # 02:00–03:00 Cairo
-      transaction_log_retention_days = 7
-      backup_retention_settings {
-        retained_backups = 14
-      }
-    }
-    ip_configuration {
-      ipv4_enabled = true
-      ssl_mode     = "ENCRYPTED_ONLY"
-    }
-    database_flags {
-      name  = "max_connections"
-      value = "200"
-    }
-    insights_config {
-      query_insights_enabled  = true
-      record_application_tags = false
-      record_client_address   = false
-    }
-    maintenance_window {
-      day  = 5 # Friday
-      hour = 1
-    }
-  }
-  depends_on = [google_project_service.enabled]
-}
-
-resource "google_sql_database" "mizan" {
-  name     = local.name
-  instance = google_sql_database_instance.main.name
-}
-
-# The schema owner (migrations). The API's own login is made by the migration job, not here:
-# users made through the Cloud SQL API join cloudsqlsuperuser.
+# PostgreSQL Flexible Server. The 0.0.0.0 "Azure services" firewall rule is an explicit per-env
+# opt-in (db_allow_azure_services); production must move to VNet integration/private access and
+# turn it off before launch (a check warns while it is on in production).
 resource "random_password" "migrator" {
   length  = 40
   special = false
-}
-
-resource "google_sql_user" "migrator" {
-  name     = "mizan_migrator"
-  instance = google_sql_database_instance.main.name
-  password = random_password.migrator.result
 }
 
 resource "random_password" "app" {
@@ -212,77 +145,154 @@ resource "random_password" "metrics_token" {
   special = false
 }
 
+resource "azurerm_postgresql_flexible_server" "main" {
+  name                          = "mizan-${var.env}-${random_string.suffix.result}-pg"
+  resource_group_name           = azurerm_resource_group.main.name
+  location                      = azurerm_resource_group.main.location
+  version                       = "16"
+  administrator_login           = "mizan_migrator"
+  administrator_password        = random_password.migrator.result
+  zone                          = "1"
+  sku_name                      = var.db_sku
+  storage_mb                    = 32768
+  storage_tier                  = "P4"
+  backup_retention_days         = 14
+  geo_redundant_backup_enabled  = false
+  public_network_access_enabled = true
+  tags                          = local.labels
+
+  dynamic "high_availability" {
+    for_each = var.db_high_availability ? [1] : []
+    content {
+      mode                      = "ZoneRedundant"
+      standby_availability_zone = "2"
+    }
+  }
+
+  # After an HA failover Azure swaps the primary and standby zones; do not fight it.
+  lifecycle {
+    ignore_changes = [zone, high_availability[0].standby_availability_zone]
+  }
+}
+
+resource "azurerm_postgresql_flexible_server_database" "mizan" {
+  name      = local.name
+  server_id = azurerm_postgresql_flexible_server.main.id
+  charset   = "UTF8"
+  collation = "en_US.utf8"
+}
+
+resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
+  count            = var.db_allow_azure_services ? 1 : 0
+  name             = "allow-azure-services"
+  server_id        = azurerm_postgresql_flexible_server.main.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+}
+
+check "production_database_network" {
+  assert {
+    condition     = !(var.env == "production" && var.db_allow_azure_services)
+    error_message = "Production PostgreSQL still allows all Azure services (0.0.0.0). Move to VNet integration/private access and set db_allow_azure_services = false before launch."
+  }
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "secure_transport" {
+  name      = "require_secure_transport"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = "on"
+}
+
+resource "azurerm_postgresql_flexible_server_configuration" "max_connections" {
+  name      = "max_connections"
+  server_id = azurerm_postgresql_flexible_server.main.id
+  value     = "200"
+}
+
 locals {
-  socket = "/cloudsql/${google_sql_database_instance.main.connection_name}"
-  generated = {
-    DATABASE_URL          = "postgres://mizan_api:${random_password.app.result}@localhost/${local.name}?host=${local.socket}"
-    DATABASE_URL_MIGRATOR = "postgres://mizan_migrator:${random_password.migrator.result}@localhost/${local.name}?host=${local.socket}"
+  generated_secrets = {
+    DATABASE_URL          = "postgres://mizan_api:${random_password.app.result}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/mizan?sslmode=require"
+    DATABASE_URL_MIGRATOR = "postgres://mizan_migrator:${random_password.migrator.result}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/mizan?sslmode=require"
     DATABASE_APP_PASSWORD = random_password.app.result
     LINK_SIGNING_KEY      = random_id.link_signing_key.b64_std
     METRICS_TOKEN         = random_password.metrics_token.result
   }
 }
 
-# ───────────── Secrets ─────────────
-# Generated ones get their value here (kept in the encrypted state bucket); provider secrets are
-# empty containers the owner fills: gcloud secrets versions add mizan-shopify-api-secret --data-file=-
+resource "azurerm_key_vault_secret" "generated" {
+  for_each     = local.generated_secrets
+  name         = lower(replace(each.key, "_", "-"))
+  value        = each.value
+  key_vault_id = azurerm_key_vault.main.id
+  content_type = "Mizan generated application secret"
 
-resource "google_secret_manager_secret" "generated" {
-  for_each  = local.generated
-  secret_id = "mizan-${lower(replace(each.key, "_", "-"))}"
-  labels    = local.labels
-  replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
-  }
-  depends_on = [google_project_service.enabled]
+  depends_on = [time_sleep.key_vault_rbac]
 }
 
-resource "google_secret_manager_secret_version" "generated" {
-  for_each    = local.generated
-  secret      = google_secret_manager_secret.generated[each.key].id
-  secret_data = each.value
+resource "azurerm_role_assignment" "current_key_vault_secrets" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Secrets Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
+  principal_type       = "User"
 }
 
-resource "google_secret_manager_secret" "provider" {
-  for_each  = toset(["SHOPIFY_API_SECRET", "META_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "ANTHROPIC_API_KEY", "SENTRY_DSN"])
-  secret_id = "mizan-${lower(replace(each.key, "_", "-"))}"
-  labels    = local.labels
-  replication {
-    user_managed {
-      replicas {
-        location = var.region
-      }
-    }
-  }
-  depends_on = [google_project_service.enabled]
+resource "azurerm_role_assignment" "current_key_vault_crypto" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Crypto Officer"
+  principal_id         = data.azurerm_client_config.current.object_id
+  principal_type       = "User"
 }
 
 locals {
-  api_secrets     = ["DATABASE_URL", "LINK_SIGNING_KEY", "METRICS_TOKEN"]
-  migrate_secrets = ["DATABASE_URL_MIGRATOR", "DATABASE_APP_PASSWORD"]
+  key_vault_secret_ids = merge(
+    { for key, secret in azurerm_key_vault_secret.generated : key => secret.versionless_id },
+    {
+      for key in var.provider_secrets :
+      key => "${azurerm_key_vault.main.vault_uri}secrets/${lower(replace(key, "_", "-"))}"
+    },
+  )
+  api_secret_names     = concat(["DATABASE_URL", "LINK_SIGNING_KEY", "METRICS_TOKEN"], var.provider_secrets)
+  migrate_secret_names = ["DATABASE_URL_MIGRATOR", "DATABASE_APP_PASSWORD"]
 }
 
-resource "google_secret_manager_secret_iam_member" "api" {
-  for_each  = toset(local.api_secrets)
-  secret_id = google_secret_manager_secret.generated[each.key].id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.api.email}"
+resource "azurerm_role_assignment" "api_secrets" {
+  for_each             = toset(local.api_secret_names)
+  scope                = "${azurerm_key_vault.main.id}/secrets/${lower(replace(each.value, "_", "-"))}"
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.api.principal_id
+  principal_type       = "ServicePrincipal"
+  depends_on           = [azurerm_key_vault_secret.generated]
 }
 
-resource "google_secret_manager_secret_iam_member" "api_provider" {
-  for_each  = google_secret_manager_secret.provider
-  secret_id = each.value.id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.api.email}"
+resource "azurerm_role_assignment" "migrate_secrets" {
+  for_each             = toset(local.migrate_secret_names)
+  scope                = "${azurerm_key_vault.main.id}/secrets/${lower(replace(each.value, "_", "-"))}"
+  role_definition_name = "Key Vault Secrets User"
+  principal_id         = azurerm_user_assigned_identity.migrate.principal_id
+  principal_type       = "ServicePrincipal"
+  depends_on           = [azurerm_key_vault_secret.generated]
 }
 
-resource "google_secret_manager_secret_iam_member" "migrate" {
-  for_each  = toset(local.migrate_secrets)
-  secret_id = google_secret_manager_secret.generated[each.key].id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.migrate.email}"
+# Azure RBAC data-plane grants take minutes to propagate; depends_on only orders the calls.
+# Wait before Terraform writes the key and secrets with its own fresh grants.
+resource "time_sleep" "key_vault_rbac" {
+  create_duration = "120s"
+  triggers = {
+    secrets = azurerm_role_assignment.current_key_vault_secrets.id
+    crypto  = azurerm_role_assignment.current_key_vault_crypto.id
+  }
+}
+
+# Same for the runtime identities: Container Apps resolve Key Vault references and pull from ACR
+# when a revision is created. New grants (e.g. a provider secret) re-run the wait.
+resource "time_sleep" "runtime_rbac" {
+  create_duration = "120s"
+  triggers = {
+    grants = join(",", sort(concat(
+      [for assignment in azurerm_role_assignment.api_secrets : assignment.id],
+      [for assignment in azurerm_role_assignment.migrate_secrets : assignment.id],
+      [for assignment in azurerm_role_assignment.acr_pull : assignment.id],
+      [azurerm_role_assignment.api_crypto.id],
+    )))
+  }
 }

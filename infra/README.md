@@ -1,40 +1,58 @@
-# infra — Mizan on Google Cloud (E1-11)
+# infra — Mizan on Azure UAE North
 
-Terraform for one environment per project (`mizan-staging`, later `mizan-prod`) in the Middle East (`me-central1` Doha by default, or `me-central2` Dammam).
+Terraform provisions one environment per Azure subscription in `uaenorth`. `infra/bootstrap.sh`
+is run from Azure Cloud Shell and creates the `azurerm` state backend, applies infrastructure,
+then creates the GitHub OIDC identity. No deploy client secret is generated.
 
 | What | Where |
 | --- | --- |
-| API, worker, dashboard | Cloud Run `mizan-api`, `mizan-worker` (CPU always on, internal only), `mizan-web` |
-| Migrations | Cloud Run job `mizan-migrate`: runs as the schema owner, then creates or updates the API's login `mizan_api` (only `mizan_app` + `mizan_worker`, never BYPASSRLS) |
-| Database | Cloud SQL PostgreSQL 16, PITR, 14 daily backups, reached only through the Cloud SQL connector (no authorized networks) |
-| Secrets | Secret Manager: database URLs, link signing key, metrics token (generated); Shopify, Meta, WhatsApp, Anthropic, Sentry (you add the values) |
-| Merchant credentials | Cloud KMS key `tenant-secrets` (90-day rotation) wraps each secret's data key |
-| Files | Cloud Storage `<project>-files`, private, 180-day lifecycle |
-| Images | Artifact Registry `mizan` (`api`, `web`), last 20 kept |
-| Deploys | `deploy-staging.yml` on every push to `main`; `deploy-prod.yml` on a release tag `v*` after the `production` environment's reviewers approve; both through Workload Identity Federation (no keys; staging trusts `main`, production only `v*` tags) |
-| Monitoring (`monitoring.tf`) | Uptime checks (API readiness, `/ar`), alerts on API 5xx > 1 %, p95 latency, worker down, Cloud SQL CPU/disk/connections and error logs, emailed to `alert_emails`; a "Mizan <env>" dashboard. The app-level alerts of docs/09 §5 (outbox lag, dead letters, webhook ack, open circuits…) turn on with `app_metrics_enabled = true` once Managed Prometheus scrapes `/metrics` |
+| API, worker, dashboard | Azure Container Apps: `ca-mizan-api`, `ca-mizan-worker`, `ca-mizan-web` |
+| Migrations | Manually triggered Container Apps Job `caj-mizan-migrate`, run before each deployment as `mizan_migrator`; it creates/updates `mizan_api` with RLS roles only |
+| Database | Azure Database for PostgreSQL Flexible Server 16; 14-day backups, TLS required, 200 connections; zone-redundant HA in production |
+| Secrets | Azure Key Vault with RBAC, soft delete and purge protection; public endpoint (no stable Container Apps egress IPs without a VNet), Entra RBAC only; generated database URLs, app password, link key and metrics token |
+| Merchant credentials | RSA 3072 Key Vault key `tenant-secrets`; API identity has wrap/unwrap rights |
+| Images | Basic Azure Container Registry, admin disabled; runtime identities have AcrPull |
+| Deploys | `deploy-staging.yml` on `main`; `deploy-prod.yml` on `v*` tags only, after production environment approval; GitHub OIDC with the environment as subject, no client secrets |
+| Monitoring | Azure Monitor action group, standard availability tests, metric alerts for API 5xx, worker replicas, per-app restarts and PostgreSQL CPU/storage/connections |
+| Domains | Container Apps custom domains and free Azure managed certificates; DNS remains at Hostinger |
 
-## First time (about 20 minutes, once per environment)
+## First time
 
-1. Create the project in the Google Cloud console and link billing.
-2. Open **Cloud Shell** (it is signed in as you and has `gcloud` and `terraform`), then:
-   ```
+1. Open Azure Cloud Shell (signed in as a user who can create resources and role assignments, e.g. subscription Owner), clone the repository, and run:
+   ```sh
    git clone https://github.com/BranditaLabs/mizan && cd mizan
-   bash infra/bootstrap.sh <project-id> me-central1 staging
+   bash infra/bootstrap.sh <subscription-id> [uaenorth] [staging]
    ```
-3. Add the GitHub variables it prints under **Settings → Environments → staging** (or **production**) **→ Environment variables**; they are identifiers, not secrets. `MIZAN_ENV` keeps each workflow on its own project. For production, also add **Required reviewers** to the environment.
-4. Firebase: add Firebase to the same project; Authentication → Email/Password and Phone; upgrade to Identity Platform and turn on SMS multi-factor; add the dashboard URL to Authorized domains.
-5. Push to `main` (or run the workflow by hand): build → migrate → deploy → smoke test.
+   Run once per environment, using `production` for the production subscription. The script gives you **Storage Blob Data Contributor** on the state account (shared keys are off) and waits for it. The first apply waits about two minutes twice for Key Vault and runtime role assignments to propagate; if Azure still answers 403, re-run the script (it is idempotent). The apps start on a placeholder image (`traefik/whoami` on port 8080) until the first CI deploy.
+2. Add the printed values under **GitHub → Settings → Environments → staging** (or `production`) → **Environment variables**. They are identifiers; copy the Firebase web API key directly from Firebase Console. Then:
+   - Add the **repository** variable `AZURE_DEPLOY_STAGING=true` (or `AZURE_DEPLOY_PRODUCTION=true`). A job-level `if` cannot read environment variables, so the deploy switch is repository-level.
+   - Set the environment's **Deployment branches and tags** rule: staging → branch `main`; production → tag `v*`. The OIDC federated credential trusts the environment (`repo:BranditaLabs/mizan:environment:<env>`), so this rule is what keeps other refs out.
+   - Add required reviewers to the production environment.
+3. Configure Firebase Authentication providers as before (email/password, phone and SMS MFA), and add the dashboard domain to Firebase Authorized domains. Firebase Authentication remains the identity service.
+4. The first run prints the CNAME and `asuid` TXT records. Until they are bound, `PUBLIC_URL`, `WEB_URL` and the printed `API_URL` are the Container Apps FQDNs. Add both records at Hostinger, set `bind_custom_domains = true` in the environment tfvars and **re-run `infra/bootstrap.sh`**: Terraform adds the hostnames and issues the managed certificates, then the script binds each one with `az containerapp hostname bind` (Terraform cannot set that SNI binding). Update `API_URL` in the GitHub environment to the printed custom domain and redeploy so the dashboard is rebuilt against it.
+5. Push to `main` or publish a `v*` release tag. CI builds both images, runs the migration job, updates the apps and smoke-tests the deployment.
 
-Provider secrets, when you have them: `printf %s "<value>" | gcloud secrets versions add mizan-shopify-api-secret --data-file=-`, list the name in `provider_secrets` in `envs/staging.tfvars`, and `terraform apply` again. Never paste them into chat or commit them.
+## Provider secrets
 
-## Changing it
+Create each actual value directly in Key Vault (never in chat or git). For example:
 
+```sh
+az keyvault secret set --vault-name <vault-name> --name shopify-api-secret --value '<value>'
 ```
-terraform -chdir=infra init -backend-config="bucket=<project>-tfstate"
-terraform -chdir=infra plan -var-file=envs/staging.tfvars -var="project_id=<project>"
+
+Then list the corresponding environment name in `provider_secrets` in `envs/staging.tfvars` or `envs/production.tfvars`, and apply again. Provider secrets are not created with empty placeholder values, and the API receives access only to secrets listed there.
+
+## Changes and validation
+
+```sh
+terraform -chdir=infra init \
+  -backend-config="resource_group_name=<state-resource-group>" \
+  -backend-config="storage_account_name=<state-storage-account>" \
+  -backend-config="container_name=tfstate" \
+  -backend-config="key=mizan/staging.tfstate"
+terraform -chdir=infra plan -var-file=envs/staging.tfvars -var="subscription_id=<subscription-id>"
 ```
 
-CI runs `fmt`, `init -backend=false` and `validate` on every PR (job `infra`). Images are deployed by the workflow; Terraform ignores them after creating each service on a placeholder.
+CI checks `terraform fmt -check -recursive`, `init -backend=false`, `validate`, and `bash -n infra/bootstrap.sh`. Container App images are created with a placeholder that serves `/health` and `/health/ready` on 8080 like the real images; CI owns subsequent image updates and waits for each new revision to be ready before the smoke test.
 
-**Production:** `bash infra/bootstrap.sh <prod-project> me-central1 production` (or `me-central2` for a Saudi project) uses `envs/production.tfvars`: HA Cloud SQL, 2 warm API instances, p95 alert at 300 ms. Release with `git tag v1.0.0 && git push --tags`, then approve in GitHub. Restores: `docs/runbooks/database-restore.md` (drill every quarter). **Still to do:** private IP for Cloud SQL, an HTTPS load balancer with Cloud Armor and the mapped domains, tiers from the H-13 load test.
+**Production:** use the production GitHub environment with required reviewers and the `v*` tag rule. The database is configured for zone-redundant HA and 14-day backups (Terraform ignores the zone swap after a failover). The PostgreSQL `0.0.0.0` Azure-services firewall rule is an explicit opt-in (`db_allow_azure_services`); production has it on only until the database, Key Vault and Container Apps move to private VNet integration, and a Terraform check warns on every production plan while it is on. The GitHub deploy identity has Contributor on the environment's resource group; replace it with a narrower custom role before launch.

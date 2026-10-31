@@ -4,7 +4,7 @@ Benchmarks and load tests live in `perf/` (workspace `@mizan/perf`). Record ever
 
 ## Reference setup (local)
 
-PostgreSQL 16.15 on the same host (TCP localhost), Node 22, pool of 10. Cloud numbers differ: Cloud Run → Cloud SQL adds ~0.3–1 ms per round-trip, which is why round-trips matter more than raw query time.
+PostgreSQL 16.15 on the same host (TCP localhost), Node 22, pool of 10. Cloud numbers differ: Container Apps → PostgreSQL Flexible Server adds ~0.3–1 ms per round-trip, which is why round-trips matter more than raw query time.
 
 ## Tenant transaction (H-1)
 
@@ -16,7 +16,7 @@ PostgreSQL 16.15 on the same host (TCP localhost), Node 22, pool of 10. Cloud nu
 | 2026-10-20 | H-1: role + tenant in one `set_config` statement | 0.59–0.67 | 4,171–4,903 |
 | 2026-10-27 | H-12: `begin; select set_config(…)` as one simple query (node-postgres) | — | — |
 
-H-12 removes one more round-trip: a scoped transaction's opening (role, tenant) travels with BEGIN in one simple query, so a two-query tenant read is 4 round-trips (was 5) and a one-query read 3 (tested in `packages/db/test/postgres.test.ts`). Locally (loopback) this barely moves CPU or throughput; in the cloud it saves one Cloud Run → Cloud SQL round-trip (~0.3–1 ms) on every tenant, platform, staff and worker transaction. PGlite keeps two statements.
+H-12 removes one more round-trip: a scoped transaction's opening (role, tenant) travels with BEGIN in one simple query, so a two-query tenant read is 4 round-trips (was 5) and a one-query read 3 (tested in `packages/db/test/postgres.test.ts`). Locally (loopback) this barely moves CPU or throughput; in the cloud it saves one Container Apps → PostgreSQL round-trip (~0.3–1 ms) on every tenant, platform, staff and worker transaction. PGlite keeps two statements.
 
 Locally the saving is ~0.05 ms; in the cloud it is one network round-trip (~0.3–1 ms) on every tenant, platform and worker transaction.
 
@@ -52,7 +52,7 @@ All webhooks acknowledged were recorded and queued (warm-up + burst ≈ 17,000 p
 
 ### What the runs taught us
 
-- **The box, not the API, is the ceiling here.** At reads-max both API processes sit at one core each and the VM has no idle CPU left; adding a third instance changed nothing. One API process does ~400 authenticated reads/s or ~450 webhooks/s on this shared VM. Proving 1,000 reads/s needs separate machines: **H-13** (staging on Cloud Run).
+- **The box, not the API, is the ceiling here.** At reads-max both API processes sit at one core each and the VM has no idle CPU left; adding a third instance changed nothing. One API process does ~400 authenticated reads/s or ~450 webhooks/s on this shared VM. Proving 1,000 reads/s needs separate machines: **H-13** (staging on Azure Container Apps).
 - **Per-request CPU** (from `--cpu-prof`): ~0.55 ms is the Nest + Express + helmet + pino floor (`/health`); an authenticated RLS read adds ~1.1 ms, mostly Kysely compilation and five `pg` round-trips (BEGIN, set_config, 2 queries, COMMIT). Follow-ups in **H-12**.
 - **Fixed during H-11:** the log formatter scrubbed every log record deeply *before* pino's serializers ran, so it walked the raw `IncomingMessage`/`ServerResponse` on every request line (~6 % of CPU plus its regexes). It now skips `req`/`res`/`err`, which have their own safe serializers (tested). Logs go to stdout through a 4 KiB async buffer flushed every 250 ms instead of one write per line.
 - **Generator artifact to avoid:** with `overallRate`, every autocannon connection fires on the same schedule, so 100 connections produce synchronized bursts of 100 requests. That alone pushed webhook p97.5 to ~270 ms at *any* rate. The rate scenarios use 20 connections (`LOAD_CONNECTIONS`), closer to independent arrivals; the gates on req/s still catch a server that cannot keep up.

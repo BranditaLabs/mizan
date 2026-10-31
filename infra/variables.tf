@@ -1,6 +1,7 @@
-variable "project_id" {
-  description = "Google Cloud project, one per environment (mizan-staging, mizan-prod)"
+variable "subscription_id" {
+  description = "Azure subscription used for this environment"
   type        = string
+  default     = ""
 }
 
 variable "env" {
@@ -13,13 +14,25 @@ variable "env" {
 }
 
 variable "region" {
-  description = "Middle East region: me-central1 (Doha) or me-central2 (Dammam)"
+  description = "Azure region; Mizan's launch region is UAE North"
   type        = string
-  default     = "me-central1"
+  default     = "uaenorth"
+}
+
+variable "firebase_project_id" {
+  description = "Firebase project used for identity (separate from Azure hosting)"
+  type        = string
+  default     = "mizan-8f906"
+}
+
+variable "bind_custom_domains" {
+  description = "Bind custom domains after their CNAME and asuid TXT records have been published"
+  type        = bool
+  default     = false
 }
 
 variable "public_url" {
-  description = "Public URL of the API (Cloud Run URL until a domain is mapped)"
+  description = "Public URL of the API (Container Apps FQDN until a custom domain is set)"
   type        = string
   default     = ""
 }
@@ -37,25 +50,25 @@ variable "admin_url" {
 }
 
 variable "api_domain" {
-  description = "The API's own host (e.g. api.mizan.brandita.net); with web_domain, puts the load balancer in front (domains.tf)"
+  description = "API host, bound directly to its Container App with an Azure managed certificate"
   type        = string
   default     = ""
 }
 
 variable "web_domain" {
-  description = "The dashboard's own host (e.g. app.mizan.brandita.net)"
+  description = "Dashboard host, bound directly to its Container App with an Azure managed certificate"
   type        = string
   default     = ""
 }
 
 variable "admin_domain" {
-  description = "The back office's own host (e.g. admin.mizan.brandita.net); needs admin_service"
+  description = "Back-office host; empty until the admin app is deployed"
   type        = string
   default     = ""
 }
 
-variable "admin_service" {
-  description = "Cloud Run service name of the back office, once it is deployed (L0-3)"
+variable "admin_app" {
+  description = "Container App resource name for the back office, once deployed (L0-3)"
   type        = string
   default     = ""
 }
@@ -66,14 +79,20 @@ variable "platform_bootstrap_emails" {
   default     = ""
 }
 
-variable "db_tier" {
-  description = "Cloud SQL machine tier (set from the H-13 load test for production)"
+variable "db_sku" {
+  description = "PostgreSQL Flexible Server SKU (set from the H-13 load test for production)"
   type        = string
-  default     = "db-custom-1-3840"
+  default     = "B_Standard_B1ms"
 }
 
 variable "db_high_availability" {
-  description = "Regional (HA) Cloud SQL; on for production"
+  description = "Zone-redundant PostgreSQL HA; enabled for production"
+  type        = bool
+  default     = false
+}
+
+variable "db_allow_azure_services" {
+  description = "Temporary 0.0.0.0 PostgreSQL firewall rule for Azure-hosted services until VNet integration"
   type        = bool
   default     = false
 }
@@ -88,17 +107,33 @@ variable "api_max_instances" {
   default = 4
 }
 
+variable "alert_emails" {
+  description = "Who gets alerts by email (an on-call address, not personal ones)"
+  type        = list(string)
+  default     = []
+}
+
+variable "app_metrics_enabled" {
+  description = "App-level alerts are deferred until Azure Monitor managed Prometheus is configured"
+  type        = bool
+  default     = false
+}
+
 variable "worker_min_instances" {
   type    = number
   default = 1
 }
 
+variable "worker_max_instances" {
+  type    = number
+  default = 2
+}
+
 variable "provider_secrets" {
   description = <<-EOT
-    Provider secrets to hand to the API once a value has been added in Secret Manager
-    (gcloud secrets versions add mizan-<name-in-kebab-case> --data-file=-), e.g.
-    ["SHOPIFY_API_SECRET", "META_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "ANTHROPIC_API_KEY"].
-    A secret is mounted only when listed here, so a deploy never waits on an empty secret.
+    Provider secrets to reference only after the owner has created them in Key Vault
+    (az keyvault secret set --vault-name <vault> --name <kebab-case-name> --value <value>).
+    A secret is referenced only when listed here, so deployments never wait on an empty secret.
   EOT
   type        = list(string)
   default     = []
@@ -109,7 +144,7 @@ variable "provider_secrets" {
 }
 
 variable "api_env" {
-  description = "Extra plain (non-secret) environment for the API and worker, e.g. SHOPIFY_API_KEY, BOSTA_TRACKING_URL_TEMPLATE"
+  description = "Extra plain (non-secret) environment for the API and worker"
   type        = map(string)
   default     = {}
 }

@@ -25,10 +25,10 @@ beforeAll(async () => {
   const config = loadConfig({
     NODE_ENV: "production", PUBLIC_URL: "https://api.mizan.app", WEB_URL: "https://app.mizan.app", ADMIN_URL: "https://admin.mizan.app",
     DATABASE_URL: "postgres://unused/mizan", FIREBASE_PROJECT_ID: "mizan-prod", MAX_BODY_BYTES: "2048",
-    KMS_KEY_NAME: "projects/p/locations/me-central1/keyRings/r/cryptoKeys/k", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64"),
+    KEY_VAULT_KEY_ID: "https://mizan-test-kv.vault.azure.net/keys/tenant-secrets", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64"),
   });
   // Production config, but tests run on PGlite and a local key.
-  app = await createApp({ ...config, DATABASE_URL: undefined, KMS_KEY_NAME: undefined, SECRETS_DEV_KEY: Buffer.alloc(32, 1).toString("base64") }, {
+  app = await createApp({ ...config, DATABASE_URL: undefined, KEY_VAULT_KEY_ID: undefined, SECRETS_DEV_KEY: Buffer.alloc(32, 1).toString("base64") }, {
     logDestination: new Writable({ write: (_c, _e, d) => d() }), modules: [EchoModule],
   });
   await app.init();

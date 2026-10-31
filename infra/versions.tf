@@ -1,22 +1,26 @@
 terraform {
   required_version = ">= 1.9.0"
   required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 7.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
     }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    time = {
+      source  = "hashicorp/time"
+      version = "~> 0.12"
+    }
   }
-  # State in the bucket infra/bootstrap.sh creates: terraform init -backend-config="bucket=<project>-tfstate"
-  backend "gcs" {
-    prefix = "mizan"
+  # The storage account and private state container are created by bootstrap.sh.
+  backend "azurerm" {
+    use_azuread_auth = true
   }
 }
 
-provider "google" {
-  project = var.project_id
-  region  = var.region
+provider "azurerm" {
+  features {}
+  subscription_id = var.subscription_id != "" ? var.subscription_id : null
 }

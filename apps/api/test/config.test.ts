@@ -38,13 +38,13 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "pglite:./data" })).toThrow(/required in production/);
     expect(() => loadConfig({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL: must be a postgres:\/\/ URL or pglite:<dir>/);
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan" })).toThrow(/FIREBASE_PROJECT_ID: is required in production/);
-    expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", KMS_KEY_NAME: "k" })).toThrow(/LINK_SIGNING_KEY: is required in production/);
+    expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", KEY_VAULT_KEY_ID: "k" })).toThrow(/LINK_SIGNING_KEY: is required in production/);
     const prod = { ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64") };
-    expect(() => loadConfig(prod)).toThrow(/KMS_KEY_NAME: is required in production/);
-    const kms = "projects/mizan-prod/locations/me-central1/keyRings/mizan/cryptoKeys/tenant-data";
-    expect(loadConfig({ ...prod, KMS_KEY_NAME: kms }).NODE_ENV).toBe("production");
+    expect(() => loadConfig(prod)).toThrow(/KEY_VAULT_KEY_ID: is required in production/);
+    const kms = "https://mizan-prod-kv.vault.azure.net/keys/tenant-secrets";
+    expect(loadConfig({ ...prod, KEY_VAULT_KEY_ID: kms }).NODE_ENV).toBe("production");
     const devKey = Buffer.alloc(32, 7).toString("base64");
-    expect(() => loadConfig({ ...prod, KMS_KEY_NAME: kms, SECRETS_DEV_KEY: devKey })).toThrow(/SECRETS_DEV_KEY: must not be set in production/);
+    expect(() => loadConfig({ ...prod, KEY_VAULT_KEY_ID: kms, SECRETS_DEV_KEY: devKey })).toThrow(/SECRETS_DEV_KEY: must not be set in production/);
     expect(loadConfig({ ...valid, SECRETS_DEV_KEY: devKey }).SECRETS_DEV_KEY).toBe(devKey);
     expect(() => loadConfig({ ...valid, SECRETS_DEV_KEY: "c2hvcnQ=" })).toThrow(/SECRETS_DEV_KEY: must be base64 of exactly 32 bytes/);
     expect(loadConfig({ ...valid, AUTH_REQUIRE_MFA: "false" }).AUTH_REQUIRE_MFA).toBe(false);
