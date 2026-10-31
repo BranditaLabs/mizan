@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/build-icons.mjs && node scripts/build-reference.mjs",
+    "build:png": "node scripts/build-png.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

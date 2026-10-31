@@ -71,9 +71,11 @@ describe("CSS variable references", () => {
 describe("generated files", () => {
   it("are up to date with tokens.json", () => {
     const files = ["tokens.css", "tailwind.css", "tailwind-preset.cjs", "tokens.ts", "tokens.json", "mizan_tokens.dart"];
-    const before = files.map((f) => readFileSync(join(root, "dist", f), "utf8"));
+    // Line endings are not a change: a Windows checkout (CRLF) must match what the build writes (LF).
+    const read = (f) => readFileSync(join(root, "dist", f), "utf8").replace(/\r\n/g, "\n");
+    const before = files.map(read);
     execFileSync("node", [join(root, "scripts/build.mjs")]);
-    const after = files.map((f) => readFileSync(join(root, "dist", f), "utf8"));
+    const after = files.map(read);
     expect(after).toEqual(before);
   });
   it("emit every colour token as a CSS variable in both themes", () => {
