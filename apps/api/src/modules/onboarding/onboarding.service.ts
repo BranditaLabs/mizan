@@ -20,7 +20,8 @@ function grantedMissing(config: unknown, required: string[]): string[] {
 }
 
 /**
- * Where a store is in its setup (E4-5): connect the store → courier → product costs → first order.
+ * Where a store is in its setup (E4-5, A1): choose the sales channel and connect it (or sell by hand)
+ * → courier → product costs → first order.
  * Read from the connections, catalogue, orders and product events; skips and the hidden card live in
  * tenants.settings.onboarding.
  */
@@ -54,7 +55,9 @@ export class OnboardingService {
     const m = s.milestones;
     const steps: Onboarding["steps"] = {
       store: {
-        status: s.store ? "done" : "todo", connectionId: s.store?.id ?? null, shop: s.store?.external_account ?? null, import: imported,
+        status: s.store || s.settings.channel === "manual" ? "done" : "todo",
+        channel: s.settings.channel ?? (s.store ? (s.store.provider as "shopify" | "woocommerce") : null), provider: s.store?.provider ?? null,
+        connectionId: s.store?.id ?? null, shop: s.store?.external_account ?? null, import: imported,
         missingScopes: s.store ? grantedMissing(s.store.config, this.config.SHOPIFY_SCOPES.split(",")) : [],
       },
       courier: { status: courierStatus, provider: s.courier?.provider ?? null, reason: s.courier?.status === "needs_attention" ? s.courier.status_reason : null },
@@ -79,11 +82,14 @@ export class OnboardingService {
       const settings = (t.settings ?? {}) as Record<string, unknown>;
       const before = (settings.onboarding ?? {}) as OnboardingSettings;
       const after: OnboardingSettings = {
+        ...(body.channel ?? before.channel ? { channel: body.channel ?? before.channel } : {}),
         skipped: { ...before.skipped, ...body.skip },
         dismissedAt: body.dismissed === undefined ? before.dismissedAt ?? null : body.dismissed ? new Date().toISOString() : null,
       };
       await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...settings, onboarding: after }), updated_at: new Date() }).where("id", "=", tenantId).execute();
       await this.audit.record(trx, { action: "onboarding.updated", tenantId, before: { ...before }, after: { ...after }, ...auditActor(auth) });
+      // Which channels merchants pick (the ones not built yet included) decides what to build next.
+      if (body.channel && body.channel !== before.channel) await this.productEvents.record(trx, tenantId, { name: "onboarding_channel_chosen", userId: auth.user.id, data: { channel: body.channel } });
       for (const [step, on] of Object.entries(body.skip ?? {})) {
         if (on && !before.skipped?.[step as "courier" | "costs"]) await this.productEvents.record(trx, tenantId, { name: "onboarding_step_skipped", userId: auth.user.id, data: { step } });
       }

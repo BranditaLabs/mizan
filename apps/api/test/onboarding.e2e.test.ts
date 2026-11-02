@@ -174,4 +174,21 @@ describe("onboarding", () => {
     fake.add("agent", { uid: "fb-agent", phone: "+201001234821" });
     expect((await http().get("/v1/onboarding").set(as("agent")).expect(403)).body.code).toBe("not_a_member");
   });
+
+  it("A1: a store chooses its sales channel first; selling by hand completes the store step without a connection", async () => {
+    const other = (await http().post("/v1/tenants").set(as("owner")).send({ name: "Nile Manual", country: "EG" }).expect(201)).body.id;
+    const at = { ...as("owner"), "X-Tenant-Id": other };
+    const before = (await http().get("/v1/onboarding").set(at).expect(200)).body;
+    expect(before.steps.store).toMatchObject({ status: "todo", channel: null, provider: null });
+    const later = (await http().patch("/v1/onboarding").set(at).send({ channel: "easyorders" }).expect(200)).body;
+    expect(later.steps.store).toMatchObject({ status: "todo", channel: "easyorders" }); // recorded, not connected
+    const manual = (await http().patch("/v1/onboarding").set(at).send({ channel: "manual" }).expect(200)).body;
+    expect(manual.steps.store).toMatchObject({ status: "done", channel: "manual", connectionId: null });
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { costs: true } }).expect(200)).body.steps.store.channel).toBe("manual"); // kept
+    expect((await http().patch("/v1/onboarding").set(at).send({ channel: "myspace" }).expect(422)).body.code).toBe("validation_failed");
+    const events = await db.tenant(other, (trx) => trx.selectFrom("product_events").select(["name", "data"]).where("name", "=", "onboarding_channel_chosen").orderBy("id").execute());
+    expect(events.map((e) => (e.data as { channel: string }).channel)).toEqual(["easyorders", "manual"]);
+    // The first store is connected to Shopify: its channel reads as that platform.
+    expect((await http().get("/v1/onboarding").set(as("owner")).expect(200)).body.steps.store).toMatchObject({ channel: "shopify", provider: "shopify" });
+  });
 });

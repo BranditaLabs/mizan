@@ -39,8 +39,9 @@ test("owner: new account → store → two-step verification → signs in with t
   await page.getByLabel("Code").fill(await smsCode({ phone: phone.e164 }));
   await page.getByRole("button", { name: "Turn on" }).click();
 
-  // Signed out; sign in again with email, password and the texted code.
-  await expect(page).toHaveURL(/\/en\/sign-in\?enrolled=1$/);
+  // Signed out; sign in again with email, password and the texted code. Then back where the detour
+  // started: the new store's setup (A1), the page the store gate sent the owner away from.
+  await expect(page).toHaveURL(/\/en\/sign-in\?enrolled=1&next=%2Fonboarding$/);
   await expect(page.getByText("Two-step verification is on.")).toBeVisible();
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill("wrong-password");
@@ -57,7 +58,9 @@ test("owner: new account → store → two-step verification → signs in with t
   await page.getByLabel("Code").fill(await smsCode({ phone: phone.e164 }, seen));
   await page.getByRole("button", { name: "Verify and sign in" }).click();
 
-  await expect(page).toHaveURL(/\/en$/);
+  await expect(page).toHaveURL(/\/en\/onboarding$/);
+  await expect(page.getByRole("radiogroup", { name: "Sales channel" })).toBeVisible();
+  await page.goto("/en");
   await expect(page.getByTestId("store-name")).toHaveText("Nile Threads");
   await expect(page.locator("aside").getByTestId("store-role")).toHaveText("Owner");
   await expect(page.getByTestId("user-id")).toHaveText(email);

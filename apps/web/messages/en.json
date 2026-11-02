@@ -505,7 +505,7 @@
   },
   "onboarding": {
     "title": "Set up your store",
-    "subtitle": "Four steps to see your orders and your real profit in Mizan.",
+    "subtitle": "Choose where you sell, then a few steps to see your orders and your real profit in Mizan.",
     "progress": "{done} of {total} done",
     "stepsLabel": "Setup steps",
     "ready": {
@@ -520,11 +520,11 @@
       "needs_attention": "Needs attention",
       "skipped": "Skipped",
       "waiting": "Waiting",
-      "locked": "After the store"
+      "locked": "After the sales channel"
     },
     "store": {
-      "title": "Connect your Shopify store",
-      "body": "Mizan imports the last 60 days of orders and all your products, then receives every new order by itself.",
+      "title": "Choose where you sell",
+      "body": "Connect your online store and Mizan imports your recent orders and products in the background, then receives every new order by itself. No store yet? Start with orders you type in.",
       "field": "Store address",
       "hint": "Write it as it appears in Shopify, like <n>nile-abayas.myshopify.com</n>.",
       "submit": "Connect Shopify",
@@ -534,7 +534,40 @@
       "invalid": "That address doesn't look like a Shopify store. It ends with .myshopify.com.",
       "scopesChanged": "Mizan needs new Shopify permissions to edit orders (mark them paid and add offers the customer accepted). Approve them once.",
       "approveScopes": "Approve the new permissions",
-      "another": "Connect another Shopify store"
+      "another": "Connect another Shopify store",
+      "pickLabel": "Sales channel",
+      "channels": {
+        "shopify": {
+          "title": "Shopify",
+          "body": "Connect in one step; orders and products sync by themselves."
+        },
+        "woocommerce": {
+          "title": "WooCommerce",
+          "body": "Approve Mizan in your WordPress admin, or paste API keys."
+        },
+        "easyorders": {
+          "title": "EasyOrders",
+          "body": "Coming soon. Start by hand meanwhile."
+        },
+        "other": {
+          "title": "Another platform",
+          "body": "Tell us by picking it; start by hand meanwhile."
+        },
+        "manual": {
+          "title": "No online store yet",
+          "body": "Orders from WhatsApp, Instagram or the phone, typed into Mizan."
+        }
+      },
+      "wooBody": "Mizan asks your WooCommerce store for access. Approve it in your WordPress admin and Mizan checks the connection in the background.",
+      "wooCta": "Connect WooCommerce",
+      "laterTitle": "We noted your platform",
+      "laterBody": "Mizan doesn't connect to it yet, and your choice helps us decide what to build next. Meanwhile, start with orders you type in: everything else in Mizan works the same.",
+      "useManual": "Start with manual orders",
+      "manualTitle": "You're selling by hand for now",
+      "manualBody": "Type in orders from WhatsApp, Instagram or the phone, and Mizan confirms, ships and counts the profit on them. Connect an online store whenever you're ready.",
+      "newOrder": "Create an order",
+      "connectOnline": "Connect an online store",
+      "saveFailed": "Couldn't save your choice. Try again."
     },
     "courier": {
       "title": "Connect your courier",
@@ -550,7 +583,9 @@
       "skip": "Skip: I use another courier",
       "skipped": "Skipped. You can connect Bosta any time.",
       "undoSkip": "Connect Bosta now",
-      "needsStore": "Connect your store first."
+      "needsStore": "Connect your store first.",
+      "manualStore": "Bosta connects through an online store for now. Until then, record the courier and tracking number on each order when you ship it.",
+      "skipManual": "Got it, continue"
     },
     "costs": {
       "title": "Enter your product costs",
@@ -566,7 +601,9 @@
       "skip": "Skip for now",
       "skipped": "Skipped. Profit uses a cost of zero until you enter it.",
       "undoSkip": "Enter costs now",
-      "more": "Show more products"
+      "more": "Show more products",
+      "noneManual": "Add your products (one by one or from a CSV file), then enter what each one costs you.",
+      "addProducts": "Add products"
     },
     "firstOrder": {
       "title": "Your first order",
@@ -574,7 +611,9 @@
       "waitingBody": "As soon as an order reaches Mizan it shows here. New Shopify orders arrive within a minute.",
       "done": "Your first order arrived",
       "order": "Order <n>{number}</n> · <m>{total}</m>",
-      "ttfv": "From signing up to your first order: {duration}."
+      "ttfv": "From signing up to your first order: {duration}.",
+      "waitingManual": "Create your first order by hand and follow it from confirmation to profit.",
+      "createOrder": "Create an order"
     },
     "card": {
       "title": "Finish setting up Mizan",

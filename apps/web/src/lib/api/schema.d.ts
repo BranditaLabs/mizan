@@ -5084,8 +5084,18 @@ export interface components {
         Onboarding: {
             steps: {
                 store: {
-                    /** @enum {string} */
+                    /**
+                     * @description done: a store is connected, or the store sells by hand (channel manual)
+                     * @enum {string}
+                     */
                     status: "todo" | "done";
+                    /**
+                     * @description The sales channel chosen in setup; null before the choice (a connected store counts as its platform)
+                     * @enum {string|null}
+                     */
+                    channel: "shopify" | "woocommerce" | "easyorders" | "other" | "manual" | null;
+                    /** @description The connected store's platform: shopify, woocommerce */
+                    provider: string | null;
                     /** Format: uuid */
                     connectionId: string | null;
                     shop: string | null;
@@ -8255,6 +8265,8 @@ export interface components {
             status?: "active" | "disabled";
         };
         UpdateOnboarding: {
+            /** @enum {string} */
+            channel?: "shopify" | "woocommerce" | "easyorders" | "other" | "manual";
             skip?: {
                 courier?: boolean;
                 costs?: boolean;

@@ -12,6 +12,7 @@ import { Field } from "@/components/ui/Field";
 import { useRouter } from "@/i18n/navigation";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
 import { firebaseAuth, smsVerifier } from "@/lib/firebase";
+import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 
 const RECAPTCHA = "sms-verifier";
@@ -41,7 +42,7 @@ export function TwoStep() {
   const enrolled = user ? multiFactor(user).enrolledFactors.length > 0 : false;
   useEffect(() => {
     // Already enrolled: this session predates it; the gate needs a sign-in with the code.
-    if (enrolled) router.replace("/");
+    if (enrolled) router.replace(resume.take() ?? "/");
   }, [enrolled, router]);
 
   if (!user || !auth) return null;
@@ -49,7 +50,12 @@ export function TwoStep() {
   // verified, so it goes straight to the phone) or company SSO. Only phone-number accounts have none.
   const hasEmail = Boolean(user.email);
 
-  const signOutAndBack = (enrolledNow: boolean) => signOut(enrolledNow ? "/sign-in?enrolled=1" : "/sign-in");
+  // Signing in again (with the code) comes back to where the detour started, a Shopify install included.
+  const signOutAndBack = (enrolledNow: boolean) => {
+    const back = resume.take();
+    const next = back ? `next=${encodeURIComponent(back)}` : "";
+    return signOut(enrolledNow ? `/sign-in?enrolled=1${next ? `&${next}` : ""}` : `/sign-in${next ? `?${next}` : ""}`);
+  };
 
   async function run(work: () => Promise<void>) {
     setBusy(true);

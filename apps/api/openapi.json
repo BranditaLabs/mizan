@@ -26120,7 +26120,25 @@
                     "enum": [
                       "todo",
                       "done"
+                    ],
+                    "description": "done: a store is connected, or the store sells by hand (channel manual)"
+                  },
+                  "channel": {
+                    "nullable": true,
+                    "description": "The sales channel chosen in setup; null before the choice (a connected store counts as its platform)",
+                    "type": "string",
+                    "enum": [
+                      "shopify",
+                      "woocommerce",
+                      "easyorders",
+                      "other",
+                      "manual"
                     ]
+                  },
+                  "provider": {
+                    "nullable": true,
+                    "description": "The connected store's platform: shopify, woocommerce",
+                    "type": "string"
                   },
                   "connectionId": {
                     "nullable": true,
@@ -26179,6 +26197,8 @@
                 },
                 "required": [
                   "status",
+                  "channel",
+                  "provider",
                   "connectionId",
                   "shop",
                   "import",
@@ -38691,6 +38711,16 @@
       "UpdateOnboarding": {
         "type": "object",
         "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "shopify",
+              "woocommerce",
+              "easyorders",
+              "other",
+              "manual"
+            ]
+          },
           "skip": {
             "type": "object",
             "properties": {

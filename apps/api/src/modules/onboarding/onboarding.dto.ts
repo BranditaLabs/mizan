@@ -3,11 +3,17 @@ import { z } from "zod";
 
 const At = z.iso.datetime().nullable();
 
-/** GET /v1/onboarding: the four steps, the milestones and time-to-first-value. */
+/** Where the store sells (A1): the channel chosen first in setup. "manual": no online store yet, orders typed in. */
+export const SALES_CHANNELS = ["shopify", "woocommerce", "easyorders", "other", "manual"] as const;
+export type SalesChannel = (typeof SALES_CHANNELS)[number];
+
+/** GET /v1/onboarding: the steps (channel and store first), the milestones and time-to-first-value. */
 export const OnboardingSchema = z.object({
   steps: z.object({
     store: z.object({
-      status: z.enum(["todo", "done"]),
+      status: z.enum(["todo", "done"]).describe("done: a store is connected, or the store sells by hand (channel manual)"),
+      channel: z.enum(SALES_CHANNELS).nullable().describe("The sales channel chosen in setup; null before the choice (a connected store counts as its platform)"),
+      provider: z.string().nullable().describe("The connected store's platform: shopify, woocommerce"),
       connectionId: z.uuid().nullable(),
       shop: z.string().nullable(),
       /** The history import after connecting (60 days of orders, then products). */
@@ -33,11 +39,13 @@ export const OnboardingSchema = z.object({
 export type Onboarding = z.infer<typeof OnboardingSchema>;
 
 export const UpdateOnboardingSchema = z.strictObject({
+  /** The sales channel (A1): a platform to connect, or "manual" to start with orders typed in. */
+  channel: z.enum(SALES_CHANNELS).optional(),
   /** Skip a step (a store that uses another courier, costs entered later) or bring it back. */
   skip: z.strictObject({ courier: z.boolean().optional(), costs: z.boolean().optional() }).optional(),
   dismissed: z.boolean().optional(),
-}).refine((b) => b.skip !== undefined || b.dismissed !== undefined, { message: "send skip and/or dismissed" });
+}).refine((b) => b.skip !== undefined || b.dismissed !== undefined || b.channel !== undefined, { message: "send channel, skip and/or dismissed" });
 export type UpdateOnboardingBody = z.infer<typeof UpdateOnboardingSchema>;
 
 /** tenants.settings.onboarding */
-export interface OnboardingSettings { skipped?: { courier?: boolean; costs?: boolean }; dismissedAt?: string | null }
+export interface OnboardingSettings { channel?: SalesChannel; skipped?: { courier?: boolean; costs?: boolean }; dismissedAt?: string | null }
