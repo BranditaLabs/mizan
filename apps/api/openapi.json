@@ -17216,6 +17216,88 @@
         ]
       }
     },
+    "/v1/connections/{id}/import": {
+      "post": {
+        "operationId": "StoreImportController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Import the store's recent history again (after a failed import); audited (connection.import_started)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartImport"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/v1/connections/woocommerce": {
       "post": {
         "operationId": "WooCommerceConnectController_connect",
@@ -26158,7 +26240,8 @@
                         "type": "string",
                         "enum": [
                           "running",
-                          "done"
+                          "done",
+                          "failed"
                         ]
                       },
                       "phase": {
@@ -26178,13 +26261,19 @@
                         "type": "integer",
                         "minimum": -9007199254740991,
                         "maximum": 9007199254740991
+                      },
+                      "error": {
+                        "nullable": true,
+                        "description": "Why it failed: auth (the store refused Mizan), permission, permanent, transient…; retry with POST /connections/{id}/import",
+                        "type": "string"
                       }
                     },
                     "required": [
                       "status",
                       "phase",
                       "orders",
-                      "products"
+                      "products",
+                      "error"
                     ],
                     "additionalProperties": false
                   },
@@ -36750,6 +36839,27 @@
         "required": [
           "data",
           "nextBefore"
+        ],
+        "additionalProperties": false
+      },
+      "StartImport": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "days": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "How far back orders are read (Shopify: 60 without read_all_orders)"
+          }
+        },
+        "required": [
+          "connectionId",
+          "days"
         ],
         "additionalProperties": false
       },

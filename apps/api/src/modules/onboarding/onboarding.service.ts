@@ -42,7 +42,7 @@ export class OnboardingService {
     if (state.store) {
       try {
         const b = await (await this.engines.get(tenantId, state.store.id)).engine.backfillStatus();
-        if (b) imported = { status: b.status, phase: b.phase, orders: b.orders, products: b.products };
+        if (b) imported = { status: b.status, phase: b.phase, orders: b.orders, products: b.products, error: b.error?.kind ?? null };
       } catch {
         /* not buildable yet (credentials being replaced): show no progress */
       }

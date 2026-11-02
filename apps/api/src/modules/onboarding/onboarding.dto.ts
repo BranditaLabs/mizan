@@ -17,7 +17,10 @@ export const OnboardingSchema = z.object({
       connectionId: z.uuid().nullable(),
       shop: z.string().nullable(),
       /** The history import after connecting (60 days of orders, then products). */
-      import: z.object({ status: z.enum(["running", "done"]), phase: z.enum(["orders", "products", "done"]), orders: z.number().int(), products: z.number().int() }).nullable(),
+      import: z.object({
+        status: z.enum(["running", "done", "failed"]), phase: z.enum(["orders", "products", "done"]), orders: z.number().int(), products: z.number().int(),
+        error: z.string().nullable().describe("Why it failed: auth (the store refused Mizan), permission, permanent, transient…; retry with POST /connections/{id}/import"),
+      }).nullable(),
       /** Permissions added since the store was connected; the owner approves them in Shopify (connect again). */
       missingScopes: z.array(z.string()),
     }),

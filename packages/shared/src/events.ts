@@ -7,7 +7,7 @@ export const DOMAIN_EVENT_TYPES = [
   // Platform
   "tenant.created",
   "member.invited", "member.joined", "member.updated", "member.removed",
-  "connection.connected", "connection.disconnected", "connection.needs_attention",
+  "connection.connected", "connection.disconnected", "connection.needs_attention", "connection.sync_completed", "connection.sync_failed",
   "privacy.requested", "privacy.completed",
   "automation.run_failed", "automation.paused", "plan.limit_reached", "plan.upgrade_requested",
   // M1 Orders

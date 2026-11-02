@@ -567,7 +567,15 @@
       "manualBody": "Type in orders from WhatsApp, Instagram or the phone, and Mizan confirms, ships and counts the profit on them. Connect an online store whenever you're ready.",
       "newOrder": "Create an order",
       "connectOnline": "Connect an online store",
-      "saveFailed": "Couldn't save your choice. Try again."
+      "saveFailed": "Couldn't save your choice. Try again.",
+      "importFailed": "The import stopped",
+      "importWhy": {
+        "auth": "Your store refused Mizan after {orders} orders: the app may have been removed or its access withdrawn. Connect the store again, then retry.",
+        "permission": "Your store didn't give Mizan the access it needs (after {orders} orders). Approve Mizan's permissions in the store, then retry.",
+        "other": "Something went wrong after {orders} orders. Nothing is lost: retry and Mizan picks up the rest."
+      },
+      "retryImport": "Retry the import",
+      "retryFailed": "Couldn't start the import again. Try again."
     },
     "courier": {
       "title": "Connect your courier",

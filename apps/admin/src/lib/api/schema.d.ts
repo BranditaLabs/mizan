@@ -2785,6 +2785,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/{id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StoreImportController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/connections/woocommerce": {
         parameters: {
             query?: never;
@@ -5101,11 +5117,13 @@ export interface components {
                     shop: string | null;
                     import: {
                         /** @enum {string} */
-                        status: "running" | "done";
+                        status: "running" | "done" | "failed";
                         /** @enum {string} */
                         phase: "orders" | "products" | "done";
                         orders: number;
                         products: number;
+                        /** @description Why it failed: auth (the store refused Mizan), permission, permanent, transient…; retry with POST /connections/{id}/import */
+                        error: string | null;
                     } | null;
                     missingScopes: string[];
                 };
@@ -7779,6 +7797,12 @@ export interface components {
                 at: string;
             }[];
             nextBefore: number | null;
+        };
+        StartImport: {
+            /** Format: uuid */
+            connectionId: string;
+            /** @description How far back orders are read (Shopify: 60 without read_all_orders) */
+            days: number;
         };
         StockHistory: {
             data: {
@@ -18685,6 +18709,59 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreImportController_start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Import the store's recent history again (after a failed import); audited (connection.import_started) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartImport"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

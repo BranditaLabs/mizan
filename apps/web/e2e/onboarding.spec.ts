@@ -79,6 +79,7 @@ test("no online store yet: selling by hand finishes the channel step and opens t
   const owner = await ownerWithStore("Hand Store");
   await page.goto("/en/sign-in");
   await signInOwner(page, owner, "en");
+  await expect(page.getByTestId("store-name")).toHaveText("Hand Store"); // signed in and home before moving on
   await page.goto("/en/onboarding");
   const picker = page.getByRole("radiogroup", { name: "Sales channel" });
   // A platform Mizan doesn't connect yet is recorded and offers the manual start.

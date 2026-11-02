@@ -249,6 +249,8 @@ describe("WooCommerce connect: the keys' check and the history (E5-7)", () => {
     expect(latest().size).toBe(120);
     expect((await store.jobs({ kind: "woocommerce.backfill" })).length).toBe(4); // orders 50 + 50 + 20, then products
     expect(await store.get("cursor", "woocommerce.orders")).toEqual({ since: new Date(clock.now()).toISOString() });
+    // A2: the same progress record as Shopify's, so setup shows it.
+    expect(await engine.backfillStatus()).toMatchObject({ runKey: "connect", connector: "woocommerce", status: "done", phase: "done", orders: 120, products: 0 });
   });
 });
 

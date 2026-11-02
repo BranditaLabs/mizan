@@ -63,7 +63,9 @@ export interface EngineOptions {
     /** A product read from the store (webhook, refetch or backfill page), without `raw`. Must be idempotent. */
     onProduct?: (product: CanonicalProduct) => Promise<void>;
     /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
-    onAccessChecked?: (provider: "bosta" | "woocommerce", result: AccessCheck) => Promise<void>;
+    onAccessChecked?: (provider: "bosta" | "woocommerce" | "shopify", result: AccessCheck) => Promise<void>;
+    /** The history import finished or failed (A2). Must be idempotent. */
+    onBackfill?: (progress: BackfillProgress) => Promise<void>;
     /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
     onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
     /** A store day was reconciled (E5-8): what the store had, and how many the engine recovered. */
@@ -152,11 +154,18 @@ interface BackfillPage {
   after: string | null;
 }
 
+/**
+ * The history import's progress (one record per store connector). `failed`: a page job was
+ * dead-lettered; `error.kind` is the IntegrationError kind (auth, permission, permanent…), the
+ * message is the provider's, for support. A new run (retry) replaces it.
+ */
 export interface BackfillProgress {
   runKey: string;
+  connector?: "shopify" | "woocommerce";
   since: string;
   queuedAt: number;
-  status: "running" | "done";
+  status: "running" | "done" | "failed";
+  error?: { kind: string; message: string };
   phase: "orders" | "products" | "done";
   orders: number;
   products: number;
@@ -507,7 +516,7 @@ export class MizanEngine {
 
   /** Progress of the latest backfill, or null before the first connect. */
   async backfillStatus(): Promise<BackfillProgress | null> {
-    return (await this.store.get<BackfillProgress>("backfill", "shopify")) ?? null;
+    return (await this.store.get<BackfillProgress>("backfill", this.woo ? "woocommerce" : "shopify")) ?? null;
   }
 
   private async backfillPage(p: BackfillPage) {
@@ -515,7 +524,7 @@ export class MizanEngine {
     // Runs are ordered by (queuedAt, runKey). A newer run has started: this older chain stops here.
     if (progress && progress.runKey !== p.runKey && (progress.queuedAt > p.queuedAt || (progress.queuedAt === p.queuedAt && progress.runKey > p.runKey))) return;
     const state: BackfillProgress = progress?.runKey === p.runKey ? progress
-      : { runKey: p.runKey, since: p.since, queuedAt: p.queuedAt, status: "running", phase: "orders", orders: 0, products: 0, pages: 0, startedAt: new Date(this.now()).toISOString() };
+      : { runKey: p.runKey, connector: "shopify", since: p.since, queuedAt: p.queuedAt, status: "running", phase: "orders", orders: 0, products: 0, pages: 0, startedAt: new Date(this.now()).toISOString() };
     let next: BackfillPage | null;
     if (p.phase === "orders") {
       const page = await this.shopify.ordersPage(`created_at:>='${p.since}'`, p.after);
@@ -537,6 +546,7 @@ export class MizanEngine {
     await this.store.put("backfill", "shopify", state, this.now());
     this.emit(next ? "backfill.progress" : "backfill.completed", { runKey: p.runKey, phase: state.phase, orders: state.orders, products: state.products, pages: state.pages });
     if (next) await this.enqueue("shopify.backfill", next, `shopify:backfill:${p.runKey}:${next.phase}:${next.after ?? "start"}`);
+    else await this.runHook(() => this.opts.hooks?.onBackfill?.(state));
   }
 
   /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
@@ -1064,6 +1074,19 @@ export class MizanEngine {
       count = r.nodes.length;
     }
     const done = !next && phase === "products";
+    // The same progress record as Shopify's (A2): a new run's first page starts it; an older chain still running leaves it alone.
+    const prev = await this.store.get<BackfillProgress>("backfill", "woocommerce");
+    const starts = phase === "orders" && p.page === 1;
+    if (prev?.runKey === p.runKey || starts) {
+      const state: BackfillProgress = prev?.runKey === p.runKey ? prev
+        : { runKey: p.runKey, connector: "woocommerce", since: p.since, queuedAt: this.now(), status: "running", phase: "orders", orders: 0, products: 0, pages: 0, startedAt: new Date(this.now()).toISOString() };
+      if (phase === "orders") state.orders += count; else state.products += count;
+      state.pages++;
+      state.phase = done ? "done" : next ? phase : "products";
+      if (done) { state.status = "done"; state.finishedAt = new Date(this.now()).toISOString(); }
+      await this.store.put("backfill", "woocommerce", state, this.now());
+      if (done) await this.runHook(() => this.opts.hooks?.onBackfill?.(state));
+    }
     this.emit(done ? "backfill.completed" : "backfill.progress", { runKey: p.runKey, connector: "woocommerce", phase, page: p.page, items: count });
     if (next) await this.enqueue("woocommerce.backfill", { ...p, phase, page: next }, `woocommerce:backfill:${p.runKey}:${phase}:${next}`);
     else if (phase === "orders") await this.enqueue("woocommerce.backfill", { ...p, phase: "products", page: 1 }, `woocommerce:backfill:${p.runKey}:products:1`);
@@ -1103,11 +1126,43 @@ export class MizanEngine {
     }
   }
 
+  /** A history page was dead-lettered: the run is failed (not "importing" forever), with why; a retry starts a new run. */
+  private async backfillFailed(job: OutboxJob, kind: string, message: string) {
+    const connector = job.kind === "shopify.backfill" ? "shopify" : "woocommerce";
+    const p = job.payload as { runKey: string; since: string; queuedAt?: number };
+    const prev = await this.store.get<BackfillProgress>("backfill", connector);
+    if (prev && prev.runKey !== p.runKey) {
+      // Another run's record: leave it only when that run is newer (Shopify orders runs by queuedAt; a WooCommerce one still running).
+      const newer = p.queuedAt !== undefined ? prev.queuedAt > p.queuedAt : prev.status === "running";
+      if (newer) return;
+    } else if (prev?.status === "failed") return;
+    const now = new Date(this.now()).toISOString();
+    const failed: BackfillProgress = {
+      ...(prev?.runKey === p.runKey ? prev : { runKey: p.runKey, connector, since: p.since, queuedAt: p.queuedAt ?? this.now(), phase: "orders" as const, orders: 0, products: 0, pages: 0, startedAt: now }),
+      status: "failed", error: { kind, message: message.slice(0, 300) }, finishedAt: now,
+    };
+    await this.store.put("backfill", connector, failed, this.now());
+    this.emit("backfill.failed", { runKey: p.runKey, connector, errorKind: kind });
+    await this.runHook(() => this.opts.hooks?.onBackfill?.(failed));
+  }
+
   private onOutcome(o: JobOutcome) {
     if (o.type === "dead") {
       const kind = o.error instanceof IntegrationError ? o.error.kind : "permanent";
       this.emit("job.dead", { jobId: o.job.id, job: o.job.kind, errorKind: kind, error: o.error.message, payload: o.job.payload as Record<string, unknown> });
-      if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
+      if (kind === "auth" || kind === "permission") {
+        const connector = (o.error as IntegrationError).connector;
+        this.emit("connection.needs_attention", { connector, reason: o.error.message });
+        // A store that refuses Mizan (token revoked, app removed without the webhook): the store is marked, not silently quiet.
+        if (connector === "shopify" || connector === "woocommerce") {
+          this.runHook(() => this.opts.hooks?.onAccessChecked?.(connector, { ok: false, reason: kind, message: o.error.message }))
+            .catch((e) => this.rt.logger.log("error", "access hook failed", { connector, error: e instanceof Error ? e.message : String(e) }));
+        }
+      }
+      if (o.job.kind === "shopify.backfill" || o.job.kind === "woocommerce.backfill") {
+        this.backfillFailed(o.job, kind, o.error.message)
+          .catch((e) => this.rt.logger.log("error", "backfill failure not recorded", { job: o.job.kind, error: e instanceof Error ? e.message : String(e) }));
+      }
       if ((o.job.kind === "shopify.cancelOrder" || o.job.kind === "woocommerce.cancelOrder") && kind !== "auth" && kind !== "permission") {
         const p = o.job.payload as CancelJob;
         this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))

@@ -191,4 +191,26 @@ describe("onboarding", () => {
     // The first store is connected to Shopify: its channel reads as that platform.
     expect((await http().get("/v1/onboarding").set(as("owner")).expect(200)).body.steps.store).toMatchObject({ channel: "shopify", provider: "shopify" });
   });
+
+  it("A2: an import the store cuts off ends as failed with why; the store needs attention; the team hears; retry starts a new run", async () => {
+    const id = (await onboarding()).steps.store.connectionId as string;
+    for (let i = 0; i < 5; i++) shop.addOrder({ name: `#R${i}` });
+    expect((await http().post(`/v1/connections/${id}/import`).set(as("owner")).expect(202)).body).toEqual({ connectionId: id, days: 60 });
+    shop.uninstall(); // Shopify refuses Mizan from here on, and the uninstall webhook never came
+    shop.revoked.add("shpat_fake_token"); // this store's token (set by hand above, not issued by the fake's OAuth)
+    await runJobs(6); // refused at once (auth is not retried); the store's scheduled polls keep queuing, so a few rounds only
+
+    const o = await onboarding();
+    expect(o.steps.store.import).toMatchObject({ status: "failed", error: "auth" });
+    const conn = (await http().get("/v1/connections").set(as("owner")).expect(200)).body.data.find((c: { id: string }) => c.id === id);
+    expect(conn.status).toBe("needs_attention");
+    const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("type", "in", ["connection.sync_failed", "connection.needs_attention"]).where("entity_id", "=", id).execute());
+    expect(events.map((e) => e.type).sort()).toEqual(["connection.needs_attention", "connection.sync_failed"]);
+    expect(events.find((e) => e.type === "connection.sync_failed")!.data).toMatchObject({ provider: "shopify", errorKind: "auth" });
+
+    await http().post(`/v1/connections/${id}/import`).set(as("agent")).expect(403); // owners and admins only
+    await http().post("/v1/connections/00000000-0000-4000-8000-000000000000/import").set(as("owner")).expect(404);
+    const audit = (await http().get("/v1/audit-log?action=connection.import_started").set(as("owner")).expect(200)).body.data;
+    expect(audit).toHaveLength(1);
+  }, 90_000);
 });

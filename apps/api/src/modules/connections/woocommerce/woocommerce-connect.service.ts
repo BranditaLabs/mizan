@@ -119,7 +119,8 @@ export class WooCommerceConnectService {
       const now = this.runtime(tenantId).clock.now(); // the engine's clock schedules its jobs
       const runKey = randomUUID();
       await store.enqueue(MizanEngine.wooWebhooksJob(runKey), now);
-      if (!reconnected) await store.enqueue(MizanEngine.wooBackfillJob(runKey, now - WOO_BACKFILL_DAYS * 86_400_000), now);
+      // New keys import the history again (A2): the first import may have failed on the old ones. Unchanged orders are skipped.
+      await store.enqueue(MizanEngine.wooBackfillJob(runKey, now - WOO_BACKFILL_DAYS * 86_400_000), now);
 
       const row = await trx.selectFrom("connections").select([...CONNECTION_COLUMNS]).where("id", "=", id).executeTakeFirstOrThrow();
       return toConnectionView(row);

@@ -67,6 +67,11 @@ export function StoreStep({ o }: { o: Onboarding }) {
     // Shopify's consent screen; it sends the browser back to /integrations/shopify/connect.
     onSuccess: ({ authorizeUrl }) => window.location.assign(authorizeUrl),
   });
+  // A2: import the history again after a failure; the new run's progress replaces the failed one.
+  const retry = useMutation({
+    mutationFn: (id: string) => ok(api.POST("/v1/connections/{id}/import", { params: { path: { id } } })),
+    onSuccess: () => { void refresh(); },
+  });
   const s = o.steps.store;
   const pick = (c: Channel) => {
     setPicked(c === "manual" ? null : c);
@@ -137,11 +142,19 @@ export function StoreStep({ o }: { o: Onboarding }) {
             </span>
           </Alert>
         ) : null}
-        {imp ? (
+        {imp?.status === "failed" ? (
+          <Alert tone="danger" title={t("importFailed")}>
+            <span className="flex flex-col items-start gap-2">
+              {t(imp.error === "auth" || imp.error === "permission" ? `importWhy.${imp.error}` : "importWhy.other", { orders: imp.orders })}
+              <Button variant="secondary" size="sm" icon="refresh" busy={retry.isPending} onClick={() => retry.mutate(s.connectionId!)}>{t("retryImport")}</Button>
+            </span>
+          </Alert>
+        ) : imp ? (
           <p className="text-body-sm text-text-2" role="status">
             {t(imp.status === "running" ? "importing" : "imported", { orders: imp.orders, products: imp.products })}
           </p>
         ) : null}
+        {retry.isError ? <Alert tone="danger">{t("retryFailed")}</Alert> : null}
         {/* Several stores per account (E2-7): each one syncs on its own. */}
         <div><Button variant="ghost" size="sm" icon="add" onClick={() => setPicked("shopify")}>{t("another")}</Button></div>
       </div>

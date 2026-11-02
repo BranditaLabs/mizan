@@ -6,7 +6,8 @@ import { EventsService } from "../platform/events/events.service.js";
 
 /**
  * The outcome of the engine's key check on the connection — the courier's (bosta.checkAccess, E4-5)
- * or a WooCommerce store's (its webhook sync, E5-7):
+ * or a WooCommerce store's (its webhook sync, E5-7), or a store that refused a job (A2: a Shopify
+ * token revoked, keys withdrawn; failures only, the next install or keys make it active again):
  *  accepted → `active` + `connection.connected` (once: the moment the courier really works);
  *  refused  → `needs_attention` with the reason + `connection.needs_attention`.
  * A connection disconnected meanwhile is left alone.
@@ -19,8 +20,8 @@ export class CourierAccess {
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
-  async checked(tenantId: string, connectionId: string, provider: "bosta" | "woocommerce", result: AccessCheck): Promise<void> {
-    const kind = provider === "woocommerce" ? "store" : "courier";
+  async checked(tenantId: string, connectionId: string, provider: "bosta" | "woocommerce" | "shopify", result: AccessCheck): Promise<void> {
+    const kind = provider === "bosta" ? "courier" : "store";
     await this.db.tenant(tenantId, async (trx) => {
       const c = await trx.selectFrom("connections").select(["status", "config"]).where("id", "=", connectionId).forUpdate().executeTakeFirst();
       if (!c || c.status === "disconnected") return;
