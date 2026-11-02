@@ -1,0 +1,34 @@
+# Mizan's Shopify app on staging, as code: Shopify CLI pushes these settings to the app (Dev
+# Dashboard) instead of typing them into its forms. Deploy (needs a CLI token, never in the repo):
+#   SHOPIFY_CLI_PARTNERS_TOKEN=<token> npx @shopify/cli@latest app deploy --config staging --force
+# The client id is public; the client secret stays in Key Vault (shopify-api-secret).
+# Production gets shopify.app.production.toml with its own app and hosts.
+
+client_id = "3aaaa43e0229a13ae9f56c7198d55d94"
+name = "Mizan"
+application_url = "https://api.mizan.brandita.net/v1/connections/shopify/entry"
+embedded = false
+
+[access_scopes]
+# Keep in step with SHOPIFY_DEFAULT_SCOPES (apps/api/src/platform/config.ts). Mizan runs its own
+# OAuth (connections/shopify): it asks for these scopes when a store installs.
+scopes = "read_orders,write_orders,write_order_edits,read_products,write_products,read_inventory,write_inventory,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_customers"
+use_legacy_install_flow = true
+
+[auth]
+redirect_urls = ["https://api.mizan.brandita.net/v1/connections/shopify/callback"]
+
+[webhooks]
+api_version = "2026-10"
+
+  # The three mandatory privacy webhooks (docs/07): one endpoint, the topic in the header.
+  # Order, product and app/uninstalled webhooks are registered per store by the engine (E3-2).
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://api.mizan.brandita.net/webhooks/shopify/gdpr"
+
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true

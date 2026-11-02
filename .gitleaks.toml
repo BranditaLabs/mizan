@@ -13,4 +13,5 @@ paths = ['''^packages/[^/]+/test/fakes/''']
 # Only that line shape is allowed; the client secret (shpss_…) and access tokens (shpat_…) stay
 # flagged and live in Key Vault (shopify-api-secret), never in the repo.
 regexTarget = "line"
-regexes = ['''^\s*SHOPIFY_API_KEY\s*=\s*"[0-9a-f]{32}"''']
+# The same Client ID as `client_id` in shopify.app.*.toml (the app's settings as code).
+regexes = ['''^\s*SHOPIFY_API_KEY\s*=\s*"[0-9a-f]{32}"''', '''^client_id\s*=\s*"[0-9a-f]{32}"$''']
