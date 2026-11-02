@@ -26460,13 +26460,108 @@
                   "at"
                 ],
                 "additionalProperties": false
+              },
+              "team": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "done",
+                      "skipped"
+                    ]
+                  },
+                  "members": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Active members"
+                  },
+                  "invited": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Invitations waiting"
+                  }
+                },
+                "required": [
+                  "status",
+                  "members",
+                  "invited"
+                ],
+                "additionalProperties": false
+              },
+              "whatsapp": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "checking",
+                      "done",
+                      "needs_attention",
+                      "skipped"
+                    ]
+                  },
+                  "reason": {
+                    "nullable": true,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "payments": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "done",
+                      "skipped"
+                    ],
+                    "description": "done: payment links and deposits (Settings → Payments) saved"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "returns": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "todo",
+                      "done",
+                      "skipped"
+                    ],
+                    "description": "done: the refund approval rule (Settings → Refunds) saved"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
               "store",
               "courier",
               "costs",
-              "firstOrder"
+              "firstOrder",
+              "team",
+              "whatsapp",
+              "payments",
+              "returns"
             ],
             "additionalProperties": false
           },
@@ -39000,6 +39095,18 @@
                 "type": "boolean"
               },
               "costs": {
+                "type": "boolean"
+              },
+              "team": {
+                "type": "boolean"
+              },
+              "whatsapp": {
+                "type": "boolean"
+              },
+              "payments": {
+                "type": "boolean"
+              },
+              "returns": {
                 "type": "boolean"
               }
             },

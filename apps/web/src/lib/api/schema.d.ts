@@ -5169,6 +5169,33 @@ export interface components {
                     /** Format: date-time */
                     at: string | null;
                 };
+                team: {
+                    /** @enum {string} */
+                    status: "todo" | "done" | "skipped";
+                    /** @description Active members */
+                    members: number;
+                    /** @description Invitations waiting */
+                    invited: number;
+                };
+                whatsapp: {
+                    /** @enum {string} */
+                    status: "todo" | "checking" | "done" | "needs_attention" | "skipped";
+                    reason: string | null;
+                };
+                payments: {
+                    /**
+                     * @description done: payment links and deposits (Settings → Payments) saved
+                     * @enum {string}
+                     */
+                    status: "todo" | "done" | "skipped";
+                };
+                returns: {
+                    /**
+                     * @description done: the refund approval rule (Settings → Refunds) saved
+                     * @enum {string}
+                     */
+                    status: "todo" | "done" | "skipped";
+                };
             };
             milestones: {
                 /** Format: date-time */
@@ -8339,6 +8366,10 @@ export interface components {
             skip?: {
                 courier?: boolean;
                 costs?: boolean;
+                team?: boolean;
+                whatsapp?: boolean;
+                payments?: boolean;
+                returns?: boolean;
             };
             dismissed?: boolean;
         };

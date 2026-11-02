@@ -192,6 +192,23 @@ describe("onboarding", () => {
     expect((await http().get("/v1/onboarding").set(as("owner")).expect(200)).body.steps.store).toMatchObject({ channel: "shopify", provider: "shopify" });
   });
 
+  it("A4: growing the store: team, WhatsApp, payment links and returns come from the store itself, each can be skipped", async () => {
+    const other = (await http().post("/v1/tenants").set(as("owner")).send({ name: "Nile Grow", country: "EG" }).expect(201)).body.id;
+    const at = { ...as("owner"), "X-Tenant-Id": other };
+    const steps = async () => (await http().get("/v1/onboarding").set(at).expect(200)).body.steps;
+    expect(await steps()).toMatchObject({
+      team: { status: "todo", members: 1, invited: 0 }, whatsapp: { status: "todo", reason: null }, payments: { status: "todo" }, returns: { status: "todo" },
+    });
+    // Skipped, then brought back; done wins over skipped.
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { whatsapp: true, payments: true } }).expect(200)).body.steps).toMatchObject({ whatsapp: { status: "skipped" }, payments: { status: "skipped" } });
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { payments: false } }).expect(200)).body.steps.payments.status).toBe("todo");
+    await http().post("/v1/members/invite").set(at).send({ phone: "01001112233", role: "agent" }).expect(201);
+    await http().put("/v1/settings/refunds").set(at).send({ approveOver: "500" }).expect(200);
+    await http().patch("/v1/onboarding").set(at).send({ skip: { returns: true } }).expect(200);
+    expect(await steps()).toMatchObject({ team: { status: "done", invited: 1 }, returns: { status: "done" }, whatsapp: { status: "skipped" } });
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { courier: true, nope: true } }).expect(422)).body.code).toBe("validation_failed");
+  });
+
   it("A2: an import the store cuts off ends as failed with why; the store needs attention; the team hears; retry starts a new run", async () => {
     const id = (await onboarding()).steps.store.connectionId as string;
     for (let i = 0; i < 5; i++) shop.addOrder({ name: `#R${i}` });

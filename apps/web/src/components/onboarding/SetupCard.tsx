@@ -16,7 +16,7 @@ export function SetupCard() {
   const o = q.data;
   if (!o || o.complete || o.dismissed) return null;
   const done = STEP_ORDER.filter((s) => finished(o, s)).length;
-  const next = STEP_ORDER.find((s) => !finished(o, s)) ?? "firstOrder";
+  const next = (STEP_ORDER.find((s) => !finished(o, s)) ?? "firstOrder") as keyof typeof NEXT;
   return (
     <section aria-labelledby="setup-title" className="mz-card mt-6 flex flex-col gap-3 p-5" data-testid="setup-card">
       <div className="flex items-start gap-3">

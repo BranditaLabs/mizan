@@ -31,6 +31,11 @@ export const OnboardingSchema = z.object({
     }),
     costs: z.object({ status: z.enum(["todo", "done", "skipped"]), variants: z.number().int(), missingCost: z.number().int() }),
     firstOrder: z.object({ status: z.enum(["waiting", "done"]), orderId: z.uuid().nullable(), number: z.string().nullable(), total: MoneySchema.nullable(), at: At }),
+    // A4: the steps that grow the store once it runs; not needed for `complete`.
+    team: z.object({ status: z.enum(["todo", "done", "skipped"]), members: z.number().int().describe("Active members"), invited: z.number().int().describe("Invitations waiting") }),
+    whatsapp: z.object({ status: z.enum(["todo", "checking", "done", "needs_attention", "skipped"]), reason: z.string().nullable() }),
+    payments: z.object({ status: z.enum(["todo", "done", "skipped"]).describe("done: payment links and deposits (Settings → Payments) saved") }),
+    returns: z.object({ status: z.enum(["todo", "done", "skipped"]).describe("done: the refund approval rule (Settings → Refunds) saved") }),
   }),
   milestones: z.object({ signup: At, storeConnected: At, courierConnected: At, costsEntered: At, firstOrderSynced: At }),
   /** Signup → first order synced, in seconds; null until the first order arrives. */
@@ -44,11 +49,15 @@ export type Onboarding = z.infer<typeof OnboardingSchema>;
 export const UpdateOnboardingSchema = z.strictObject({
   /** The sales channel (A1): a platform to connect, or "manual" to start with orders typed in. */
   channel: z.enum(SALES_CHANNELS).optional(),
-  /** Skip a step (a store that uses another courier, costs entered later) or bring it back. */
-  skip: z.strictObject({ courier: z.boolean().optional(), costs: z.boolean().optional() }).optional(),
+  /** Skip a step (a store that uses another courier, costs entered later, no team yet…) or bring it back. */
+  skip: z.strictObject({
+    courier: z.boolean().optional(), costs: z.boolean().optional(),
+    team: z.boolean().optional(), whatsapp: z.boolean().optional(), payments: z.boolean().optional(), returns: z.boolean().optional(),
+  }).optional(),
   dismissed: z.boolean().optional(),
 }).refine((b) => b.skip !== undefined || b.dismissed !== undefined || b.channel !== undefined, { message: "send channel, skip and/or dismissed" });
 export type UpdateOnboardingBody = z.infer<typeof UpdateOnboardingSchema>;
 
 /** tenants.settings.onboarding */
-export interface OnboardingSettings { channel?: SalesChannel; skipped?: { courier?: boolean; costs?: boolean }; dismissedAt?: string | null }
+export type SkippableStep = "courier" | "costs" | "team" | "whatsapp" | "payments" | "returns";
+export interface OnboardingSettings { channel?: SalesChannel; skipped?: Partial<Record<SkippableStep, boolean>>; dismissedAt?: string | null }

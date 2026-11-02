@@ -645,6 +645,47 @@
         "install_failed": "The connection didn't finish. Try again.",
         "missing": "This page needs a link from Shopify. Start the connection from Mizan."
       }
+    },
+    "grow": {
+      "title": "Grow your store",
+      "skip": "Skip for now",
+      "skipped": "Skipped. You can come back to it any time.",
+      "undoSkip": "Bring it back",
+      "team": {
+        "title": "Invite your team",
+        "body": "Confirmation agents, the warehouse and finance each get their own sign-in and see only their work.",
+        "cta": "Invite people",
+        "done": "Your team is on its way.",
+        "count": "{members} {members, plural, one {member} other {members}}, {invited} invited"
+      },
+      "whatsapp": {
+        "title": "Confirm orders on WhatsApp",
+        "body": "Connect your WhatsApp Business number and Mizan confirms orders by itself; risky ones get a deposit link before they ship.",
+        "cta": "Connect WhatsApp",
+        "done": "WhatsApp is connected.",
+        "checking": "Checking your number and templates with WhatsApp…",
+        "attention": "WhatsApp needs attention: open Settings → Confirmation to see why."
+      },
+      "payments": {
+        "title": "Set up payment links",
+        "body": "Choose how customers pay a deposit or the whole order online (cards, wallets, InstaPay), and how much a deposit is.",
+        "cta": "Set up payments",
+        "done": "Payment links are set up."
+      },
+      "returns": {
+        "title": "Set your refund rule",
+        "body": "Decide which refunds need an owner's approval, so the team can refund small amounts right away.",
+        "cta": "Set the rule",
+        "done": "Your refund rule is set."
+      }
+    },
+    "rail": {
+      "setup": "Set up your store",
+      "grow": "Grow your store",
+      "count": "{done} of {total}",
+      "show": "Show the steps",
+      "hide": "Hide the steps",
+      "open": "Open setup"
     }
   },
   "orders": {

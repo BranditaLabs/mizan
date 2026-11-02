@@ -6,14 +6,17 @@ import { useSession } from "@/lib/session";
 
 export type Onboarding = Schemas["Onboarding"];
 export type StepKey = keyof Onboarding["steps"];
+/** Getting started: these four decide `complete` (the store runs). */
 export const STEP_ORDER: readonly StepKey[] = ["store", "courier", "costs", "firstOrder"];
+/** Growing the store (A4): the team, WhatsApp confirmation, payment links, returns. Each can be skipped. */
+export const GROW_ORDER: readonly StepKey[] = ["team", "whatsapp", "payments", "returns"];
 
 /** A step counts as finished when done or skipped (a store may use another courier). */
 export const finished = (o: Onboarding, step: StepKey) => ["done", "skipped"].includes(o.steps[step].status);
 
 /** Something is moving on the server: the import, a key check, or the first order on its way. */
 const moving = (o: Onboarding | undefined) => Boolean(o && (
-  o.steps.store.import?.status === "running" || o.steps.courier.status === "checking"
+  o.steps.store.import?.status === "running" || o.steps.courier.status === "checking" || o.steps.whatsapp.status === "checking"
   || (o.steps.store.status === "done" && o.steps.firstOrder.status === "waiting")
 ));
 

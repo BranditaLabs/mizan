@@ -339,3 +339,35 @@ export function FirstOrderStep({ o }: { o: Onboarding }) {
     </div>
   );
 }
+
+const GROW_HREF = { team: "/settings/team", whatsapp: "/settings/confirmation", payments: "/settings/payments", returns: "/settings/refunds" } as const;
+type GrowKey = keyof typeof GROW_HREF;
+
+/**
+ * Growing the store (A4): the team, WhatsApp confirmation, payment links and deposits, returns. Each
+ * says what it changes, opens the screen where it's done, and can be skipped; its status comes from
+ * the store itself (someone invited, WhatsApp connected, the settings saved).
+ */
+export function GrowStep({ o, step }: { o: Onboarding; step: string }) {
+  const t = useTranslations("onboarding.grow");
+  const update = useUpdateOnboarding();
+  if (!(step in GROW_HREF)) return null;
+  const key = step as GrowKey;
+  const st = o.steps[key].status;
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="max-w-[60ch] text-body-sm text-text-2">{t(`${key}.body`)}</p>
+      {key === "team" && (o.steps.team.members > 1 || o.steps.team.invited > 0)
+        ? <p className="text-body-sm text-text-2">{t("team.count", { members: o.steps.team.members, invited: o.steps.team.invited })}</p> : null}
+      {st === "done" ? <Alert tone="success">{t(`${key}.done`)}</Alert> : null}
+      {st === "skipped" ? <p className="text-body-sm text-text-2">{t("skipped")}</p> : null}
+      {st === "checking" ? <p role="status" className="text-body-sm text-text-2">{t("whatsapp.checking")}</p> : null}
+      {st === "needs_attention" ? <Alert tone="danger">{t("whatsapp.attention")}</Alert> : null}
+      <ButtonGroup>
+        <Link href={GROW_HREF[key]} className={buttonClass(st === "done" ? "secondary" : "primary")}>{t(`${key}.cta`)}</Link>
+        {st === "todo" ? <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { [key]: true } })}>{t("skip")}</Button> : null}
+        {st === "skipped" ? <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { [key]: false } })}>{t("undoSkip")}</Button> : null}
+      </ButtonGroup>
+    </div>
+  );
+}

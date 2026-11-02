@@ -8,7 +8,7 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { APP_CONFIG, type AppConfig } from "../../platform/config.js";
 import { Database } from "../../platform/db/database.js";
 import { EngineRegistry } from "../../integrations/engine-registry.js";
-import type { Onboarding, OnboardingSettings, UpdateOnboardingBody } from "./onboarding.dto.js";
+import type { Onboarding, OnboardingSettings, SkippableStep, UpdateOnboardingBody } from "./onboarding.dto.js";
 import { ProductEventsService } from "./product-events.service.js";
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
@@ -52,6 +52,11 @@ export class OnboardingService {
       : s.courier.status === "active" ? "done" : s.courier.status === "needs_attention" ? "needs_attention" : s.courier.status === "pending" ? "checking"
       : s.settings.skipped?.courier ? "skipped" : "todo";
     const costsStatus = s.variants > 0 && s.missingCost === 0 ? "done" : s.settings.skipped?.costs ? "skipped" : "todo";
+    // A4: done wins over skipped, as for the core steps.
+    const or = (done: boolean, step: SkippableStep) => (done ? "done" : s.settings.skipped?.[step] ? "skipped" : "todo") as "todo" | "done" | "skipped";
+    const wa = s.whatsapp;
+    const whatsappStatus = wa?.status === "active" ? "done" : wa?.status === "pending" ? "checking" : wa?.status === "needs_attention" ? "needs_attention"
+      : s.settings.skipped?.whatsapp ? "skipped" : "todo";
     const m = s.milestones;
     const steps: Onboarding["steps"] = {
       store: {
@@ -65,6 +70,10 @@ export class OnboardingService {
       firstOrder: s.firstOrder
         ? { status: "done", orderId: s.firstOrder.id, number: s.firstOrder.number, total: fromMinor(BigInt(s.firstOrder.total_minor), s.firstOrder.currency), at: iso(s.firstOrder.created_at) }
         : { status: "waiting", orderId: null, number: null, total: null, at: null },
+      team: { status: or(s.members > 1 || s.invited > 0, "team"), members: s.members, invited: s.invited },
+      whatsapp: { status: whatsappStatus, reason: wa?.status === "needs_attention" ? wa.status_reason : null },
+      payments: { status: or(s.tenantSettings.conversion !== undefined, "payments") },
+      returns: { status: or(s.tenantSettings.refunds !== undefined, "returns") },
     };
     return {
       steps,
@@ -91,7 +100,7 @@ export class OnboardingService {
       // Which channels merchants pick (the ones not built yet included) decides what to build next.
       if (body.channel && body.channel !== before.channel) await this.productEvents.record(trx, tenantId, { name: "onboarding_channel_chosen", userId: auth.user.id, data: { channel: body.channel } });
       for (const [step, on] of Object.entries(body.skip ?? {})) {
-        if (on && !before.skipped?.[step as "courier" | "costs"]) await this.productEvents.record(trx, tenantId, { name: "onboarding_step_skipped", userId: auth.user.id, data: { step } });
+        if (on && !before.skipped?.[step as SkippableStep]) await this.productEvents.record(trx, tenantId, { name: "onboarding_step_skipped", userId: auth.user.id, data: { step } });
       }
     });
     return this.get(tenantId);
@@ -99,14 +108,19 @@ export class OnboardingService {
 
   private async read(trx: Transaction<DB>, tenantId: string) {
     const t = await trx.selectFrom("tenants").select("settings").where("id", "=", tenantId).executeTakeFirstOrThrow();
-    const settings = ((t.settings ?? {}) as { onboarding?: OnboardingSettings }).onboarding ?? {};
+    const tenantSettings = (t.settings ?? {}) as { onboarding?: OnboardingSettings; conversion?: unknown; refunds?: unknown };
+    const settings = tenantSettings.onboarding ?? {};
     const connections = await trx.selectFrom("connections").select(["id", "kind", "provider", "external_account", "status", "status_reason", "config"])
       .where("status", "!=", "disconnected").orderBy("created_at").execute();
     const counts = await trx.selectFrom("variants as v").innerJoin("products as p", "p.id", "v.product_id").where("p.status", "!=", "archived")
       .select([sql<string>`count(*)`.as("variants"), sql<string>`count(*) filter (where v.cogs_set_at is null)`.as("missing")]).executeTakeFirstOrThrow();
     const firstOrder = await trx.selectFrom("orders").select(["id", "number", "total_minor", "currency", "created_at"]).orderBy("created_at").orderBy("id").limit(1).executeTakeFirst();
+    const team = await trx.selectFrom("memberships").where("status", "=", "active").select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
+    const invited = await trx.selectFrom("invitations").where("status", "=", "pending").where("expires_at", ">", new Date()).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
     return {
-      settings,
+      settings, tenantSettings,
+      whatsapp: connections.find((c) => c.kind === "whatsapp") ?? null,
+      members: Number(team.n), invited: Number(invited.n),
       store: connections.find((c) => c.kind === "store") ?? null,
       // A courier Mizan books through an API first; one recorded by hand (E7-6) counts too.
       courier: connections.find((c) => c.kind === "courier" && c.provider !== "manual") ?? connections.find((c) => c.kind === "courier") ?? null,
