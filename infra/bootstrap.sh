@@ -32,7 +32,13 @@ else
   DEPLOY_FLAG="AZURE_DEPLOY_PRODUCTION"
   DEPLOY_RULE="Selected branches and tags, tag rule: v*"
 fi
-FEDERATED_SUBJECT="repo:${REPO}:environment:${GITHUB_ENV_NAME}"
+# GitHub puts immutable ids in the subject (repo:Owner@ownerId/name@repoId:…, seen since Nov 2026), so
+# read them from the API; set FEDERATED_SUBJECT to override, or without gh the old name form is used.
+if [[ -z "${FEDERATED_SUBJECT:-}" ]] && command -v gh >/dev/null 2>&1 \
+  && IDS="$(gh api "repos/${REPO}" --jq '"\(.owner.login)@\(.owner.id)/\(.name)@\(.id)"' 2>/dev/null)" && [[ -n "${IDS}" ]]; then
+  FEDERATED_SUBJECT="repo:${IDS}:environment:${GITHUB_ENV_NAME}"
+fi
+FEDERATED_SUBJECT="${FEDERATED_SUBJECT:-repo:${REPO}:environment:${GITHUB_ENV_NAME}}"
 
 say() { printf '\n\033[1m▸ %s\033[0m\n' "$*"; }
 

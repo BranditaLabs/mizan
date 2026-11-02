@@ -20,7 +20,7 @@ admin_domain     = "admin.mizan.brandita.net" # back office (L0-3)
 marketing_domain = "mizan.brandita.net"       # landing page, a second host on the web app (L1-9)
 # platform_bootstrap_emails = "you@example.com"
 # alert_emails = ["ops@example.com"]
-# provider_secrets = ["SHOPIFY_API_SECRET", "META_APP_SECRET"]
+provider_secrets = ["SHOPIFY_API_SECRET"] # values live in Key Vault only; add "META_APP_SECRET" etc. once stored
 api_env = {
   SHOPIFY_API_KEY = "3aaaa43e0229a13ae9f56c7198d55d94" # the Shopify app's Client ID (public); its secret is in Key Vault
 }
