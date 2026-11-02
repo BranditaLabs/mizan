@@ -10,7 +10,7 @@ worker_min_instances    = 1
 worker_max_instances    = 2
 worker_cpu              = 0.25 # pilot volumes; raise to 0.5/1Gi or 1/2Gi when the outbox lags
 worker_memory           = "0.5Gi"
-bind_custom_domains     = false
+bind_custom_domains     = true
 db_allow_azure_services = true # Container Apps reach PostgreSQL without a VNet
 # Add these DNS records from `terraform output dns_records` at Hostinger, then set
 # bind_custom_domains = true and re-run infra/bootstrap.sh (it applies, then binds the certificates).
