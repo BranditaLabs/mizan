@@ -5,9 +5,17 @@ import { apiReady, isOutage, nextCheckIn } from "../src/lib/outage";
 
 describe("outage", () => {
   it("is no answer or a gateway that says the API is down, never a 4xx or a route's own 500", () => {
-    for (const s of [0, 502, 503, 504]) expect(isOutage(new ApiError(s, "x", ""))).toBe(true);
-    for (const s of [400, 401, 403, 404, 409, 429, 500]) expect(isOutage(new ApiError(s, "x", ""))).toBe(false);
+    expect(isOutage(new ApiError(0, "network", ""))).toBe(true);
+    // A gateway's own error page has no Mizan problem body: ApiError.from gives code "unknown".
+    for (const s of [502, 503, 504]) expect(isOutage(new ApiError(s, "unknown", ""))).toBe(true);
+    expect(isOutage(new ApiError(503, "service_unavailable", "database unreachable"))).toBe(true);
+    for (const s of [400, 401, 403, 404, 409, 429, 500]) expect(isOutage(new ApiError(s, "unknown", ""))).toBe(false);
     expect(isOutage(new Error("boom"))).toBe(false);
+  });
+
+  it("a 502/503 that Mizan answers with its own problem code is a working API, not an outage", () => {
+    expect(isOutage(new ApiError(503, "shopify_not_configured", "the Shopify app credentials are not set on this server"))).toBe(false);
+    expect(isOutage(new ApiError(502, "courier_unavailable", "Bosta did not answer"))).toBe(false);
   });
 
   it("checks again after 5, 10, 20, then every 30 seconds", () => {
@@ -29,7 +37,7 @@ describe("outage", () => {
     const client = makeQueryClient(notify, outage);
     const fail = (e: unknown) => client.getMutationCache().build(client, { mutationFn: async () => { throw e; }, retry: false }).execute(undefined).catch(() => undefined);
     await fail(new ApiError(0, "network", ""));
-    await fail(new ApiError(503, "unavailable", ""));
+    await fail(new ApiError(503, "unknown", ""));
     expect(notify).not.toHaveBeenCalled();
     await fail(new ApiError(409, "conflict", "Already exists"));
     expect(notify).toHaveBeenCalledTimes(1);

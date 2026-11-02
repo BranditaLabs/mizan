@@ -3,14 +3,24 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { API_URL, ApiError } from "./api/client";
 
+/** Gateway statuses that can mean Mizan is down. */
+const GATEWAY = new Set([502, 503, 504]);
+/** Problem codes with which Mizan itself says it cannot serve (the database is unreachable). */
+const DOWN_CODES = new Set(["service_unavailable"]);
+
 /**
- * Mizan out of service: the API gives no answer, or a gateway says it is down (502/503/504) after
- * the query retries. One such failure puts the whole dashboard behind the waiting screen
+ * Mizan out of service: the API gives no answer, or a gateway says it is down (502/503/504 without
+ * a Mizan problem body: code "unknown"), or Mizan says it cannot serve at all, after the query
+ * retries. One such failure puts the whole dashboard behind the waiting screen
  * (components/OutageScreen), which checks /health/ready on its own and lifts when the API is back.
- * Other errors (4xx, a 500 from one route) stay where they happen.
+ * A 502/503 that Mizan answers with its own problem code is a working API reporting one thing
+ * (Shopify not configured on the server, a courier not answering): it stays where it happens, like
+ * 4xx and a route's own 500.
  */
 export function isOutage(error: unknown): boolean {
-  return error instanceof ApiError && (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504);
+  if (!(error instanceof ApiError)) return false;
+  if (error.status === 0) return true;
+  return GATEWAY.has(error.status) && (error.code === "unknown" || DOWN_CODES.has(error.code));
 }
 
 /** Seconds before the next check: 5, 10, 20, then every 30. */
