@@ -1,6 +1,8 @@
 # Mizan's Shopify app on staging, as code: Shopify CLI pushes these settings to the app (Dev
-# Dashboard) instead of typing them into its forms. Deploy (needs a CLI token, never in the repo):
-#   SHOPIFY_CLI_PARTNERS_TOKEN=<token> npx @shopify/cli@latest app deploy --config staging --force
+# Dashboard) instead of typing them into its forms. Deploy with a service account token (Dev
+# Dashboard; never in the repo or chat), from a folder holding only this file and a package.json:
+#   SHOPIFY_SERVICE_ACCOUNT_TOKEN=<token> npx @shopify/cli@latest app deploy --config staging --allow-updates --no-input --no-build
+# First released this way as version mizan-2 (2 Nov 2026).
 # The client id is public; the client secret stays in Key Vault (shopify-api-secret).
 # Production gets shopify.app.production.toml with its own app and hosts.
 
@@ -29,6 +31,3 @@ api_version = "2026-10"
 
 [pos]
 embedded = false
-
-[build]
-include_config_on_deploy = true
