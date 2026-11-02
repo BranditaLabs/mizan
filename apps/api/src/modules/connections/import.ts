@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Controller, HttpCode, Inject, Injectable, Param, ParseUUIDPipe, Post } from "@nestjs/common";
+import { Controller, Get, HttpCode, Inject, Injectable, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { trxQueryClient } from "@mizan/db";
@@ -10,9 +10,21 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ApiJson, ApiProblems } from "../../platform/http/api-schema.js";
 import { ProblemError } from "../../platform/http/problem.js";
-import { ENGINE_RUNTIME, type RuntimeFactory } from "../../integrations/engine-registry.js";
+import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "../../integrations/engine-registry.js";
 import { BACKFILL_DAYS } from "../../integrations/shopify-connected.consumer.js";
 import { WOO_BACKFILL_DAYS } from "./woocommerce/woocommerce-connect.service.js";
+
+export const StoreImportsSchema = z.object({
+  data: z.array(z.object({
+    connectionId: z.uuid(), provider: z.enum(["shopify", "woocommerce"]), shop: z.string().describe("The store's address"),
+    connection: z.enum(["pending", "active", "needs_attention"]).describe("The connection's own status; needs_attention: the store refused Mizan"),
+    import: z.object({
+      status: z.enum(["running", "done", "failed"]), phase: z.enum(["orders", "products", "done"]), orders: z.number().int(), products: z.number().int(),
+      error: z.string().nullable(), startedAt: z.iso.datetime(), finishedAt: z.iso.datetime().nullable(),
+    }).nullable().describe("The latest history import; null before the first"),
+  })),
+});
+export type StoreImports = z.infer<typeof StoreImportsSchema>;
 
 export const StartImportSchema = z.object({
   connectionId: z.uuid(), days: z.number().int().describe("How far back orders are read (Shopify: 60 without read_all_orders)"),
@@ -28,7 +40,26 @@ export class StoreImportService {
     @Inject(Database) private readonly db: Database,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
+    @Inject(EngineRegistry) private readonly engines: EngineRegistry,
   ) {}
+
+  /** Every connected store and its latest import (A3: the app frame's sync indicator, polled while one runs). */
+  async list(tenantId: string): Promise<StoreImports> {
+    const stores = await this.db.tenant(tenantId, (trx) => trx.selectFrom("connections").select(["id", "provider", "external_account", "status"])
+      .where("kind", "=", "store").where("provider", "in", ["shopify", "woocommerce"]).where("status", "!=", "disconnected").orderBy("created_at").execute());
+    const data: StoreImports["data"] = [];
+    for (const c of stores) {
+      let imp: StoreImports["data"][number]["import"] = null;
+      try {
+        const b = await (await this.engines.get(tenantId, c.id)).engine.backfillStatus();
+        if (b) imp = { status: b.status, phase: b.phase, orders: b.orders, products: b.products, error: b.error?.kind ?? null, startedAt: b.startedAt, finishedAt: b.finishedAt ?? null };
+      } catch {
+        /* the engine can't be built (credentials being replaced): no progress to show */
+      }
+      data.push({ connectionId: c.id, provider: c.provider as "shopify" | "woocommerce", shop: c.external_account ?? "", connection: c.status as "pending" | "active" | "needs_attention", import: imp });
+    }
+    return { data };
+  }
 
   async start(auth: AuthContext, connectionId: string): Promise<z.infer<typeof StartImportSchema>> {
     const tenantId = auth.tenant!.id;
@@ -53,6 +84,13 @@ export class StoreImportService {
 @Roles("owner", "admin")
 export class StoreImportController {
   constructor(@Inject(StoreImportService) private readonly imports: StoreImportService) {}
+
+  @Get("imports")
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJson(200, "StoreImports", StoreImportsSchema, "Each connected store's status and latest history import (running, done or failed with why)")
+  list(@Auth() auth: AuthContext) {
+    return this.imports.list(auth.tenant!.id);
+  }
 
   @Post(":id/import")
   @HttpCode(202)

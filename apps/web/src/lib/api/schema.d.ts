@@ -2785,6 +2785,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StoreImportController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/connections/{id}/import": {
         parameters: {
             query?: never;
@@ -7892,6 +7908,35 @@ export interface components {
             flags: {
                 [key: string]: boolean;
             };
+        };
+        StoreImports: {
+            data: {
+                /** Format: uuid */
+                connectionId: string;
+                /** @enum {string} */
+                provider: "shopify" | "woocommerce";
+                /** @description The store's address */
+                shop: string;
+                /**
+                 * @description The connection's own status; needs_attention: the store refused Mizan
+                 * @enum {string}
+                 */
+                connection: "pending" | "active" | "needs_attention";
+                /** @description The latest history import; null before the first */
+                import: {
+                    /** @enum {string} */
+                    status: "running" | "done" | "failed";
+                    /** @enum {string} */
+                    phase: "orders" | "products" | "done";
+                    orders: number;
+                    products: number;
+                    error: string | null;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    finishedAt: string | null;
+                } | null;
+            }[];
         };
         StoreLegal: {
             /**
@@ -18714,6 +18759,39 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreImportController_list: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Each connected store's status and latest history import (running, done or failed with why) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreImports"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

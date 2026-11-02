@@ -86,10 +86,11 @@ test("no online store yet: selling by hand finishes the channel step and opens t
   await picker.getByRole("radio", { name: /EasyOrders/ }).click();
   await expect(page.getByText("We noted your platform")).toBeVisible();
   await page.getByRole("button", { name: "Start with manual orders" }).click();
-  await expect(page.getByText("You're selling by hand for now")).toBeVisible();
+  // The channel step is done: setup moves on to the courier, which explains Bosta needs a store.
   await expect(page.getByTestId("onboarding-progress")).toHaveText("1 of 4 done");
-  // The courier step explains Bosta needs a store and lets the owner go on; costs point to products.
   const steps = page.getByRole("navigation", { name: "Setup steps" });
+  await steps.getByRole("button", { name: /Choose where you sell/ }).click();
+  await expect(page.getByText("You're selling by hand for now")).toBeVisible();
   await steps.getByRole("button", { name: /Connect your courier/ }).click();
   await page.getByRole("button", { name: "Got it, continue" }).click();
   await expect(page.getByTestId("onboarding-progress")).toHaveText("2 of 4 done");

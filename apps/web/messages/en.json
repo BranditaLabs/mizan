@@ -1142,6 +1142,10 @@
         "net": "Held",
         "balance": "Still owed"
       }
+    },
+    "importing": {
+      "title": "Your orders are on their way",
+      "body": "Mizan is importing your store's recent orders in the background: {orders} so far. They appear here as they arrive; you can keep working meanwhile."
     }
   },
   "costs": {
@@ -2304,6 +2308,20 @@
       "stores_over": "Stores passed the plan's limit: {used} of {limit}",
       "users_near": "Team members are at the plan's limit: {used} of {limit}",
       "users_over": "Team members passed the plan's limit: {used} of {limit}"
+    },
+    "connection": {
+      "imported": "{name}: your history is in, {orders} orders and {products} products.",
+      "importFailed": "{name}: the import stopped after {orders} orders. Open setup to retry.",
+      "storeRefused": "{name} refused Mizan: the app may have been removed. Connect the store again.",
+      "courierRefused": "{name} refused the key. Paste a new one in Settings → Integrations.",
+      "disconnected": "{name} was disconnected. New orders don't reach Mizan until you connect it again."
+    },
+    "providers": {
+      "shopify": "Shopify",
+      "woocommerce": "WooCommerce",
+      "bosta": "Bosta",
+      "whatsapp_cloud": "WhatsApp",
+      "other": "A connection"
     }
   },
   "tickets": {
@@ -4066,5 +4084,11 @@
     "cancel": "Cancel",
     "sent": "Feedback sent. Thank you!",
     "tooMany": "You've sent a lot of feedback this hour. Try again a little later."
+  },
+  "sync": {
+    "running": "Importing · {orders} orders, {products} products",
+    "done": "Imported {orders} orders",
+    "failed": "Import stopped: retry",
+    "attention": "A store needs attention"
   }
 }

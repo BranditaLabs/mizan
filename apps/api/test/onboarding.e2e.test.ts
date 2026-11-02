@@ -208,6 +208,15 @@ describe("onboarding", () => {
     expect(events.map((e) => e.type).sort()).toEqual(["connection.needs_attention", "connection.sync_failed"]);
     expect(events.find((e) => e.type === "connection.sync_failed")!.data).toMatchObject({ provider: "shopify", errorKind: "auth" });
 
+    // A3: the app frame's indicator and the bell tell the team, without any automation set up.
+    const imports = (await http().get("/v1/connections/imports").set(as("owner")).expect(200)).body.data;
+    expect(imports).toEqual([expect.objectContaining({ connectionId: id, provider: "shopify", connection: "needs_attention", import: expect.objectContaining({ status: "failed", error: "auth" }) })]);
+    const notes = (await http().get("/v1/notifications").set(as("owner")).expect(200)).body.data;
+    type Note = { source: string; text: string; entity: { id: string } | null };
+    expect(notes.filter((n: Note) => n.entity?.id === id && n.source !== "connection.sync_completed").map((n: Note) => [n.source, n.text]).sort()).toEqual([
+      ["connection.needs_attention", "shopify|key_refused"], ["connection.sync_failed", "shopify|0|0|auth"],
+    ]);
+    expect(notes.some((n: Note) => n.source === "connection.sync_completed" && n.text === "shopify|1|3|")).toBe(true); // the first import, earlier
     await http().post(`/v1/connections/${id}/import`).set(as("agent")).expect(403); // owners and admins only
     await http().post("/v1/connections/00000000-0000-4000-8000-000000000000/import").set(as("owner")).expect(404);
     const audit = (await http().get("/v1/audit-log?action=connection.import_started").set(as("owner")).expect(200)).body.data;

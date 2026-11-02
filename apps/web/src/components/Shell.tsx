@@ -6,6 +6,7 @@ import { NavLinks } from "./NavLinks";
 import { FeedbackButton } from "./FeedbackButton";
 import { NotificationBell } from "./NotificationBell";
 import { PlanBanner } from "./PlanBanner";
+import { SyncIndicator } from "./SyncIndicator";
 import { RouteMotion } from "./RouteMotion";
 import { AnnouncementsBanner } from "./AnnouncementsBanner";
 import { ShellCommands } from "./ShellCommands";
@@ -44,6 +45,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
           <span className="flex-1" />
+          <SyncIndicator />
           <FeedbackButton />
           <NotificationBell />
           <LocaleSwitch />

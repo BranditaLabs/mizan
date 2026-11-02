@@ -17216,6 +17216,60 @@
         ]
       }
     },
+    "/v1/connections/imports": {
+      "get": {
+        "operationId": "StoreImportController_list",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Each connected store's status and latest history import (running, done or failed with why)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreImports"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/v1/connections/{id}/import": {
       "post": {
         "operationId": "StoreImportController_start",
@@ -37233,6 +37287,114 @@
         },
         "required": [
           "flags"
+        ],
+        "additionalProperties": false
+      },
+      "StoreImports": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "connectionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "provider": {
+                  "type": "string",
+                  "enum": [
+                    "shopify",
+                    "woocommerce"
+                  ]
+                },
+                "shop": {
+                  "type": "string",
+                  "description": "The store's address"
+                },
+                "connection": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "active",
+                    "needs_attention"
+                  ],
+                  "description": "The connection's own status; needs_attention: the store refused Mizan"
+                },
+                "import": {
+                  "nullable": true,
+                  "description": "The latest history import; null before the first",
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "running",
+                        "done",
+                        "failed"
+                      ]
+                    },
+                    "phase": {
+                      "type": "string",
+                      "enum": [
+                        "orders",
+                        "products",
+                        "done"
+                      ]
+                    },
+                    "orders": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "products": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "error": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "finishedAt": {
+                      "nullable": true,
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "phase",
+                    "orders",
+                    "products",
+                    "error",
+                    "startedAt",
+                    "finishedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "connectionId",
+                "provider",
+                "shop",
+                "connection",
+                "import"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "data"
         ],
         "additionalProperties": false
       },

@@ -28,7 +28,8 @@ export function ShopifyConnect({ install, error }: { install: string | null; err
   const refresh = useRefreshOnboarding();
   const claim = useMutation({
     mutationFn: (token: string) => ok(api.POST("/v1/connections/shopify/claim", { body: { install: token } })),
-    onSuccess: () => { toast({ message: t("done") }); void refresh(); router.replace("/onboarding"); },
+    // A3: into Mizan right away; the import runs in the background and the frame shows its progress.
+    onSuccess: () => { toast({ message: t("done") }); void refresh(); router.replace("/"); },
     meta: { toast: false }, // explained on the page
   });
   const started = useRef(false);

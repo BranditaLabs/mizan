@@ -8,6 +8,7 @@ import { Button, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { BULK_ROLES, BulkBar, BulkProgress } from "./BulkActions";
 import { SearchInput } from "@/components/ui/Field";
+import { useStoreImports } from "@/components/SyncIndicator";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -30,6 +31,8 @@ const isTab = (v: string | null): v is StatusTab => v !== null && (TABS as reado
  */
 export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: string | null; initialQuery: string | null }) {
   const t = useTranslations("orders");
+  // A3: while the store's history imports, an empty list says the orders are on their way.
+  const imports = useStoreImports();
   const tm = useTranslations("payments.mode");
   const tp = useTranslations("payments.status");
   const { api, user, store } = useSession();
@@ -93,7 +96,9 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
     { id: "age", header: t("columns.age"), cell: (o) => <span className="text-text-2"><DateText relative now={now} value={o.placedAt} /></span> },
   ];
 
+  const importing = imports.data?.data.find((x) => x.import?.status === "running")?.import;
   const empty = q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} />
+    : counts?.all === 0 && importing ? <EmptyState icon="sync" title={t("importing.title")} body={t("importing.body", { orders: importing.orders })} />
     : counts?.all === 0 ? (
       <EmptyState icon="orders" title={t("empty.title")} body={t("empty.body")}
         action={canSetUp ? <Link href="/onboarding" className={buttonClass("primary")}>{t("empty.cta")}</Link> : undefined} />
