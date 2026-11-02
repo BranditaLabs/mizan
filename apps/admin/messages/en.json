@@ -9,6 +9,16 @@
     "network": "No connection to the server. Check the internet and try again.",
     "generic": "Something went wrong and we couldn't finish. Try again."
   },
+  "outage": {
+    "title": "Mizan is taking a short break",
+    "body": "We can't reach Mizan's servers right now. Nothing on your screen is lost; we'll reconnect by ourselves.",
+    "offlineTitle": "You're offline",
+    "offlineBody": "This device isn't connected to the internet. The back office comes back as soon as you're online.",
+    "checking": "Checking…",
+    "nextCheck": "Checking again in {seconds, plural, one {# second} other {# seconds}}",
+    "waitingNetwork": "Waiting for the connection…",
+    "checkNow": "Check now"
+  },
   "auth": {
     "title": "Sign in to the back office",
     "subtitle": "Mizan staff only. Use your Mizan account; two-step verification is required.",
