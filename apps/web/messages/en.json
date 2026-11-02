@@ -78,7 +78,8 @@
     },
     "team": {
       "title": "No orders yet",
-      "body": "The store's orders show up here as soon as they arrive."
+      "body": "The store's orders show up here as soon as they arrive.",
+      "cta": "Open orders"
     }
   },
   "roles": {

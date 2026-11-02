@@ -21,7 +21,7 @@ function stateOf(o: Onboarding | undefined, canSetUp: boolean): State {
   return "waiting";
 }
 
-const CTA: Partial<Record<State, string>> = { connect: "/onboarding", importFailed: "/onboarding", waiting: "/orders", manual: "/orders/new" };
+const CTA: Partial<Record<State, string>> = { connect: "/onboarding", importFailed: "/onboarding", waiting: "/orders", manual: "/orders/new", team: "/orders" };
 
 /** Home before the first order (E9-4 fallback): the subtitle and the empty state, from the store's setup. */
 export function HomeWelcome() {
