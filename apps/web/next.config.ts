@@ -7,17 +7,22 @@ const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const authEmulator = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL ?? "";
 /** Invisible reCAPTCHA that Firebase runs before it sends an SMS code (not loaded against the emulator). */
 const recaptcha = "https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/";
+/**
+ * Sign-in with Google, Microsoft or SSO (signInWithPopup): Firebase loads gapi from apis.google.com and
+ * a hidden iframe from the auth domain that hands the result back; blocking either fails the sign-in.
+ */
+const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ? `https://${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}` : "";
 
 const csp = [
   "default-src 'self'",
   // Next injects inline bootstrap scripts; nonce-based CSP comes with E4-2 if needed.
-  `script-src 'self' 'unsafe-inline' ${recaptcha}` + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
+  `script-src 'self' 'unsafe-inline' ${recaptcha} https://apis.google.com` + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   "img-src 'self' data: blob:",
   "manifest-src 'self'",
   `connect-src 'self' ${api} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com ${authEmulator}`.trimEnd(),
-  "frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/",
+  `frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ ${authDomain}`.trimEnd(),
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
