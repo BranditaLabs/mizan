@@ -7,7 +7,8 @@ import { EventsService } from "../platform/events/events.service.js";
 /**
  * The outcome of the engine's key check on the connection — the courier's (bosta.checkAccess, E4-5)
  * or a WooCommerce store's (its webhook sync, E5-7), or a store that refused a job (A2: a Shopify
- * token revoked, keys withdrawn; failures only, the next install or keys make it active again):
+ * token revoked, keys withdrawn; failures only: the next install or keys, or an import that completes
+ * (SyncResults), make it active again):
  *  accepted → `active` + `connection.connected` (once: the moment the courier really works);
  *  refused  → `needs_attention` with the reason + `connection.needs_attention`.
  * A connection disconnected meanwhile is left alone.
