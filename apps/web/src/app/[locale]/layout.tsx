@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { dirOf, routing } from "@/i18n/routing";
 import { ToastProvider } from "@/components/ui/Toast";
 import { QueryProvider } from "@/lib/api/query";
+import { OutageProvider } from "@/lib/outage";
 import { SessionProvider } from "@/lib/session";
 import { parseTheme, THEME_COOKIE, themeAttribute } from "@/lib/theme";
 import "../globals.css";
@@ -32,9 +33,11 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body>
         <NextIntlClientProvider messages={messages}>
           <ToastProvider>
-            <QueryProvider>
-              <SessionProvider>{children}</SessionProvider>
-            </QueryProvider>
+            <OutageProvider>
+              <QueryProvider>
+                <SessionProvider>{children}</SessionProvider>
+              </QueryProvider>
+            </OutageProvider>
           </ToastProvider>
         </NextIntlClientProvider>
       </body>

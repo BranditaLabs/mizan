@@ -493,6 +493,16 @@
     "generic": "Something went wrong and we couldn't finish. Try again.",
     "retry": "Try again"
   },
+  "outage": {
+    "title": "Mizan is taking a short break",
+    "body": "We can't reach Mizan's servers right now. Your data is safe, and what's on your screen stays as it is. We'll reconnect by ourselves.",
+    "offlineTitle": "You're offline",
+    "offlineBody": "This device isn't connected to the internet. Check Wi-Fi or mobile data; Mizan comes back as soon as you're online.",
+    "checking": "Checking…",
+    "nextCheck": "Checking again in {seconds, plural, one {# second} other {# seconds}}",
+    "waitingNetwork": "Waiting for the connection…",
+    "checkNow": "Check now"
+  },
   "onboarding": {
     "title": "Set up your store",
     "subtitle": "Four steps to see your orders and your real profit in Mizan.",

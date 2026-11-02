@@ -3,7 +3,9 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider, type Mutation, type Query } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
+import { OutageScreen } from "@/components/OutageScreen";
 import { useToast } from "@/components/ui/Toast";
+import { isOutage, useOutage } from "../outage";
 import { ApiError } from "./client";
 
 /**
@@ -33,15 +35,19 @@ export function problemText(error: unknown, t: (key: "network" | "generic") => s
   return t("generic");
 }
 
-export function makeQueryClient(notify: (error: unknown) => void): QueryClient {
+/** `outage` hears every final failure first; an outage (lib/outage) shows the waiting screen instead of a toast. */
+export function makeQueryClient(notify: (error: unknown) => void, outage?: (error: unknown) => void): QueryClient {
+  const down = (error: unknown) => { outage?.(error); return Boolean(outage) && isOutage(error); };
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query: Query<unknown, unknown, unknown, readonly unknown[]>) => {
+        if (down(error)) return;
         if (query.meta?.toast !== false && query.state.data !== undefined) notify(error);
       },
     }),
     mutationCache: new MutationCache({
       onError: (error, _v, _c, mutation: Mutation<unknown, unknown, unknown, unknown>) => {
+        if (down(error)) return;
         if (mutation.meta?.toast !== false) notify(error);
       },
     }),
@@ -62,6 +68,12 @@ declare module "@tanstack/react-query" {
 export function QueryProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const t = useTranslations("problems");
-  const [client] = useState(() => makeQueryClient((error) => toast({ message: problemText(error, (k) => t(k)) })));
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const { report } = useOutage();
+  const [client] = useState(() => makeQueryClient((error) => toast({ message: problemText(error, (k) => t(k)) }), report));
+  return (
+    <QueryClientProvider client={client}>
+      {children}
+      <OutageScreen />
+    </QueryClientProvider>
+  );
 }
