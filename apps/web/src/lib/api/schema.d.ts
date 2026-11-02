@@ -1521,6 +1521,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attribution/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttributionController_campaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/attribution/sources/backfill": {
         parameters: {
             query?: never;
@@ -2769,6 +2785,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["StoreImportController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connections/{id}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["StoreImportController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/connections/woocommerce": {
         parameters: {
             query?: never;
@@ -3290,6 +3338,102 @@ export interface components {
                 attempts: number;
                 unreachable: boolean;
             } | null;
+        };
+        CampaignResults: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            currency: string;
+            /** @enum {string} */
+            level: "campaign" | "adset" | "ad";
+            /** @description All ad spend in the period */
+            spend: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Some spend is in a currency without a rate that day: left out */
+            fxMissing: boolean;
+            /** @description Spend first (most first), then tagged orders without spend (most orders first); at most 200 */
+            rows: {
+                orders: number;
+                delivered: number;
+                /** @description Refused at the door or returned */
+                lost: number;
+                /** @description Cancelled before shipping (unreachable, declined at confirmation, fake) */
+                cancelled: number;
+                /** @description Paid, or cash delivered, less refunds */
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders, ad costs included */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Delivered ÷ (delivered + lost), percent */
+                deliveredRate: string | null;
+                /** @description Cancelled before shipping, refused or returned ÷ orders, percent: orders the ad paid for that never paid */
+                fakeShare: string | null;
+                platform: ("meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown") | ("meta" | "tiktok" | "google" | "snapchat" | "other");
+                campaign: {
+                    /** @description The id from the spend export, else the name or the UTM tag */
+                    key: string;
+                    name: string;
+                };
+                adset: {
+                    /** @description The id from the spend export, else the name or the UTM tag */
+                    key: string;
+                    name: string;
+                } | null;
+                ad: {
+                    /** @description The id from the spend export, else the name or the UTM tag */
+                    key: string;
+                    name: string;
+                } | null;
+                /** @description Recorded spend; null for orders tagged with a campaign that has no spend recorded */
+                spend: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description Real money ÷ spend */
+                trueRoas: string | null;
+                costPerDelivered: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
+            /** @description More than 200 rows: the smallest are left out */
+            truncated: boolean;
+            /** @description Orders without this level's UTM tag (organic, direct, unknown, or an ad link without it): always shown */
+            untagged: {
+                orders: number;
+                delivered: number;
+                /** @description Refused at the door or returned */
+                lost: number;
+                /** @description Cancelled before shipping (unreachable, declined at confirmation, fake) */
+                cancelled: number;
+                /** @description Paid, or cash delivered, less refunds */
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders, ad costs included */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Delivered ÷ (delivered + lost), percent */
+                deliveredRate: string | null;
+                /** @description Cancelled before shipping, refused or returned ÷ orders, percent: orders the ad paid for that never paid */
+                fakeShare: string | null;
+            };
+            /** @description Spend recorded without this level (a day's total, or an export without ad sets or ads) */
+            unassignedSpend: {
+                amount: string;
+                currency: string;
+            };
         };
         CatalogVariant: {
             /** Format: uuid */
@@ -4972,18 +5116,30 @@ export interface components {
         Onboarding: {
             steps: {
                 store: {
-                    /** @enum {string} */
+                    /**
+                     * @description done: a store is connected, or the store sells by hand (channel manual)
+                     * @enum {string}
+                     */
                     status: "todo" | "done";
+                    /**
+                     * @description The sales channel chosen in setup; null before the choice (a connected store counts as its platform)
+                     * @enum {string|null}
+                     */
+                    channel: "shopify" | "woocommerce" | "easyorders" | "other" | "manual" | null;
+                    /** @description The connected store's platform: shopify, woocommerce */
+                    provider: string | null;
                     /** Format: uuid */
                     connectionId: string | null;
                     shop: string | null;
                     import: {
                         /** @enum {string} */
-                        status: "running" | "done";
+                        status: "running" | "done" | "failed";
                         /** @enum {string} */
                         phase: "orders" | "products" | "done";
                         orders: number;
                         products: number;
+                        /** @description Why it failed: auth (the store refused Mizan), permission, permanent, transient…; retry with POST /connections/{id}/import */
+                        error: string | null;
                     } | null;
                     missingScopes: string[];
                 };
@@ -5012,6 +5168,33 @@ export interface components {
                     } | null;
                     /** Format: date-time */
                     at: string | null;
+                };
+                team: {
+                    /** @enum {string} */
+                    status: "todo" | "done" | "skipped";
+                    /** @description Active members */
+                    members: number;
+                    /** @description Invitations waiting */
+                    invited: number;
+                };
+                whatsapp: {
+                    /** @enum {string} */
+                    status: "todo" | "checking" | "done" | "needs_attention" | "skipped";
+                    reason: string | null;
+                };
+                payments: {
+                    /**
+                     * @description done: payment links and deposits (Settings → Payments) saved
+                     * @enum {string}
+                     */
+                    status: "todo" | "done" | "skipped";
+                };
+                returns: {
+                    /**
+                     * @description done: the refund approval rule (Settings → Refunds) saved
+                     * @enum {string}
+                     */
+                    status: "todo" | "done" | "skipped";
                 };
             };
             milestones: {
@@ -7658,6 +7841,12 @@ export interface components {
             }[];
             nextBefore: number | null;
         };
+        StartImport: {
+            /** Format: uuid */
+            connectionId: string;
+            /** @description How far back orders are read (Shopify: 60 without read_all_orders) */
+            days: number;
+        };
         StockHistory: {
             data: {
                 /** Format: uuid */
@@ -7746,6 +7935,35 @@ export interface components {
             flags: {
                 [key: string]: boolean;
             };
+        };
+        StoreImports: {
+            data: {
+                /** Format: uuid */
+                connectionId: string;
+                /** @enum {string} */
+                provider: "shopify" | "woocommerce";
+                /** @description The store's address */
+                shop: string;
+                /**
+                 * @description The connection's own status; needs_attention: the store refused Mizan
+                 * @enum {string}
+                 */
+                connection: "pending" | "active" | "needs_attention";
+                /** @description The latest history import; null before the first */
+                import: {
+                    /** @enum {string} */
+                    status: "running" | "done" | "failed";
+                    /** @enum {string} */
+                    phase: "orders" | "products" | "done";
+                    orders: number;
+                    products: number;
+                    error: string | null;
+                    /** Format: date-time */
+                    startedAt: string;
+                    /** Format: date-time */
+                    finishedAt: string | null;
+                } | null;
+            }[];
         };
         StoreLegal: {
             /**
@@ -8143,9 +8361,15 @@ export interface components {
             status?: "active" | "disabled";
         };
         UpdateOnboarding: {
+            /** @enum {string} */
+            channel?: "shopify" | "woocommerce" | "easyorders" | "other" | "manual";
             skip?: {
                 courier?: boolean;
                 costs?: boolean;
+                team?: boolean;
+                whatsapp?: boolean;
+                payments?: boolean;
+                returns?: boolean;
             };
             dismissed?: boolean;
         };
@@ -14153,6 +14377,56 @@ export interface operations {
             };
         };
     };
+    AttributionController_campaigns: {
+        parameters: {
+            query?: {
+                /** @description Group by campaign, ad set (TikTok: ad group) or ad */
+                level?: "campaign" | "adset" | "ad";
+                /** @description The last 7, 14, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per campaign, ad set or ad: spend against what its orders really brought (true ROAS, cost per delivered order, delivered rate, fake-order share); untagged orders and unassigned spend always shown */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResults"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     AttributionController_backfill: {
         parameters: {
             query?: never;
@@ -18511,6 +18785,92 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreImportController_list: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Each connected store's status and latest history import (running, done or failed with why) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoreImports"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StoreImportController_start: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Import the store's recent history again (after a failed import); audited (connection.import_started) */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartImport"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

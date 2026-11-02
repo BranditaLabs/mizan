@@ -14,12 +14,15 @@ import { useSession } from "@/lib/session";
 type Note = Schemas["NotificationList"]["data"][number];
 
 /** Where a notification leads: its order, the stock screen, or the automation. */
+const PROVIDERS: ReadonlySet<string> = new Set(["shopify", "woocommerce", "bosta", "whatsapp_cloud"]);
+
 function hrefOf(n: Note): string | null {
   if (!n.entity) return null;
   if (n.entity.type === "order") return `/orders/${n.entity.id}`;
   if (n.entity.type === "variant") return "/stock";
   if (n.entity.type === "automation") return "/automations";
   if (n.entity.type === "plan") return "/settings/usage";
+  if (n.entity.type === "connection") return n.source === "connection.sync_completed" ? "/orders" : "/settings/integrations";
   return null;
 }
 
@@ -30,6 +33,7 @@ function hrefOf(n: Note): string | null {
  */
 export function NotificationBell() {
   const t = useTranslations("notifications");
+  const tp = useTranslations("notifications.providers");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -57,6 +61,16 @@ export function NotificationBell() {
   const label = unread ? t("labelUnread", { count: unread }) : t("label");
   const text = (n: Note) => {
     if (n.source === "automation.paused") return t("paused", { name: n.text });
+    if (n.source.startsWith("connection.")) {
+      // "shopify|340|120|auth" (A3): a store's import or a connection's state, told in the reader's language.
+      const [provider = "", a = "", b = "", c = ""] = n.text.split("|");
+      const name = tp(PROVIDERS.has(provider) ? provider : "other");
+      if (n.source === "connection.sync_completed") return t("connection.imported", { name, orders: a, products: b });
+      if (n.source === "connection.sync_failed") return t("connection.importFailed", { name, orders: a });
+      if (n.source === "connection.needs_attention") return t(provider === "bosta" ? "connection.courierRefused" : "connection.storeRefused", { name });
+      if (n.source === "connection.disconnected") return t("connection.disconnected", { name });
+      void c;
+    }
     if (n.source === "plan.limit") {
       // "orders|near|240|300|free": the store's plan limit (E12-1), told in the reader's language.
       const [metric, level, used, limit] = n.text.split("|");

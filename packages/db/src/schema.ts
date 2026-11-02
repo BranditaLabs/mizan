@@ -43,6 +43,8 @@ export interface AdSpend {
   source: Generated<string>;
   updated_at: Generated<Timestamp>;
   updated_by: string | null;
+  adset_name: string | null;
+  ad_name: string | null;
 }
 
 export interface Announcements {

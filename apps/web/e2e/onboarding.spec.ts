@@ -15,7 +15,7 @@ test("owner in Arabic: setup card on home → wizard; steps wait for the store; 
 
   const card = page.getByTestId("setup-card");
   await expect(card).toContainText("كمّل تجهيز ميزان");
-  await expect(card).toContainText("خلصت 0 من 4 خطوات. الجاية: اربط متجر شوبيفاي.");
+  await expect(card).toContainText("خلصت 0 من 4 خطوات. الجاية: اختار بتبيع منين.");
   await card.getByRole("link", { name: "كمّل التجهيز" }).click();
   await expect(page).toHaveURL(/\/ar\/onboarding$/);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("جهّز متجرك");
@@ -23,14 +23,16 @@ test("owner in Arabic: setup card on home → wizard; steps wait for the store; 
 
   // Courier and costs wait for the store.
   const steps = page.getByRole("navigation", { name: "خطوات التجهيز" });
-  await expect(steps.getByRole("button", { name: /اربط شركة الشحن/ })).toContainText("بعد المتجر");
+  await expect(steps.getByRole("button", { name: /اربط شركة الشحن/ })).toContainText("بعد قناة البيع");
   await steps.getByRole("button", { name: /اربط شركة الشحن/ }).click();
   await expect(page.getByText("اربط متجرك الأول.")).toBeVisible();
   await steps.getByRole("button", { name: /أول أوردر/ }).click();
   await expect(page.getByText("مستنيين أول أوردر")).toBeVisible();
 
-  // Store step: a wrong address is caught here; a right one reaches the API (no Shopify app in this stack: its answer in Arabic).
-  await steps.getByRole("button", { name: /اربط متجر شوبيفاي/ }).click();
+  // Store step: the channel first (A1); then a wrong Shopify address is caught here, and a right one
+  // reaches the API (no Shopify app in this stack: its answer in Arabic).
+  await steps.getByRole("button", { name: /اختار بتبيع منين/ }).click();
+  await page.getByRole("radio", { name: /شوبيفاي/ }).click();
   const address = page.getByLabel("عنوان المتجر");
   await address.fill("nileabayas.com");
   await page.getByRole("button", { name: "اربط شوبيفاي" }).click();
@@ -65,12 +67,36 @@ test("skipping steps and hiding the card are remembered", async ({ page }) => {
   await page.goto("/en/sign-in");
   await signInOwner(page, owner, "en");
   const card = page.getByTestId("setup-card");
-  await expect(card).toContainText("2 of 4 steps done. Next: Connect your Shopify store.");
+  await expect(card).toContainText("2 of 4 steps done. Next: Choose where you sell.");
   await card.getByRole("button", { name: "Hide" }).click();
   await expect(card).toBeHidden();
   await page.reload();
   await expect(page.getByTestId("store-name")).toHaveText("Skip Store");
   await expect(page.getByTestId("setup-card")).toBeHidden();
+});
+
+test("no online store yet: selling by hand finishes the channel step and opens the rest (A1)", async ({ page }) => {
+  const owner = await ownerWithStore("Hand Store");
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page.getByTestId("store-name")).toHaveText("Hand Store"); // signed in and home before moving on
+  await page.goto("/en/onboarding");
+  const picker = page.getByRole("radiogroup", { name: "Sales channel" });
+  // A platform Mizan doesn't connect yet is recorded and offers the manual start.
+  await picker.getByRole("radio", { name: /EasyOrders/ }).click();
+  await expect(page.getByText("We noted your platform")).toBeVisible();
+  await page.getByRole("button", { name: "Start with manual orders" }).click();
+  // The channel step is done: setup moves on to the courier, which explains Bosta needs a store.
+  await expect(page.getByTestId("onboarding-progress")).toHaveText("1 of 4 done");
+  const steps = page.getByRole("navigation", { name: "Setup steps" });
+  await steps.getByRole("button", { name: /Choose where you sell/ }).click();
+  await expect(page.getByText("You're selling by hand for now")).toBeVisible();
+  await steps.getByRole("button", { name: /Connect your courier/ }).click();
+  await page.getByRole("button", { name: "Got it, continue" }).click();
+  await expect(page.getByTestId("onboarding-progress")).toHaveText("2 of 4 done");
+  await expect(page.getByRole("link", { name: "Add products" })).toBeVisible();
+  await steps.getByRole("button", { name: /Your first order/ }).click();
+  await expect(page.getByRole("link", { name: "Create an order" })).toHaveAttribute("href", "/en/orders/new");
 });
 
 test("agents never see setup", async ({ page }) => {

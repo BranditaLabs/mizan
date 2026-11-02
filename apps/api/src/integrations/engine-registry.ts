@@ -11,6 +11,7 @@ import { Database } from "../platform/db/database.js";
 import { ConnectionResolver, type ResolvedConnections } from "./connection-resolver.js";
 import { ProductProjector } from "../modules/catalog/product-projector.js";
 import { CourierAccess } from "./courier-access.js";
+import { SyncResults } from "./sync-results.js";
 import { OrderProjector } from "../modules/orders/order-projector.js";
 import { ReconciliationService } from "../modules/orders/reconciliation.service.js";
 
@@ -76,6 +77,7 @@ export class EngineRegistry {
     @Inject(OrderProjector) private readonly orders: OrderProjector,
     @Inject(ProductProjector) private readonly products: ProductProjector,
     @Inject(CourierAccess) private readonly courierAccess: CourierAccess,
+    @Inject(SyncResults) private readonly syncResults: SyncResults,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
     @Inject(ReconciliationService) private readonly reconciliation: ReconciliationService,
   ) {}
@@ -184,8 +186,12 @@ export class EngineRegistry {
           await this.products.project(tenantId, storeConnection, product);
         },
         onAccessChecked: async (provider, result) => {
-          const id = provider === "woocommerce" ? c.woocommerce?.connectionId : c.bosta?.connectionId;
+          const id = provider === "woocommerce" ? c.woocommerce?.connectionId : provider === "shopify" ? c.shopify?.connectionId : c.bosta?.connectionId;
           if (id) await this.courierAccess.checked(tenantId, id, provider, result);
+        },
+        // A2: the history import finished or failed: the team is told (connection.sync_completed / sync_failed).
+        onBackfill: async (progress) => {
+          await this.syncResults.record(tenantId, storeConnection, c.store.provider, progress);
         },
         onAwaitingPayment: async (order, reason) => {
           await this.orders.awaitingPayment(tenantId, storeConnection, order, reason);

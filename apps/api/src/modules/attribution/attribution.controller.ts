@@ -5,10 +5,10 @@ import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
-import { BackfillSourcesSchema, OrderSourcesSchema, RoasQuerySchema, RoasSchema, type RoasQuery } from "./attribution.dto.js";
+import { BackfillSourcesSchema, CampaignQuerySchema, CampaignResultsSchema, OrderSourcesSchema, RoasQuerySchema, RoasSchema, type CampaignQuery, type RoasQuery } from "./attribution.dto.js";
 import { AttributionService } from "./attribution.service.js";
 
-/** M7 ad-to-cash attribution: True ROAS (M7-1), where orders came from (M7-2). */
+/** M7 ad-to-cash attribution: True ROAS (M7-1), where orders came from (M7-2), campaign results (M7-3). */
 @ApiTags("attribution")
 @Controller("attribution")
 export class AttributionController {
@@ -30,6 +30,15 @@ export class AttributionController {
   @ApiProblems(422)
   sources(@Auth() auth: AuthContext, @Query(new ZodPipe(RoasQuerySchema)) q: RoasQuery) {
     return this.attribution.sources(auth, q);
+  }
+
+  @Get("campaigns")
+  @Roles("owner", "admin", "ops_manager", "finance")
+  @ApiQueryZod(CampaignQuerySchema)
+  @ApiJson(200, "CampaignResults", CampaignResultsSchema, "Per campaign, ad set or ad: spend against what its orders really brought (true ROAS, cost per delivered order, delivered rate, fake-order share); untagged orders and unassigned spend always shown")
+  @ApiProblems(422)
+  campaigns(@Auth() auth: AuthContext, @Query(new ZodPipe(CampaignQuerySchema)) q: CampaignQuery) {
+    return this.attribution.campaigns(auth, q);
   }
 
   @Post("sources/backfill")

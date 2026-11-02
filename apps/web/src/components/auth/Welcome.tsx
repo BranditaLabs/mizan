@@ -14,6 +14,7 @@ import { useRouter } from "@/i18n/navigation";
 import { AuthHeading, Step } from "./kit";
 import { ApiError, idempotency, ok, type MyInvitation, type Schemas } from "@/lib/api/client";
 import { isLegalVersionChanged } from "@/lib/legal";
+import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 
 /**
@@ -39,22 +40,23 @@ export function Welcome() {
   // One key per attempt: a retried create (network, 5xx) never makes two stores.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
-  async function open(tenantId: string) {
+  /** Into the store: back where the person was sent from (a Shopify install), else a new store starts its setup. */
+  async function open(tenantId: string, created: boolean) {
     await refreshMe();
     selectStore(tenantId);
-    router.replace("/");
+    router.replace(resume.take() ?? (created ? "/onboarding" : "/"));
   }
 
   const accept = useMutation({
     mutationFn: (inv: MyInvitation) => ok(api.POST("/v1/invitations/{id}/accept", { params: { path: { id: inv.id } } })),
-    onSuccess: (r) => open(r.tenantId),
+    onSuccess: (r) => open(r.tenantId, false),
     onError: () => void refreshMe(), // gone or expired: the list updates
   });
   const create = useMutation({
     mutationFn: () => ok(api.POST("/v1/tenants", { body: {
       name: name.trim(), country, language: locale === "en" ? "en" : "ar", acceptLegal: { terms: LEGAL_VERSIONS.terms, dpa: LEGAL_VERSIONS.dpa },
     }, headers: idempotency(idempotencyKey) })),
-    onSuccess: (tenant) => open(tenant.id),
+    onSuccess: (tenant) => open(tenant.id, true),
     // A refused create (4xx) is final for this key; the next try is a new attempt.
     onError: (err) => { if (err instanceof ApiError && err.status >= 400 && err.status < 500) setIdempotencyKey(crypto.randomUUID()); },
     meta: { toast: false }, // shown in the form

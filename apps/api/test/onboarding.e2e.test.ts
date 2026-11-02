@@ -174,4 +174,69 @@ describe("onboarding", () => {
     fake.add("agent", { uid: "fb-agent", phone: "+201001234821" });
     expect((await http().get("/v1/onboarding").set(as("agent")).expect(403)).body.code).toBe("not_a_member");
   });
+
+  it("A1: a store chooses its sales channel first; selling by hand completes the store step without a connection", async () => {
+    const other = (await http().post("/v1/tenants").set(as("owner")).send({ name: "Nile Manual", country: "EG" }).expect(201)).body.id;
+    const at = { ...as("owner"), "X-Tenant-Id": other };
+    const before = (await http().get("/v1/onboarding").set(at).expect(200)).body;
+    expect(before.steps.store).toMatchObject({ status: "todo", channel: null, provider: null });
+    const later = (await http().patch("/v1/onboarding").set(at).send({ channel: "easyorders" }).expect(200)).body;
+    expect(later.steps.store).toMatchObject({ status: "todo", channel: "easyorders" }); // recorded, not connected
+    const manual = (await http().patch("/v1/onboarding").set(at).send({ channel: "manual" }).expect(200)).body;
+    expect(manual.steps.store).toMatchObject({ status: "done", channel: "manual", connectionId: null });
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { costs: true } }).expect(200)).body.steps.store.channel).toBe("manual"); // kept
+    expect((await http().patch("/v1/onboarding").set(at).send({ channel: "myspace" }).expect(422)).body.code).toBe("validation_failed");
+    const events = await db.tenant(other, (trx) => trx.selectFrom("product_events").select(["name", "data"]).where("name", "=", "onboarding_channel_chosen").orderBy("id").execute());
+    expect(events.map((e) => (e.data as { channel: string }).channel)).toEqual(["easyorders", "manual"]);
+    // The first store is connected to Shopify: its channel reads as that platform.
+    expect((await http().get("/v1/onboarding").set(as("owner")).expect(200)).body.steps.store).toMatchObject({ channel: "shopify", provider: "shopify" });
+  });
+
+  it("A4: growing the store: team, WhatsApp, payment links and returns come from the store itself, each can be skipped", async () => {
+    const other = (await http().post("/v1/tenants").set(as("owner")).send({ name: "Nile Grow", country: "EG" }).expect(201)).body.id;
+    const at = { ...as("owner"), "X-Tenant-Id": other };
+    const steps = async () => (await http().get("/v1/onboarding").set(at).expect(200)).body.steps;
+    expect(await steps()).toMatchObject({
+      team: { status: "todo", members: 1, invited: 0 }, whatsapp: { status: "todo", reason: null }, payments: { status: "todo" }, returns: { status: "todo" },
+    });
+    // Skipped, then brought back; done wins over skipped.
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { whatsapp: true, payments: true } }).expect(200)).body.steps).toMatchObject({ whatsapp: { status: "skipped" }, payments: { status: "skipped" } });
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { payments: false } }).expect(200)).body.steps.payments.status).toBe("todo");
+    await http().post("/v1/members/invite").set(at).send({ phone: "01001112233", role: "agent" }).expect(201);
+    await http().put("/v1/settings/refunds").set(at).send({ approveOver: "500" }).expect(200);
+    await http().patch("/v1/onboarding").set(at).send({ skip: { returns: true } }).expect(200);
+    expect(await steps()).toMatchObject({ team: { status: "done", invited: 1 }, returns: { status: "done" }, whatsapp: { status: "skipped" } });
+    expect((await http().patch("/v1/onboarding").set(at).send({ skip: { courier: true, nope: true } }).expect(422)).body.code).toBe("validation_failed");
+  });
+
+  it("A2: an import the store cuts off ends as failed with why; the store needs attention; the team hears; retry starts a new run", async () => {
+    const id = (await onboarding()).steps.store.connectionId as string;
+    for (let i = 0; i < 5; i++) shop.addOrder({ name: `#R${i}` });
+    expect((await http().post(`/v1/connections/${id}/import`).set(as("owner")).expect(202)).body).toEqual({ connectionId: id, days: 60 });
+    shop.uninstall(); // Shopify refuses Mizan from here on, and the uninstall webhook never came
+    shop.revoked.add("shpat_fake_token"); // this store's token (set by hand above, not issued by the fake's OAuth)
+    await runJobs(6); // refused at once (auth is not retried); the store's scheduled polls keep queuing, so a few rounds only
+
+    const o = await onboarding();
+    expect(o.steps.store.import).toMatchObject({ status: "failed", error: "auth" });
+    const conn = (await http().get("/v1/connections").set(as("owner")).expect(200)).body.data.find((c: { id: string }) => c.id === id);
+    expect(conn.status).toBe("needs_attention");
+    const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("type", "in", ["connection.sync_failed", "connection.needs_attention"]).where("entity_id", "=", id).execute());
+    expect(events.map((e) => e.type).sort()).toEqual(["connection.needs_attention", "connection.sync_failed"]);
+    expect(events.find((e) => e.type === "connection.sync_failed")!.data).toMatchObject({ provider: "shopify", errorKind: "auth" });
+
+    // A3: the app frame's indicator and the bell tell the team, without any automation set up.
+    const imports = (await http().get("/v1/connections/imports").set(as("owner")).expect(200)).body.data;
+    expect(imports).toEqual([expect.objectContaining({ connectionId: id, provider: "shopify", connection: "needs_attention", import: expect.objectContaining({ status: "failed", error: "auth" }) })]);
+    const notes = (await http().get("/v1/notifications").set(as("owner")).expect(200)).body.data;
+    type Note = { source: string; text: string; entity: { id: string } | null };
+    expect(notes.filter((n: Note) => n.entity?.id === id && n.source !== "connection.sync_completed").map((n: Note) => [n.source, n.text]).sort()).toEqual([
+      ["connection.needs_attention", "shopify|key_refused"], ["connection.sync_failed", "shopify|0|0|auth"],
+    ]);
+    expect(notes.some((n: Note) => n.source === "connection.sync_completed" && n.text === "shopify|1|3|")).toBe(true); // the first import, earlier
+    await http().post(`/v1/connections/${id}/import`).set(as("agent")).expect(403); // owners and admins only
+    await http().post("/v1/connections/00000000-0000-4000-8000-000000000000/import").set(as("owner")).expect(404);
+    const audit = (await http().get("/v1/audit-log?action=connection.import_started").set(as("owner")).expect(200)).body.data;
+    expect(audit).toHaveLength(1);
+  }, 90_000);
 });

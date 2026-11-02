@@ -13,19 +13,33 @@ const ALIASES: Record<string, AdPlatform> = {
   other: "other",
 };
 
-const HEADERS: Record<string, "day" | "platform" | "spend" | "currency" | "campaign"> = {
+type Column = "day" | "platform" | "spend" | "currency" | "campaign" | "campaignId" | "adset" | "adsetId" | "ad" | "adId";
+const HEADERS: Record<string, Column> = {
   date: "day", day: "day", "reporting starts": "day", "التاريخ": "day", "اليوم": "day",
   platform: "platform", channel: "platform", source: "platform", "المنصة": "platform",
   spend: "spend", amount: "spend", cost: "spend", "amount spent": "spend", "amount spent (egp)": "spend", "amount spent (usd)": "spend", "المبلغ": "spend", "الصرف": "spend",
   currency: "currency", "العملة": "currency",
-  campaign: "campaign", "campaign name": "campaign", "الحملة": "campaign",
+  campaign: "campaign", "campaign name": "campaign", "الحملة": "campaign", "اسم الحملة": "campaign",
+  // M7-3: down to the ad set (TikTok: ad group) and the ad, as Meta, TikTok, Snap and Google export them.
+  "campaign id": "campaignId", "معرف الحملة": "campaignId",
+  "ad set": "adset", "ad set name": "adset", adset: "adset", "adset name": "adset", "ad group": "adset", "ad group name": "adset", "ad squad name": "adset", "المجموعة الإعلانية": "adset", "مجموعة الإعلانات": "adset",
+  "ad set id": "adsetId", "adset id": "adsetId", "ad group id": "adsetId", "ad squad id": "adsetId",
+  ad: "ad", "ad name": "ad", "الإعلان": "ad", "اسم الإعلان": "ad",
+  "ad id": "adId", "معرف الإعلان": "adId",
 };
 
 export const MAX_ROWS = 5000;
 /** How far back spend can be entered (a little over a year: last year's same month). */
 export const MAX_AGE_DAYS = 400;
 
-export interface SpendRow { line: number; day: string; platform: AdPlatform; campaign: string; spendMinor: bigint; currency: string }
+/**
+ * One line of spend. `campaign`, `adset` and `ad` are the keys (the export's id, else its name; empty
+ * when the file has no such column); the names are kept beside them for the campaign results (M7-3).
+ */
+export interface SpendRow {
+  line: number; day: string; platform: AdPlatform; spendMinor: bigint; currency: string;
+  campaign: string; campaignName: string; adset: string; adsetName: string; ad: string; adName: string;
+}
 export interface CsvProblem { line: number; problem: "header" | "columns" | "day" | "future" | "too_old" | "platform" | "spend" | "currency" | "too_many" | "empty"; value?: string }
 
 /** A platform name as people type it ("Facebook Ads", "TikTok") → our code, or null. */
@@ -69,7 +83,7 @@ export function parseSpendCsv(text: string, opts: { today: string; currency: str
   const problems: CsvProblem[] = [];
   if (!csv) return { rows: [], problems: [{ line: 1, problem: "empty" }] };
   const cols = csv.header.fields.map((h) => HEADERS[headerKey(h)]);
-  const at = (k: string) => cols.indexOf(k as never);
+  const at = (k: Column) => cols.indexOf(k);
   if (at("day") < 0 || at("spend") < 0 || (at("platform") < 0 && !opts.platform)) return { rows: [], problems: [{ line: csv.header.line, problem: "header" }] };
 
   const rows: SpendRow[] = [];
@@ -86,7 +100,13 @@ export function parseSpendCsv(text: string, opts: { today: string; currency: str
     if (!/^[A-Z]{3}$/.test(currency)) { problems.push({ line, problem: "currency", value: currency }); continue; }
     const spendMinor = spendOf(f[at("spend")] ?? "", currency);
     if (spendMinor === null) { problems.push({ line, problem: "spend", value: f[at("spend")] ?? "" }); continue; }
-    rows.push({ line, day, platform, campaign: at("campaign") >= 0 ? (f[at("campaign")] ?? "").slice(0, 200) : "", spendMinor, currency });
+    const cell = (k: Column) => (at(k) >= 0 ? (f[at(k)] ?? "").trim().slice(0, 200) : "");
+    const [campaignName, adsetName, adName] = [cell("campaign"), cell("adset"), cell("ad")];
+    rows.push({
+      line, day, platform, spendMinor, currency,
+      campaign: cell("campaignId") || campaignName, campaignName,
+      adset: cell("adsetId") || adsetName, adsetName, ad: cell("adId") || adName, adName,
+    });
   }
   if (!rows.length && !problems.length) problems.push({ line: csv.header.line + 1, problem: "empty" });
   return { rows, problems };

@@ -142,6 +142,8 @@ erDiagram
 
 ✅ Migration 0024 (E9-3): `ad_spend` primary key adds `platform` (one row per store, day, platform, campaign; `campaign_id` empty for a day's total), `source` (`manual`, `csv`, `api`), `updated_at`, `updated_by`, check `spend_minor >= 0` and platform code, index `ad_spend_day`. `connection_id` is the store the ads sold for until ad accounts connect (M7). Flag `ads_fx_missing` on `order_pnl.flags`.
 
+✅ Migration 0061 (M7-3): `ad_spend.adset_name` and `ad_name` (≤ 200). A CSV export's ids go in `campaign_id`, `adset_id`, `ad_id` (its names when it has no ids) and the names beside them; campaign results match orders' UTM tags against either.
+
 ✅ Migration 0026 (E5-3): `orders.duplicate_status` (`suspected`, `kept`, `merged`) with `duplicate_of` (0001) — both or neither, never itself (`orders_duplicate_shape`) — and `duplicate_reason` (products in both, minutes apart, window; no personal data). Indexes `orders_duplicates` (the tab), `orders_customer_recent` (detection). Settings `tenants.settings.orders.duplicateWindowHours`.
 
 ✅ Migration 0027 (E5-8): `order_reconciliations` (store connection, store day, `store_orders`, `recovered`, `mizan_orders`, generated `gap`, `checked_at`; one per store and day; RLS).

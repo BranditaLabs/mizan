@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "kysely";
 import { trxQueryClient } from "@mizan/db";
 import { MizanEngine, SqlStore } from "@mizan/engine";
-import { fromMinor } from "@mizan/shared";
+import { fromMinor, type SourcePlatform } from "@mizan/shared";
 import { BACKFILL_DAYS } from "../../integrations/shopify-connected.consumer.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
@@ -11,10 +11,13 @@ import { AdSpendService } from "../profit/ads/ad-spend.service.js";
 import { addDays, asDate, storeClock } from "../profit/store-day.js";
 import { MetricsService } from "../reports/metrics.service.js";
 import type { AdPlatform } from "../profit/ads/ad-spend.csv.js";
-import type { OrderSources, Roas, RoasQuery } from "./attribution.dto.js";
-import { multiple, roasSummary } from "./roas.js";
+import type { CampaignQuery, CampaignResults, OrderSources, Roas, RoasQuery } from "./attribution.dto.js";
+import { campaignResults, type Measures } from "./campaigns.js";
+import { multiple, perUnit, roasSummary } from "./roas.js";
 
 const MOVING = ["new", "pending_confirmation", "confirmed", "shipped"];
+/** Campaign results list at most this many rows. */
+const MAX_CAMPAIGN_ROWS = 200;
 const LOST = sql<string>`count(*) filter (where o.status = 'returned' or (o.status = 'cancelled' and o.shipped_at is not null))`;
 
 /**
@@ -131,6 +134,59 @@ export class AttributionService {
           };
         }),
         campaigns: campaigns.map((r) => ({ ...row(r), platform: r.platform as Platform, campaign: r.campaign })),
+      };
+    });
+  }
+
+  /**
+   * Campaign results (M7-3): per campaign, ad set or ad, its spend against what its orders really
+   * brought (the placed-day cohort, as True ROAS). Matching is in campaigns.ts; orders without the
+   * level's tag and spend without the level's key are totalled apart, never hidden.
+   */
+  async campaigns(auth: AuthContext, q: CampaignQuery, now = new Date()): Promise<CampaignResults> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const { base, timezone } = await storeClock(trx, tenantId);
+      const { from, to } = this.metrics.period(q, timezone, now);
+      const spend = await this.adSpend.spendByAd(trx, tenantId, base, from, to);
+      const local = sql`(o.placed_at AT TIME ZONE ${timezone})::date`;
+      const groups = await trx.selectFrom("orders as o")
+        .leftJoin("order_sources as s", "s.order_id", "o.id")
+        .leftJoin("order_pnl as p", (j) => j.onRef("p.order_id", "=", "o.id").on("p.currency", "=", base))
+        .where(sql<boolean>`${local} between ${asDate(from)} and ${asDate(to)}`)
+        .select([
+          sql<string>`coalesce(s.platform, 'unknown')`.as("platform"), "s.utm_id", "s.utm_campaign", "s.utm_term", "s.utm_content",
+          sql<string>`count(*)`.as("orders"),
+          sql<string>`count(*) filter (where o.status = 'delivered')`.as("delivered"),
+          LOST.as("lost"),
+          sql<string>`count(*) filter (where o.status = 'cancelled' and o.shipped_at is null)`.as("cancelled"),
+          sql<string>`coalesce(sum(o.total_minor) filter (where o.currency = ${base}), 0)`.as("placed"),
+          sql<string>`coalesce(sum(p.revenue_minor - p.refund_minor), 0)`.as("real"),
+          sql<string>`coalesce(sum(p.net_minor), 0)`.as("net"),
+        ])
+        .groupBy(sql`1, 2, 3, 4, 5`).execute();
+
+      const result = campaignResults(q.level, spend.rows, groups.map((g) => ({
+        platform: g.platform as SourcePlatform, utmId: g.utm_id, utmCampaign: g.utm_campaign, utmTerm: g.utm_term, utmContent: g.utm_content,
+        m: { orders: BigInt(g.orders), delivered: BigInt(g.delivered), lost: BigInt(g.lost), cancelled: BigInt(g.cancelled), placed: BigInt(g.placed), real: BigInt(g.real), net: BigInt(g.net) },
+      })));
+      const m = (minor: bigint) => fromMinor(minor, base);
+      const outcome = (x: Measures) => ({
+        orders: Number(x.orders), delivered: Number(x.delivered), lost: Number(x.lost), cancelled: Number(x.cancelled), real: m(x.real), net: m(x.net),
+        deliveredRate: percent(x.delivered, x.delivered + x.lost), fakeShare: percent(x.cancelled + x.lost, x.orders),
+      });
+      const total = spend.rows.reduce((a, r) => a + r.minor, 0n);
+      return {
+        from, to, currency: base, level: q.level, spend: m(total), fxMissing: spend.fxMissing,
+        rows: result.rows.slice(0, MAX_CAMPAIGN_ROWS).map((r) => {
+          const per = r.spend === null ? null : perUnit(r.spend, r.m.delivered);
+          return {
+            ...outcome(r.m), platform: r.platform, campaign: r.campaign, adset: r.adset, ad: r.ad,
+            spend: r.spend === null ? null : m(r.spend), trueRoas: r.spend === null ? null : multiple(r.m.real, r.spend), costPerDelivered: per === null ? null : m(per),
+          };
+        }),
+        truncated: result.rows.length > MAX_CAMPAIGN_ROWS,
+        untagged: outcome(result.untagged), unassignedSpend: m(result.unassignedSpend),
       };
     });
   }

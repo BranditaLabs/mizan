@@ -505,7 +505,7 @@
   },
   "onboarding": {
     "title": "Set up your store",
-    "subtitle": "Four steps to see your orders and your real profit in Mizan.",
+    "subtitle": "Choose where you sell, then a few steps to see your orders and your real profit in Mizan.",
     "progress": "{done} of {total} done",
     "stepsLabel": "Setup steps",
     "ready": {
@@ -520,11 +520,11 @@
       "needs_attention": "Needs attention",
       "skipped": "Skipped",
       "waiting": "Waiting",
-      "locked": "After the store"
+      "locked": "After the sales channel"
     },
     "store": {
-      "title": "Connect your Shopify store",
-      "body": "Mizan imports the last 60 days of orders and all your products, then receives every new order by itself.",
+      "title": "Choose where you sell",
+      "body": "Connect your online store and Mizan imports your recent orders and products in the background, then receives every new order by itself. No store yet? Start with orders you type in.",
       "field": "Store address",
       "hint": "Write it as it appears in Shopify, like <n>nile-abayas.myshopify.com</n>.",
       "submit": "Connect Shopify",
@@ -534,7 +534,48 @@
       "invalid": "That address doesn't look like a Shopify store. It ends with .myshopify.com.",
       "scopesChanged": "Mizan needs new Shopify permissions to edit orders (mark them paid and add offers the customer accepted). Approve them once.",
       "approveScopes": "Approve the new permissions",
-      "another": "Connect another Shopify store"
+      "another": "Connect another Shopify store",
+      "pickLabel": "Sales channel",
+      "channels": {
+        "shopify": {
+          "title": "Shopify",
+          "body": "Connect in one step; orders and products sync by themselves."
+        },
+        "woocommerce": {
+          "title": "WooCommerce",
+          "body": "Approve Mizan in your WordPress admin, or paste API keys."
+        },
+        "easyorders": {
+          "title": "EasyOrders",
+          "body": "Coming soon. Start by hand meanwhile."
+        },
+        "other": {
+          "title": "Another platform",
+          "body": "Tell us by picking it; start by hand meanwhile."
+        },
+        "manual": {
+          "title": "No online store yet",
+          "body": "Orders from WhatsApp, Instagram or the phone, typed into Mizan."
+        }
+      },
+      "wooBody": "Mizan asks your WooCommerce store for access. Approve it in your WordPress admin and Mizan checks the connection in the background.",
+      "wooCta": "Connect WooCommerce",
+      "laterTitle": "We noted your platform",
+      "laterBody": "Mizan doesn't connect to it yet, and your choice helps us decide what to build next. Meanwhile, start with orders you type in: everything else in Mizan works the same.",
+      "useManual": "Start with manual orders",
+      "manualTitle": "You're selling by hand for now",
+      "manualBody": "Type in orders from WhatsApp, Instagram or the phone, and Mizan confirms, ships and counts the profit on them. Connect an online store whenever you're ready.",
+      "newOrder": "Create an order",
+      "connectOnline": "Connect an online store",
+      "saveFailed": "Couldn't save your choice. Try again.",
+      "importFailed": "The import stopped",
+      "importWhy": {
+        "auth": "Your store refused Mizan after {orders} orders: the app may have been removed or its access withdrawn. Connect the store again, then retry.",
+        "permission": "Your store didn't give Mizan the access it needs (after {orders} orders). Approve Mizan's permissions in the store, then retry.",
+        "other": "Something went wrong after {orders} orders. Nothing is lost: retry and Mizan picks up the rest."
+      },
+      "retryImport": "Retry the import",
+      "retryFailed": "Couldn't start the import again. Try again."
     },
     "courier": {
       "title": "Connect your courier",
@@ -550,7 +591,9 @@
       "skip": "Skip: I use another courier",
       "skipped": "Skipped. You can connect Bosta any time.",
       "undoSkip": "Connect Bosta now",
-      "needsStore": "Connect your store first."
+      "needsStore": "Connect your store first.",
+      "manualStore": "Bosta connects through an online store for now. Until then, record the courier and tracking number on each order when you ship it.",
+      "skipManual": "Got it, continue"
     },
     "costs": {
       "title": "Enter your product costs",
@@ -566,7 +609,9 @@
       "skip": "Skip for now",
       "skipped": "Skipped. Profit uses a cost of zero until you enter it.",
       "undoSkip": "Enter costs now",
-      "more": "Show more products"
+      "more": "Show more products",
+      "noneManual": "Add your products (one by one or from a CSV file), then enter what each one costs you.",
+      "addProducts": "Add products"
     },
     "firstOrder": {
       "title": "Your first order",
@@ -574,7 +619,9 @@
       "waitingBody": "As soon as an order reaches Mizan it shows here. New Shopify orders arrive within a minute.",
       "done": "Your first order arrived",
       "order": "Order <n>{number}</n> · <m>{total}</m>",
-      "ttfv": "From signing up to your first order: {duration}."
+      "ttfv": "From signing up to your first order: {duration}.",
+      "waitingManual": "Create your first order by hand and follow it from confirmation to profit.",
+      "createOrder": "Create an order"
     },
     "card": {
       "title": "Finish setting up Mizan",
@@ -598,6 +645,47 @@
         "install_failed": "The connection didn't finish. Try again.",
         "missing": "This page needs a link from Shopify. Start the connection from Mizan."
       }
+    },
+    "grow": {
+      "title": "Grow your store",
+      "skip": "Skip for now",
+      "skipped": "Skipped. You can come back to it any time.",
+      "undoSkip": "Bring it back",
+      "team": {
+        "title": "Invite your team",
+        "body": "Confirmation agents, the warehouse and finance each get their own sign-in and see only their work.",
+        "cta": "Invite people",
+        "done": "Your team is on its way.",
+        "count": "{members} {members, plural, one {member} other {members}}, {invited} invited"
+      },
+      "whatsapp": {
+        "title": "Confirm orders on WhatsApp",
+        "body": "Connect your WhatsApp Business number and Mizan confirms orders by itself; risky ones get a deposit link before they ship.",
+        "cta": "Connect WhatsApp",
+        "done": "WhatsApp is connected.",
+        "checking": "Checking your number and templates with WhatsApp…",
+        "attention": "WhatsApp needs attention: open Settings → Confirmation to see why."
+      },
+      "payments": {
+        "title": "Set up payment links",
+        "body": "Choose how customers pay a deposit or the whole order online (cards, wallets, InstaPay), and how much a deposit is.",
+        "cta": "Set up payments",
+        "done": "Payment links are set up."
+      },
+      "returns": {
+        "title": "Set your refund rule",
+        "body": "Decide which refunds need an owner's approval, so the team can refund small amounts right away.",
+        "cta": "Set the rule",
+        "done": "Your refund rule is set."
+      }
+    },
+    "rail": {
+      "setup": "Set up your store",
+      "grow": "Grow your store",
+      "count": "{done} of {total}",
+      "show": "Show the steps",
+      "hide": "Hide the steps",
+      "open": "Open setup"
     }
   },
   "orders": {
@@ -1095,6 +1183,10 @@
         "net": "Held",
         "balance": "Still owed"
       }
+    },
+    "importing": {
+      "title": "Your orders are on their way",
+      "body": "Mizan is importing your store's recent orders in the background: {orders} so far. They appear here as they arrive; you can keep working meanwhile."
     }
   },
   "costs": {
@@ -2257,6 +2349,20 @@
       "stores_over": "Stores passed the plan's limit: {used} of {limit}",
       "users_near": "Team members are at the plan's limit: {used} of {limit}",
       "users_over": "Team members passed the plan's limit: {used} of {limit}"
+    },
+    "connection": {
+      "imported": "{name}: your history is in, {orders} orders and {products} products.",
+      "importFailed": "{name}: the import stopped after {orders} orders. Open setup to retry.",
+      "storeRefused": "{name} refused Mizan: the app may have been removed. Connect the store again.",
+      "courierRefused": "{name} refused the key. Paste a new one in Settings → Integrations.",
+      "disconnected": "{name} was disconnected. New orders don't reach Mizan until you connect it again."
+    },
+    "providers": {
+      "shopify": "Shopify",
+      "woocommerce": "WooCommerce",
+      "bosta": "Bosta",
+      "whatsapp_cloud": "WhatsApp",
+      "other": "A connection"
     }
   },
   "tickets": {
@@ -3743,7 +3849,6 @@
     "pct": "{pct}%",
     "paidOf": "{n} from ads",
     "platformsTitle": "By source",
-    "campaignsTitle": "By campaign",
     "col": {
       "platform": "Source",
       "orders": "Orders",
@@ -3752,16 +3857,11 @@
       "rate": "Delivered rate",
       "real": "Arrived",
       "net": "Net profit",
-      "roas": "True ROAS",
-      "campaign": "Campaign"
+      "roas": "True ROAS"
     },
     "empty": {
       "title": "No orders in these days",
       "body": "Once orders arrive, each one's source shows here."
-    },
-    "noCampaigns": {
-      "title": "No campaign tags yet",
-      "body": "Add UTM tags to your ad links (utm_source, utm_campaign) and each campaign's orders and delivered money show here."
     },
     "backfill": "Read recent orders again",
     "backfillStarted": "Reading the last {days} days of orders again. Their sources fill in over the next minutes.",
@@ -3806,6 +3906,59 @@
       "manual": "Typed by the team",
       "unknown": "Unknown"
     }
+  },
+  "campaigns": {
+    "title": "Campaign results",
+    "subtitle": "What each campaign, ad set and ad spent against what its orders really brought: delivered, paid, and the orders that never paid. Orders are matched by the UTM tags in your ad links; spend comes from your imported ad spend.",
+    "levelLabel": "Group by",
+    "level": {
+      "campaign": "Campaign",
+      "adset": "Ad set",
+      "ad": "Ad"
+    },
+    "tableTitle": {
+      "campaign": "By campaign",
+      "adset": "By ad set",
+      "ad": "By ad"
+    },
+    "col": {
+      "campaign": "Campaign",
+      "adset": "Ad set",
+      "ad": "Ad",
+      "spend": "Spend",
+      "orders": "Orders",
+      "rate": "Delivered rate",
+      "fake": "Never paid",
+      "costPerDelivered": "Cost per delivered",
+      "real": "Arrived",
+      "roas": "True ROAS",
+      "net": "Net profit"
+    },
+    "noSpend": "No spend recorded",
+    "none": "—",
+    "times": "<n>{v}</n>×",
+    "pct": "{pct}%",
+    "untagged": {
+      "campaign": "Orders without a campaign tag",
+      "adset": "Orders without an ad set tag",
+      "ad": "Orders without an ad tag"
+    },
+    "untaggedValue": "<b>{orders}</b> orders",
+    "unassigned": {
+      "campaign": "Spend without a campaign",
+      "adset": "Spend without an ad set",
+      "ad": "Spend without an ad"
+    },
+    "empty": {
+      "title": "No campaigns in these days",
+      "campaign": "Import your ad spend with a campaign column, and tag your ad links with utm_campaign (or utm_id). Each campaign's results show here.",
+      "adset": "Import ad spend with an ad set column (TikTok: ad group), and tag your ad links with utm_term.",
+      "ad": "Import ad spend with an ad column, and tag your ad links with utm_content."
+    },
+    "fxMissing": "Some spend is in a currency without an exchange rate for its day, so it's left out. Add the rate in Settings → Costs.",
+    "truncated": "Showing the 200 biggest rows.",
+    "loading": "Loading campaign results",
+    "loadFailed": "Couldn't load campaign results."
   },
   "orderSettings": {
     "title": "Orders",
@@ -3972,5 +4125,11 @@
     "cancel": "Cancel",
     "sent": "Feedback sent. Thank you!",
     "tooMany": "You've sent a lot of feedback this hour. Try again a little later."
+  },
+  "sync": {
+    "running": "Importing · {orders} orders, {products} products",
+    "done": "Imported {orders} orders",
+    "failed": "Import stopped: retry",
+    "attention": "A store needs attention"
   }
 }

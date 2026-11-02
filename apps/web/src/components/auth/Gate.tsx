@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { usePathname, useRouter } from "@/i18n/navigation";
+import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 import { BootLoader } from "@/components/ui/Loader";
 
@@ -54,12 +55,15 @@ export function RequireUser({ children }: { children: ReactNode }) {
 export function StoreGate({ children }: { children: ReactNode }) {
   const { status, me, meError, stores, storeCheck } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   useSignInRedirect(status === "signed-out");
   const noStore = Boolean(me) && stores.length === 0;
   useEffect(() => {
-    if (noStore) router.replace("/welcome");
-    else if (storeCheck === "mfa_required") router.replace("/security/two-step");
-  }, [noStore, storeCheck, router]);
+    if (!noStore && storeCheck !== "mfa_required") return;
+    // Come back here afterwards (the Shopify install's one-time link must survive the detour).
+    resume.save(pathname + window.location.search);
+    router.replace(noStore ? "/welcome" : "/security/two-step");
+  }, [noStore, storeCheck, router, pathname]);
 
   if (status !== "signed-in") return <Loading />;
   if (!me) return meError ? <Unavailable /> : <Loading />;

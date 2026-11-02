@@ -6,6 +6,8 @@ import { NavLinks } from "./NavLinks";
 import { FeedbackButton } from "./FeedbackButton";
 import { NotificationBell } from "./NotificationBell";
 import { PlanBanner } from "./PlanBanner";
+import { SyncIndicator } from "./SyncIndicator";
+import { SetupChecklist } from "./onboarding/SetupChecklist";
 import { RouteMotion } from "./RouteMotion";
 import { AnnouncementsBanner } from "./AnnouncementsBanner";
 import { ShellCommands } from "./ShellCommands";
@@ -35,6 +37,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
         <div className="mx-6 mb-3 border-b border-rail-line pb-4">
           <StoreSwitcher rail />
         </div>
+        <SetupChecklist />
         {/* Only the menu scrolls, like a native list; the brand and the store stay put. */}
         <div className="mz-scroll min-h-0 flex-1 px-3 pb-4"><NavLinks /></div>
       </aside>
@@ -44,6 +47,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
           <span className="flex-1" />
+          <SyncIndicator />
           <FeedbackButton />
           <NotificationBell />
           <LocaleSwitch />

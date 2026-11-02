@@ -13,13 +13,12 @@ import { PlatformName } from "./PlatformName";
 
 type Sources = Schemas["OrderSources"];
 type PlatformRow = Sources["byPlatform"][number];
-type CampaignRow = Sources["campaigns"][number];
 
 /**
  * Where the period's orders came from (M7-2): each source platform with its orders, how many were
  * delivered, the money that arrived and the profit, and true ROAS where spend is recorded; then
- * the UTM campaigns. Orders with no source are shown as unknown, never hidden. Owners and admins
- * can read the stores' recent orders again to fill in older ones.
+ * campaign results (CampaignResults, M7-3) follow it. Orders with no source are shown as unknown,
+ * never hidden. Owners and admins can read the stores' recent orders again to fill in older ones.
  */
 export function OrderSources({ days }: { days: number }) {
   const t = useTranslations("sources");
@@ -44,14 +43,6 @@ export function OrderSources({ days }: { days: number }) {
     { id: "net", header: t("col.net"), numeric: true, sortValue: (r) => Number(r.net.amount), cell: (r) => <MoneyText money={r.net} /> },
     { id: "roas", header: t("col.roas"), numeric: true, cell: (r) => x(r.trueRoas) },
   ];
-  const campaigns: ReadonlyArray<Column<CampaignRow>> = [
-    { id: "campaign", header: t("col.campaign"), cell: (r) => <span className="flex flex-col"><bdi className="font-medium">{r.campaign}</bdi><span className="text-caption text-text-3"><PlatformName platform={r.platform} /></span></span> },
-    { id: "orders", header: t("col.orders"), numeric: true, sortValue: (r) => r.orders, cell: (r) => <bdi>{r.orders}</bdi> },
-    { id: "delivered", header: t("col.delivered"), numeric: true, sortValue: (r) => r.delivered, cell: (r) => <bdi>{r.delivered}</bdi> },
-    { id: "rate", header: t("col.rate"), numeric: true, cell: (r) => rate(r.deliveredRate) },
-    { id: "real", header: t("col.real"), numeric: true, sortValue: (r) => Number(r.real.amount), cell: (r) => <MoneyText money={r.real} /> },
-    { id: "net", header: t("col.net"), numeric: true, sortValue: (r) => Number(r.net.amount), cell: (r) => <MoneyText money={r.net} /> },
-  ];
 
   const s = q.data;
   return (
@@ -71,15 +62,9 @@ export function OrderSources({ days }: { days: number }) {
       {q.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
       {s && s.orders === 0 ? <div className="mz-card"><EmptyState icon="orders" title={t("empty.title")} body={t("empty.body")} /></div> : null}
       {s && s.orders > 0 ? (
-        <>
-          <Card title={t("platformsTitle")} bodyClassName="p-0">
-            <DataTable label={t("platformsTitle")} columns={platforms} rows={s.byPlatform} rowKey={(r) => r.platform} defaultSort={{ id: "orders", dir: "desc" }} />
-          </Card>
-          <Card title={t("campaignsTitle")} bodyClassName="p-0">
-            <DataTable label={t("campaignsTitle")} columns={campaigns} rows={s.campaigns} rowKey={(r) => `${r.platform}:${r.campaign}`} defaultSort={{ id: "orders", dir: "desc" }}
-              empty={<EmptyState icon="profit" title={t("noCampaigns.title")} body={t("noCampaigns.body")} />} />
-          </Card>
-        </>
+        <Card title={t("platformsTitle")} bodyClassName="p-0">
+          <DataTable label={t("platformsTitle")} columns={platforms} rows={s.byPlatform} rowKey={(r) => r.platform} defaultSort={{ id: "orders", dir: "desc" }} />
+        </Card>
       ) : null}
     </section>
   );
