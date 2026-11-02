@@ -15,10 +15,9 @@ import { SyncResults } from "./sync-results.js";
 import { OrderProjector } from "../modules/orders/order-projector.js";
 import { ReconciliationService } from "../modules/orders/reconciliation.service.js";
 
-/** Builds the engine runtime for a tenant (tests inject fake providers here). */
-/** Runtime for a tenant's engine; also called without connections for one-off provider calls (OAuth code exchange). */
-export type RuntimeFactory = (tenantId: string, connections?: ResolvedConnections) => Runtime;
-export const ENGINE_RUNTIME = Symbol("ENGINE_RUNTIME");
+import { ENGINE_RUNTIME, type RuntimeFactory } from "./engine-runtime.js";
+import { ShopifyTokens } from "./shopify-tokens.js";
+export { ENGINE_RUNTIME, type RuntimeFactory } from "./engine-runtime.js";
 
 /** Listener for engine events (order.ingested, shipment.status …); E2-3 maps them to domain events. */
 export type EngineEventSink = (tenantId: string, event: string, data: Record<string, unknown>) => void;
@@ -80,6 +79,7 @@ export class EngineRegistry {
     @Inject(SyncResults) private readonly syncResults: SyncResults,
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
     @Inject(ReconciliationService) private readonly reconciliation: ReconciliationService,
+    @Inject(ShopifyTokens) private readonly shopifyTokens: ShopifyTokens,
   ) {}
 
   /** M2 depends on the engine and the engine reports back to M2: resolved when first needed. */
@@ -145,6 +145,8 @@ export class EngineRegistry {
         shopify: {
           shop: c.shopify.shop,
           accessToken: c.shopify.accessToken.reveal(),
+          // Expiring offline tokens last an hour: every call asks for the current one.
+          token: (force) => this.shopifyTokens.token(tenantId, c.shopify!.connectionId, force),
           apiVersion: this.config.SHOPIFY_API_VERSION,
           clientSecret: this.config.SHOPIFY_API_SECRET ?? "",
           webhookUrl: new URL(`/webhooks/shopify/${c.shopify.connectionId}`, this.config.PUBLIC_URL).toString(),

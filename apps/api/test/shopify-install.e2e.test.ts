@@ -10,6 +10,9 @@ import { loadConfig, SHOPIFY_DEFAULT_SCOPES } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { ConnectionResolver } from "../src/integrations/connection-resolver.js";
 import { EngineJobRunner } from "../src/integrations/engine-runner.js";
+import { EngineRegistry } from "../src/integrations/engine-registry.js";
+import { ShopifyTokens } from "../src/integrations/shopify-tokens.js";
+import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { EventDispatcher } from "../src/platform/events/dispatcher.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
@@ -143,6 +146,52 @@ describe("Shopify install from inside Mizan", () => {
     expect(orders.map((o) => o.external_id).sort()).toEqual([...shop.orders.keys()].sort());
     const health = await http().get("/v1/admin/integrations/health").set(as("sara")).expect(200);
     expect(health.body.backfill).toMatchObject({ status: "done", orders: shop.orders.size, products: shop.products.size });
+  });
+
+  it("the token expires every hour and is refreshed, without the store reconnecting or an audit line each time", async () => {
+    const runner = app.get(EngineJobRunner);
+    const { shopify } = await app.get(ConnectionResolver).resolve(stores.sara!);
+    const auditBefore = (await http().get("/v1/audit-log").set(as("sara")).expect(200)).body.data.length;
+    const refreshesBefore = shop.refreshes;
+
+    await clock.advance(2 * 3600_000); // two hours: the access token has lapsed
+    const order = shop.addOrder({ name: "#AFTER" });
+    const hook = shop.webhook("orders/create", order);
+    await http().post(`/webhooks/shopify/${shopify!.connectionId}`).set(hook.headers).set("content-type", "application/json").send(hook.body).expect(200);
+    for (let i = 0; i < 3; i++) { await runner.cycle(); await runner.idle(); }
+
+    const names = await db.tenant(stores.sara!, (trx) => trx.selectFrom("orders").select("external_id").execute());
+    expect(names.map((o) => o.external_id)).toContain(order.id);
+    expect(shop.refreshes).toBe(refreshesBefore + 1);
+    // The stored pair moved on: the next refresh uses the new refresh token.
+    const stored = (await app.get(ConnectionResolver).resolve(stores.sara!)).shopify!;
+    expect(stored.accessToken.reveal()).toBe(shop.tokens.at(-1));
+    expect((await http().get("/v1/audit-log").set(as("sara")).expect(200)).body.data.length).toBe(auditBefore);
+  });
+
+  it("a store connected before expiring tokens is moved to them on first use, without reconnecting", async () => {
+    const runner = app.get(EngineJobRunner);
+    const { shopify } = await app.get(ConnectionResolver).resolve(stores.sara!);
+    // What a store connected before Nov 2026 holds: a bare non-expiring token, which Shopify now refuses.
+    const legacy = "shpat_connected_before";
+    shop.nonExpiring.add(legacy);
+    await db.tenant(stores.sara!, async (trx) => {
+      const { secret_ref } = await trx.selectFrom("connections").select("secret_ref").where("id", "=", shopify!.connectionId).executeTakeFirstOrThrow();
+      await app.get(SecretsService).renew(trx, stores.sara!, secret_ref!, JSON.stringify({ accessToken: legacy }));
+    });
+    app.get(ShopifyTokens).forget(stores.sara!, shopify!.connectionId);
+    app.get(EngineRegistry).invalidate(stores.sara!);
+
+    const order = shop.addOrder({ name: "#MIGRATED" });
+    const hook = shop.webhook("orders/create", order);
+    await http().post(`/webhooks/shopify/${shopify!.connectionId}`).set(hook.headers).set("content-type", "application/json").send(hook.body).expect(200);
+    for (let i = 0; i < 3; i++) { await runner.cycle(); await runner.idle(); }
+
+    const ids = await db.tenant(stores.sara!, (trx) => trx.selectFrom("orders").select("external_id").execute());
+    expect(ids.map((o) => o.external_id)).toContain(order.id);
+    expect(shop.migrations).toBe(1);
+    expect(shop.revoked.has(legacy)).toBe(true);
+    expect((await app.get(ConnectionResolver).resolve(stores.sara!)).shopify!.accessToken.reveal()).toBe(shop.tokens.at(-1));
   });
 
   it("only owners and admins can connect a store", async () => {

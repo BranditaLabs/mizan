@@ -43,6 +43,17 @@ export class FakeShopify {
   readonly tokens: string[] = [];
   /** Tokens revoked by uninstall(); requests with them get Shopify's 401. */
   readonly revoked = new Set<string>();
+  /** Tokens issued without `expiring=1`: the Admin API refuses them (403), as Shopify does now. */
+  readonly nonExpiring = new Set<string>();
+  /** Expiring tokens and when they lapse (401 after). */
+  readonly tokenExpiry = new Map<string, number>();
+  readonly refreshTokens = new Map<string, { scopes: string[]; expiresAt: number; retired: boolean; previous?: string }>();
+  /** Seconds an access token lives (Shopify: 3600). */
+  accessTtlS = 3600;
+  refreshes = 0;
+  migrations = 0;
+  /** Scopes of each non-expiring token, carried over when it is migrated. */
+  private readonly migratable = new Map<string, string[]>();
   /** This app's webhook subscriptions on the shop. */
   webhooks = new Map<string, { topic: string; uri: string }>();
   products = new Map<string, Product>();
@@ -195,6 +206,7 @@ export class FakeShopify {
    */
   uninstall() {
     for (const t of this.tokens) this.revoked.add(t);
+    for (const r of this.refreshTokens.values()) r.retired = true;
     this.revoked.add("shpat_test");
     this.webhooks.clear();
     const body = JSON.stringify({ id: 954889, name: "Fake Store", domain: this.host, myshopify_domain: this.host });
@@ -231,25 +243,70 @@ export class FakeShopify {
     if (fault === "500") return json(502, { errors: "Bad gateway" });
     if (fault === "timeout") return hang(init);
     if (fault === "network") throw new TypeError("fetch failed: ECONNRESET");
-    const body = JSON.parse(String(init.body)) as { client_id?: string; client_secret?: string; code?: string };
+    const body = JSON.parse(String(init.body)) as {
+      client_id?: string; client_secret?: string; code?: string; expiring?: string; grant_type?: string; refresh_token?: string;
+      subject_token?: string; requested_token_type?: string;
+    };
     if (body.client_id !== this.clientId || body.client_secret !== this.secret) {
       return json(400, { error: "invalid_client", error_description: "Client credentials are invalid" });
+    }
+    if (body.grant_type === "urn:ietf:params:oauth:grant-type:token-exchange") {
+      // Migration: an active non-expiring token becomes an expiring pair; the old token stops working.
+      const subject = body.subject_token;
+      if (body.expiring !== "1" || body.requested_token_type !== "urn:shopify:params:oauth:token-type:offline-access-token") {
+        return json(400, { error: "invalid_requested_token_type" });
+      }
+      if (!subject || !this.nonExpiring.has(subject) || this.revoked.has(subject)) return json(400, { error: "invalid_subject_token" });
+      this.nonExpiring.delete(subject);
+      this.revoked.add(subject);
+      this.migrations += 1;
+      return json(200, this.issue(this.migratable.get(subject) ?? []));
+    }
+    if (body.grant_type === "refresh_token") {
+      // Rotation: presenting a refresh token retires the one it replaced; a retired or unknown one is terminal (401).
+      const r = body.refresh_token ? this.refreshTokens.get(body.refresh_token) : undefined;
+      if (!r || r.retired || this.clock.now() >= r.expiresAt) return json(401, { error: "invalid_grant", error_description: "The refresh token is invalid or expired" });
+      if (r.previous) this.refreshTokens.get(r.previous)!.retired = true;
+      this.refreshes += 1;
+      return json(200, this.issue(r.scopes, body.refresh_token));
     }
     const grant = body.code ? this.codes.get(body.code) : undefined;
     if (!grant || grant.used) {
       return json(400, { error: "invalid_request", error_description: "The authorization code was not found or was already used" });
     }
     grant.used = true;
+    const granted = grant.scopes.filter((s) => !(s.startsWith("read_") && grant.scopes.includes(`write_${s.slice(5)}`)));
+    if (body.expiring === "1") {
+      // A new grant retires every other refresh token for the app on the store.
+      for (const r of this.refreshTokens.values()) r.retired = true;
+      return json(200, this.issue(granted));
+    }
     const token = `shpat_${randomBytes(16).toString("hex")}`;
     this.tokens.push(token);
-    const granted = grant.scopes.filter((s) => !(s.startsWith("read_") && grant.scopes.includes(`write_${s.slice(5)}`)));
+    this.nonExpiring.add(token);
+    this.migratable.set(token, granted);
     return json(200, { access_token: token, scope: granted.join(",") });
+  }
+
+  /** An expiring offline token and its refresh token (Shopify: 1 hour and 90 days). */
+  private issue(scopes: string[], previous?: string) {
+    const token = `shpat_${randomBytes(16).toString("hex")}`;
+    const refresh = `shprt_${randomBytes(16).toString("hex")}`;
+    this.tokens.push(token);
+    this.tokenExpiry.set(token, this.clock.now() + this.accessTtlS * 1000);
+    this.refreshTokens.set(refresh, { scopes, expiresAt: this.clock.now() + 7_776_000_000, retired: false, ...(previous ? { previous } : {}) });
+    return { access_token: token, scope: scopes.join(","), expires_in: this.accessTtlS, refresh_token: refresh, refresh_token_expires_in: 7_776_000 };
   }
 
   handler = async (url: URL, init: RequestInit): Promise<Response> => {
     if (url.pathname === "/admin/oauth/access_token") return this.oauth(init);
     const token = new Headers(init.headers).get("X-Shopify-Access-Token");
     if (token && this.revoked.has(token)) return json(401, { errors: "[API] Invalid API key or access token (unrecognized login or wrong password)" });
+    if (token && this.nonExpiring.has(token)) {
+      return json(403, { errors: "[API] Non-expiring access tokens are no longer accepted for the Admin API. Start using expiring offline tokens" });
+    }
+    const lapses = token ? this.tokenExpiry.get(token) : undefined;
+    if (lapses !== undefined && this.clock.now() >= lapses) return json(401, { errors: "[API] Invalid API key or access token (unrecognized login or wrong password)" });
     const { query, variables, operationName } = JSON.parse(String(init.body)) as { query: string; variables: Record<string, unknown>; operationName: string };
     const op = operationName;
     const headers = { "X-Shopify-API-Version": this.servedVersion };

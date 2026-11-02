@@ -7,7 +7,8 @@ import { SecretValue } from "../platform/secrets/secret-value.js";
 
 /** What each provider's secret holds (JSON in `secrets`, referenced by connections.secret_ref). */
 export const ProviderSecretSchemas = {
-  shopify: z.object({ accessToken: z.string().min(1) }),
+  // Expiring offline token (Shopify refuses non-expiring ones); ShopifyTokens refreshes it. Epoch ms.
+  shopify: z.object({ accessToken: z.string().min(1), refreshToken: z.string().min(1).optional(), expiresAt: z.number().optional(), refreshExpiresAt: z.number().optional() }),
   bosta: z.object({ apiKey: z.string().min(1), webhookToken: z.string().min(16) }),
   woocommerce: z.object({ consumerKey: z.string().min(1), consumerSecret: z.string().min(1), webhookSecret: z.string().min(16) }),
 } as const;

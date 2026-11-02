@@ -65,15 +65,41 @@ export function shopifyAuthorizeUrl(p: AuthorizeParams): string {
   return url.toString();
 }
 
+/**
+ * An expiring offline token (Shopify refuses non-expiring ones on the Admin API): the access token
+ * lives about an hour, the refresh token about 90 days, and every refresh returns a new pair.
+ * shopify.dev/docs/apps/build/authentication-authorization/access-tokens
+ */
 export interface ShopifyGrant {
   accessToken: string;
   scopes: string[];
+  /** Missing only if Shopify answered with a non-expiring token. */
+  refreshToken?: string;
+  /** Epoch ms. */
+  expiresAt?: number;
+  refreshExpiresAt?: number;
 }
 
 const noDrift: DriftSink = { record() {} };
 
+function readGrant(rt: Runtime, json: unknown, drift: DriftSink): ShopifyGrant {
+  const r = new Resolver(json, { connector: "shopify", entity: "oauth_grant", drift, now: () => rt.clock.now() });
+  const accessToken = r.str("accessToken", ["access_token", "accessToken"], { required: true })!;
+  const scope = r.str("scope", ["scope", "scopes"]) ?? "";
+  const refreshToken = r.str("refreshToken", ["refresh_token", "refreshToken"]);
+  const expiresIn = Number(r.str("expiresIn", ["expires_in", "expiresIn"]));
+  const refreshExpiresIn = Number(r.str("refreshExpiresIn", ["refresh_token_expires_in", "refreshTokenExpiresIn"]));
+  const now = rt.clock.now();
+  return {
+    accessToken, scopes: scope.split(",").map((s) => s.trim()).filter(Boolean),
+    ...(refreshToken ? { refreshToken } : {}),
+    ...(expiresIn > 0 ? { expiresAt: now + expiresIn * 1000 } : {}),
+    ...(refreshExpiresIn > 0 ? { refreshExpiresAt: now + refreshExpiresIn * 1000 } : {}),
+  };
+}
+
 /**
- * Exchange the one-time code for the store's offline access token.
+ * Exchange the one-time code for the store's expiring offline access token.
  * Not idempotent (a code works once), so a timeout is not retried: the merchant installs again.
  */
 export async function exchangeShopifyCode(
@@ -84,12 +110,51 @@ export async function exchangeShopifyCode(
   const res = await send(rt, {
     connector: "shopify", op: "shopify.oauthAccessToken", method: "POST", idempotent: false, maxAttempts: 1, timeoutMs: 10_000,
     url: `https://${p.shop}/admin/oauth/access_token`,
-    body: { client_id: p.clientId, client_secret: p.clientSecret, code: p.code },
+    body: { client_id: p.clientId, client_secret: p.clientSecret, code: p.code, expiring: "1" },
   });
-  const r = new Resolver(res.json, { connector: "shopify", entity: "oauth_grant", drift, now: () => rt.clock.now() });
-  const accessToken = r.str("accessToken", ["access_token", "accessToken"], { required: true })!;
-  const scope = r.str("scope", ["scope", "scopes"]) ?? "";
-  return { accessToken, scopes: scope.split(",").map((s) => s.trim()).filter(Boolean) };
+  return readGrant(rt, res.json, drift);
+}
+
+/**
+ * A new access token (and refresh token) from the stored refresh token, with no merchant present.
+ * Safe to repeat: the refresh token presented stays valid until its successor is used, so a retry
+ * after a timeout just gets another pair. A 401 (`auth`) means the refresh token is spent or the app
+ * was uninstalled: the merchant reconnects.
+ */
+export async function refreshShopifyToken(
+  rt: Runtime,
+  p: { shop: string; clientId: string; clientSecret: string; refreshToken: string },
+  drift: DriftSink = noDrift,
+): Promise<ShopifyGrant> {
+  const res = await send(rt, {
+    connector: "shopify", op: "shopify.oauthRefresh", method: "POST", idempotent: true, maxAttempts: 3, timeoutMs: 10_000,
+    url: `https://${p.shop}/admin/oauth/access_token`,
+    body: { client_id: p.clientId, client_secret: p.clientSecret, grant_type: "refresh_token", refresh_token: p.refreshToken },
+  });
+  return readGrant(rt, res.json, drift);
+}
+
+/**
+ * Swap a stored non-expiring token for an expiring pair, with no merchant present (stores connected
+ * before expiring tokens). Shopify invalidates the old token for the Admin API once this succeeds, so
+ * the caller must store the answer before using it. A 400 (`validation`) means Shopify would not
+ * take the token (already expiring, revoked): keep it and let the store reconnect.
+ */
+export async function migrateShopifyToken(
+  rt: Runtime,
+  p: { shop: string; clientId: string; clientSecret: string; accessToken: string },
+  drift: DriftSink = noDrift,
+): Promise<ShopifyGrant> {
+  const res = await send(rt, {
+    connector: "shopify", op: "shopify.oauthMigrate", method: "POST", idempotent: false, maxAttempts: 1, timeoutMs: 10_000,
+    url: `https://${p.shop}/admin/oauth/access_token`,
+    body: {
+      client_id: p.clientId, client_secret: p.clientSecret, grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+      subject_token: p.accessToken, subject_token_type: "urn:shopify:params:oauth:token-type:offline-access-token",
+      requested_token_type: "urn:shopify:params:oauth:token-type:offline-access-token", expiring: "1",
+    },
+  });
+  return readGrant(rt, res.json, drift);
 }
 
 /**

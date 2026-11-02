@@ -11,6 +11,11 @@ export interface ShopifyCredentials {
   /** "my-store.myshopify.com" */
   shop: string;
   accessToken: string;
+  /**
+   * The current access token, when it expires (expiring offline tokens last an hour). Called before
+   * every request; `force` after Shopify refused the token, to refresh it now. Without it, `accessToken`.
+   */
+  token?: (force?: boolean) => Promise<string>;
   /** Pinned API version. Shopify ships one per quarter; keep this current. */
   apiVersion: string;
   /** App client secret, used to verify webhook HMACs. */
@@ -78,15 +83,18 @@ export class ShopifyGraphql {
 
   async run<T = Record<string, unknown>>(op: GqlOperation, variables: Record<string, unknown>, opts: { idempotent: boolean; maxAttempts?: number }): Promise<T> {
     let i = this.variantInUse.get(op.name) ?? 0;
+    let refreshed = false;
     for (;;) {
       const query = op.variants[i];
       try {
+        const token = this.creds.token ? await this.creds.token(refreshed) : this.creds.accessToken;
         const res = await send(this.rt, {
           connector: "shopify", op: `shopify.${op.name}`, method: "POST", url: this.endpoint,
-          headers: { "X-Shopify-Access-Token": this.creds.accessToken },
+          headers: { "X-Shopify-Access-Token": token },
           body: { query, variables, operationName: op.name },
           idempotent: opts.idempotent, maxAttempts: opts.maxAttempts ?? 6, cost: op.cost, timeoutMs: 20_000,
           inspect: (r) => this.inspect(op, r),
+          classify: (r) => classifyStatus(op, r),
         }, { circuit: this.circuit, bucket: this.bucket });
         this.afterResponse(op, res);
         if (i !== (this.variantInUse.get(op.name) ?? 0)) this.variantInUse.set(op.name, i);
@@ -98,6 +106,11 @@ export class ShopifyGraphql {
             detail: `query variant ${i} rejected (${e.message}); switching to variant ${i + 1}`, at: this.rt.clock.now(),
           });
           i += 1;
+          continue;
+        }
+        // An expired access token (a clock skew, or a refresh another instance did): refresh once and retry.
+        if (e instanceof IntegrationError && e.kind === "auth" && this.creds.token && !refreshed) {
+          refreshed = true;
           continue;
         }
         throw e;
@@ -166,6 +179,15 @@ export class ShopifyGraphql {
       }
     }
   }
+}
+
+/**
+ * A 403 is a missing scope, except Shopify's refusal of a non-expiring token (Nov 2026): that one is
+ * the token, not a permission, so it is `auth` (the store reconnects; ShopifyTokens migrates it first).
+ */
+function classifyStatus(op: GqlOperation, res: HttpResponse): IntegrationError | null {
+  if (res.status !== 403 || !/non-expiring access token/i.test(res.text)) return null;
+  return new IntegrationError({ kind: "auth", connector: "shopify", status: 403, message: `${op.name}: Shopify no longer accepts this non-expiring token` });
 }
 
 /** Throw on userErrors. Messages that signal a concurrent change become `conflict` (re-read and retry). */
