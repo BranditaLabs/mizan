@@ -3231,6 +3231,13 @@
       "cancel": "Cancel",
       "save": "Save and send again",
       "saved": "City saved; the shipment is on its way again"
+    },
+    "shopify": {
+      "reasons": {
+        "key_refused": "Shopify no longer accepts Mizan's access. Connect the store again.",
+        "key_lacks_permission": "Shopify refused a permission Mizan needs. Connect the store again to approve it.",
+        "webhooks_refused": "New orders arrive every few minutes instead of instantly until Shopify approves Mizan's access to customer data. Nothing to do on your side."
+      }
     }
   },
   "auditLog": {
@@ -3279,7 +3286,9 @@
         "needs_attention": "An integration needs attention",
         "sync_updated": "Changed store sync",
         "key_saved": "Saved a key",
-        "secret_rotated": "Rotated a key"
+        "secret_rotated": "Rotated a key",
+        "webhooks_refused": "Shopify refused some webhooks",
+        "webhooks_registered": "Shopify webhooks registered"
       },
       "customer": {
         "pii_viewed": "Viewed a customer's contact"
