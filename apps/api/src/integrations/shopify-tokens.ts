@@ -47,10 +47,12 @@ export class ShopifyTokens {
       const parsed = ProviderSecretSchemas.shopify.safeParse(JSON.parse((await this.secrets.read(trx, tenantId, row.secret_ref)).reveal()));
       if (!parsed.success) throw new NotConnectedError("the shopify credentials are incomplete");
       const current: Stored = parsed.data;
-      const app = { shop: row.external_account, ...this.app() };
+      const creds = this.app();
 
       if (!current.refreshToken) {
-        if (this.unmigratable.has(key)) return current;
+        // Without the app's keys (a server without the Shopify app) there is nothing to swap with.
+        if (!creds || this.unmigratable.has(key)) return current;
+        const app = { shop: row.external_account, ...creds };
         try {
           return await this.keep(trx, tenantId, row.secret_ref, current, await migrateShopifyToken(rt, { ...app, accessToken: current.accessToken }));
         } catch (err) {
@@ -61,7 +63,8 @@ export class ShopifyTokens {
       }
       const replaced = force && seen && current.accessToken !== seen.accessToken;
       if (fresh(current, rt.clock.now()) && (!force || replaced)) return current;
-      return this.keep(trx, tenantId, row.secret_ref, current, await refreshShopifyToken(rt, { ...app, refreshToken: current.refreshToken }));
+      if (!creds) throw new NotConnectedError("the Shopify app credentials are not set on this server");
+      return this.keep(trx, tenantId, row.secret_ref, current, await refreshShopifyToken(rt, { shop: row.external_account, ...creds, refreshToken: current.refreshToken }));
     });
     this.cache.set(key, stored);
     return stored.accessToken;
@@ -83,10 +86,9 @@ export class ShopifyTokens {
     return next;
   }
 
-  private app() {
+  private app(): { clientId: string; clientSecret: string } | null {
     const { SHOPIFY_API_KEY: clientId, SHOPIFY_API_SECRET: clientSecret } = this.config;
-    if (!clientId || !clientSecret) throw new NotConnectedError("the Shopify app credentials are not set on this server");
-    return { clientId, clientSecret };
+    return clientId && clientSecret ? { clientId, clientSecret } : null;
   }
 }
 
