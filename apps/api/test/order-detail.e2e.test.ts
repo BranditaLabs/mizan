@@ -10,6 +10,7 @@ import { Database } from "../src/platform/db/database.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { OrderProjector, REDACTED_ORDER } from "../src/modules/orders/order-projector.js";
 import { FakeVerifier } from "./support/fake-auth.js";
+import { withoutIds } from "./support/without-ids.js";
 
 /** E5-2: GET /v1/orders/{id} (masked) and POST /v1/orders/{id}/reveal (decrypted, audited, scoped). */
 const fake = new FakeVerifier();
@@ -98,8 +99,7 @@ describe("GET /v1/orders/{id}", () => {
     const times = body.events.map((e: { at: string }) => e.at);
     expect([...times].sort().reverse()).toEqual(times);
     // Nothing personal beyond the label, last four digits and the area.
-    // Ids are random and can hold any digits ("101234cb-…"), so they are left out of the search.
-    expect(JSON.stringify(body).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<id>")).not.toMatch(/Mona Adel|Adel|Abbas|Floor|0123|mona@|\+2010|30\.05|31\.33/);
+    expect(withoutIds(body)).not.toMatch(/Mona Adel|Adel|Abbas|Floor|0123|mona@|\+2010|30\.05|31\.33/);
   });
 
   it("is not found outside the caller's scope or store, and for unknown or malformed ids", async () => {

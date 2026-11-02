@@ -10,6 +10,7 @@ import { Database } from "../src/platform/db/database.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { customerLabel, OrderProjector, REDACTED_ORDER } from "../src/modules/orders/order-projector.js";
 import { FakeVerifier } from "./support/fake-auth.js";
+import { withoutIds } from "./support/without-ids.js";
 
 /** E5-1: GET /v1/orders — newest first, counts per status, cursor pages, search without decryption, role scope. */
 const fake = new FakeVerifier();
@@ -70,7 +71,7 @@ describe("GET /v1/orders", () => {
     });
     expect(page.data[1].customer).toEqual({ label: "Karim E.", phoneLast4: "3334" }); // Arabic-Indic digits in the store's phone
     expect(page.data[0]).toMatchObject({ paymentMode: "prepaid", cod: { amount: "0.00" } });
-    expect(JSON.stringify(page)).not.toMatch(/Mona Adel|Adel|Abbas|0123|mona@|\+2010/);
+    expect(withoutIds(page)).not.toMatch(/Mona Adel|Adel|Abbas|0123|mona@|\+2010/);
     expect(page.counts).toEqual({ all: 7, new: 3, pending_confirmation: 0, confirmed: 2, cancelled: 1, shipped: 1, delivered: 0, returned: 0 });
     expect(page.nextCursor).toBeNull();
   });
