@@ -55,7 +55,32 @@
       "body": "Once you connect a Shopify store, we import the last {days} days of orders and all your products.",
       "cta": "Connect your store"
     },
-    "example": "Example: order <num>{number}</num> worth <money>{amount}</money>"
+    "example": "Example: order <num>{number}</num> worth <money>{amount}</money>",
+    "subtitleConnected": "Your orders and your real profit, in one place.",
+    "importing": {
+      "title": "Bringing in your orders",
+      "body": "We're importing the last {days} days of orders and your products from <shop></shop>. You can keep setting up meanwhile."
+    },
+    "importFailed": {
+      "title": "The import stopped",
+      "body": "We couldn't finish bringing in the orders from <shop></shop>. See why and try again.",
+      "cta": "See why"
+    },
+    "waiting": {
+      "title": "No orders yet",
+      "body": "<shop></shop> is connected. New orders show up here by themselves within a minute.",
+      "cta": "Open orders"
+    },
+    "manual": {
+      "title": "No orders yet",
+      "body": "Add the orders you get on WhatsApp, Instagram or the phone, and Mizan works out the profit of each.",
+      "cta": "Add an order"
+    },
+    "team": {
+      "title": "No orders yet",
+      "body": "The store's orders show up here as soon as they arrive.",
+      "cta": "Open orders"
+    }
   },
   "roles": {
     "owner": "Owner",

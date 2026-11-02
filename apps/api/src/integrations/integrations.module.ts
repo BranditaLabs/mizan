@@ -5,6 +5,7 @@ import { CourierAccess } from "./courier-access.js";
 import { SyncResults } from "./sync-results.js";
 import { ENGINE_EVENT_SINK, ENGINE_RUNTIME, EngineRegistry, defaultRuntimeFactory, type EngineEventSink, type RuntimeFactory } from "./engine-registry.js";
 import { EngineJobRunner } from "./engine-runner.js";
+import { ShopifyTokens } from "./shopify-tokens.js";
 import { ShopifyConnectedConsumer } from "./shopify-connected.consumer.js";
 import { ConnectionNoticesConsumer } from "./connection-notices.consumer.js";
 import { WebhookRouter } from "./webhook-router.js";
@@ -30,10 +31,11 @@ export class IntegrationsModule {
         ConnectionLifecycle,
         CourierAccess,
         SyncResults,
+        ShopifyTokens,
         { provide: ENGINE_RUNTIME, useValue: runtime },
         { provide: ENGINE_EVENT_SINK, useValue: sink },
       ],
-      exports: [ConnectionLifecycle, ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
+      exports: [ConnectionLifecycle, ShopifyTokens, ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
     };
   }
 }

@@ -1,0 +1,35 @@
+# Mizan's Shopify app on staging, as code: Shopify CLI pushes these settings to the app (Dev
+# Dashboard) instead of typing them into its forms. Deploy with a service account token (Dev
+# Dashboard; never in the repo or chat), from a folder holding only this file and a package.json:
+#   SHOPIFY_SERVICE_ACCOUNT_TOKEN=<token> npx @shopify/cli@latest app deploy --config staging --allow-updates --no-input --no-build
+# First released this way as version mizan-2 (2 Nov 2026); mizan-3 (3 Nov 2026, Dev Dashboard form) switched to managed install.
+# The client id is public; the client secret stays in Key Vault (shopify-api-secret).
+# Production gets shopify.app.production.toml with its own app and hosts.
+
+client_id = "3aaaa43e0229a13ae9f56c7198d55d94"
+name = "Mizan"
+application_url = "https://api.mizan.brandita.net/v1/connections/shopify/entry"
+embedded = false
+
+[access_scopes]
+# Keep in step with SHOPIFY_DEFAULT_SCOPES (apps/api/src/platform/config.ts).
+# Shopify-managed install: Shopify's own install link shows these scopes and installs the app, then
+# opens application_url; Mizan's OAuth there gets the token without a second approval. With the legacy
+# flow, Shopify's install link fails ("failed_grant_with_invalid_scopes", seen 2 Nov 2026).
+scopes = "read_orders,write_orders,write_order_edits,read_products,write_products,read_inventory,write_inventory,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_customers"
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = ["https://api.mizan.brandita.net/v1/connections/shopify/callback"]
+
+[webhooks]
+api_version = "2026-10"
+
+  # The three mandatory privacy webhooks (docs/07): one endpoint, the topic in the header.
+  # Order, product and app/uninstalled webhooks are registered per store by the engine (E3-2).
+  [[webhooks.subscriptions]]
+  compliance_topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "https://api.mizan.brandita.net/webhooks/shopify/gdpr"
+
+[pos]
+embedded = false

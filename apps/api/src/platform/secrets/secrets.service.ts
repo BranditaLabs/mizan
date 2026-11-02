@@ -47,6 +47,13 @@ export class SecretsService {
   }
 
   /** Replace the value (provider rotated it, or on reconnect) with a new data key. */
+  /** Replace a token the provider renews by itself (Shopify's hourly refresh): nobody changed it, so it is not audited. */
+  async renew(trx: Transaction<DB>, tenantId: string, id: string, value: string): Promise<void> {
+    const sealed = await this.sealValue(tenantId, id, value);
+    const r = await trx.updateTable("secrets").set({ ...sealed, rotated_at: new Date() }).where("id", "=", id).executeTakeFirst();
+    if (r.numUpdatedRows === 0n) throw new ProblemError(404, "secret_not_found", "no such secret");
+  }
+
   async rotate(trx: Transaction<DB>, tenantId: string, id: string, value: string, by: Actor): Promise<void> {
     const sealed = await this.sealValue(tenantId, id, value);
     const r = await trx.updateTable("secrets").set({ ...sealed, rotated_at: new Date() }).where("id", "=", id).executeTakeFirst();

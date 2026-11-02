@@ -10,6 +10,7 @@ import { EventsService } from "../../../platform/events/events.service.js";
 import { ProblemError } from "../../../platform/http/problem.js";
 import { SecretsService } from "../../../platform/secrets/secrets.service.js";
 import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "../../../integrations/engine-registry.js";
+import { ShopifyTokens } from "../../../integrations/shopify-tokens.js";
 import { WebhookRouter } from "../../../integrations/webhook-router.js";
 import { signState, verifyState } from "./oauth-state.js";
 
@@ -24,6 +25,17 @@ export type InstallError =
 export interface ClaimResult {
   connection: { id: string; provider: "shopify"; account: string; status: "active"; scopes: string[] };
   reconnected: boolean;
+}
+
+type StoredGrant = { accessToken: string; refreshToken?: string; expiresAt?: number; refreshExpiresAt?: number };
+
+/** A sealed install holds the grant as JSON; installs sealed before expiring tokens hold the bare token. */
+function sealedGrant(value: string): StoredGrant {
+  try {
+    const g = JSON.parse(value) as StoredGrant;
+    if (typeof g?.accessToken === "string") return g;
+  } catch { /* the bare token */ }
+  return { accessToken: value };
 }
 
 const sha256 = (v: string) => createHash("sha256").update(v).digest();
@@ -57,6 +69,7 @@ export class ShopifyInstallService {
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
     @Inject(WebhookRouter) private readonly router: WebhookRouter,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
+    @Inject(ShopifyTokens) private readonly tokens: ShopifyTokens,
   ) {}
 
   /** Start from inside Mizan: the install is bound to this user and store. */
@@ -106,7 +119,9 @@ export class ShopifyInstallService {
 
     const id = randomUUID();
     const claim = randomBytes(32).toString("base64url");
-    const sealed = await this.secrets.sealDetached(label(id), grant.accessToken);
+    // The whole grant: the access token lasts an hour, the refresh token keeps the store connected.
+    const credential: StoredGrant = { accessToken: grant.accessToken, refreshToken: grant.refreshToken, expiresAt: grant.expiresAt, refreshExpiresAt: grant.refreshExpiresAt };
+    const sealed = await this.secrets.sealDetached(label(id), JSON.stringify(credential));
     await this.db.worker((trx) => trx.insertInto("shopify_installs").values({
       id, shop, scopes: grant.scopes.join(","), ...sealed, claim_hash: sha256(claim),
       bound_tenant: state.tenant ?? null, bound_user: state.user ?? null, expires_at: new Date(Date.now() + INSTALL_TTL_MS),
@@ -135,9 +150,8 @@ export class ShopifyInstallService {
       .where("id", "=", install.id).where("claimed_at", "is", null).returning("id").executeTakeFirst());
     if (!reserved) throw new ProblemError(404, "install_not_found", "install the app from Shopify again");
 
-    const token = await this.secrets.openDetached(label(install.id), install);
+    const credential = JSON.stringify(sealedGrant((await this.secrets.openDetached(label(install.id), install)).reveal()));
     const scopes = install.scopes.split(",").filter(Boolean);
-    const credential = JSON.stringify({ accessToken: token.reveal() });
     const by = auditActor(auth);
     const result = await this.db.tenant(tenantId, async (trx) => {
       await this.otherStore(trx, install.shop);
@@ -166,6 +180,7 @@ export class ShopifyInstallService {
 
     this.registry.invalidate(tenantId);
     this.router.forget(result.id);
+    this.tokens.forget(tenantId, result.id);
     return { connection: { id: result.id, provider: "shopify", account: install.shop, status: "active", scopes }, reconnected: result.reconnected };
   }
 

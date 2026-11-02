@@ -25,7 +25,7 @@ export {
   afterUnknownSend, parseWhatsAppWebhook, signMeta, STATUS_RANK, verifyChallenge, verifyMetaSignature,
   type DeliveryStatus, type InboundKind, type InboundMessage, type ParsedWebhook, type StatusUpdate,
 } from "./connectors/whatsapp/webhooks.js";
-export { exchangeShopifyCode, missingScopes, normalizeShop, shopifyAuthorizeUrl, signShopifyQuery, verifyShopifyQuery, type ShopifyGrant } from "./connectors/shopify/oauth.js";
+export { exchangeShopifyCode, migrateShopifyToken, missingScopes, refreshShopifyToken, normalizeShop, shopifyAuthorizeUrl, signShopifyQuery, verifyShopifyQuery, type ShopifyGrant } from "./connectors/shopify/oauth.js";
 export { verifyShopifyHmac, readShopifyHeaders, signShopify, type ShopifyWebhookMeta } from "./connectors/shopify/webhooks.js";
 export { parseComplianceWebhook, COMPLIANCE_TOPICS, type ComplianceRequest, type ComplianceTopic } from "./connectors/shopify/compliance.js";
 export { DriftMonitor, type DriftSink, type DriftEvent } from "./adapt/drift.js";
