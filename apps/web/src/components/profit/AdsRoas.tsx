@@ -12,6 +12,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { CampaignResults } from "./CampaignResults";
 import { OrderSources } from "./OrderSources";
 
 type Roas = Schemas["Roas"];
@@ -137,6 +138,7 @@ export function AdsRoas() {
         </>
       ) : null}
       {r ? <OrderSources days={days} /> : null}
+      {r ? <CampaignResults days={days} /> : null}
     </>,
   );
 }

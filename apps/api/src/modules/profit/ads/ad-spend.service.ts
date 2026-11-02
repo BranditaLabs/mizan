@@ -10,7 +10,11 @@ import { ProblemError } from "../../../platform/http/problem.js";
 import { FxService } from "../fx/fx.service.js";
 import { ProfitService } from "../profit.service.js";
 import { addDays, asDate, dayText, localDay, storeClock } from "../store-day.js";
-import { MAX_AGE_DAYS, parseSpendCsv, type AdPlatform } from "./ad-spend.csv.js";
+import { MAX_AGE_DAYS, parseSpendCsv, type AdPlatform, type SpendRow } from "./ad-spend.csv.js";
+
+/** A row to store: a day's spend on one platform, campaign, ad set and ad (empty keys for a day's total). */
+type Spend = Omit<SpendRow, "line">;
+const DAY_TOTAL = { campaign: "", campaignName: "", adset: "", adsetName: "", ad: "", adName: "" } as const;
 
 /** The longest range one list returns. */
 const MAX_RANGE_DAYS = 92;
@@ -91,7 +95,7 @@ export class AdSpendService {
       const currency = body.currency ?? base;
       let minor: bigint;
       try { minor = toMinor(body.amount, currency); } catch { throw new ProblemError(422, "validation_failed", `too many decimals for ${currency}`, [{ path: "amount", code: "decimals" }]); }
-      const before = await this.replace(trx, tenantId, connectionId, [{ day: body.day, platform: body.platform, campaign: "", spendMinor: minor, currency }], "manual", auth.user.id, now);
+      const before = await this.replace(trx, tenantId, connectionId, [{ day: body.day, platform: body.platform, ...DAY_TOTAL, spendMinor: minor, currency }], "manual", auth.user.id, now);
       await this.audit.record(trx, {
         action: "ad_spend.changed", tenantId, ...auditActor(auth), entity: { type: "connection", id: connectionId },
         before: { day: body.day, platform: body.platform, spend: before }, after: { day: body.day, platform: body.platform, spend: fromMinor(minor, currency) },
@@ -128,15 +132,15 @@ export class AdSpendService {
         throw new ProblemError(422, "csv_invalid", `${problems.length} line(s) could not be read; nothing was saved`,
           problems.slice(0, 50).map((p) => ({ path: `line:${p.line}`, code: p.problem, ...(p.value !== undefined ? { message: p.value.slice(0, 60) } : {}) })));
       }
-      const merged = new Map<string, { day: string; platform: AdPlatform; campaign: string; spendMinor: bigint; currency: string }>();
-      for (const r of rows) {
-        const k = `${r.day}|${r.platform}|${r.campaign}|${r.currency}`;
+      const merged = new Map<string, Spend>();
+      for (const { line: _line, ...r } of rows) {
+        const k = `${r.day}|${r.platform}|${r.campaign}|${r.adset}|${r.ad}|${r.currency}`;
         const m = merged.get(k);
-        if (m) m.spendMinor += r.spendMinor; else merged.set(k, { day: r.day, platform: r.platform, campaign: r.campaign, spendMinor: r.spendMinor, currency: r.currency });
+        if (m) m.spendMinor += r.spendMinor; else merged.set(k, { ...r });
       }
       const sameCampaign = new Set<string>();
       for (const m of merged.values()) {
-        const k = `${m.day}|${m.platform}|${m.campaign}`;
+        const k = `${m.day}|${m.platform}|${m.campaign}|${m.adset}|${m.ad}`;
         if (sameCampaign.has(k)) throw new ProblemError(422, "csv_invalid", "one day, platform and campaign has two currencies", [{ path: `day:${m.day}`, code: "currency" }]);
         sameCampaign.add(k);
       }
@@ -149,7 +153,7 @@ export class AdSpendService {
   }
 
   /** Replace the (day, platform) pairs given with these rows; returns what one pair had before (for the audit). */
-  private async replace(trx: Transaction<DB>, tenantId: string, connectionId: string, rows: Array<{ day: string; platform: AdPlatform; campaign: string; spendMinor: bigint; currency: string }>, source: "manual" | "csv", userId: string, now: Date) {
+  private async replace(trx: Transaction<DB>, tenantId: string, connectionId: string, rows: Spend[], source: "manual" | "csv", userId: string, now: Date) {
     const pairs = [...new Map(rows.map((r) => [`${r.day}|${r.platform}`, r])).values()];
     let before: Money[] | null = null;
     for (const p of pairs) {
@@ -159,7 +163,8 @@ export class AdSpendService {
     }
     for (let i = 0; i < rows.length; i += 500) {
       await trx.insertInto("ad_spend").values(rows.slice(i, i + 500).map((r) => ({
-        tenant_id: tenantId, connection_id: connectionId, day: asDate(r.day), platform: r.platform, campaign_id: r.campaign, campaign_name: r.campaign || null,
+        tenant_id: tenantId, connection_id: connectionId, day: asDate(r.day), platform: r.platform,
+        campaign_id: r.campaign, campaign_name: r.campaignName || null, adset_id: r.adset, adset_name: r.adsetName || null, ad_id: r.ad, ad_name: r.adName || null,
         spend_minor: r.spendMinor.toString(), currency: r.currency, source, updated_at: now, updated_by: userId,
       }))).execute();
     }
@@ -208,6 +213,33 @@ export class AdSpendService {
       byPlatform.set(r.platform, (byPlatform.get(r.platform) ?? 0n) + minor);
     }
     return { total, byDay, byPlatform, fxMissing };
+  }
+
+  /**
+   * Spend for store days `from`…`to` per platform, campaign, ad set and ad, in the base currency (each
+   * day at its own rate), with the latest names, for campaign results (M7-3). Empty keys are a day's
+   * total or a file without that column. A currency without a rate is left out and flagged.
+   */
+  async spendByAd(trx: Transaction<DB>, tenantId: string, base: string, from: string, to: string) {
+    const rows = await trx.selectFrom("ad_spend")
+      .select([dayText("day").as("day"), "platform", "currency", "campaign_id", "adset_id", "ad_id",
+        sql<string | null>`max(campaign_name)`.as("campaign_name"), sql<string | null>`max(adset_name)`.as("adset_name"), sql<string | null>`max(ad_name)`.as("ad_name"),
+        sql<string>`sum(spend_minor)`.as("minor")])
+      .where("day", ">=", asDate(from)).where("day", "<=", asDate(to))
+      .groupBy(["day", "platform", "currency", "campaign_id", "adset_id", "ad_id"]).execute();
+    const byAd = new Map<string, { platform: AdPlatform; campaign: string; campaignName: string; adset: string; adsetName: string; ad: string; adName: string; minor: bigint }>();
+    let fxMissing = false;
+    for (const r of rows) {
+      const { minor, fxMissing: missing } = await this.toBase(trx, tenantId, base, r.day, new Map([[r.currency.trim(), BigInt(r.minor)]]));
+      fxMissing ||= missing;
+      const k = `${r.platform}|${r.campaign_id}|${r.adset_id}|${r.ad_id}`;
+      const e = byAd.get(k) ?? {
+        platform: r.platform as AdPlatform, campaign: r.campaign_id, campaignName: r.campaign_name ?? "", adset: r.adset_id, adsetName: r.adset_name ?? "", ad: r.ad_id, adName: r.ad_name ?? "", minor: 0n,
+      };
+      e.minor += minor;
+      byAd.set(k, e);
+    }
+    return { rows: [...byAd.values()], fxMissing };
   }
 
   private async toBase(trx: Transaction<DB>, tenantId: string, base: string, day: string, byCurrency: Map<string, bigint>) {

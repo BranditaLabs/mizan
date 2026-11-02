@@ -1521,6 +1521,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/attribution/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttributionController_campaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/attribution/sources/backfill": {
         parameters: {
             query?: never;
@@ -3290,6 +3306,102 @@ export interface components {
                 attempts: number;
                 unreachable: boolean;
             } | null;
+        };
+        CampaignResults: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+            currency: string;
+            /** @enum {string} */
+            level: "campaign" | "adset" | "ad";
+            /** @description All ad spend in the period */
+            spend: {
+                amount: string;
+                currency: string;
+            };
+            /** @description Some spend is in a currency without a rate that day: left out */
+            fxMissing: boolean;
+            /** @description Spend first (most first), then tagged orders without spend (most orders first); at most 200 */
+            rows: {
+                orders: number;
+                delivered: number;
+                /** @description Refused at the door or returned */
+                lost: number;
+                /** @description Cancelled before shipping (unreachable, declined at confirmation, fake) */
+                cancelled: number;
+                /** @description Paid, or cash delivered, less refunds */
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders, ad costs included */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Delivered ÷ (delivered + lost), percent */
+                deliveredRate: string | null;
+                /** @description Cancelled before shipping, refused or returned ÷ orders, percent: orders the ad paid for that never paid */
+                fakeShare: string | null;
+                platform: ("meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown") | ("meta" | "tiktok" | "google" | "snapchat" | "other");
+                campaign: {
+                    /** @description The id from the spend export, else the name or the UTM tag */
+                    key: string;
+                    name: string;
+                };
+                adset: {
+                    /** @description The id from the spend export, else the name or the UTM tag */
+                    key: string;
+                    name: string;
+                } | null;
+                ad: {
+                    /** @description The id from the spend export, else the name or the UTM tag */
+                    key: string;
+                    name: string;
+                } | null;
+                /** @description Recorded spend; null for orders tagged with a campaign that has no spend recorded */
+                spend: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description Real money ÷ spend */
+                trueRoas: string | null;
+                costPerDelivered: {
+                    amount: string;
+                    currency: string;
+                } | null;
+            }[];
+            /** @description More than 200 rows: the smallest are left out */
+            truncated: boolean;
+            /** @description Orders without this level's UTM tag (organic, direct, unknown, or an ad link without it): always shown */
+            untagged: {
+                orders: number;
+                delivered: number;
+                /** @description Refused at the door or returned */
+                lost: number;
+                /** @description Cancelled before shipping (unreachable, declined at confirmation, fake) */
+                cancelled: number;
+                /** @description Paid, or cash delivered, less refunds */
+                real: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Net profit of these orders, ad costs included */
+                net: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description Delivered ÷ (delivered + lost), percent */
+                deliveredRate: string | null;
+                /** @description Cancelled before shipping, refused or returned ÷ orders, percent: orders the ad paid for that never paid */
+                fakeShare: string | null;
+            };
+            /** @description Spend recorded without this level (a day's total, or an export without ad sets or ads) */
+            unassignedSpend: {
+                amount: string;
+                currency: string;
+            };
         };
         CatalogVariant: {
             /** Format: uuid */
@@ -14131,6 +14243,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderSources"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AttributionController_campaigns: {
+        parameters: {
+            query?: {
+                /** @description Group by campaign, ad set (TikTok: ad group) or ad */
+                level?: "campaign" | "adset" | "ad";
+                /** @description The last 7, 14, 30 or 90 store days, today included (default 30) */
+                days?: number;
+                /** @description Or a range of store days (with `to`, at most 366) */
+                from?: string;
+                to?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Per campaign, ad set or ad: spend against what its orders really brought (true ROAS, cost per delivered order, delivered rate, fake-order share); untagged orders and unassigned spend always shown */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignResults"];
                 };
             };
             /** @description Understood but refused (a business rule) */

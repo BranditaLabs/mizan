@@ -3743,7 +3743,6 @@
     "pct": "{pct}%",
     "paidOf": "{n} from ads",
     "platformsTitle": "By source",
-    "campaignsTitle": "By campaign",
     "col": {
       "platform": "Source",
       "orders": "Orders",
@@ -3752,16 +3751,11 @@
       "rate": "Delivered rate",
       "real": "Arrived",
       "net": "Net profit",
-      "roas": "True ROAS",
-      "campaign": "Campaign"
+      "roas": "True ROAS"
     },
     "empty": {
       "title": "No orders in these days",
       "body": "Once orders arrive, each one's source shows here."
-    },
-    "noCampaigns": {
-      "title": "No campaign tags yet",
-      "body": "Add UTM tags to your ad links (utm_source, utm_campaign) and each campaign's orders and delivered money show here."
     },
     "backfill": "Read recent orders again",
     "backfillStarted": "Reading the last {days} days of orders again. Their sources fill in over the next minutes.",
@@ -3806,6 +3800,59 @@
       "manual": "Typed by the team",
       "unknown": "Unknown"
     }
+  },
+  "campaigns": {
+    "title": "Campaign results",
+    "subtitle": "What each campaign, ad set and ad spent against what its orders really brought: delivered, paid, and the orders that never paid. Orders are matched by the UTM tags in your ad links; spend comes from your imported ad spend.",
+    "levelLabel": "Group by",
+    "level": {
+      "campaign": "Campaign",
+      "adset": "Ad set",
+      "ad": "Ad"
+    },
+    "tableTitle": {
+      "campaign": "By campaign",
+      "adset": "By ad set",
+      "ad": "By ad"
+    },
+    "col": {
+      "campaign": "Campaign",
+      "adset": "Ad set",
+      "ad": "Ad",
+      "spend": "Spend",
+      "orders": "Orders",
+      "rate": "Delivered rate",
+      "fake": "Never paid",
+      "costPerDelivered": "Cost per delivered",
+      "real": "Arrived",
+      "roas": "True ROAS",
+      "net": "Net profit"
+    },
+    "noSpend": "No spend recorded",
+    "none": "—",
+    "times": "<n>{v}</n>×",
+    "pct": "{pct}%",
+    "untagged": {
+      "campaign": "Orders without a campaign tag",
+      "adset": "Orders without an ad set tag",
+      "ad": "Orders without an ad tag"
+    },
+    "untaggedValue": "<b>{orders}</b> orders",
+    "unassigned": {
+      "campaign": "Spend without a campaign",
+      "adset": "Spend without an ad set",
+      "ad": "Spend without an ad"
+    },
+    "empty": {
+      "title": "No campaigns in these days",
+      "campaign": "Import your ad spend with a campaign column, and tag your ad links with utm_campaign (or utm_id). Each campaign's results show here.",
+      "adset": "Import ad spend with an ad set column (TikTok: ad group), and tag your ad links with utm_term.",
+      "ad": "Import ad spend with an ad column, and tag your ad links with utm_content."
+    },
+    "fxMissing": "Some spend is in a currency without an exchange rate for its day, so it's left out. Add the rate in Settings → Costs.",
+    "truncated": "Showing the 200 biggest rows.",
+    "loading": "Loading campaign results",
+    "loadFailed": "Couldn't load campaign results."
   },
   "orderSettings": {
     "title": "Orders",
