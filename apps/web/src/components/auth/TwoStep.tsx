@@ -45,7 +45,9 @@ export function TwoStep() {
   }, [enrolled, router]);
 
   if (!user || !auth) return null;
-  const hasPassword = user.providerData.some((p) => p.providerId === "password");
+  // Firebase enrols an SMS second step on any account with an email: password, Google (already
+  // verified, so it goes straight to the phone) or company SSO. Only phone-number accounts have none.
+  const hasEmail = Boolean(user.email);
 
   const signOutAndBack = (enrolledNow: boolean) => signOut(enrolledNow ? "/sign-in?enrolled=1" : "/sign-in");
 
@@ -65,7 +67,7 @@ export function TwoStep() {
     <Alert tone="danger">{error === "recentLogin" ? t("recentLogin") : te(`errors.${error}`)}</Alert>
   ) : null;
 
-  if (!hasPassword) {
+  if (!hasEmail) {
     return (
       <Step>
         <AuthHeading title={t("title")} />
