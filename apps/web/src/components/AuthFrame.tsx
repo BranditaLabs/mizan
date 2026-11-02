@@ -53,9 +53,9 @@ export function AuthSplit({ theme, children }: { theme: Theme; children: ReactNo
           <main id="main" className="grid flex-1 place-items-center py-[clamp(10px,3vh,40px)]">
             <div className="g g-lift rise auth-card flex w-full max-w-[440px] flex-col gap-(--_gap) px-[clamp(20px,4vw,36px)] py-[clamp(20px,3.6vh,36px)]">{children}</div>
           </main>
-          <footer className="faint flex flex-wrap justify-between gap-3 text-caption [@media(max-height:680px)]:hidden">
-            <span>{t("footer.rights")}</span>
-            <nav aria-label={t("footer.legal")} className="flex gap-4">
+          <footer className="faint flex items-center justify-between gap-3 text-caption [@media(max-height:680px)]:hidden">
+            <span className="min-w-0 truncate">{t("footer.rights")}</span>
+            <nav aria-label={t("footer.legal")} className="flex shrink-0 gap-3">
               {(["privacy", "terms", "dpa"] as const).map((d) => (
                 <Link key={d} href={legalPath(d)} className="hover:underline hover:underline-offset-2">{t(`footer.${d}`)}</Link>
               ))}

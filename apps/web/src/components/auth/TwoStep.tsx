@@ -131,14 +131,14 @@ export function TwoStep() {
       <StepCount at={2} />
       <h2 className="text-heading-sm">{t("phone.title")}</h2>
       {verificationId ? (
-        <form onSubmit={onEnable} className="flex flex-col gap-4" noValidate>
+        <form onSubmit={onEnable} className="flex flex-col gap-(--_gap)" noValidate>
           <CodeField label={te("code")} hint={te.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> })} value={code} onChange={setCode} />
           {errorAlert}
           <Button type="submit" size="lg" busy={busy}>{t("phone.enable")}</Button>
           <Button variant="ghost" onClick={() => { setVerificationId(null); setError(null); }}>{te("changeNumber")}</Button>
         </form>
       ) : (
-        <form onSubmit={onSend} className="flex flex-col gap-4" noValidate>
+        <form onSubmit={onSend} className="flex flex-col gap-(--_gap)" noValidate>
           <Field label={te("phone")} hint={te.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} type="tel" ltr autoComplete="tel"
             inputMode="tel" required name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           {errorAlert}

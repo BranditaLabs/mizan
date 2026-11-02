@@ -73,14 +73,14 @@ export function Welcome() {
 
   return (
     <Step>
-      <AuthHeading title={t("title")} body={t("subtitle")} />
+      <AuthHeading title={t("title")} body={t("subtitle")} brief />
 
       {me.invitations.length > 0 ? (
-        <section className="rounded-lg bg-surface-sunk p-5" aria-labelledby="invites">
+        <section className="rounded-lg bg-surface-sunk p-[clamp(12px,2vh,20px)]" aria-labelledby="invites">
           <h2 id="invites" className="text-heading-sm">{t("invitations.title")}</h2>
-          <ul className="mt-3 flex flex-col divide-y divide-line">
+          <ul className="mt-2 flex max-h-[24vh] flex-col divide-y divide-line overflow-y-auto">
             {me.invitations.map((inv) => (
-              <li key={inv.id} className="flex items-center gap-3 py-3">
+              <li key={inv.id} className="flex items-center gap-3 py-[clamp(6px,1.2vh,12px)]">
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-label">{inv.tenantName}</p>
                   <p className="text-caption text-text-3">
@@ -98,16 +98,16 @@ export function Welcome() {
 
       <section aria-labelledby="create">
         <h2 id="create" className="text-heading-sm">{t("create.title")}</h2>
-        <form onSubmit={onCreate} className="mt-4 flex flex-col gap-4">
-          <Field label={t("create.name")} className="[&_input]:h-11" required minLength={2} maxLength={80} name="store" autoComplete="organization"
+        <form onSubmit={onCreate} className="mt-(--_gap) flex flex-col gap-(--_gap)">
+          <Field label={t("create.name")} required minLength={2} maxLength={80} name="store" autoComplete="organization"
             value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor={countryId} className="text-label text-text">{t("create.country")}</label>
             <select id={countryId} value={country} onChange={(e) => setCountry(e.target.value as typeof country)} aria-describedby={`${countryId}-hint`}
-              className="mz-select h-11">
+              className="mz-select">
               {COUNTRY_CODES.map((c) => <option key={c} value={c}>{tc(c)}</option>)}
             </select>
-            <p id={`${countryId}-hint`} className="text-caption text-text-3">{t("create.countryHint")}</p>
+            <p id={`${countryId}-hint`} className="text-caption text-text-3 [@media(max-height:760px)]:hidden">{t("create.countryHint")}</p>
           </div>
           <Checkbox required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="accept-legal"
             label={<span className="text-body-sm">{tl.rich("agree", { terms: (c) => <LegalLink doc="terms">{c}</LegalLink>, dpa: (c) => <LegalLink doc="dpa">{c}</LegalLink> })}</span>} />

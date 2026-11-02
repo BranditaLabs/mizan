@@ -62,7 +62,7 @@ export function BrandPanel() {
           <li key={p.key} className="g-2 auth-point flex flex-col gap-2.5 p-4">
             <Icon name={p.icon} size={20} />
             <span className="text-body font-semibold leading-snug">{t(`points.${p.key}.title`)}</span>
-            <span className="muted text-body-sm leading-normal">{t(`points.${p.key}.body`)}</span>
+            <span className="muted text-body-sm leading-normal [@media(max-height:860px)]:hidden [@media(max-width:1199px)]:hidden">{t(`points.${p.key}.body`)}</span>
           </li>
         ))}
       </ul>
