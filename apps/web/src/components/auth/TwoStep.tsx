@@ -45,7 +45,9 @@ export function TwoStep() {
   }, [enrolled, router]);
 
   if (!user || !auth) return null;
-  const hasPassword = user.providerData.some((p) => p.providerId === "password");
+  // Firebase enrols an SMS second step on any account with an email: password, Google (already
+  // verified, so it goes straight to the phone) or company SSO. Only phone-number accounts have none.
+  const hasEmail = Boolean(user.email);
 
   const signOutAndBack = (enrolledNow: boolean) => signOut(enrolledNow ? "/sign-in?enrolled=1" : "/sign-in");
 
@@ -65,7 +67,7 @@ export function TwoStep() {
     <Alert tone="danger">{error === "recentLogin" ? t("recentLogin") : te(`errors.${error}`)}</Alert>
   ) : null;
 
-  if (!hasPassword) {
+  if (!hasEmail) {
     return (
       <Step>
         <AuthHeading title={t("title")} />
@@ -131,14 +133,14 @@ export function TwoStep() {
       <StepCount at={2} />
       <h2 className="text-heading-sm">{t("phone.title")}</h2>
       {verificationId ? (
-        <form onSubmit={onEnable} className="flex flex-col gap-4" noValidate>
+        <form onSubmit={onEnable} className="flex flex-col gap-(--_gap)" noValidate>
           <CodeField label={te("code")} hint={te.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> })} value={code} onChange={setCode} />
           {errorAlert}
           <Button type="submit" size="lg" busy={busy}>{t("phone.enable")}</Button>
           <Button variant="ghost" onClick={() => { setVerificationId(null); setError(null); }}>{te("changeNumber")}</Button>
         </form>
       ) : (
-        <form onSubmit={onSend} className="flex flex-col gap-4" noValidate>
+        <form onSubmit={onSend} className="flex flex-col gap-(--_gap)" noValidate>
           <Field label={te("phone")} hint={te.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} type="tel" ltr autoComplete="tel"
             inputMode="tel" required name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           {errorAlert}
