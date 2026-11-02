@@ -2,7 +2,7 @@
 # Dashboard) instead of typing them into its forms. Deploy with a service account token (Dev
 # Dashboard; never in the repo or chat), from a folder holding only this file and a package.json:
 #   SHOPIFY_SERVICE_ACCOUNT_TOKEN=<token> npx @shopify/cli@latest app deploy --config staging --allow-updates --no-input --no-build
-# First released this way as version mizan-2 (2 Nov 2026).
+# First released this way as version mizan-2 (2 Nov 2026); mizan-3 (3 Nov 2026, Dev Dashboard form) switched to managed install.
 # The client id is public; the client secret stays in Key Vault (shopify-api-secret).
 # Production gets shopify.app.production.toml with its own app and hosts.
 
