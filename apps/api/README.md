@@ -1,9 +1,43 @@
-# apps/api — Mizan API (planned)
+# @mizan/api — Mizan API
 
-NestJS modular monolith: REST API (`main.ts`) and worker (`worker.ts`) from one image.
+NestJS 12 (ESM) modular monolith: REST API (`src/main.ts`) and worker (`src/worker.ts`) from one image (ADR-0003).
 
-- Layout and module rules: `docs/03-architecture.md` §3
-- Endpoints and conventions: `docs/05-api.md`
-- Start with backlog stories **E1-3 → E1-10**, then **E2** (embed `packages/engine`).
+```
+cp .env.example .env          # once
+npm run dev -w @mizan/api     # http://localhost:8080/health · /v1/openapi.json
+npm test -w @mizan/api
+npm run build -w @mizan/api && node apps/api/dist/main.js
+```
 
-Create with the latest stable NestJS; pin exact versions.
+## Layout (docs/03 §3)
+
+| Path | What |
+| --- | --- |
+| `src/main.ts` | Validates env (`loadConfig`) before importing Nest; bad env → stderr list + exit 1 |
+| `src/bootstrap.ts` | `createApp(config, options)`: `/v1` prefix (except `/health`), logger, OpenAPI; used by main and tests |
+| `src/platform/config.ts` | Zod schema for every env variable; `APP_CONFIG` injection token |
+| `src/platform/logging/` | pino via `nestjs-pino`; `X-Request-Id`; PII redaction by key (`phone`, `name`, `address*`, tokens…) and by content (phones in EG/SA/AE formats incl. Arabic digits, emails, bearer tokens, provider keys) |
+| `src/platform/http/` | `ProblemError`, global `ProblemFilter` (RFC 9457, AR/EN titles), `ZodPipe` for DTOs from `@mizan/shared` |
+| `src/platform/i18n/` | Server-side AR/EN messages, `Accept-Language` negotiation (Arabic default) |
+| `src/platform/db/` | `Database` (inject it): `tenant(id, fn)` under RLS, `platform(fn)`, `ping()`. Postgres pool in prod; in-memory PGlite (migrated at boot) when `DATABASE_URL` is unset |
+| `src/platform/auth/` | `AuthGuard` (global): Firebase ID token → user (created on first sign-in) → `X-Tenant-Id` active membership → MFA for owner/admin → `@Roles`. Decorators: `@Public()`, `@NoTenant()`, `@Roles(...)`, `@Auth()` |
+| `src/platform/events/` | `EventsService.emit(trx, …)` (outbox, same transaction), `@EventConsumer({ name, events })` handlers, `EventDispatcher` (worker) |
+| `src/platform/audit/` | `AuditService.record(trx, …)` — append-only trail in the same transaction; `AUDIT_ACTIONS`; read via `GET /v1/audit-log` |
+| `src/platform/secrets/` | `SecretsService` — provider credentials with envelope encryption (Cloud KMS / local dev key); values come back as `SecretValue` (prints `[secret]`; call `reveal()` at the point of use) |
+| `src/integrations/` | The engine inside the platform: `ConnectionResolver`, `EngineRegistry` (engine per tenant), `EngineJobRunner` (worker) |
+| `src/platform/pii/` | `PiiCipher.forTenant(trx, id)` → `encrypt/decrypt(value, column)`, `phoneHash(e164)`. Every name, phone, email and address line is stored encrypted |
+| `src/platform/openapi.ts` | OpenAPI 3.1 from decorators + zod component schemas, served at `/v1/openapi.json`; snapshot in `openapi.json` (`npm run openapi -w @mizan/api`) |
+| `src/platform/http/api-schema.ts` | `@ApiJsonBody`, `@ApiJson`, `@ApiQueryZod`, `@ApiProblems`: zod schemas → OpenAPI components (docs/05 §3) |
+| `src/modules/` | Product modules (M1–M22). Today: `health` (`/health`, `/health/ready`), `users` (`GET /v1/me`), `tenants` (`POST /v1/tenants` signup, `GET /v1/tenant`), `members` (team, invitations, roles), `orders` (`OrderProjector`: engine → orders, lines, customers), `connections` (`/v1/admin/integrations/*` ops) |
+
+## Rules
+
+- Routes are protected by default. Mark webhooks and probes `@Public()`; routes without a store `@NoTenant()`; restrict with `@Roles(...)`. Read the caller with `@Auth()`.
+- Tenant data: `db.tenant(auth.tenant.id, trx => …)`; never filter by `tenant_id` by hand as the only guard.
+- Sensitive actions (`AUDIT_ACTIONS`): `audit.record(trx, …)` in the same transaction, with `auditActor(auth)`.
+- State changes other modules care about: `events.emit(trx, …)` in the same transaction. React to events with an `@EventConsumer` provider; its writes commit with the delivery mark.
+
+- Throw `ProblemError(status, code, detail)` for expected failures; `detail` must not contain personal data.
+- Validate input with `ZodPipe(schema)`; reuse schemas from `@mizan/shared`.
+- Log objects, not concatenated strings; redaction covers both, but objects keep fields searchable.
+- Tests run on vitest + SWC (decorator metadata); `test/app.e2e.test.ts` shows how to mount a module and capture logs.

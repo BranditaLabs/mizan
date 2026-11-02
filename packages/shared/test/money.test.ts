@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   addMoney, compareMoney, currencyDecimals, fromMinor, isCurrencyCode, isDecimalAmount,
-  isZeroMoney, subtractMoney, sumMoney, toMinor,
+  isZeroMoney, subtractMoney, sumMoney, toMinor, percentOf, convertMoney, ratio,
 } from "../src/money.js";
 
 const egp = (amount: string) => ({ amount, currency: "EGP" });
@@ -136,5 +136,46 @@ describe("arithmetic", () => {
     expect(isDecimalAmount("-1")).toBe(true);
     expect(isDecimalAmount("1,150.00")).toBe(false);
     expect(isDecimalAmount("1150.")).toBe(false);
+  });
+});
+
+describe("percentOf, convertMoney, ratio (E9-1: fees and exchange rates, exact)", () => {
+  const egp = (amount: string) => ({ amount, currency: "EGP" });
+  it("takes a percentage, rounding half to even", () => {
+    expect(percentOf(egp("1250.00"), "1.5")).toEqual(egp("18.75"));
+    expect(percentOf(egp("0.50"), "1")).toEqual(egp("0.00")); // 0.005 → 0.00 (tie to even)
+    expect(percentOf(egp("1.50"), "1")).toEqual(egp("0.02")); // 0.015 → 0.02 (tie to even)
+    expect(percentOf(egp("999.99"), "2.75")).toEqual(egp("27.50")); // 27.499725
+    expect(percentOf({ amount: "12.345", currency: "KWD" }, "10")).toEqual({ amount: "1.234", currency: "KWD" }); // 1.2345 → 1.234
+    expect(() => percentOf(egp("10.00"), "-1")).toThrow(RangeError);
+  });
+
+  it("converts between currencies with a rate of target units per source unit", () => {
+    expect(convertMoney({ amount: "100.00", currency: "USD" }, "EGP", "48.75")).toEqual(egp("4875.00"));
+    expect(convertMoney(egp("4875.00"), "USD", "0.02051282")).toEqual({ amount: "100.00", currency: "USD" });
+    expect(convertMoney(egp("1000.00"), "KWD", "0.00631")).toEqual({ amount: "6.310", currency: "KWD" });
+    expect(convertMoney({ amount: "1.000", currency: "KWD" }, "EGP", "158.123456")).toEqual(egp("158.12"));
+    expect(() => convertMoney(egp("1.00"), "USD", "0")).toThrow(/positive/);
+    expect(() => convertMoney(egp("1.00"), "USD", "abc")).toThrow(RangeError);
+  });
+
+  it("rounds negative amounts (refunds, reversals) the same way, away from or to even", () => {
+    expect(percentOf(egp("-1250.00"), "1.5")).toEqual(egp("-18.75"));
+    expect(percentOf(egp("-999.99"), "2.75")).toEqual(egp("-27.50")); // -27.499725
+    expect(percentOf(egp("-1.50"), "1")).toEqual(egp("-0.02")); // -0.015 → tie to even
+    expect(percentOf(egp("-2.50"), "1")).toEqual(egp("-0.02")); // -0.025 → tie to even
+    expect(percentOf(egp("-0.50"), "1")).toEqual(egp("0.00"));
+    expect(convertMoney({ amount: "-100.00", currency: "USD" }, "EGP", "48.755")).toEqual(egp("-4875.50"));
+  });
+
+  it("derives cross rates from one feed base", () => {
+    // USD-based feed: 1 USD = 48.75 EGP, 3.75 SAR → 1 EGP = 0.0769… SAR
+    expect(ratio("3.75", "48.75")).toBe("0.076923076923");
+    expect(ratio("48.75", "1", 4)).toBe("48.7500");
+    expect(() => ratio("1", "0")).toThrow(/zero/);
+    expect(ratio("1", "-4", 2)).toBe("-0.25"); // negative divisor
+    expect(ratio("-7", "2", 0)).toBe("-4"); // -3.5 → tie to even
+    expect(ratio("7", "2", 0)).toBe("4");
+    expect(() => ratio("x", "1")).toThrow(/not a decimal/);
   });
 });

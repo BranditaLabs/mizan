@@ -1,5 +1,5 @@
-import type { CanonicalOrder, CanonicalProduct, Money, PaymentMode, PaymentStatus } from "@mizan/shared";
-import { toMinor } from "@mizan/shared";
+import type { CanonicalOrder, CanonicalProduct, Money, OrderSourceHints, PaymentMode, PaymentStatus, SourceVisit } from "@mizan/shared";
+import { sourceAttributes, toMinor } from "@mizan/shared";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
 
@@ -96,6 +96,8 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
     return {
       externalLineId: lr.str("id", ["id", "admin_graphql_api_id"], { required: true })!,
       sku: lr.str("sku", ["sku", "variant.sku"]),
+      // Optional: a line whose product was deleted has no variant; it then stays unlinked.
+      variantExternalId: lr.str("variantExternalId", ["variant.id", "variant_id", "variantId"]),
       title: lr.str("title", ["title", "name"]) ?? "Item",
       quantity: lr.num("quantity", ["quantity", "currentQuantity"]) ?? 1,
       unitPrice: money(lr, "unitPrice", ["originalUnitPriceSet", "discountedUnitPriceSet", "price"], currency) ?? { amount: "0", currency },
@@ -147,8 +149,37 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
     lines,
     fulfillmentGroups,
     tags: r.arr<string>("tags", ["tags"]).map(String),
+    ...sourceHints(r),
     raw,
   };
+}
+
+/** Where the order came from (M7-2): Shopify's customer journey (GraphQL) or the order's landing and referring sites (REST). */
+function sourceHints(r: Resolver): { source?: OrderSourceHints } {
+  const visit = (v: unknown): SourceVisit | undefined => {
+    if (!v || typeof v !== "object") return undefined;
+    const vr = r.child(v, "order.visit");
+    const utm = vr.any("utm", ["utmParameters"]);
+    const ur = utm && typeof utm === "object" ? r.child(utm, "order.visit.utm") : undefined;
+    const out: SourceVisit = {
+      landingUrl: vr.str("landingUrl", ["landingPage", "landingPageUrl"]), referrerUrl: vr.str("referrerUrl", ["referrerUrl"]),
+      source: vr.str("source", ["source"]), sourceType: vr.str("sourceType", ["sourceType"]), occurredAt: vr.str("occurredAt", ["occurredAt"]),
+      ...(ur ? { utm: { source: ur.str("source", ["source"]), medium: ur.str("medium", ["medium"]), campaign: ur.str("campaign", ["campaign"]), content: ur.str("content", ["content"]), term: ur.str("term", ["term"]) } } : {}),
+    };
+    return Object.values(out).some(Boolean) ? out : undefined;
+  };
+  const journey = r.any("customerJourneySummary", ["customerJourneySummary"]);
+  const jr = journey && typeof journey === "object" ? r.child(journey, "order.journey") : undefined;
+  const lastVisit = visit(jr?.any("lastVisit", ["lastVisit"])) ?? visit({ landingPage: r.str("landingSite", ["landing_site", "landingSite"]), referrerUrl: r.str("referringSite", ["referring_site", "referringSite"]) });
+  const firstVisit = visit(jr?.any("firstVisit", ["firstVisit"]));
+  const codes = r.arr<unknown>("discountCodes", ["discountCodes", "discount_codes"]).map((c) => (typeof c === "string" ? c : r.child(c).str("code", ["code"]) ?? "")).filter(Boolean);
+  const attributes = sourceAttributes(r.arr<{ key?: unknown; name?: unknown; value?: unknown }>("customAttributes", ["customAttributes", "note_attributes"]).map((a) => ({ key: a.key ?? a.name, value: a.value })));
+  const channel = r.str("sourceName", ["sourceName", "source_name"]);
+  const hints: OrderSourceHints = {
+    ...(firstVisit ? { firstVisit } : {}), ...(lastVisit ? { lastVisit } : {}), ...(channel ? { channel } : {}),
+    ...(codes.length ? { discountCodes: codes } : {}), ...(attributes ? { attributes } : {}),
+  };
+  return Object.keys(hints).length ? { source: hints } : {};
 }
 
 export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
@@ -173,10 +204,13 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
       return {
         externalId: vr.str("id", ["id", "admin_graphql_api_id"], { required: true })!,
         sku: vr.str("sku", ["sku"]),
+        barcode: vr.str("barcode", ["barcode"])?.trim() || undefined,
         title: vr.str("title", ["title"]),
         price: { amount: price, currency: "" },
         compareAtPrice: cap ? { amount: cap, currency: "" } : null,
         inventoryItemId: vr.str("inventoryItemId", ["inventoryItem.id", "inventory_item_id"]),
+        locationIds: vr.arr<{ location?: { id?: unknown } }>("locationIds", ["inventoryItem.inventoryLevels.nodes"])
+          .map((n) => n?.location?.id).filter((id): id is string => typeof id === "string"),
         available: vr.num("available", ["inventoryQuantity", "inventory_quantity"]),
       };
     }),

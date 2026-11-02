@@ -57,6 +57,8 @@ Actions: Export, New payment link
 
 _Sample data. Full visual in `design/prototype.html`._
 
+✅ Built (E14-6): the screen at `/payments` with views All · Waiting for money · Cash to collect · Paid · Refunds · Disputes, counts on each, the view's sums per currency, and the payment mix on the home screen. Export and payment links come with E14-2.
+
 ## Rules — Payment statuses
 
 | Status | Meaning | Next |
@@ -123,22 +125,24 @@ _Sample data. Full visual in `design/prototype.html`._
 
 ## Acceptance criteria
 
-- [ ] Every order shows a ledger whose lines sum to its balance.
-- [ ] A COD order converts to prepaid with one link; the shipment COD amount updates.
+- [x] Every order shows a ledger whose lines sum to its balance. ✅ E14-1: ledger panel on the order screen; property tests in `apps/api/test/ledger.test.ts`.
+- [x] A COD order converts to prepaid with one link; the shipment COD amount updates. ✅ E14-3 with manual methods (InstaPay, wallet, transfer, the store's page): the offer and its message from the order screen or the automation action; recording the money lowers the cash to collect and sends a booked shipment to review (docs/12 §5.1). Gateway links with E14-2.
 - [ ] Refunds reach the gateway and are confirmed back, or flagged within 24 h.
-- [ ] Chargebacks appear within one sync and reduce provisional profit.
+- [x] Chargebacks appear within one sync and reduce provisional profit. ✅ E14-5: recorded by the team with amount, fee and deadline, in the ledger and profit at once; evidence pack to print as PDF; won puts the amount back. From the gateway's own webhooks with E14-2.
 - [ ] No card number is ever stored or logged by Mizan.
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/orders/{id}/payments` | Payment ledger |
+| GET | `/v1/orders/{id}/payments` | Payment ledger ✅ E14-1 |
+| POST | `/v1/orders/{id}/payments` | Record money received or given back outside a gateway ✅ E14-1 |
+| POST | `/v1/orders/{id}/refunds` · `/v1/refunds/{id}/approve\|reject\|complete` | Refunds with the approval threshold ✅ E14-4 |
 | POST | `/v1/orders/{id}/payment-links` | Create a link |
 | POST | `/v1/orders/{id}/refunds` | Refund |
 | GET | `/v1/payments` | List and filter |
-| GET | `/v1/disputes` | Chargebacks |
-| POST | `/v1/disputes/{id}/evidence` | Submit evidence |
+| GET | `/v1/disputes` | Chargebacks ✅ E14-5 (also POST `/v1/orders/{id}/disputes`, GET `/v1/disputes/{id}/evidence`, POST `/v1/disputes/{id}/close`; docs/05) |
+| POST | `/v1/disputes/{id}/evidence` | Submit evidence ✅ E14-5 |
 
 Conventions: `docs/05-api.md`.
 

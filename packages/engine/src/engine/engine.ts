@@ -1,25 +1,33 @@
 import { createHash } from "node:crypto";
-import { cashToCollect, deliveryCompletesPayment, ShipBlockedError } from "../core/payments.js";
+import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "@mizan/shared";
 import { TERMINAL_STATUSES } from "@mizan/shared";
 import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
+import { fulfillmentEventFor } from "./progress.js";
 import { ShapeWatch } from "../adapt/shape.js";
 import { shouldApplyStatus } from "../adapt/status.js";
-import { BostaConnector, type BostaConfig } from "../connectors/bosta/connector.js";
-import { ShopifyConnector } from "../connectors/shopify/connector.js";
+import { BostaConnector, type BostaConfig, type BostaLearned } from "../connectors/bosta/connector.js";
+import { ShopifyConnector, type CancelReason, type FulfillmentEventStatus, type ShopifyLearned } from "../connectors/shopify/connector.js";
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
-import type { OutboxJob, Store } from "../sync/store.js";
+import type { WooCommerceCredentials } from "../connectors/woocommerce/client.js";
+import { WooCommerceConnector, type WooLearned } from "../connectors/woocommerce/connector.js";
+import { wooOrderIdFromWebhook } from "../connectors/woocommerce/mapper.js";
+import { isWooPing, readWooHeaders, verifyWooSignature } from "../connectors/woocommerce/webhooks.js";
+import type { NewJob, OutboxJob, Store } from "../sync/store.js";
 import { DEFAULT_WORKER, OutboxWorker, type JobOutcome, type WorkerOptions } from "../sync/worker.js";
 
 export type Owner = "mizan" | "shopify";
 
 export interface EngineOptions {
-  shopify: ShopifyCredentials;
+  /** The store's Shopify connection; absent for a store on another platform (WooCommerce). */
+  shopify?: ShopifyCredentials;
   bosta: BostaConfig;
+  /** A WooCommerce store (E5-7): its orders come in by signed webhook and by polling. */
+  woocommerce?: WooCommerceCredentials;
   /** Shopify location Mizan manages stock for. */
   locationId?: string;
   /** Which system wins when a field differs. Mizan-owned fields edited in Shopify are restored; Shopify-owned ones are accepted. */
@@ -27,14 +35,100 @@ export interface EngineOptions {
   /** Ship automatically when an order carries this tag (set by Mizan's confirmation module). */
   autoShipTag?: string | null;
   markCodPaidOnDelivery?: boolean;
-  tagOnReturn?: string;
+  /** Tag on the store's order when the parcel is back (null: no tag). */
+  tagOnReturn?: string | null;
+  /** Tag on the store's order when the courier lost the parcel (null: no tag). */
+  tagOnLost?: string | null;
+  /** Courier steps as Shopify fulfillment events (E7-7): picked up, in transit, out for delivery, attempts, delivered, failures. */
+  fulfillmentEvents?: boolean;
   trackingCompany?: string;
   /** Overlap when polling, to cover clock skew and late writes. */
   pollOverlapMs?: number;
   /** Writes younger than this are "in flight"; differing reads in this window are not treated as conflicts. */
   echoWindowMs?: number;
   worker?: Partial<WorkerOptions>;
+  /** What the connectors learned before (the platform keeps it in connections.learned). Wins over the store copy. */
+  learned?: { shopify?: Partial<ShopifyLearned>; bosta?: Partial<BostaLearned>; woocommerce?: Partial<WooLearned> };
+  /**
+   * Awaited inside the job, so a failing hook fails (and retries) the job:
+   * nothing is acknowledged before the platform has stored it.
+   */
+  hooks?: {
+    /** A fresh canonical order (fat fetch) and the engine's previous copy. Must be idempotent. */
+    onOrder?: (order: CanonicalOrder, previous: CanonicalOrder | undefined) => Promise<void>;
+    /** A confirmed order cannot ship yet because of its payment (unpaid transfer, failed or unknown method). */
+    onAwaitingPayment?: (order: CanonicalOrder, reason: ShipBlockReason) => Promise<void>;
+    /** A connector learned something new (status code, city alias, query variant). Called only on change. */
+    onLearned?: (provider: "shopify" | "bosta" | "woocommerce", state: ShopifyLearned | BostaLearned | WooLearned) => Promise<void>;
+    /** A product read from the store (webhook, refetch or backfill page), without `raw`. Must be idempotent. */
+    onProduct?: (product: CanonicalProduct) => Promise<void>;
+    /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
+    onAccessChecked?: (provider: "bosta" | "woocommerce", result: AccessCheck) => Promise<void>;
+    /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
+    onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
+    /** A store day was reconciled (E5-8): what the store had, and how many the engine recovered. */
+    onReconciled?: (result: ReconcileResult) => Promise<void>;
+    /** The store's order was cancelled (E5-4), already was, or could not be (final). Must be idempotent. */
+    onCancelResult?: (orderId: string, result: CancelOutcome) => Promise<void>;
+    /**
+     * The order a ship job is for (E7-1), read by the platform with its personal data (the courier
+     * needs the address and phone, which never go into a job). Undefined when it no longer exists.
+     */
+    loadOrder?: (orderId: string) => Promise<CanonicalOrder | undefined>;
+    /** A ship job booked the delivery (now, or found it booked by an earlier attempt), or could not (final). Must be idempotent. */
+    onShipment?: (shipmentId: string, result: ShipOutcome) => Promise<void>;
+    /**
+     * The courier reported a shipment's status (E7-3): applied (`needsReview` false, before the
+     * engine records it, so a failing hook retries the job), one it could not map (`needsReview`
+     * true, the last known status kept), or one contradicting a final status (`previous` final:
+     * not applied, for a person to decide). Must be idempotent.
+     */
+    onShipmentStatus?: (update: ShipmentStatusUpdate) => Promise<void>;
+  };
 }
+
+/** Adding an offer to the store's order: done (now or before), or why not (final; the team adds it by hand). */
+export type OfferOutcome = { ok: true; outcome: "added" | "already_added" } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string };
+
+/**
+ * Hand a Mizan order to the courier (E7-1). `shipmentId` is the platform's shipment row and the
+ * courier's reference (a booking cancelled and booked again gets a new one); `storeOrderId` is
+ * the Shopify order, fulfilled with the tracking number once booked.
+ */
+export interface ShipJob { shipmentId: string; orderId: string; storeOrderId?: string }
+/** Booked (the shipment without `raw`), or why not: the order, its payment or the courier refused it (final). */
+export type ShipOutcome =
+  | { ok: true; shipment: CanonicalShipment; adopted: boolean }
+  | { ok: false; reason: "validation" | "blocked" | "not_found" | "permission" | "failed"; message: string; blockReason?: ShipBlockReason; details?: Record<string, unknown> };
+
+/** A courier status for a shipment (E7-3), mapped to Mizan's lifecycle, with what the courier sent. */
+export interface ShipmentStatusUpdate {
+  trackingNumber: string;
+  status: ShipmentStatus;
+  previous?: ShipmentStatus;
+  raw: { code?: string | number; label?: string };
+  at: string;
+  needsReview: boolean;
+  /** A webhook hint, or the engine's own poll of active shipments. */
+  source: "webhook" | "poll";
+}
+
+/** One store day to reconcile (E5-8): orders created in [from, to). */
+/** Orders changed since `since`, then every product (phase defaults to orders for jobs queued before products existed). */
+export interface WooBackfillPage { runKey: string; since: string; page: number; phase?: "orders" | "products" }
+
+export interface ReconcileJob { day: string; from: string; to: string }
+/** What the store had that day, and how many of those the engine had never recorded (now ingested). */
+export interface ReconcileResult { day: string; from: string; to: string; seen: number; recovered: number }
+
+/** Cancel the store's order (E5-4): no refund, restocked, the customer not emailed. */
+export interface CancelJob { orderId: string; reason: CancelReason; note?: string | undefined }
+export type CancelOutcome = { ok: true; outcome: "cancelled" | "already_cancelled" } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string };
+
+export interface OfferJob { offerId: string; orderId: string; variantId: string; qty: number; discountPct: string; note: string }
+
+/** The outcome of checking a courier key: a refusal is final (the merchant must fix the key), not retried. */
+export type AccessCheck = { ok: true } | { ok: false; reason: "auth" | "permission"; message: string };
 
 export interface WebhookResult {
   status: number;
@@ -42,10 +136,33 @@ export interface WebhookResult {
 }
 
 interface OrderRecord {
+  /** Without personal data (`withoutPersonalData`): the engine keeps ids, money, statuses and the area only. */
   order: CanonicalOrder;
   trackingNumber?: string;
   fulfilled?: boolean;
   paidMarked?: boolean;
+}
+
+interface BackfillPage {
+  runKey: string;
+  since: string;
+  /** When the run was queued: a run started after this supersedes it. */
+  queuedAt: number;
+  phase: "orders" | "products";
+  after: string | null;
+}
+
+export interface BackfillProgress {
+  runKey: string;
+  since: string;
+  queuedAt: number;
+  status: "running" | "done";
+  phase: "orders" | "products" | "done";
+  orders: number;
+  products: number;
+  pages: number;
+  startedAt: string;
+  finishedAt?: string;
 }
 
 interface ShipmentRecord {
@@ -66,6 +183,9 @@ interface ProductState {
 
 type Listener = (event: string, data: Record<string, unknown>) => void;
 
+/** Webhooks the engine handles (handleShopifyWebhook), as GraphQL WebhookSubscriptionTopic values. */
+export const SHOPIFY_WEBHOOK_TOPICS = ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "PRODUCTS_UPDATE", "APP_UNINSTALLED"] as const;
+
 const iso = (v: string | number | undefined) => (v === undefined ? undefined : new Date(v).toISOString());
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 16);
 
@@ -83,11 +203,14 @@ const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).dige
 export class MizanEngine {
   readonly drift = new DriftMonitor();
   readonly shapes = new ShapeWatch();
-  readonly shopify: ShopifyConnector;
+  private readonly shopifyConn: ShopifyConnector | undefined;
   readonly bosta: BostaConnector;
+  readonly woo: WooCommerceConnector | undefined;
   readonly worker: OutboxWorker;
   private readonly listeners: Listener[] = [];
-  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "worker" | "locationId">> & Pick<EngineOptions, "locationId">;
+  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "woocommerce" | "worker" | "locationId" | "hooks" | "learned">> & Pick<EngineOptions, "locationId" | "hooks" | "learned">;
+  /** Last learned state persisted per provider (JSON), to persist only changes. */
+  private readonly learnedSaved: Record<"shopify" | "bosta" | "woocommerce", string> = { shopify: "", bosta: "", woocommerce: "" };
 
   constructor(private readonly store: Store, private readonly rt: Runtime, options: EngineOptions) {
     this.opts = {
@@ -95,16 +218,29 @@ export class MizanEngine {
       autoShipTag: "mizan-confirmed",
       markCodPaidOnDelivery: true,
       tagOnReturn: "mizan-returned",
+      tagOnLost: "mizan-lost",
+      fulfillmentEvents: true,
       trackingCompany: "Bosta",
       pollOverlapMs: 10 * 60_000,
       echoWindowMs: 2 * 60_000,
       ...options,
     };
-    this.shopify = new ShopifyConnector(options.shopify, rt, this.drift, this.shapes);
+    this.shopifyConn = options.shopify ? new ShopifyConnector(options.shopify, rt, this.drift, this.shapes) : undefined;
     this.bosta = new BostaConnector(options.bosta, rt, this.drift, this.shapes);
+    this.woo = options.woocommerce ? new WooCommerceConnector({ ...options.woocommerce }, rt, this.drift, this.shapes) : undefined;
     this.worker = new OutboxWorker(store, rt, this.handlers(), { ...DEFAULT_WORKER, ...options.worker });
     this.worker.onOutcome((o) => this.onOutcome(o));
     this.drift.onNew((e) => this.emit("drift", { ...e }));
+  }
+
+  /** The store's Shopify connector; a job that needs it on a store without Shopify fails as permanent (nothing to retry). */
+  get shopify(): ShopifyConnector {
+    if (!this.shopifyConn) throw new IntegrationError({ kind: "permanent", connector: "shopify", message: "this store is not on Shopify" });
+    return this.shopifyConn;
+  }
+
+  get hasShopify(): boolean {
+    return this.shopifyConn !== undefined;
   }
 
   on(listener: Listener) {
@@ -121,12 +257,29 @@ export class MizanEngine {
   }
 
   async init() {
-    const learned = await this.store.get<ReturnType<BostaConnector["exportLearned"]>>("learned", "bosta");
-    if (learned) this.bosta.loadLearned(learned);
+    const bosta = this.opts.learned?.bosta ?? (await this.store.get<BostaLearned>("learned", "bosta"));
+    const shopify = this.opts.learned?.shopify ?? (await this.store.get<ShopifyLearned>("learned", "shopify"));
+    if (bosta) this.bosta.loadLearned(bosta);
+    if (shopify) this.shopifyConn?.loadLearned(shopify);
+    this.learnedSaved.bosta = JSON.stringify(this.bosta.exportLearned());
+    if (this.shopifyConn) this.learnedSaved.shopify = JSON.stringify(this.shopifyConn.exportLearned());
+    if (this.woo) {
+      this.woo.loadLearned(this.opts.learned?.woocommerce ?? (await this.store.get<WooLearned>("learned", "woocommerce")));
+      this.learnedSaved.woocommerce = JSON.stringify(this.woo.exportLearned());
+    }
   }
 
+  /** Persist learned state that changed: in the engine store, and through hooks.onLearned. */
   private async saveLearned() {
-    await this.store.put("learned", "bosta", this.bosta.exportLearned(), this.now());
+    for (const provider of ["bosta", "shopify", "woocommerce"] as const) {
+      if ((provider === "woocommerce" && !this.woo) || (provider === "shopify" && !this.shopifyConn)) continue;
+      const state = provider === "bosta" ? this.bosta.exportLearned() : provider === "shopify" ? this.shopify.exportLearned() : this.woo!.exportLearned();
+      const json = JSON.stringify(state);
+      if (json === this.learnedSaved[provider]) continue;
+      await this.store.put("learned", provider, state, this.now());
+      await this.runHook(() => this.opts.hooks?.onLearned?.(provider, state));
+      this.learnedSaved[provider] = json;
+    }
   }
 
   private enqueue(kind: string, payload: unknown, idempotencyKey: string, runAt?: number) {
@@ -136,6 +289,7 @@ export class MizanEngine {
   // ═════════════ inbound: webhooks ═════════════
 
   async handleShopifyWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    if (!this.shopifyConn) return { status: 404, body: { error: "no Shopify store on this connection" } };
     const hmac = headers["X-Shopify-Hmac-SHA256"] ?? headers["x-shopify-hmac-sha256"];
     if (!verifyShopifyHmac(rawBody, hmac, this.opts_shopifySecret())) return { status: 401, body: { error: "invalid signature" } };
     const meta = readShopifyHeaders(headers);
@@ -168,6 +322,36 @@ export class MizanEngine {
     return this.shopify.creds.clientSecret;
   }
 
+  /**
+   * A WooCommerce webhook (E5-7): the save-time ping answered, the signature checked, then a hint
+   * to re-read the order (thin webhook, fat fetch). WooCommerce never retries and may disable a
+   * failing webhook, so polling and the webhook sync cover what is lost.
+   */
+  async handleWooCommerceWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    if (!this.woo) return { status: 404, body: { error: "no WooCommerce store on this connection" } };
+    const signature = headers["X-WC-Webhook-Signature"] ?? headers["x-wc-webhook-signature"];
+    if (!signature && isWooPing(rawBody)) return { status: 200, body: { ping: true } }; // WooCommerce saves the webhook only after a 2xx
+    if (!verifyWooSignature(rawBody, signature, this.woo.creds.webhookSecret)) return { status: 401, body: { error: "invalid signature" } };
+    const meta = readWooHeaders(headers);
+    let payload: Record<string, unknown>;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return { status: 200, body: { ignored: "unparseable body" } };
+    }
+    const resource = meta.resource || meta.topic.split(".")[0];
+    if (resource !== "order" && resource !== "product") return { status: 200, body: { ignored: meta.topic || "unknown topic" } };
+    if (resource === "product" && meta.event === "deleted") return { status: 200, body: { ignored: "product deleted" } }; // as for Shopify: kept, never deleted by a hint
+    const id = wooOrderIdFromWebhook(payload);
+    if (!id) return { status: 200, body: { ignored: `no ${resource} id` } };
+    // The delivery id is per second, not per event: the resource's own modification time tells versions apart.
+    const version = iso(payload.date_modified_gmt as string | undefined) ?? (meta.event === "deleted" ? "deleted" : hash(rawBody));
+    if (!(await this.store.markInbound(`woocommerce:${resource}:${id}:${version}`, this.now()))) return { status: 200, body: { duplicate: true } };
+    if (resource === "order") await this.enqueue("woocommerce.ingestOrder", { orderId: id }, `woocommerce:order:${id}:${version}`);
+    else await this.enqueue("woocommerce.ingestProduct", { productId: id }, `woocommerce:product:${id}:${version}`);
+    return { status: 200, body: { accepted: true } };
+  }
+
   async handleBostaWebhook(query: Record<string, string | undefined>, headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
     const token = query.token ?? headers["x-mizan-token"] ?? headers["authorization"];
     if (!this.bosta.verifyWebhook(token)) return { status: 401, body: { error: "invalid token" } };
@@ -183,6 +367,21 @@ export class MizanEngine {
     return { status: 200, body: { accepted: true } };
   }
 
+  /**
+   * The tracking number a Bosta webhook is about, without recording or queueing anything (null
+   * when the token is wrong or the body unreadable). A platform running one engine per store
+   * uses it to hand the webhook to the store that owns the shipment.
+   */
+  peekBostaWebhook(query: Record<string, string | undefined>, headers: Record<string, string | undefined>, rawBody: string): string | null {
+    const token = query.token ?? headers["x-mizan-token"] ?? headers["authorization"];
+    if (!this.bosta.verifyWebhook(token)) return null;
+    try {
+      return this.bosta.parseWebhook(JSON.parse(rawBody)).trackingNumber;
+    } catch {
+      return null;
+    }
+  }
+
   // ═════════════ commands ═════════════
 
   /** Ship an order with Bosta (normally called by the confirmation module). */
@@ -196,7 +395,16 @@ export class MizanEngine {
    * Identical desired states collapse into one job.
    */
   async updateProduct(patch: ProductPatch) {
-    const state = (await this.store.get<ProductState>("product-state", patch.productExternalId)) ?? { productId: patch.productExternalId, desired: { variants: {}, inventory: {} } };
+    return this.store.enqueue(await MizanEngine.stageProductPatch(this.store, patch, this.now()), this.now());
+  }
+
+  /**
+   * Record a patch as Mizan's desired state and return the push job, on any store (the platform
+   * passes one bound to its own transaction, so the state and the job commit with its change).
+   * The job always pushes the latest desired values, so jobs that run out of order end right.
+   */
+  static async stageProductPatch(store: Store, patch: ProductPatch, now: number): Promise<NewJob<{ patch: ProductPatch }>> {
+    const state = (await store.get<ProductState>("product-state", patch.productExternalId)) ?? { productId: patch.productExternalId, desired: { variants: {}, inventory: {} } };
     for (const v of patch.variants ?? []) {
       const cur = state.desired.variants[v.externalId] ?? {};
       if (v.price) cur.price = v.price.amount;
@@ -204,14 +412,142 @@ export class MizanEngine {
       state.desired.variants[v.externalId] = cur;
     }
     for (const inv of patch.inventory ?? []) state.desired.inventory[`${inv.inventoryItemId}|${inv.locationId}`] = inv.available;
-    await this.store.put("product-state", patch.productExternalId, state, this.now());
-    return this.enqueue("shopify.pushProduct", { patch }, `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}`);
+    await store.put("product-state", patch.productExternalId, state, now);
+    return { kind: "shopify.pushProduct", connection: "shopify", payload: { patch }, idempotencyKey: `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}` };
+  }
+
+  /**
+   * Subscribe the store to the webhooks the engine handles (on connect and reconnect).
+   * `runKey` makes each connect its own job: an uninstall drops Shopify's subscriptions,
+   * so a reinstall must register again even if an earlier job already ran.
+   */
+  async registerShopifyWebhooks(runKey: string) {
+    const j = MizanEngine.shopifyWebhooksJob(runKey);
+    return this.enqueue(j.kind, j.payload, j.idempotencyKey);
+  }
+
+  /** The job registerShopifyWebhooks queues, for callers that enqueue inside their own transaction. */
+  /**
+   * Check a newly saved courier key with a harmless authenticated read (a delivery search for a
+   * reference that never exists). Runs as a job, never in a request: network trouble retries,
+   * a refused key ends the job and reports through hooks.onAccessChecked.
+   */
+  /** Import a WooCommerce store's orders changed since `sinceMs` (E5-7), a page per job. */
+  static wooBackfillJob(runKey: string, sinceMs: number): NewJob<WooBackfillPage> {
+    return { kind: "woocommerce.backfill", connection: "woocommerce", payload: { runKey, since: new Date(sinceMs).toISOString(), page: 1 }, idempotencyKey: `woocommerce:backfill:${runKey}:1` };
+  }
+
+  /**
+   * Mizan's count for a WooCommerce stock target (E8-5): the desired value is recorded on the
+   * store (in the caller's transaction) and the job pushes whatever is desired when it runs, so
+   * late or out-of-order jobs still end on the latest count.
+   */
+  static async stageWooStock(store: Store, target: string, quantity: number, now: number): Promise<NewJob<{ target: string }>> {
+    await store.put("woo-stock-desired", target, { quantity }, now);
+    return { kind: "woocommerce.setStock", connection: "woocommerce", payload: { target }, idempotencyKey: `woo-stock:${target}:${quantity}:${now}` };
+  }
+
+  /** Point the WooCommerce store's webhooks at Mizan and turn disabled ones back on (E5-7). Doubles as the keys' check. */
+  static wooWebhooksJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "woocommerce.syncWebhooks", connection: "woocommerce", payload: {}, idempotencyKey: `woocommerce:webhooks:${runKey}` };
+  }
+
+  static bostaAccessCheckJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "bosta.checkAccess", connection: "bosta", payload: {}, idempotencyKey: `bosta:access:${runKey}` };
+  }
+
+  /** Book the courier for a Mizan order (E7-1): one job per shipment row, whatever happens. */
+  static bostaShipJob(p: ShipJob): NewJob<ShipJob> {
+    return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
+  }
+
+  /** Add an accepted offer to the store's order (E6-13): one job per offer, whatever happens. */
+  static shopifyOfferJob(p: OfferJob): NewJob<OfferJob> {
+    return { kind: "shopify.addOffer", connection: "shopify", payload: p, idempotencyKey: `shopify:offer:${p.offerId}` };
+  }
+
+  /**
+   * Nightly reconciliation (E5-8): read every order the store created in a window and ingest any
+   * the engine never recorded (a webhook lost on the way). One job per store day.
+   */
+  static shopifyReconcileJob(p: ReconcileJob): NewJob<ReconcileJob> {
+    return { kind: "shopify.reconcile", connection: "shopify", payload: p, idempotencyKey: `shopify:reconcile:${p.day}` };
+  }
+
+  /** Cancel a store order (E5-4): one job per order; the order is read again afterwards (fat fetch). */
+  /** Cancel a WooCommerce store's order (E5-4 for WooCommerce): status set once, the team's note added once. */
+  static wooCancelJob(p: { orderId: string; note?: string }): NewJob<{ orderId: string; note?: string }> {
+    return { kind: "woocommerce.cancelOrder", connection: "woocommerce", payload: p, idempotencyKey: `woocommerce:cancel:${p.orderId}` };
+  }
+
+  static shopifyCancelJob(p: CancelJob): NewJob<CancelJob> {
+    return { kind: "shopify.cancelOrder", connection: "shopify", payload: p, idempotencyKey: `shopify:cancel:${p.orderId}` };
+  }
+
+  /** Tag a store order (Mizan's decisions the merchant should see in Shopify, e.g. mizan-duplicate); tags are idempotent. */
+  static shopifyTagJob(orderId: string, tags: string[], key: string): NewJob<{ id: string; tags: string[] }> {
+    return { kind: "shopify.addTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `tag:${orderId}:${tags.join(",")}:${key}` };
+  }
+
+  static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
+  }
+
+  /**
+   * Import the store's history on connect: orders created since `sinceMs` (Shopify serves 60 days
+   * without read_all_orders), then every product. One page per job, the cursor in the next job:
+   * resumable after a restart, paced by the cost limiter, interleaved with live webhooks.
+   */
+  static shopifyBackfillJob(runKey: string, sinceMs: number, queuedAt: number): NewJob<BackfillPage> {
+    return {
+      kind: "shopify.backfill", connection: "shopify", idempotencyKey: `shopify:backfill:${runKey}:orders:start`,
+      payload: { runKey, since: new Date(sinceMs).toISOString(), queuedAt, phase: "orders", after: null },
+    };
+  }
+
+  /** Progress of the latest backfill, or null before the first connect. */
+  async backfillStatus(): Promise<BackfillProgress | null> {
+    return (await this.store.get<BackfillProgress>("backfill", "shopify")) ?? null;
+  }
+
+  private async backfillPage(p: BackfillPage) {
+    const progress = await this.backfillStatus();
+    // Runs are ordered by (queuedAt, runKey). A newer run has started: this older chain stops here.
+    if (progress && progress.runKey !== p.runKey && (progress.queuedAt > p.queuedAt || (progress.queuedAt === p.queuedAt && progress.runKey > p.runKey))) return;
+    const state: BackfillProgress = progress?.runKey === p.runKey ? progress
+      : { runKey: p.runKey, since: p.since, queuedAt: p.queuedAt, status: "running", phase: "orders", orders: 0, products: 0, pages: 0, startedAt: new Date(this.now()).toISOString() };
+    let next: BackfillPage | null;
+    if (p.phase === "orders") {
+      const page = await this.shopify.ordersPage(`created_at:>='${p.since}'`, p.after);
+      for (const o of page.nodes) await this.ingestOrderData(o);
+      state.orders += page.nodes.length;
+      next = page.next ? { ...p, after: page.next } : { ...p, phase: "products", after: null };
+    } else {
+      const page = await this.shopify.productsPage(null, p.after);
+      for (const product of page.nodes) await this.ingestProductData(product);
+      state.products += page.nodes.length;
+      next = page.next ? { ...p, after: page.next } : null;
+    }
+    state.pages++;
+    state.phase = next?.phase ?? "done";
+    if (!next) {
+      state.status = "done";
+      state.finishedAt = new Date(this.now()).toISOString();
+    }
+    await this.store.put("backfill", "shopify", state, this.now());
+    this.emit(next ? "backfill.progress" : "backfill.completed", { runKey: p.runKey, phase: state.phase, orders: state.orders, products: state.products, pages: state.pages });
+    if (next) await this.enqueue("shopify.backfill", next, `shopify:backfill:${p.runKey}:${next.phase}:${next.after ?? "start"}`);
   }
 
   /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
-    await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+    if (this.shopifyConn) await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+    if (this.woo) {
+      await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
+      // Hourly: WooCommerce disables a webhook after failed deliveries; the sync turns it back on.
+      await this.enqueue("woocommerce.syncWebhooks", {}, `woocommerce:webhooks:hourly:${Math.floor(this.now() / 3_600_000)}`);
+    }
     await this.enqueue("bosta.pollActive", {}, `poll:bosta:${slot}`);
   }
 
@@ -221,6 +557,12 @@ export class MizanEngine {
     await this.saveLearned();
     if (jobId) return this.store.replay(jobId, this.now());
     return true;
+  }
+
+  /** Bosta's cities closest to what ops typed, to pick the city of an address it could not match. */
+  async courierCities(text?: string, n = 10) {
+    const r = await this.bosta.cities();
+    return text?.trim() ? r.suggest(text, n) : r.all().slice(0, n);
   }
 
   replay(jobId: string) {
@@ -241,7 +583,8 @@ export class MizanEngine {
   async health() {
     const [pending, dead] = await Promise.all([this.store.jobs({ status: "pending" }), this.store.jobs({ status: "dead" })]);
     return {
-      shopify: this.shopify.health(),
+      /** The store's connector: Shopify, or WooCommerce for a store on WooCommerce. */
+      shopify: this.shopifyConn?.health() ?? this.woo!.health(),
       bosta: this.bosta.health(),
       outbox: { pending: pending.length, dead: dead.length },
       deadLetters: dead.slice(-20).map((j) => ({ id: j.id, kind: j.kind, attempts: j.attempts, error: j.lastError })),
@@ -249,27 +592,148 @@ export class MizanEngine {
     };
   }
 
+  /** Platform-side failures (database, network) are retried with backoff, not dead-lettered at once. */
+  private async runHook(fn: () => Promise<void> | undefined) {
+    try {
+      await fn();
+    } catch (e) {
+      if (e instanceof IntegrationError) throw e;
+      throw new IntegrationError({ kind: "transient", connector: "platform", message: e instanceof Error ? e.message : String(e), cause: e });
+    }
+  }
+
   // ═════════════ job handlers ═════════════
 
   private handlers(): Record<string, (job: OutboxJob<any>) => Promise<void>> {
+    const handlers = this.jobHandlers();
+    return Object.fromEntries(Object.entries(handlers).map(([kind, run]) => [kind, async (job: OutboxJob<any>) => {
+      try {
+        await run(job);
+      } finally {
+        await this.saveLearned().catch((e) => this.rt.logger.log("warn", "could not persist learned state", { error: e instanceof Error ? e.message : String(e) }));
+      }
+    }]));
+  }
+
+  private jobHandlers(): Record<string, (job: OutboxJob<any>) => Promise<void>> {
     return {
       "shopify.ingestOrder": (j) => this.ingestOrder(j.payload.orderId),
       "shopify.ingestProduct": (j) => this.ingestProduct(j.payload.productId),
       "shopify.pollOrders": () => this.pollOrders(),
       "bosta.pollActive": () => this.pollActiveShipments(),
       "bosta.createShipment": (j) => this.createShipment(j.payload.orderId, j.attempts),
+      "bosta.ship": (j) => this.ship(j.payload as ShipJob, j.attempts),
       "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber),
-      "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber),
+      "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber, j.payload.hint ? "webhook" : "poll"),
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
+      "shopify.fulfillmentEvent": (j) => this.fulfillmentEvent(j.payload),
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
+      "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
+      "shopify.backfill": (j) => this.backfillPage(j.payload),
+      "bosta.checkAccess": () => this.checkBostaAccess(),
+      "shopify.addOffer": (j) => this.addOffer(j.payload),
+      "shopify.reconcile": (j) => this.reconcile(j.payload),
+      "shopify.cancelOrder": (j) => this.cancelOrder(j.payload),
+      "woocommerce.ingestOrder": (j) => this.ingestWooOrder(j.payload.orderId),
+      "woocommerce.pollOrders": () => this.pollWooOrders(),
+      "woocommerce.syncWebhooks": () => this.syncWooWebhooks(),
+      "woocommerce.backfill": (j) => this.wooBackfillPage(j.payload as WooBackfillPage),
+      "woocommerce.ingestProduct": (j) => this.ingestWooProduct(j.payload.productId),
+      "woocommerce.setStock": (j) => this.pushWooStock(j.payload.target),
+      "woocommerce.cancelOrder": (j) => this.cancelOrder(j.payload, "woocommerce"),
     };
   }
 
+  private async addOffer(p: OfferJob) {
+    let outcome: OfferOutcome;
+    try {
+      const r = await this.shopify.addOfferToOrder({ orderId: p.orderId, variantId: p.variantId, qty: p.qty, discountPct: p.discountPct, marker: p.offerId, note: p.note });
+      outcome = { ok: true, outcome: r };
+    } catch (e) {
+      // Retryable trouble is retried by the worker (and reported if it never succeeds); the rest is final.
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, { ok: false, reason, message: e.message }));
+      this.emit("offer.failed", { offerId: p.offerId, orderId: p.orderId, reason });
+      if (reason === "permission") throw e; // the store must approve order edits again: surfaces as needs attention
+      return;
+    }
+    // Fat fetch: the order's new total and line come back like any other order change.
+    await this.ingestOrder(p.orderId);
+    await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, outcome));
+    this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
+  }
+
+  private async cancelOrder(p: CancelJob | { orderId: string; note?: string }, provider: "shopify" | "woocommerce" = "shopify") {
+    let outcome: CancelOutcome;
+    try {
+      outcome = { ok: true, outcome: provider === "shopify" ? await this.shopify.cancelOrder(p as CancelJob) : await this.wooConnector().cancelOrder(p) };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason, message: e.message }));
+      this.emit("order.cancel_failed", { orderId: p.orderId, reason });
+      if (reason === "permission") throw e; // the store must approve write_orders again: surfaces as needs attention
+      return;
+    }
+    if (provider === "shopify") await this.ingestOrder(p.orderId);
+    else await this.ingestWooOrder(p.orderId);
+    await this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, outcome));
+    this.emit("order.cancelled_in_store", { orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
+  }
+
+  private async checkBostaAccess() {
+    let result: AccessCheck;
+    try {
+      await this.bosta.findByReference(`mizan-access-check-${this.now()}`);
+      result = { ok: true };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || (e.kind !== "auth" && e.kind !== "permission")) throw e; // retry the rest
+      result = { ok: false, reason: e.kind, message: e.message };
+    }
+    await this.runHook(() => this.opts.hooks?.onAccessChecked?.("bosta", result));
+    this.emit("bosta.access_checked", { ok: result.ok, ...(result.ok ? {} : { reason: result.reason }) });
+  }
+
+  private async syncShopifyWebhooks() {
+    const uri = this.shopify.creds.webhookUrl;
+    if (!uri) throw new IntegrationError({ kind: "validation", connector: "shopify", message: "no webhook URL configured for this store" });
+    const r = await this.shopify.syncWebhooks(uri, SHOPIFY_WEBHOOK_TOPICS);
+    this.emit("shopify.webhooks_synced", { topics: [...SHOPIFY_WEBHOOK_TOPICS], created: r.created, deleted: r.deleted });
+  }
+
+  private async reconcile(p: ReconcileJob) {
+    let after: string | null = null;
+    let seen = 0;
+    let recovered = 0;
+    do {
+      const page = await this.shopify.ordersPage(`created_at:>='${p.from}' created_at:<'${p.to}'`, after, 100);
+      for (const o of page.nodes) {
+        seen++;
+        if (await this.store.get<OrderRecord>("order", o.externalId)) continue;
+        await this.ingestOrderData(o); // the same path as a webhook: projected, recorded, reacted to
+        recovered++;
+      }
+      after = page.next;
+    } while (after);
+    const result: ReconcileResult = { ...p, seen, recovered };
+    this.emit("orders.reconciled", { ...result });
+    await this.runHook(() => this.opts.hooks?.onReconciled?.(result));
+  }
+
   private async ingestOrder(orderId: string) {
-    const order = await this.shopify.getOrder(orderId);
+    await this.ingestOrderData(await this.shopify.getOrder(orderId));
+  }
+
+  /** Record an order read from Shopify (single read or a page) and react to what changed. */
+  private async ingestOrderData(order: CanonicalOrder) {
+    const orderId = order.externalId;
     const prev = await this.store.get<OrderRecord>("order", orderId);
-    const rec: OrderRecord = { ...prev, order: { ...order, raw: undefined } };
+    const full: CanonicalOrder = { ...order, raw: undefined };
+    const rec: OrderRecord = { ...prev, order: withoutPersonalData(full) };
+    // Mizan's projector gets the whole order (it encrypts personal data); the engine's record does not keep it.
+    await this.runHook(() => this.opts.hooks?.onOrder?.(full, prev?.order));
     await this.store.put("order", orderId, rec, this.now());
     this.emit("order.ingested", { orderId, number: order.number, paymentMode: order.paymentMode, paymentStatus: order.paymentStatus, updatedAt: order.updatedAt });
     const before = prev?.order;
@@ -291,6 +755,7 @@ export class MizanEngine {
         cashToCollect(order);
       } catch (e) {
         if (e instanceof ShipBlockedError) {
+          await this.runHook(() => this.opts.hooks?.onAwaitingPayment?.(full, e.reason));
           this.emit("order.awaiting_payment", { orderId, number: order.number, reason: e.reason, mode: order.paymentMode, status: order.paymentStatus });
           return;
         }
@@ -302,17 +767,65 @@ export class MizanEngine {
 
   private async createShipment(orderId: string, attempt: number) {
     const rec = await this.store.get<OrderRecord>("order", orderId);
-    const order = rec?.order ?? (await this.shopify.getOrder(orderId));
     if (rec?.trackingNumber) return; // already shipped
+    // Fat fetch: the courier needs the address and phone, which the engine does not keep; and the
+    // order may have changed (address edited, cancelled) since it was recorded.
+    const order = await this.shopify.getOrder(orderId);
     if (order.cancelled) throw new IntegrationError({ kind: "validation", connector: "engine", message: `order ${order.number} is cancelled` });
     cashToCollect(order); // fail fast with a clear reason (awaiting_payment, payment_mode_unknown …) before calling the courier
 
     const { shipment, adopted } = await this.bosta.createShipmentOnce(order, orderId, attempt > 1);
     await this.saveLearned();
-    await this.store.put<OrderRecord>("order", orderId, { ...(rec ?? { order }), trackingNumber: shipment.trackingNumber }, this.now());
+    await this.store.put<OrderRecord>("order", orderId, { ...(rec ?? {}), order: withoutPersonalData({ ...order, raw: undefined }), trackingNumber: shipment.trackingNumber }, this.now());
     await this.store.put<ShipmentRecord>("shipment", shipment.trackingNumber, { shipment: { ...shipment, raw: undefined }, orderId, statusAt: Date.parse(shipment.updatedAt) || this.now() }, this.now());
     this.emit("shipment.created", { orderId, trackingNumber: shipment.trackingNumber, adopted, cod: shipment.cod.amount });
     await this.enqueue("shopify.fulfill", { orderId, trackingNumber: shipment.trackingNumber }, `fulfill:${orderId}:${shipment.trackingNumber}`);
+  }
+
+  /**
+   * E7-1: book the courier for an order the platform owns (a store's or one the team typed). The
+   * platform reads the order (with the address and phone) through hooks.loadOrder; the courier
+   * collects cashToCollect(order); a retry first looks the reference up, so a booking whose answer
+   * was lost is adopted, never made twice. Final refusals go back through hooks.onShipment.
+   */
+  private async ship(p: ShipJob, attempt: number) {
+    const fail = async (reason: Extract<ShipOutcome, { ok: false }>["reason"], message: string, blockReason?: ShipBlockReason, details?: Record<string, unknown>) => {
+      await this.runHook(() => this.opts.hooks?.onShipment?.(p.shipmentId, { ok: false, reason, message, ...(blockReason ? { blockReason } : {}), ...(details ? { details } : {}) }));
+      this.emit("shipment.failed", { shipmentId: p.shipmentId, orderId: p.orderId, reason, ...(blockReason ? { blockReason } : {}) });
+    };
+    let order: CanonicalOrder | undefined;
+    try {
+      order = await this.opts.hooks?.loadOrder?.(p.orderId);
+    } catch (e) {
+      throw new IntegrationError({ kind: "transient", connector: "platform", message: e instanceof Error ? e.message : String(e), cause: e });
+    }
+    if (!order) return fail("not_found", `order ${p.orderId} not found`);
+    if (order.cancelled) return fail("validation", `order ${order.number} is cancelled`, undefined, { cancelled: true });
+
+    let booked: { shipment: CanonicalShipment; adopted: boolean };
+    try {
+      booked = await this.bosta.createShipmentOnce(order, p.shipmentId, attempt > 1);
+    } catch (e) {
+      if (e instanceof ShipBlockedError) return fail("blocked", e.message, e.reason);
+      // Retryable trouble is retried by the worker; the rest is final.
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await fail(reason, e.message, undefined, e.details as Record<string, unknown> | undefined);
+      if (reason === "permission") throw e; // the courier key was refused: surfaces as needs attention
+      return;
+    }
+    await this.saveLearned();
+    const shipment = { ...booked.shipment, raw: undefined };
+    const tn = shipment.trackingNumber;
+    if (p.storeOrderId) {
+      const rec = await this.store.get<OrderRecord>("order", p.storeOrderId);
+      if (rec) await this.store.put<OrderRecord>("order", p.storeOrderId, { ...rec, trackingNumber: tn }, this.now());
+    }
+    // Status webhooks find the order through this record (the store's order id when there is one).
+    await this.store.put<ShipmentRecord>("shipment", tn, { shipment, orderId: p.storeOrderId ?? p.orderId, statusAt: Date.parse(shipment.updatedAt) || this.now() }, this.now());
+    await this.runHook(() => this.opts.hooks?.onShipment?.(p.shipmentId, { ok: true, shipment, adopted: booked.adopted }));
+    this.emit("shipment.created", { shipmentId: p.shipmentId, orderId: p.orderId, trackingNumber: tn, adopted: booked.adopted, cod: shipment.cod.amount });
+    if (p.storeOrderId) await this.enqueue("shopify.fulfill", { orderId: p.storeOrderId, trackingNumber: tn }, `fulfill:${p.storeOrderId}:${tn}`);
   }
 
   private async fulfill(orderId: string, trackingNumber: string) {
@@ -324,7 +837,7 @@ export class MizanEngine {
     this.emit("order.fulfilled", { orderId, trackingNumber, result });
   }
 
-  private async ingestShipmentStatus(trackingNumber: string) {
+  private async ingestShipmentStatus(trackingNumber: string, source: "webhook" | "poll" = "poll") {
     const rec = await this.store.get<ShipmentRecord>("shipment", trackingNumber);
     const fresh = await this.bosta.getShipment(trackingNumber); // fat fetch: never trust the webhook body alone
     await this.saveLearned();
@@ -335,26 +848,45 @@ export class MizanEngine {
       return;
     }
     const current = rec?.shipment.status;
+    const at = new Date(freshAt).toISOString();
     if (fresh.status === "unknown") {
+      await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: current ?? "unknown", ...(current ? { previous: current } : {}), raw: fresh.rawStatus, at, needsReview: true, source }));
       this.emit("shipment.needs_review", { trackingNumber, orderId, rawStatus: fresh.rawStatus });
     }
     if (!shouldApplyStatus(current, fresh.status, rec?.statusAt, freshAt)) {
+      // A courier contradicting a final status is not applied, but a person must see it.
+      if (current && TERMINAL_STATUSES.has(current) && fresh.status !== current && fresh.status !== "unknown") {
+        await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: fresh.status, previous: current, raw: fresh.rawStatus, at, needsReview: false, source }));
+      }
       if (current !== fresh.status) this.emit("shipment.status_ignored", { trackingNumber, current, received: fresh.status });
       return;
     }
+    // The platform first: if it fails, the job retries and finds the status still new.
+    await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: fresh.status, ...(current ? { previous: current } : {}), raw: fresh.rawStatus, at, needsReview: false, source }));
     await this.store.put<ShipmentRecord>("shipment", trackingNumber, { shipment: { ...fresh, raw: undefined }, orderId, statusAt: freshAt }, this.now());
     this.emit("shipment.status", { trackingNumber, orderId, from: current, to: fresh.status, raw: fresh.rawStatus });
-    await this.afterStatusChange(orderId, fresh.status, trackingNumber);
+    await this.afterStatusChange(orderId, fresh.status, trackingNumber, at);
   }
 
-  private async afterStatusChange(orderId: string, status: ShipmentStatus, trackingNumber: string) {
+  /** What a new courier status changes in the store's order. Only orders that came from the store (manual orders have none). */
+  private async afterStatusChange(orderId: string, status: ShipmentStatus, trackingNumber: string, at: string) {
     const rec = await this.store.get<OrderRecord>("order", orderId);
-    if (status === "delivered" && this.opts.markCodPaidOnDelivery && rec && deliveryCompletesPayment(rec.order)) {
+    if (!rec) return;
+    const event = this.opts.fulfillmentEvents ? fulfillmentEventFor(status) : null;
+    if (event) {
+      await this.enqueue("shopify.fulfillmentEvent", { orderId, trackingNumber, status: event.status, happenedAt: at, ...(event.message ? { message: event.message } : {}) },
+        `event:${orderId}:${trackingNumber}:${status}`);
+    }
+    if (status === "delivered" && this.opts.markCodPaidOnDelivery && deliveryCompletesPayment(rec.order)) {
       await this.enqueue("shopify.markPaid", { orderId }, `paid:${orderId}`);
     }
-    if (status === "returned" && this.opts.tagOnReturn) {
-      await this.enqueue("shopify.addTags", { id: orderId, tags: [this.opts.tagOnReturn] }, `tag:${orderId}:${this.opts.tagOnReturn}:${trackingNumber}`);
-    }
+    const tag = status === "returned" ? this.opts.tagOnReturn : status === "lost" ? this.opts.tagOnLost : null;
+    if (tag) await this.enqueue("shopify.addTags", { id: orderId, tags: [tag] }, `tag:${orderId}:${tag}:${trackingNumber}`);
+  }
+
+  private async fulfillmentEvent(p: { orderId: string; trackingNumber: string; status: FulfillmentEventStatus; happenedAt: string; message?: string }) {
+    const result = await this.shopify.addFulfillmentEvent(p);
+    this.emit("order.progress", { orderId: p.orderId, trackingNumber: p.trackingNumber, status: p.status, result });
   }
 
   private async markPaid(orderId: string) {
@@ -390,7 +922,11 @@ export class MizanEngine {
    *   differ, owner Shopify  → accept Shopify's value into Mizan
    */
   private async ingestProduct(productId: string) {
-    const product = await this.shopify.getProduct(productId);
+    await this.ingestProductData(await this.shopify.getProduct(productId));
+  }
+
+  private async ingestProductData(product: CanonicalProduct) {
+    const productId = product.externalId;
     const state = (await this.store.get<ProductState>("product-state", productId)) ?? { productId, desired: { variants: {}, inventory: {} } };
     const inFlight = state.lastWriteAt !== undefined && this.now() - state.lastWriteAt < this.opts.echoWindowMs;
     const restore: NonNullable<ProductPatch["variants"]> = [];
@@ -417,8 +953,9 @@ export class MizanEngine {
     }
 
     await this.store.put<ProductState>("product-state", productId, { ...state, snapshot: { ...product, raw: undefined } }, this.now());
+    await this.runHook(() => this.opts.hooks?.onProduct?.({ ...product, raw: undefined }));
     this.emit("product.ingested", { productId, title: product.title, status: product.status });
-    if (restore.length) {
+    if (restore.length && this.shopifyConn) {
       await this.enqueue("shopify.pushProduct", { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
     }
   }
@@ -442,6 +979,122 @@ export class MizanEngine {
     await this.store.put("cursor", "shopify.orders", { since: maxSeen }, this.now());
   }
 
+  private wooConnector(): WooCommerceConnector {
+    if (!this.woo) throw new IntegrationError({ kind: "permanent", connector: "woocommerce", message: "no WooCommerce store on this connection" });
+    return this.woo;
+  }
+
+  private async ingestWooOrder(orderId: string) {
+    try {
+      await this.ingestOrderData(await this.wooConnector().getOrder(orderId));
+    } catch (e) {
+      // Deleted for good (order.deleted, or emptied from the trash): the order is cancelled for Mizan.
+      if (e instanceof IntegrationError && e.kind === "not_found") {
+        const prev = await this.store.get<OrderRecord>("order", orderId);
+        if (prev && !prev.order.cancelled) await this.ingestOrderData({ ...prev.order, cancelled: true, updatedAt: new Date(this.now()).toISOString() });
+        this.emit("order.deleted", { orderId, connector: "woocommerce" });
+        return;
+      }
+      throw e;
+    }
+  }
+
+  /** Orders changed since the cursor (minus an overlap): catches lost webhooks and a webhook WooCommerce disabled. */
+  private async pollWooOrders() {
+    const woo = this.wooConnector();
+    const cursor = (await this.store.get<{ since: string }>("cursor", "woocommerce.orders"))?.since ?? new Date(this.now() - 24 * 3600_000).toISOString();
+    const since = new Date(Date.parse(cursor) - this.opts.pollOverlapMs).toISOString();
+    let maxSeen = cursor;
+    for await (const page of woo.ordersModifiedSince(since)) {
+      for (const o of page) {
+        const known = await this.store.get<OrderRecord>("order", o.externalId);
+        const fp = orderFingerprint(o);
+        if (!known || orderFingerprint(known.order) !== fp) await this.ingestOrderData(o); // the page is the full order: no second read
+        if (Date.parse(o.updatedAt) > Date.parse(maxSeen)) maxSeen = o.updatedAt;
+      }
+    }
+    await this.store.put("cursor", "woocommerce.orders", { since: maxSeen }, this.now());
+    // Products the same way: a missed product webhook is caught here.
+    const pCursor = (await this.store.get<{ since: string }>("cursor", "woocommerce.products"))?.since ?? new Date(this.now() - 24 * 3600_000).toISOString();
+    let pMax = pCursor;
+    for (let page: number | null = 1; page;) {
+      const r: { nodes: CanonicalProduct[]; next: number | null } = await woo.productsPage(new Date(Date.parse(pCursor) - this.opts.pollOverlapMs).toISOString(), page, 50);
+      for (const product of r.nodes) {
+        const known = await this.store.get<ProductState>("product-state", product.externalId);
+        if (!known?.snapshot || known.snapshot.updatedAt !== product.updatedAt) await this.ingestProductData(product);
+        if (Date.parse(product.updatedAt) > Date.parse(pMax)) pMax = product.updatedAt;
+      }
+      page = r.next;
+    }
+    await this.store.put("cursor", "woocommerce.products", { since: pMax }, this.now());
+  }
+
+  /** Also the keys' check (E5-7): it lists and writes webhooks, so it needs read/write keys that work. */
+  private async syncWooWebhooks() {
+    let result: AccessCheck;
+    try {
+      const r = await this.wooConnector().syncWebhooks();
+      this.emit("woocommerce.webhooks_synced", { created: r.created, reactivated: r.reactivated });
+      result = { ok: true };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || (e.kind !== "auth" && e.kind !== "permission")) throw e; // retry the rest
+      result = { ok: false, reason: e.kind, message: e.message };
+    }
+    await this.runHook(() => this.opts.hooks?.onAccessChecked?.("woocommerce", result));
+  }
+
+  /** History on connect (E5-7): one page of orders changed since `since` per job, the next page queued by this one. */
+  private async wooBackfillPage(p: WooBackfillPage) {
+    const woo = this.wooConnector();
+    const phase = p.phase ?? "orders";
+    let next: number | null;
+    let count: number;
+    if (phase === "orders") {
+      const r = await woo.ordersPage(p.since, p.page, 50);
+      for (const o of r.nodes) {
+        const known = await this.store.get<OrderRecord>("order", o.externalId);
+        if (!known || orderFingerprint(known.order) !== orderFingerprint(o)) await this.ingestOrderData(o);
+      }
+      next = r.next;
+      count = r.nodes.length;
+    } else {
+      const r = await woo.productsPage(null, p.page, 50);
+      for (const product of r.nodes) await this.ingestProductData(product);
+      next = r.next;
+      count = r.nodes.length;
+    }
+    const done = !next && phase === "products";
+    this.emit(done ? "backfill.completed" : "backfill.progress", { runKey: p.runKey, connector: "woocommerce", phase, page: p.page, items: count });
+    if (next) await this.enqueue("woocommerce.backfill", { ...p, phase, page: next }, `woocommerce:backfill:${p.runKey}:${phase}:${next}`);
+    else if (phase === "orders") await this.enqueue("woocommerce.backfill", { ...p, phase: "products", page: 1 }, `woocommerce:backfill:${p.runKey}:products:1`);
+    if (!next) {
+      // The poll starts where the history ends: nothing between them is missed.
+      const cursor = phase === "orders" ? "woocommerce.orders" : "woocommerce.products";
+      if (!(await this.store.get("cursor", cursor))) await this.store.put("cursor", cursor, { since: new Date(this.now()).toISOString() }, this.now());
+    }
+  }
+
+  private async pushWooStock(target: string) {
+    const desired = await this.store.get<{ quantity: number }>("woo-stock-desired", target);
+    if (!desired) return;
+    try {
+      await this.wooConnector().setStock(target, desired.quantity);
+    } catch (e) {
+      if (e instanceof IntegrationError && e.kind === "not_found") { this.emit("stock.push_skipped", { target, reason: "not_found", connector: "woocommerce" }); return; } // deleted in the store
+      throw e;
+    }
+    this.emit("stock.pushed", { target, quantity: desired.quantity, connector: "woocommerce" });
+  }
+
+  private async ingestWooProduct(productId: string) {
+    try {
+      await this.ingestProductData(await this.wooConnector().getProduct(productId));
+    } catch (e) {
+      if (e instanceof IntegrationError && e.kind === "not_found") { this.emit("product.missing", { productId, connector: "woocommerce" }); return; } // deleted meanwhile
+      throw e;
+    }
+  }
+
   private async pollActiveShipments() {
     const slot = Math.floor(this.now() / 60_000);
     for (const { key, value } of await this.store.list<ShipmentRecord>("shipment")) {
@@ -455,11 +1108,35 @@ export class MizanEngine {
       const kind = o.error instanceof IntegrationError ? o.error.kind : "permanent";
       this.emit("job.dead", { jobId: o.job.id, job: o.job.kind, errorKind: kind, error: o.error.message, payload: o.job.payload as Record<string, unknown> });
       if (kind === "auth" || kind === "permission") this.emit("connection.needs_attention", { connector: (o.error as IntegrationError).connector, reason: o.error.message });
+      if ((o.job.kind === "shopify.cancelOrder" || o.job.kind === "woocommerce.cancelOrder") && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as CancelJob;
+        this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "cancel result hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // An offer that never made it into the store's order: the team adds it by hand.
+      if (o.job.kind === "shopify.addOffer" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as OfferJob;
+        this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "offer result hook failed", { offerId: p.offerId, error: e instanceof Error ? e.message : String(e) }));
+      }
     }
   }
 }
 
 /** The order fields that drive engine decisions (shipping, payment, cancellation). */
+/**
+ * An order without personal data, as the engine keeps it in its records (E2-8, docs/07): no
+ * customer name, phone or email, and of the address only the city, province and country (the
+ * courier's zone). Mizan's own tables keep the rest, encrypted.
+ */
+export function withoutPersonalData(o: CanonicalOrder): CanonicalOrder {
+  const a = o.shippingAddress;
+  return {
+    ...o, raw: undefined, customer: { name: "" },
+    ...(a ? { shippingAddress: { line1: "", city: a.city, countryCode: a.countryCode, ...(a.province ? { province: a.province } : {}) } } : {}),
+  };
+}
+
 function orderFingerprint(o: CanonicalOrder): string {
   return [o.updatedAt, o.paymentMode, o.paymentStatus, o.outstanding?.amount ?? "", o.refunded?.amount ?? "", o.cancelled ? 1 : 0, [...o.tags].sort().join(",")].join("|");
 }

@@ -1,0 +1,20 @@
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+import noPhysicalDirection from "../web/eslint-rules/no-physical-direction.js";
+
+/** The dashboard's rules (apps/web): Next's recommended set plus Mizan's bilingual rules (docs/08 §3). */
+const config = [
+  ...nextVitals,
+  ...nextTs,
+  { ignores: [".next/**", "playwright-report/**", "test-results/**", "next-env.d.ts"] },
+  {
+    plugins: { mizan: { rules: { "no-physical-direction": noPhysicalDirection } } },
+    rules: {
+      "mizan/no-physical-direction": "error",
+      "react/jsx-no-literals": ["error", { noStrings: true, ignoreProps: true, allowedStrings: ["·", "—", "/", "%", "+", "−", ":", "#"] }],
+    },
+  },
+  { files: ["test/**", "e2e/**", "*.config.*"], rules: { "react/jsx-no-literals": "off" } },
+];
+
+export default config;

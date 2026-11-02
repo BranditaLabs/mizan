@@ -123,7 +123,8 @@ Automation Studio is not a confirmation tool: every module emits events and expo
 | Event | Meaning |
 | --- | --- |
 | `automation.run_started` | A run began, with its trigger event |
-| `automation.run_failed` | An action failed after retries |
+| `automation.run_failed` | ✅ A step failed (the run stops; E11-1) |
+| `automation.paused` | ✅ Too many recent runs failed: the automation turned itself off and the team was told (E11-1) |
 | `automation.published` | A new version went live |
 | `automation.paused` | Paused by a user or by the error guard |
 

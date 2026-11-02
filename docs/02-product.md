@@ -163,4 +163,4 @@ Payment status is separate (`unpaid`, `authorized`, `partially_paid`, `paid`, `p
 
 ## 8. Metrics instrumented from day one
 
-Product events (IDs only, never PII): `signup`, `store_connected`, `courier_connected`, `gateway_connected`, `whatsapp_connected`, `first_order_synced`, `first_order_verified`, `first_shipment_created`, `first_payment_link_paid`, `recipe_enabled`, `script_published`, `report_scheduled`, `plan_upgraded`, `module_activated`.
+Product events (IDs only, never PII; ✅ E4-5: table `product_events`, milestones recorded once; time-to-first-value = `signup` → `first_order_synced`, in `GET /v1/onboarding` and the `mizan_time_to_first_value_seconds` histogram): `signup`, `costs_entered`, `onboarding_step_skipped`, `store_connected`, `courier_connected`, `gateway_connected`, `whatsapp_connected`, `first_order_synced`, `first_order_verified`, `first_shipment_created`, `first_payment_link_paid`, `recipe_enabled`, `script_published`, `report_scheduled`, `plan_upgraded`, `module_activated`.

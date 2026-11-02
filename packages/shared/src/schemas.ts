@@ -5,6 +5,7 @@ import {
   type CanonicalVariant, type ConnectorId, type FulfillmentGroup, type Money,
   type OrderLine, type ProductPatch,
 } from "./model.js";
+import type { OrderSourceHints, SourceVisit, Utm } from "./attribution.js";
 import { isCurrencyCode, isDecimalAmount } from "./money.js";
 
 /**
@@ -43,6 +44,7 @@ export const AddressSchema = z.object({
 export const OrderLineSchema = z.object({
   externalLineId: z.string().min(1),
   sku: z.string().optional(),
+  variantExternalId: z.string().optional(),
   title: z.string(),
   quantity: z.number().int().positive(),
   unitPrice: MoneySchema,
@@ -53,6 +55,15 @@ export const FulfillmentGroupSchema = z.object({
   status: z.string(),
   lineIds: z.array(z.string()),
 }) satisfies z.ZodType<FulfillmentGroup>;
+
+const UtmSchema = z.object({ source: z.string().optional(), medium: z.string().optional(), campaign: z.string().optional(), content: z.string().optional(), term: z.string().optional(), id: z.string().optional() }) satisfies z.ZodType<Utm>;
+const SourceVisitSchema = z.object({
+  landingUrl: z.string().optional(), referrerUrl: z.string().optional(), source: z.string().optional(), sourceType: z.string().optional(), utm: UtmSchema.optional(), occurredAt: z.string().optional(),
+}) satisfies z.ZodType<SourceVisit>;
+export const OrderSourceHintsSchema = z.object({
+  firstVisit: SourceVisitSchema.optional(), lastVisit: SourceVisitSchema.optional(), channel: z.string().optional(),
+  discountCodes: z.array(z.string()).optional(), attributes: z.record(z.string(), z.string()).optional(),
+}) satisfies z.ZodType<OrderSourceHints>;
 
 export const CanonicalOrderSchema = z.object({
   connector: ConnectorIdSchema,
@@ -77,6 +88,7 @@ export const CanonicalOrderSchema = z.object({
   lines: z.array(OrderLineSchema),
   fulfillmentGroups: z.array(FulfillmentGroupSchema),
   tags: z.array(z.string()),
+  source: OrderSourceHintsSchema.optional(),
   raw: z.unknown().optional(),
 }) satisfies z.ZodType<CanonicalOrder>;
 

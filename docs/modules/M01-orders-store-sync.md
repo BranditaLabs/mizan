@@ -44,6 +44,8 @@ Orders Sync pulls orders from each connected storefront the moment they are plac
 
 ## Main screen — Orders
 
+✅ Built in E5-1 (`apps/web/src/components/orders/OrdersScreen.tsx`, `GET /v1/orders`): status tabs with counts, search, table, show more. Store column, Duplicates tab (E5-3) and **New order** (✅ E5-5, `/orders/new`: customer, address, catalogue or one-off items, shipping, discount, payment with a live "the courier collects" summary) are built; Import CSV comes later.
+
 Filters: `All · 1,284` · `New · 96` · `Pending confirmation · 41` · `Confirmed · 212` · `Shipped · 803` · `Duplicates · 7`  
 Actions: Import CSV, New order
 
@@ -56,6 +58,10 @@ Actions: Import CSV, New order
 | #LF-772 | Youssef K. · 015•••3301 | LightFunnels | EGP 890 | Low | Shipped | 3 h |
 
 _Sample data. Full visual in `design/prototype.html`._
+
+## Order detail
+
+✅ Built in E5-2 (`apps/web/src/components/orders/OrderDetail.tsx`, `GET /v1/orders/{id}`, `POST /v1/orders/{id}/reveal`): header with status and payment, items, money (paid, still owed, cash the courier collects), payments ledger, shipments (from E7), risk and reasons, activity timeline (newest first). The customer card is masked (`Mona A.`, `••• 4821`, area); **Show details** asks the API, which decrypts and writes `customer.pii_viewed` to the audit log, then shows name, phone (`tel:` link), address and a Google Maps link when the order has a pin (filled from WhatsApp location in E6-4). Actions (confirm, assign, cancel, merge) arrive with E5-3, E5-4 and E6.
 
 ## Payment methods and channels
 
@@ -79,7 +85,7 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | Packed | Warehouse scan completes | Shipped |
 | Shipped | Courier shipment created (M3) | Delivered, Refused |
 | Delivered / Refused | Courier final status | Closed, Returned |
-| Duplicate | Same phone + product within window | Merged or kept |
+| Duplicate | Same phone + product within window (✅ E5-3: held from confirmation; `duplicate_status suspected`) | Merged (cancelled, tagged `mizan-duplicate`) or kept (confirmation starts) |
 
 ### Settings (defaults)
 
@@ -99,7 +105,10 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | --- | --- |
 | `order.created` | A new order was synced and normalized |
 | `order.status_changed` | Any status move, with old and new status |
-| `order.duplicate_found` | A likely duplicate was detected |
+| `order.duplicate_found` | A likely duplicate was detected (✅ E5-3) |
+| `order.duplicate_resolved` | The team kept it or merged it (✅ E5-3) |
+| `orders.reconciled` | The nightly check fetched orders a lost webhook never brought (✅ E5-8) |
+| `orders.reconciliation_gap` | After the nightly check, the store and Mizan still count a day's orders differently (✅ E5-8) |
 | `order.cancelled` | Cancelled in Mizan or in the store |
 
 ## Actions exposed (for Automation Studio)
@@ -145,9 +154,10 @@ Downstream modules branch on these: M2 picks confirmation (COD) or fraud screeni
 | --- | --- | --- |
 | GET | `/v1/orders` | List and filter orders |
 | GET | `/v1/orders/{id}` | Order with items and history |
-| POST | `/v1/orders` | Create a manual order |
+| POST | `/v1/orders` | ✅ E5-5: create a manual order (phone, WhatsApp, Instagram, in person); numbered M-1001…; goes through duplicates, risk and confirmation like a store order |
+| GET | `/v1/orders/products` | ✅ E5-5: products to pick for a manual order |
 | PATCH | `/v1/orders/{id}` | Edit, change status, assign |
-| POST | `/v1/orders/bulk` | Bulk assign, tag, status |
+| POST | `/v1/orders/bulk` | ✅ E5-4: assign, tag, confirm or cancel up to 500 orders (cancel reaches Shopify; paid orders skipped for a refund); `GET /v1/orders/bulk/{id}` for progress. Bulk ship comes with E7 |
 | POST | `/v1/stores/{id}/webhook` | Inbound store webhook |
 
 Conventions: `docs/05-api.md`.

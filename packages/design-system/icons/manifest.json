@@ -1,0 +1,999 @@
+{
+ "$description": "Mizan icon set. Semantic name → Lucide glyph (ISC). Edit here, then npm run build -w @mizan/design-system.",
+ "stroke": 1.75,
+ "grid": 24,
+ "icons": [
+  {
+   "name": "home",
+   "lucide": "house",
+   "group": "module",
+   "en": "Home",
+   "ar": "الرئيسية",
+   "rtlFlip": false
+  },
+  {
+   "name": "orders",
+   "lucide": "shopping-bag",
+   "group": "module",
+   "en": "Orders",
+   "ar": "الأوردرات",
+   "rtlFlip": false
+  },
+  {
+   "name": "verification",
+   "lucide": "shield-check",
+   "group": "module",
+   "en": "Verification",
+   "ar": "التأكيد",
+   "rtlFlip": false
+  },
+  {
+   "name": "payments",
+   "lucide": "credit-card",
+   "group": "module",
+   "en": "Payments",
+   "ar": "المدفوعات",
+   "rtlFlip": false
+  },
+  {
+   "name": "shipping",
+   "lucide": "truck",
+   "group": "module",
+   "en": "Shipping",
+   "ar": "الشحن",
+   "rtlFlip": true
+  },
+  {
+   "name": "warehouse",
+   "lucide": "warehouse",
+   "group": "module",
+   "en": "Warehouse",
+   "ar": "المخزن",
+   "rtlFlip": false
+  },
+  {
+   "name": "purchasing",
+   "lucide": "clipboard-list",
+   "group": "module",
+   "en": "Purchasing",
+   "ar": "المشتريات",
+   "rtlFlip": false
+  },
+  {
+   "name": "returns",
+   "lucide": "undo-2",
+   "group": "module",
+   "en": "Returns",
+   "ar": "المرتجعات",
+   "rtlFlip": true
+  },
+  {
+   "name": "inbox",
+   "lucide": "inbox",
+   "group": "module",
+   "en": "Inbox",
+   "ar": "الرسايل",
+   "rtlFlip": false
+  },
+  {
+   "name": "customers",
+   "lucide": "users",
+   "group": "module",
+   "en": "Customers",
+   "ar": "العملاء",
+   "rtlFlip": false
+  },
+  {
+   "name": "channels",
+   "lucide": "network",
+   "group": "module",
+   "en": "Channels",
+   "ar": "قنوات البيع",
+   "rtlFlip": false
+  },
+  {
+   "name": "pos",
+   "lucide": "store",
+   "group": "module",
+   "en": "POS",
+   "ar": "نقطة البيع",
+   "rtlFlip": false
+  },
+  {
+   "name": "profit",
+   "lucide": "scale",
+   "group": "module",
+   "en": "Profit",
+   "ar": "الربح",
+   "rtlFlip": false
+  },
+  {
+   "name": "finance",
+   "lucide": "landmark",
+   "group": "module",
+   "en": "Finance",
+   "ar": "الحسابات",
+   "rtlFlip": false
+  },
+  {
+   "name": "reconciliation",
+   "lucide": "list-checks",
+   "group": "module",
+   "en": "Reconciliation",
+   "ar": "التسوية",
+   "rtlFlip": false
+  },
+  {
+   "name": "attribution",
+   "lucide": "target",
+   "group": "module",
+   "en": "Attribution",
+   "ar": "الإعلانات",
+   "rtlFlip": false
+  },
+  {
+   "name": "reports",
+   "lucide": "chart-column",
+   "group": "module",
+   "en": "Reports",
+   "ar": "التقارير",
+   "rtlFlip": false
+  },
+  {
+   "name": "automations",
+   "lucide": "workflow",
+   "group": "module",
+   "en": "Automations",
+   "ar": "الأتمتة",
+   "rtlFlip": false
+  },
+  {
+   "name": "scripts",
+   "lucide": "message-square-text",
+   "group": "module",
+   "en": "Scripts",
+   "ar": "السكريبتات",
+   "rtlFlip": false
+  },
+  {
+   "name": "team",
+   "lucide": "user-check",
+   "group": "module",
+   "en": "Team",
+   "ar": "الفريق",
+   "rtlFlip": false
+  },
+  {
+   "name": "risk",
+   "lucide": "shield-alert",
+   "group": "module",
+   "en": "Risk",
+   "ar": "المخاطر",
+   "rtlFlip": false
+  },
+  {
+   "name": "routing",
+   "lucide": "route",
+   "group": "module",
+   "en": "Routing",
+   "ar": "التوجيه",
+   "rtlFlip": false
+  },
+  {
+   "name": "analyst",
+   "lucide": "sparkles",
+   "group": "module",
+   "en": "AI analyst",
+   "ar": "المحلل الذكي",
+   "rtlFlip": false
+  },
+  {
+   "name": "developers",
+   "lucide": "code-xml",
+   "group": "module",
+   "en": "Developers",
+   "ar": "المطورين",
+   "rtlFlip": false
+  },
+  {
+   "name": "settings",
+   "lucide": "settings",
+   "group": "module",
+   "en": "Settings",
+   "ar": "الإعدادات",
+   "rtlFlip": false
+  },
+  {
+   "name": "add",
+   "lucide": "plus",
+   "group": "action",
+   "en": "Add",
+   "ar": "إضافة",
+   "rtlFlip": false
+  },
+  {
+   "name": "edit",
+   "lucide": "pencil",
+   "group": "action",
+   "en": "Edit",
+   "ar": "تعديل",
+   "rtlFlip": false
+  },
+  {
+   "name": "delete",
+   "lucide": "trash-2",
+   "group": "action",
+   "en": "Delete",
+   "ar": "حذف",
+   "rtlFlip": false
+  },
+  {
+   "name": "search",
+   "lucide": "search",
+   "group": "action",
+   "en": "Search",
+   "ar": "بحث",
+   "rtlFlip": false
+  },
+  {
+   "name": "filter",
+   "lucide": "list-filter",
+   "group": "action",
+   "en": "Filter",
+   "ar": "تصفية",
+   "rtlFlip": false
+  },
+  {
+   "name": "sort",
+   "lucide": "arrow-up-down",
+   "group": "action",
+   "en": "Sort",
+   "ar": "ترتيب",
+   "rtlFlip": false
+  },
+  {
+   "name": "more",
+   "lucide": "ellipsis",
+   "group": "action",
+   "en": "More",
+   "ar": "المزيد",
+   "rtlFlip": false
+  },
+  {
+   "name": "more-vertical",
+   "lucide": "ellipsis-vertical",
+   "group": "action",
+   "en": "More",
+   "ar": "المزيد",
+   "rtlFlip": false
+  },
+  {
+   "name": "close",
+   "lucide": "x",
+   "group": "action",
+   "en": "Close",
+   "ar": "إغلاق",
+   "rtlFlip": false
+  },
+  {
+   "name": "confirm",
+   "lucide": "check",
+   "group": "action",
+   "en": "Confirm",
+   "ar": "تأكيد",
+   "rtlFlip": false
+  },
+  {
+   "name": "copy",
+   "lucide": "copy",
+   "group": "action",
+   "en": "Copy",
+   "ar": "نسخ",
+   "rtlFlip": false
+  },
+  {
+   "name": "download",
+   "lucide": "download",
+   "group": "action",
+   "en": "Download",
+   "ar": "تحميل",
+   "rtlFlip": false
+  },
+  {
+   "name": "upload",
+   "lucide": "upload",
+   "group": "action",
+   "en": "Upload",
+   "ar": "رفع",
+   "rtlFlip": false
+  },
+  {
+   "name": "export",
+   "lucide": "file-down",
+   "group": "action",
+   "en": "Export",
+   "ar": "تصدير",
+   "rtlFlip": false
+  },
+  {
+   "name": "import",
+   "lucide": "file-up",
+   "group": "action",
+   "en": "Import",
+   "ar": "استيراد",
+   "rtlFlip": false
+  },
+  {
+   "name": "print",
+   "lucide": "printer",
+   "group": "action",
+   "en": "Print",
+   "ar": "طباعة",
+   "rtlFlip": false
+  },
+  {
+   "name": "share",
+   "lucide": "share-2",
+   "group": "action",
+   "en": "Share",
+   "ar": "مشاركة",
+   "rtlFlip": false
+  },
+  {
+   "name": "refresh",
+   "lucide": "refresh-cw",
+   "group": "action",
+   "en": "Refresh",
+   "ar": "تحديث",
+   "rtlFlip": false
+  },
+  {
+   "name": "link",
+   "lucide": "link",
+   "group": "action",
+   "en": "Link",
+   "ar": "لينك",
+   "rtlFlip": false
+  },
+  {
+   "name": "external",
+   "lucide": "external-link",
+   "group": "action",
+   "en": "Open",
+   "ar": "فتح",
+   "rtlFlip": true
+  },
+  {
+   "name": "send",
+   "lucide": "send",
+   "group": "action",
+   "en": "Send",
+   "ar": "إرسال",
+   "rtlFlip": true
+  },
+  {
+   "name": "back",
+   "lucide": "arrow-left",
+   "group": "action",
+   "en": "Back",
+   "ar": "رجوع",
+   "rtlFlip": true
+  },
+  {
+   "name": "forward",
+   "lucide": "arrow-right",
+   "group": "action",
+   "en": "Next",
+   "ar": "التالي",
+   "rtlFlip": true
+  },
+  {
+   "name": "logout",
+   "lucide": "log-out",
+   "group": "action",
+   "en": "Sign out",
+   "ar": "تسجيل خروج",
+   "rtlFlip": true
+  },
+  {
+   "name": "menu",
+   "lucide": "menu",
+   "group": "action",
+   "en": "Menu",
+   "ar": "القائمة",
+   "rtlFlip": false
+  },
+  {
+   "name": "sidebar",
+   "lucide": "panel-left",
+   "group": "action",
+   "en": "Sidebar",
+   "ar": "القائمة الجانبية",
+   "rtlFlip": true
+  },
+  {
+   "name": "language",
+   "lucide": "languages",
+   "group": "action",
+   "en": "Language",
+   "ar": "اللغة",
+   "rtlFlip": false
+  },
+  {
+   "name": "theme-light",
+   "lucide": "sun",
+   "group": "action",
+   "en": "Light",
+   "ar": "فاتح",
+   "rtlFlip": false
+  },
+  {
+   "name": "theme-dark",
+   "lucide": "moon",
+   "group": "action",
+   "en": "Dark",
+   "ar": "داكن",
+   "rtlFlip": false
+  },
+  {
+   "name": "attach",
+   "lucide": "paperclip",
+   "group": "action",
+   "en": "Attach",
+   "ar": "إرفاق",
+   "rtlFlip": false
+  },
+  {
+   "name": "pin",
+   "lucide": "map-pin",
+   "group": "action",
+   "en": "Location",
+   "ar": "اللوكيشن",
+   "rtlFlip": false
+  },
+  {
+   "name": "call",
+   "lucide": "phone",
+   "group": "action",
+   "en": "Call",
+   "ar": "اتصال",
+   "rtlFlip": false
+  },
+  {
+   "name": "call-outgoing",
+   "lucide": "phone-outgoing",
+   "group": "action",
+   "en": "Calling",
+   "ar": "جاري الاتصال",
+   "rtlFlip": false
+  },
+  {
+   "name": "call-missed",
+   "lucide": "phone-missed",
+   "group": "action",
+   "en": "No answer",
+   "ar": "ما ردش",
+   "rtlFlip": false
+  },
+  {
+   "name": "message",
+   "lucide": "message-circle",
+   "group": "action",
+   "en": "Message",
+   "ar": "رسالة",
+   "rtlFlip": false
+  },
+  {
+   "name": "sms",
+   "lucide": "message-square",
+   "group": "action",
+   "en": "SMS",
+   "ar": "رسالة SMS",
+   "rtlFlip": false
+  },
+  {
+   "name": "email",
+   "lucide": "mail",
+   "group": "action",
+   "en": "Email",
+   "ar": "إيميل",
+   "rtlFlip": false
+  },
+  {
+   "name": "chevron-start",
+   "lucide": "chevron-left",
+   "group": "navigation",
+   "en": "Previous",
+   "ar": "السابق",
+   "rtlFlip": true
+  },
+  {
+   "name": "chevron-end",
+   "lucide": "chevron-right",
+   "group": "navigation",
+   "en": "Next",
+   "ar": "التالي",
+   "rtlFlip": true
+  },
+  {
+   "name": "chevron-down",
+   "lucide": "chevron-down",
+   "group": "navigation",
+   "en": "Expand",
+   "ar": "توسيع",
+   "rtlFlip": false
+  },
+  {
+   "name": "chevron-up",
+   "lucide": "chevron-up",
+   "group": "navigation",
+   "en": "Collapse",
+   "ar": "طي",
+   "rtlFlip": false
+  },
+  {
+   "name": "arrow-up",
+   "lucide": "arrow-up",
+   "group": "navigation",
+   "en": "Up",
+   "ar": "لأعلى",
+   "rtlFlip": false
+  },
+  {
+   "name": "arrow-down",
+   "lucide": "arrow-down",
+   "group": "navigation",
+   "en": "Down",
+   "ar": "لأسفل",
+   "rtlFlip": false
+  },
+  {
+   "name": "success",
+   "lucide": "circle-check",
+   "group": "status",
+   "en": "Success",
+   "ar": "تم",
+   "rtlFlip": false
+  },
+  {
+   "name": "warning",
+   "lucide": "triangle-alert",
+   "group": "status",
+   "en": "Warning",
+   "ar": "تنبيه",
+   "rtlFlip": false
+  },
+  {
+   "name": "error",
+   "lucide": "circle-alert",
+   "group": "status",
+   "en": "Error",
+   "ar": "خطأ",
+   "rtlFlip": false
+  },
+  {
+   "name": "info",
+   "lucide": "info",
+   "group": "status",
+   "en": "Info",
+   "ar": "معلومة",
+   "rtlFlip": false
+  },
+  {
+   "name": "help",
+   "lucide": "circle-help",
+   "group": "status",
+   "en": "Help",
+   "ar": "مساعدة",
+   "rtlFlip": false
+  },
+  {
+   "name": "pending",
+   "lucide": "clock",
+   "group": "status",
+   "en": "Pending",
+   "ar": "في الانتظار",
+   "rtlFlip": false
+  },
+  {
+   "name": "sync",
+   "lucide": "refresh-cw",
+   "group": "status",
+   "en": "Syncing",
+   "ar": "جاري المزامنة",
+   "rtlFlip": false
+  },
+  {
+   "name": "offline",
+   "lucide": "wifi-off",
+   "group": "status",
+   "en": "Offline",
+   "ar": "بدون إنترنت",
+   "rtlFlip": false
+  },
+  {
+   "name": "online",
+   "lucide": "wifi",
+   "group": "status",
+   "en": "Online",
+   "ar": "متصل",
+   "rtlFlip": false
+  },
+  {
+   "name": "locked",
+   "lucide": "lock",
+   "group": "status",
+   "en": "Locked",
+   "ar": "مقفول",
+   "rtlFlip": false
+  },
+  {
+   "name": "visible",
+   "lucide": "eye",
+   "group": "status",
+   "en": "Show",
+   "ar": "إظهار",
+   "rtlFlip": false
+  },
+  {
+   "name": "hidden",
+   "lucide": "eye-off",
+   "group": "status",
+   "en": "Hide",
+   "ar": "إخفاء",
+   "rtlFlip": false
+  },
+  {
+   "name": "notification",
+   "lucide": "bell",
+   "group": "status",
+   "en": "Notifications",
+   "ar": "الإشعارات",
+   "rtlFlip": false
+  },
+  {
+   "name": "automation-run",
+   "lucide": "zap",
+   "group": "status",
+   "en": "Automation",
+   "ar": "أتمتة",
+   "rtlFlip": false
+  },
+  {
+   "name": "ai",
+   "lucide": "sparkles",
+   "group": "status",
+   "en": "AI",
+   "ar": "ذكاء اصطناعي",
+   "rtlFlip": false
+  },
+  {
+   "name": "starred",
+   "lucide": "star",
+   "group": "status",
+   "en": "Starred",
+   "ar": "مميز",
+   "rtlFlip": false
+  },
+  {
+   "name": "trend-up",
+   "lucide": "trending-up",
+   "group": "status",
+   "en": "Up",
+   "ar": "ارتفاع",
+   "rtlFlip": false
+  },
+  {
+   "name": "trend-down",
+   "lucide": "trending-down",
+   "group": "status",
+   "en": "Down",
+   "ar": "انخفاض",
+   "rtlFlip": false
+  },
+  {
+   "name": "product",
+   "lucide": "package",
+   "group": "commerce",
+   "en": "Product",
+   "ar": "منتج",
+   "rtlFlip": false
+  },
+  {
+   "name": "unboxed",
+   "lucide": "package-open",
+   "group": "commerce",
+   "en": "Open box",
+   "ar": "المعاينة",
+   "rtlFlip": false
+  },
+  {
+   "name": "barcode",
+   "lucide": "barcode",
+   "group": "commerce",
+   "en": "Barcode",
+   "ar": "باركود",
+   "rtlFlip": false
+  },
+  {
+   "name": "scan",
+   "lucide": "scan-line",
+   "group": "commerce",
+   "en": "Scan",
+   "ar": "مسح",
+   "rtlFlip": false
+  },
+  {
+   "name": "scan-barcode",
+   "lucide": "scan-barcode",
+   "group": "commerce",
+   "en": "Scan barcode",
+   "ar": "مسح باركود",
+   "rtlFlip": false
+  },
+  {
+   "name": "cart",
+   "lucide": "shopping-cart",
+   "group": "commerce",
+   "en": "Cart",
+   "ar": "السلة",
+   "rtlFlip": false
+  },
+  {
+   "name": "stock",
+   "lucide": "boxes",
+   "group": "commerce",
+   "en": "Stock",
+   "ar": "المخزون",
+   "rtlFlip": false
+  },
+  {
+   "name": "low-stock",
+   "lucide": "package-minus",
+   "group": "commerce",
+   "en": "Low stock",
+   "ar": "مخزون قليل",
+   "rtlFlip": false
+  },
+  {
+   "name": "transfer",
+   "lucide": "arrow-right-left",
+   "group": "commerce",
+   "en": "Transfer",
+   "ar": "تحويل",
+   "rtlFlip": false
+  },
+  {
+   "name": "supplier",
+   "lucide": "factory",
+   "group": "commerce",
+   "en": "Supplier",
+   "ar": "مورد",
+   "rtlFlip": false
+  },
+  {
+   "name": "received",
+   "lucide": "package-check",
+   "group": "commerce",
+   "en": "Received",
+   "ar": "تم الاستلام",
+   "rtlFlip": false
+  },
+  {
+   "name": "tag",
+   "lucide": "tag",
+   "group": "commerce",
+   "en": "Tag",
+   "ar": "تاج",
+   "rtlFlip": false
+  },
+  {
+   "name": "note",
+   "lucide": "sticky-note",
+   "group": "commerce",
+   "en": "Note",
+   "ar": "ملاحظة",
+   "rtlFlip": false
+  },
+  {
+   "name": "calendar",
+   "lucide": "calendar",
+   "group": "commerce",
+   "en": "Date",
+   "ar": "التاريخ",
+   "rtlFlip": false
+  },
+  {
+   "name": "customer",
+   "lucide": "user",
+   "group": "commerce",
+   "en": "Customer",
+   "ar": "عميل",
+   "rtlFlip": false
+  },
+  {
+   "name": "device",
+   "lucide": "monitor-smartphone",
+   "group": "commerce",
+   "en": "Device",
+   "ar": "جهاز",
+   "rtlFlip": false
+  },
+  {
+   "name": "map",
+   "lucide": "map",
+   "group": "commerce",
+   "en": "Map",
+   "ar": "الخريطة",
+   "rtlFlip": false
+  },
+  {
+   "name": "courier",
+   "lucide": "truck",
+   "group": "shipping",
+   "en": "Courier",
+   "ar": "شركة الشحن",
+   "rtlFlip": true
+  },
+  {
+   "name": "delivered",
+   "lucide": "package-check",
+   "group": "shipping",
+   "en": "Delivered",
+   "ar": "اتسلم",
+   "rtlFlip": false
+  },
+  {
+   "name": "refused",
+   "lucide": "package-x",
+   "group": "shipping",
+   "en": "Refused (RTO)",
+   "ar": "مرتجع",
+   "rtlFlip": false
+  },
+  {
+   "name": "in-transit",
+   "lucide": "navigation",
+   "group": "shipping",
+   "en": "In transit",
+   "ar": "في الطريق",
+   "rtlFlip": false
+  },
+  {
+   "name": "failed-attempt",
+   "lucide": "circle-x",
+   "group": "shipping",
+   "en": "Failed attempt",
+   "ar": "محاولة فاشلة",
+   "rtlFlip": false
+  },
+  {
+   "name": "lost",
+   "lucide": "search-x",
+   "group": "shipping",
+   "en": "Lost",
+   "ar": "مفقود",
+   "rtlFlip": false
+  },
+  {
+   "name": "cod",
+   "lucide": "hand-coins",
+   "group": "money",
+   "en": "Cash on delivery",
+   "ar": "الدفع عند الاستلام",
+   "rtlFlip": false
+  },
+  {
+   "name": "cash",
+   "lucide": "banknote",
+   "group": "money",
+   "en": "Cash",
+   "ar": "كاش",
+   "rtlFlip": false
+  },
+  {
+   "name": "card",
+   "lucide": "credit-card",
+   "group": "money",
+   "en": "Card",
+   "ar": "كارت",
+   "rtlFlip": false
+  },
+  {
+   "name": "wallet",
+   "lucide": "wallet",
+   "group": "money",
+   "en": "Wallet",
+   "ar": "محفظة",
+   "rtlFlip": false
+  },
+  {
+   "name": "bnpl",
+   "lucide": "calendar-range",
+   "group": "money",
+   "en": "Instalments (BNPL)",
+   "ar": "تقسيط",
+   "rtlFlip": false
+  },
+  {
+   "name": "bank-transfer",
+   "lucide": "landmark",
+   "group": "money",
+   "en": "Bank transfer",
+   "ar": "تحويل بنكي",
+   "rtlFlip": false
+  },
+  {
+   "name": "deposit",
+   "lucide": "piggy-bank",
+   "group": "money",
+   "en": "Deposit",
+   "ar": "عربون",
+   "rtlFlip": false
+  },
+  {
+   "name": "refund",
+   "lucide": "rotate-ccw",
+   "group": "money",
+   "en": "Refund",
+   "ar": "استرداد",
+   "rtlFlip": false
+  },
+  {
+   "name": "chargeback",
+   "lucide": "shield-x",
+   "group": "money",
+   "en": "Chargeback",
+   "ar": "اعتراض دفع",
+   "rtlFlip": false
+  },
+  {
+   "name": "payout",
+   "lucide": "arrow-down-to-line",
+   "group": "money",
+   "en": "Payout",
+   "ar": "تحويل المستحقات",
+   "rtlFlip": false
+  },
+  {
+   "name": "invoice",
+   "lucide": "file-text",
+   "group": "money",
+   "en": "Invoice",
+   "ar": "فاتورة",
+   "rtlFlip": false
+  },
+  {
+   "name": "receipt",
+   "lucide": "receipt",
+   "group": "money",
+   "en": "Receipt",
+   "ar": "إيصال",
+   "rtlFlip": false
+  },
+  {
+   "name": "tax",
+   "lucide": "percent",
+   "group": "money",
+   "en": "VAT",
+   "ar": "الضريبة",
+   "rtlFlip": false
+  },
+  {
+   "name": "fx",
+   "lucide": "coins",
+   "group": "money",
+   "en": "Currency",
+   "ar": "العملة",
+   "rtlFlip": false
+  },
+  {
+   "name": "discount",
+   "lucide": "badge-percent",
+   "group": "money",
+   "en": "Discount",
+   "ar": "خصم",
+   "rtlFlip": false
+  }
+ ]
+}

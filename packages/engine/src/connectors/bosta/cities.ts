@@ -91,6 +91,11 @@ export class CityResolver {
     return null;
   }
 
+  /** Every city Bosta serves, in Bosta's order. */
+  all(): readonly BostaCity[] {
+    return this.cities;
+  }
+
   suggest(text: string | undefined, n = 3): BostaCity[] {
     const t = normalize(text);
     return [...this.cities]

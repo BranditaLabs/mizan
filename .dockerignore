@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+**/.data
+**/coverage
+.git
+.github
+.claude
+docs
+design
+deploy
+Dockerfile
+*.md
+**/.next

@@ -9,11 +9,12 @@ Mizan runs the whole operation in one product: orders from stores, marketplaces 
 | Part | State |
 | --- | --- |
 | `packages/engine` — self-healing Shopify + Bosta connectors, every payment method | ✅ Built · 85 tests incl. chaos at 50% failure with mixed payments |
-| `packages/db` — PostgreSQL schema for the full OS with row-level security | ✅ Built · 8 tests |
+| `packages/db` — PostgreSQL schema with row-level security, migration runner, typed Kysely access | ✅ Built · 22 tests (PGlite + real PostgreSQL) |
 | `docs/` — business model, product (22 modules), payments, automations, architecture, data, API, integrations, security, design, infra, backlog | ✅ Written |
 | `design/prototype.html` — UI direction (AR/EN, light/dark) | ✅ Approved |
 | `packages/shared` — canonical types, zod schemas, exact money, EG/KSA/UAE phones | ✅ Built · 122 tests, 100% coverage |
-| `apps/api`, `apps/web`, `apps/ops` | ⏳ Next — see `docs/10-backlog.md` |
+| `apps/api` — NestJS API: tenant DB, Firebase auth + roles, signup, team, domain events + worker, audit, KMS secrets | 🚧 Foundations (E1) · 124 tests |
+| `apps/web`, `apps/ops` | ⏳ Next — see `docs/10-backlog.md` |
 
 ## Start
 

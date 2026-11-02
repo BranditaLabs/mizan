@@ -131,14 +131,46 @@ _Sample data. Full visual in `design/prototype.html`._
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/v1/stock` | Levels by SKU and warehouse |
-| POST | `/v1/stock/movements` | Receive, adjust, transfer |
-| POST | `/v1/picklists` | Create a pick list |
-| POST | `/v1/scans/batch` | Sync offline scans |
+| ✅ POST | `/v1/picklists` | Create a pick list from the confirmed orders ready to pack; items sorted by shelf (E8-4c) |
+| ✅ GET | `/v1/picklists`, `/v1/picklists/{id}` | Open or closed lists; a list with what is left to pick and each order's lines to scan (E8-4c) |
+| ✅ POST | `/v1/picklists/{id}/close` | Close by hand; it also closes itself when every order is packed (E8-4c) |
 | GET | `/v1/stock/ledger` | Movement history |
-| PATCH | `/v1/skus/{id}` | Threshold, cost, barcode |
+| ✅ GET | `/v1/stock` | On hand, reserved, available per item; counted / not counted / out filters (E8-2) |
+| ✅ POST | `/v1/stock/movements` | Receive, count, adjust with a reason; all or none (E8-2) |
+| ✅ GET | `/v1/stock/{variantId}/movements` | The item's ledger (E8-2) |
+| ✅ POST | `/v1/ops/sync` | The ops app's offline queue: receive, count, adjust by scan or SKU, each op once (E8-3) |
+| ✅ GET | `/v1/products` | Products and variants with cost, barcode, stock; search and "missing cost / barcode" filters (E8-1) |
+| ✅ PATCH | `/v1/products/variants/{id}` | Cost and barcode (E8-1); threshold with E8-5 |
+| ✅ POST | `/v1/products/costs/import` | Costs and barcodes from a sheet, all lines or none (E8-1) |
 
 Conventions: `docs/05-api.md`.
+
+## How stock works today (E8-2)
+
+- **Counted or not.** An item is counted by Mizan once it is received or counted on the Stock screen. Until then the store's number is shown and orders don't reserve it (`untracked`).
+- **Orders hold stock.** Confirmed → reserve; cancelled or back to waiting → release; shipped, delivered or returned → release and pick (leaves on hand). Lines that change (an accepted offer, a store edit) reserve or release the difference. Every event re-reads the order, so repeats change nothing.
+- **Oversell blocked.** If any counted item of a confirmed order isn't available, nothing new is reserved for it: the order is `short` (tab "Waiting for stock", event `stock.short`). Stock that arrives, or that another order releases, reserves waiting orders oldest first (25 per change).
+- **Never under reserved.** A count or adjustment that would take on hand under what confirmed orders hold is refused (`below_reserved`).
+- **Ledger first.** Each change is a `stock_movements` row; the level is updated in the same transaction and equals the sum of its rows (tested).
+- **Offline phones (E8-3).** The ops app queues operations with its own `opId` and sends them to `POST /v1/ops/sync` when online. Each runs once in the order it happened; a replay returns the first outcome; a count under what orders hold is a conflict the app shows (server wins).
+- **Alerts (E8-5).** Each counted item can have a threshold (`lowStockAt`). `stock.low` fires once when available falls to it or under, `stock.out` when it reaches zero; the Stock screen has a "Low stock" tab. Push notifications come with the ops app.
+- **The store's number (E8-5).** Off by default (Settings on the Stock screen, managers only). When on, Mizan owns the stock of counted items: their available count is sent to Shopify on every change, to the location that stocks the item (the first one when several do; one warehouse until E2-7 / multi-location). Uncounted items stay the store's. Mizan's push goes through the outbox and always sends the latest number; Shopify's own sales lower its number until the next change sends Mizan's.
+- **WooCommerce stores (E5-7).** The same switch: each WooCommerce variant knows where WooCommerce keeps its count (the product, the variation, or the product for a variation set to share it, `manage_stock: "parent"`); Mizan sets that record's `stock_quantity` (`woocommerce.setStock`, latest count wins), summing the items that share one count. Products whose stock WooCommerce does not manage, and items not counted in Mizan, are left to the store.
+- **Pick and pack (E8-4c, API).** A pick list batches confirmed orders that are ready (stock reserved, not a suspected duplicate, not packed, not on another open list); its items are the totals still to pick, sorted by shelf (`bin`, set per item on the Stock screen's PATCH). The phone sends `order.pack` with every item scanned into the box: packed only when that is exactly the order (a wrong or extra item is `wrong_item`, a missing one `incomplete`), a second phone packing the same order gets `already_packed` (first sync wins), a cancelled one `not_packable`. Packing records `packed_at`, the order's "packed" event and `order.packed`; it does not move stock — stock still leaves when the order ships, so nothing counts twice. A list closes itself when its last order is packed. On the phone (E8-4c app): pick lists cached for offline use, the list by shelf, and the pack screen — the camera or a typed code (logged as manual), each scan checked there and then (a wrong item is blocked with a buzz and a red message; too many is refused), "Box packed" only when everything is in, then the `order.pack` op.
+- One warehouse for now (the store's default); transfers, pick lists and pack scans are E8-4.
+
+## Field ownership with the store (E8-1)
+
+| Field | Owner | On a store sync |
+| --- | --- | --- |
+| Title, price, compare-at price, SKU, status | Store | Follows the store; changed in the store |
+| Stock (`available`) | Store until the item is counted in Mizan (E8-2) | Shown as "store says"; with "send Mizan's stock to my store" on, Mizan's count goes to Shopify (E8-5) |
+| Cost (`cogs_minor`, `cogs_set_at`) | Mizan | Never touched |
+| Barcode | Store until set in Mizan (`barcode_set_at`) | Follows the store while the store owns it; left alone once set in Mizan; "use the store's barcode" gives it back |
+
+SKUs and barcodes are unique per store: a store SKU another variant has gets a `SHOPIFY-<id>` stand-in; a store barcode another variant has is not copied (the variant shows "not set").
+
+The products screen (`/products`) lists what is missing (cost, barcode), edits one variant, downloads the list as CSV and imports it back (Arabic or English headers, Shopify's export too).
 
 ## Entities
 

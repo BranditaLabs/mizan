@@ -93,6 +93,8 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 | Unattributed spend | Shared by revenue |
 
 > Money is stored in minor units with a currency code. FX rates are stored per day, so old orders never change when today's rate does.
+>
+> ✅ E9-1: costs live in Settings → Costs. Every change is a new version from its day; older orders keep the cost of theirs. Rates come from a daily feed (open.er-api.com first, pluggable), a store can set its own rate for a day, a day without a rate uses the latest within 7 days (marked stale), and beyond that the profit stays provisional.
 
 ## Events emitted
 
@@ -133,7 +135,7 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 
 ## Acceptance criteria
 
-- [ ] Net profit for yesterday and 30 days is on the home screen.
+- [x] Net profit for yesterday and 30 days is on the home screen. (E9-4)
 - [ ] Every number drills down to the orders behind it.
 - [ ] A refused order shows its full RTO cost.
 - [ ] Recalculation finishes within 1 minute of an event.
@@ -143,11 +145,15 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| GET | `/v1/profit/home` | ✅ E9-4: the home — kept over 7/30/90 days and yesterday, where it went, delivery and refusals, cash with couriers, leaks |
+| GET | `/v1/profit/breakdown` | ✅ E9-5: profit by day, product, store, courier or country, with the total; web `/profit` with CSV export |
 | GET | `/v1/profit/summary` | Totals for a period and grouping |
-| GET | `/v1/orders/{id}/pnl` | One order's P&L lines |
+| GET | `/v1/orders/{id}/pnl` | ✅ E9-2: one order's P&L lines, expected profit, missing inputs |
 | GET | `/v1/profit/by/{dimension}` | Product, store, courier, country |
-| PUT | `/v1/settings/costs` | Packaging, fees, allocation |
-| POST | `/v1/profit/recalculate` | Recalculate a range |
+| GET / POST / DELETE | `/v1/cost-rules` | ✅ E9-1: packaging, agent, COD %, payment fees, courier rate card, monthly costs; versioned |
+| GET / PUT | `/v1/fx-rates` | ✅ E9-1: daily rates, store's own rate for a day |
+| GET / PUT / DELETE | `/v1/ad-spend`, `POST /v1/ad-spend/import` | ✅ E9-3: a day's ad spend per store and platform, typed or CSV; split over that day's orders |
+| POST | `/v1/profit/recalculate` | ✅ E9-2: recalculate provisional orders in a range |
 | GET | `/v1/profit/export` | CSV for accounting |
 
 Conventions: `docs/05-api.md`.
@@ -160,4 +166,4 @@ Conventions: `docs/05-api.md`.
 
 - Include VAT in revenue or report it separately?
 - Which accounting export first: CSV, Zoho or Odoo?
-- Allocate unattributed ad spend, or only show it?
+- Allocate unattributed ad spend, or only show it? *MVP (E9-3):* a store's day of spend is split over the orders it took that day; a day with no orders is shown as unallocated, never hidden. Per-campaign attribution comes with M7.

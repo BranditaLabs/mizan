@@ -34,6 +34,11 @@ export interface RequestSpec {
    * (GraphQL). Return an error to treat the response as failed.
    */
   inspect?: (res: HttpResponse) => IntegrationError | null;
+  /**
+   * Classification of an error response (status >= 300) for APIs whose body code says more than
+   * the status (Meta: HTTP 400 with code 130429 is a rate limit). Null = the generic status rules.
+   */
+  classify?: (res: HttpResponse) => IntegrationError | null;
 }
 
 export interface Guards {
@@ -63,7 +68,7 @@ export async function send(rt: Runtime, spec: RequestSpec, guards: Guards = {}):
       const res = await attemptOnce(rt, spec, timeoutMs);
       const bodyError = res.status < 300 ? spec.inspect?.(res) ?? null : null;
       if (res.status >= 300 || bodyError) {
-        throw bodyError ?? errorFromResponse(spec, res, rt.clock.now());
+        throw bodyError ?? (res.status >= 300 ? spec.classify?.(res) : null) ?? errorFromResponse(spec, res, rt.clock.now());
       }
       guards.circuit?.onSuccess();
       guards.bucket?.onSuccess();
