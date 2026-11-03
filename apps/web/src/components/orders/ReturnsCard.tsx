@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -16,7 +17,7 @@ import { useSession } from "@/lib/session";
 
 type State = Schemas["ReturnState"];
 type Outcome = State["inspections"][number]["outcome"];
-const READERS = new Set(["owner", "admin", "ops_manager", "finance", "warehouse"]);
+const READERS = rolesWith("returns.read");
 const OUTCOMES: readonly Outcome[] = ["restock", "damaged", "write_off"];
 
 /**

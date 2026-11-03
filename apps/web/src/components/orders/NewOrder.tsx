@@ -1,6 +1,6 @@
 "use client";
 
-import { fromMinor, toMinor, type Money } from "@mizan/shared";
+import { fromMinor, toMinor, type Money, rolesWith } from "@mizan/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -25,7 +25,7 @@ interface Line { key: number; variantId?: string; title: string; sku?: string | 
 const SOURCES: readonly NewOrderBody["source"][] = ["phone", "whatsapp", "instagram", "facebook", "tiktok", "walk_in", "other"];
 const MODES: readonly Mode[] = ["cod", "partial", "prepaid", "bank_transfer"];
 const METHODS: readonly Method[] = ["wallet", "instapay", "card"];
-const CREATORS = new Set(["owner", "admin", "ops_manager", "agent"]);
+const CREATORS = rolesWith("orders.create");
 const AMOUNT = /^\d{1,9}(\.\d{1,2})?$/;
 
 /**

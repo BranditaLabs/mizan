@@ -1,6 +1,6 @@
 "use client";
 
-import { toAsciiDigits } from "@mizan/shared";
+import { toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -32,7 +32,7 @@ type Row = { product: Product; variant: Variant };
 type EditRow = { product: Pick<Product, "title">; variant: Variant };
 type Filter = "all" | "cost" | "barcode";
 const FILTERS: readonly Filter[] = ["all", "cost", "barcode"];
-const EDITORS = new Set(["owner", "admin", "ops_manager", "finance"]);
+const EDITORS = rolesWith("products.read");
 const PROBLEMS = new Set(["header", "columns", "sku", "cost", "barcode", "duplicate", "too_many", "empty", "unknown_sku", "barcode_taken"]);
 const BARCODE = /^[\x21-\x7E]{1,64}$/;
 const DECIMAL = /^\d{1,12}(\.\d{1,3})?$/;

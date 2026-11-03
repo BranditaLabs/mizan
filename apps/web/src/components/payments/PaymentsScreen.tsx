@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ import { RefundQueue } from "./Refunds";
 type Row = Schemas["PaymentPage"]["data"][number];
 type View = "all" | "unpaid" | "paid" | "cod_due" | "refunds" | "disputes";
 const VIEWS: readonly View[] = ["all", "unpaid", "cod_due", "paid", "refunds", "disputes"];
-const READERS = new Set(["owner", "admin", "ops_manager", "finance"]);
+const READERS = rolesWith("payments.read");
 const METHODS = new Set(["cod", "card", "wallet", "apple_pay", "bnpl", "bank_transfer", "instapay", "fawry_ref", "store_credit", "cash_pos", "marketplace"]);
 const STATUS_TONE: Partial<Record<Row["status"], "success" | "warning" | "danger" | "info">> = {
   paid: "success", partially_paid: "info", authorized: "info", unpaid: "warning", failed: "danger", disputed: "danger", refunded: "warning", partially_refunded: "warning",

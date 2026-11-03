@@ -1,5 +1,6 @@
 "use client";
 
+import { can } from "@mizan/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Alert } from "@/components/ui/Alert";
@@ -29,7 +30,7 @@ export function OrderSources({ days }: { days: number }) {
     enabled: Boolean(store),
   });
   const backfill = useMutation({ mutationFn: () => ok(api.POST("/v1/attribution/sources/backfill")) });
-  const canBackfill = store?.role === "owner" || store?.role === "admin";
+  const canBackfill = can(store?.role, "ads.backfill");
 
   const x = (v: string | null) => (v === null ? t("none") : t.rich("times", { v, n: (c) => <bdi className="mz-num">{c}</bdi> }));
   const rate = (v: string | null) => (v === null ? t("none") : t("pct", { pct: v }));

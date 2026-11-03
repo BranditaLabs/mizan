@@ -2,7 +2,7 @@ import { Controller, Get, Inject, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ApiJson, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -34,7 +34,7 @@ export class AuditLogController {
   constructor(@Inject(Database) private readonly db: Database) {}
 
   @Get()
-  @Roles("owner", "admin")
+  @Can("audit.read")
   @ApiQueryZod(QuerySchema)
   @ApiJson(200, "AuditLogPage", AuditLogPageSchema, "Newest first; pass nextCursor as cursor for the next page")
   async list(@Auth() auth: AuthContext, @Query(new ZodPipe(QuerySchema)) q: z.infer<typeof QuerySchema>) {

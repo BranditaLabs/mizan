@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,8 +19,8 @@ import { formatWhen } from "@/lib/format";
 import { useSession, useTimeZone } from "@/lib/session";
 import { ConfirmationResults } from "@/components/settings/ConfirmationResults";
 
-const CALLERS = new Set(["owner", "admin", "ops_manager", "agent"]);
-const RESULT_READERS = new Set(["owner", "admin", "ops_manager"]);
+const CALLERS = rolesWith("confirmation.work");
+const RESULT_READERS = rolesWith("confirmation.manage");
 
 /**
  * The team's call queue (M2, E6-3): how many orders wait for a call, then one order at a time —

@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query } from "@ne
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { AuditService, auditActor } from "../../platform/audit/audit.service.js";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
@@ -64,7 +64,7 @@ const CityResolvedSchema = z.object({ saved: z.literal(true), replayed: z.boolea
  */
 @ApiTags("integrations")
 @Controller("admin/integrations")
-@Roles("owner", "admin", "ops_manager")
+@Can("connections.read")
 export class IntegrationsAdminController {
   constructor(
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,

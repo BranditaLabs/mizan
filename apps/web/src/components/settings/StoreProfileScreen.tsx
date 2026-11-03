@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -13,7 +14,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { queryKeys, useSession } from "@/lib/session";
 
-const EDITORS = new Set(["owner", "admin"]);
+const EDITORS = rolesWith("store.manage");
 /** The time zones of the markets Mizan serves; the store's own is always offered. */
 const ZONES = ["Africa/Cairo", "Asia/Riyadh", "Asia/Dubai", "Asia/Kuwait", "Asia/Qatar", "Asia/Bahrain", "Asia/Muscat", "Asia/Amman", "Africa/Casablanca"];
 

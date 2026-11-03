@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -10,7 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
-const AUDIT = new Set(["owner", "admin"]);
+const AUDIT = rolesWith("audit.read");
 const REFRESH_MS = 30_000;
 const SHOWN = 8;
 const ICON: Record<string, IconProps["name"]> = {

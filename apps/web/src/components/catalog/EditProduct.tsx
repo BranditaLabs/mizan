@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toAsciiDigits } from "@mizan/shared";
+import { toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
@@ -16,7 +16,7 @@ import { ProductImage } from "./ProductImage";
 
 type Product = Schemas["ProductDetail"];
 type Body = Schemas["ProductUpdate"];
-export const PRODUCT_EDITORS = new Set(["owner", "admin", "ops_manager"]);
+export const PRODUCT_EDITORS = rolesWith("products.manage");
 const AMOUNT = /^\d{1,9}(\.\d{1,3})?$/;
 /** An amount as typed, in Western digits with a dot (٩٩٠٫٥ → 990.5). */
 const decimal = (v: string) => toAsciiDigits(v).replace(/٫/g, ".").trim();

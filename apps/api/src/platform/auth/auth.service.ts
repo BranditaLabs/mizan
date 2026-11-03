@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { setActingUser } from "@mizan/db";
-import { isMemberRole, type MemberRole, type MembershipStatus } from "@mizan/shared";
+import { isMemberRole, type MemberRole, type MembershipStatus, permissionsFor } from "@mizan/shared";
 import type { MembershipView } from "./membership.schema.js";
 import { APP_CONFIG, type AppConfig } from "../config.js";
 import { TtlCache } from "../cache.js";
@@ -196,6 +196,7 @@ export class AuthService {
       locale: r.locale,
       timezone: r.timezone,
       role: r.role as MemberRole,
+      permissions: permissionsFor(r.role),
       status: r.status as MembershipStatus,
     }));
   }

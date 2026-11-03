@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, Inject, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -11,7 +11,7 @@ import { OpsSyncService } from "./ops-sync.service.js";
 /** The ops app (Flutter, offline-first): operations queued on the phone, applied once each. */
 @ApiTags("ops")
 @Controller("ops")
-@Roles("owner", "admin", "ops_manager", "warehouse")
+@Can("ops.devices")
 export class OpsController {
   constructor(@Inject(OpsSyncService) private readonly ops: OpsSyncService) {}
 

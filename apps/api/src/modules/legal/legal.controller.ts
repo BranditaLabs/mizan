@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Header, HttpCode, Inject, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, NoSupport, Public, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can, NoSupport, Public } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -38,7 +38,7 @@ export class StoreLegalController {
   /** The owner, in person (never support access), accepts the versions they read. */
   @Post("accept")
   @HttpCode(200)
-  @Roles("owner")
+  @Can("legal.accept")
   @NoSupport()
   @ApiJsonBody("AcceptLegal", AcceptLegalSchema)
   @ApiJson(200, "StoreLegal", StoreLegalSchema, "Accepted; audited (tenant.legal_accepted). Accepting the same versions again changes nothing")

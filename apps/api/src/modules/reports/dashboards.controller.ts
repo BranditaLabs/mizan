@@ -1,6 +1,6 @@
 import { Controller, Get, Header, Inject, Param, Query, StreamableFile } from "@nestjs/common";
 import { ApiProduces, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { Roles } from "../../platform/auth/decorators.js";
+import { Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -15,14 +15,14 @@ export class DashboardsController {
   constructor(@Inject(DashboardsService) private readonly dashboards: DashboardsService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("reports.read")
   @ApiJson(200, "DashboardList", DashboardListSchema, "The dashboards the caller has at least one metric on")
   list(@Reader() auth: AuthContext) {
     return this.dashboards.list(auth);
   }
 
   @Get(":id")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("reports.read")
   @ApiQueryZod(DashboardQuerySchema)
   @ApiJson(200, "Dashboard", DashboardSchema, "Tiles and daily series for a period of store days, in the caller's language")
   @ApiProblems(404, 422)
@@ -31,7 +31,7 @@ export class DashboardsController {
   }
 
   @Get(":id/export")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("reports.read")
   @Header("Cache-Control", "no-store")
   @ApiQueryZod(ExportQuerySchema)
   @ApiProduces("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/csv")

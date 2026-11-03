@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -15,7 +15,7 @@ export class PaymentsController {
   constructor(@Inject(LedgerService) private readonly ledger: LedgerService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("payments.read")
   @ApiJson(200, "Ledger", LedgerSchema, "Every money movement on the order, newest first, and its totals")
   @ApiProblems(404)
   get(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -25,7 +25,7 @@ export class PaymentsController {
   /** Money the team received or gave back outside any gateway; the order's totals follow in the same transaction. */
   @Post()
   @HttpCode(201)
-  @Roles("owner", "admin", "finance")
+  @Can("payments.record")
   @ApiJsonBody("RecordPayment", RecordPaymentSchema)
   @ApiJson(201, "Ledger", LedgerSchema, "Recorded and audited; the ledger as it is now")
   @ApiProblems(404, 409, 422)
@@ -41,7 +41,7 @@ export class PaymentsListController {
   constructor(@Inject(PaymentsListService) private readonly payments: PaymentsListService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("payments.read")
   @ApiQueryZod(ListPaymentsQuerySchema)
   @ApiJson(200, "PaymentPage", PaymentPageSchema, "Newest first, with counts per view and the view's sums per currency")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ListPaymentsQuerySchema)) q: ListPaymentsQuery) {
@@ -49,7 +49,7 @@ export class PaymentsListController {
   }
 
   @Get("mix")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("payments.read")
   @ApiQueryZod(PaymentMixQuerySchema)
   @ApiJson(200, "PaymentMix", PaymentMixSchema, "Orders by payment mode and money in by method over the last 7, 30 or 90 days")
   mix(@Auth() auth: AuthContext, @Query(new ZodPipe(PaymentMixQuerySchema)) q: { days: number }) {

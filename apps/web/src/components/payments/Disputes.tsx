@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -20,8 +21,8 @@ import { useSession } from "@/lib/session";
 
 type Dispute = Schemas["Dispute"];
 type Reason = Schemas["NewDispute"]["reason"];
-const READERS = new Set(["owner", "admin", "ops_manager", "finance"]);
-export const DISPUTE_MANAGERS = new Set(["owner", "admin", "finance"]);
+const READERS = rolesWith("disputes.read");
+export const DISPUTE_MANAGERS = rolesWith("disputes.manage");
 const REASONS: Reason[] = ["fraud", "not_received", "not_as_described", "duplicate", "cancelled", "other"];
 const TONE: Record<Dispute["status"], BadgeTone> = { open: "warning", evidence_submitted: "info", won: "success", lost: "danger", accepted: "neutral" };
 const isOpen = (d: Dispute) => d.status === "open" || d.status === "evidence_submitted";

@@ -1,6 +1,6 @@
 "use client";
 
-import { toAsciiDigits } from "@mizan/shared";
+import { toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -20,8 +20,8 @@ import { useSession } from "@/lib/session";
 type List = Schemas["AdSpendList"];
 type Platform = Schemas["SetAdSpend"]["platform"];
 const PLATFORMS: readonly Platform[] = ["meta", "tiktok", "google", "snapchat", "other"];
-const EDITORS = new Set(["owner", "admin", "finance", "media_buyer"]);
-const READERS = new Set([...EDITORS, "ops_manager"]);
+const EDITORS = rolesWith("ads.spend");
+const READERS = rolesWith("ads.read");
 const AMOUNT = /^\d{1,12}(\.\d{1,3})?$/;
 const decimal = (v: string) => toAsciiDigits(v).replace(/[٫,]/g, ".").trim();
 /** A store day as a date the formatter shows without shifting it (noon UTC). */

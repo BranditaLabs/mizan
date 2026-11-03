@@ -5,7 +5,7 @@ import { z } from "zod";
 import { trxQueryClient } from "@mizan/db";
 import { MizanEngine, SqlStore } from "@mizan/engine";
 import { AuditService, auditActor } from "../../platform/audit/audit.service.js";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
 import { ApiJson, ApiProblems } from "../../platform/http/api-schema.js";
@@ -85,12 +85,12 @@ export class StoreImportService {
 
 @ApiTags("connections")
 @Controller("connections")
-@Roles("owner", "admin")
+@Can("connections.manage")
 export class StoreImportController {
   constructor(@Inject(StoreImportService) private readonly imports: StoreImportService) {}
 
   @Get("imports")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("connections.read")
   @ApiJson(200, "StoreImports", StoreImportsSchema, "Each connected store's status and latest history import (running, done or failed with why)")
   list(@Auth() auth: AuthContext) {
     return this.imports.list(auth.tenant!.id);

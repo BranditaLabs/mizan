@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,7 +19,7 @@ type Row = Breakdown["rows"][number];
 type By = Breakdown["by"];
 const DIMENSIONS: readonly By[] = ["day", "product", "store", "courier", "country"];
 const PERIODS = [7, 30, 90] as const;
-const READERS = new Set(["owner", "admin", "finance", "ops_manager"]);
+const READERS = rolesWith("profit.read");
 
 /**
  * Profit breakdown (M5, E9-5): where the profit comes from and where it leaks, by day, product,

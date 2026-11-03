@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -21,7 +22,7 @@ import { useSession } from "@/lib/session";
 
 type Automation = Schemas["AutomationList"]["data"][number];
 type Recipe = Schemas["RecipeList"]["data"][number];
-const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
+const MANAGERS = rolesWith("automations.manage");
 const KNOWN_TRIGGERS = new Set(["order.created", "order.scored", "order.duplicate_found", "order.store_cancel_failed", "order.assigned", "order.tagged", "order.confirmed", "order.cancelled",
   "stock.short", "stock.low", "stock.out", "connection.needs_attention", "offer.accepted", "payment.received", "ticket.created", "ticket.status_changed", "ticket.assigned"]);
 const KNOWN_ACTIONS = new Set(["order.add_tag", "order.assign", "order.convert_to_prepaid", "notify.team"]);

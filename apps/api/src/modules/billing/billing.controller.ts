@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -15,7 +15,7 @@ export class BillingController {
   constructor(@Inject(UsageService) private readonly usage: UsageService) {}
 
   @Get()
-  @Roles("owner", "admin", "finance")
+  @Can("billing.read")
   @ApiQueryZod(UsageQuerySchema)
   @ApiJson(200, "Usage", UsageSchema, "A month's orders, messages and AI offers, the stores and users counted, the plan's limits, and the last six months")
   get(@Auth() auth: AuthContext, @Query(new ZodPipe(UsageQuerySchema)) q: { month?: string }) {
@@ -25,7 +25,7 @@ export class BillingController {
   /** Ask to move up a plan (E12-1); payment comes with E12-2, until then Brandita follows up. */
   @Post("upgrade")
   @HttpCode(202)
-  @Roles("owner", "admin")
+  @Can("billing.manage")
   @ApiJsonBody("UpgradeRequest", UpgradeRequestSchema)
   @ApiJson(202, "UpgradeRequested", UpgradeRequestedSchema, "Recorded; Brandita follows up (event plan.upgrade_requested); audited")
   @ApiProblems(422)

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Inject, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -11,7 +11,7 @@ import { CatalogService } from "./catalog.service.js";
 /** Product costs for profit (M4/M5). Products come from the store; their costs are entered here. */
 @ApiTags("catalog")
 @Controller("products/variants")
-@Roles("owner", "admin", "ops_manager", "finance")
+@Can("products.read")
 export class CatalogController {
   constructor(@Inject(CatalogService) private readonly catalog: CatalogService) {}
 

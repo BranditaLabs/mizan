@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -19,7 +20,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
 type Settings = Schemas["OfferSettings"];
-const EDITORS = new Set(["owner", "admin", "ops_manager"]);
+const EDITORS = rolesWith("offers.manage");
 const MODES: readonly Settings["mode"][] = ["rules_then_auto", "rules", "auto"];
 const ANY = "any";
 

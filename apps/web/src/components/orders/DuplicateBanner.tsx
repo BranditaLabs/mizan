@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,7 +14,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
 type Order = Schemas["OrderDetail"];
-const DECIDERS = new Set(["owner", "admin", "ops_manager", "agent"]);
+const DECIDERS = rolesWith("orders.create");
 
 /**
  * A likely duplicate (M1, E5-3): which earlier order it repeats and what matched; the team keeps

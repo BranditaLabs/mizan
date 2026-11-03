@@ -1,5 +1,5 @@
-import { createParamDecorator, SetMetadata, type ExecutionContext } from "@nestjs/common";
-import type { MemberRole } from "@mizan/shared";
+import { applyDecorators, createParamDecorator, SetMetadata, type ExecutionContext } from "@nestjs/common";
+import { PERMISSIONS, type MemberRole, type Permission } from "@mizan/shared";
 import type { AuthContext, AuthedRequest } from "./auth.types.js";
 
 export const IS_PUBLIC = "mizan:public";
@@ -13,8 +13,16 @@ export const Public = () => SetMetadata(IS_PUBLIC, true);
 /** Signed in, but no X-Tenant-Id needed (GET /me, POST /tenants). */
 export const NoTenant = () => SetMetadata(NO_TENANT, true);
 
-/** Only these member roles may call the route (on top of membership). */
+export const PERMISSION = "mizan:permission";
+
+/** Only these member roles may call the route (on top of membership). Prefer `Can`: a named permission. */
 export const Roles = (...roles: MemberRole[]) => SetMetadata(ROLES, roles);
+
+/**
+ * Only members whose role has this permission (U6, `PERMISSIONS` in @mizan/shared) may call the
+ * route; the web hides the same place with the same name. Checked by the roles guard.
+ */
+export const Can = (permission: Permission) => applyDecorators(SetMetadata(ROLES, [...PERMISSIONS[permission]]), SetMetadata(PERMISSION, permission));
 
 /** Closed to Mizan support access (A-3), whatever the grant: customer data exports and the like. */
 export const NoSupport = () => SetMetadata(NO_SUPPORT, true);

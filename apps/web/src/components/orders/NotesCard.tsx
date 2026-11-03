@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,8 +14,8 @@ import { ok } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 
-const WRITERS = new Set(["owner", "admin", "ops_manager", "agent", "warehouse"]);
-const LEADS = new Set(["owner", "admin", "ops_manager"]);
+const WRITERS = rolesWith("orders.handle");
+const LEADS = rolesWith("orders.lead");
 const TAG = /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u;
 
 /** O2: the team's notes on the order, newest first. Only the team sees them; never the store or the customer. */

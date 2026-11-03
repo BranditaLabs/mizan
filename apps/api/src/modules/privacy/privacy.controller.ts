@@ -2,7 +2,7 @@ import { Controller, Get, Inject, Param, ParseUUIDPipe } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { ApiJson, ApiProblems } from "../../platform/http/api-schema.js";
-import { Auth, NoSupport, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can, NoSupport } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { PrivacyService } from "./privacy.service.js";
 
@@ -17,7 +17,7 @@ const PrivacyExportSchema = z.unknown().describe("The customer's data compiled f
 /** Privacy requests received for this store (Shopify compliance webhooks today). */
 @ApiTags("privacy")
 @Controller("privacy-requests")
-@Roles("owner", "admin")
+@Can("privacy.manage")
 export class PrivacyController {
   constructor(@Inject(PrivacyService) private readonly privacy: PrivacyService) {}
 

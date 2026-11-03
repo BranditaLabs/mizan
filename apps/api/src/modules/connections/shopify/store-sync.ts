@@ -2,7 +2,7 @@ import { Body, Controller, Get, Inject, Injectable, Param, ParseUUIDPipe, Put } 
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
 import { AuditService, auditActor } from "../../../platform/audit/audit.service.js";
-import { Auth, Roles } from "../../../platform/auth/decorators.js";
+import { Auth, Can } from "../../../platform/auth/decorators.js";
 import type { AuthContext } from "../../../platform/auth/auth.types.js";
 import { Database } from "../../../platform/db/database.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../../platform/http/api-schema.js";
@@ -50,7 +50,7 @@ export class StoreSyncService {
 
 @ApiTags("connections")
 @Controller("connections")
-@Roles("owner", "admin")
+@Can("connections.manage")
 export class StoreSyncController {
   constructor(@Inject(StoreSyncService) private readonly sync: StoreSyncService) {}
 

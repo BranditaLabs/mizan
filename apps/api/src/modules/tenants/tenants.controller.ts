@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
-import { Auth, NoTenant, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can, NoTenant } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import { CreateTenantSchema, TenantViewSchema, UpdateTenantSchema, type CreateTenantBody, type TenantView, type UpdateTenantBody } from "./tenants.dto.js";
@@ -32,7 +32,7 @@ export class TenantsController {
 
   /** The store's profile: name, time zone, locale (country and currency stay as signed up). */
   @Patch("tenant")
-  @Roles("owner", "admin")
+  @Can("store.manage")
   @ApiJsonBody("UpdateTenant", UpdateTenantSchema)
   @ApiJson(200, "Tenant", TenantViewSchema, "Changed; audited (tenant.updated). Reports and usage use the new time zone from now on")
   @ApiProblems(403, 422)

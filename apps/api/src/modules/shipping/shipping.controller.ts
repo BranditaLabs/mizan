@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, Inject, Param, ParseUUIDPipe, Post, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { HttpReply as Response } from "../../platform/http/http.types.js";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -18,7 +18,7 @@ export class ShippingController {
 
   @Post()
   @HttpCode(202)
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("shipping.ship")
   @ApiJson(202, "Shipment", ShipmentSchema, "Booking queued (booking = pending), or the booking already pending or booked for this order (200); audited")
   @ApiProblems(404, 409)
   async ship(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Res({ passthrough: true }) res: Response) {
@@ -28,7 +28,7 @@ export class ShippingController {
   }
 
   @Post("manual")
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("shipping.ship")
   @ApiJsonBody("ManualShipment", ManualShipmentSchema)
   @ApiJson(201, "Shipment", ShipmentSchema, "E7-6: a courier without an API — the parcel handed over, recorded with its tracking number; the order is shipped; audited")
   @ApiProblems(404, 409, 422)

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
@@ -34,7 +34,7 @@ export class OrdersController {
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @ApiQueryZod(ListOrdersQuerySchema)
   @ApiJson(200, "OrderPage", OrderPageSchema, "Agents see orders assigned to them; warehouse sees confirmed and shipped orders")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ListOrdersQuerySchema)) q: ListOrdersQuery) {
@@ -45,7 +45,7 @@ export class OrdersController {
   /** E5-5: an order taken by phone, WhatsApp or in person; it goes through confirmation like any other. */
   @Post()
   @HttpCode(201)
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("orders.create")
   @ApiJsonBody("NewOrder", NewOrderSchema)
   @ApiJson(201, "OrderCreated", OrderCreatedSchema, "Created as M-1001, M-1002…; an agent's order is assigned to them; audited")
   @ApiProblems(422)
@@ -56,7 +56,7 @@ export class OrdersController {
   /** E5-4: assign, tag, confirm or cancel many orders; ship them (E7-2, warehouse too); follow it with GET /orders/bulk/{id}. */
   @Post("bulk")
   @HttpCode(202)
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("orders.bulk")
   @ApiJsonBody("BulkRequest", BulkRequestSchema)
   @ApiJson(202, "BulkAction", BulkActionSchema, "Accepted: the worker applies it in chunks; audited")
   @ApiProblems(403, 409, 422)
@@ -65,7 +65,7 @@ export class OrdersController {
   }
 
   @Get("bulk/:bulkId")
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("orders.bulk")
   @ApiJson(200, "BulkAction", BulkActionSchema, "Progress: done, skipped and failed so far, and why each order was skipped or failed")
   @ApiProblems(404)
   bulkProgress(@Auth() auth: AuthContext, @Param("bulkId", new ParseUUIDPipe()) id: string) {
@@ -73,7 +73,7 @@ export class OrdersController {
   }
 
   @Get("products")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("orders.create")
   @ApiQueryZod(OrderProductsQuerySchema)
   @ApiJson(200, "OrderProducts", OrderProductsSchema, "Active products to add to a manual order (100 at most)")
   products(@Auth() auth: AuthContext, @Query(new ZodPipe(OrderProductsQuerySchema)) q: z.output<typeof OrderProductsQuerySchema>) {
@@ -86,7 +86,7 @@ export class OrdersController {
    */
   @Post("documents")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @Can("orders.handle")
   @NoIdempotency()
   @Header("Cache-Control", "no-store")
   @ApiJsonBody("OrderDocumentsRequest", OrderDocumentsRequestSchema)
@@ -98,7 +98,7 @@ export class OrdersController {
 
   /** O2: the values the list's filters offer (tags, cities, couriers), within the caller's scope. */
   @Get("filters")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @ApiJson(200, "OrderFilters", OrderFiltersSchema, "Most orders first")
   filters(@Auth() auth: AuthContext) {
     return this.extras.filters(auth);
@@ -106,7 +106,7 @@ export class OrdersController {
 
   /** O2: the person's saved views and the team's shared ones. */
   @Get("views")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @ApiJson(200, "SavedViewList", SavedViewListSchema, "Own views and shared ones")
   views(@Auth() auth: AuthContext) {
     return this.extras.views(auth);
@@ -114,7 +114,7 @@ export class OrdersController {
 
   @Post("views")
   @HttpCode(201)
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @ApiJsonBody("SavedViewInput", SavedViewInputSchema)
   @ApiJson(201, "SavedView", SavedViewSchema, "Saved; shared views are for the owner, an admin or the ops manager to make")
   @ApiProblems(403, 409, 422)
@@ -124,7 +124,7 @@ export class OrdersController {
 
   @Delete("views/:viewId")
   @HttpCode(204)
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @ApiNoContent("Removed")
   @ApiProblems(403, 404)
   async removeView(@Auth() auth: AuthContext, @Param("viewId", new ParseUUIDPipe()) id: string) {
@@ -132,7 +132,7 @@ export class OrdersController {
   }
 
   @Get(":id")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @ApiJson(200, "OrderDetail", OrderDetailSchema, "One order; an order outside the caller's scope is not found")
   @ApiProblems(404)
   detail(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -141,7 +141,7 @@ export class OrdersController {
 
   /** The delivery contact in full: decrypted for this person only, every call in the audit log (customer.pii_viewed). */
   @Post(":id/reveal")
-  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @Can("orders.handle")
   @HttpCode(200)
   @NoIdempotency() // never store the decrypted answer, never replay without an audit row
   @Header("Cache-Control", "no-store")
@@ -156,7 +156,7 @@ export class OrdersController {
    * edit goes to the store and the order follows when the store has it (202 sending). Audited.
    */
   @Patch(":id")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("orders.create")
   @ApiJsonBody("OrderEditInput", OrderEditInputSchema)
   @ApiJson(200, "OrderEditResult", OrderEditResultSchema, "applied: a manual order, changed now")
   @ApiJson(202, "OrderEditResult", OrderEditResultSchema, "sending: on its way to the store; the order follows when the store has it")
@@ -170,7 +170,7 @@ export class OrdersController {
 
   /** O2: the team's notes on the order, newest first; never sent to the store. */
   @Get(":id/notes")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("orders.read")
   @Header("Cache-Control", "no-store")
   @ApiJson(200, "OrderNotes", OrderNotesSchema, "Newest first")
   @ApiProblems(404)
@@ -180,7 +180,7 @@ export class OrdersController {
 
   @Post(":id/notes")
   @HttpCode(201)
-  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @Can("orders.handle")
   @ApiJsonBody("OrderNoteInput", OrderNoteInputSchema)
   @ApiJson(201, "OrderNote", OrderNoteSchema, "Added; the timeline says a note was added, not what it says")
   @ApiProblems(404, 409, 422)
@@ -190,7 +190,7 @@ export class OrdersController {
 
   @Delete(":id/notes/:noteId")
   @HttpCode(204)
-  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @Can("orders.handle")
   @ApiNoContent("Removed; audited")
   @ApiProblems(403, 404)
   async removeNote(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Param("noteId", new ParseUUIDPipe()) noteId: string) {
@@ -199,7 +199,7 @@ export class OrdersController {
 
   /** O2: add or take off tags; a Shopify order gets the change too (outbox). */
   @Patch(":id/tags")
-  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @Can("orders.handle")
   @ApiJsonBody("OrderTagsPatch", OrderTagsPatchSchema)
   @ApiJson(200, "OrderTags", OrderTagsSchema, "The order's tags after the change")
   @ApiProblems(404, 422)
@@ -209,7 +209,7 @@ export class OrdersController {
 
   /** A likely duplicate (E5-3): keep both, or merge this one into the earlier order (cancelled here, tagged in the store). */
   @Post(":id/duplicate")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("orders.create")
   @HttpCode(200)
   @ApiJsonBody("ResolveDuplicate", ResolveDuplicateSchema)
   @ApiJson(200, "DuplicateResolved", DuplicateResolvedSchema, "The order's answer; one already answered keeps it")
@@ -226,14 +226,14 @@ export class OrderSettingsController {
   constructor(@Inject(DuplicatesService) private readonly duplicates: DuplicatesService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager")
+  @Can("orders.settings")
   @ApiJson(200, "OrderSettings", OrderSettingsSchema, "How orders are handled as they arrive")
   get(@Auth() auth: AuthContext) {
     return this.duplicates.getSettings(auth.tenant!.id);
   }
 
   @Put()
-  @Roles("owner", "admin", "ops_manager")
+  @Can("orders.settings")
   @ApiJsonBody("OrderSettings", OrderSettingsSchema)
   @ApiJson(200, "OrderSettings", OrderSettingsSchema, "Saved; applies to orders that arrive from now on")
   put(@Auth() auth: AuthContext, @Body(new ZodPipe(OrderSettingsSchema)) body: OrderSettings) {

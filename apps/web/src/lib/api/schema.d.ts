@@ -4890,6 +4890,8 @@ export interface components {
                 timezone: string;
                 /** @enum {string} */
                 role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
+                /** @description What this role may do in this store (U6) */
+                permissions: ("orders.read" | "orders.create" | "orders.handle" | "orders.bulk" | "orders.settings" | "orders.lead" | "confirmation.work" | "confirmation.manage" | "offers.manage" | "offers.results" | "tickets.read" | "tickets.create" | "tickets.work" | "exchanges.read" | "exchanges.create" | "returns.read" | "returns.inspect" | "delivery.partial" | "delivery.refusal" | "shipments.read" | "shipments.manage" | "shipping.ship" | "couriers.scorecard" | "products.read" | "products.manage" | "stock.read" | "stock.manage" | "inventory.settings" | "picking.work" | "ops.devices" | "suppliers.read" | "purchasing.read" | "purchasing.manage" | "purchasing.receive" | "purchasing.plan" | "purchasing.settings" | "purchasing.approve_large" | "payments.read" | "payments.record" | "payments.convert" | "payments.settings.read" | "payments.settings" | "refunds.read" | "refunds.request" | "refunds.approve" | "refunds.settings" | "disputes.read" | "disputes.manage" | "profit.read" | "profit.manage" | "ads.read" | "ads.spend" | "ads.backfill" | "billing.read" | "billing.manage" | "reports.read" | "automations.manage" | "store.manage" | "team.manage" | "team.assignable" | "audit.read" | "privacy.manage" | "connections.read" | "connections.manage" | "whatsapp.connect" | "onboarding.manage" | "support.end" | "legal.accept")[];
                 /** @enum {string} */
                 status: "invited" | "active" | "disabled";
             }[];

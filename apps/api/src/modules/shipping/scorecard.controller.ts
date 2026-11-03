@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -14,7 +14,7 @@ export class ScorecardController {
   constructor(@Inject(ScorecardService) private readonly scorecard: ScorecardService) {}
 
   @Get("scorecard")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("couriers.scorecard")
   @ApiQueryZod(ScorecardQuerySchema)
   @ApiJson(200, "CourierScorecard", ScorecardSchema, "Per courier and zone: delivered, returned, still out, delivered rate (the metric layer's formula), days to deliver")
   @ApiProblems(422)

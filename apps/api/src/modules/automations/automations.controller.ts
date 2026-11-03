@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -16,7 +16,7 @@ import { NotificationsService } from "./notifications.service.js";
 /** Automation Studio (M13, E11-1): automations, their run log and dry runs. Owner, admin, ops manager. */
 @ApiTags("automations")
 @Controller("automations")
-@Roles("owner", "admin", "ops_manager")
+@Can("automations.manage")
 export class AutomationsController {
   constructor(@Inject(AutomationsService) private readonly automations: AutomationsService) {}
 
@@ -93,7 +93,7 @@ export class AutomationsController {
 /** The catalogue the builder offers (E11-3): triggers, fields, operators, actions. */
 @ApiTags("automations")
 @Controller("catalog")
-@Roles("owner", "admin", "ops_manager")
+@Can("automations.manage")
 export class CatalogController {
   @Get()
   @ApiJson(200, "AutomationCatalog", CatalogSchema, "One registry in code; automations are checked against it")

@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,7 +14,7 @@ import { DateText } from "@/components/ui/Values";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
-const READERS = new Set(["owner", "admin"]);
+const READERS = rolesWith("audit.read");
 /** Families of actions to filter by (prefixes the API understands). */
 const FAMILIES = ["member.", "connection.", "customer.", "order.", "refund.", "payment.", "shipment.", "store.", "support.", "user."] as const;
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith, can } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -21,7 +22,7 @@ type Settings = Schemas["ConfirmationSettings"];
 type Step = Settings["steps"][number];
 type Channel = Step["channel"];
 const CHANNELS: readonly Channel[] = ["whatsapp", "call_auto", "call_team"];
-const EDITORS = new Set(["owner", "admin", "ops_manager"]);
+const EDITORS = rolesWith("confirmation.manage");
 const MAX_STEPS = 6;
 
 /**
@@ -177,7 +178,7 @@ function WhatsAppConnect() {
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
-  const canConnect = store?.role === "owner" || store?.role === "admin";
+  const canConnect = can(store?.role, "whatsapp.connect");
   const key = ["connections", user?.uid ?? "", store?.tenantId ?? ""];
   const list = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/connections")), enabled: Boolean(store), refetchInterval: (q) => (q.state.data?.data.some((c) => c.kind === "whatsapp" && c.status === "pending") ? 5_000 : false) });
   const [form, setForm] = useState({ phoneNumberId: "", wabaId: "", accessToken: "" });

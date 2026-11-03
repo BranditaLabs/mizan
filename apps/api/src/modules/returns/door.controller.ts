@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Inject, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -15,7 +15,7 @@ export class DoorController {
 
   @Post("partial-delivery")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("delivery.partial")
   @ApiJsonBody("PartialDelivery", PartialDeliverySchema)
   @ApiJson(200, "PartialDelivered", PartialDeliveredSchema, "Delivered in part: what the customer owes now, the cash collected (in the ledger), any refund due, and what comes back; audited")
   @ApiProblems(404, 409, 422)
@@ -25,7 +25,7 @@ export class DoorController {
 
   @Post("refusal")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @Can("delivery.refusal")
   @ApiJsonBody("Refusal", RefusalSchema)
   @ApiJson(200, "RefusalRecorded", RefusalRecordedSchema, "Why the customer refused at the door, and whether they opened the box (a later call corrects it); audited")
   @ApiProblems(404, 409, 422)

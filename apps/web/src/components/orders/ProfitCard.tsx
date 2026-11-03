@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
@@ -12,7 +13,7 @@ import { useSession } from "@/lib/session";
 
 type Pnl = Schemas["OrderPnl"];
 type Money = Pnl["net"];
-const READERS = new Set(["owner", "admin", "finance", "ops_manager"]);
+const READERS = rolesWith("profit.read");
 const COSTS = ["productCost", "shipping", "codFee", "paymentFee", "agent", "packaging", "returns", "chargebacks", "channelFee", "ads"] as const;
 const MISSING = ["fx_missing", "cost_missing", "shipping_rate_missing", "return_rate_missing", "cod_fee_missing", "payment_fee_missing", "agent_cost_missing", "packaging_cost_missing"] as const;
 const isZero = (m: Money) => Number(m.amount) === 0;

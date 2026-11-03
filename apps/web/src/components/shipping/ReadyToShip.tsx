@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,7 +19,7 @@ import { useSession } from "@/lib/session";
 
 type Order = Schemas["OrderPage"]["data"][number];
 /** Who ships from this screen: managers and the warehouse (the API checks too). */
-export const SHIP_ROLES = new Set(["owner", "admin", "ops_manager", "warehouse"]);
+export const SHIP_ROLES = rolesWith("shipping.ship");
 
 /** Confirmed orders with no courier yet (E7-2); the key starts with "orders" so a finished bulk action refreshes it. */
 export function useReadyToShip(q: string) {

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -14,7 +14,7 @@ export class TicketsController {
   constructor(@Inject(TicketsService) private readonly tickets: TicketsService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("tickets.read")
   @ApiQueryZod(ListTicketsQuerySchema)
   @ApiJson(200, "TicketPage", TicketPageSchema, "Newest first, with counts per status group; agents see theirs, those they opened and the unassigned queue")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ListTicketsQuerySchema)) q: ListTicketsQuery) {
@@ -23,7 +23,7 @@ export class TicketsController {
 
   @Post()
   @HttpCode(201)
-  @Roles("owner", "admin", "ops_manager", "finance", "agent")
+  @Can("tickets.create")
   @ApiJsonBody("NewTicket", NewTicketSchema)
   @ApiJson(201, "Ticket", TicketSchema, "Numbered T-1001, T-1002… per store; due in 24 hours; an agent's ticket is assigned to them; audited")
   @ApiProblems(403, 409, 422)
@@ -32,7 +32,7 @@ export class TicketsController {
   }
 
   @Get(":id")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("tickets.read")
   @ApiJson(200, "Ticket", TicketSchema, "The ticket, its order and its history (newest first)")
   @ApiProblems(404)
   get(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -40,7 +40,7 @@ export class TicketsController {
   }
 
   @Patch(":id")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("tickets.work")
   @ApiJsonBody("UpdateTicket", UpdateTicketSchema)
   @ApiJson(200, "Ticket", TicketSchema, "Status, type, reason, assignee and a note; warehouse adds notes only; a closed ticket only takes notes; audited")
   @ApiProblems(403, 404, 409, 422)

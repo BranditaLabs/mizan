@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Patch } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -10,7 +10,7 @@ import { OnboardingService } from "./onboarding.service.js";
 /** Store setup for owners and admins (E4-5). */
 @ApiTags("platform")
 @Controller("onboarding")
-@Roles("owner", "admin")
+@Can("onboarding.manage")
 export class OnboardingController {
   constructor(@Inject(OnboardingService) private readonly onboarding: OnboardingService) {}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -14,8 +15,8 @@ import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 
 type S = Schemas["ConversionSettings"];
-const READERS = new Set(["owner", "admin", "ops_manager", "finance"]);
-const EDITORS = new Set(["owner", "admin", "finance"]);
+const READERS = rolesWith("payments.settings.read");
+const EDITORS = rolesWith("payments.settings");
 const METHODS = ["instapay", "wallet", "bank_transfer", "link"] as const;
 
 /** Settings → Payments (E14-3): where customers pay when a COD order is converted, the deposit share and how long an offer stays open. */

@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -16,7 +17,7 @@ import { FILTER_KEYS, MODES, type ListFilters, type Mode } from "./order-filters
 
 
 type View = Schemas["SavedView"];
-const LEADS = new Set(["owner", "admin", "ops_manager"]);
+const LEADS = rolesWith("orders.lead");
 
 /**
  * O2: the list's filters (tag, city, courier, payment, dates; a product from its page) and saved

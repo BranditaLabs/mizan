@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -20,7 +21,7 @@ import { useSession } from "@/lib/session";
 
 type Refund = Schemas["Refund"];
 type Destination = Schemas["NewRefund"]["destination"];
-const READERS = new Set(["owner", "admin", "ops_manager", "finance"]);
+const READERS = rolesWith("refunds.read");
 const TONE: Record<Refund["status"], BadgeTone> = { requested: "warning", approved: "info", completed: "success", rejected: "neutral", failed: "danger" };
 const KNOWN = new Set(["over_refund", "own_refund", "destination_unavailable", "completes_from_store", "refund_not_pending", "refund_not_approved"]);
 

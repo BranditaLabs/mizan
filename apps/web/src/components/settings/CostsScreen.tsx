@@ -1,6 +1,6 @@
 "use client";
 
-import { toAsciiDigits } from "@mizan/shared";
+import { toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -29,8 +29,8 @@ const isPercent = (v: string) => PERCENT.test(v) && Number(v) <= 100;
 
 const FEE_METHODS = ["card", "wallet", "apple_pay", "bnpl", "instapay", "bank_transfer"] as const;
 const COURIERS = ["bosta", "jt", "aramex", "mylerz", "other"] as const;
-const EDITORS = new Set(["owner", "admin", "finance"]);
-const READERS = new Set([...EDITORS, "ops_manager"]);
+const EDITORS = rolesWith("profit.manage");
+const READERS = rolesWith("profit.read");
 
 /**
  * Settings → Costs (M5, E9-1): what an order costs beyond its products, for real profit.

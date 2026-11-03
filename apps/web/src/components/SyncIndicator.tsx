@@ -1,5 +1,6 @@
 "use client";
 
+import { can } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -17,7 +18,7 @@ const SHOW_DONE_MS = 10 * 60_000;
  */
 export function useStoreImports() {
   const { api, user, store } = useSession();
-  const allowed = store?.role === "owner" || store?.role === "admin" || store?.role === "ops_manager";
+  const allowed = can(store?.role, "connections.read");
   return useQuery({
     queryKey: ["store-imports", user?.uid ?? "", store?.tenantId ?? ""],
     queryFn: () => ok(api.GET("/v1/connections/imports")),

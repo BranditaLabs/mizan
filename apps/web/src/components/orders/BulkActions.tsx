@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,7 +19,7 @@ type Bulk = Schemas["BulkAction"];
 type Request = Schemas["BulkRequest"];
 type Kind = Request["action"];
 const REASONS = ["customer_cancelled", "duplicate", "out_of_stock", "fraud", "other"] as const;
-export const BULK_ROLES = new Set(["owner", "admin", "ops_manager"]);
+export const BULK_ROLES = rolesWith("orders.lead");
 
 /**
  * Bulk actions on the orders list (M1, E5-4): assign, tag, confirm or cancel the selected orders.

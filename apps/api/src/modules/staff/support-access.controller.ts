@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, UseGuards, UseInterceptors } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, NoSupport, NoTenant, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can, NoSupport, NoTenant } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -58,7 +58,7 @@ export class StoreSupportAccessController {
 
   @Post(":id/end")
   @HttpCode(200)
-  @Roles("owner", "admin")
+  @Can("support.end")
   @NoSupport()
   @ApiJson(200, "SupportAccessEnded", EndedSchema, "Ends Mizan support's access now (no-op when it already ended)")
   @ApiProblems(403, 404)

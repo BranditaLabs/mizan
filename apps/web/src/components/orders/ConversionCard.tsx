@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,7 +19,7 @@ import { useSession } from "@/lib/session";
 
 type Conversion = Schemas["OrderConversion"];
 type Method = Schemas["NewConversion"]["method"];
-const ROLES = new Set(["owner", "admin", "ops_manager", "agent", "finance"]);
+const ROLES = rolesWith("payments.convert");
 const TONE: Record<NonNullable<Conversion["current"]>["status"], BadgeTone> = { open: "info", paid: "success", expired: "neutral", cancelled: "neutral" };
 
 /**

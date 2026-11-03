@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -17,7 +18,7 @@ import { OrderSources } from "./OrderSources";
 
 type Roas = Schemas["Roas"];
 const PERIODS = [7, 14, 30, 90] as const;
-const READERS = new Set(["owner", "admin", "finance", "ops_manager", "media_buyer"]);
+const READERS = rolesWith("ads.read");
 const PLATFORMS = new Set(["meta", "tiktok", "google", "snapchat", "other"]);
 
 /**

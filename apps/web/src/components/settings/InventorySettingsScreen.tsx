@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Switch } from "@/components/ui/Choice";
@@ -9,7 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
-const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
+const MANAGERS = rolesWith("inventory.settings");
 
 /** Settings → Inventory (U4): whether Mizan sends its count to the store. */
 export function InventorySettingsScreen() {

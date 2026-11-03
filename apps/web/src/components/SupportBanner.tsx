@@ -1,11 +1,12 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
-const ENDERS = new Set(["owner", "admin"]);
+const ENDERS = rolesWith("support.end");
 
 /**
  * Mizan support in the store (A-3): while a support grant is open, one line across the dashboard
