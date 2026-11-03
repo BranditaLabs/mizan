@@ -7,6 +7,7 @@ import { Bdi } from "@/components/Bdi";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { Pending } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
@@ -66,7 +67,7 @@ export function IntegrationsScreen() {
       </header>
       {woo ? <WooCommerceConnect open onClose={() => setWoo(null)} site={woo.site} /> : null}
       {!READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-        : !list.data ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div>
+        : !list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={3} label={t("loading")} /></Pending></div>
         : (
           <>
             {list.data.data.length ? (
@@ -114,7 +115,8 @@ export function IntegrationsScreen() {
                     );
                   })}
                 </ul>
-              ) : <p className="mt-2 text-body-sm text-text-2">{t("dead.none")}</p>}
+              ) : !dead.data ? <Pending query={dead} compact><SkeletonRows rows={2} label={t("loading")} /></Pending>
+                : <p className="mt-2 text-body-sm text-text-2">{t("dead.none")}</p>}
             </section>
             <EngineHealth />
             {city ? <ResolveCityDialog jobId={city.jobId} text={city.text} onClose={() => setCity(null)} /> : null}

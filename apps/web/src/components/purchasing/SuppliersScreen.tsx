@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Cell, DataTable, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, TextArea } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
@@ -57,8 +58,8 @@ export function SuppliersScreen() {
         {manager ? <Button icon="add" onClick={() => setEditing("new")}>{t("supplier.new")}</Button> : null}
       </header>
       <Tabs label={t("suppliers")} value={view} onChange={setView} items={[{ value: "active", label: t("supplier.active") }, { value: "archived", label: t("supplier.archived") }]}>
-        {list.isPending ? <div className="mz-card"><SkeletonRows rows={4} label={t("loading")} /></div>
-          : <DataTable label={t("suppliers")} columns={columns} rows={list.data?.data ?? []} rowKey={(s) => s.id} rowLabel={(s) => s.name}
+        {!list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={4} label={t("loading")} /></Pending></div>
+          : <DataTable label={t("suppliers")} columns={columns} rows={list.data.data} rowKey={(s) => s.id} rowLabel={(s) => s.name}
               empty={<EmptyState icon="supplier" title={t(view === "archived" ? "supplier.noneArchived" : "noSuppliers.title")} body={view === "archived" ? "" : t("noSuppliers.body")} />} />}
       </Tabs>
       {editing ? <SupplierDialog supplier={editing === "new" ? null : editing} onClose={() => setEditing(null)} /> : null}

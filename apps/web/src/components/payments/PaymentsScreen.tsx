@@ -7,6 +7,7 @@ import { Badge, Tag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -84,7 +85,7 @@ export function PaymentsScreen() {
     <RefundQueue />
     <DisputeQueue />
     <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(first ? { count: first.counts[v] } : {}) }))}>
-      {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
+      {!list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={5} label={t("loading")} /></Pending></div> : (
         <div className="flex flex-col gap-3">
           {first?.totals.length ? (
             <div className="grid gap-3 md:grid-cols-2" data-testid="payment-totals">

@@ -4,6 +4,7 @@ import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
+import { Pending } from "@/components/ui/QueryState";
 import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
@@ -55,7 +56,7 @@ export function ActivityLog() {
   const rows = audit
     ? (log.data?.data ?? []).map((e) => ({ id: e.id, at: e.createdAt, icon: ICON[e.action.split(".")[0] ?? ""] ?? "note", title: action(e.action), who: actor(e.actor) }))
     : (notes.data?.data ?? []).slice(0, SHOWN).map((n) => ({ id: n.id, at: n.at, icon: ICON[n.source.split(".")[0] ?? ""] ?? "notification", title: n.text, who: null as string | null }));
-  const loading = audit ? log.isPending : notes.isPending;
+  const feed = audit ? log : notes;
 
   return (
     <section className="mz-card flex flex-col gap-3 p-5 lg:col-span-2" aria-labelledby="activity-title" data-testid="activity">
@@ -69,7 +70,7 @@ export function ActivityLog() {
         </h2>
         {audit ? <Link href="/settings/audit" className="text-body-sm text-text-2 hover:underline">{t("all")}</Link> : null}
       </div>
-      {loading ? <p className="text-body-sm text-text-3">{t("loading")}</p>
+      {!feed.data ? <Pending query={feed} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending>
         : rows.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : (
           <ol className="mz-stagger relative flex flex-col">
             {rows.map((r, i) => (

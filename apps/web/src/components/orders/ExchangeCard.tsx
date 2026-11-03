@@ -9,6 +9,7 @@ import { Button, ButtonGroup } from "@/components/ui/Button";
 import { IdCell } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
@@ -44,6 +45,10 @@ export function ExchangeCard({ order: o }: { order: Order }) {
   });
   const canMake = MAKERS.has(role) && o.status === "delivered";
   const d = q.data;
+  // A failed load hides the card, unless the team could start an exchange here (then the card always shows).
+  if (!d && q.isError && canMake) {
+    return <Card title={t("title")}><ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /></Card>;
+  }
   if (!d || (!d.outgoing.length && !d.exchangeOf && !canMake)) return null;
   return (
     <Card title={t("title")} actions={canMake ? <Button size="sm" variant="secondary" icon="returns" onClick={() => setOpen(true)}>{t("new")}</Button> : null}>
@@ -140,6 +145,7 @@ function NewExchange({ order: o, onClose }: { order: Order; onClose(): void }) {
           </Select>
           <Field label={t("qty")} type="number" min={1} max={999} value={quantity} onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))} ltr />
         </div>
+        {products.isError && !products.data ? <ErrorState compact error={products.error} onRetry={() => void products.refetch()} retrying={products.isRefetching} /> : null}
         {other ? (
           <div className="grid gap-3 sm:grid-cols-[1fr_8rem]">
             <Field label={t("itemTitle")} value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} dir="auto" />

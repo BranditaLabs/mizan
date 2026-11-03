@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/Choice";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { Card, EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -30,7 +31,6 @@ const COUNT = /^\d{0,6}$/;
  */
 export function PurchaseOrderDetail({ id }: { id: string }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
   const { api, user, store } = useSession();
   const role = store?.role ?? "";
   const key = ["purchaseOrder", user?.uid ?? "", store?.tenantId ?? "", id];
@@ -46,7 +46,7 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
   if (q.isPending) return frame(<div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>);
   if (!q.data) {
     const missing = q.error instanceof ApiError && q.error.status === 404;
-    return frame(<div className="mz-card"><EmptyState icon="error" title={missing ? t("notFound") : problemText(q.error, tpr)} body="" /></div>);
+    return frame(<div className="mz-card">{missing ? <EmptyState icon="error" title={t("notFound")} body="" /> : <ErrorState error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} />}</div>);
   }
   const po = q.data;
   const columns: Column<Line>[] = [

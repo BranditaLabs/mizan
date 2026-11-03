@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, Progress, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -68,8 +69,8 @@ export function PurchaseOrdersScreen() {
         </div>
       </header>
       <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(count(v) !== undefined ? { count: count(v)! } : {}) }))}>
-        {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>
-          : <DataTable label={t("title")} columns={columns} rows={list.data?.data ?? []} rowKey={(r) => r.id} rowLabel={(r) => r.number} empty={empty} />}
+        {!list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={5} label={t("loading")} /></Pending></div>
+          : <DataTable label={t("title")} columns={columns} rows={list.data.data} rowKey={(r) => r.id} rowLabel={(r) => r.number} empty={empty} />}
       </Tabs>
     </div>
   );

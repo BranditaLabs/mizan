@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { Field, Select } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
@@ -94,7 +95,7 @@ export function TeamScreen() {
         <div className="flex items-end"><Button type="submit" busy={invite.isPending} disabled={!contact.trim()}>{t("invite")}</Button></div>
       </form>
 
-      {!q.data ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div> : (
+      {!q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={3} label={t("loading")} /></Pending></div> : (
         <>
           <div className="mz-table-wrap">
             <table className="mz-table" data-testid="team-table">

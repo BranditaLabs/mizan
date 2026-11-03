@@ -17,6 +17,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -126,8 +127,8 @@ export function StockScreen() {
       <Tabs label={t("filterLabel")} value={filter} onChange={setFilter} items={FILTERS.map((f) => ({ value: f, label: t(`filter.${f}`) }))}>
         <div className="flex flex-col gap-3">
           <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-80" />
-          {stock.isPending ? <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div> : null}
-          {stock.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
+          {!stock.data ? <div className="mz-card"><Pending query={stock}><SkeletonRows rows={6} label={t("loading")} /></Pending></div> : null}
+          {stock.isError && stock.data ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
           {stock.data ? <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(r) => r.variantId} rowLabel={(r) => r.sku} empty={empty} /> : null}
           {stock.hasNextPage ? (
             <div className="flex justify-center">
@@ -231,6 +232,10 @@ function StoreSync() {
     mutationFn: (pushToStore: boolean) => ok(api.PUT("/v1/settings/inventory", { body: { pushToStore } })),
     onSuccess: (r) => { qc.setQueryData(key, r); toast({ message: r.pushToStore ? t("on") : t("off") }); },
   });
+  // A failed load is not "off": say it could not be read instead of showing a switched-off toggle.
+  if (q.isError && !q.data) {
+    return <div className="mz-card" data-testid="stock-sync"><ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /></div>;
+  }
   return (
     <div className="mz-card p-4" data-testid="stock-sync">
       <Switch label={t("label")} description={t("description")} checked={q.data?.pushToStore ?? false} disabled={!q.data || save.isPending}
@@ -249,7 +254,7 @@ function History({ row, onClose }: { row: Row; onClose(): void }) {
   });
   return (
     <Dialog open onClose={onClose} title={t("title", { sku: row.sku })} footer={<Button variant="ghost" onClick={onClose}>{t("close")}</Button>}>
-      {q.isPending ? <SkeletonRows rows={4} label={t("loading")} /> : null}
+      {!q.data ? <Pending query={q} compact><SkeletonRows rows={4} label={t("loading")} /></Pending> : null}
       {q.data ? (
         <ul className="flex flex-col divide-y divide-line text-body-sm" data-testid="stock-history">
           {q.data.data.map((m) => (

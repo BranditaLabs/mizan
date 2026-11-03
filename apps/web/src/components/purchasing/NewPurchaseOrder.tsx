@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button, buttonClass, IconButton } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Field, Select, TextArea } from "@/components/ui/Field";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { Card, EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
@@ -76,8 +77,8 @@ export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {})
     </div>
   );
   if (!allowed) return frame(<div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.managers")} /></div>);
-  if (suppliers.isPending) return frame(<div className="mz-card"><SkeletonRows rows={4} label={t("loading")} /></div>);
-  if (!suppliers.data?.data.length) {
+  if (!suppliers.data) return frame(<div className="mz-card"><Pending query={suppliers}><SkeletonRows rows={4} label={t("loading")} /></Pending></div>);
+  if (!suppliers.data.data.length) {
     return frame(<div className="mz-card"><EmptyState icon="supplier" title={t("noSuppliers.title")} body={t("noSuppliers.body")}
       action={<Link href="/purchasing/suppliers" className={buttonClass("primary")}>{t("noSuppliers.cta")}</Link>} /></div>);
   }
@@ -116,7 +117,9 @@ export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {})
           </Card>
           <Card title={t("new.items")}>
             <div className="flex flex-col gap-4">
-              <Combobox label={t("new.pickItem")} options={options} value={null} onChange={add} emptyText={t("new.noProducts")} placeholder={t("new.pickPlaceholder")} />
+              {products.isError && !products.data
+                ? <ErrorState compact error={products.error} onRetry={() => void products.refetch()} retrying={products.isRefetching} className="rounded-md border border-line" />
+                : <Combobox label={t("new.pickItem")} options={options} value={null} onChange={add} emptyText={t("new.noProducts")} placeholder={t("new.pickPlaceholder")} />}
               {lines.length ? (
                 <ul className="flex flex-col divide-y divide-line" data-testid="po-lines">
                   {lines.map((l) => (

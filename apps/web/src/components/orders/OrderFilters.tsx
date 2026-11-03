@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
@@ -46,6 +47,7 @@ export function OrderFilters({ value, onChange, current, onView }: {
   const f = facets.data;
   const chosen = views.data?.data.find((v) => v.id === viewId);
   const canRemove = chosen && (chosen.mine || LEADS.has(store?.role ?? ""));
+  const failed = facets.isError && !facets.data ? facets : views.isError && !views.data ? views : null;
 
   return (
     <section aria-label={t("label")} className="flex flex-col gap-3">
@@ -76,6 +78,9 @@ export function OrderFilters({ value, onChange, current, onView }: {
         <Field label={t("from")} type="date" ltr value={value.from ?? ""} max={value.to} onChange={(e) => set({ from: e.target.value || undefined })} className="w-full sm:w-40" />
         <Field label={t("to")} type="date" ltr value={value.to ?? ""} min={value.from} onChange={(e) => set({ to: e.target.value || undefined })} className="w-full sm:w-40" />
       </div>
+      {/* The choices could not be loaded: say so instead of lists that look empty. */}
+      {failed ? <ErrorState compact className="mz-card" error={failed.error} retrying={failed.isRefetching}
+        onRetry={() => { if (facets.isError) void facets.refetch(); if (views.isError) void views.refetch(); }} /> : null}
       <div className="flex flex-wrap items-center gap-2">
         {value.productId ? (
           <span className="inline-flex items-center gap-2 rounded-full border border-line bg-surface-sunk px-3 py-1 text-body-sm" data-testid="product-filter">

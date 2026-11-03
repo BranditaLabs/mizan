@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { CheckboxOnly } from "@/components/ui/Choice";
 import { Field } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
@@ -52,7 +53,7 @@ export function ReorderScreen() {
           {s ? t("reorder.subtitle", { velocity: s.velocityDays, safety: s.safetyDays, target: s.targetCoverDays }) : null}
         </p>
       </header>
-      {q.isPending ? <div className="mz-card"><SkeletonRows rows={4} label={t("loading")} /></div>
+      {!q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={4} label={t("loading")} /></Pending></div>
         : !groups.size ? <div className="mz-card"><EmptyState icon="stock" title={t("reorder.empty.title")} body={t("reorder.empty.body")} /></div>
         : [...groups.values()].map((g) => <SupplierGroup key={g.supplier?.id ?? "none"} supplier={g.supplier} rows={g.rows} canDraft={MANAGERS.has(role)} />)}
     </>,

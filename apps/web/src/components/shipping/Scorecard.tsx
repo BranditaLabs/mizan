@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Cell, DataTable, type Column } from "@/components/ui/DataTable";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { Pending } from "@/components/ui/QueryState";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
@@ -47,7 +48,7 @@ export function Scorecard() {
     )}>
       <div className="flex flex-col gap-5" data-testid="scorecard">
         <p className="text-body-sm text-text-2">{t("hint")}</p>
-        {q.isPending ? <SkeletonRows rows={3} label={t("title")} /> : !q.data?.couriers.length ? <EmptyState icon="shipping" title={t("empty.title")} body={t("empty.body")} /> : (
+        {!q.data ? <Pending query={q} compact><SkeletonRows rows={3} label={t("title")} /></Pending> : !q.data.couriers.length ? <EmptyState icon="shipping" title={t("empty.title")} body={t("empty.body")} /> : (
           q.data.couriers.map((c) => (
             <section key={c.courier} className="flex flex-col gap-2" aria-label={providerName(c.courier)}>
               <h3 className="text-heading-sm">

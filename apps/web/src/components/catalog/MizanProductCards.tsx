@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Surface";
+import { ErrorState } from "@/components/ui/QueryState";
 import { ApiError, idempotency, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
@@ -108,6 +109,8 @@ export function PublishCard({ product: p }: { product: Product }) {
         <p className="text-body-sm text-text-2">{t("body")}</p>
         {state === "publishing" ? <Alert tone="info">{t("publishing")}</Alert> : null}
         {state === "failed" ? <Alert tone="danger">{t("failed", { message: p.publish?.error ?? "" })}</Alert> : null}
+        {/* The store list failed to load: say so, never "no store connected". */}
+        {stores.isError && !stores.data ? <ErrorState compact error={stores.error} onRetry={() => void stores.refetch()} retrying={stores.isRefetching} /> : null}
         {stores.data && stores.data.length === 0 ? <p className="text-body-sm text-text-2">{t("noStore")}</p> : null}
         {canEdit && stores.data?.length && state !== "publishing" ? (
           <div className="flex flex-wrap items-end gap-3">

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Field, TextArea } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { DateText } from "@/components/ui/Values";
 import { ok } from "@/lib/api/client";
@@ -54,6 +55,7 @@ export function NotesCard({ orderId }: { orderId: string }) {
             <div><Button type="submit" size="sm" variant="secondary" icon="note" busy={add.isPending} disabled={!text.trim()}>{t("add")}</Button></div>
           </form>
         ) : null}
+        {notes.isError && !notes.data ? <ErrorState compact error={notes.error} onRetry={() => void notes.refetch()} retrying={notes.isRefetching} /> : null}
         {notes.data && list.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : null}
         <ul className="flex flex-col divide-y divide-line">
           {list.map((n) => (

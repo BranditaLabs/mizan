@@ -7,6 +7,7 @@ import { Bdi } from "@/components/Bdi";
 import { LegalCard } from "@/components/legal/LegalCard";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
@@ -53,7 +54,7 @@ export function StoreProfileScreen() {
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
       </header>
-      {!s ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div> : (
+      {!s ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={3} label={t("loading")} /></Pending></div> : (
         <div className="grid gap-5 md:grid-cols-3">
           <form onSubmit={onSubmit} className="mz-card flex flex-col gap-4 p-5 md:col-span-2" noValidate>
             <Field label={t("name")} name="name" value={value("name")} maxLength={80} disabled={!editable} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />

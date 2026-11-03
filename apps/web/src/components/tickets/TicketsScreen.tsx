@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { SearchInput } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateText } from "@/components/ui/Values";
@@ -76,7 +77,7 @@ export function TicketsScreen() {
         </div>
       </header>
       <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(counts && v !== "all" ? { count: counts[v] } : {}) }))}>
-        {list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
+        {!list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={5} label={t("loading")} /></Pending></div> : (
           <div className="flex flex-col gap-3">
             <DataTable label={t("title")} columns={columns} rows={rows} rowKey={(r) => r.id} rowLabel={(r) => r.number} empty={empty} />
             {list.hasNextPage ? (

@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { Pending } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -40,7 +41,7 @@ export function PurchasingSettingsScreen() {
     onSuccess: () => { toast({ message: t("saved") }); setValue(null); setDays({}); void qc.invalidateQueries({ queryKey: ["reorder"] }); void qc.invalidateQueries({ queryKey: ["purchasingSettings"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); },
   });
   const body = !READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-    : !q.data ? <div className="mz-card"><SkeletonRows rows={2} label={t("loading")} /></div>
+    : !q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={2} label={t("loading")} /></Pending></div>
     : (
       <form className="mz-card flex max-w-[560px] flex-col gap-3 p-5" onSubmit={(e) => { e.preventDefault(); if (EDITORS.has(role)) save.mutate(); }}>
         <Field label={t("approveOver")} hint={t("approveOverHint")} inputMode="decimal" ltr value={current}

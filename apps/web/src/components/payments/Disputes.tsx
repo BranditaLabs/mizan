@@ -9,6 +9,7 @@ import { Button, buttonClass } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -56,11 +57,14 @@ export function DisputesCard({ orderId }: { orderId: string }) {
   const rows = q.data?.data ?? [];
   const held = ledger.data && Number(ledger.data.net.amount) > 0 ? ledger.data.net : null;
   const canRecord = DISPUTE_MANAGERS.has(role) && held !== null;
-  if (!READERS.has(role) || (!rows.length && !canRecord)) return null;
+  // A failed load is said, never shown as "no disputes" or hidden as if there were none.
+  const failed = q.isError && !q.data;
+  if (!READERS.has(role) || (!failed && !rows.length && !canRecord)) return null;
   return (
     <Card title={t("title")} actions={canRecord ? <Button size="sm" variant="secondary" icon="add" onClick={() => setOpen(true)}>{t("record")}</Button> : null}>
       <div data-testid="order-disputes">
-        {rows.length ? <ul className="flex flex-col divide-y divide-line">{rows.map((d) => <DisputeRow key={d.id} dispute={d} />)}</ul>
+        {failed ? <ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} />
+          : rows.length ? <ul className="flex flex-col divide-y divide-line">{rows.map((d) => <DisputeRow key={d.id} dispute={d} />)}</ul>
           : <p className="text-body-sm text-text-2">{t("none")}</p>}
       </div>
       {open && held ? <RecordDispute orderId={orderId} held={held} onClose={() => setOpen(false)} /> : null}
@@ -79,6 +83,9 @@ export function DisputeQueue() {
     meta: { toast: false },
   });
   const rows = q.data?.data ?? [];
+  if (q.isError && !q.data) {
+    return <Card title={t("title")}><ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /></Card>;
+  }
   if (!rows.length) return null;
   return (
     <Card title={t("queueTitle", { count: rows.length })}>
@@ -250,7 +257,6 @@ export function EvidencePack({ disputeId }: { disputeId: string }) {
   const t = useTranslations("disputes");
   const to = useTranslations("orders");
   const ts = useTranslations("shipping");
-  const tpr = useTranslations("problem");
   const { api, user, store } = useSession();
   const allowed = DISPUTE_MANAGERS.has(store?.role ?? "");
   const q = useQuery({
@@ -264,7 +270,7 @@ export function EvidencePack({ disputeId }: { disputeId: string }) {
     <div className="mx-auto flex max-w-[860px] flex-col gap-4 px-4 pt-6 pb-14 md:px-6 print:max-w-none print:p-0" data-testid="evidence-pack">{body}</div>
   );
   if (!allowed) return frame(OPS_VIEWERS.has(store?.role ?? "") ? <DisputeSummary disputeId={disputeId} /> : <Alert tone="info">{t("notAllowed")}</Alert>);
-  if (!p) return frame(<p className="text-body-sm text-text-3">{q.isError ? problemText(q.error, tpr) : t("loading")}</p>);
+  if (!p) return frame(<Pending query={q}><p className="text-body-sm text-text-3">{t("loading")}</p></Pending>);
   const d = p.dispute;
   const orderStatus = (s: string) => (s in STATUS_KEYS ? to(`status.${s as "new"}`) : s);
   const shipStatus = (s: string) => (SHIP_KEYS.has(s) ? ts(`status.${s as "delivered"}`) : s);
@@ -379,7 +385,6 @@ const OPS_VIEWERS = new Set(["ops_manager"]);
 /** The dispute without its evidence: where it stands and by when, for those who follow it. */
 function DisputeSummary({ disputeId }: { disputeId: string }) {
   const t = useTranslations("disputes");
-  const tpr = useTranslations("problem");
   const { api, user, store } = useSession();
   const q = useQuery({
     queryKey: ["disputes", user?.uid ?? "", store?.tenantId ?? "", "one", disputeId],
@@ -387,7 +392,7 @@ function DisputeSummary({ disputeId }: { disputeId: string }) {
     meta: { toast: false },
   });
   const d = q.data;
-  if (!d) return <p className="text-body-sm text-text-3">{q.isError ? problemText(q.error, tpr) : t("loading")}</p>;
+  if (!d) return <Pending query={q}><p className="text-body-sm text-text-3">{t("loading")}</p></Pending>;
   return (
     <div className="flex flex-col gap-4" data-testid="dispute-summary">
       <Link href={`/orders/${d.order.id}`} className="text-body-sm text-text-2 underline">{t("backToOrder")}</Link>

@@ -9,6 +9,7 @@ import { Badge, Tag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { IdCell } from "@/components/ui/DataTable";
 import { Select, TextArea } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { Card, EmptyState, KeyValue, SkeletonRows, Timeline } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
@@ -27,7 +28,6 @@ type Patch = Schemas["UpdateTicket"];
  */
 export function TicketDetail({ id }: { id: string }) {
   const t = useTranslations("tickets");
-  const tpr = useTranslations("problem");
   const tr = useTranslations("refunds");
   const { api, user, store } = useSession();
   const key = ["ticket", user?.uid ?? "", store?.tenantId ?? "", id];
@@ -41,7 +41,7 @@ export function TicketDetail({ id }: { id: string }) {
   if (q.isPending) return frame(<div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>);
   if (!q.data) {
     const missing = q.error instanceof ApiError && q.error.status === 404;
-    return frame(<div className="mz-card"><EmptyState icon="error" title={missing ? t("notFound") : problemText(q.error, tpr)} body="" /></div>);
+    return frame(<div className="mz-card">{missing ? <EmptyState icon="error" title={t("notFound")} body="" /> : <ErrorState error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} />}</div>);
   }
   const tk = q.data;
   const nameOf = (userId: unknown) => tk.assignees.find((a) => a.id === userId)?.name ?? (tk.assignee && tk.assignee.id === userId ? tk.assignee.name : null) ?? t("member");

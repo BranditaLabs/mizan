@@ -9,6 +9,7 @@ import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable"
 import { BULK_ROLES, BulkBar, BulkProgress } from "./BulkActions";
 import { SearchInput } from "@/components/ui/Field";
 import { useStoreImports } from "@/components/SyncIndicator";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -169,8 +170,8 @@ export function OrdersScreen({ initialStatus, initialQuery, initialFilters = {} 
           value: s, label: s === "all" ? t("all") : s === "needs_call" ? t("needsCall") : s === "duplicates" ? t("duplicates") : s === "waiting_stock" ? t("waitingStock") : t(`status.${s}`),
           ...(counts ? { count: s === "needs_call" ? (orders.data?.pages[0]?.needsCall ?? 0) : s === "duplicates" ? (orders.data?.pages[0]?.duplicates ?? 0) : s === "waiting_stock" ? (orders.data?.pages[0]?.waitingStock ?? 0) : counts[s] } : {}),
         }))}>
-        {orders.isPending ? (
-          <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div>
+        {!orders.data ? (
+          <div className="mz-card"><Pending query={orders} compact><SkeletonRows rows={6} label={t("loading")} /></Pending></div>
         ) : (
           <div className="flex flex-col gap-3">
             {bulkId ? <BulkProgress id={bulkId} onClose={() => setBulkId(null)} /> : null}

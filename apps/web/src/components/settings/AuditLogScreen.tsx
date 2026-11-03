@@ -7,6 +7,7 @@ import { Bdi } from "@/components/Bdi";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { DateText } from "@/components/ui/Values";
 import { ok } from "@/lib/api/client";
@@ -53,7 +54,7 @@ export function AuditLogScreen() {
         ) : null}
       </header>
       {!READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-        : !q.data ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>
+        : !q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={5} label={t("loading")} /></Pending></div>
         : !rows.length ? <div className="mz-card"><EmptyState icon="note" title={t("empty.title")} body={t("empty.body")} /></div>
         : (
           <div className="mz-table-wrap">
