@@ -199,6 +199,7 @@ test("U2: a list that fails to load says so and offers to try again, never 'no o
     : route.fallback());
   await page.goto("/en/sign-in");
   await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
   await page.goto("/en/orders");
   const error = page.getByTestId("error-state");
   await expect(error).toContainText("Couldn't load this");
