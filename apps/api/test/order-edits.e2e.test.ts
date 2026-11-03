@@ -106,7 +106,7 @@ describe("editing a manual order (O3)", () => {
   it("refuses what cannot be: nothing left, no change, a paid order going up, below what was paid, with the courier, out of scope", async () => {
     const o = await manual();
     const lines = (await detail(o.id)).lines as Array<{ id: string }>;
-    const code = async (id: string, body: unknown, status: number, token = "owner") => (await http().patch(`/v1/orders/${id}`).set(as(token)).send(body).expect(status)).body.code;
+    const code = async (id: string, body: object, status: number, token = "owner") => (await http().patch(`/v1/orders/${id}`).set(as(token)).send(body).expect(status)).body.code;
     expect(await code(o.id, { lines: lines.map((l) => ({ lineId: l.id, quantity: 0 })) }, 422)).toBe("no_items");
     expect(await code(o.id, { shipping: "50" }, 422)).toBe("no_change");
     expect(await code(o.id, {}, 422)).toBe("validation_failed");
@@ -131,7 +131,7 @@ describe("editing a Shopify order (O3)", () => {
     const { orderId } = await projector.project(store, shopify, storeOrder(1));
     const line = (await detail(orderId)).lines[0];
 
-    const code = async (body: unknown, status: number) => (await http().patch(`/v1/orders/${orderId}`).set(as("owner")).send(body).expect(status)).body;
+    const code = async (body: object, status: number) => (await http().patch(`/v1/orders/${orderId}`).set(as("owner")).send(body).expect(status)).body;
     expect((await code({ lines: [{ lineId: line.id, quantity: 2, unitPrice: "500" }] }, 422)).code).toBe("price_in_store");
     const belt = (await db.tenant(store, (trx) => trx.selectFrom("variants").select("id").where("sku", "=", "BLT-1").executeTakeFirstOrThrow())).id;
     expect((await code({ add: [{ variantId: belt, quantity: 1 }] }, 422)).code).toBe("not_in_store");
