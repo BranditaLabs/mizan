@@ -139,3 +139,29 @@ test("U4: settings open on an overview grouped by what they're for, with a side 
   await expect(menu.getByRole("link", { name: "Inventory" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByTestId("stock-sync")).toBeVisible();
 });
+
+test("U5: a change shows the save bar; leaving asks first; Discard puts it back", async ({ page }) => {
+  const owner = await ownerWithStore("Nile Unsaved");
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
+  await page.goto("/en/settings/store");
+  const form = page.getByTestId("store-profile");
+  const bar = page.getByTestId("save-bar");
+  await expect(bar).toHaveCount(0); // nothing to save yet
+  await form.getByLabel("Store name").fill("Nile Unsaved 2");
+  await expect(bar).toContainText("You have unsaved changes.");
+
+  await page.getByRole("navigation", { name: "Main menu" }).getByRole("link", { name: "Orders" }).click();
+  const ask = page.getByRole("dialog", { name: "Leave without saving?" });
+  await expect(ask).toBeVisible();
+  await ask.getByRole("button", { name: "Cancel" }).click();
+  await expect(page).toHaveURL(/\/en\/settings\/store$/);
+  await expect(form.getByLabel("Store name")).toHaveValue("Nile Unsaved 2");
+
+  await bar.getByRole("button", { name: "Discard" }).click();
+  await expect(form.getByLabel("Store name")).toHaveValue("Nile Unsaved");
+  await expect(bar).toHaveCount(0);
+  await page.getByRole("navigation", { name: "Main menu" }).getByRole("link", { name: "Orders" }).click();
+  await expect(page).toHaveURL(/\/en\/orders$/); // nothing unsaved: no question
+});

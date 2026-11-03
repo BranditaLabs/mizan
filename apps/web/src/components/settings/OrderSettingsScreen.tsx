@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Pending } from "@/components/ui/QueryState";
@@ -32,6 +32,7 @@ export function OrderSettingsScreen() {
   const current = value ?? String(q.data?.duplicateWindowHours ?? "");
   const hours = Number(current);
   const valid = /^\d{1,3}$/.test(current.trim()) && hours >= 0 && hours <= 168;
+  const dirty = value !== null && current.trim() !== String(q.data?.duplicateWindowHours ?? "");
   const save = useMutation({
     mutationFn: () => ok(api.PUT("/v1/settings/orders", { body: { duplicateWindowHours: hours } })),
     meta: { toast: false },
@@ -47,7 +48,7 @@ export function OrderSettingsScreen() {
           <li>{t("rules.same")}</li><li>{t("rules.keep")}</li><li>{t("rules.off")}</li><li>{t("rules.from")}</li>
         </ul>
         {save.isError ? <Alert tone="danger">{problemText(save.error, tpr)}</Alert> : null}
-        <div><Button type="submit" busy={save.isPending} disabled={!valid}>{t("save")}</Button></div>
+        <SaveBar dirty={dirty} busy={save.isPending} canSave={valid} onSave={() => save.mutate()} onDiscard={() => setValue(null)} />
       </form>
     );
   return (

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Field } from "@/components/ui/Field";
 import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
@@ -46,7 +46,7 @@ export function RefundSettingsScreen() {
           <li>{t("rules.under")}</li><li>{t("rules.over")}</li><li>{t("rules.fourEyes")}</li><li>{t("rules.store")}</li>
         </ul>
         {save.isError ? <Alert tone="danger">{problemText(save.error, tpr)}</Alert> : null}
-        {EDITORS.has(role) ? <div><Button type="submit" busy={save.isPending} disabled={!current.trim()}>{t("save")}</Button></div> : null}
+        {EDITORS.has(role) ? <SaveBar dirty={value !== null && value.trim() !== (q.data?.approveOver ?? "")} busy={save.isPending} canSave={Boolean(current.trim())} onSave={() => save.mutate()} onDiscard={() => setValue(null)} /> : null}
       </form>
     );
   return (

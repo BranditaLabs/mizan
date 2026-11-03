@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
 import { Bdi } from "@/components/Bdi";
 import { LegalCard } from "@/components/legal/LegalCard";
-import { Button } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Field, Select } from "@/components/ui/Field";
 import { Pending } from "@/components/ui/QueryState";
 import { KeyValue, SkeletonRows } from "@/components/ui/Surface";
@@ -62,7 +62,7 @@ export function StoreProfileScreen() {
             <Select label={t("locale")} hint={t("localeHint")} value={value("locale")} disabled={!editable} onChange={(e) => setDraft({ ...draft, locale: e.target.value })}>
               {[`ar-${s.country}`, `en-${s.country}`].map((l) => <option key={l} value={l}>{t(`locales.${l.slice(0, 2)}` as "locales.ar")}</option>)}
             </Select>
-            {editable ? <div><Button type="submit" busy={save.isPending} disabled={!dirty || value("name").trim().length < 2}>{t("save")}</Button></div> : <p className="text-caption text-text-2">{t("readOnly")}</p>}
+            {editable ? null : <p className="text-caption text-text-2">{t("readOnly")}</p>}
           </form>
           <div className="mz-card p-5">
             <KeyValue items={[
@@ -75,6 +75,7 @@ export function StoreProfileScreen() {
           <LegalCard />
         </div>
       )}
+      {editable ? <SaveBar dirty={dirty} busy={save.isPending} canSave={value("name").trim().length >= 2} onSave={() => save.mutate()} onDiscard={() => setDraft({})} /> : null}
     </div>
   );
 }

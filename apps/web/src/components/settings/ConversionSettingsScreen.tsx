@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Pending } from "@/components/ui/QueryState";
@@ -55,7 +55,7 @@ export function ConversionSettingsScreen() {
           <Field label={t("expiresHours")} inputMode="numeric" ltr disabled={!editor} value={v("expiresHours")} onChange={(e) => setDraft({ ...draft, expiresHours: e.target.value.trim() })} />
         </div>
         {save.isError ? <Alert tone="danger">{problemText(save.error, tpr)}</Alert> : null}
-        {editor ? <div><Button type="submit" busy={save.isPending} disabled={!numbersOk}>{t("save")}</Button></div> : null}
+        {editor ? <SaveBar dirty={Object.keys(draft).length > 0} busy={save.isPending} canSave={numbersOk} onSave={() => save.mutate()} onDiscard={() => setDraft({})} /> : null}
       </form>
     );
   return (
