@@ -40,8 +40,7 @@ export const NAV: readonly NavItem[] = [
   { key: "profit", icon: "profit", href: "/profit", group: "money", roles: [...MANAGE, "finance", "media_buyer"], landing: { media_buyer: { href: "/profit/ads" } }, keywords: "profit ads roas أرباح مكسب إعلانات" },
   { key: "reports", icon: "reports", href: "/reports", group: "money", roles: ["owner", "admin", "ops_manager", "finance", "agent", "warehouse"], keywords: "reports dashboards export تقارير" },
   { key: "automations", icon: "automations", href: "/automations", group: null, roles: MANAGE, keywords: "automations rules recipes أتمتة قواعد" },
-  { key: "settings", icon: "settings", href: "/settings/costs", section: "/settings", group: null, roles: [...MANAGE, "finance", "media_buyer"],
-    landing: { media_buyer: { href: "/settings/ads", section: "/settings" } }, keywords: "settings team integrations إعدادات فريق" },
+  { key: "settings", icon: "settings", href: "/settings", group: null, roles: [...MANAGE, "finance"], keywords: "settings team integrations إعدادات فريق" },
 ];
 
 export const NAV_GROUPS: readonly NavGroup[] = ["work", "catalog", "money"];
@@ -65,7 +64,7 @@ const PRIMARY: Readonly<Record<string, readonly NavKey[]>> = {
   agent: ["confirmation", "orders", "tickets", "home"],
   warehouse: ["warehouse", "shipping", "orders", "home"],
   finance: ["payments", "profit", "orders", "home"],
-  media_buyer: ["profit", "home", "settings"],
+  media_buyer: ["profit", "home"],
 };
 
 export function primaryFor(role: string | undefined): NavLink[] {

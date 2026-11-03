@@ -16,7 +16,7 @@ describe("navigation follows the role (U3)", () => {
   it("a media buyer lands on the ads pages; agents and warehouse never see money", () => {
     const buyer = navFor("media_buyer");
     expect(buyer.find((n) => n.key === "profit")).toMatchObject({ href: "/profit/ads" });
-    expect(buyer.find((n) => n.key === "settings")).toMatchObject({ href: "/settings/ads", section: "/settings" });
+    expect(buyer.map((n) => n.key)).not.toContain("settings"); // ad spend lives under Profit now
     for (const role of ["agent", "warehouse"]) expect(navFor(role).map((n) => n.key)).not.toEqual(expect.arrayContaining(["payments"]));
   });
 

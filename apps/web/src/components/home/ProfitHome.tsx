@@ -30,7 +30,7 @@ const negative = (m: Money) => m.amount.startsWith("-");
 const order = (i: number) => ({ "--i": i }) as CSSProperties;
 
 const LEAK_LINK: Record<Leak["kind"], string> = {
-  losing_orders: "/orders", refusals: "/orders", unallocated_ads: "/settings/ads", other_currency: "/settings/costs",
+  losing_orders: "/orders", refusals: "/orders", unallocated_ads: "/profit/spend", other_currency: "/settings/costs",
   cost_missing: "/onboarding", shipping_rate_missing: "/settings/costs", cod_fee_missing: "/settings/costs", agent_cost_missing: "/settings/costs",
   packaging_cost_missing: "/settings/costs", payment_fee_missing: "/settings/costs", fx_missing: "/settings/costs", ads_fx_missing: "/settings/costs", sync_gap: "/onboarding",
 };

@@ -46,7 +46,7 @@ export function AdsRoas() {
           <h1 className="font-display text-heading-lg">{t("title")}</h1>
           <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
         </div>
-        <Link href="/settings/ads" className={buttonClass("secondary")}>{t("enterSpend")}</Link>
+        <Link href="/profit/spend" className={buttonClass("secondary")}>{t("enterSpend")}</Link>
       </header>
       {body}
     </div>
@@ -67,7 +67,7 @@ export function AdsRoas() {
       {q.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
       {r && noSpend ? (
         <div className="mz-card">
-          <EmptyState icon="profit" title={t("empty.title")} body={t("empty.body")} action={<Link href="/settings/ads" className={buttonClass("primary")}>{t("enterSpend")}</Link>} />
+          <EmptyState icon="profit" title={t("empty.title")} body={t("empty.body")} action={<Link href="/profit/spend" className={buttonClass("primary")}>{t("enterSpend")}</Link>} />
         </div>
       ) : null}
       {r && !noSpend ? (

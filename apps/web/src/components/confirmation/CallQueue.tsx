@@ -16,8 +16,10 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { formatWhen } from "@/lib/format";
 import { useSession, useTimeZone } from "@/lib/session";
+import { ConfirmationResults } from "@/components/settings/ConfirmationResults";
 
 const CALLERS = new Set(["owner", "admin", "ops_manager", "agent"]);
+const RESULT_READERS = new Set(["owner", "admin", "ops_manager"]);
 
 /**
  * The team's call queue (M2, E6-3): how many orders wait for a call, then one order at a time —
@@ -56,6 +58,8 @@ export function CallQueue() {
         {allowed ? <Button icon="call" busy={next.isPending} onClick={() => next.mutate()}>{current ? t("next") : t("start")}</Button> : null}
       </header>
       {body}
+      {/* How confirmation is going (moved here from settings, U4): for the people who run it. */}
+      {RESULT_READERS.has(store?.role ?? "") ? <ConfirmationResults /> : null}
     </div>
   );
   if (!allowed) return frame(<div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>);

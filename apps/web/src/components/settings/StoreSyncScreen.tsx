@@ -9,7 +9,6 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 const EDITORS = new Set(["owner", "admin"]);
 type Sync = Schemas["StoreSync"];
@@ -54,8 +53,7 @@ export function StoreSyncScreen() {
   });
   const stores = (list.data?.data ?? []).filter((c) => c.provider === "shopify" && c.status !== "disconnected");
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5">
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>

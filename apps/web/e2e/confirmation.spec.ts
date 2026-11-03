@@ -71,7 +71,7 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   await signInOwner(page, owner, "ar");
   await expect(page).toHaveURL(/\/ar$/);
   await page.getByRole("link", { name: "الإعدادات" }).click();
-  await page.getByRole("main").getByRole("link", { name: "التأكيد" }).click();
+  await page.getByRole("navigation", { name: "الإعدادات" }).getByRole("link", { name: "التأكيد" }).click();
   await expect(page).toHaveURL(/\/ar\/settings\/confirmation$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("التأكيد");
@@ -105,7 +105,7 @@ test("owner: confirmation results by route and channel, Arabic and English (E6-6
   await page.goto("/ar/sign-in");
   await signInOwner(page, owner, "ar");
   await expect(page).toHaveURL(/\/ar$/);
-  await page.goto("/ar/settings/confirmation");
+  await page.goto("/ar/confirmation"); // results live with the call queue now (U4)
   const results = page.getByRole("main").getByTestId("confirmation-results");
   await expect(results).toContainText("لسه مفيش أوردرات عدّت على التأكيد"); // the real API: a new store
   await page.route("**/v1/confirmation/summary?days=*", (route) => route.fulfill({ json: {
@@ -125,7 +125,7 @@ test("owner: confirmation results by route and channel, Arabic and English (E6-6
   await expect(results.getByTestId("results-by-channel")).toContainText("2 اتأكّدوا · 1 اتلغوا");
   await page.setViewportSize({ width: 1280, height: 1400 });
   await results.screenshot({ path: "test-results/confirmation-results-ar.png" });
-  await page.goto("/en/settings/confirmation");
+  await page.goto("/en/confirmation");
   const en = page.getByRole("main").getByTestId("confirmation-results");
   await expect(en).toContainText("Confirmation rate");
   await expect(en).toContainText("83.3%");

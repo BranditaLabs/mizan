@@ -12,7 +12,6 @@ import { KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { queryKeys, useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 const EDITORS = new Set(["owner", "admin"]);
 /** The time zones of the markets Mizan serves; the store's own is always offered. */
@@ -48,8 +47,7 @@ export function StoreProfileScreen() {
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (dirty) save.mutate(); };
 
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="store-profile">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5" data-testid="store-profile">
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>

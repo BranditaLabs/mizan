@@ -15,10 +15,10 @@ test("owner in Arabic: an empty month, saving without a store, then days, shares
   await signInOwner(page, owner, "ar");
   await expect(page).toHaveURL(/\/ar$/);
 
-  await page.goto("/ar/settings/ads");
+  await page.goto("/ar/settings/ads"); // the old address: ad spend lives under Profit now (U4)
+  await expect(page).toHaveURL(/\/ar\/profit\/spend$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("مصاريف الإعلانات");
-  await expect(main.getByRole("link", { name: "مصاريف الإعلانات" })).toHaveAttribute("aria-current", "page");
   await expect(main.getByText("مفيش صرف في آخر 30 يوم.")).toBeVisible();
 
   const add = main.getByTestId("ad-add");

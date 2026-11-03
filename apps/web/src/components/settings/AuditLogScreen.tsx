@@ -12,7 +12,6 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { DateText } from "@/components/ui/Values";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 const READERS = new Set(["owner", "admin"]);
 /** Families of actions to filter by (prefixes the API understands). */
@@ -39,8 +38,7 @@ export function AuditLogScreen() {
     a.type === "mizan_staff" ? t("actor.mizan") : a.type === "user" ? (a.displayName ?? t("actor.someone")) : t.has(`actor.${a.type}`) ? t(`actor.${a.type}` as "actor.system") : a.type;
 
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="audit-log">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5" data-testid="audit-log">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-heading-lg">{t("title")}</h1>

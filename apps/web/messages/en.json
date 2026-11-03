@@ -1571,7 +1571,42 @@
       "purchasing": "Purchasing",
       "payments": "Payments",
       "orders": "Orders",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "inventory": "Inventory"
+    },
+    "subtitle": "How your brand, its stores and its team work in Mizan.",
+    "none": "There are no settings for your role.",
+    "groups": {
+      "brand": "Brand",
+      "connections": "Connections",
+      "orders": "Orders & confirmation",
+      "money": "Money",
+      "stock": "Stock & purchasing"
+    },
+    "attention": {
+      "title": "Needs you",
+      "connection": "{provider} needs attention"
+    },
+    "notAllowed": {
+      "title": "Not available for your role",
+      "body": "Owners, admins and ops managers manage this."
+    },
+    "about": {
+      "store": "Name, time zone and the language of customer messages.",
+      "team": "Who works here and what each person can do.",
+      "usage": "Your plan, this month's usage and its limits.",
+      "audit": "Every change, who made it and when.",
+      "privacy": "Customers' data requests: export and delete.",
+      "integrations": "Stores, couriers and WhatsApp: their state and what to fix.",
+      "storeSync": "What Mizan writes back to your Shopify store.",
+      "orders": "How new orders are numbered and handled.",
+      "confirmation": "How orders are confirmed: WhatsApp, calls and the script.",
+      "offers": "Upsell offers during confirmation.",
+      "costs": "Product and order costs behind real profit.",
+      "payments": "Turning cash on delivery into prepaid, and the methods you take.",
+      "refunds": "Who approves refunds, and the limits.",
+      "inventory": "Whether Mizan sends its stock count to your store, so it never sells what's reserved or gone.",
+      "purchasing": "Defaults for purchase orders and receiving."
     }
   },
   "confirmationSettings": {
