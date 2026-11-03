@@ -8,6 +8,7 @@ test("an agent's menu has only what an agent can open", async ({ page }) => {
   await agentIn(phone, "Nile Calls");
   await page.goto("/en/sign-in");
   await signInWithPhone(page, phone, "en");
+  await expect(page).toHaveURL(/\/en$/);
   const nav = page.getByRole("navigation", { name: "Main menu" });
   await expect(nav.getByRole("link", { name: "Confirmation" })).toBeVisible();
   await expect(nav.getByRole("link", { name: "Orders" })).toBeVisible();
@@ -34,6 +35,7 @@ test("⌘K jumps to pages and actions, and finds an order by number", async ({ p
   });
   await page.goto("/en/sign-in");
   await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
   await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog", { name: "Search or jump to" });
   await palette.getByRole("combobox").fill("purchase");
@@ -50,6 +52,7 @@ test("on a phone: a bottom bar, and More for the rest", async ({ page }) => {
   const owner = await ownerWithStore("Nile Phone");
   await page.goto("/ar/sign-in");
   await signInOwner(page, owner, "ar");
+  await expect(page).toHaveURL(/\/ar$/);
   const bar = page.getByRole("navigation", { name: "الأقسام" });
   await expect(bar).toBeVisible();
   await expect(bar.getByRole("link")).toHaveCount(4);
