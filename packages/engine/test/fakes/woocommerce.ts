@@ -62,6 +62,9 @@ export class FakeWooCommerce {
   variationsOf = new Map<number, WooVariation[]>();
   /** P2: product and variation updates received. */
   productWrites = 0;
+  /** P4: Settings → General → currency; null: these keys may not read settings (403). */
+  currency: string | null = "EGP";
+  currencyReads = 0;
   /** P2: the store's product tags (id → name); "abaya" is every new product's. */
   readonly tagNames = new Map<number, string>([[1, "abaya"]]);
   tagCreates = 0;
@@ -275,6 +278,11 @@ export class FakeWooCommerce {
       const perPage = Math.min(100, Number(url.searchParams.get("per_page") ?? 10));
       const page = Number(url.searchParams.get("page") ?? 1);
       return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
+    }
+    if (method === "GET" && path === "/settings/general/woocommerce_currency") {
+      this.currencyReads++;
+      if (this.currency === null) return json(403, { code: "woocommerce_rest_cannot_view", message: "Sorry, you cannot list resources.", data: { status: 403 } });
+      return json(200, { id: "woocommerce_currency", label: "Currency", type: "select", default: "USD", value: this.currency });
     }
     if (path === "/products/tags") {
       if (method === "GET") {

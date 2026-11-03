@@ -153,3 +153,30 @@ describe("review fixes (P2)", () => {
     expect(w.woo.products.get(w.simple.id)!).toMatchObject({ regular_price: "600.00", sale_price: "500.00", price: "500.00" });
   });
 });
+
+describe("WooCommerce prices in the store's currency (P4)", () => {
+  it("products carry the store's currency, read once and kept; keys that cannot read settings fall back to none (the base)", async () => {
+    const w = wooWorld();
+    w.woo.currency = "SAR";
+    const p = await w.engine.woo!.getProduct(String(w.simple.id));
+    expect(p.variants[0]!.price).toEqual({ amount: "600.00", currency: "SAR" });
+    await w.engine.woo!.getProduct(String(w.variable.id));
+    await w.engine.woo!.productsPage(null);
+    expect(w.woo.currencyReads).toBe(1);
+    expect(w.engine.woo!.exportLearned().currency).toMatchObject({ code: "SAR" });
+
+    const locked = wooWorld();
+    locked.woo.currency = null;
+    const q = await locked.engine.woo!.getProduct(String(locked.simple.id));
+    expect(q.variants[0]!.price.currency).toBe("");
+  });
+
+  it("the currency is read again after a day", async () => {
+    const w = wooWorld();
+    await w.engine.woo!.getProduct(String(w.simple.id));
+    w.woo.currency = "AED";
+    w.clock.advance(25 * 3600_000);
+    expect((await w.engine.woo!.getProduct(String(w.simple.id))).variants[0]!.price.currency).toBe("AED");
+    expect(w.woo.currencyReads).toBe(2);
+  });
+});
