@@ -2,7 +2,7 @@
 
 import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
@@ -29,6 +29,7 @@ import { ExchangeCard } from "./ExchangeCard";
 import { DoorCard } from "./DoorCard";
 import { ProfitCard } from "./ProfitCard";
 import { TicketsCard } from "./TicketsCard";
+import { NotesCard, TagsCard } from "./NotesCard";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
 /** Risk reason codes the API writes (E6-1); an unknown code is shown as is. */
@@ -59,6 +60,7 @@ export function OrderDetail({ id }: { id: string }) {
   const tp = useTranslations("payments.status");
   const tpr = useTranslations("problems");
   const ts = useTranslations("shipping");
+  const locale = useLocale();
   const { api, user, store } = useSession();
   const order = useQuery({
     queryKey: ["order", user?.uid ?? "", store?.tenantId ?? "", id],
@@ -92,6 +94,7 @@ export function OrderDetail({ id }: { id: string }) {
   const paymentLabel = (s: string) => (PAYMENT_STATUSES.has(s) ? tp(s as Order["paymentStatus"]) : s);
   const statusLabel = (s: string | null) => (isStatus(s) ? t(`status.${s}`) : s ?? "");
   const channelLabel = (c: string | undefined) => (c && ANSWER_CHANNELS.has(c) ? t(`answerChannel.${c as "link"}`) : t("answerChannel.other"));
+  const tagList = (tags?: string[]) => new Intl.ListFormat(locale, { type: "unit" }).format(tags ?? []);
   const eventTitle = (e: Event) => {
     switch (e.type) {
       case "created": return t("events.created", { source: sourceName(e.data.source ?? o.store.provider ?? "") });
@@ -111,6 +114,9 @@ export function OrderDetail({ id }: { id: string }) {
       case "refused": return t("events.refused");
       case "exchange_created": return e.data.into ? t("events.exchanged_into", { number: e.data.into }) : t("events.exchange_of", { number: e.data.of ?? "" });
       case "shipment_status": return t("events.shipment_status", { status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "" });
+      case "tagged": return t("events.tagged", { tags: tagList(e.data.tags) });
+      case "untagged": return t("events.untagged", { tags: tagList(e.data.tags) });
+      case "note_added": return t("events.note_added");
       default: return t("events.other");
     }
   };
@@ -194,6 +200,8 @@ export function OrderDetail({ id }: { id: string }) {
 
         <aside className="flex flex-col gap-4">
           <CustomerCard order={o} />
+          <NotesCard orderId={o.id} />
+          <TagsCard orderId={o.id} tags={o.tags} />
           <ConfirmationCard orderId={o.id} orderStatus={o.status} />
           <TicketsCard order={{ id: o.id, number: o.number }} />
           <SourceCard source={o.source} />

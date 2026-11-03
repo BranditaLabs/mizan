@@ -488,6 +488,22 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT * FROM bulk_action_items`))).rows).toEqual([]);
   });
 
+  it("keeps the team's order notes encrypted and per store; saved views per person and name (0064, O2)", async () => {
+    const user = (await db.query<{ id: string }>(`INSERT INTO users (firebase_uid, email) VALUES ('fb-o2', 'agent@shop.test') RETURNING id`)).rows[0]!.id;
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
+    const note = (body: string) => asTenant(T1, () => db.query(`INSERT INTO order_notes (tenant_id, order_id, author_id, body) VALUES ($1, $2, $3, $4)`, [T1, order, user, body]));
+    await expect(note("Call after 5 pm")).rejects.toThrow(/check/); // never in the clear
+    await note("pii:v1:abc");
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM order_notes`))).rows).toEqual([]);
+
+    const view = (name: string, filters: string) => asTenant(T1, () => db.query(`INSERT INTO saved_views (tenant_id, user_id, screen, name, filters) VALUES ($1, $2, 'orders', $3, $4)`, [T1, user, name, filters]));
+    await view("Giza", `{"city":"Giza"}`);
+    await expect(view("Giza", `{}`)).rejects.toThrow(/saved_views_tenant_id_user_id_screen_name_key|duplicate/);
+    await expect(view("   ", `{}`)).rejects.toThrow(/check/);
+    await expect(view("List", `[]`)).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM saved_views`))).rows).toEqual([]);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

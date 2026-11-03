@@ -223,6 +223,16 @@ export const TAGS_ADD: GqlOperation = {
   ],
 };
 
+export const TAGS_REMOVE: GqlOperation = {
+  name: "MizanTagsRemove",
+  cost: 10,
+  variants: [
+    `mutation MizanTagsRemove($id: ID!, $tags: [String!]!) {
+      tagsRemove(id: $id, tags: $tags) { node { id } userErrors { field message } }
+    }`,
+  ],
+};
+
 /**
  * Cancel an order (E5-4: bulk cancel, a merged duplicate). Never refunds (money goes back through
  * refunds, with a ledger line) and never emails the customer; restocks. Needs write_orders.

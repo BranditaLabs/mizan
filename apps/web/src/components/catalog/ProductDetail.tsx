@@ -128,11 +128,16 @@ export function ProductDetail({ id }: { id: string }) {
             {" · "}{t("detail.updated")} <DateText value={p.updatedAt} relative />
           </p>
         </div>
-        {p.storeUrl ? (
-          <a href={p.storeUrl} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
-            <Icon name="external" size={16} />{t(`detail.editIn.${p.store?.provider === "woocommerce" ? "woocommerce" : "shopify"}`)}
-          </a>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/orders?productId=${p.id}`} className={buttonClass("secondary")}>
+            <Icon name="orders" size={16} />{t("detail.orders")}
+          </Link>
+          {p.storeUrl ? (
+            <a href={p.storeUrl} target="_blank" rel="noopener noreferrer" className={buttonClass("secondary")}>
+              <Icon name="external" size={16} />{t(`detail.editIn.${p.store?.provider === "woocommerce" ? "woocommerce" : "shopify"}`)}
+            </a>
+          ) : null}
+        </div>
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">

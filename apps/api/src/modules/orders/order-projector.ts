@@ -37,6 +37,8 @@ export function customerLabel(name: string | null | undefined): string | null {
   return words.length > 1 ? `${first} ${[...words.at(-1)!][0]}.` : first;
 }
 
+/** Stores whose orders carry tags; Mizan writes its tags there too. */
+const STORE_TAGS = new Set<string>(["shopify"]);
 const TRACKED = ["status", "payment_mode", "payment_status", "total_minor", "paid_minor", "refunded_minor", "cod_minor", "tags"] as const;
 const PAYMENT_FIELDS = new Set<string>(["payment_status", "paid_minor", "refunded_minor"]);
 
@@ -146,6 +148,9 @@ export class OrderProjector {
       return { orderId: row.id, created: true, changed: [] };
     }
 
+    // A store without order tags (WooCommerce) sends none: the order keeps the tags the team,
+    // bulk actions and automations gave it (O2). Shopify's tags are the store's and Mizan's both.
+    if (!STORE_TAGS.has(order.connector)) values.tags = existing.tags;
     const status = order.cancelled && CANCELLABLE.has(existing.status) ? "cancelled" : existing.status;
     const next = { ...values, status };
     const changed = TRACKED.filter((k) => JSON.stringify(normalize(existing[k])) !== JSON.stringify(normalize(next[k])));

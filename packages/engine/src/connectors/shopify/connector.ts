@@ -347,6 +347,12 @@ export class ShopifyConnector {
     assertNoUserErrors("tagsAdd", d.tagsAdd?.userErrors);
   }
 
+  /** A tag the team took off in Mizan (O2); removing one the order no longer has is a no-op. */
+  async removeTags(id: string, tags: string[]): Promise<void> {
+    const d = await this.gql.run<{ tagsRemove: { userErrors: UserErrors } }>(Q.TAGS_REMOVE, { id, tags }, { idempotent: true });
+    assertNoUserErrors("tagsRemove", d.tagsRemove?.userErrors);
+  }
+
   // ───────────── webhooks ─────────────
 
   /**

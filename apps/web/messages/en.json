@@ -736,7 +736,8 @@
       "risk": "Risk",
       "status": "Status",
       "age": "Age",
-      "items": "Items"
+      "items": "Items",
+      "city": "City"
     },
     "label": "Orders",
     "cod": "Collect <m>{amount}</m>",
@@ -879,7 +880,10 @@
       "exchanged_into": "Exchanged: replacement {number}",
       "exchange_of": "Replacement for {number}",
       "partially_delivered": "Delivered in part: the rest comes back",
-      "refused": "Refused at the door"
+      "refused": "Refused at the door",
+      "tagged": "Tagged {tags}",
+      "untagged": "Tag removed: {tags}",
+      "note_added": "Note added"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -1214,7 +1218,52 @@
       "title": "Your orders are on their way",
       "body": "Mizan is importing your store's recent orders in the background: {orders} so far. They appear here as they arrive; you can keep working meanwhile."
     },
-    "pieces": "{count, plural, one {# piece} other {# pieces}}"
+    "pieces": "{count, plural, one {# piece} other {# pieces}}",
+    "noCity": "No city",
+    "notesCount": "{count, plural, one {# note} other {# notes}}",
+    "notes": {
+      "title": "Team notes",
+      "label": "Add a note",
+      "hint": "Only your team sees notes. The store and the customer never do.",
+      "add": "Add note",
+      "empty": "No notes yet.",
+      "you": "You",
+      "someone": "A former team member",
+      "remove": "Remove note"
+    },
+    "tags": {
+      "title": "Tags",
+      "label": "New tag",
+      "add": "Add",
+      "empty": "No tags yet.",
+      "remove": "Remove the tag {tag}",
+      "invalid": "Letters, numbers, spaces, - and _ only (up to 40)"
+    },
+    "filters": {
+      "label": "Filters",
+      "view": "Saved view",
+      "noView": "Choose a view",
+      "sharedName": "{name} (team)",
+      "tag": "Tag",
+      "city": "City",
+      "courier": "Courier",
+      "payment": "Payment",
+      "from": "From",
+      "to": "To",
+      "any": "Any",
+      "oneProduct": "One product's orders",
+      "clearOne": "Remove",
+      "clear": "Clear filters",
+      "save": "Save view",
+      "removeView": "Delete view",
+      "saveTitle": "Save this view",
+      "saveBody": "Keeps the tab, the search and the filters, so you can open them again in one step.",
+      "name": "Name",
+      "shared": "Share with the team",
+      "sharedHint": "Everyone on the team sees it in their saved views.",
+      "cancel": "Cancel",
+      "saveConfirm": "Save"
+    }
   },
   "costs": {
     "title": "Costs",
@@ -2173,7 +2222,8 @@
       "main": "Main picture",
       "showPicture": "Show picture {n} of {total}",
       "marginValue": "{value}%",
-      "priceRange": "<min></min> to <max></max>"
+      "priceRange": "<min></min> to <max></max>",
+      "orders": "Orders with this product"
     }
   },
   "stock": {

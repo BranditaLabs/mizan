@@ -1,15 +1,17 @@
-import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
-import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
+import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
   BulkActionSchema, BulkRequestSchema, DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
   RevealedCustomerSchema, type ListOrdersQuery,
+  OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema,
 } from "./orders.dto.js";
+import { OrderNotesService } from "./order-notes.service.js";
 import { ManualOrdersService } from "./manual-orders.service.js";
 import { BulkActionsService } from "./bulk.service.js";
 import { DuplicatesService, OrderSettingsSchema, type OrderSettings } from "./duplicates.service.js";
@@ -23,6 +25,7 @@ export class OrdersController {
     @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
     @Inject(ManualOrdersService) private readonly manual: ManualOrdersService,
     @Inject(BulkActionsService) private readonly bulk: BulkActionsService,
+    @Inject(OrderNotesService) private readonly extras: OrderNotesService,
   ) {}
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
@@ -73,6 +76,41 @@ export class OrdersController {
     return this.manual.products(auth.tenant!.id, q.q);
   }
 
+  /** O2: the values the list's filters offer (tags, cities, couriers), within the caller's scope. */
+  @Get("filters")
+  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @ApiJson(200, "OrderFilters", OrderFiltersSchema, "Most orders first")
+  filters(@Auth() auth: AuthContext) {
+    return this.extras.filters(auth);
+  }
+
+  /** O2: the person's saved views and the team's shared ones. */
+  @Get("views")
+  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @ApiJson(200, "SavedViewList", SavedViewListSchema, "Own views and shared ones")
+  views(@Auth() auth: AuthContext) {
+    return this.extras.views(auth);
+  }
+
+  @Post("views")
+  @HttpCode(201)
+  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @ApiJsonBody("SavedViewInput", SavedViewInputSchema)
+  @ApiJson(201, "SavedView", SavedViewSchema, "Saved; shared views are for the owner, an admin or the ops manager to make")
+  @ApiProblems(403, 409, 422)
+  saveView(@Auth() auth: AuthContext, @Body(new ZodPipe(SavedViewInputSchema)) body: z.output<typeof SavedViewInputSchema>) {
+    return this.extras.saveView(auth, body);
+  }
+
+  @Delete("views/:viewId")
+  @HttpCode(204)
+  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @ApiNoContent("Removed")
+  @ApiProblems(403, 404)
+  async removeView(@Auth() auth: AuthContext, @Param("viewId", new ParseUUIDPipe()) id: string) {
+    await this.extras.removeView(auth, id);
+  }
+
   @Get(":id")
   @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
   @ApiJson(200, "OrderDetail", OrderDetailSchema, "One order; an order outside the caller's scope is not found")
@@ -91,6 +129,45 @@ export class OrdersController {
   @ApiProblems(404, 410, 429)
   reveal(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
     return this.orders.reveal(auth, id);
+  }
+
+  /** O2: the team's notes on the order, newest first; never sent to the store. */
+  @Get(":id/notes")
+  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Header("Cache-Control", "no-store")
+  @ApiJson(200, "OrderNotes", OrderNotesSchema, "Newest first")
+  @ApiProblems(404)
+  notes(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
+    return this.extras.notes(auth, id);
+  }
+
+  @Post(":id/notes")
+  @HttpCode(201)
+  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @ApiJsonBody("OrderNoteInput", OrderNoteInputSchema)
+  @ApiJson(201, "OrderNote", OrderNoteSchema, "Added; the timeline says a note was added, not what it says")
+  @ApiProblems(404, 409, 422)
+  addNote(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(OrderNoteInputSchema)) body: z.output<typeof OrderNoteInputSchema>) {
+    return this.extras.addNote(auth, id, body.body);
+  }
+
+  @Delete(":id/notes/:noteId")
+  @HttpCode(204)
+  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @ApiNoContent("Removed; audited")
+  @ApiProblems(403, 404)
+  async removeNote(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Param("noteId", new ParseUUIDPipe()) noteId: string) {
+    await this.extras.removeNote(auth, id, noteId);
+  }
+
+  /** O2: add or take off tags; a Shopify order gets the change too (outbox). */
+  @Patch(":id/tags")
+  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @ApiJsonBody("OrderTagsPatch", OrderTagsPatchSchema)
+  @ApiJson(200, "OrderTags", OrderTagsSchema, "The order's tags after the change")
+  @ApiProblems(404, 422)
+  setTags(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(OrderTagsPatchSchema)) body: z.output<typeof OrderTagsPatchSchema>) {
+    return this.extras.setTags(auth, id, body);
   }
 
   /** A likely duplicate (E5-3): keep both, or merge this one into the earlier order (cancelled here, tagged in the store). */

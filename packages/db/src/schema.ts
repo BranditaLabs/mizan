@@ -607,6 +607,15 @@ export interface OrderLines {
   position: number | null;
 }
 
+export interface OrderNotes {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: Generated<Timestamp>;
+}
+
 export interface OrderOffers {
   id: Generated<string>;
   tenant_id: string;
@@ -1035,6 +1044,17 @@ export interface ReturnInspections {
   created_at: Generated<Timestamp>;
 }
 
+export interface SavedViews {
+  id: Generated<string>;
+  tenant_id: string;
+  user_id: string;
+  screen: string;
+  name: string;
+  filters: Json;
+  shared: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+}
+
 export interface SchemaMigrations {
   version: string;
   name: string;
@@ -1443,6 +1463,7 @@ export interface DB {
   ops_operations: OpsOperations;
   order_events: OrderEvents;
   order_lines: OrderLines;
+  order_notes: OrderNotes;
   order_offers: OrderOffers;
   order_pnl: OrderPnl;
   order_reconciliations: OrderReconciliations;
@@ -1467,6 +1488,7 @@ export interface DB {
   refunds: Refunds;
   reports: Reports;
   return_inspections: ReturnInspections;
+  saved_views: SavedViews;
   schema_migrations: SchemaMigrations;
   scripts: Scripts;
   secrets: Secrets;
