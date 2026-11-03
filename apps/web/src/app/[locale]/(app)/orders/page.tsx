@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { OrdersScreen } from "@/components/orders/OrdersScreen";
+import { FILTER_KEYS, type ListFilters } from "@/components/orders/order-filters";
 
 type Props = { params: Promise<{ locale: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
@@ -11,10 +12,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("title") };
 }
 
-/** M1 order list (E5-1). `?status=` and `?q=` open a given tab and search. */
+/** M1 order list (E5-1). `?status=` and `?q=` open a given tab and search; `?tag=`, `?city=`, `?productId=`… its filters (O2). */
 export default async function OrdersPage({ params, searchParams }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const q = await searchParams;
-  return <OrdersScreen initialStatus={one(q.status)} initialQuery={one(q.q)} />;
+  const filters = Object.fromEntries(FILTER_KEYS.flatMap((k) => { const v = one(q[k]); return v ? [[k, v]] : []; })) as ListFilters;
+  return <OrdersScreen initialStatus={one(q.status)} initialQuery={one(q.q)} initialFilters={filters} />;
 }

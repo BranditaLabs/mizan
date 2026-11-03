@@ -46,6 +46,23 @@ export class OrderActions {
     return "done";
   }
 
+  /** Take tags off (O2), the store's own too: in Shopify through the outbox. */
+  async untag(trx: Transaction<DB>, tenantId: string, orderId: string, tags: string[], actor: EventActor, ref: Record<string, string>, now = new Date()): Promise<Unchanged | "done"> {
+    const o = await trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id")
+      .select(["o.id", "o.number", "o.tags", "o.external_id", "o.connection_id", "c.provider"]).where("o.id", "=", orderId).forUpdate("o").executeTakeFirst();
+    if (!o) return "not_found";
+    const remove = o.tags.filter((t) => tags.includes(t));
+    if (!remove.length) return "unchanged";
+    await trx.updateTable("orders").set({ tags: o.tags.filter((t) => !remove.includes(t)), updated_at: now }).where("id", "=", o.id).execute();
+    await this.timeline(trx, tenantId, o.id, "untagged", { tags: remove, ...ref }, actor);
+    await this.events.emit(trx, { type: "order.untagged", tenantId, entity: { type: "order", id: o.id }, actor, data: { number: o.number, tags: remove, ...ref } });
+    if (o.provider === "shopify" && o.external_id && o.connection_id) {
+      const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: o.connection_id } });
+      await store.enqueue(MizanEngine.shopifyUntagJob(o.external_id, remove, Object.values(ref).join(":")), now.getTime());
+    }
+    return "done";
+  }
+
   private timeline(trx: Transaction<DB>, tenantId: string, orderId: string, type: string, data: Record<string, unknown>, actor: EventActor) {
     return trx.insertInto("order_events").values({
       tenant_id: tenantId, order_id: orderId, type, actor_type: actor.type === "user" ? "user" : "system", actor_id: actor.type === "user" ? (actor.id ?? null) : null, data: JSON.stringify(data),

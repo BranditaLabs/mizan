@@ -503,6 +503,11 @@ export class MizanEngine {
     return { kind: "shopify.addTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `tag:${orderId}:${tags.join(",")}:${key}` };
   }
 
+  /** Take tags off a store order (the team removed them in Mizan, O2); removing is idempotent. */
+  static shopifyUntagJob(orderId: string, tags: string[], key: string): NewJob<{ id: string; tags: string[] }> {
+    return { kind: "shopify.removeTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `untag:${orderId}:${tags.join(",")}:${key}` };
+  }
+
   static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
   }
@@ -647,6 +652,7 @@ export class MizanEngine {
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
       "shopify.fulfillmentEvent": (j) => this.fulfillmentEvent(j.payload),
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
+      "shopify.removeTags": (j) => this.shopify.removeTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
       "shopify.backfill": (j) => this.backfillPage(j.payload),

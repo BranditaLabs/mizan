@@ -17,6 +17,9 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { MODE_ICON, STATUS_TONE, maskedLast4 } from "./order-ui";
 import { ProductImage } from "@/components/catalog/ProductImage";
+import { Icon } from "@mizan/design-system/icons/react";
+import { OrderFilters } from "./OrderFilters";
+import { FILTER_KEYS, filterQuery, viewFilters, type ListFilters } from "./order-filters";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
@@ -25,12 +28,18 @@ export type StatusTab = Status | "all" | "needs_call" | "duplicates" | "waiting_
 /** Tab order: the work first (components.md §1 "queues, not reports"), then the record. "needs_call": the team's call list (E6-10). */
 const TABS: readonly StatusTab[] = ["all", "needs_call", "duplicates", "waiting_stock", "new", "pending_confirmation", "confirmed", "shipped", "delivered", "cancelled", "returned"];
 const isTab = (v: string | null): v is StatusTab => v !== null && (TABS as readonly string[]).includes(v);
+/** The API's query for a tab. */
+const tabQuery = (s: StatusTab) => (s === "all" ? {} : s === "needs_call" ? { confirmation: "needs_call" as const } : s === "duplicates" ? { duplicate: "suspected" as const }
+  : s === "waiting_stock" ? { stock: "short" as const } : { status: s });
+/** A saved view's tab, back from its query. */
+const viewTab = (f: Schemas["SavedView"]["filters"]): StatusTab => (f.confirmation === "needs_call" ? "needs_call" : f.duplicate === "suspected" ? "duplicates"
+  : f.stock === "short" ? "waiting_stock" : f.status ?? "all");
 
 /**
  * M1 order list (E5-1): status tabs with counts, search (order number or phone), newest first,
  * more on demand. The URL keeps the tab and search, so a link opens the same view.
  */
-export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: string | null; initialQuery: string | null }) {
+export function OrdersScreen({ initialStatus, initialQuery, initialFilters = {} }: { initialStatus: string | null; initialQuery: string | null; initialFilters?: ListFilters }) {
   const t = useTranslations("orders");
   // A3: while the store's history imports, an empty list says the orders are on their way.
   const imports = useStoreImports();
@@ -42,6 +51,7 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const [q, setQ] = useState((initialQuery ?? "").trim());
   const [now] = useState(() => Date.now());
   const [bulkId, setBulkId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<ListFilters>(initialFilters);
 
   // Type, pause, search: one request per pause, not per key.
   useEffect(() => {
@@ -54,14 +64,15 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
     const params = new URLSearchParams(window.location.search);
     if (status === "all") params.delete("status"); else params.set("status", status);
     if (q) params.set("q", q); else params.delete("q");
+    for (const k of FILTER_KEYS) { const v = filters[k]; if (v) params.set(k, v); else params.delete(k); }
     const search = params.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
-  }, [status, q]);
+  }, [status, q, filters]);
 
   const orders = useInfiniteQuery({
-    queryKey: ["orders", user?.uid ?? "", store?.tenantId ?? "", status, q],
+    queryKey: ["orders", user?.uid ?? "", store?.tenantId ?? "", status, q, filters],
     queryFn: ({ pageParam }) => ok(api.GET("/v1/orders", { params: { query: {
-      ...(status === "all" ? {} : status === "needs_call" ? { confirmation: "needs_call" as const } : status === "duplicates" ? { duplicate: "suspected" as const } : status === "waiting_stock" ? { stock: "short" as const } : { status }), ...(q ? { q } : {}), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
+      ...tabQuery(status), ...(q ? { q } : {}), ...filterQuery(filters), limit: 50, ...(pageParam ? { cursor: pageParam } : {}),
     } } })),
     initialPageParam: "",
     getNextPageParam: (last) => last.nextCursor ?? undefined,
@@ -74,7 +85,17 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   const canBulk = BULK_ROLES.has(store?.role ?? "");
 
   const columns: Column<Order>[] = [
-    { id: "order", header: t("columns.order"), cell: (o) => <Cell main={<Link href={`/orders/${o.id}`} className="hover:underline"><IdCell>{o.number}</IdCell></Link>} sub={o.store.provider ?? t("manual")} /> },
+    {
+      id: "order", header: t("columns.order"),
+      cell: (o) => (
+        <Cell main={(
+          <span className="inline-flex items-center gap-1.5">
+            <Link href={`/orders/${o.id}`} className="hover:underline"><IdCell>{o.number}</IdCell></Link>
+            {o.notes ? <span className="inline-flex items-center gap-0.5 text-caption text-text-2" title={t("notesCount", { count: o.notes })}><Icon name="note" size={14} /><span className="sr-only">{t("notesCount", { count: o.notes })}</span></span> : null}
+          </span>
+        )} sub={o.store.provider ?? t("manual")} />
+      ),
+    },
     {
       id: "customer", header: t("columns.customer"),
       cell: (o) => <Cell main={o.customer.label ?? <span className="text-text-3">{t("noCustomer")}</span>} sub={o.customer.phoneLast4 ? <IdCell>{maskedLast4(o.customer.phoneLast4)}</IdCell> : null} />,
@@ -91,6 +112,10 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
           <span className="text-body-sm text-text-2">{t("pieces", { count: o.items.count })}</span>
         </span>
       ),
+    },
+    {
+      id: "city", header: t("columns.city"),
+      cell: (o) => <Cell main={o.city ?? <span className="text-text-3">{t("noCity")}</span>} sub={o.courier ? (o.courier.name ?? o.courier.provider) : null} />,
     },
     { id: "payment", header: t("columns.payment"), cell: (o) => <Cell main={<Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>} sub={tp(o.paymentStatus)} /> },
     {
@@ -111,7 +136,8 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
   ];
 
   const importing = imports.data?.data.find((x) => x.import?.status === "running")?.import;
-  const empty = q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} />
+  const filtered = FILTER_KEYS.some((k) => filters[k]);
+  const empty = q || filtered ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} />
     : counts?.all === 0 && importing ? <EmptyState icon="sync" title={t("importing.title")} body={t("importing.body", { orders: importing.orders })} />
     : counts?.all === 0 ? (
       <EmptyState icon="orders" title={t("empty.title")} body={t("empty.body")}
@@ -133,6 +159,10 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
           {canCreate ? <Link href="/orders/new" className={buttonClass("primary")}>{t("newOrder")}</Link> : null}
         </div>
       </header>
+
+      <OrderFilters value={filters} onChange={setFilters}
+        current={{ ...tabQuery(status), ...(q ? { q } : {}), ...filterQuery(filters) }}
+        onView={(v) => { setStatus(viewTab(v.filters)); setText(v.filters.q ?? ""); setQ(v.filters.q ?? ""); setFilters(viewFilters(v.filters)); }} />
 
       <Tabs label={t("tabsLabel")} value={status} onChange={setStatus}
         items={TABS.map((s) => ({

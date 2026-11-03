@@ -30,8 +30,9 @@ const notFound = () => new ProblemError(404, "not_found", "no such order in this
 function eventData(raw: unknown): OrderDetail["events"][number]["data"] {
   const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const text = (k: string) => (typeof d[k] === "string" ? { [k]: d[k] as string } : {});
+  const tags = Array.isArray(d.tags) ? { tags: d.tags.filter((x): x is string => typeof x === "string") } : {};
   const changed = Array.isArray(d.changed) ? { changed: d.changed.filter((x): x is string => typeof x === "string") } : {};
-  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...text("of"), ...text("into"), ...text("status"), ...changed };
+  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...text("of"), ...text("into"), ...text("status"), ...changed, ...tags };
 }
 /** Risk reasons as codes (E6-1 writes them; strings or { code }). */
 const reasonCodes = (raw: unknown): string[] =>
@@ -61,7 +62,7 @@ export class OrdersService {
       const scope = await this.scope(trx, auth, q);
       let rows = trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id")
         .select(["o.id", "o.number", "o.status", "o.channel", "o.connection_id", "c.provider", "o.customer_label", "o.phone_last4", "o.total_minor", "o.cod_minor",
-          "o.currency", "o.payment_mode", "o.payment_status", "o.risk_score", "o.tags", "o.placed_at", "o.duplicate_status", "o.stock_status"])
+          "o.currency", "o.payment_mode", "o.payment_status", "o.risk_score", "o.tags", "o.placed_at", "o.duplicate_status", "o.stock_status", "o.ship_city"])
         .where(scope).orderBy("o.placed_at", "desc").orderBy("o.id", "desc").limit(q.limit + 1);
       if (q.status) rows = rows.where("o.status", "=", q.status);
       // Waiting for the team's call now: escalated confirmation whose retry time has come (E6-10).
@@ -84,6 +85,15 @@ export class OrdersService {
       // What each order holds, at a glance: pieces, lines and the first items' pictures (O1).
       const lines = page.length ? await trx.selectFrom("order_lines").select(["order_id", "variant_id", "quantity"]).where("order_id", "in", page.map((r) => r.id)).orderBy("position").orderBy("id").execute() : [];
       const pictures = await variantPictures(trx, lines.map((l) => l.variant_id));
+      // The courier of each order's latest delivery, and how many notes the team left (O2).
+      const ids = page.map((r) => r.id);
+      const couriers = ids.length ? await trx.selectFrom("shipments as s").innerJoin("connections as k", "k.id", "s.connection_id")
+        .select(["s.order_id", "k.id", "k.provider", "k.display_name"]).distinctOn("s.order_id")
+        .where("s.order_id", "in", ids).where("s.is_return_leg", "=", false).orderBy("s.order_id").orderBy("s.created_at", "desc").execute() : [];
+      const courierOf = new Map(couriers.map((c) => [c.order_id, { id: c.id, provider: c.provider, name: c.display_name }]));
+      const noteCounts = ids.length ? await trx.selectFrom("order_notes").select(["order_id", sql<string>`count(*)`.as("n")])
+        .where("order_id", "in", ids).groupBy("order_id").execute() : [];
+      const notesOf = new Map(noteCounts.map((n) => [n.order_id, Number(n.n)]));
       const items = (orderId: string) => {
         const own = lines.filter((l) => l.order_id === orderId);
         const seen = new Set<string>();
@@ -109,6 +119,7 @@ export class OrdersService {
           risk: r.risk_score, tags: r.tags, placedAt: r.placed_at.toISOString(), duplicate: r.duplicate_status as OrderSummary["duplicate"],
           stock: r.stock_status as OrderSummary["stock"],
           items: items(r.id),
+          city: r.ship_city, courier: courierOf.get(r.id) ?? null, notes: notesOf.get(r.id) ?? 0,
         })),
         nextCursor: found.length > q.limit && last ? encode(last.placed_at, last.id) : null,
         counts: { all: Object.values(byStatus).reduce((a, b) => a + b, 0), ...byStatus },
@@ -138,6 +149,10 @@ export class OrdersService {
       ]);
       const pii = o.customer_label ? await this.cipher.forTenant(trx, tenantId) : null;
       const pictures = await variantPictures(trx, lines.map((l) => l.variant_id));
+      // O2: the latest delivery's courier and the team's notes count, as on the list.
+      const courier = await trx.selectFrom("shipments as s").innerJoin("connections as k", "k.id", "s.connection_id").select(["k.id", "k.provider", "k.display_name"])
+        .where("s.order_id", "=", id).where("s.is_return_leg", "=", false).orderBy("s.created_at", "desc").limit(1).executeTakeFirst();
+      const { n: noteCount } = await trx.selectFrom("order_notes").select(sql<string>`count(*)`.as("n")).where("order_id", "=", id).executeTakeFirstOrThrow();
       const twin = o.duplicate_of ? await trx.selectFrom("orders").select(["id", "number", "status"]).where("id", "=", o.duplicate_of).executeTakeFirst() : undefined;
       const why = (o.duplicate_reason ?? {}) as { items?: string[]; minutesApart?: number };
       const money = (minor: string | number | bigint, currency = o.currency) => fromMinor(BigInt(minor), currency);
@@ -154,6 +169,7 @@ export class OrdersService {
         stock: o.stock_status as OrderDetail["stock"],
         duplicateOf: twin ? { id: twin.id, number: twin.number, status: twin.status as OrderDetail["status"], items: why.items ?? [], minutesApart: why.minutesApart ?? 0 } : null,
         area: { city: o.ship_city, province: o.ship_province, country: o.ship_country },
+        city: o.ship_city, courier: courier ? { id: courier.id, provider: courier.provider, name: courier.display_name } : null, notes: Number(noteCount),
         hasLocation: o.ship_lat !== null && o.ship_lng !== null,
         redacted: o.pii_redacted_at !== null,
         source: source ? {
@@ -226,6 +242,16 @@ export class OrdersService {
       if (q.connectionId) and.push(eb("o.connection_id", "=", q.connectionId));
       if (q.from) and.push(eb("o.placed_at", ">=", new Date(q.from)));
       if (q.to) and.push(eb("o.placed_at", "<", new Date(q.to)));
+      if (q.tag) and.push(eb(sql`o.tags`, "@>", sql`ARRAY[${q.tag}]::text[]`));
+      if (q.city) and.push(eb(sql`lower(btrim(o.ship_city))`, "=", q.city.toLowerCase()));
+      if (q.courierId) {
+        and.push(eb.exists(eb.selectFrom("shipments as s").select("s.id").whereRef("s.order_id", "=", "o.id")
+          .where("s.connection_id", "=", q.courierId).where("s.is_return_leg", "=", false)));
+      }
+      if (q.productId) {
+        and.push(eb.exists(eb.selectFrom("order_lines as l").innerJoin("variants as v", "v.id", "l.variant_id").select("l.id")
+          .whereRef("l.order_id", "=", "o.id").where("v.product_id", "=", q.productId)));
+      }
       if (q.q) {
         const n = likeEscape(q.q.replace(/^#/, "").toLowerCase());
         const any = [

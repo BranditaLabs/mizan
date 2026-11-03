@@ -176,6 +176,8 @@ export class PrivacyService {
     // An ad click id points at one visit by one person (M7-2): it goes with the rest.
     if (redactedOrders.length) {
       await trx.updateTable("order_sources").set({ click_id: null, click_id_kind: null }).where("order_id", "in", redactedOrders.map((o) => o.id)).execute();
+      // The team's notes can name the person or their address (O2): they go too.
+      await trx.deleteFrom("order_notes").where("order_id", "in", redactedOrders.map((o) => o.id)).execute();
     }
 
     // Customers known only through this shop. One also known from another channel keeps its data:
@@ -218,6 +220,9 @@ export class PrivacyService {
     const customers = allCustomerIds.length ? await trx.selectFrom("customers").selectAll().where("id", "in", allCustomerIds).execute() : [];
     const lines = rows.length ? await trx.selectFrom("order_lines").select(["order_id", "title", "sku", "quantity", "unit_price_minor"])
       .where("order_id", "in", rows.map((o) => o.id)).execute() : [];
+    // The team's notes on these orders are data about the person too (O2).
+    const notes = rows.length ? await trx.selectFrom("order_notes").select(["order_id", "body", "created_at"])
+      .where("order_id", "in", rows.map((o) => o.id)).orderBy("created_at").execute() : [];
     const data = {
       shop: p.shop, shopifyCustomerId: p.customerId ?? null, shopifyDataRequestId: p.dataRequestId ?? null, compiledAt: new Date().toISOString(),
       customers: customers.map((c) => ({
@@ -233,6 +238,7 @@ export class PrivacyService {
           city: o.ship_city, province: o.ship_province, country: o.ship_country,
         },
         lines: lines.filter((l) => l.order_id === o.id).map((l) => ({ title: l.title, sku: l.sku, quantity: l.quantity, unitPrice: fromMinor(l.unit_price_minor, o.currency) })),
+        notes: notes.filter((n) => n.order_id === o.id).map((n) => ({ at: n.created_at.toISOString(), text: pii.decrypt(n.body, "order_notes.body") })),
       })),
     };
     return { data, orders: rows.length, customers: customers.length };

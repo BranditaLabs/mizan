@@ -353,6 +353,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_filters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/views": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_views"];
+        put?: never;
+        post: operations["OrdersController_saveView"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/views/{viewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["OrdersController_removeView"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/{id}": {
         parameters: {
             query?: never;
@@ -383,6 +431,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_notes"];
+        put?: never;
+        post: operations["OrdersController_addNote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/notes/{noteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["OrdersController_removeNote"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["OrdersController_setTags"];
         trace?: never;
     };
     "/v1/orders/{id}/duplicate": {
@@ -5512,6 +5608,17 @@ export interface components {
                     alt: string | null;
                 }[];
             };
+            /** @description Delivery city (O2) */
+            city: string | null;
+            /** @description The courier of the order's latest delivery (O2) */
+            courier: {
+                /** Format: uuid */
+                id: string;
+                provider: string;
+                name: string | null;
+            } | null;
+            /** @description The team's notes on the order (O2) */
+            notes: number;
             externalId: string | null;
             /** @description Where the order came from (M7-2); null until it is known */
             source: {
@@ -5701,6 +5808,8 @@ export interface components {
                     to?: string;
                     /** @description duplicate_found / duplicate_kept: the earlier order's number */
                     of?: string;
+                    /** @description tagged / untagged: the tags added or taken off (O2) */
+                    tags?: string[];
                     /** @description duplicate_merged: the order it was merged into */
                     into?: string;
                     /** @description shipment_status: the courier's status (canonical) */
@@ -5818,6 +5927,58 @@ export interface components {
                 returnedAt: string | null;
             } | null;
         };
+        OrderFilters: {
+            /** @description The store's most used tags (50 at most) */
+            tags: {
+                value: string;
+                count: number;
+            }[];
+            /** @description Delivery cities, most orders first (50 at most) */
+            cities: {
+                value: string;
+                count: number;
+            }[];
+            couriers: {
+                /** Format: uuid */
+                id: string;
+                provider: string;
+                name: string | null;
+                count: number;
+            }[];
+        };
+        OrderNote: {
+            /** Format: uuid */
+            id: string;
+            body: string;
+            /** @description null when the author left the team's records */
+            author: {
+                /** Format: uuid */
+                id: string;
+                name: string | null;
+            } | null;
+            mine: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OrderNoteInput: {
+            body: string;
+        };
+        OrderNotes: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                body: string;
+                /** @description null when the author left the team's records */
+                author: {
+                    /** Format: uuid */
+                    id: string;
+                    name: string | null;
+                } | null;
+                mine: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
         OrderPage: {
             data: {
                 /** Format: uuid */
@@ -5874,6 +6035,17 @@ export interface components {
                         alt: string | null;
                     }[];
                 };
+                /** @description Delivery city (O2) */
+                city: string | null;
+                /** @description The courier of the order's latest delivery (O2) */
+                courier: {
+                    /** Format: uuid */
+                    id: string;
+                    provider: string;
+                    name: string | null;
+                } | null;
+                /** @description The team's notes on the order (O2) */
+                notes: number;
             }[];
             nextCursor: string | null;
             counts: {
@@ -6061,6 +6233,18 @@ export interface components {
                 platform: "meta" | "tiktok" | "snapchat" | "google" | "microsoft" | "x" | "whatsapp" | "email" | "sms" | "search" | "social" | "referral" | "direct" | "pos" | "manual" | "unknown";
                 campaign: string;
             }[];
+        };
+        OrderTags: {
+            tags: string[];
+        };
+        OrderTagsPatch: {
+            /** @default [] */
+            add: string[];
+            /**
+             * @description Any of the order's tags, the store's own too
+             * @default []
+             */
+            remove: string[];
         };
         PartialDelivered: {
             /** Format: uuid */
@@ -7739,6 +7923,178 @@ export interface components {
                 };
                 /** @description A multiple with two decimals ("3.75" = 3.75×); null when it cannot be known */
                 trueRoas: string | null;
+            }[];
+        };
+        SavedView: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            filters: {
+                /** @enum {string} */
+                status?: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                /**
+                 * @description needs_call: orders the team should call now
+                 * @enum {string}
+                 */
+                confirmation?: "needs_call";
+                /**
+                 * @description suspected: likely duplicates waiting for the team (keep or merge)
+                 * @enum {string}
+                 */
+                duplicate?: "suspected";
+                /**
+                 * @description short: confirmed orders waiting for stock (oversell blocked, E8-2)
+                 * @enum {string}
+                 */
+                stock?: "short";
+                /**
+                 * @description ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2)
+                 * @enum {string}
+                 */
+                shipping?: "ready";
+                /** @description Order number, store order id, or the customer's phone */
+                q?: string;
+                /** @enum {string} */
+                paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+                /** Format: uuid */
+                connectionId?: string;
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+                /** @description Orders with this tag (O2) */
+                tag?: string;
+                /** @description Delivery city, ignoring case and spaces (O2) */
+                city?: string;
+                /**
+                 * Format: uuid
+                 * @description Orders sent with this courier (its connection id; O2)
+                 */
+                courierId?: string;
+                /**
+                 * Format: uuid
+                 * @description Orders with an item of this product (O2)
+                 */
+                productId?: string;
+            };
+            shared: boolean;
+            mine: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        SavedViewInput: {
+            name: string;
+            filters: {
+                /** @enum {string} */
+                status?: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                /**
+                 * @description needs_call: orders the team should call now
+                 * @enum {string}
+                 */
+                confirmation?: "needs_call";
+                /**
+                 * @description suspected: likely duplicates waiting for the team (keep or merge)
+                 * @enum {string}
+                 */
+                duplicate?: "suspected";
+                /**
+                 * @description short: confirmed orders waiting for stock (oversell blocked, E8-2)
+                 * @enum {string}
+                 */
+                stock?: "short";
+                /**
+                 * @description ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2)
+                 * @enum {string}
+                 */
+                shipping?: "ready";
+                /** @description Order number, store order id, or the customer's phone */
+                q?: string;
+                /** @enum {string} */
+                paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+                /** Format: uuid */
+                connectionId?: string;
+                /** Format: date-time */
+                from?: string;
+                /** Format: date-time */
+                to?: string;
+                /** @description Orders with this tag (O2) */
+                tag?: string;
+                /** @description Delivery city, ignoring case and spaces (O2) */
+                city?: string;
+                /**
+                 * Format: uuid
+                 * @description Orders sent with this courier (its connection id; O2)
+                 */
+                courierId?: string;
+                /**
+                 * Format: uuid
+                 * @description Orders with an item of this product (O2)
+                 */
+                productId?: string;
+            };
+            /**
+             * @description Shown to the whole team (owner, admin and ops manager)
+             * @default false
+             */
+            shared: boolean;
+        };
+        SavedViewList: {
+            data: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                filters: {
+                    /** @enum {string} */
+                    status?: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                    /**
+                     * @description needs_call: orders the team should call now
+                     * @enum {string}
+                     */
+                    confirmation?: "needs_call";
+                    /**
+                     * @description suspected: likely duplicates waiting for the team (keep or merge)
+                     * @enum {string}
+                     */
+                    duplicate?: "suspected";
+                    /**
+                     * @description short: confirmed orders waiting for stock (oversell blocked, E8-2)
+                     * @enum {string}
+                     */
+                    stock?: "short";
+                    /**
+                     * @description ready: confirmed orders with no courier yet, not waiting for stock or a duplicate check (E7-2)
+                     * @enum {string}
+                     */
+                    shipping?: "ready";
+                    /** @description Order number, store order id, or the customer's phone */
+                    q?: string;
+                    /** @enum {string} */
+                    paymentMode?: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+                    /** Format: uuid */
+                    connectionId?: string;
+                    /** Format: date-time */
+                    from?: string;
+                    /** Format: date-time */
+                    to?: string;
+                    /** @description Orders with this tag (O2) */
+                    tag?: string;
+                    /** @description Delivery city, ignoring case and spaces (O2) */
+                    city?: string;
+                    /**
+                     * Format: uuid
+                     * @description Orders sent with this courier (its connection id; O2)
+                     */
+                    courierId?: string;
+                    /**
+                     * Format: uuid
+                     * @description Orders with an item of this product (O2)
+                     */
+                    productId?: string;
+                };
+                shared: boolean;
+                mine: boolean;
+                /** Format: date-time */
+                createdAt: string;
             }[];
         };
         ScriptPreview: {
@@ -9917,6 +10273,14 @@ export interface operations {
                 connectionId?: string;
                 from?: string;
                 to?: string;
+                /** @description Orders with this tag (O2) */
+                tag?: string;
+                /** @description Delivery city, ignoring case and spaces (O2) */
+                city?: string;
+                /** @description Orders sent with this courier (its connection id; O2) */
+                courierId?: string;
+                /** @description Orders with an item of this product (O2) */
+                productId?: string;
                 limit?: number;
                 cursor?: string;
             };
@@ -10140,6 +10504,187 @@ export interface operations {
             };
         };
     };
+    OrdersController_filters: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Most orders first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderFilters"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_views: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Own views and shared ones */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedViewList"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_saveView: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavedViewInput"];
+            };
+        };
+        responses: {
+            /** @description Saved; shared views are for the owner, an admin or the ops manager to make */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedView"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_removeView: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                viewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     OrdersController_detail: {
         parameters: {
             query?: never;
@@ -10228,6 +10773,225 @@ export interface operations {
             };
             /** @description Too many requests (rate_limited; see Retry-After) */
             429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_notes: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderNotes"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_addNote: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderNoteInput"];
+            };
+        };
+        responses: {
+            /** @description Added; the timeline says a note was added, not what it says */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderNote"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_removeNote: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+                noteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed; audited */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_setTags: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderTagsPatch"];
+            };
+        };
+        responses: {
+            /** @description The order's tags after the change */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderTags"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

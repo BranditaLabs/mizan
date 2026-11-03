@@ -9,6 +9,9 @@ export const ORDER_STATUSES = ["new", "pending_confirmation", "confirmed", "canc
 export const PAYMENT_MODES = ["cod", "prepaid", "partial", "bnpl", "bank_transfer", "store_credit", "mixed", "unknown"] as const;
 export const PAYMENT_STATUSES = ["unpaid", "authorized", "partially_paid", "paid", "partially_refunded", "refunded", "disputed", "failed", "voided"] as const;
 
+/** A tag the team adds: lower case, letters, digits, spaces, _ and -, up to 40 (a store's own tags may be anything). */
+export const TagNameSchema = z.string().trim().toLowerCase().regex(/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u);
+
 export const ListOrdersQuerySchema = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
   /** needs_call: waiting for the team's call (confirmation escalated, retry time reached). */
@@ -24,6 +27,10 @@ export const ListOrdersQuerySchema = z.object({
   from: z.iso.datetime({ offset: true }).optional(),
   /** Placed before (ISO date-time). */
   to: z.iso.datetime({ offset: true }).optional(),
+  tag: z.string().trim().min(1).max(255).optional().describe("Orders with this tag (O2)"),
+  city: z.string().trim().min(1).max(80).optional().describe("Delivery city, ignoring case and spaces (O2)"),
+  courierId: z.uuid().optional().describe("Orders sent with this courier (its connection id; O2)"),
+  productId: z.uuid().optional().describe("Orders with an item of this product (O2)"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().max(200).optional(),
 });
@@ -52,6 +59,9 @@ export const OrderSummarySchema = z.object({
     lines: z.number().int(),
     pictures: z.array(z.object({ url: z.url(), alt: z.string().nullable() })).max(3).describe("Up to three items' pictures, the order's lines in order (O1)"),
   }),
+  city: z.string().nullable().describe("Delivery city (O2)"),
+  courier: z.object({ id: z.uuid(), provider: z.string(), name: z.string().nullable() }).nullable().describe("The courier of the order's latest delivery (O2)"),
+  notes: z.number().int().describe("The team's notes on the order (O2)"),
 });
 export type OrderSummary = z.infer<typeof OrderSummarySchema>;
 
@@ -88,6 +98,7 @@ export const OrderEventSchema = z.object({
     from: z.string().optional(),
     to: z.string().optional(),
     of: z.string().optional().describe("duplicate_found / duplicate_kept: the earlier order's number"),
+    tags: z.array(z.string()).optional().describe("tagged / untagged: the tags added or taken off (O2)"),
     into: z.string().optional().describe("duplicate_merged: the order it was merged into"),
     status: z.string().optional().describe("shipment_status: the courier's status (canonical)"),
   }),
@@ -191,7 +202,7 @@ export const OrderProductsSchema = z.object({
 const OrderIds = z.array(z.uuid()).min(1).max(500).describe("Up to 500 orders");
 export const BulkRequestSchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("assign"), orderIds: OrderIds, userId: z.uuid().nullable().describe("A team member, or null to unassign") }),
-  z.strictObject({ action: z.literal("tag"), orderIds: OrderIds, tags: z.array(z.string().trim().toLowerCase().regex(/^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u)).min(1).max(5).describe("Added (in Shopify too); never removed") }),
+  z.strictObject({ action: z.literal("tag"), orderIds: OrderIds, tags: z.array(TagNameSchema).min(1).max(5).describe("Added (in Shopify too); never removed") }),
   z.strictObject({ action: z.literal("confirm"), orderIds: OrderIds }),
   z.strictObject({ action: z.literal("cancel"), orderIds: OrderIds, reason: z.enum(CANCEL_REASONS) }),
   z.strictObject({ action: z.literal("ship"), orderIds: OrderIds }).describe("Book the courier for each confirmed order (E7-2)"),
@@ -205,3 +216,38 @@ export const BulkActionSchema = z.object({
     reason: z.string().describe("cancelled, unchanged, shipped, paid_needs_refund, already_confirmed, duplicate_suspected, not_found, already_shipping, not_confirmed, address_missing, payment_blocks_shipping, error…"),
   })).describe("Orders skipped or failed and why (200 at most)"),
 });
+
+// ───────────── O2: tags, notes, filters, saved views ─────────────
+
+export const OrderTagsPatchSchema = z.strictObject({
+  add: z.array(TagNameSchema).max(5).default([]),
+  remove: z.array(z.string().min(1).max(255)).max(20).default([]).describe("Any of the order's tags, the store's own too"),
+}).refine((b) => b.add.length + b.remove.length > 0, { message: "add or remove a tag" });
+export const OrderTagsSchema = z.object({ tags: z.array(z.string()) });
+
+export const OrderNoteInputSchema = z.strictObject({ body: z.string().trim().min(1).max(2000) });
+export const OrderNoteSchema = z.object({
+  id: z.uuid(), body: z.string(),
+  author: z.object({ id: z.uuid(), name: z.string().nullable() }).nullable().describe("null when the author left the team's records"),
+  mine: z.boolean(), createdAt: z.iso.datetime(),
+});
+export const OrderNotesSchema = z.object({ data: z.array(OrderNoteSchema) });
+
+const Facet = z.object({ value: z.string(), count: z.number().int() });
+export const OrderFiltersSchema = z.object({
+  tags: z.array(Facet).describe("The store's most used tags (50 at most)"),
+  cities: z.array(Facet).describe("Delivery cities, most orders first (50 at most)"),
+  couriers: z.array(z.object({ id: z.uuid(), provider: z.string(), name: z.string().nullable(), count: z.number().int() })),
+});
+
+/** What a saved view keeps: the list's filters, without paging. */
+export const SavedViewFiltersSchema = ListOrdersQuerySchema.omit({ limit: true, cursor: true });
+export const SavedViewInputSchema = z.strictObject({
+  name: z.string().trim().min(1).max(60),
+  filters: SavedViewFiltersSchema,
+  shared: z.boolean().default(false).describe("Shown to the whole team (owner, admin and ops manager)"),
+});
+export const SavedViewSchema = z.object({
+  id: z.uuid(), name: z.string(), filters: SavedViewFiltersSchema, shared: z.boolean(), mine: z.boolean(), createdAt: z.iso.datetime(),
+});
+export const SavedViewListSchema = z.object({ data: z.array(SavedViewSchema) });

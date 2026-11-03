@@ -642,6 +642,11 @@ export class FakeShopify {
         if (o) for (const t of v.tags) if (!o.tags.includes(t)) o.tags.push(t);
         return { tagsAdd: { node: { id: v.id }, userErrors: [] } };
       }
+      case "MizanTagsRemove": {
+        const o = this.orders.get(v.id);
+        if (o) o.tags = o.tags.filter((t) => !v.tags.includes(t));
+        return { tagsRemove: { node: { id: v.id }, userErrors: [] } };
+      }
       default:
         return {};
     }
