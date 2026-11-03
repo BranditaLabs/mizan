@@ -172,6 +172,19 @@ test("order detail: the team's call panel with the script, the WhatsApp conversa
   await panel.getByRole("button", { name: "مردّش" }).click();
   await expect(page.locator(".mz-toast")).toContainText("هيرجع للقايمة");
   expect(noAnswer).toBe(1);
+  // Cancelling from the call asks why, and sends the customer's reason.
+  let sent: unknown = null;
+  await page.route(`**/v1/orders/${id}/confirmation`, (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    sent = route.request().postDataJSON();
+    return route.fulfill({ json: { status: "cancelled" } });
+  });
+  await card.getByRole("button", { name: "ألغي الأوردر" }).first().click();
+  const ask = page.getByRole("dialog", { name: "تلغي الأوردر ده؟" });
+  await expect(ask.getByRole("button", { name: "ألغي الأوردر" })).toBeDisabled();
+  await ask.getByLabel("العميل بيلغي ليه؟").selectOption("found_cheaper");
+  await ask.getByRole("button", { name: "ألغي الأوردر" }).click();
+  await expect.poll(() => sent).toEqual({ answer: "cancel", byCall: true, reason: "found_cheaper" });
   // Without a WhatsApp number the link can still be sent by hand.
   await expect(card.getByRole("button", { name: "ابعت على واتساب" })).toBeVisible();
   await expect(card).toContainText("واتساب مش متوصّل لسه");

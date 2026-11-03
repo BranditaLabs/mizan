@@ -43,7 +43,8 @@
     "store": {
       "label": "Store",
       "switch": "Switch store",
-      "create": "New store"
+      "create": "New store",
+      "switched": "You're now in {store}"
     },
     "signOut": "Sign out"
   },
@@ -1027,7 +1028,17 @@
         },
         "qty": "(qty <n>{qty}</n>)"
       },
-      "optedOut": "This customer wrote STOP: WhatsApp is skipped for them until they write START."
+      "optedOut": "This customer wrote STOP: WhatsApp is skipped for them until they write START.",
+      "keepOrder": "Keep the order",
+      "cancelReasonLabel": "Why is the customer cancelling?",
+      "cancelReasonPick": "Choose a reason",
+      "cancelReason": {
+        "changed_mind": "Changed their mind",
+        "ordered_by_mistake": "Ordered by mistake",
+        "found_cheaper": "Found it cheaper",
+        "delivery_too_late": "Delivery takes too long",
+        "other": "Another reason"
+      }
     },
     "answerChannel": {
       "link": "the customer's link",
@@ -3443,6 +3454,28 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners and admins manage the team."
+    },
+    "ask": {
+      "disable": {
+        "title": "Disable {name}?",
+        "body": "{name} can't sign in to this store until you enable them again. Their orders and calls stay assigned to them.",
+        "confirm": "Disable"
+      },
+      "remove": {
+        "title": "Remove {name} from the store?",
+        "body": "{name} loses access to this store. To bring them back you'll need to invite them again.",
+        "confirm": "Remove"
+      },
+      "role": {
+        "title": "Change {name}'s role?",
+        "body": "{name} goes from {from} to {to}. What they can see and do changes right away.",
+        "confirm": "Change role"
+      },
+      "revoke": {
+        "title": "Revoke the invitation to {name}?",
+        "body": "The link stops working. You can send a new invitation later.",
+        "confirm": "Revoke"
+      }
     }
   },
   "integrationsSettings": {

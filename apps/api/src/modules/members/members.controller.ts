@@ -5,7 +5,7 @@ import { Auth, NoSupport, NoTenant, Roles } from "../../platform/auth/decorators
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AcceptedInvitationSchema, InvitationViewSchema, InviteSchema, MemberViewSchema, TeamSchema, UpdateMemberSchema, type InviteBody, type UpdateMemberBody,
+  AcceptedInvitationSchema, AssignableSchema, InvitationViewSchema, InviteSchema, MemberViewSchema, TeamSchema, UpdateMemberSchema, type InviteBody, type UpdateMemberBody,
 } from "./members.dto.js";
 import { MembersService } from "./members.service.js";
 
@@ -20,6 +20,13 @@ export class MembersController {
   @ApiJson(200, "Team", TeamSchema, "Members and pending invitations")
   list(@Auth() auth: AuthContext) {
     return this.members.list(auth.tenant!.id);
+  }
+
+  @Get("members/assignable")
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJson(200, "Assignable", AssignableSchema, "Active members who take orders and calls: names and roles only, for assigning work")
+  assignable(@Auth() auth: AuthContext) {
+    return this.members.assignable(auth.tenant!.id);
   }
 
   @Post("members/invite")

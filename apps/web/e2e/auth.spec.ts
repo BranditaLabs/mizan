@@ -114,6 +114,7 @@ test("switching stores: the choice is remembered after a reload", async ({ page 
   const other = first === "Cairo Shoes" ? "Alex Bags" : "Cairo Shoes";
   await switcher.selectOption({ label: other });
   await expect(page.getByTestId("store-name")).toHaveText(other);
+  await expect(page.locator(".mz-toast")).toContainText(`You're now in ${other}`);
   await page.reload();
   await expect(page.getByTestId("store-name")).toHaveText(other);
   await expect(switcher).toHaveValue(/.+/);

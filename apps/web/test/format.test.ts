@@ -3,6 +3,15 @@ import { formatDate, formatMoney, formatNumber, formatRelative, formatWhen } fro
 
 const strip = (s: string) => s.replace(/[‎‏؜  ]/g, " ").replace(/\s+/g, " ").trim();
 
+describe("dates in the store's time zone", () => {
+  it("Cairo by default; a Dubai store sees Dubai's date and time", () => {
+    const evening = "2026-10-23T20:30:00.000Z"; // 23:30 on the 23rd in Cairo (UTC+3, summer time), 00:30 on the 24th in Dubai (UTC+4)
+    expect(strip(formatDate(evening, "en", "latn", "medium"))).toContain("23");
+    expect(strip(formatDate(evening, "en", "latn", "medium", "Asia/Dubai"))).toContain("24");
+    expect(strip(formatWhen("2026-10-24T07:00:00.000Z", "en", "latn", "Asia/Dubai"))).toContain("11:00");
+  });
+});
+
 describe("formatMoney", () => {
   it("formats decimal strings exactly, with the currency's decimals", () => {
     expect(strip(formatMoney({ amount: "1150.00", currency: "EGP" }, "en"))).toBe("EGP 1,150.00");

@@ -2721,6 +2721,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/members/assignable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MembersController_assignable"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/members/invite": {
         parameters: {
             query?: never;
@@ -3173,6 +3189,15 @@ export interface components {
         };
         AnswerResult: {
             outcome: string;
+        };
+        Assignable: {
+            members: {
+                /** Format: uuid */
+                userId: string;
+                displayName: string | null;
+                /** @enum {string} */
+                role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
+            }[];
         };
         AuditLogPage: {
             data: {
@@ -19816,6 +19841,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Team"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    MembersController_assignable: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Active members who take orders and calls: names and roles only, for assigning work */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Assignable"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

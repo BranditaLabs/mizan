@@ -11,6 +11,9 @@ import { auditActor, AuditService } from "../../platform/audit/audit.service.js"
 import { ProblemError } from "../../platform/http/problem.js";
 import type { InvitationStatus, InvitationView, InviteBody, MemberStatus, MemberView, MyInvitationView, UpdateMemberBody } from "./members.dto.js";
 
+/** The roles that work orders and calls (E5-4 assign; the call queue). */
+export const ASSIGNABLE_ROLES = ["owner", "admin", "ops_manager", "agent"] as const;
+
 export const INVITATION_TTL_DAYS = 7;
 
 /** What the identity provider vouches for: verified email, OTP phone. Used to match invitations. */
@@ -51,6 +54,17 @@ export class MembersService {
         })),
         invitations: invitations.map((i) => this.toInvitation(i)),
       };
+    });
+  }
+
+  /** Active members who take orders and calls, for assigning work (managers too, not only owners). */
+  async assignable(tenantId: string): Promise<{ members: Array<{ userId: string; displayName: string | null; role: MemberRole }> }> {
+    return this.db.tenant(tenantId, async (trx) => {
+      const rows = await trx.selectFrom("memberships as m").innerJoin("users as u", "u.id", "m.user_id")
+        .select(["m.user_id", "m.role", "u.display_name", "u.email", "u.phone_e164"])
+        .where("m.status", "=", "active").where("m.role", "in", [...ASSIGNABLE_ROLES])
+        .orderBy("u.display_name").execute();
+      return { members: rows.map((r) => ({ userId: r.user_id, displayName: r.display_name ?? r.email ?? r.phone_e164, role: r.role as MemberRole })) };
     });
   }
 

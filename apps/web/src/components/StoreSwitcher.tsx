@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useId } from "react";
 import { Link } from "@/i18n/navigation";
 import { useSession } from "@/lib/session";
+import { useSwitchStore } from "@/lib/use-switch-store";
 
 /**
  * The store you are working in, on the ink rail (`rail`) or in the mobile header. More than one
@@ -13,7 +14,8 @@ import { useSession } from "@/lib/session";
 export function StoreSwitcher({ rail = false }: { rail?: boolean }) {
   const t = useTranslations("shell.store");
   const tr = useTranslations("roles");
-  const { stores, store, selectStore } = useSession();
+  const { stores, store } = useSession();
+  const switchStore = useSwitchStore();
   const id = useId();
   if (!store) return null;
   const muted = rail ? "text-rail-text-2" : "text-text-3";
@@ -21,7 +23,7 @@ export function StoreSwitcher({ rail = false }: { rail?: boolean }) {
     <div className="flex min-w-0 flex-col gap-1">
       <label htmlFor={id} className={`text-overline uppercase ${muted} ${rail ? "" : "sr-only"}`}>{t("label")}</label>
       {stores.length > 1 ? (
-        <select id={id} value={store.tenantId} onChange={(e) => selectStore(e.target.value)} title={t("switch")} data-testid="store-switcher"
+        <select id={id} value={store.tenantId} onChange={(e) => switchStore(e.target.value)} title={t("switch")} data-testid="store-switcher"
           className={`h-9 min-w-0 truncate rounded-sm border px-2.5 text-label ${rail ? "border-rail-line bg-rail-surface text-text" : "border-line-strong bg-surface text-text"}`}>
           {stores.map((s) => <option key={s.tenantId} value={s.tenantId}>{s.tenantName}</option>)}
         </select>

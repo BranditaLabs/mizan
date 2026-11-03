@@ -32,8 +32,8 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
   const [tags, setTags] = useState("");
   const [reason, setReason] = useState<(typeof REASONS)[number]>("customer_cancelled");
   const team = useQuery({
-    queryKey: ["team", user?.uid ?? "", store?.tenantId ?? ""],
-    queryFn: () => ok(api.GET("/v1/members")),
+    queryKey: ["assignable", user?.uid ?? "", store?.tenantId ?? ""],
+    queryFn: () => ok(api.GET("/v1/members/assignable")),
     enabled: open === "assign",
   });
   const start = useMutation({
@@ -43,7 +43,7 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
   const orderIds = [...selected];
   const tagList = tags.split(/[,،]/).map((x) => x.trim()).filter(Boolean);
   const tagsValid = tagList.length > 0 && tagList.length <= 5 && tagList.every((x) => /^[\p{L}\p{N}][\p{L}\p{N} _-]{0,39}$/u.test(x));
-  const members = (team.data?.members ?? []).filter((m) => m.status === "active" && ["owner", "admin", "ops_manager", "agent"].includes(m.role));
+  const members = team.data?.members ?? [];
 
   const footer = (submit: () => void, label: string, disabled = false, danger = false) => (
     <ButtonGroup>
@@ -73,7 +73,7 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
         <Select label={t("assignTo")} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
           <option value="" disabled>{t("choose")}</option>
           <option value="none">{t("unassign")}</option>
-          {members.map((m) => <option key={m.userId} value={m.userId}>{m.displayName ?? m.email ?? m.phone ?? m.userId}</option>)}
+          {members.map((m) => <option key={m.userId} value={m.userId}>{m.displayName ?? m.userId}</option>)}
         </Select>
       </Dialog>
 
