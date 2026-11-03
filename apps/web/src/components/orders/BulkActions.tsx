@@ -26,6 +26,7 @@ export const BULK_ROLES = new Set(["owner", "admin", "ops_manager"]);
  */
 export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<string>; clear(): void; onStarted(id: string): void }) {
   const t = useTranslations("orders.bulk");
+  const tr = useTranslations("roles");
   const { api, user, store } = useSession();
   const [open, setOpen] = useState<Kind | null>(null);
   const [assignee, setAssignee] = useState("");
@@ -73,7 +74,7 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
         <Select label={t("assignTo")} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
           <option value="" disabled>{t("choose")}</option>
           <option value="none">{t("unassign")}</option>
-          {members.map((m) => <option key={m.userId} value={m.userId}>{m.displayName ?? m.userId}</option>)}
+          {members.map((m) => <option key={m.userId} value={m.userId}>{m.displayName ?? `${tr(m.role)} · ${m.hint ?? ""}`}</option>)}
         </Select>
       </Dialog>
 

@@ -29,7 +29,7 @@ test("owner in English: invites, changes a role, disables, revokes; the audit lo
   const agentRow = team.getByRole("row").filter({ hasText: agent.e164 });
   await agentRow.getByLabel("Role").selectOption("ops_manager");
   const ask = page.getByRole("dialog");
-  await expect(ask).toContainText("goes from Agent to Ops manager");
+  await expect(ask).toContainText("goes from Confirmation agent to Ops manager");
   await ask.getByRole("button", { name: "Change role" }).click();
   await expect(agentRow.getByLabel("Role")).toHaveValue("ops_manager");
   await agentRow.getByRole("button", { name: "Disable" }).click();

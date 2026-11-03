@@ -19605,6 +19605,11 @@
                   "nullable": true,
                   "type": "string"
                 },
+                "hint": {
+                  "nullable": true,
+                  "description": "Masked email or phone (\"m•••@example.com\", \"•••• 4821\") when there is no name",
+                  "type": "string"
+                },
                 "role": {
                   "type": "string",
                   "enum": [
@@ -19621,6 +19626,7 @@
               "required": [
                 "userId",
                 "displayName",
+                "hint",
                 "role"
               ],
               "additionalProperties": false

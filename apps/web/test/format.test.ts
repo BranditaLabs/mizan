@@ -9,6 +9,8 @@ describe("dates in the store's time zone", () => {
     expect(strip(formatDate(evening, "en", "latn", "medium"))).toContain("23");
     expect(strip(formatDate(evening, "en", "latn", "medium", "Asia/Dubai"))).toContain("24");
     expect(strip(formatWhen("2026-10-24T07:00:00.000Z", "en", "latn", "Asia/Dubai"))).toContain("11:00");
+    // A calendar day stays that day, even west of UTC.
+    expect(strip(formatDate("2026-11-01", "en", "latn", "medium", "America/New_York"))).toBe("Nov 1, 2026");
   });
 });
 

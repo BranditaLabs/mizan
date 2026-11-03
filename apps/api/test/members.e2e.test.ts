@@ -198,10 +198,14 @@ describe("member management", () => {
     const res = await http().get("/v1/members/assignable").set(as("assigner", store)).expect(200);
     expect(res.body.members.length).toBeGreaterThan(0);
     for (const m of res.body.members) {
-      expect(Object.keys(m).sort()).toEqual(["displayName", "role", "userId"]);
+      expect(Object.keys(m).sort()).toEqual(["displayName", "hint", "role", "userId"]);
       expect(["owner", "admin", "ops_manager", "agent"]).toContain(m.role);
-      expect(m.displayName).toBeTruthy(); // a name, else the email or phone: never blank
+      expect(m.displayName ?? m.hint).toBeTruthy(); // something to tell them apart
     }
+    // A colleague's contact details are not for a manager: masked only.
+    const raw = JSON.stringify(res.body);
+    expect(raw).not.toContain("assigner@example.com");
+    expect(raw).not.toMatch(/\+\d{10,}/);
     expect((await http().get("/v1/members/assignable").set(as("cashier", store)).expect(403)).body.code).toBe("insufficient_role");
   });
 });

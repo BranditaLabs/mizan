@@ -150,8 +150,9 @@ export function TeamScreen() {
         </>
       )}
       <ConfirmDialog open={ask !== null} onClose={() => setAsk(null)} onConfirm={confirmAsk} busy={update.isPending || remove.isPending || revoke.isPending}
-        title={ask ? t(`ask.${ask.kind}.title`, { name: ask.name }) : ""}
-        description={ask ? (ask.kind === "role" ? t("ask.role.body", { name: ask.name, from: tr(ask.from), to: tr(ask.to) }) : t(`ask.${ask.kind}.body`, { name: ask.name })) : ""}
+        title={ask ? t.rich(`ask.${ask.kind}.title`, { name: ask.name, b: (c) => <Bdi>{c}</Bdi> }) : ""}
+        description={ask ? (ask.kind === "role" ? t.rich("ask.role.body", { name: ask.name, from: tr(ask.from), to: tr(ask.to), b: (c) => <Bdi>{c}</Bdi> })
+          : t.rich(`ask.${ask.kind}.body`, { name: ask.name, b: (c) => <Bdi>{c}</Bdi> })) : ""}
         confirmLabel={ask ? t(`ask.${ask.kind}.confirm`) : ""} />
     </Frame>
   );

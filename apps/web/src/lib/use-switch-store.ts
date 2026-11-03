@@ -1,7 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback } from "react";
+import { createElement, useCallback } from "react";
+import { Bdi } from "@/components/Bdi";
 import { useToast } from "@/components/ui/Toast";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { sectionRoot } from "@/lib/section-root";
@@ -20,6 +21,6 @@ export function useSwitchStore() {
     selectStore(tenantId);
     const root = sectionRoot(pathname);
     if (root !== pathname) router.push(root);
-    toast({ message: t("switched", { store: next.tenantName }) });
+    toast({ message: t.rich("switched", { store: next.tenantName, b: (c) => createElement(Bdi, null, c) }) });
   }, [stores, selectStore, pathname, router, toast, t]);
 }

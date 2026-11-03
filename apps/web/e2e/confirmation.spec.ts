@@ -179,7 +179,7 @@ test("order detail: the team's call panel with the script, the WhatsApp conversa
     sent = route.request().postDataJSON();
     return route.fulfill({ json: { status: "cancelled" } });
   });
-  await card.getByRole("button", { name: "ألغي الأوردر" }).first().click();
+  await panel.getByRole("button", { name: "العميل لغى" }).click();
   const ask = page.getByRole("dialog", { name: "تلغي الأوردر ده؟" });
   await expect(ask.getByRole("button", { name: "ألغي الأوردر" })).toBeDisabled();
   await ask.getByLabel("العميل بيلغي ليه؟").selectOption("found_cheaper");

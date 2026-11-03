@@ -40,6 +40,8 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   const toast = useToast();
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState<(typeof CANCEL_REASONS)[number] | "">("");
+  // Every cancel asks the customer's reason afresh: never a reason left from an earlier dialog.
+  const askCancel = () => { setCancelReason(""); setCancelOpen(true); };
   const allowed = CAN_ACT.has(store?.role ?? "");
   const key = ["orderConfirmation", user?.uid ?? "", store?.tenantId ?? "", orderId];
   const summary = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } } })), enabled: allowed, meta: { toast: false } });
@@ -157,7 +159,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
             <ButtonGroup>
               <Button size="sm" icon="confirm" busy={answer.isPending && answer.variables === "confirm"} onClick={() => answer.mutate("confirm")}>{t("calls.confirmed")}</Button>
               <Button size="sm" variant="secondary" icon="call" busy={noAnswer.isPending} onClick={() => noAnswer.mutate()}>{t("calls.noAnswer")}</Button>
-              <Button size="sm" variant="ghost" icon="close" onClick={() => setCancelOpen(true)}>{t("calls.cancelled")}</Button>
+              <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("calls.cancelled")}</Button>
             </ButtonGroup>
           </section>
         ) : null}
@@ -172,7 +174,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
         {unanswered && !calling ? (
           <ButtonGroup>
             <Button size="sm" variant="secondary" icon="confirm" busy={answer.isPending && answer.variables === "confirm"} onClick={() => answer.mutate("confirm")}>{t("markConfirmed")}</Button>
-            <Button size="sm" variant="ghost" icon="close" onClick={() => { setCancelReason(""); setCancelOpen(true); }}>{t("markCancelled")}</Button>
+            <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("markCancelled")}</Button>
           </ButtonGroup>
         ) : null}
       </div>

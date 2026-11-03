@@ -3195,6 +3195,8 @@ export interface components {
                 /** Format: uuid */
                 userId: string;
                 displayName: string | null;
+                /** @description Masked email or phone ("m•••@example.com", "•••• 4821") when there is no name */
+                hint: string | null;
                 /** @enum {string} */
                 role: "owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer";
             }[];
