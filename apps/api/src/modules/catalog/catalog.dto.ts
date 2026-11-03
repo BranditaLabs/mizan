@@ -123,3 +123,25 @@ export const CostsImportedSchema = z.object({
   skipped: z.number().int().describe("Rows with neither a cost nor a barcode"),
   missingCost: z.number().int(),
 });
+
+// ───────────── P2: edit a product, pushed to its store ─────────────
+
+/** Up to 3 decimals (KWD, BHD, OMR); the currency's own decimals are checked when saving. */
+const PriceAmount = z.string().trim().regex(/^\d{1,9}(\.\d{1,3})?$/, "an amount like 150 or 150.50");
+export const ProductUpdateSchema = z.strictObject({
+  title: z.string().trim().min(1).max(255).optional(),
+  description: z.string().max(20000).optional().describe("Plain text: paragraphs by blank lines (the store's formatting is replaced)"),
+  status: z.enum(["active", "draft", "archived"]).optional(),
+  tags: z.array(z.string().trim().min(1).max(255)).max(50).optional(),
+  vendor: z.string().trim().max(255).optional().describe("Shopify only"),
+  productType: z.string().trim().max(255).optional().describe("Shopify only"),
+  images: z.strictObject({
+    order: z.array(z.uuid()).min(1).max(250).describe("Every picture of the product, in the new order"),
+    main: z.uuid().optional().describe("The main picture (moved first); else the first of the order"),
+  }).optional(),
+  variants: z.array(z.strictObject({
+    id: z.uuid(),
+    price: PriceAmount.optional(),
+    compareAtPrice: PriceAmount.nullable().optional().describe("Higher than the price: shown struck through; null removes it"),
+  })).max(250).optional(),
+}).refine((b) => Object.values(b).some((v) => v !== undefined), { message: "change something" });

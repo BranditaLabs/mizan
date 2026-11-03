@@ -5,7 +5,7 @@ import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
-import { CatalogVariantSchema, CostsImportedSchema, ImportCostsSchema, ProductDetailSchema, ProductPageSchema, ProductQuerySchema, UpdateVariantSchema } from "./catalog.dto.js";
+import { CatalogVariantSchema, CostsImportedSchema, ImportCostsSchema, ProductDetailSchema, ProductPageSchema, ProductQuerySchema, ProductUpdateSchema, UpdateVariantSchema } from "./catalog.dto.js";
 import { ProductsService } from "./products.service.js";
 
 /** The catalogue screen (M4, E8-1): products from the store, with the cost and barcode Mizan adds. */
@@ -27,6 +27,20 @@ export class ProductsController {
   @ApiProblems(404)
   detail(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
     return this.products.detail(auth.tenant!.id, id);
+  }
+
+  /**
+   * P2: edit the product — title, description, status, tags, vendor, type, the pictures' order and
+   * the main one, prices. Saved here at once and pushed to its store through the outbox; prices set
+   * here are Mizan's from then on (a change in the store is put back). Audited.
+   */
+  @Patch(":id")
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("ProductUpdate", ProductUpdateSchema)
+  @ApiJson(200, "ProductDetail", ProductDetailSchema, "The product as saved; the store follows")
+  @ApiProblems(404, 422)
+  edit(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(ProductUpdateSchema)) body: z.output<typeof ProductUpdateSchema>) {
+    return this.products.edit(auth, id, body);
   }
 
   @Patch("variants/:id")

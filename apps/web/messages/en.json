@@ -1161,7 +1161,9 @@
         "courier_needs_attention": "the courier connection needs attention",
         "no_courier": "connect a courier first"
       },
-      "failedHint": "Some orders failed. Try them again in a moment."
+      "failedHint": "Some orders failed. Try them again in a moment.",
+      "invoices": "Invoices",
+      "slips": "Packing slips"
     },
     "waitingStock": "Waiting for stock",
     "emptyWaitingStock": {
@@ -1310,6 +1312,42 @@
         "currency_mismatch": "This product is priced in another currency.",
         "pii_redacted": "The customer's data was deleted, so the address can't be changed."
       }
+    },
+    "print": {
+      "pageTitle": "Print orders",
+      "back": "Orders",
+      "invoices": "{count, plural, one {# invoice} other {# invoices}}",
+      "slips": "{count, plural, one {# packing slip} other {# packing slips}}",
+      "showInvoices": "Invoices instead",
+      "showSlips": "Packing slips instead",
+      "print": "Print or save as PDF",
+      "none": "No orders chosen. Pick orders in the list first.",
+      "loading": "Preparing the documents",
+      "number": "Order",
+      "date": "Date",
+      "redacted": "The customer's details were deleted on request.",
+      "shipTo": "Deliver to",
+      "payment": "Payment",
+      "item": "Item",
+      "qty": "Qty",
+      "unit": "Price",
+      "lineTotal": "Total",
+      "subtotal": "Items",
+      "shipping": "Delivery",
+      "discount": "Discount",
+      "total": "Total",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "cod": "To collect on delivery",
+      "thanks": "Thank you for your order.",
+      "invoice": "Invoice",
+      "slip": "Packing slip",
+      "collect": "Collect on delivery",
+      "packed": "Packed",
+      "code": "SKU / barcode",
+      "pieces": "{count, plural, one {# piece in all} other {# pieces in all}}",
+      "printInvoice": "Print invoice",
+      "printSlip": "Packing slip"
     }
   },
   "costs": {
@@ -2271,6 +2309,50 @@
       "marginValue": "{value}%",
       "priceRange": "<min></min> to <max></max>",
       "orders": "Orders with this product"
+    },
+    "editProduct": {
+      "open": "Edit product",
+      "title": "Edit product",
+      "storeNote": "Saved here at once and sent to {store}.",
+      "name": "Name",
+      "nameNeeded": "A product needs a name",
+      "status": "Status",
+      "statusName": {
+        "active": "Active",
+        "draft": "Draft",
+        "archived": "Archived"
+      },
+      "tags": "Tags",
+      "tagsHint": "Separated by commas",
+      "vendor": "Vendor",
+      "type": "Product type",
+      "description": "Description",
+      "descriptionHint": "Plain text; a blank line starts a new paragraph. The store's formatting is replaced.",
+      "pictures": "Pictures",
+      "picturesHint": "The first one is the main picture, in Mizan and in the store.",
+      "main": "Main picture",
+      "position": "Picture {n}",
+      "makeMain": "Make main",
+      "up": "Move up",
+      "down": "Move down",
+      "prices": "Prices",
+      "pricesHint": "Prices set here are Mizan's from then on: a change made in the store is put back.",
+      "price": "Price",
+      "compareAt": "Compare-at price",
+      "priceInvalid": "An amount like 150 or 150.50",
+      "compareAtLow": "Must be higher than the price",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Product saved",
+      "savedStore": "Saved and sent to {store}",
+      "errors": {
+        "field_not_in_store": "WooCommerce products have no vendor or product type.",
+        "images_mismatch": "The pictures changed meanwhile. Close and open the editor again.",
+        "images_not_in_store": "A picture isn't in the store yet, so the order can't be sent.",
+        "compare_at_low": "A compare-at price must be higher than the price.",
+        "unknown_variant": "A variant changed meanwhile. Close and open the editor again.",
+        "price_decimals": "Prices in this currency take fewer decimals."
+      }
     }
   },
   "stock": {

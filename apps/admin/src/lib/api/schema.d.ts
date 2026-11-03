@@ -353,6 +353,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["OrdersController_documents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/filters": {
         parameters: {
             query?: never;
@@ -574,7 +590,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["ProductsController_edit"];
         trace?: never;
     };
     "/v1/products/variants/{id}": {
@@ -5830,6 +5846,96 @@ export interface components {
                 };
             }[];
         };
+        OrderDocuments: {
+            /** @enum {string} */
+            kind: "invoice" | "packing_slip";
+            store: {
+                name: string;
+                country: string;
+            };
+            /** Format: date-time */
+            generatedAt: string;
+            orders: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** Format: date-time */
+                placedAt: string;
+                /** @enum {string} */
+                status: "new" | "pending_confirmation" | "confirmed" | "cancelled" | "shipped" | "delivered" | "returned";
+                /** @enum {string} */
+                paymentMode: "cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer" | "store_credit" | "mixed" | "unknown";
+                /** @enum {string} */
+                paymentStatus: "unpaid" | "authorized" | "partially_paid" | "paid" | "partially_refunded" | "refunded" | "disputed" | "failed" | "voided";
+                /** @description null when the customer's data was deleted on request */
+                customer: {
+                    name: string | null;
+                    phone: string | null;
+                    address: {
+                        line1: string | null;
+                        line2: string | null;
+                        city: string | null;
+                        province: string | null;
+                        country: string | null;
+                    };
+                } | null;
+                lines: {
+                    title: string;
+                    sku: string | null;
+                    barcode: string | null;
+                    quantity: number;
+                    unitPrice: {
+                        amount: string;
+                        currency: string;
+                    };
+                    total: {
+                        amount: string;
+                        currency: string;
+                    };
+                    /** @description Packing slips only */
+                    picture: {
+                        /** Format: uri */
+                        url: string;
+                        alt: string | null;
+                    } | null;
+                }[];
+                pieces: number;
+                subtotal: {
+                    amount: string;
+                    currency: string;
+                };
+                shipping: {
+                    amount: string;
+                    currency: string;
+                };
+                discount: {
+                    amount: string;
+                    currency: string;
+                };
+                total: {
+                    amount: string;
+                    currency: string;
+                };
+                paid: {
+                    amount: string;
+                    currency: string;
+                };
+                refunded: {
+                    amount: string;
+                    currency: string;
+                };
+                /** @description What the courier collects (cashToCollect), 0 when prepaid */
+                cod: {
+                    amount: string;
+                    currency: string;
+                };
+            }[];
+        };
+        OrderDocumentsRequest: {
+            /** @enum {string} */
+            kind: "invoice" | "packing_slip";
+            orderIds: string[];
+        };
         OrderEditInput: {
             /** @default [] */
             lines: {
@@ -7044,6 +7150,34 @@ export interface components {
                 missingCost: number;
                 missingBarcode: number;
             };
+        };
+        ProductUpdate: {
+            title?: string;
+            /** @description Plain text: paragraphs by blank lines (the store's formatting is replaced) */
+            description?: string;
+            /** @enum {string} */
+            status?: "active" | "draft" | "archived";
+            tags?: string[];
+            /** @description Shopify only */
+            vendor?: string;
+            /** @description Shopify only */
+            productType?: string;
+            images?: {
+                /** @description Every picture of the product, in the new order */
+                order: string[];
+                /**
+                 * Format: uuid
+                 * @description The main picture (moved first); else the first of the order
+                 */
+                main?: string;
+            };
+            variants?: {
+                /** Format: uuid */
+                id: string;
+                price?: string;
+                /** @description Higher than the price: shown struck through; null removes it */
+                compareAtPrice?: string | null;
+            }[];
         };
         ProfitBreakdown: {
             /** @enum {string} */
@@ -10560,6 +10694,70 @@ export interface operations {
             };
         };
     };
+    OrdersController_documents: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderDocumentsRequest"];
+            };
+        };
+        responses: {
+            /** @description What the documents print, in the order asked; audited per order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDocuments"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests (rate_limited; see Retry-After) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     OrdersController_filters: {
         parameters: {
             query?: never;
@@ -11488,6 +11686,63 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_edit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductUpdate"];
+            };
+        };
+        responses: {
+            /** @description The product as saved; the store follows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

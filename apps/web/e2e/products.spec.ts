@@ -136,3 +136,54 @@ test("the product page in English: pictures with the main one, details, plain-te
   await expect(main.getByRole("row", { name: /LIN-Black-S/ })).toContainText("57%");
   await expect(main.getByRole("row", { name: /LIN-Sand-M/ })).toContainText("No cost yet");
 });
+
+test("editing the product in English: name, tags, a new main picture and a sale price, sent as one change", async ({ page }) => {
+  const owner = await ownerWithStore("Products Edit Store");
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
+
+  const pic = (n: number) => ({ id: `77777777-7777-4777-8777-77777777778${n}`, url: `https://cdn.shopify.com/s/files/1/kaftan-${n}.jpg`, alt: null, width: 1200, height: 1500, isMain: n === 1 });
+  const images = [pic(1), pic(2), pic(3)];
+  const kaftan = {
+    ...ABAYA, id: "99999999-9999-4999-8999-999999999999", title: "Kaftan", vendor: "Nile Wear", productType: "Kaftan", tags: ["kaftan"],
+    handle: "kaftan", description: "Cotton.", images, storeUrl: null, updatedAt: new Date().toISOString(),
+    variants: [variant("55555555-5555-4555-8555-555555555571", "KAF-1", "Default Title", "400.00")],
+    totals: { variants: 1, available: 3, priceMin: egp("1150.00"), priceMax: egp("1150.00"), missingCost: 0, missingBarcode: 1 },
+  };
+  let sent: unknown = null;
+  await page.route("https://cdn.shopify.com/**", (route) => route.fulfill({ contentType: "image/png", body: PIXEL }));
+  await page.route(`**/v1/products/${kaftan.id}`, async (route) => {
+    if (route.request().method() === "PATCH") {
+      sent = route.request().postDataJSON();
+      return route.fulfill({ json: { ...kaftan, title: "Cotton kaftan" } });
+    }
+    return route.fulfill({ json: kaftan });
+  });
+
+  await page.goto(`/en/products/${kaftan.id}`);
+  const main = page.getByRole("main");
+  await main.getByRole("button", { name: "Edit product" }).click();
+  const dialog = page.getByRole("dialog");
+  const edit = dialog.getByTestId("edit-product");
+  await expect(dialog.getByText("Saved here at once and sent to Shopify.")).toBeVisible();
+  await edit.getByLabel("Name", { exact: true }).fill("Cotton kaftan");
+  await edit.getByLabel("Tags", { exact: true }).fill("kaftan, cotton");
+  await edit.getByRole("listitem").nth(2).getByRole("button", { name: "Make main" }).click();
+  await expect(edit.getByRole("listitem").first()).toContainText("Main picture");
+  await edit.getByLabel("Price", { exact: true }).fill("990");
+  await edit.getByLabel("Compare-at price").fill("1000");
+  await edit.getByLabel("Compare-at price").fill("900");
+  await expect(edit.getByText("Must be higher than the price")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  await edit.getByLabel("Compare-at price").fill("1150");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+
+  expect(sent).toEqual({
+    title: "Cotton kaftan", tags: ["kaftan", "cotton"],
+    images: { order: [images[2]!.id, images[0]!.id, images[1]!.id] },
+    variants: [{ id: kaftan.variants[0]!.id, price: "990", compareAtPrice: "1150" }],
+  });
+});
+

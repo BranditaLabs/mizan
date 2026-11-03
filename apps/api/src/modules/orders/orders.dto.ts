@@ -284,3 +284,31 @@ export const OrderEditResultSchema = z.object({
   editId: z.uuid(),
   status: z.enum(["applied", "sending"]).describe("applied: a manual order, changed now; sending: on its way to the store, the order follows when the store has it"),
 });
+
+// ───────────── O4: invoices and packing slips ─────────────
+
+export const OrderDocumentsRequestSchema = z.strictObject({
+  kind: z.enum(["invoice", "packing_slip"]),
+  orderIds: z.array(z.uuid()).min(1).max(100),
+});
+const DocMoney = MoneySchema;
+export const OrderDocumentsSchema = z.object({
+  kind: z.enum(["invoice", "packing_slip"]),
+  store: z.object({ name: z.string(), country: z.string() }),
+  generatedAt: z.iso.datetime(),
+  orders: z.array(z.object({
+    id: z.uuid(), number: z.string(), placedAt: z.iso.datetime(), status: z.enum(ORDER_STATUSES),
+    paymentMode: z.enum(PAYMENT_MODES), paymentStatus: z.enum(PAYMENT_STATUSES),
+    customer: z.object({
+      name: z.string().nullable(), phone: z.string().nullable(),
+      address: z.object({ line1: z.string().nullable(), line2: z.string().nullable(), city: z.string().nullable(), province: z.string().nullable(), country: z.string().nullable() }),
+    }).nullable().describe("null when the customer's data was deleted on request"),
+    lines: z.array(z.object({
+      title: z.string(), sku: z.string().nullable(), barcode: z.string().nullable(), quantity: z.number().int(), unitPrice: DocMoney, total: DocMoney,
+      picture: LinePictureSchema.describe("Packing slips only"),
+    })),
+    pieces: z.number().int(),
+    subtotal: DocMoney, shipping: DocMoney, discount: DocMoney, total: DocMoney, paid: DocMoney, refunded: DocMoney,
+    cod: DocMoney.describe("What the courier collects (cashToCollect), 0 when prepaid"),
+  })),
+});

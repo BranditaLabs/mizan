@@ -4,12 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button, ButtonGroup } from "@/components/ui/Button";
+import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select } from "@/components/ui/Field";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { Icon } from "@mizan/design-system/icons/react";
+import { printHref } from "./PrintDocuments";
 
 type Bulk = Schemas["BulkAction"];
 type Request = Schemas["BulkRequest"];
@@ -57,6 +59,13 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
         <Button size="sm" variant="secondary" onClick={() => setOpen("tag")}>{t("tag")}</Button>
         <Button size="sm" variant="secondary" onClick={() => setOpen("confirm")}>{t("confirm")}</Button>
         <Button size="sm" variant="danger" onClick={() => setOpen("cancel")}>{t("cancel")}</Button>
+        {/* O4: the selected orders' documents, in a new tab to print or save as PDF (100 at most). */}
+        {orderIds.length <= 100 ? (
+          <>
+            <Link href={printHref("invoice", orderIds)} target="_blank" className={buttonClass("ghost", "sm")}><Icon name="invoice" size={16} />{t("invoices")}</Link>
+            <Link href={printHref("packing_slip", orderIds)} target="_blank" className={buttonClass("ghost", "sm")}><Icon name="print" size={16} />{t("slips")}</Link>
+          </>
+        ) : null}
       </ButtonGroup>
 
       <Dialog open={open === "assign"} onClose={() => setOpen(null)} title={t("assignTitle", { count: orderIds.length })}

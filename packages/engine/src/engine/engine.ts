@@ -194,12 +194,19 @@ interface ShipmentRecord {
   statusAt: number;
 }
 
+/** Product fields the team edits in Mizan (P2): the latest wins, whatever order the jobs run in. */
+type ProductFields = Pick<ProductPatch, "title" | "descriptionHtml" | "status" | "tags" | "vendor" | "productType" | "mediaOrder">;
+const PRODUCT_FIELDS = ["title", "descriptionHtml", "status", "tags", "vendor", "productType", "mediaOrder"] as const;
+
 interface ProductState {
   productId: string;
   desired: {
     variants: Record<string, { price?: string; compareAtPrice?: string | null }>;
     inventory: Record<string, number>; // `${inventoryItemId}|${locationId}` → available
+    fields?: ProductFields;
   };
+  /** One more per staged edit (P2): a return to an earlier value is a new job, never the old one's key. */
+  rev?: number;
   lastWriteAt?: number;
   snapshot?: CanonicalProduct;
 }
@@ -433,7 +440,7 @@ export class MizanEngine {
    * passes one bound to its own transaction, so the state and the job commit with its change).
    * The job always pushes the latest desired values, so jobs that run out of order end right.
    */
-  static async stageProductPatch(store: Store, patch: ProductPatch, now: number): Promise<NewJob<{ patch: ProductPatch }>> {
+  static async stageProductPatch(store: Store, patch: ProductPatch, now: number, provider: "shopify" | "woocommerce" = "shopify"): Promise<NewJob<{ patch: ProductPatch }>> {
     const state = (await store.get<ProductState>("product-state", patch.productExternalId)) ?? { productId: patch.productExternalId, desired: { variants: {}, inventory: {} } };
     for (const v of patch.variants ?? []) {
       const cur = state.desired.variants[v.externalId] ?? {};
@@ -442,8 +449,12 @@ export class MizanEngine {
       state.desired.variants[v.externalId] = cur;
     }
     for (const inv of patch.inventory ?? []) state.desired.inventory[`${inv.inventoryItemId}|${inv.locationId}`] = inv.available;
+    const fields: Record<string, unknown> = { ...(state.desired.fields ?? {}) };
+    for (const k of PRODUCT_FIELDS) if (patch[k] !== undefined) fields[k] = patch[k];
+    state.desired.fields = fields as ProductFields;
+    state.rev = (state.rev ?? 0) + 1;
     await store.put("product-state", patch.productExternalId, state, now);
-    return { kind: "shopify.pushProduct", connection: "shopify", payload: { patch }, idempotencyKey: `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}` };
+    return { kind: `${provider}.pushProduct`, connection: provider, payload: { patch }, idempotencyKey: `push:${patch.productExternalId}:${state.rev}:${hash({ patch, desired: state.desired })}` };
   }
 
   /**
@@ -707,6 +718,7 @@ export class MizanEngine {
       "shopify.addTags": (j) => this.shopify.addTags(j.payload.id, j.payload.tags),
       "shopify.removeTags": (j) => this.shopify.removeTags(j.payload.id, j.payload.tags),
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
+      "woocommerce.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey, "woocommerce"),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
       "shopify.backfill": (j) => this.backfillPage(j.payload),
       "shopify.catalogRefresh": (j) => this.catalogRefresh("shopify", j.payload.cursor),
@@ -1003,7 +1015,7 @@ export class MizanEngine {
     this.emit("order.paid", { orderId, result });
   }
 
-  private async pushProduct(patch: ProductPatch, opKey: string) {
+  private async pushProduct(patch: ProductPatch, opKey: string, provider: "shopify" | "woocommerce" = "shopify") {
     const state = await this.store.get<ProductState>("product-state", patch.productExternalId);
     // Always push the latest desired values, not the (possibly stale) patch that queued this job.
     const latest: ProductPatch = { ...patch };
@@ -1013,8 +1025,12 @@ export class MizanEngine {
         return d ? { externalId: v.externalId, ...(d.price !== undefined ? { price: { amount: d.price, currency: "" } } : {}), ...(d.compareAtPrice !== undefined ? { compareAtPrice: d.compareAtPrice === null ? null : { amount: d.compareAtPrice, currency: "" } } : {}) } : v;
       });
       latest.inventory = patch.inventory?.map((i) => ({ ...i, available: state.desired.inventory[`${i.inventoryItemId}|${i.locationId}`] ?? i.available }));
+      // The fields this job carries, at their latest values (an older job never undoes a newer edit).
+      const want = state.desired.fields ?? {};
+      for (const k of PRODUCT_FIELDS) if (patch[k] !== undefined && want[k] !== undefined) Object.assign(latest, { [k]: want[k] });
     }
-    await this.shopify.applyProductPatch(latest, hash(opKey));
+    if (provider === "woocommerce") await this.wooConnector().applyProductPatch(latest);
+    else await this.shopify.applyProductPatch(latest, hash(opKey));
     if (state) await this.store.put<ProductState>("product-state", patch.productExternalId, { ...state, lastWriteAt: this.now() }, this.now());
     this.emit("product.pushed", { productId: patch.productExternalId, variants: latest.variants?.length ?? 0, inventory: latest.inventory?.length ?? 0 });
   }
@@ -1037,6 +1053,7 @@ export class MizanEngine {
     const state = (await this.store.get<ProductState>("product-state", productId)) ?? { productId, desired: { variants: {}, inventory: {} } };
     const inFlight = state.lastWriteAt !== undefined && this.now() - state.lastWriteAt < this.opts.echoWindowMs;
     const restore: NonNullable<ProductPatch["variants"]> = [];
+    const accepted: Array<{ variant: string; price?: string; compareAtPrice?: string | null }> = [];
 
     for (const v of product.variants) {
       const want = state.desired.variants[v.externalId];
@@ -1049,21 +1066,34 @@ export class MizanEngine {
       const fix: { externalId: string; price?: { amount: string; currency: string }; compareAtPrice?: { amount: string; currency: string } | null } = { externalId: v.externalId };
       if (priceDiff) {
         if (this.opts.ownership.price === "mizan") fix.price = { amount: want.price!, currency: "" };
-        else want.price = v.price.amount;
+        else accepted.push({ variant: v.externalId, price: v.price.amount });
       }
       if (capDiff) {
         if (this.opts.ownership.compareAtPrice === "mizan") fix.compareAtPrice = want.compareAtPrice ? { amount: want.compareAtPrice, currency: "" } : null;
-        else want.compareAtPrice = capHave;
+        else accepted.push({ variant: v.externalId, compareAtPrice: capHave });
       }
-      if (fix.price || fix.compareAtPrice !== undefined) restore.push(fix);
+      if (fix.price || fix.compareAtPrice !== undefined) {
+        // Both prices: WooCommerce sets a sale from the pair (P2).
+        fix.price ??= { amount: want.price ?? v.price.amount, currency: "" };
+        if (fix.compareAtPrice === undefined) fix.compareAtPrice = want.compareAtPrice !== undefined ? (want.compareAtPrice ? { amount: want.compareAtPrice, currency: "" } : null) : (capHave ? { amount: capHave, currency: "" } : null);
+        restore.push(fix);
+      }
       this.emit("product.conflict", { productId, variantId: v.externalId, shopifyPrice: v.price.amount, mizanPrice: want.price, action: fix.price || fix.compareAtPrice !== undefined ? "restore_mizan_value" : "accepted_shopify_value" });
     }
 
-    await this.store.put<ProductState>("product-state", productId, { ...state, snapshot: { ...product, raw: undefined } }, this.now());
+    const latest = (await this.store.get<ProductState>("product-state", productId)) ?? state;
+    for (const a of accepted) {
+      const cur = (latest.desired.variants[a.variant] ??= {});
+      if (a.price !== undefined) cur.price = a.price;
+      if (a.compareAtPrice !== undefined) cur.compareAtPrice = a.compareAtPrice;
+    }
+    await this.store.put<ProductState>("product-state", productId, { ...latest, snapshot: { ...product, raw: undefined } }, this.now());
     await this.runHook(() => this.opts.hooks?.onProduct?.({ ...product, raw: undefined }));
     this.emit("product.ingested", { productId, title: product.title, status: product.status });
-    if (restore.length && this.shopifyConn) {
-      await this.enqueue("shopify.pushProduct", { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
+    // Mizan's prices go back to the store the product came from (Shopify or WooCommerce).
+    const provider = product.connector === "woocommerce" ? "woocommerce" : "shopify";
+    if (restore.length && (provider === "woocommerce" ? this.woo : this.shopifyConn)) {
+      await this.enqueue(`${provider}.pushProduct`, { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
     }
   }
 

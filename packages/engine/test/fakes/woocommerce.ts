@@ -60,6 +60,11 @@ export class FakeWooCommerce {
   orders = new Map<number, WooOrder>();
   products = new Map<number, WooProduct>();
   variationsOf = new Map<number, WooVariation[]>();
+  /** P2: product and variation updates received. */
+  productWrites = 0;
+  /** P2: the store's product tags (id → name); "abaya" is every new product's. */
+  readonly tagNames = new Map<number, string>([[1, "abaya"]]);
+  tagCreates = 0;
   webhooks = new Map<number, { id: number; topic: string; delivery_url: string; status: string; secret: string }>();
   calls: Array<{ method: string; path: string }> = [];
   faults: Array<{ path?: string; fault: Fault }> = [];
@@ -271,6 +276,22 @@ export class FakeWooCommerce {
       const page = Number(url.searchParams.get("page") ?? 1);
       return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
     }
+    if (path === "/products/tags") {
+      if (method === "GET") {
+        const q = (url.searchParams.get("search") ?? "").toLowerCase();
+        return json(200, [...this.tagNames].filter(([, n]) => n.toLowerCase().includes(q)).map(([id, name]) => ({ id, name, slug: name })));
+      }
+      if (method === "POST") {
+        const name = String(body.name ?? "").trim();
+        if ([...this.tagNames.values()].some((n) => n.toLowerCase() === name.toLowerCase())) {
+          return json(400, { code: "term_exists", message: "A term with the name provided already exists.", data: { status: 400 } });
+        }
+        const id = ++this.seq;
+        this.tagNames.set(id, name);
+        this.tagCreates++;
+        return json(201, { id, name, slug: name });
+      }
+    }
     if (method === "GET" && (m = path.match(/^\/products\/(\d+)$/))) {
       const p = this.products.get(Number(m[1]));
       // Like WooCommerce, a variation is readable here too, with its parent.
@@ -359,7 +380,27 @@ export class FakeWooCommerce {
       const target = (v ?? p) as { manage_stock: boolean | "parent"; stock_quantity: number | null };
       if (body.manage_stock !== undefined) target.manage_stock = body.manage_stock;
       if (body.stock_quantity !== undefined) target.stock_quantity = body.stock_quantity;
-      this.stockWrites++;
+      if (body.manage_stock !== undefined || body.stock_quantity !== undefined) this.stockWrites++;
+      // P2: the product's own fields and prices, like WooCommerce (sale price empty = no sale).
+      const priced = (v ?? p) as { price: string; regular_price: string; sale_price: string };
+      if (body.regular_price !== undefined) priced.regular_price = String(body.regular_price);
+      if (body.sale_price !== undefined) priced.sale_price = String(body.sale_price);
+      if (body.regular_price !== undefined || body.sale_price !== undefined) priced.price = priced.sale_price || priced.regular_price;
+      if (!v) {
+        if (body.name !== undefined) p.name = String(body.name);
+        if (body.description !== undefined) p.description = String(body.description);
+        if (body.status !== undefined) p.status = String(body.status);
+        // Like WooCommerce: tags by id; a name alone is dropped.
+        if (body.tags !== undefined) p.tags = (body.tags as Array<{ id?: number; name?: string }>).filter((t) => t.id && this.tagNames.has(Number(t.id))).map((t) => ({ id: Number(t.id), name: this.tagNames.get(Number(t.id))! }));
+        if (body.images !== undefined) {
+          // Only the pictures sent stay, in that order; an unknown id is refused.
+          const byId = new Map(p.images.map((x) => [x.id, x]));
+          const next = (body.images as Array<{ id: number }>).map((x) => byId.get(Number(x.id)));
+          if (next.some((x) => !x)) return json(400, { code: "woocommerce_product_invalid_image_id", message: "Invalid image ID.", data: { status: 400 } });
+          p.images = next as typeof p.images;
+        }
+      }
+      this.productWrites++;
       p.date_modified = p.date_modified_gmt = this.stamp();
       return json(200, v ?? p);
     }

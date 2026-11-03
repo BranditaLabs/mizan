@@ -188,6 +188,14 @@ export interface ProductPatch {
   descriptionHtml?: string;
   status?: CanonicalProduct["status"];
   tags?: string[];
+  /** P2 (Shopify only: WooCommerce has no such fields). */
+  vendor?: string;
+  productType?: string;
+  /**
+   * P2: every picture's store id, in the new order; the first is the main picture. All of them:
+   * WooCommerce keeps only the pictures listed.
+   */
+  mediaOrder?: string[];
   variants?: Array<{
     externalId: string;
     price?: Money;
