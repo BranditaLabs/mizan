@@ -12,6 +12,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
+import { Pending } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -103,7 +104,7 @@ export function ShipmentsScreen() {
         </div>
       </header>
       <Tabs label={t("tabsLabel")} value={view} onChange={setView} items={VIEWS.map((v) => ({ value: v, label: t(`view.${v}`), ...(v === "ready" ? (ready.data ? { count: ready.data.pages[0]!.readyToShip } : {}) : first ? { count: first.counts[v] } : {}) }))}>
-        {view === "ready" ? <ReadyToShip q={q} now={now} /> : list.isPending ? <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div> : (
+        {view === "ready" ? <ReadyToShip q={q} now={now} /> : !list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={5} label={t("loading")} /></Pending></div> : (
           <div className="flex flex-col gap-3">
             <DataTable label={t("title")} columns={columns} rows={rows} rowKey={(r) => r.id} rowLabel={(r) => r.order.number}
               empty={q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} /> : <EmptyState icon="shipping" title={t(`empty.${shipmentView}.title`)} body={t(`empty.${shipmentView}.body`)} />} />
@@ -168,7 +169,7 @@ function HistoryDialog({ row, onClose }: { row: Row; onClose(): void }) {
   });
   return (
     <Dialog open onClose={onClose} title={t("title", { number: row.order.number })} footer={<Button variant="ghost" onClick={onClose}>{t("close")}</Button>}>
-      {q.isPending ? <SkeletonRows rows={4} label={t("loading")} /> : null}
+      {!q.data ? <Pending query={q} compact><SkeletonRows rows={4} label={t("loading")} /></Pending> : null}
       {q.data && q.data.data.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : null}
       <ol className="flex flex-col divide-y divide-line text-body-sm" data-testid="shipment-history">
         {(q.data?.data ?? []).map((e, i) => (

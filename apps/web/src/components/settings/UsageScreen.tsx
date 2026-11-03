@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/Values";
 import { useToast } from "@/components/ui/Toast";
 import { DataTable, type Column } from "@/components/ui/DataTable";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -86,7 +87,7 @@ export function UsageScreen() {
     { id: "ai", header: t("columns.ai"), numeric: true, cell: (r) => <bdi className="mz-num">{r.aiOffers}</bdi> },
   ];
   const body = !allowed ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-    : !u ? <div className="mz-card"><SkeletonRows rows={4} label={t("loading")} /></div>
+    : !u ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={4} label={t("loading")} /></Pending></div>
     : (
       <>
         <section className="mz-card flex flex-col gap-4 p-5" data-testid="usage">

@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Field, Select } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { Card, EmptyState } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
@@ -157,7 +158,9 @@ export function NewOrder() {
 
           <Card title={t("items.title")}>
             <div className="flex flex-col gap-4">
-              <Combobox label={t("items.pick")} options={options} value={pick} onChange={addProduct} emptyText={t("items.noProducts")} placeholder={t("items.pickPlaceholder")} />
+              {/* The catalogue could not be loaded: say so, not "no products" (a one-off item still works). */}
+              {products.isError && !products.data ? <ErrorState compact className="rounded-md border border-line" error={products.error} onRetry={() => void products.refetch()} retrying={products.isRefetching} />
+                : <Combobox label={t("items.pick")} options={options} value={pick} onChange={addProduct} emptyText={t("items.noProducts")} placeholder={t("items.pickPlaceholder")} />}
               {lines.length ? (
                 <ul className="flex flex-col divide-y divide-line" data-testid="order-lines">
                   {lines.map((l) => (

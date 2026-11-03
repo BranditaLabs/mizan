@@ -190,3 +190,20 @@ test("order detail: the team's call panel with the script, the WhatsApp conversa
   await expect(card).toContainText("واتساب مش متوصّل لسه");
   await expect(page.getByRole("main")).toContainText("اتحوّل لموظف");
 });
+
+test("U2: a list that fails to load says so and offers to try again, never 'no orders yet'", async ({ page }) => {
+  const owner = await ownerWithStore("Nile Errors");
+  let fail = true;
+  await page.route("**/v1/orders?**", (route) => fail
+    ? route.fulfill({ status: 500, contentType: "application/problem+json", json: { type: "about:blank", title: "Internal error", status: 500, code: "internal" } })
+    : route.fallback());
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await page.goto("/en/orders");
+  const error = page.getByTestId("error-state");
+  await expect(error).toContainText("Couldn't load this");
+  await expect(page.getByRole("main")).not.toContainText("No orders yet");
+  fail = false;
+  await error.getByRole("button", { name: "Try again" }).click();
+  await expect(error).toHaveCount(0);
+});

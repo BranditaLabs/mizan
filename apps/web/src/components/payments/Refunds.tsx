@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { IdCell } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -147,7 +148,7 @@ function RequestRefund({ orderId, onClose }: { orderId: string; onClose(): void 
         <Button busy={save.isPending} disabled={!o || nothing || !value.trim() || !dest} onClick={() => save.mutate()}>{t("request")}</Button>
       </>
     )}>
-      {!o ? <p className="text-body-sm text-text-3">{t("loading")}</p> : (
+      {!o ? <Pending query={opts} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending> : (
         <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (!nothing && value.trim() && dest) save.mutate(); }}>
           {nothing ? <Alert tone="info">{t("nothingToRefund")}</Alert> : null}
           <Field label={t("amount", { currency: o.refundable.currency })} inputMode="decimal" ltr value={value} onChange={(e) => setAmount(e.target.value)}
@@ -180,6 +181,7 @@ export function RefundsCard({ orderId }: { orderId: string }) {
   return (
     <Card title={t("title")} actions={<Button size="sm" variant="secondary" icon="add" onClick={() => setOpen(true)}>{t("request")}</Button>}>
       <div data-testid="order-refunds">
+        {q.isError && !q.data ? <ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /> : null}
         {q.data && q.data.data.length === 0 ? <p className="text-body-sm text-text-2">{t("none")}</p> : null}
         <ul className="flex flex-col divide-y divide-line">{(q.data?.data ?? []).map((r) => <RefundRow key={r.id} refund={r} />)}</ul>
       </div>
@@ -199,6 +201,9 @@ export function RefundQueue() {
     meta: { toast: false },
   });
   const rows = q.data?.data ?? [];
+  if (q.isError && !q.data) {
+    return <Card title={t("title")}><ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /></Card>;
+  }
   if (!rows.length) return null;
   return (
     <Card title={t("queueTitle", { count: rows.length })}>

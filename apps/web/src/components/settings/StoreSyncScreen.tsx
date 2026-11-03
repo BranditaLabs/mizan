@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Bdi } from "@/components/Bdi";
 import { Switch } from "@/components/ui/Choice";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
@@ -29,7 +30,7 @@ function StoreSyncCard({ id, shop }: { id: string; shop: string }) {
   return (
     <section className="mz-card p-5" data-testid="store-sync">
       <h2 className="text-heading-sm"><Bdi code>{shop}</Bdi></h2>
-      {!q.data ? <SkeletonRows rows={2} label={t("loading")} /> : (
+      {!q.data ? <Pending query={q} compact><SkeletonRows rows={2} label={t("loading")} /></Pending> : (
         <div className="mt-3 flex flex-col gap-4">
           {SWITCHES.map((k) => (
             <Switch key={k} label={t(`${k}.label`)} description={t(`${k}.hint`)} checked={q.data[k]} disabled={save.isPending}
@@ -60,7 +61,7 @@ export function StoreSyncScreen() {
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
       </header>
       {!EDITORS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-        : !list.data ? <div className="mz-card"><SkeletonRows rows={2} label={t("loading")} /></div>
+        : !list.data ? <div className="mz-card"><Pending query={list}><SkeletonRows rows={2} label={t("loading")} /></Pending></div>
         : !stores.length ? <div className="mz-card"><EmptyState icon="cart" title={t("none.title")} body={t("none.body")} /></div>
         : stores.map((c) => <StoreSyncCard key={c.id} id={c.id} shop={c.account ?? c.id} />)}
     </div>

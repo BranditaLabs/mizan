@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { Pending } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -42,7 +43,7 @@ export function ConversionSettingsScreen() {
   });
   const editor = EDITORS.has(role);
   const body = !READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-    : !q.data ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div>
+    : !q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={3} label={t("loading")} /></Pending></div>
     : (
       <form className="mz-card flex max-w-[640px] flex-col gap-3 p-5" onSubmit={(e) => { e.preventDefault(); if (editor && numbersOk) save.mutate(); }}>
         <h2 className="text-heading-sm">{t("methodsTitle")}</h2>

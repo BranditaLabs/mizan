@@ -9,6 +9,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
@@ -49,7 +50,7 @@ export function EngineHealth() {
     <section className="mz-card p-5" data-testid="engine-health">
       <h2 className="text-heading-sm">{t("title")}</h2>
       <p className="text-body-sm text-text-2">{t("subtitle")}</p>
-      {q.isPending ? <SkeletonRows rows={2} label={t("loading")} /> : !h ? null : !h.connected ? (
+      {!h ? <Pending query={q} compact><SkeletonRows rows={2} label={t("loading")} /></Pending> : !h.connected ? (
         <p className="mt-2 text-body-sm text-text-2">{t("notConnected")}</p>
       ) : (
         <div className="mt-3 grid gap-4 md:grid-cols-2">

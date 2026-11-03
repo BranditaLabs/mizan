@@ -14,6 +14,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -29,7 +30,7 @@ const PICKERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
  */
 export function PickLists() {
   const t = useTranslations("pickLists");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const router = useRouter();
@@ -76,7 +77,7 @@ export function PickLists() {
       {create.isError ? (nothing ? <Alert tone="info">{t("nothing")}</Alert> : <Alert tone="danger">{problemText(create.error, tpr)}</Alert>) : null}
       <Tabs label={t("tabsLabel")} value={status} onChange={setStatus} items={(["open", "closed"] as const).map((s) => ({ value: s, label: t(`status.${s}`) }))}>
         {list.isPending ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div>
-          : list.isError ? <Alert tone="danger">{problemText(list.error, tpr)}</Alert>
+          : list.isError ? <div className="mz-card"><ErrorState error={list.error} onRetry={() => void list.refetch()} retrying={list.isRefetching} /></div>
           : <DataTable label={t("title")} columns={columns} rows={list.data.data} rowKey={(r) => r.id} rowLabel={(r) => t("number", { n: r.number })}
               empty={<EmptyState icon="warehouse" title={t(`empty.${status}.title`)} body={t(`empty.${status}.body`)} />} />}
       </Tabs>
@@ -87,7 +88,6 @@ export function PickLists() {
 /** One pick list: what to take from each shelf, then each order's lines to pack. Prints on paper colours. */
 export function PickListDetail({ id }: { id: string }) {
   const t = useTranslations("pickLists");
-  const tpr = useTranslations("problem");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -108,7 +108,7 @@ export function PickListDetail({ id }: { id: string }) {
   );
   if (!allowed) return frame(<div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>);
   const p = q.data;
-  if (!p) return frame(q.isError ? <Alert tone="danger">{problemText(q.error, tpr)}</Alert> : <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>);
+  if (!p) return frame(<div className="mz-card"><Pending query={q}><SkeletonRows rows={5} label={t("loading")} /></Pending></div>);
   const packed = p.orders.filter((o) => o.packedAt).length;
   return frame(
     <div data-theme="light" className="flex flex-col gap-4 rounded-lg bg-bg p-5 text-text print:rounded-none print:p-0">

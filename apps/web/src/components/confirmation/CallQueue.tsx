@@ -7,6 +7,7 @@ import { ConfirmationCard } from "@/components/orders/ConfirmationCard";
 import { CustomerCard } from "@/components/orders/OrderDetail";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
@@ -69,14 +70,15 @@ export function CallQueue() {
         <StatCard label={t("later")} value={q?.later ?? "…"} period={q?.nextAt ? t("nextAt", { at: formatWhen(q.nextAt, locale, "latn", timeZone) }) : undefined} />
         <StatCard label={t("unreachable")} value={q?.unreachable ?? "…"} />
       </div>
+      {queue.isError && !q ? <div className="mz-card"><ErrorState compact error={queue.error} onRetry={() => void queue.refetch()} retrying={queue.isRefetching} /></div> : null}
 
       {!current ? (
         <div className="mz-card">
           <EmptyState icon="call" title={emptyAfterNext ? t("empty.title") : t("ready.title")} body={emptyAfterNext ? t("empty.body") : t("ready.body")} />
         </div>
-      ) : order.isPending ? (
-        <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>
-      ) : o ? (
+      ) : !o ? (
+        <div className="mz-card"><Pending query={order} compact><SkeletonRows rows={5} label={t("loading")} /></Pending></div>
+      ) : (
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr]" data-testid="call-order">
           <div className="flex flex-col gap-5">
             <Card title={<span className="flex flex-wrap items-center gap-2"><Link href={`/orders/${o.id}`} className="hover:underline"><Bdi code>{o.number}</Bdi></Link>
@@ -95,7 +97,7 @@ export function CallQueue() {
           </div>
           <ConfirmationCard orderId={o.id} orderStatus={o.status} />
         </div>
-      ) : null}
+      )}
     </>,
   );
 }

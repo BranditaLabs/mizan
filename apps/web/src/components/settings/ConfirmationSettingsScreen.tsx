@@ -10,6 +10,7 @@ import { Button, ButtonGroup, IconButton } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Choice";
 import { Field, Select } from "@/components/ui/Field";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { ErrorState } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -197,11 +198,16 @@ function WhatsAppConnect() {
   const wa = list.data?.data.find((c) => c.kind === "whatsapp") ?? null;
   const reason = wa?.reason && (WA_REASONS as readonly string[]).includes(wa.reason) ? (wa.reason as (typeof WA_REASONS)[number]) : null;
   const tone = wa?.status === "active" ? "success" : wa?.status === "needs_attention" ? "danger" : wa?.status === "pending" ? "info" : "neutral";
-  const showForm = canConnect && (!wa || editing);
+  /** A failed load is not "no number connected": no connect form until we know. */
+  const failed = list.isError && !list.data;
+  const showForm = canConnect && (!wa || editing) && !failed;
   return (
     <Card title={t("title")} actions={wa ? <Badge tone={tone}>{t(`status.${wa.status}`)}</Badge> : null}>
       <div className="flex flex-col gap-3" data-testid="whatsapp-connect">
         <p className="text-body-sm text-text-2">{t("body")}</p>
+        {list.isError && !list.data ? (
+          <ErrorState compact error={list.error} onRetry={() => void list.refetch()} retrying={list.isRefetching} />
+        ) : null}
         {wa ? (
           <p className="text-body-sm">{t.rich("number", { id: wa.account ?? "", n: (c) => <bdi dir="ltr" className="mz-num">{c}</bdi> })}</p>
         ) : null}
@@ -227,7 +233,7 @@ function WhatsAppConnect() {
             {wa.status !== "pending" ? <Button size="sm" variant="secondary" icon="refresh" busy={check.isPending} onClick={() => check.mutate()}>{t("check")}</Button> : null}
             {canConnect ? <Button size="sm" variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t("change")}</Button> : null}
           </ButtonGroup>
-        ) : <p className="text-body-sm text-text-3">{t("ownerOnly")}</p>}
+        ) : failed ? null : <p className="text-body-sm text-text-3">{t("ownerOnly")}</p>}
       </div>
     </Card>
   );

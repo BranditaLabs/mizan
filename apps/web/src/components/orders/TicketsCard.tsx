@@ -8,6 +8,7 @@ import { CREATE_ROLES, STATUS_TONE } from "@/components/tickets/ticket-ui";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { IdCell } from "@/components/ui/DataTable";
+import { ErrorState } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
@@ -29,6 +30,7 @@ export function TicketsCard({ order }: { order: { id: string; number: string } }
   return (
     <Card title={t("title")} actions={canCreate ? <Button size="sm" variant="secondary" icon="add" onClick={() => setOpen(true)}>{t("openOne")}</Button> : null}>
       <div data-testid="order-tickets">
+        {q.isError && !q.data ? <ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /> : null}
         {q.data && q.data.data.length === 0 ? <p className="text-body-sm text-text-2">{t("noneForOrder")}</p> : null}
         <ul className="flex flex-col divide-y divide-line">
           {(q.data?.data ?? []).map((tk) => (

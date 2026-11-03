@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
@@ -74,7 +75,7 @@ export function Automations() {
     <>
       <section className="flex flex-col gap-3" aria-labelledby="mine-title">
         <h2 id="mine-title" className="text-heading-sm">{t("mine")}</h2>
-        {list.isPending ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div> : null}
+        {!list.data ? <div className="mz-card"><Pending query={list} compact><SkeletonRows rows={3} label={t("loading")} /></Pending></div> : null}
         {list.data && mine.length === 0 ? <div className="mz-card"><EmptyState icon="automations" title={t("empty.title")} body={t("empty.body")} /></div> : null}
         <ul className="flex flex-col gap-3" data-testid="my-automations">
           {mine.map((a) => (
@@ -100,7 +101,7 @@ export function Automations() {
       <section className="flex flex-col gap-3" aria-labelledby="recipes-title">
         <h2 id="recipes-title" className="text-heading-sm">{t("recipes")}</h2>
         <p className="text-body-sm text-text-2">{t("recipesHint")}</p>
-        {recipes.isPending ? <div className="mz-card"><SkeletonRows rows={3} label={t("loading")} /></div> : null}
+        {!recipes.data ? <div className="mz-card"><Pending query={recipes} compact><SkeletonRows rows={3} label={t("loading")} /></Pending></div> : null}
         <ul className="grid gap-3 md:grid-cols-2" data-testid="recipes">
           {(recipes.data?.data ?? []).map((r: Recipe) => (
             <li key={r.key} className="mz-card flex flex-col gap-2 p-4">
@@ -138,7 +139,7 @@ function RunLog({ automation, onClose }: { automation: Automation; onClose(): vo
   const reason = (r: string | null) => (r === "conditions" || r === "loop_guard" || r === "invalid_conditions" ? t(`reason.${r}`) : r);
   return (
     <Dialog open onClose={onClose} title={t("title", { name: automation.name })} footer={<Button variant="ghost" onClick={onClose}>{t("close")}</Button>}>
-      {q.isPending ? <SkeletonRows rows={4} label={t("loading")} /> : null}
+      {!q.data ? <Pending query={q} compact><SkeletonRows rows={4} label={t("loading")} /></Pending> : null}
       {q.data && q.data.runs.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : null}
       <ul className="flex flex-col divide-y divide-line text-body-sm" data-testid="run-log">
         {(q.data?.runs ?? []).map((r) => (

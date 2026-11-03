@@ -517,7 +517,25 @@
   "problems": {
     "network": "No connection to the server. Check the internet and try again.",
     "generic": "Something went wrong and we couldn't finish. Try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "load": {
+      "network": {
+        "title": "No connection",
+        "body": "We couldn't reach Mizan. Check the internet and try again."
+      },
+      "forbidden": {
+        "title": "Not available for your role",
+        "body": "Ask the store's owner or an admin if you need this."
+      },
+      "notFound": {
+        "title": "Not found",
+        "body": "It may have been deleted, or it belongs to another store."
+      },
+      "server": {
+        "title": "Couldn't load this",
+        "body": "Something went wrong on our side. Try again in a moment."
+      }
+    }
   },
   "outage": {
     "title": "Mizan is taking a short break",

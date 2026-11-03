@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/Combobox";
 import { Field, Select } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
@@ -110,6 +111,7 @@ export function OffersSettingsScreen() {
 /** The owner's rules: when the order has [a product or anything] → offer [a product] at X% off. */
 function Rules() {
   const t = useTranslations("offersSettings.rules");
+  const to = useTranslations("offersSettings");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -136,7 +138,9 @@ function Rules() {
     <Card title={t("title")}>
       <div className="flex flex-col gap-4">
         <p className="text-body-sm text-text-2">{t("body")}</p>
-        {rules.data?.data.length ? (
+        {!rules.data ? (
+          <Pending query={rules} compact><SkeletonRows rows={2} label={to("loading")} /></Pending>
+        ) : rules.data.data.length ? (
           <ul className="flex flex-col divide-y divide-line" data-testid="offer-rules">
             {rules.data.data.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
@@ -154,6 +158,9 @@ function Rules() {
 
         <form className="flex flex-col gap-3 rounded-md border border-line p-3" onSubmit={(e) => { e.preventDefault(); if (canAdd) add.mutate(); }}>
           <h3 className="font-medium">{t("new")}</h3>
+          {products.isError && !products.data ? (
+            <ErrorState compact error={products.error} onRetry={() => void products.refetch()} retrying={products.isRefetching} />
+          ) : null}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Combobox label={t("when")} options={[{ value: ANY, label: t("anyOrder") }, ...options]} value={form.trigger} onChange={(v) => setForm({ ...form, trigger: v })} emptyText={t("noProducts")} />
             <Combobox label={t("offer")} options={options} value={form.offer || null} onChange={(v) => setForm({ ...form, offer: v })} emptyText={t("noProducts")} placeholder={t("offerPlaceholder")} />

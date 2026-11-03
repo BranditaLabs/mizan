@@ -8,6 +8,7 @@ import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { EmptyState } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
@@ -290,7 +291,8 @@ export function CostsStep({ o }: { o: Onboarding }) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
       <p className="text-body-sm text-text-2">{t("count", { missing: c.missingCost, total: c.variants })}</p>
-      <ul className="flex flex-col divide-y divide-line rounded-md border border-line">
+      {list.isError && !list.data ? <ErrorState compact className="rounded-md border border-line" error={list.error} onRetry={() => void list.refetch()} retrying={list.isRefetching} /> : null}
+      <ul className="flex flex-col divide-y divide-line rounded-md border border-line empty:hidden">
         {rows.map((v) => (
           <li key={v.variantId} className="flex flex-wrap items-center gap-3 px-3 py-2.5">
             <div className="min-w-0 flex-1">

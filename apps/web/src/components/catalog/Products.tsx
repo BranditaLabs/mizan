@@ -16,6 +16,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
+import { Pending } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { downloadText, toCsv } from "@/lib/csv";
@@ -155,8 +156,8 @@ export function Products() {
         items={FILTERS.map((f) => ({ value: f, label: t(`filter.${f}`), ...(counts && f !== "all" ? { count: f === "cost" ? counts.missingCost : counts.missingBarcode } : {}) }))}>
         <div className="flex flex-col gap-3">
           <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-80" />
-          {products.isPending ? <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div> : null}
-          {products.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
+          {!products.data ? <div className="mz-card"><Pending query={products}><SkeletonRows rows={6} label={t("loading")} /></Pending></div> : null}
+          {products.isError && products.data ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
           {products.data ? <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(r) => r.variant.id} rowLabel={(r) => r.variant.sku} empty={empty} /> : null}
           {products.hasNextPage ? (
             <div className="flex justify-center">

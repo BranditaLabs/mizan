@@ -9,6 +9,7 @@ import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable"
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { DateText, MoneyText } from "@/components/ui/Values";
+import { Pending } from "@/components/ui/QueryState";
 import { BulkProgress } from "@/components/orders/BulkActions";
 import { MODE_ICON, maskedLast4 } from "@/components/orders/order-ui";
 import { Link } from "@/i18n/navigation";
@@ -58,7 +59,7 @@ export function ReadyToShip({ q, now }: { q: string; now: number }) {
     { id: "payment", header: to("columns.payment"), cell: (o) => <Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag> },
     { id: "cod", header: t("cod"), numeric: true, cell: (o) => <MoneyText money={o.cod} /> },
   ];
-  if (list.isPending) return <div className="mz-card"><SkeletonRows rows={5} label={t("loading")} /></div>;
+  if (!list.data) return <div className="mz-card"><Pending query={list}><SkeletonRows rows={5} label={t("loading")} /></Pending></div>;
   return (
     <div className="flex flex-col gap-3" data-testid="ready-to-ship">
       {bulkId ? <BulkProgress id={bulkId} onClose={() => setBulkId(null)} /> : null}

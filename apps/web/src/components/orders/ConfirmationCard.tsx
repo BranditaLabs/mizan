@@ -9,6 +9,7 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button, ButtonGroup } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -85,7 +86,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   return (
     <Card title={t("title")} actions={run ? <Badge tone={TONE[run.status]}>{t(`status.${run.status}`)}</Badge> : null}>
       <div className="flex flex-col gap-4" data-testid="confirmation-card">
-        {!s ? <p className="text-body-sm text-text-3">{t("loading")}</p> : !run ? (
+        {!s ? <Pending query={summary} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending> : !run ? (
           <p className="text-body-sm text-text-2">{t("none")}</p>
         ) : (
           <>

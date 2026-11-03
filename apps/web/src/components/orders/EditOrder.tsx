@@ -10,6 +10,7 @@ import { Button, IconButton } from "@/components/ui/Button";
 import { Combobox } from "@/components/ui/Combobox";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
+import { ErrorState } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
@@ -151,7 +152,9 @@ function EditOrderDialog({ order: o, onClose }: { order: Order; onClose(): void 
               <IconButton icon="close" label={t("remove", { item: a.title })} onClick={() => setAdded((xs) => xs.filter((_, j) => j !== i))} />
             </div>
           ))}
-          <Combobox label={t("add")} options={options} value={null} onChange={add} emptyText={t("noProducts")} placeholder={t("addPlaceholder")} />
+          {/* The catalogue could not be loaded: say so, not "no products". */}
+          {products.isError && !products.data ? <ErrorState compact className="rounded-md border border-line" error={products.error} onRetry={() => void products.refetch()} retrying={products.isRefetching} />
+            : <Combobox label={t("add")} options={options} value={null} onChange={add} emptyText={t("noProducts")} placeholder={t("addPlaceholder")} />}
           {shopify ? <p className="text-caption text-text-3">{t("shopifyPrices")}</p> : null}
         </section>
 

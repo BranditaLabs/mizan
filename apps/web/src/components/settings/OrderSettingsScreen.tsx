@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { Pending } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -38,7 +39,7 @@ export function OrderSettingsScreen() {
     onSuccess: () => { toast({ message: t("saved") }); setValue(null); void qc.invalidateQueries({ queryKey: ["orderSettings"] }); },
   });
   const body = !allowed ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
-    : !q.data ? <div className="mz-card"><SkeletonRows rows={2} label={t("loading")} /></div>
+    : !q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={2} label={t("loading")} /></Pending></div>
     : (
       <form className="mz-card flex max-w-[560px] flex-col gap-3 p-5" data-testid="order-settings-form" onSubmit={(e) => { e.preventDefault(); if (valid) save.mutate(); }}>
         <Field label={t("window")} hint={t("windowHint")} inputMode="numeric" ltr value={current}

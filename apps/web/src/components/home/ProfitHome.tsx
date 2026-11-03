@@ -4,10 +4,10 @@ import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Alert } from "@/components/ui/Alert";
 import { buttonClass } from "@/components/ui/Button";
 import { SegThumb } from "@/components/ui/Choice";
 import { ScaleLoader } from "@/components/ui/Loader";
+import { Pending } from "@/components/ui/QueryState";
 import { MoneyText } from "@/components/ui/Values";
 import { GlassRoot } from "@/components/GlassRoot";
 import { StoreName } from "@/components/StoreName";
@@ -62,8 +62,9 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
     refetchIntervalInBackground: false,
   });
   if (!store || !canRead) return <>{fallback}</>;
-  if (q.isPending) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><ScaleLoader label={t("loading")} /></div>;
-  if (q.isError) return <><Alert tone="danger">{t("loadFailed")}</Alert>{fallback}</>;
+  // A failed first load says so (with "try again") instead of the new store's welcome; a failed
+  // background refresh keeps the figures on screen (the toast says so).
+  if (!q.data) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><Pending query={q}><ScaleLoader label={t("loading")} /></Pending></div>;
   const h = q.data;
   // Nothing yet (a new store): the welcome and setup instead of a page of zeros.
   if (h.period.orders === 0 && minor(h.period.previousKept) === 0 && minor(h.period.adSpend) === 0 && minor(h.period.fixedCosts) === 0) return <>{fallback}</>;

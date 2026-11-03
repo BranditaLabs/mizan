@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select } from "@/components/ui/Field";
+import { ErrorState, Pending } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -71,6 +72,7 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
 
       <Dialog open={open === "assign"} onClose={() => setOpen(null)} title={t("assignTitle", { count: orderIds.length })}
         footer={footer(() => start.mutate({ action: "assign", orderIds, userId: assignee === "none" ? null : assignee }), t("assignGo"), !assignee)}>
+        {team.isError && !team.data ? <ErrorState compact error={team.error} onRetry={() => void team.refetch()} retrying={team.isRefetching} /> : null}
         <Select label={t("assignTo")} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
           <option value="" disabled>{t("choose")}</option>
           <option value="none">{t("unassign")}</option>
@@ -111,10 +113,19 @@ export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
       }
       return b;
     },
-    refetchInterval: (query) => (query.state.data?.status === "done" ? false : 1000),
+    // Stop polling once done, or once the first look failed (a dead job would be asked for every second).
+    refetchInterval: (query) => (query.state.data?.status === "done" || (query.state.status === "error" && query.state.data === undefined) ? false : 1000),
   });
   const b: Bulk | undefined = q.data;
-  if (!b) return null;
+  // A first look that failed says so (with "try again"); before the first answer, nothing.
+  if (!b) {
+    return q.isError ? (
+      <section className="mz-card flex flex-wrap items-center gap-2 pe-3" data-testid="bulk-progress">
+        <div className="min-w-0 flex-1"><Pending query={q} compact>{null}</Pending></div>
+        <Button size="sm" variant="ghost" onClick={onClose}>{t("close")}</Button>
+      </section>
+    ) : null;
+  }
   const finished = b.done + b.skipped + b.failed;
   const pct = Math.round((finished / b.total) * 100);
   return (

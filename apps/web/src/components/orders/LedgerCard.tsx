@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
+import { Pending } from "@/components/ui/QueryState";
 import { Card, KeyValue } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -34,7 +35,6 @@ const isZero = (m: { amount: string }) => Number(m.amount) === 0;
 export function LedgerCard({ orderId, fallback }: { orderId: string; fallback: React.ReactNode }) {
   const t = useTranslations("orders.ledger");
   const td = useTranslations("orders.detail");
-  const tpr = useTranslations("problem");
   const { api, user, store } = useSession();
   const allowed = READERS.has(store?.role ?? "");
   const [open, setOpen] = useState(false);
@@ -58,7 +58,7 @@ export function LedgerCard({ orderId, fallback }: { orderId: string; fallback: R
   return (
     <Card title={t("title")} actions={l?.canRecord ? <Button size="sm" variant="secondary" icon="add" onClick={() => setOpen(true)}>{t("record")}</Button> : null}>
       <div className="flex flex-col gap-3" data-testid="ledger">
-        {!l ? <p className="text-body-sm text-text-3">{q.isError ? problemText(q.error, tpr) : t("loading")}</p> : (
+        {!l ? <Pending query={q} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending> : (
           <>
             {l.lines.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : (
               <ul className="flex flex-col divide-y divide-line">
