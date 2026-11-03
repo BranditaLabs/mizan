@@ -34,6 +34,9 @@ export interface OrderSource {
   sourceName?: string;
 }
 
+/** Webhook topics that carry customer data: refused until the app's protected customer data is approved (seen on staging, Nov 2026). */
+const PROTECTED_TOPICS = new Set(["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "ORDERS_PAID", "CUSTOMERS_CREATE", "CUSTOMERS_UPDATE"]);
+
 export class FakeShopify {
   readonly clientId = "fake-client-id";
   readonly secret = "shpss_test_secret";
@@ -52,6 +55,8 @@ export class FakeShopify {
   accessTtlS = 3600;
   refreshes = 0;
   migrations = 0;
+  /** Protected customer data approved for the app (Partner Dashboard). Without it Shopify refuses order and customer webhook topics. */
+  customerDataApproved = true;
   /** Scopes of each non-expiring token, carried over when it is migrated. */
   private readonly migratable = new Map<string, string[]>();
   /** This app's webhook subscriptions on the shop. */
@@ -523,6 +528,9 @@ export class FakeShopify {
       case "MizanWebhookCreate": {
         const uri = String(v.sub?.uri ?? "");
         if (!uri.startsWith("https://")) return { webhookSubscriptionCreate: { webhookSubscription: null, userErrors: [{ field: ["webhookSubscription", "callbackUrl"], message: "Address protocol http:// is not supported" }] } };
+        if (!this.customerDataApproved && PROTECTED_TOPICS.has(String(v.topic))) {
+          return { webhookSubscriptionCreate: { webhookSubscription: null, userErrors: [{ field: ["webhookSubscription"], message: "This app is not approved to subscribe to webhook topics containing protected customer data. See https://shopify.dev/docs/apps/launch/protected-customer-data for more details." }] } };
+        }
         if ([...this.webhooks.values()].some((w) => w.topic === v.topic && w.uri === uri)) {
           return { webhookSubscriptionCreate: { webhookSubscription: null, userErrors: [{ field: ["webhookSubscription", "callbackUrl"], message: "Address for this topic has already been taken" }] } };
         }

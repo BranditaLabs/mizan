@@ -67,10 +67,14 @@ export class StoreImportService {
       const c = await trx.selectFrom("connections").select(["id", "provider", "status"]).where("id", "=", connectionId).where("kind", "=", "store").executeTakeFirst();
       if (!c || (c.provider !== "shopify" && c.provider !== "woocommerce")) throw new ProblemError(404, "not_found", "no store connection with this id");
       if (c.status === "disconnected") throw new ProblemError(409, "store_not_connected", "this store is disconnected: connect it again first");
+      const days = c.provider === "shopify" ? BACKFILL_DAYS : WOO_BACKFILL_DAYS;
+      // One import at a time per store: asking again while one is queued or running is that one (no pile of runs from repeated clicks).
+      const running = await trx.selectFrom("mz_outbox").select("id").where("connection_id", "=", c.id)
+        .where("kind", "in", ["shopify.backfill", "woocommerce.backfill"]).where("status", "in", ["pending", "running"]).executeTakeFirst();
+      if (running) return { connectionId: c.id, days };
       const store = new SqlStore(trxQueryClient(trx), { tenantId, store: c.id, connections: { [c.provider]: c.id } });
       const now = this.runtime(tenantId).clock.now(); // the engine's clock schedules its jobs
       const runKey = randomUUID();
-      const days = c.provider === "shopify" ? BACKFILL_DAYS : WOO_BACKFILL_DAYS;
       if (c.provider === "shopify") await store.enqueue(MizanEngine.shopifyBackfillJob(runKey, now - days * 86_400_000, now), now);
       else await store.enqueue(MizanEngine.wooBackfillJob(runKey, now - days * 86_400_000), now);
       await this.audit.record(trx, { action: "connection.import_started", tenantId, ...auditActor(auth), entity: { type: "connection", id: c.id }, after: { provider: c.provider, days } });

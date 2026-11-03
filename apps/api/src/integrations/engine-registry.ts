@@ -187,6 +187,9 @@ export class EngineRegistry {
         onProduct: async (product) => {
           await this.products.project(tenantId, storeConnection, product);
         },
+        onWebhooksChecked: async (_provider, result) => {
+          if (c.shopify) await this.courierAccess.webhooks(tenantId, c.shopify.connectionId, result);
+        },
         onAccessChecked: async (provider, result) => {
           const id = provider === "woocommerce" ? c.woocommerce?.connectionId : provider === "shopify" ? c.shopify?.connectionId : c.bosta?.connectionId;
           if (id) await this.courierAccess.checked(tenantId, id, provider, result);

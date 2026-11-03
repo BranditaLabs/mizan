@@ -49,7 +49,9 @@ export function IntegrationsScreen() {
     onSuccess: () => { toast({ message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); void qc.invalidateQueries({ queryKey: ["integrationsHealth"] }); },
   });
   const reasonText = (provider: string, reason: string) => {
-    const key = provider === "woocommerce" && t.has(`woo.reasons.${reason}`) ? `woo.reasons.${reason}` : `reasons.${reason}`;
+    // A store platform's own words first (WooCommerce keys, Shopify's app access), then the shared ones.
+    const own = provider === "woocommerce" ? `woo.reasons.${reason}` : provider === "shopify" ? `shopify.reasons.${reason}` : null;
+    const key = own && t.has(own) ? own : `reasons.${reason}`;
     return t.has(key) ? t(key as "reasons.key_refused") : reason;
   };
   const fixHref = (provider: string) => provider === "shopify" ? "/onboarding" : provider === "bosta" ? "/onboarding" : provider === "meta_whatsapp" || provider === "whatsapp" ? "/settings/confirmation" : null;

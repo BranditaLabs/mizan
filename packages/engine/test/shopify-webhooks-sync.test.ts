@@ -28,6 +28,23 @@ describe("Shopify webhook registration", () => {
     expect(events.filter((e) => e.event === "shopify.webhooks_synced").at(-1)!.data).toMatchObject({ created: [], deleted: 0 });
   });
 
+  it("an app without customer data approval: the other topics register, the store is told, approval is picked up hourly", async () => {
+    const { engine, shop, store, clock, events } = setup({ shopify: { shop: "fake-store.myshopify.com", accessToken: "shpat_test", apiVersion: "2026-10", clientSecret: "shpss_test_secret", webhookUrl: URI } });
+    shop.customerDataApproved = false; // seen on staging, Nov 2026: order topics refused, and before this fix app/uninstalled never registered
+    await engine.registerShopifyWebhooks("install-1");
+    await settle(engine, store, clock);
+    expect([...shop.webhooks.values()].map((w) => w.topic).sort()).toEqual(["APP_UNINSTALLED", "PRODUCTS_UPDATE"]);
+    const synced = events.filter((e) => e.event === "shopify.webhooks_synced");
+    expect(synced.at(-1)!.data).toMatchObject({ refused: ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED"] });
+    expect(events.some((e) => e.event === "job.dead")).toBe(false); // not a dead job for a person
+
+    shop.customerDataApproved = true; // the app's protected customer data is approved
+    await clock.advance(3_600_000);
+    await engine.scheduleReconcile();
+    await settle(engine, store, clock);
+    expect(shop.webhooks.size).toBe(SHOPIFY_WEBHOOK_TOPICS.length);
+  });
+
   it("reads subscriptions from the older endpoint shape when `uri` is missing", async () => {
     const { engine, shop, store, clock } = setup({ shopify: { shop: "fake-store.myshopify.com", accessToken: "shpat_test", apiVersion: "2026-10", clientSecret: "shpss_test_secret", webhookUrl: URI } });
     shop.webhooks.set("gid://shopify/WebhookSubscription/9", { topic: "ORDERS_CREATE", uri: URI });

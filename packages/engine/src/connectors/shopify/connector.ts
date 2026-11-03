@@ -35,6 +35,9 @@ export type FulfillmentEventStatus = "CARRIER_PICKED_UP" | "IN_TRANSIT" | "OUT_F
 
 export type CancelReason = "CUSTOMER" | "DECLINED" | "FRAUD" | "INVENTORY" | "OTHER" | "STAFF";
 
+/** Shopify's refusal of a webhook topic for an app without protected customer data approval. */
+const PROTECTED_DATA = /not approved to subscribe to webhook topics containing protected customer data/i;
+
 export class ShopifyConnector {
   readonly id = "shopify";
   readonly gql: ShopifyGraphql;
@@ -352,7 +355,12 @@ export class ShopifyConnector {
    * Safe to repeat: Shopify refuses a second subscription for the same topic and address.
    * Compliance topics (customers/redact …) are app configuration, not subscriptions.
    */
-  async syncWebhooks(uri: string, topics: readonly string[]): Promise<{ created: string[]; deleted: number; kept: number }> {
+  /**
+   * Converge the store's subscriptions on `topics` at `uri`. A topic Shopify refuses because the app's
+   * protected customer data is not approved yet (orders, customers) is skipped and returned in `refused`:
+   * the other topics (app/uninstalled above all) still register, and a later sync adds it once approved.
+   */
+  async syncWebhooks(uri: string, topics: readonly string[]): Promise<{ created: string[]; deleted: number; kept: number; refused: string[] }> {
     const d = await this.gql.run<Record<string, unknown>>(Q.WEBHOOK_SUBSCRIPTIONS, { first: 100 }, { idempotent: true });
     const nodes = (new Resolver(d, { connector: "shopify", entity: "webhook_subscriptions", ...this.ctx() }).any("nodes", ["webhookSubscriptions.nodes"]) ?? []) as unknown[];
     const existing = nodes.map((n) => {
@@ -367,13 +375,18 @@ export class ShopifyConnector {
       deleted++;
     }
     const created: string[] = [];
+    const refused: string[] = [];
     for (const topic of topics.filter((t) => !existing.some((x) => x.topic === t && x.uri === uri))) {
       const res = await this.gql.run<{ webhookSubscriptionCreate: { userErrors: UserErrors } }>(Q.WEBHOOK_CREATE, { topic, sub: { uri, format: "JSON" } }, { idempotent: true });
       const errs = (res.webhookSubscriptionCreate?.userErrors ?? []).filter((x) => !/already been taken|already exists/i.test(x.message));
+      if (errs.length && errs.every((x) => PROTECTED_DATA.test(x.message))) {
+        refused.push(topic);
+        continue;
+      }
       assertNoUserErrors("webhookSubscriptionCreate", errs);
       created.push(topic);
     }
-    return { created, deleted, kept: existing.length - deleted };
+    return { created, deleted, kept: existing.length - deleted, refused };
   }
 
   health() {

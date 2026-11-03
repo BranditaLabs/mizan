@@ -238,5 +238,38 @@ describe("onboarding", () => {
     await http().post("/v1/connections/00000000-0000-4000-8000-000000000000/import").set(as("owner")).expect(404);
     const audit = (await http().get("/v1/audit-log?action=connection.import_started").set(as("owner")).expect(200)).body.data;
     expect(audit).toHaveLength(1);
+
+    // Retrying again and again (seen on staging: 32 runs, 31 notifications): one run at a time, one notice a day.
+    for (let i = 0; i < 3; i++) await http().post(`/v1/connections/${id}/import`).set(as("owner")).expect(202);
+    const queued = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select("id").where("connection_id", "=", id)
+      .where("kind", "=", "shopify.backfill").where("status", "in", ["pending", "running"]).execute());
+    expect(queued).toHaveLength(1);
+    await runJobs(6);
+    await http().post(`/v1/connections/${id}/import`).set(as("owner")).expect(202);
+    await runJobs(6);
+    const failedNotes = (await http().get("/v1/notifications").set(as("owner")).expect(200)).body.data
+      .filter((n: { source: string; entity: { id: string } | null }) => n.source === "connection.sync_failed" && n.entity?.id === id);
+    expect(failedNotes).toHaveLength(1);
+  }, 90_000);
+
+  it("an import that completes after a refusal clears it and re-registers the webhooks, without importing twice", async () => {
+    const id = (await onboarding()).steps.store.connectionId as string;
+    shop.revoked.delete("shpat_fake_token"); // the store accepts Mizan again (seen on staging: a token swapped for an expiring one)
+    expect(shop.webhooks.size).toBe(0); // the refusal left the store without Mizan's webhooks
+    const starts = () => db.tenant(store, async (trx) => (await trx.selectFrom("mz_outbox").select("idempotency_key")
+      .where("kind", "=", "shopify.backfill").execute()).filter((r) => r.idempotency_key.endsWith(":orders:start")).length);
+    const before = await starts();
+    await http().post(`/v1/connections/${id}/import`).set(as("owner")).expect(202);
+    await runJobs(8);
+
+    expect((await onboarding()).steps.store.import).toMatchObject({ status: "done" });
+    const conn = (await http().get("/v1/connections").set(as("owner")).expect(200)).body.data.find((c: { id: string }) => c.id === id);
+    expect(conn).toMatchObject({ status: "active", reason: null });
+    const recovered = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select("data").where("type", "=", "connection.connected").where("entity_id", "=", id).execute());
+    expect(recovered.filter((e) => (e.data as { recovered?: boolean }).recovered)).toHaveLength(1);
+    expect(shop.webhooks.size).toBeGreaterThan(0);
+    // The import that proved it is the only one: recovering does not start another.
+    expect(await starts()).toBe(before + 1);
+    expect((await http().get("/v1/audit-log?action=connection.connected").set(as("owner")).expect(200)).body.data.length).toBeGreaterThan(0);
   }, 90_000);
 });

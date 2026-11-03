@@ -20,7 +20,8 @@ export class ConnectionNoticesConsumer implements EventHandler {
     let dedupe: string;
     if (event.type === "connection.sync_completed" || event.type === "connection.sync_failed") {
       text = [provider, d.orders ?? 0, d.products ?? 0, d.errorKind ?? ""].join("|");
-      dedupe = `${event.type}:${d.runKey ?? event.id}`;
+      // Every finished import is news; a store whose imports keep failing is told once a day, not once per try.
+      dedupe = event.type === "connection.sync_failed" ? `${event.type}:${event.entity.id}:${event.occurredAt.slice(0, 10)}` : `${event.type}:${d.runKey ?? event.id}`;
     } else if (event.type === "connection.needs_attention") {
       text = [provider, d.reason ?? d.errorKind ?? ""].join("|");
       dedupe = `${event.type}:${event.entity.id}:${event.occurredAt.slice(0, 10)}`; // once a day per connection

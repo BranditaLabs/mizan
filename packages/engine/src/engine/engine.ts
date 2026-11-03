@@ -64,6 +64,11 @@ export interface EngineOptions {
     onProduct?: (product: CanonicalProduct) => Promise<void>;
     /** The courier credentials were checked (bosta.checkAccess): accepted, or refused and why. */
     onAccessChecked?: (provider: "bosta" | "woocommerce" | "shopify", result: AccessCheck) => Promise<void>;
+    /**
+     * The store's webhook registration: ok, or refused for good (Shopify: protected customer data not
+     * approved). Without webhooks new orders only arrive with the nightly reconciliation, so the store is told.
+     */
+    onWebhooksChecked?: (provider: "shopify", result: { ok: true } | { ok: false; message: string }) => Promise<void>;
     /** The history import finished or failed (A2). Must be idempotent. */
     onBackfill?: (progress: BackfillProgress) => Promise<void>;
     /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
@@ -552,7 +557,11 @@ export class MizanEngine {
   /** Schedule reconciliation polls. Call every few minutes from a timer or cron. */
   async scheduleReconcile(intervalMs = 5 * 60_000) {
     const slot = Math.floor(this.now() / intervalMs);
-    if (this.shopifyConn) await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+    if (this.shopifyConn) {
+      await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
+      // Hourly: topics refused before the app's customer data approval register once it comes; otherwise a no-op read.
+      if (this.shopify.creds.webhookUrl) await this.enqueue("shopify.syncWebhooks", {}, `shopify:webhooks:hourly:${Math.floor(this.now() / 3_600_000)}`);
+    }
     if (this.woo) {
       await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
       // Hourly: WooCommerce disables a webhook after failed deliveries; the sync turns it back on.
@@ -710,7 +719,10 @@ export class MizanEngine {
     const uri = this.shopify.creds.webhookUrl;
     if (!uri) throw new IntegrationError({ kind: "validation", connector: "shopify", message: "no webhook URL configured for this store" });
     const r = await this.shopify.syncWebhooks(uri, SHOPIFY_WEBHOOK_TOPICS);
-    this.emit("shopify.webhooks_synced", { topics: [...SHOPIFY_WEBHOOK_TOPICS], created: r.created, deleted: r.deleted });
+    this.emit("shopify.webhooks_synced", { topics: [...SHOPIFY_WEBHOOK_TOPICS], created: r.created, deleted: r.deleted, refused: r.refused });
+    await this.runHook(() => this.opts.hooks?.onWebhooksChecked?.("shopify", r.refused.length
+      ? { ok: false, message: `Shopify refused ${r.refused.join(", ")}: protected customer data is not approved for the app` }
+      : { ok: true }));
   }
 
   private async reconcile(p: ReconcileJob) {
@@ -1158,6 +1170,11 @@ export class MizanEngine {
           this.runHook(() => this.opts.hooks?.onAccessChecked?.(connector, { ok: false, reason: kind, message: o.error.message }))
             .catch((e) => this.rt.logger.log("error", "access hook failed", { connector, error: e instanceof Error ? e.message : String(e) }));
         }
+      }
+      // Refused webhooks (not the token: that is the access check above): the store still works, but quietly.
+      if (o.job.kind === "shopify.syncWebhooks" && kind !== "auth" && kind !== "permission") {
+        this.runHook(() => this.opts.hooks?.onWebhooksChecked?.("shopify", { ok: false, message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "webhooks hook failed", { error: e instanceof Error ? e.message : String(e) }));
       }
       if (o.job.kind === "shopify.backfill" || o.job.kind === "woocommerce.backfill") {
         this.backfillFailed(o.job, kind, o.error.message)
