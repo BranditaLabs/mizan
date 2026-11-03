@@ -213,6 +213,40 @@ describe("callbacks to the ledger (E14-2b)", () => {
     expect(w.ledger().map((l) => [l.kind, l.txn])).toEqual([["sale", paid.transactionId]]);
   });
 
+  it("a sale that reports captured_amount is one sale, never a capture too", async () => {
+    const w = world();
+    const { transactionId, callback } = w.paymob.pay(await w.link(1));
+    w.paymob.transactions.get(transactionId)!.captured_amount = 115000;
+    await w.deliver(callback);
+    await settle(w.engine, w.store, w.clock);
+    expect(w.ledger().map((l) => [l.kind, l.amount])).toEqual([["sale", 115000n]]);
+  });
+
+  it("a failed payment that shows a refund total posts nothing and needs a person", async () => {
+    const w = world();
+    const { transactionId, callback } = w.paymob.pay(await w.link(1), { outcome: "declined" });
+    w.paymob.transactions.get(transactionId)!.refunded_amount_cents = 5000;
+    await w.deliver(callback);
+    await settle(w.engine, w.store, w.clock);
+    expect(w.updates).toEqual([expect.objectContaining({ state: "failed", needsReview: true })]);
+    expect(w.ledger()).toEqual([]);
+  });
+
+  it("a capture found late is dated by its own child, not by the refund that brought it", async () => {
+    const w = world();
+    const auth = w.paymob.pay(await w.link(1), { auth: true });
+    await w.deliver(auth.callback);
+    await settle(w.engine, w.store, w.clock);
+    w.paymob.capture(auth.transactionId, 115000); // its callback lost
+    const capture = w.paymob.lastId;
+    w.clock.advance(5 * 24 * 3600_000);
+    await w.deliver(w.paymob.refundCapture(capture, 10000, true));
+    await settle(w.engine, w.store, w.clock);
+    const byKind = Object.fromEntries(w.ledger().map((l) => [l.kind, l.at]));
+    expect(byKind.capture).toBe(w.paymob.transactions.get(capture)!.created_at);
+    expect(Date.parse(byKind.refund!) - Date.parse(byKind.capture!)).toBeGreaterThanOrEqual(5 * 24 * 3600_000);
+  });
+
   it("refunds are dated when they were made, not on the sale's day", async () => {
     const w = world();
     const paid = w.paymob.pay(await w.link(1));

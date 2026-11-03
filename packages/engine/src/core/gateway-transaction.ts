@@ -20,10 +20,15 @@ export interface GatewayLine {
 }
 
 export interface GatewayTotals {
+  /** Captured so far: authorizations only (a sale's own `captured_amount` is the sale, never a second line). */
   capturedMinor: bigint;
   refundedMinor: bigint;
-  /** When the change was made: the child transaction's time (a refund or capture), else when Mizan saw it. */
-  changedAt: string;
+  /**
+   * When each change was made: the capture or refund child's time when one came with this update,
+   * else when Mizan saw it. Several refunds found at once are one line on the later date.
+   */
+  capturedAt: string;
+  refundedAt: string;
 }
 
 export interface GatewayTransactionUpdate {
@@ -55,8 +60,10 @@ export interface GatewayTransactionUpdate {
 export function gatewayDeltaLines(update: GatewayTransactionUpdate, held: { capturedMinor: bigint; refundedMinor: bigint }): GatewayLine[] {
   if (update.needsReview) return [];
   const out: GatewayLine[] = [];
-  const { capturedMinor, refundedMinor, changedAt } = update.totals;
-  if (capturedMinor > held.capturedMinor) out.push({ kind: "capture", amountMinor: capturedMinor - held.capturedMinor, externalRef: `${update.transactionId}:capture:${capturedMinor}`, occurredAt: changedAt });
-  if (refundedMinor > held.refundedMinor) out.push({ kind: "refund", amountMinor: refundedMinor - held.refundedMinor, externalRef: `${update.transactionId}:refund:${refundedMinor}`, occurredAt: changedAt });
+  // Money moves back or in only on a payment that happened.
+  if (update.state !== "succeeded" && update.state !== "authorized" && update.state !== "voided") return [];
+  const { capturedMinor, refundedMinor, capturedAt, refundedAt } = update.totals;
+  if (capturedMinor > held.capturedMinor) out.push({ kind: "capture", amountMinor: capturedMinor - held.capturedMinor, externalRef: `${update.transactionId}:capture:${capturedMinor}`, occurredAt: capturedAt });
+  if (refundedMinor > held.refundedMinor) out.push({ kind: "refund", amountMinor: refundedMinor - held.refundedMinor, externalRef: `${update.transactionId}:refund:${refundedMinor}`, occurredAt: refundedAt });
   return out;
 }

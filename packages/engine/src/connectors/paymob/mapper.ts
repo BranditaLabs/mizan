@@ -62,6 +62,7 @@ export interface PaymobTransaction {
   /** Paymob says it has a parent (a refund, void or capture child), whether or not its id could be read. */
   hasParent: boolean;
   isCapture: boolean;
+  isRefunded: boolean;
   reference: string | null;
   currency: string;
   amountMinor: bigint;
@@ -117,6 +118,7 @@ export function mapTransaction(raw: unknown, ctx: PaymobMapCtx): PaymobTransacti
     parentId: parent && parent !== "0" && parent !== "null" ? parent : null,
     hasParent: flag("hasParent", ["has_parent_transaction"]) || r.any("standalone", ["is_standalone_payment"]) === false,
     isCapture: flag("isCapture", ["is_capture"]),
+    isRefunded: flag("isRefunded", ["is_refunded"]),
     reference: r.str("reference", ["order.merchant_order_id", "merchant_order_id"]) ?? null,
     currency: (r.str("currency", ["currency", "order.currency"], { required: true }) ?? "").toUpperCase(),
     amountMinor: cents("amount", ["amount_cents"], true),
