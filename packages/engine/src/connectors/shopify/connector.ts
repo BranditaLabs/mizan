@@ -1,3 +1,4 @@
+import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
 import { IntegrationError } from "../../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
@@ -318,6 +319,108 @@ export class ShopifyConnector {
     }
     await this.addTags(o.orderId, [tag]);
     return "added";
+  }
+
+  /**
+   * Change an order before it ships (O3): the address with orderUpdate (sending the same address
+   * twice changes nothing), quantities, new items and the delivery fee in one order edit. Safe to
+   * repeat: an applied edit leaves its marker tag (put on last), and an order that already has the
+   * edit's quantities and fee is not edited again; the commit is not idempotent, so a timeout is
+   * checked by reading the order, never re-sent blindly. Prices are not changed here: Shopify keeps
+   * a line's original price in an edit (only a discount lowers it), so a price change is refused
+   * (`validation`) and made in Shopify. A cancelled order cannot be edited (`validation`).
+   */
+  async editOrder(plan: OrderEditPlan): Promise<"applied" | "already_applied"> {
+    const tag = editMarker(plan.editId);
+    const num = (gid: string | undefined) => gid?.split("/").pop();
+    const read = async () => {
+      const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: plan.orderId }, { idempotent: true });
+      if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${plan.orderId} not found` });
+      const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+      const lines = r.arr("lineItems", ["lineItems"]).map((li) => {
+        const lr = r.child(li, "order.lineItem");
+        return { id: lr.str("id", ["id"]), variantId: lr.str("variantId", ["variant.id", "variantId"]), quantity: lr.num("quantity", ["currentQuantity", "quantity"]) ?? 0 };
+      });
+      return {
+        lines, tagged: r.arr<string>("tags", ["tags"]).includes(tag), cancelled: Boolean(r.str("cancelledAt", ["cancelledAt"])),
+        shipping: Number(r.str("shipping", ["totalShippingPriceSet.shopMoney.amount", "totalShippingPrice"]) ?? "0"),
+      };
+    };
+    type State = Awaited<ReturnType<typeof read>>;
+    const lineOf = (st: State, id: string) => st.lines.find((l) => num(l.id) === num(id));
+    // What the order looks like once the edit is in.
+    const done = (st: State) =>
+      plan.lines.every((l) => (lineOf(st, l.lineId)?.quantity ?? 0) === l.quantity)
+      && plan.add.every((a) => st.lines.some((l) => l.variantId === a.variantId && l.quantity >= a.quantity))
+      && (plan.shipping === undefined || Math.abs(st.shipping - Number(plan.shipping)) < 0.005);
+
+    const before = await read();
+    if (before.tagged) return "already_applied";
+    if (before.cancelled) throw new IntegrationError({ kind: "validation", connector: "shopify", message: `order ${plan.orderId} is cancelled` });
+    if ([...plan.lines, ...plan.add].some((l) => l.unitPrice !== undefined)) {
+      throw new IntegrationError({ kind: "validation", connector: "shopify", message: "Shopify keeps an item's price when an order is edited: change the price in Shopify" });
+    }
+
+    if (plan.address) {
+      const a = plan.address;
+      const [firstName, ...rest] = (a.name ?? "").trim().split(/\s+/);
+      const d = await this.gql.run<{ orderUpdate: { userErrors: UserErrors } }>(Q.ORDER_UPDATE, { input: { id: plan.orderId, shippingAddress: {
+        address1: a.line1, address2: a.line2 ?? null, city: a.city, province: a.province ?? null,
+        ...(a.countryCode ? { countryCode: a.countryCode } : {}), ...(a.phone ? { phone: a.phone } : {}),
+        ...(firstName ? { firstName, lastName: rest.join(" ") || null } : {}),
+      } } }, { idempotent: true });
+      assertNoUserErrors("orderUpdate", d.orderUpdate?.userErrors);
+    }
+
+    if (!done(before)) {
+      const begin = await this.gql.run<{ orderEditBegin: { calculatedOrder?: Record<string, unknown> | null; userErrors: UserErrors } }>(Q.ORDER_EDIT_BEGIN, { id: plan.orderId }, { idempotent: true });
+      assertNoUserErrors("orderEditBegin", begin.orderEditBegin?.userErrors);
+      const co = begin.orderEditBegin?.calculatedOrder;
+      const calcId = co && typeof co.id === "string" ? co.id : null;
+      if (!co || !calcId) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderEditBegin: no calculatedOrder.id" });
+      const cr = new Resolver(co, { connector: "shopify", entity: "calculatedOrder", drift: this.drift, now: () => this.rt.clock.now() });
+      const calcLines = cr.arr("lineItems", ["lineItems"]).map((li) => {
+        const lr = cr.child(li, "calculatedOrder.lineItem");
+        return { id: lr.str("id", ["id"]), variantId: lr.str("variantId", ["variant.id", "variantId"]) };
+      });
+      const calcShipping = cr.arr("shippingLines", ["shippingLines"]).map((x) => {
+        const xr = cr.child(x, "calculatedOrder.shippingLine");
+        return { id: xr.str("id", ["id"]), title: xr.str("title", ["title"]) };
+      });
+      // Edits stay staged until the commit: each step is safe to repeat.
+      const step = async (op: Q.GqlOperation, field: string, vars: Record<string, unknown>) => {
+        const d = await this.gql.run<Record<string, { userErrors: UserErrors } | undefined>>(op, { id: calcId, ...vars }, { idempotent: true });
+        assertNoUserErrors(field, d[field]?.userErrors);
+      };
+      for (const l of plan.lines) {
+        if ((lineOf(before, l.lineId)?.quantity ?? 0) === l.quantity) continue;
+        // A calculated line carries its order line's number; else the same variant (confirm on a dev store).
+        const calc = calcLines.find((c) => num(c.id) === num(l.lineId)) ?? (l.variantId ? calcLines.find((c) => c.variantId === l.variantId) : undefined);
+        if (!calc?.id) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: `orderEditBegin: no calculated line for ${l.lineId}` });
+        await step(Q.ORDER_EDIT_SET_QUANTITY, "orderEditSetQuantity", { lineItemId: calc.id, quantity: l.quantity });
+      }
+      for (const a of plan.add) {
+        if (before.lines.some((l) => l.variantId === a.variantId && l.quantity >= a.quantity)) continue;
+        await step(Q.ORDER_EDIT_ADD_VARIANT, "orderEditAddVariant", { variantId: a.variantId, quantity: a.quantity });
+      }
+      if (plan.shipping !== undefined && Math.abs(before.shipping - Number(plan.shipping)) >= 0.005) {
+        for (const x of calcShipping) if (x.id) await step(Q.ORDER_EDIT_REMOVE_SHIPPING, "orderEditRemoveShippingLine", { shippingLineId: x.id });
+        if (Number(plan.shipping) > 0) {
+          await step(Q.ORDER_EDIT_ADD_SHIPPING, "orderEditAddShippingLine", {
+            shippingLine: { title: calcShipping[0]?.title ?? "Shipping", price: { amount: plan.shipping, currencyCode: plan.currency } },
+          });
+        }
+      }
+      try {
+        const c = await this.gql.run<{ orderEditCommit: { userErrors: UserErrors } }>(Q.ORDER_EDIT_COMMIT, { id: calcId, notifyCustomer: false, staffNote: "Mizan: order edited before shipping" }, { idempotent: false });
+        assertNoUserErrors("orderEditCommit", c.orderEditCommit?.userErrors);
+      } catch (err) {
+        if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+        if (!done(await read())) throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderEditCommit timed out and the order does not have the edit: will start it again", cause: err });
+      }
+    }
+    await this.addTags(plan.orderId, [tag]);
+    return "applied";
   }
 
   /**

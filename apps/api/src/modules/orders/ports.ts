@@ -7,6 +7,12 @@ import type { ShippingService } from "../shipping/shipping.service.js";
  */
 /** Where a store cancellation's outcome goes (E5-4: the bulk actions service), resolved lazily by the engine registry. */
 export const CANCEL_RESULTS = Symbol("CANCEL_RESULTS");
+/** Order edits (O3): the engine reads an edit when its job runs and reports the store's answer. */
+export const ORDER_EDITS = Symbol("ORDER_EDITS");
+export interface OrderEditSink {
+  loadPlan(tenantId: string, editId: string): Promise<import("@mizan/engine").OrderEditPlan | undefined>;
+  recordResult(tenantId: string, editId: string, result: import("@mizan/engine").OrderEditOutcome): Promise<void>;
+}
 /** Confirmation's answer for an order (E5-4 bulk confirm), provided by the confirmation module. */
 export const ORDER_ANSWERS = Symbol("ORDER_ANSWERS");
 export type OrderAnswers = Pick<ConfirmationService, "liveRun" | "applyAnswer">;

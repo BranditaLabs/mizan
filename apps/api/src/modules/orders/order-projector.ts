@@ -158,7 +158,7 @@ export class OrderProjector {
       ...values, status, customer_id: customerId, updated_at: new Date(),
       ...(status === "cancelled" && existing.status !== "cancelled" ? { cancelled_at: new Date() } : {}),
     }).where("id", "=", existing.id).execute();
-    await this.syncLines(trx, tenantId, existing.id, order);
+    await this.syncLines(trx, tenantId, existing.id, order, opts.variantIds);
     await this.syncSource(trx, tenantId, existing.id, order, opts, redacted);
 
     if (changed.some((c) => PAYMENT_FIELDS.has(c))) {

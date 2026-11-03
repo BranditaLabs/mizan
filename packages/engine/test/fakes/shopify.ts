@@ -24,6 +24,8 @@ interface Order {
   paymentGatewayNames: string[]; tags: string[]; currencyCode: string; email: string | null; phone: string | null;
   total: string; received: string; refunded: string; shippingAddress: Record<string, unknown> | null; customer: Record<string, unknown>;
   lines: Array<{ id: string; title: string; sku: string; quantity: number; price: string }>;
+  /** Delivery charges (O3 replaces them in an order edit). */
+  shippingLines: Array<{ id: string; title: string; price: string }>;
   fulfillmentOrders: Array<{ id: string; status: string }>;
   fulfillments: Array<{ id: string; status: string; trackingInfo: Array<{ company: string; number: string; url?: string }>; events?: Array<{ id: string; status: string; happenedAt: string; message?: string }> }>;
   /** Where the order came from (M7-2), as Shopify reports it. */
@@ -67,7 +69,13 @@ export class FakeShopify {
   webhooks = new Map<string, { topic: string; uri: string }>();
   products = new Map<string, Product>();
   /** Open order edits (orderEditBegin) and how many were committed. */
-  readonly edits = new Map<string, { orderId: string; adds: Array<{ lineId: string; variantId: string; qty: number; pct: number }> }>();
+  readonly edits = new Map<string, {
+    orderId: string; adds: Array<{ lineId: string; variantId: string; qty: number; pct: number }>;
+    /** O3: new quantities by order line id, shipping lines removed and added. */
+    qty: Map<string, number>; removedShipping: Set<string>; addedShipping: Array<{ id: string; title: string; price: string }>;
+  }>();
+  /** O3: address updates (orderUpdate) and quantity changes committed. */
+  addressUpdates = 0;
   committedEdits = 0;
   /** orderCancel mutations that cancelled an order (a second one is refused by the store). */
   cancels = 0;
@@ -181,6 +189,7 @@ export class FakeShopify {
       },
       customer: { displayName: "Mona Adel", firstName: "Mona", lastName: "Adel", defaultEmailAddress: { emailAddress: "mona@example.com" }, defaultPhoneNumber: { phoneNumber: "+201001234821" }, email: "mona@example.com", phone: "+201001234821" },
       lines: [{ id: this.nextId("LineItem"), title: "Vitamin C serum 30 ml", sku: "SER-30", quantity: 2, price: "575.00" }],
+      shippingLines: [],
       fulfillmentOrders: [{ id: this.nextId("FulfillmentOrder"), status: "OPEN" }],
       fulfillments: [],
       ...(o.source ? { source: o.source } : {}),
@@ -435,7 +444,7 @@ export class FakeShopify {
     return {
       id: o.id, name: o.name, createdAt: o.createdAt, updatedAt: o.updatedAt, cancelledAt: o.cancelledAt, displayFinancialStatus: o.displayFinancialStatus,
       paymentGatewayNames: o.paymentGatewayNames, tags: o.tags, currencyCode: o.currencyCode, email: o.email, phone: o.phone,
-      totalPriceSet: m(o.total), subtotalPriceSet: m(o.total), totalShippingPriceSet: m("0.00"),
+      totalPriceSet: m(o.total), subtotalPriceSet: m(o.total), totalShippingPriceSet: m(o.shippingLines.reduce((n, x) => n + Number(x.price), 0).toFixed(2)),
       totalReceivedSet: m(o.received), totalRefundedSet: m(o.refunded),
       totalOutstandingSet: m(Math.max(0, Number(o.total) - Number(o.received)).toFixed(2)),
       shippingAddress: o.shippingAddress, customer: o.customer,
@@ -592,8 +601,14 @@ export class FakeShopify {
         if (!o) return { orderEditBegin: { calculatedOrder: null, userErrors: [{ field: ["id"], message: "Order does not exist" }] } };
         if (o.cancelledAt) return { orderEditBegin: { calculatedOrder: null, userErrors: [{ field: ["id"], message: "Cannot edit a cancelled order" }] } };
         const id = this.nextId("CalculatedOrder");
-        this.edits.set(id, { orderId: o.id, adds: [] });
-        return { orderEditBegin: { calculatedOrder: { id }, userErrors: [] } };
+        this.edits.set(id, { orderId: o.id, adds: [], qty: new Map(), removedShipping: new Set(), addedShipping: [] });
+        // Like Shopify: a calculated line or shipping line carries the same number as the order's.
+        const num = (gid: string) => gid.split("/").pop();
+        return { orderEditBegin: { calculatedOrder: {
+          id,
+          lineItems: { nodes: o.lines.map((l) => ({ id: `gid://shopify/CalculatedLineItem/${num(l.id)}`, quantity: l.quantity, variant: this.variantBySku(l.sku) })) },
+          shippingLines: o.shippingLines.map((x) => ({ id: `gid://shopify/CalculatedShippingLine/${num(x.id)}`, title: x.title })),
+        }, userErrors: [] } };
       }
       case "MizanOrderEditAddVariant": {
         const e = this.edits.get(v.id);
@@ -612,10 +627,53 @@ export class FakeShopify {
         add.pct = Number(v.discount?.percentValue ?? 0);
         return { orderEditAddLineItemDiscount: { calculatedOrder: { id: v.id }, userErrors: [] } };
       }
+      case "MizanOrderEditSetQuantity": {
+        const e = this.edits.get(v.id);
+        const o = e ? this.orders.get(e.orderId) : undefined;
+        const line = o?.lines.find((l) => l.id.split("/").pop() === String(v.lineItemId).split("/").pop());
+        if (!e || !line) return { orderEditSetQuantity: { calculatedOrder: null, userErrors: [{ field: ["lineItemId"], message: "Line item does not exist" }] } };
+        e.qty.set(line.id, v.quantity);
+        return { orderEditSetQuantity: { calculatedOrder: { id: v.id }, userErrors: [] } };
+      }
+      case "MizanOrderEditRemoveShippingLine": {
+        const e = this.edits.get(v.id);
+        const o = e ? this.orders.get(e.orderId) : undefined;
+        const line = o?.shippingLines.find((x) => x.id.split("/").pop() === String(v.shippingLineId).split("/").pop());
+        if (!e || !line) return { orderEditRemoveShippingLine: { calculatedOrder: null, userErrors: [{ field: ["shippingLineId"], message: "Shipping line does not exist" }] } };
+        e.removedShipping.add(line.id);
+        return { orderEditRemoveShippingLine: { calculatedOrder: { id: v.id }, userErrors: [] } };
+      }
+      case "MizanOrderEditAddShippingLine": {
+        const e = this.edits.get(v.id);
+        if (!e) return { orderEditAddShippingLine: { calculatedOrder: null, userErrors: [{ field: ["id"], message: "Calculated order does not exist" }] } };
+        const line = { id: this.nextId("CalculatedShippingLine"), title: String(v.shippingLine.title), price: Number(v.shippingLine.price.amount).toFixed(2) };
+        e.addedShipping.push(line);
+        return { orderEditAddShippingLine: { calculatedOrder: { id: v.id }, calculatedShippingLine: { id: line.id }, userErrors: [] } };
+      }
+      case "MizanOrderUpdate": {
+        const o = this.orders.get(v.input.id);
+        if (!o) return { orderUpdate: { order: null, userErrors: [{ field: ["id"], message: "Order does not exist" }] } };
+        o.shippingAddress = { ...(o.shippingAddress ?? {}), ...v.input.shippingAddress, countryCodeV2: v.input.shippingAddress.countryCode ?? (o.shippingAddress?.countryCodeV2 as string) };
+        this.addressUpdates++;
+        o.updatedAt = this.touch();
+        return { orderUpdate: { order: { id: o.id }, userErrors: [] } };
+      }
       case "MizanOrderEditCommit": {
         const e = this.edits.get(v.id);
         const o = e ? this.orders.get(e.orderId) : undefined;
         if (!e || !o) return { orderEditCommit: { order: null, userErrors: [{ field: ["id"], message: "Calculated order does not exist" }] } };
+        // The total moves by what changed (tests set totals that are not the lines' sum).
+        let delta = 0;
+        for (const [lineId, q] of e.qty) {
+          const l = o.lines.find((x) => x.id === lineId)!;
+          delta += Number(l.price) * (q - l.quantity);
+          l.quantity = q;
+        }
+        o.lines = o.lines.filter((l) => l.quantity > 0);
+        for (const id of e.removedShipping) delta -= Number(o.shippingLines.find((x) => x.id === id)!.price);
+        o.shippingLines = [...o.shippingLines.filter((x) => !e.removedShipping.has(x.id)), ...e.addedShipping.map((x) => ({ ...x, id: this.nextId("ShippingLine") }))];
+        for (const x of e.addedShipping) delta += Number(x.price);
+        o.total = (Number(o.total) + delta).toFixed(2);
         for (const a of e.adds) {
           const { p, x } = [...this.products.values()].flatMap((p) => p.variants.map((x) => ({ p, x }))).find(({ x }) => x.id === a.variantId)!;
           const unit = (Number(x.price) * (1 - a.pct / 100)).toFixed(2);

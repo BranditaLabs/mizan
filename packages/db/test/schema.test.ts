@@ -504,6 +504,19 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT * FROM saved_views`))).rows).toEqual([]);
   });
 
+  it("keeps order edits per store: one on its way per order, settled with a time, a refusal with its reason, the address encrypted (0065, O3)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
+    const edit = (cols: string, values: string) => asTenant(T1, () => db.query(`INSERT INTO order_edits (tenant_id, order_id, changes${cols}) VALUES ($1, $2, '{}'${values})`, [T1, order]));
+    await edit("", "");
+    await expect(edit("", "")).rejects.toThrow(/order_edits_one_sending/); // one on its way
+    await edit(", status, settled_at", ", 'applied', now()");
+    await expect(edit(", status", ", 'applied'")).rejects.toThrow(/check/); // settled needs its time
+    await expect(edit(", status, settled_at", ", 'failed', now()")).rejects.toThrow(/check/); // a refusal needs its reason
+    await edit(", status, settled_at, failure", ", 'failed', now(), 'validation'");
+    await expect(asTenant(T1, () => db.query(`UPDATE order_edits SET address = '12 Abbas St' WHERE status = 'sending'`))).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM order_edits`))).rows).toEqual([]);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

@@ -414,7 +414,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["OrdersController_editOrder"];
         trace?: never;
     };
     "/v1/orders/{id}/reveal": {
@@ -5778,6 +5778,19 @@ export interface components {
                 /** Format: date-time */
                 at: string;
             } | null;
+            /** @description The order's latest edit (O3) */
+            edit: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                status: "sending" | "applied" | "failed";
+                /** @enum {string|null} */
+                failure: "validation" | "not_found" | "permission" | "failed" | null;
+                /** @description The store's words when it refused the edit */
+                message: string | null;
+                /** Format: date-time */
+                at: string;
+            } | null;
             duplicateOf: {
                 /** Format: uuid */
                 id: string;
@@ -5816,6 +5829,49 @@ export interface components {
                     status?: string;
                 };
             }[];
+        };
+        OrderEditInput: {
+            /** @default [] */
+            lines: {
+                /**
+                 * Format: uuid
+                 * @description A line of this order
+                 */
+                lineId: string;
+                /** @description 0 removes the line */
+                quantity: number;
+                /** @description A new price per piece (not for Shopify orders: Shopify keeps a line's price; change it there) */
+                unitPrice?: string;
+            }[];
+            /** @default [] */
+            add: {
+                /**
+                 * Format: uuid
+                 * @description A product from the catalogue; a store order needs it in that store
+                 */
+                variantId: string;
+                quantity: number;
+                /** @description Not for Shopify orders: the store's price is used */
+                unitPrice?: string;
+            }[];
+            /** @description The new delivery fee */
+            shipping?: string;
+            /** @description The new delivery address (the name and phone stay) */
+            address?: {
+                line1: string;
+                line2?: string;
+                city: string;
+                province?: string;
+            };
+        };
+        OrderEditResult: {
+            /** Format: uuid */
+            editId: string;
+            /**
+             * @description applied: a manual order, changed now; sending: on its way to the store, the order follows when the store has it
+             * @enum {string}
+             */
+            status: "applied" | "sending";
         };
         OrderExchanges: {
             /** @description Exchanges made from this order */
@@ -10711,6 +10767,81 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_editOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderEditInput"];
+            };
+        };
+        responses: {
+            /** @description applied: a manual order, changed now */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderEditResult"];
+                };
+            };
+            /** @description sending: on its way to the store; the order follows when the store has it */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderEditResult"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

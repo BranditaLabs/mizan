@@ -23,6 +23,8 @@ export interface WooOrder {
   line_items: Array<{ id: number; name: string; product_id: number; variation_id: number; quantity: number; subtotal: string; total: string; sku: string; price: number | string }>;
   refunds: Array<{ id: number; reason: string; total: string }>;
   meta_data: unknown[];
+  /** Delivery charges; `shipping_total` is their sum (O3 edits them). */
+  shipping_lines?: Array<{ id: number; method_id: string | null; method_title: string; total: string }>;
 }
 
 const PAY: Record<WooPayment, { method: string; title: string }> = {
@@ -106,7 +108,7 @@ export class FakeWooCommerce {
       line_items: [o.product
         ? { id: id * 10 + 1, name: o.product.name, product_id: o.product.id, variation_id: 0, quantity: 2, subtotal: "1200.00", total: "1200.00", sku: o.product.sku, price: 600 }
         : { id: id * 10 + 1, name: "عباية سادة", product_id: 501, variation_id: 0, quantity: 2, subtotal: "1200.00", total: "1200.00", sku: "AB-1", price: 600 }],
-      refunds: [], meta_data: [],
+      refunds: [], meta_data: [], shipping_lines: [{ id: id * 10 + 9, method_id: "flat_rate", method_title: "شحن", total: "50.00" }],
     };
     this.orders.set(id, order);
     return order;
@@ -271,6 +273,13 @@ export class FakeWooCommerce {
     }
     if (method === "GET" && (m = path.match(/^\/products\/(\d+)$/))) {
       const p = this.products.get(Number(m[1]));
+      // Like WooCommerce, a variation is readable here too, with its parent.
+      if (!p) {
+        for (const [parent, vs] of this.variationsOf) {
+          const v = vs.find((x) => x.id === Number(m![1]));
+          if (v) return json(200, { ...v, type: "variation", parent_id: parent });
+        }
+      }
       return p ? json(200, p) : json(404, { code: "woocommerce_rest_product_invalid_id", message: "Invalid ID.", data: { status: 404 } });
     }
     if (method === "GET" && path === "/products") {
@@ -286,6 +295,51 @@ export class FakeWooCommerce {
       const o = this.orders.get(Number(m[1]));
       if (!o) return json(404, { code: "woocommerce_rest_shop_order_invalid_id", message: "Invalid ID.", data: { status: 404 } });
       if (body.status) o.status = body.status;
+      // O3: lines (quantity 0 removes one), new items, delivery charges, the address, meta.
+      // Like WooCommerce, totals are calculated again; here the total moves by what changed.
+      let delta = 0;
+      for (const li of (body.line_items ?? []) as Array<Record<string, unknown>>) {
+        if (li.id) {
+          const line = o.line_items.find((x) => x.id === Number(li.id));
+          if (!line) return json(400, { code: "woocommerce_rest_invalid_item_id", message: "Order item ID provided is not associated with order.", data: { status: 400 } });
+          const q = Number(li.quantity ?? line.quantity);
+          const total = li.total !== undefined ? Number(li.total) : Number(line.price) * q;
+          delta += total - Number(line.total);
+          Object.assign(line, { quantity: q, total: total.toFixed(2), subtotal: total.toFixed(2), price: q ? total / q : Number(line.price) });
+        } else {
+          const vid = Number(li.variation_id ?? 0);
+          const pid = Number(li.product_id ?? 0);
+          const product = this.products.get(pid);
+          const variation = vid ? this.variationsOf.get(pid)?.find((x) => x.id === vid) : undefined;
+          if (!product || (vid && !variation)) return json(400, { code: "woocommerce_rest_invalid_product_id", message: "Invalid product ID.", data: { status: 400 } });
+          const q = Number(li.quantity ?? 1);
+          const unit = Number(variation?.price ?? product.price);
+          const total = li.total !== undefined ? Number(li.total) : unit * q;
+          delta += total;
+          o.line_items.push({ id: o.id * 10 + 1 + o.line_items.length + this.orderWrites * 10, name: product.name, product_id: pid, variation_id: vid, quantity: q, subtotal: total.toFixed(2), total: total.toFixed(2), sku: variation?.sku ?? product.sku, price: total / q });
+        }
+      }
+      o.line_items = o.line_items.filter((x) => x.quantity > 0);
+      for (const sl of (body.shipping_lines ?? []) as Array<Record<string, unknown>>) {
+        const lines = (o.shipping_lines ??= []);
+        const existing = sl.id ? lines.find((x) => x.id === Number(sl.id)) : undefined;
+        if (existing) {
+          if (sl.method_id === null) { delta -= Number(existing.total); lines.splice(lines.indexOf(existing), 1); continue; }
+          delta += Number(sl.total ?? existing.total) - Number(existing.total);
+          existing.total = Number(sl.total ?? existing.total).toFixed(2);
+        } else {
+          delta += Number(sl.total ?? 0);
+          lines.push({ id: o.id * 10 + 8, method_id: String(sl.method_id ?? "flat_rate"), method_title: String(sl.method_title ?? ""), total: Number(sl.total ?? 0).toFixed(2) });
+        }
+      }
+      if (body.shipping_lines) o.shipping_total = (o.shipping_lines ?? []).reduce((n, x) => n + Number(x.total), 0).toFixed(2);
+      if (body.shipping) o.shipping = { ...o.shipping, ...body.shipping };
+      for (const m of (body.meta_data ?? []) as Array<{ key: string; value: unknown }>) {
+        const list = o.meta_data as Array<{ id: number; key: string; value: unknown }>;
+        const had = list.find((x) => x.key === m.key);
+        if (had) had.value = m.value; else list.push({ id: list.length + 1, key: m.key, value: m.value });
+      }
+      if (delta) o.total = (Number(o.total) + delta).toFixed(2);
       this.orderWrites++;
       this.touch(o);
       return json(200, this.view(o));
