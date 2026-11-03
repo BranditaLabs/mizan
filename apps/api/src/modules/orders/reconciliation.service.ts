@@ -64,6 +64,7 @@ export class ReconciliationService implements OnApplicationBootstrap, OnApplicat
 
   /** Queue yesterday's reconciliation for every active Shopify store whose day is over. */
   async schedule(now = new Date()): Promise<number> {
+    await this.refreshCatalogues(now);
     const stores = await this.db.worker((trx) => trx.selectFrom("connections").select(["id", "tenant_id"])
       .where("provider", "=", "shopify").where("kind", "=", "store").where("status", "=", "active").execute());
     let queued = 0;
@@ -79,6 +80,25 @@ export class ReconciliationService implements OnApplicationBootstrap, OnApplicat
         const store = new SqlStore(trxQueryClient(trx), { tenantId: s.tenant_id, connections: { shopify: s.id } });
         const r = await store.enqueue(MizanEngine.shopifyReconcileJob({ day, ...storeDayBounds(day, timezone) }), now.getTime());
         return r.created;
+      });
+      if (created) queued++;
+    }
+    return queued;
+  }
+
+  /**
+   * Each active store's catalogue read again once per engine CATALOG_VERSION (products imported
+   * before P1 had no pictures). The job key makes the hourly ask a no-op once queued.
+   */
+  async refreshCatalogues(now = new Date()): Promise<number> {
+    const stores = await this.db.worker((trx) => trx.selectFrom("connections").select(["id", "tenant_id", "provider"])
+      .where("provider", "in", ["shopify", "woocommerce"]).where("kind", "=", "store").where("status", "=", "active").execute());
+    let queued = 0;
+    for (const s of stores) {
+      const provider = s.provider as "shopify" | "woocommerce";
+      const created = await this.db.tenant(s.tenant_id, async (trx) => {
+        const store = new SqlStore(trxQueryClient(trx), { tenantId: s.tenant_id, store: s.id, connections: { [provider]: s.id } });
+        return (await store.enqueue(MizanEngine.catalogRefreshJob(provider), now.getTime())).created;
       });
       if (created) queued++;
     }
