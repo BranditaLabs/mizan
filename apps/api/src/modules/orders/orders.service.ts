@@ -1,3 +1,4 @@
+import { variantPictures } from "../catalog/pictures.js";
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type ExpressionBuilder, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
@@ -80,6 +81,20 @@ export class OrdersService {
 
       const page = found.slice(0, q.limit);
       const pii = page.some((r) => r.customer_label) ? await this.cipher.forTenant(trx, tenantId) : null;
+      // What each order holds, at a glance: pieces, lines and the first items' pictures (O1).
+      const lines = page.length ? await trx.selectFrom("order_lines").select(["order_id", "variant_id", "quantity"]).where("order_id", "in", page.map((r) => r.id)).orderBy("position").orderBy("id").execute() : [];
+      const pictures = await variantPictures(trx, lines.map((l) => l.variant_id));
+      const items = (orderId: string) => {
+        const own = lines.filter((l) => l.order_id === orderId);
+        const seen = new Set<string>();
+        const shown = own.flatMap((l) => {
+          const pic = l.variant_id ? pictures.get(l.variant_id) : undefined;
+          if (!pic || seen.has(pic.url)) return [];
+          seen.add(pic.url);
+          return [pic];
+        }).slice(0, 3);
+        return { count: own.reduce((n, l) => n + l.quantity, 0), lines: own.length, pictures: shown };
+      };
       const byStatus = Object.fromEntries(ORDER_STATUSES.map((s) => [s, 0])) as Record<(typeof ORDER_STATUSES)[number], number>;
       for (const c of counts) byStatus[c.status as keyof typeof byStatus] = Number(c.n);
       const last = page.at(-1);
@@ -93,6 +108,7 @@ export class OrdersService {
           paymentMode: r.payment_mode as OrderSummary["paymentMode"], paymentStatus: r.payment_status as OrderSummary["paymentStatus"],
           risk: r.risk_score, tags: r.tags, placedAt: r.placed_at.toISOString(), duplicate: r.duplicate_status as OrderSummary["duplicate"],
           stock: r.stock_status as OrderSummary["stock"],
+          items: items(r.id),
         })),
         nextCursor: found.length > q.limit && last ? encode(last.placed_at, last.id) : null,
         counts: { all: Object.values(byStatus).reduce((a, b) => a + b, 0), ...byStatus },
@@ -112,7 +128,8 @@ export class OrdersService {
         .where("o.id", "=", id).where((eb) => roleScope(eb, auth)).executeTakeFirst();
       if (!o) throw notFound();
       const [lines, payments, shipments, events, source] = await Promise.all([
-        trx.selectFrom("order_lines").select(["id", "sku", "title", "quantity", "unit_price_minor", "variant_id"]).where("order_id", "=", id).orderBy("id").execute(),
+        trx.selectFrom("order_lines as l").leftJoin("variants as v", "v.id", "l.variant_id")
+          .select(["l.id", "l.sku", "l.title", "l.quantity", "l.unit_price_minor", "l.variant_id", "v.product_id"]).where("l.order_id", "=", id).orderBy("l.position").orderBy("l.id").execute(),
         trx.selectFrom("payments").select(["id", "kind", "method", "status", "amount_minor", "currency", "occurred_at"]).where("order_id", "=", id).orderBy("occurred_at", "desc").execute(),
         trx.selectFrom("shipments").select(["id", "provider", "tracking_number", "status", "status_at", "cod_minor", "currency", "booking", "error_code", "tracking_url"]).where("order_id", "=", id).orderBy("created_at", "desc").execute(),
         trx.selectFrom("order_events").select(["id", "type", "from_status", "to_status", "actor_type", "data", "created_at"]).where("order_id", "=", id)
@@ -120,6 +137,7 @@ export class OrdersService {
         trx.selectFrom("order_sources").selectAll().where("order_id", "=", id).executeTakeFirst(),
       ]);
       const pii = o.customer_label ? await this.cipher.forTenant(trx, tenantId) : null;
+      const pictures = await variantPictures(trx, lines.map((l) => l.variant_id));
       const twin = o.duplicate_of ? await trx.selectFrom("orders").select(["id", "number", "status"]).where("id", "=", o.duplicate_of).executeTakeFirst() : undefined;
       const why = (o.duplicate_reason ?? {}) as { items?: string[]; minutesApart?: number };
       const money = (minor: string | number | bigint, currency = o.currency) => fromMinor(BigInt(minor), currency);
@@ -148,7 +166,12 @@ export class OrdersService {
         timestamps: { placedAt: o.placed_at.toISOString(), confirmedAt: iso(o.confirmed_at), shippedAt: iso(o.shipped_at), deliveredAt: iso(o.delivered_at), cancelledAt: iso(o.cancelled_at) },
         lines: lines.map((l) => ({
           id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPrice: money(l.unit_price_minor), total: money(BigInt(l.unit_price_minor) * BigInt(l.quantity)), variantId: l.variant_id,
+          productId: l.product_id, picture: (l.variant_id && pictures.get(l.variant_id)) || null,
         })),
+        items: {
+          count: lines.reduce((n, l) => n + l.quantity, 0), lines: lines.length,
+          pictures: [...new Map(lines.flatMap((l) => { const pic = l.variant_id ? pictures.get(l.variant_id) : undefined; return pic ? [[pic.url, pic] as const] : []; })).values()].slice(0, 3),
+        },
         payments: payments.map((p) => ({ id: p.id, kind: p.kind, method: p.method, status: p.status, amount: money(p.amount_minor, p.currency), occurredAt: p.occurred_at.toISOString() })),
         partialDelivery: o.partial_items && o.partial_due_minor !== null && o.partial_at
           ? { due: money(o.partial_due_minor), items: o.partial_items as Array<{ lineId: string; quantity: number }>, at: o.partial_at.toISOString() } : null,

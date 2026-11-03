@@ -1,6 +1,7 @@
 import { MoneySchema } from "@mizan/shared";
 import { OrderSourceSchema } from "../attribution/attribution.dto.js";
 import { z } from "zod";
+import { LinePictureSchema } from "../catalog/pictures.js";
 import { MANUAL_PAYMENT_MODES, MONEY_IN_METHODS, ORDER_SOURCES } from "./manual-order.js";
 import { BULK_ACTIONS, CANCEL_REASONS } from "./bulk.service.js";
 
@@ -46,6 +47,11 @@ export const OrderSummarySchema = z.object({
   placedAt: z.iso.datetime(),
   duplicate: z.enum(["suspected", "kept", "merged"]).nullable().describe("A likely duplicate of an earlier order of the same customer (E5-3)"),
   stock: z.enum(["reserved", "short", "untracked"]).nullable().describe("Confirmed orders: reserved, short (waiting for stock) or untracked (no item counted in Mizan); null otherwise (E8-2)"),
+  items: z.object({
+    count: z.number().int().describe("Pieces in the order (sum of quantities)"),
+    lines: z.number().int(),
+    pictures: z.array(z.object({ url: z.url(), alt: z.string().nullable() })).max(3).describe("Up to three items' pictures, the order's lines in order (O1)"),
+  }),
 });
 export type OrderSummary = z.infer<typeof OrderSummarySchema>;
 
@@ -112,6 +118,8 @@ export const OrderDetailSchema = OrderSummarySchema.extend({
   }),
   lines: z.array(z.object({
     id: z.uuid(), sku: z.string().nullable(), title: z.string(), quantity: z.number().int(), unitPrice: MoneyLine, total: MoneyLine, variantId: z.uuid().nullable(),
+    productId: z.uuid().nullable().describe("The catalogue product, to open its page (O1)"),
+    picture: LinePictureSchema,
   })),
   payments: z.array(z.object({
     id: z.uuid(), kind: z.string(), method: z.string(), status: z.string(), amount: MoneyLine, occurredAt: z.iso.datetime(),
@@ -176,7 +184,7 @@ export const NewOrderSchema = z.strictObject({
 export const OrderCreatedSchema = z.object({ id: z.uuid(), number: z.string(), status: z.enum(ORDER_STATUSES) });
 export const OrderProductsQuerySchema = z.object({ q: z.string().trim().min(1).max(64).optional().describe("Product title or SKU") });
 export const OrderProductsSchema = z.object({
-  data: z.array(z.object({ variantId: z.uuid(), sku: z.string().nullable(), title: z.string(), price: MoneySchema, available: z.number().int().nullable() })),
+  data: z.array(z.object({ variantId: z.uuid(), sku: z.string().nullable(), title: z.string(), price: MoneySchema, available: z.number().int().nullable(), picture: LinePictureSchema })),
 });
 
 /** E5-4: one action on many orders, applied by the worker in chunks. */

@@ -604,6 +604,7 @@ export interface OrderLines {
   unit_cost_minor: Generated<Int8>;
   cost_set_at: Timestamp | null;
   external_variant_id: string | null;
+  position: number | null;
 }
 
 export interface OrderOffers {

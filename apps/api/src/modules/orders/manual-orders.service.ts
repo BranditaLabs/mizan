@@ -1,3 +1,4 @@
+import { variantPictures } from "../catalog/pictures.js";
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { fromMinor, normalizePhone } from "@mizan/shared";
@@ -69,7 +70,11 @@ export class ManualOrdersService {
         query = query.where((eb) => eb.or([eb("p.title", "ilike", `%${like}%`), eb("v.sku", "ilike", `${like}%`)]));
       }
       const rows = await query.execute();
-      return { data: rows.map((v) => ({ variantId: v.id, sku: v.sku, title: v.title ? `${v.product} — ${v.title}` : v.product, price: fromMinor(BigInt(v.price_minor), v.currency.trim()), available: v.available })) };
+      const pictures = await variantPictures(trx, rows.map((v) => v.id));
+      return { data: rows.map((v) => ({
+        variantId: v.id, sku: v.sku, title: v.title ? `${v.product} — ${v.title}` : v.product, price: fromMinor(BigInt(v.price_minor), v.currency.trim()), available: v.available,
+        picture: pictures.get(v.id) ?? null,
+      })) };
     });
   }
 }

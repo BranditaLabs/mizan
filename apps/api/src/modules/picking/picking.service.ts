@@ -1,3 +1,4 @@
+import { variantPictures } from "../catalog/pictures.js";
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
@@ -150,14 +151,15 @@ export class PickingService {
       .leftJoin("order_lines as l", "l.order_id", "o.id").leftJoin("variants as v", "v.id", "l.variant_id")
       .leftJoin("stock_levels as s", (j) => j.onRef("s.variant_id", "=", "l.variant_id").on("s.warehouse_id", "=", warehouse?.id ?? "00000000-0000-0000-0000-000000000000"))
       .select(["o.id as order_id", "o.number", "o.packed_at", "l.variant_id", "l.sku as line_sku", "l.title", "l.quantity", "v.sku", "v.barcode", "s.bin"])
-      .where("plo.pick_list_id", "=", id).orderBy("o.confirmed_at").orderBy("o.number").execute();
+      .where("plo.pick_list_id", "=", id).orderBy("o.confirmed_at").orderBy("o.number").orderBy("l.position").orderBy("l.id").execute();
+    const pictures = await variantPictures(trx, rows.map((r) => r.variant_id));
     const orders = new Map<string, PickList["orders"][number]>();
     const items = new Map<string, PickList["items"][number]>();
     for (const r of rows) {
       const o = orders.get(r.order_id) ?? { id: r.order_id, number: r.number, packedAt: r.packed_at?.toISOString() ?? null, lines: [] };
       orders.set(r.order_id, o);
       if (r.title === null || r.quantity === null) continue;
-      const line = { variantId: r.variant_id, sku: r.sku ?? r.line_sku, barcode: r.barcode, title: r.title, quantity: r.quantity };
+      const line = { variantId: r.variant_id, sku: r.sku ?? r.line_sku, barcode: r.barcode, title: r.title, quantity: r.quantity, picture: (r.variant_id && pictures.get(r.variant_id)) || null };
       o.lines.push(line);
       if (r.packed_at) continue;
       const key = r.variant_id ?? `sku:${line.sku ?? line.title}`;

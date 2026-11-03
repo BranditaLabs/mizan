@@ -218,7 +218,7 @@ export class ConfirmationService {
     if (!run.customer_hash) await trx.updateTable("confirmation_runs").set({ customer_hash: pii.phoneHash(to) }).where("id", "=", run.id).execute();
     const { name, lang, settings } = await this.store(trx, tenantId);
     const label = pii.decrypt(o.customer_label, "orders.customer_label");
-    const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
+    const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("position").orderBy("id").limit(10).execute();
     const due = BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor);
     const f = await this.offers.forRun(trx, run.id);
     const offer = f && !["declined", "expired"].includes(f.status) ? (() => {
@@ -251,7 +251,7 @@ export class ConfirmationService {
         const o = await trx.selectFrom("orders").select(["number", "customer_label", "currency", "total_minor", "cod_minor", "ship_city"]).where("id", "=", orderId).executeTakeFirst();
         if (!o) throw new ProblemError(404, "not_found", "order not found");
         const label = (await this.cipher.forTenant(trx, tenantId)).decrypt(o.customer_label, "orders.customer_label");
-        const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", orderId).orderBy("id").limit(10).execute();
+        const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", orderId).orderBy("position").orderBy("id").limit(10).execute();
         f = { lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number, total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: "", items, city: o.ship_city };
       } else {
         const t = await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow();
@@ -306,7 +306,7 @@ export class ConfirmationService {
 
   private async publicView(trx: Transaction<DB>, tenantId: string, run: RunRow, now: Date) {
     const o = await trx.selectFrom("orders").select(["number", "status", "customer_label", "currency", "total_minor", "cod_minor", "ship_city", "ship_lat"]).where("id", "=", run.order_id).executeTakeFirstOrThrow();
-    const lines = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").execute();
+    const lines = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("position").orderBy("id").execute();
     const { name } = await this.store(trx, tenantId);
     const label = (await this.cipher.forTenant(trx, tenantId)).decrypt(o.customer_label, "orders.customer_label");
     const money = (minor: string | number | bigint): Money => fromMinor(BigInt(minor), o.currency);

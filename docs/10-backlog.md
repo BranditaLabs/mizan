@@ -148,7 +148,7 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
   - [ ] **P3** `L` Products created in Mizan (stores without a channel): create, variants from options, picture upload to Azure Blob (signed upload, size and type checks, resized thumbnails), and publishing to a store later.
   - [ ] **P4** `S` WooCommerce prices in the store's currency (`/settings/general`), as Shopify's now are.
 - [ ] **O · Orders in full** (decided 3 Nov 2026).
-  - [ ] **O1** `S` Product pictures on every order line (list and order page) and in pick lists.
+  - [x] **O1** `S` Product pictures on every order line (list and order page) and in pick lists. ✅ One query per screen (`variantPictures`: the variant's own picture, else its product's main one): order lines carry `picture` and `productId` (the item links to its product), list rows carry `items { count, lines, pictures (≤ 3) }`, pick list lines and the new-order picker carry `picture`. Found on the way: order lines were read by their random id, so the order page, the WhatsApp confirmation, disputes and pick lists listed items in an arbitrary order; lines now keep the store's order (migration 0063 `order_lines.position`). API e2e; web AR/EN.
   - [ ] **O2** `M` Internal notes and tags on the order, saved filters (product, city, courier, tag, dates) and more list columns.
   - [ ] **O3** `L` Edit an order before shipping: items, quantities, prices, address, shipping fee; written to Shopify (`orderEditBegin` … `orderEditCommit`) and WooCommerce through the outbox; profit recomputed; audited.
   - [ ] **O4** `M` Invoice and packing slip PDFs (AR/EN, RTL), one or many.

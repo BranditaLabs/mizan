@@ -184,3 +184,36 @@ describe("the full product (P1)", () => {
   });
 });
 
+describe("pictures on orders (O1)", () => {
+  it("each order line shows its variant's picture (else the product's main one); the list shows the first items; the picker too", async () => {
+    const img = (n: number) => ({ externalId: `gid://shopify/MediaImage/5${n}`, url: `https://cdn.shopify.com/s/files/1/kaftan-${n}.jpg` });
+    await sync({
+      connector: "shopify", externalId: "gid://shopify/Product/50", title: "Kaftan", status: "active", updatedAt: at, tags: [],
+      images: [img(1), img(2)], mainImageId: img(1).externalId, options: [{ name: "Color", values: ["Blue", "Red"] }],
+      variants: [
+        { externalId: "gid://shopify/ProductVariant/501", sku: "KAF-BLU", title: "Blue", price: { amount: "900.00", currency: "EGP" }, options: [{ name: "Color", value: "Blue" }] },
+        { externalId: "gid://shopify/ProductVariant/502", sku: "KAF-RED", title: "Red", price: { amount: "900.00", currency: "EGP" }, options: [{ name: "Color", value: "Red" }], imageId: img(2).externalId },
+      ],
+    });
+    const blue = (await variant("KAF-BLU")).id;
+    const red = (await variant("KAF-RED")).id;
+    const scarf = (await variant("SCF-1")).id; // a product without pictures
+
+    const picker = (await http().get("/v1/orders/products?q=kaftan").set(as("owner")).expect(200)).body.data;
+    expect(picker.map((p: { sku: string; picture: { url: string } | null }) => [p.sku, p.picture?.url.slice(-12)])).toEqual([["KAF-BLU", "kaftan-1.jpg"], ["KAF-RED", "kaftan-2.jpg"]]);
+
+    const order = (await http().post("/v1/orders").set(as("owner")).send({
+      source: "phone", customer: { name: "Mona Adel", phone: "01001234821" }, address: { line1: "12 Abbas El Akkad St", city: "Nasr City" },
+      lines: [{ variantId: blue, quantity: 2 }, { variantId: red, quantity: 1 }, { variantId: scarf, quantity: 1 }, { title: "Gift wrap", quantity: 1, unitPrice: "25" }],
+      shipping: "50", payment: { mode: "cod" },
+    }).expect(201)).body;
+    const detail = (await http().get(`/v1/orders/${order.id}`).set(as("owner")).expect(200)).body;
+    const kaftan = (await list("?search=kaftan")).data[0].id;
+    expect(detail.lines.map((l: { sku: string | null; title: string; picture: { url: string } | null; productId: string | null }) => [l.sku ?? l.title, l.picture?.url.slice(-12) ?? null, l.productId === kaftan]))
+      .toEqual([["KAF-BLU", "kaftan-1.jpg", true], ["KAF-RED", "kaftan-2.jpg", true], ["SCF-1", null, false], ["Gift wrap", null, false]]);
+
+    const row = (await http().get("/v1/orders?limit=5").set(as("owner")).expect(200)).body.data.find((o: { id: string }) => o.id === order.id);
+    expect(row.items).toEqual({ count: 5, lines: 4, pictures: [{ url: img(1).url, alt: null }, { url: img(2).url, alt: null }] });
+  });
+});
+

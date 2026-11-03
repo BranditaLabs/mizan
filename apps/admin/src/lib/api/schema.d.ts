@@ -5501,6 +5501,17 @@ export interface components {
              * @enum {string|null}
              */
             stock: "reserved" | "short" | "untracked" | null;
+            items: {
+                /** @description Pieces in the order (sum of quantities) */
+                count: number;
+                lines: number;
+                /** @description Up to three items' pictures, the order's lines in order (O1) */
+                pictures: {
+                    /** Format: uri */
+                    url: string;
+                    alt: string | null;
+                }[];
+            };
             externalId: string | null;
             /** @description Where the order came from (M7-2); null until it is known */
             source: {
@@ -5595,6 +5606,17 @@ export interface components {
                 };
                 /** Format: uuid */
                 variantId: string | null;
+                /**
+                 * Format: uuid
+                 * @description The catalogue product, to open its page (O1)
+                 */
+                productId: string | null;
+                /** @description The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue */
+                picture: {
+                    /** Format: uri */
+                    url: string;
+                    alt: string | null;
+                } | null;
             }[];
             payments: {
                 /** Format: uuid */
@@ -5841,6 +5863,17 @@ export interface components {
                  * @enum {string|null}
                  */
                 stock: "reserved" | "short" | "untracked" | null;
+                items: {
+                    /** @description Pieces in the order (sum of quantities) */
+                    count: number;
+                    lines: number;
+                    /** @description Up to three items' pictures, the order's lines in order (O1) */
+                    pictures: {
+                        /** Format: uri */
+                        url: string;
+                        alt: string | null;
+                    }[];
+                };
             }[];
             nextCursor: string | null;
             counts: {
@@ -5946,6 +5979,12 @@ export interface components {
                     currency: string;
                 };
                 available: number | null;
+                /** @description The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue */
+                picture: {
+                    /** Format: uri */
+                    url: string;
+                    alt: string | null;
+                } | null;
             }[];
         };
         OrderSettings: {
@@ -6178,6 +6217,12 @@ export interface components {
                 barcode: string | null;
                 title: string;
                 quantity: number;
+                /** @description The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue */
+                picture: {
+                    /** Format: uri */
+                    url: string;
+                    alt: string | null;
+                } | null;
                 bin: string | null;
             }[];
             /** @description Each order with what must be scanned to pack it */
@@ -6194,6 +6239,12 @@ export interface components {
                     barcode: string | null;
                     title: string;
                     quantity: number;
+                    /** @description The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue */
+                    picture: {
+                        /** Format: uri */
+                        url: string;
+                        alt: string | null;
+                    } | null;
                 }[];
             }[];
         };

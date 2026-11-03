@@ -735,7 +735,8 @@
       "total": "Total",
       "risk": "Risk",
       "status": "Status",
-      "age": "Age"
+      "age": "Age",
+      "items": "Items"
     },
     "label": "Orders",
     "cod": "Collect <m>{amount}</m>",
@@ -1212,7 +1213,8 @@
     "importing": {
       "title": "Your orders are on their way",
       "body": "Mizan is importing your store's recent orders in the background: {orders} so far. They appear here as they arrive; you can keep working meanwhile."
-    }
+    },
+    "pieces": "{count, plural, one {# piece} other {# pieces}}"
   },
   "costs": {
     "title": "Costs",

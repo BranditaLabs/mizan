@@ -23,6 +23,7 @@ import { RefundsCard } from "@/components/payments/Refunds";
 import { ConversionCard } from "./ConversionCard";
 import { ReturnsCard } from "./ReturnsCard";
 import { ShippingCard } from "./ShippingCard";
+import { ProductImage } from "@/components/catalog/ProductImage";
 import { SourceCard } from "./SourceCard";
 import { ExchangeCard } from "./ExchangeCard";
 import { DoorCard } from "./DoorCard";
@@ -115,7 +116,16 @@ export function OrderDetail({ id }: { id: string }) {
   };
 
   const lineColumns: Column<Line>[] = [
-    { id: "item", header: t("detail.lines.item"), cell: (l) => <Cell main={l.title} sub={l.sku ? <IdCell>{l.sku}</IdCell> : t("detail.lines.noSku")} /> },
+    {
+      id: "item", header: t("detail.lines.item"),
+      cell: (l) => (
+        <div className="flex items-center gap-3">
+          <ProductImage image={l.picture ? { ...l.picture, width: null, height: null } : null} alt={l.title} size={44} />
+          <Cell main={l.productId ? <Link href={`/products/${l.productId}`} className="hover:underline">{l.title}</Link> : l.title}
+            sub={l.sku ? <IdCell>{l.sku}</IdCell> : t("detail.lines.noSku")} />
+        </div>
+      ),
+    },
     { id: "qty", header: t("detail.lines.qty"), numeric: true, cell: (l) => <Bdi>{l.quantity}</Bdi> },
     { id: "price", header: t("detail.lines.price"), numeric: true, cell: (l) => <MoneyText money={l.unitPrice} /> },
     { id: "total", header: t("detail.lines.total"), numeric: true, cell: (l) => <MoneyText money={l.total} /> },

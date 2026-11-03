@@ -13,12 +13,13 @@ import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
 import { useRouter } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
+import { ProductImage } from "@/components/catalog/ProductImage";
 import { useSession } from "@/lib/session";
 
 type NewOrderBody = Schemas["NewOrder"];
 type Mode = NewOrderBody["payment"]["mode"];
 type Method = NonNullable<NewOrderBody["payment"]["method"]>;
-interface Line { key: number; variantId?: string; title: string; sku?: string | null; quantity: number; unitPrice: string; currency: string }
+interface Line { key: number; variantId?: string; title: string; sku?: string | null; quantity: number; unitPrice: string; currency: string; picture?: { url: string; alt: string | null } | null }
 
 const SOURCES: readonly NewOrderBody["source"][] = ["phone", "whatsapp", "instagram", "facebook", "tiktok", "walk_in", "other"];
 const MODES: readonly Mode[] = ["cod", "partial", "prepaid", "bank_transfer"];
@@ -90,14 +91,17 @@ export function NewOrder() {
   const valid = Object.values(errors).every((e) => e === null);
   const show = (e: string | null) => (tried ? e : null);
 
-  const options = (products.data?.data ?? []).map((p) => ({ value: p.variantId, label: p.title, hint: p.sku ?? undefined }));
+  const options = (products.data?.data ?? []).map((p) => ({
+    value: p.variantId, label: p.title, hint: p.sku ?? undefined,
+    media: <ProductImage image={p.picture ? { ...p.picture, width: null, height: null } : null} alt="" size={28} />,
+  }));
   const addProduct = (variantId: string) => {
     const p = products.data?.data.find((x) => x.variantId === variantId);
     if (!p) return;
     setLines((ls) => {
       const same = ls.find((l) => l.variantId === variantId);
       if (same) return ls.map((l) => (l === same ? { ...l, quantity: l.quantity + 1 } : l));
-      return [...ls, { key: Date.now(), variantId, title: p.title, sku: p.sku, quantity: 1, unitPrice: p.price.amount, currency: p.price.currency }];
+      return [...ls, { key: Date.now(), variantId, title: p.title, sku: p.sku, quantity: 1, unitPrice: p.price.amount, currency: p.price.currency, picture: p.picture }];
     });
     setPick(null);
   };
@@ -158,9 +162,12 @@ export function NewOrder() {
                 <ul className="flex flex-col divide-y divide-line" data-testid="order-lines">
                   {lines.map((l) => (
                     <li key={l.key} className="flex flex-wrap items-end gap-3 py-3">
-                      <div className="min-w-40 flex-1">
-                        <p className="text-body-sm font-medium">{l.title}</p>
-                        {l.sku ? <p className="text-caption text-text-3"><bdi>{l.sku}</bdi></p> : null}
+                      <div className="flex min-w-40 flex-1 items-center gap-3">
+                        {l.variantId ? <ProductImage image={l.picture ? { ...l.picture, width: null, height: null } : null} alt="" size={40} /> : null}
+                        <div className="min-w-0">
+                          <p className="text-body-sm font-medium">{l.title}</p>
+                          {l.sku ? <p className="text-caption text-text-3"><bdi>{l.sku}</bdi></p> : null}
+                        </div>
                       </div>
                       <Field label={t("items.quantity")} ltr type="number" inputMode="numeric" min={1} max={999} className="w-24" value={String(l.quantity)}
                         onChange={(e) => setLine(l.key, { quantity: Math.max(1, Math.min(999, Math.round(Number(e.target.value) || 1))) })} />

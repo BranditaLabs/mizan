@@ -16,6 +16,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { MODE_ICON, STATUS_TONE, maskedLast4 } from "./order-ui";
+import { ProductImage } from "@/components/catalog/ProductImage";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
@@ -77,6 +78,19 @@ export function OrdersScreen({ initialStatus, initialQuery }: { initialStatus: s
     {
       id: "customer", header: t("columns.customer"),
       cell: (o) => <Cell main={o.customer.label ?? <span className="text-text-3">{t("noCustomer")}</span>} sub={o.customer.phoneLast4 ? <IdCell>{maskedLast4(o.customer.phoneLast4)}</IdCell> : null} />,
+    },
+    {
+      id: "items", header: t("columns.items"),
+      cell: (o) => (
+        <span className="inline-flex items-center gap-2" data-testid="order-items">
+          {o.items.pictures.length ? (
+            <span className="flex -space-x-2 rtl:space-x-reverse">
+              {o.items.pictures.map((p) => <ProductImage key={p.url} image={{ ...p, width: null, height: null }} alt="" size={32} className="ring-2 ring-surface" />)}
+            </span>
+          ) : null}
+          <span className="text-body-sm text-text-2">{t("pieces", { count: o.items.count })}</span>
+        </span>
+      ),
     },
     { id: "payment", header: t("columns.payment"), cell: (o) => <Cell main={<Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>} sub={tp(o.paymentStatus)} /> },
     {
