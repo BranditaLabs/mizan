@@ -54,3 +54,72 @@ export function mapIntention(raw: unknown, ctx: PaymobMapCtx): PaymobIntention {
     reference: r.str("reference", ["special_reference", "merchant_order_id"]) ?? "",
   };
 }
+
+/** A transaction as re-read (E14-2b): the flags that decide its state, and the cumulative amounts. */
+export interface PaymobTransaction {
+  id: string;
+  parentId: string | null;
+  reference: string | null;
+  currency: string;
+  amountMinor: bigint;
+  success: boolean;
+  pending: boolean;
+  errorOccurred: boolean;
+  isAuth: boolean;
+  voided: boolean;
+  capturedMinor: bigint;
+  refundedMinor: bigint;
+  method: string;
+  occurredAt: string;
+  kioskReference?: string | undefined;
+}
+
+/** Paymob's source types → Mizan's method names; one it adds later is `other` (and a drift note). */
+const METHODS: Record<string, string> = {
+  card: "card", wallet: "wallet", aggregator: "kiosk", kiosk: "kiosk", "cash present": "kiosk", apple_pay: "apple_pay", applepay: "apple_pay", google_pay: "google_pay",
+  valu: "bnpl", sympl: "bnpl", souhoola: "bnpl", halan: "bnpl", tru: "bnpl", mogo: "bnpl", forsa: "bnpl", aman: "bnpl", tabby: "bnpl", tamara: "bnpl", premium: "bnpl", contact: "bnpl",
+  "bank-installments": "bnpl", "card-installment": "bnpl", stcpay: "wallet",
+};
+
+/**
+ * `GET /api/acceptance/transactions/{id}` → the facts Mizan acts on. Money only from the integer
+ * cent fields (`data.*` carries major units on cards: never read). `captured_amount` is in cents,
+ * `refunded_amount_cents` cumulative across partial refunds.
+ */
+export function mapTransaction(raw: unknown, ctx: PaymobMapCtx): PaymobTransaction {
+  const r = new Resolver(raw, { connector: "paymob", entity: "transaction", drift: ctx.drift, now: ctx.now });
+  const flag = (name: string, paths: string[]) => {
+    const v = r.any(name, paths);
+    return v === true || v === "true";
+  };
+  const cents = (name: string, paths: string[]) => {
+    const n = r.num(name, paths);
+    return n !== undefined && Number.isFinite(n) && n > 0 ? BigInt(Math.round(n)) : 0n;
+  };
+  const sourceType = (r.str("sourceType", ["source_data.type"]) ?? "").toLowerCase();
+  const subType = (r.str("subType", ["source_data.sub_type"]) ?? "").toLowerCase();
+  let method = METHODS[subType] ?? METHODS[sourceType];
+  if (!method) {
+    method = "other";
+    ctx.drift.record({ connector: "paymob", entity: "transaction", kind: "unknown_status", field: "source_data.type", detail: `a payment method Mizan does not know: ${sourceType}/${subType}`, at: ctx.now() });
+  }
+  const parent = r.str("parentId", ["parent_transaction", "parent_transaction.id"]);
+  const kiosk = r.str("kioskReference", ["data.bill_reference", "bill_reference"]);
+  return {
+    id: r.str("id", ["id"], { required: true })!,
+    parentId: parent && parent !== "0" && parent !== "null" ? parent : null,
+    reference: r.str("reference", ["order.merchant_order_id", "merchant_order_id"]) ?? null,
+    currency: (r.str("currency", ["currency", "order.currency"], { required: true }) ?? "").toUpperCase(),
+    amountMinor: cents("amount", ["amount_cents"]),
+    success: flag("success", ["success"]),
+    pending: flag("pending", ["pending"]),
+    errorOccurred: flag("errorOccurred", ["error_occured", "error_occurred"]),
+    isAuth: flag("isAuth", ["is_auth"]),
+    voided: flag("voided", ["is_voided"]),
+    capturedMinor: cents("captured", ["captured_amount"]),
+    refundedMinor: cents("refunded", ["refunded_amount_cents"]),
+    method,
+    occurredAt: r.str("createdAt", ["created_at"]) ?? new Date(ctx.now()).toISOString(),
+    ...(kiosk ? { kioskReference: kiosk } : {}),
+  };
+}
