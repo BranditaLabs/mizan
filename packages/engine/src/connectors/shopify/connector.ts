@@ -338,6 +338,10 @@ export class ShopifyConnector {
    * Returns the store's product, variant (by Mizan id) and picture ids (by Mizan id, in order).
    */
   async createProduct(d: ProductDraft): Promise<CreatedProduct> {
+    const shop = (await this.gql.run<{ shop?: { currencyCode?: string } }>(Q.SHOP_CURRENCY, {}, { idempotent: true })).shop?.currencyCode;
+    if (shop && shop.toUpperCase() !== d.currency.toUpperCase()) {
+      throw new IntegrationError({ kind: "validation", connector: "shopify", message: `the store sells in ${shop}; this product is priced in ${d.currency}` });
+    }
     type Node = { id: string; variants: { nodes: Array<{ id: string; sku: string | null; selectedOptions: Array<{ name: string; value: string }> }> }; media: { nodes: Array<{ id: string }> } };
     const read = async () => (await this.gql.run<{ product: Node | null }>(Q.PRODUCT_BY_HANDLE, { handle: d.handle }, { idempotent: true })).product;
     let node = await read();

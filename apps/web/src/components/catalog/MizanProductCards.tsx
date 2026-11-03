@@ -7,7 +7,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Surface";
-import { ApiError, ok, type Schemas } from "@/lib/api/client";
+import { ApiError, idempotency, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { PRODUCT_EDITORS } from "./EditProduct";
@@ -15,7 +15,7 @@ import { ProductImage } from "./ProductImage";
 
 type Product = Schemas["ProductDetail"];
 const TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const PICTURE_ERRORS = new Set(["picture_type", "picture_too_small", "picture_too_large", "picture_unreadable", "too_many_pictures", "payload_too_large"]);
+const PICTURE_ERRORS = new Set(["publishing", "picture_type", "picture_too_small", "picture_too_large", "picture_unreadable", "too_many_pictures", "payload_too_large"]);
 const PUBLISH_ERRORS = new Set(["publishing", "not_a_store", "store_not_active", "variants_invalid"]);
 
 /** P3: a product made in Mizan gets its pictures here (a store's product gets them in the store). */
@@ -25,18 +25,23 @@ export function PicturesCard({ product: p }: { product: Product }) {
   const { api, store } = useSession();
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
+  const keys = useRef(new WeakMap<File, string>());
   const [error, setError] = useState<string | null>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
-      // One at a time, in the order chosen: the first of a product's pictures is its main one.
+      // One at a time, in the order chosen: the first of a product's pictures is its main one. Each
+      // file has its own key, so one sent again (a lost answer) is the same picture, never a copy.
       for (const f of files) {
         if (!TYPES.has(f.type)) throw new ApiError(415, "picture_type", "");
+        if (!keys.current.has(f)) keys.current.set(f, crypto.randomUUID());
         await ok(api.POST("/v1/products/{id}/images", {
-          params: { path: { id: p.id } }, body: f as never, bodySerializer: (b: unknown) => b as File, headers: { "Content-Type": f.type },
+          params: { path: { id: p.id } }, body: f as never, bodySerializer: (b: unknown) => b as File,
+          headers: { "Content-Type": f.type, ...idempotency(keys.current.get(f)!) },
         }));
       }
     },
+    retry: false,
     onSettled: async () => { if (input.current) input.current.value = ""; await refresh(); },
     onError: (e) => setError(e instanceof ApiError && PICTURE_ERRORS.has(e.code) ? t(`errors.${e.code as "picture_type"}`) : problemText(e, tpr)),
     meta: { toast: false },
@@ -112,6 +117,8 @@ export function PublishCard({ product: p }: { product: Product }) {
             <Button icon="upload" busy={publish.isPending} disabled={!target} onClick={() => publish.mutate()}>{state === "failed" ? t("again") : t("go")}</Button>
           </div>
         ) : null}
+        {/* Shopify adds a new product to no sales channel; putting it on one needs a permission Mizan does not ask for yet. */}
+        {stores.data?.find((c) => c.id === target)?.provider === "shopify" || (state === "published" && p.store?.provider === "shopify") ? <p className="text-caption text-text-3">{t("shopifyChannels")}</p> : null}
         {publish.isError ? <Alert tone="danger">{publish.error instanceof ApiError && PUBLISH_ERRORS.has(publish.error.code) ? t(`errors.${publish.error.code as "publishing"}`) : problemText(publish.error, tpr)}</Alert> : null}
       </div>
     </Card>

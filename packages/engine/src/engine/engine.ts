@@ -750,7 +750,8 @@ export class MizanEngine {
       return;
     }
     await this.runHook(() => this.opts.hooks?.onProductPublished?.(productId, { ok: true, ...created }));
-    if (provider === "shopify") await this.ingestProduct(created.externalId); else await this.ingestWooProduct(created.externalId);
+    // Read back as its own job: linked already, a failing read is retried without publishing again.
+    await this.enqueue(`${provider}.ingestProduct`, { productId: created.externalId }, `${provider}:product:${created.externalId}:published:${productId}`);
     this.emit("product.published", { productId, externalId: created.externalId, outcome: created.outcome });
   }
 

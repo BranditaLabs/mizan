@@ -2351,7 +2351,8 @@
         "images_not_in_store": "A picture isn't in the store yet, so the order can't be sent.",
         "compare_at_low": "A compare-at price must be higher than the price.",
         "unknown_variant": "A variant changed meanwhile. Close and open the editor again.",
-        "price_decimals": "Prices in this currency take fewer decimals."
+        "price_decimals": "Prices in this currency take fewer decimals.",
+        "publishing": "The product is on its way to a store: wait until it's there."
       }
     },
     "newProduct": {
@@ -2423,7 +2424,8 @@
         "picture_too_large": "The picture is larger than 10 MB.",
         "payload_too_large": "The picture is larger than 10 MB.",
         "picture_unreadable": "The picture couldn't be read.",
-        "too_many_pictures": "20 pictures per product at most."
+        "too_many_pictures": "20 pictures per product at most.",
+        "publishing": "The product is on its way to a store: wait until it's there."
       }
     },
     "publish": {
@@ -2440,7 +2442,8 @@
         "not_a_store": "Choose a connected Shopify or WooCommerce store.",
         "store_not_active": "The store's connection needs attention first.",
         "variants_invalid": "The product has no variant."
-      }
+      },
+      "shopifyChannels": "In Shopify, choose the sales channels it's sold on (Online Store and others): a new product is on none at first."
     }
   },
   "stock": {

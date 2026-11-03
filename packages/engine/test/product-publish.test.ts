@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MizanEngine } from "../src/engine/engine.js";
 import { draftHandle, type ProductDraft, type ProductPublishOutcome } from "../src/core/product-draft.js";
 import { settle, setup, setupWoo } from "./fakes/setup.js";
+import { mapProduct } from "../src/connectors/shopify/mapper.js";
 
 /**
  * P3: a product made in Mizan reaches a store once — with its options, variants, prices, SKUs and
@@ -140,5 +141,40 @@ describe("the store's URL name (P3)", () => {
   it("Latin letters and digits, with a piece of Mizan's id; an Arabic title gives product-…", () => {
     expect(draftHandle("Linen Kaftan — Size S", PID)).toBe("linen-kaftan-size-s-0f1e2d3c");
     expect(draftHandle("قفطان كتان", PID)).toBe("product-0f1e2d3c");
+  });
+});
+
+describe("review fixes (P3)", () => {
+  it("refuses a product priced in another currency than the store's, in either store, without creating anything", async () => {
+    const s = shopifyWorld();
+    s.shop.currency = "SAR";
+    await s.publish(kaftan());
+    expect(s.results[0]).toMatchObject({ ok: false, reason: "validation", message: "the store sells in SAR; this product is priced in EGP" });
+    expect(s.shop.creates).toBe(0);
+    const w = wooWorld();
+    w.woo.currency = "AED";
+    await w.publish(kaftan());
+    expect(w.results[0]).toMatchObject({ ok: false, reason: "validation", message: expect.stringMatching(/AED/) });
+    expect(w.woo.productCreates).toBe(0);
+  });
+
+  it("WooCommerce: a variation the store refuses (its SKU is another product's) is reported in the store's words", async () => {
+    const w = wooWorld();
+    w.woo.addProduct({ name: "Old", price: "100.00", sku: "KAF-M-SAND" });
+    await w.publish(kaftan());
+    expect(w.results.at(-1)).toMatchObject({ ok: false, reason: "validation", message: "Invalid or duplicated SKU." });
+  });
+
+  it("Shopify still processing a new picture (no URL yet): the product says nothing about its pictures, so Mizan keeps its own", () => {
+    const raw = {
+      id: "gid://shopify/Product/1", title: "Kaftan", status: "ACTIVE", tags: [], updatedAt: new Date().toISOString(), handle: "kaftan",
+      priceRangeV2: { minVariantPrice: { currencyCode: "EGP" } }, options: [], featuredMedia: { id: "gid://shopify/MediaImage/1" },
+      media: { nodes: [{ id: "gid://shopify/MediaImage/1", mediaContentType: "IMAGE", alt: null, image: null }] },
+      variants: { nodes: [{ id: "gid://shopify/ProductVariant/1", sku: "K-1", title: "Default Title", price: "100.00", selectedOptions: [] }] },
+    };
+    const ctx = { drift: { record: () => undefined }, now: () => Date.now() };
+    expect(mapProduct(raw, ctx).images).toBeUndefined();
+    const ready = { ...raw, media: { nodes: [{ id: "gid://shopify/MediaImage/1", mediaContentType: "IMAGE", alt: null, image: { url: "https://cdn.shopify.com/k.jpg" } }] } };
+    expect(mapProduct(ready, ctx).images).toEqual([expect.objectContaining({ externalId: "gid://shopify/MediaImage/1", url: "https://cdn.shopify.com/k.jpg" })]);
   });
 });

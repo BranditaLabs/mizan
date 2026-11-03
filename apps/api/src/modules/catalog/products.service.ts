@@ -141,9 +141,10 @@ export class ProductsService {
     const tenantId = auth.tenant!.id;
     await this.db.tenant(tenantId, async (trx) => {
       const p = await trx.selectFrom("products as p").leftJoin("connections as c", "c.id", "p.connection_id")
-        .select(["p.id", "p.title", "p.status", "p.description_html", "p.tags", "p.vendor", "p.product_type", "p.external_id", "p.connection_id", "c.provider"])
+        .select(["p.id", "p.title", "p.status", "p.description_html", "p.tags", "p.vendor", "p.product_type", "p.external_id", "p.connection_id", "c.provider", "p.publish_status"])
         .where("p.id", "=", id).forUpdate("p").executeTakeFirst();
       if (!p) throw new ProblemError(404, "not_found", "this product does not exist in this store");
+      if (p.publish_status === "publishing") throw new ProblemError(409, "publishing", "the product is on its way to a store: wait until it is there");
       const provider = p.connection_id && p.external_id && (p.provider === "shopify" || p.provider === "woocommerce") ? p.provider : null;
       if (provider === "woocommerce" && (body.vendor !== undefined || body.productType !== undefined)) {
         throw new ProblemError(422, "field_not_in_store", "WooCommerce products have no vendor or product type");

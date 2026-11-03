@@ -40,7 +40,10 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const res = ctx.switchToHttp().getResponse<HttpReply>();
     const actorId = req.auth.user.id;
     const tenantId = req.auth.tenant?.id ?? null;
-    const hash = createHash("sha256").update(JSON.stringify([req.method, req.url, tenantId, req.body ?? null])).digest("hex");
+    // A picture upload's bytes are hashed as they are (P3): never turned into JSON several times their size.
+    const hash = Buffer.isBuffer(req.body)
+      ? createHash("sha256").update(JSON.stringify([req.method, req.url, tenantId])).update(req.body).digest("hex")
+      : createHash("sha256").update(JSON.stringify([req.method, req.url, tenantId, req.body ?? null])).digest("hex");
 
     return from(this.claim(actorId, key, tenantId, hash)).pipe(
       mergeMap((claim) => {

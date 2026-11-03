@@ -23,6 +23,14 @@ const THUMB_PX = 400;
 /** Decompression bombs: refused before they are decoded. */
 const MAX_PIXELS = 40_000_000;
 const MIN_SIDE = 200;
+/** Pictures decoding at once per instance (sharp has a few threads; more would only queue). */
+const MAX_ENCODING = 3;
+
+/** A picture checked, encoded and (with Blob) stored, waiting for its rows. */
+export interface PreparedPicture {
+  tenantId: string;
+  files: Array<{ key: string; data: Buffer; width: number; height: number }>;
+}
 
 export interface SavedPicture {
   full: { id: string; url: string; width: number; height: number };
@@ -49,34 +57,68 @@ export class MediaService {
     return `${this.config.PUBLIC_URL.replace(/\/$/, "")}/media/${tenantId}/${key}`;
   }
 
-  async savePicture(trx: Transaction<DB>, tenantId: string, folder: string, bytes: Buffer): Promise<SavedPicture> {
+  /** Pictures decoding at once on this instance: more wait for a moment (503), so uploads never starve the rest. */
+  private encoding = 0;
+
+  /**
+   * Check and encode a picture, then keep its two files where pictures live — all before any
+   * database transaction (a big photo takes seconds; a connection is never held for it). The rows
+   * that point at the files are written by `record`, in the caller's transaction; if that fails,
+   * `discard` removes the files again.
+   */
+  async prepare(tenantId: string, folder: string, bytes: Buffer): Promise<PreparedPicture> {
     if (bytes.length === 0) throw new ProblemError(422, "picture_empty", "the picture is empty");
     if (bytes.length > this.config.MEDIA_MAX_BYTES) throw new ProblemError(413, "picture_too_large", `pictures up to ${Math.floor(this.config.MEDIA_MAX_BYTES / 1048576)} MB`);
     if (!SIGNATURES.some((s) => s.test(bytes))) throw new ProblemError(415, "picture_type", "a JPEG, PNG or WebP picture");
-    let meta: Metadata;
+    if (this.encoding >= MAX_ENCODING) throw new ProblemError(503, "busy", "pictures are being processed: try again in a moment");
+    this.encoding++;
     try {
-      meta = await sharp(bytes, { limitInputPixels: MAX_PIXELS, failOn: "error" }).metadata();
-    } catch {
-      throw new ProblemError(422, "picture_unreadable", "the picture could not be read, or has more than 40 million pixels");
+      let meta: Metadata;
+      try {
+        meta = await sharp(bytes, { limitInputPixels: MAX_PIXELS, failOn: "error" }).metadata();
+      } catch {
+        throw new ProblemError(422, "picture_unreadable", "the picture could not be read, or has more than 40 million pixels");
+      }
+      // Upright sides (EXIF orientation 5–8 swap them).
+      const [w, h] = (meta.orientation ?? 1) >= 5 ? [meta.height ?? 0, meta.width ?? 0] : [meta.width ?? 0, meta.height ?? 0];
+      if (w < MIN_SIDE || h < MIN_SIDE) throw new ProblemError(422, "picture_too_small", `pictures at least ${MIN_SIDE} × ${MIN_SIDE} pixels`);
+      // The first frame only (an animated picture is one picture here), metadata never copied.
+      const encode = (px: number) => sharp(bytes, { limitInputPixels: MAX_PIXELS, pages: 1 }).rotate().resize({ width: px, height: px, fit: "inside", withoutEnlargement: true }).webp({ quality: 85 }).toBuffer({ resolveWithObject: true });
+      const [full, thumb] = await Promise.all([encode(FULL_PX), encode(THUMB_PX)]);
+      const name = randomUUID();
+      const files = [
+        { key: `${folder}/${name}.webp`, data: full.data, width: full.info.width, height: full.info.height },
+        { key: `${folder}/${name}_${THUMB_PX}.webp`, data: thumb.data, width: thumb.info.width, height: thumb.info.height },
+      ] as const;
+      if (this.blob) {
+        try {
+          for (const f of files) await this.blob.put(`${tenantId}/${f.key}`, f.data, "image/webp");
+        } catch (e) {
+          await this.purge(tenantId, files.map((f) => f.key));
+          throw e;
+        }
+      }
+      return { tenantId, files: [...files] };
+    } finally {
+      this.encoding--;
     }
-    // Upright sides (EXIF orientation 5–8 swap them).
-    const [w, h] = (meta.orientation ?? 1) >= 5 ? [meta.height ?? 0, meta.width ?? 0] : [meta.width ?? 0, meta.height ?? 0];
-    if (w < MIN_SIDE || h < MIN_SIDE) throw new ProblemError(422, "picture_too_small", `pictures at least ${MIN_SIDE} × ${MIN_SIDE} pixels`);
+  }
 
-    const encode = (px: number) => sharp(bytes, { limitInputPixels: MAX_PIXELS }).rotate().resize({ width: px, height: px, fit: "inside", withoutEnlargement: true }).webp({ quality: 85 }).toBuffer({ resolveWithObject: true });
-    const [full, thumb] = await Promise.all([encode(FULL_PX), encode(THUMB_PX)]);
-    const name = randomUUID();
-    const store = async (key: string, out: { data: Buffer; info: { width: number; height: number } }) => {
-      if (this.blob) await this.blob.put(`${tenantId}/${key}`, out.data, "image/webp");
+  /** The rows for a prepared picture, in the caller's transaction. */
+  async record(trx: Transaction<DB>, prepared: PreparedPicture): Promise<SavedPicture> {
+    const [full, thumb] = await Promise.all(prepared.files.map(async (f) => {
       const row = await trx.insertInto("media_objects").values({
-        tenant_id: tenantId, key, content_type: "image/webp", bytes: out.data.length, width: out.info.width, height: out.info.height,
-        storage: this.blob ? "blob" : "db", data: this.blob ? null : out.data,
+        tenant_id: prepared.tenantId, key: f.key, content_type: "image/webp", bytes: f.data.length, width: f.width, height: f.height,
+        storage: this.blob ? "blob" : "db", data: this.blob ? null : f.data,
       }).returning("id").executeTakeFirstOrThrow();
-      return { id: row.id, url: this.url(tenantId, key), width: out.info.width, height: out.info.height };
-    };
-    const savedFull = await store(`${folder}/${name}.webp`, full);
-    const savedThumb = await store(`${folder}/${name}_${THUMB_PX}.webp`, thumb);
-    return { full: savedFull, thumb: { id: savedThumb.id, url: savedThumb.url } };
+      return { id: row.id, url: this.url(prepared.tenantId, f.key), width: f.width, height: f.height };
+    }));
+    return { full: full!, thumb: { id: thumb!.id, url: thumb!.url } };
+  }
+
+  /** A prepared picture whose rows were never written: its files go (best effort; a leftover is only space). */
+  async discard(prepared: PreparedPicture): Promise<void> {
+    if (this.blob) await this.purge(prepared.tenantId, prepared.files.map((f) => f.key));
   }
 
   /** A stored file, for the public route; null when there is none. */
@@ -89,10 +131,19 @@ export class MediaService {
     return bytes ? { bytes, contentType: row.content_type } : null;
   }
 
-  /** A picture and its thumbnail, gone (the row first; a Blob left behind is only space). */
-  async remove(trx: Transaction<DB>, tenantId: string, ids: string[]): Promise<void> {
-    if (!ids.length) return;
+  /**
+   * A picture and its thumbnail: their rows go in the caller's transaction; the Blob keys come back,
+   * to `purge` once it has committed (a rollback then never leaves a row pointing at nothing).
+   */
+  async remove(trx: Transaction<DB>, ids: string[]): Promise<string[]> {
+    if (!ids.length) return [];
     const rows = await trx.deleteFrom("media_objects").where("id", "in", ids).returning(["key", "storage"]).execute();
-    for (const r of rows) if (r.storage === "blob" && this.blob) await this.blob.remove(`${tenantId}/${r.key}`).catch(() => undefined);
+    return rows.filter((r) => r.storage === "blob").map((r) => r.key);
+  }
+
+  /** Blob files no row points at any more (best effort). */
+  async purge(tenantId: string, keys: readonly string[]): Promise<void> {
+    if (!this.blob) return;
+    for (const k of keys) await this.blob.remove(`${tenantId}/${k}`).catch(() => undefined);
   }
 }

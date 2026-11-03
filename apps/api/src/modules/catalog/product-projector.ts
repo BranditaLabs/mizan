@@ -43,6 +43,13 @@ export class ProductProjector {
           ...(v.available !== undefined ? { available: v.available, available_at: new Date() } : {}),
         };
         let variantId = link?.variant_id ?? null;
+        if (!variantId && v.sku) {
+          // A product made in Mizan, linked here or adopted above (P3): its variant with this SKU, not yet linked to the store.
+          const own = await trx.selectFrom("variants as x").select("x.id").where("x.product_id", "=", productId).where("x.sku", "=", v.sku)
+            .where(({ not, exists, selectFrom }) => not(exists(selectFrom("external_variants as e").select("e.variant_id").whereRef("e.variant_id", "=", "x.id").where("e.connection_id", "=", connectionId))))
+            .executeTakeFirst();
+          variantId = own?.id ?? null;
+        }
         if (variantId) {
           const own = await trx.selectFrom("variants").select("barcode_set_at").where("id", "=", variantId).executeTakeFirst();
           const barcode = own?.barcode_set_at ? {} : { barcode: await this.barcode(trx, v.barcode, variantId) };
@@ -87,6 +94,14 @@ export class ProductProjector {
       await trx.updateTable("products").set({ ...details, updated_at: new Date() }).where("id", "=", row.id).execute();
       return row.id;
     }
+    // A product made in Mizan, on its way to this store (P3): the store's copy can arrive (a webhook,
+    // a sync) before the publish job links it. Same store, same handle: it is that product, not a new one.
+    const publishing = p.handle ? await trx.selectFrom("products").select("id").where("connection_id", "is", null).where("publish_status", "=", "publishing")
+      .where("publish_connection_id", "=", connectionId).where("handle", "=", p.handle).forUpdate().executeTakeFirst() : undefined;
+    if (publishing) {
+      await trx.updateTable("products").set({ ...details, connection_id: connectionId, external_id: p.externalId, updated_at: new Date() }).where("id", "=", publishing.id).execute();
+      return publishing.id;
+    }
     return (await trx.insertInto("products").values({ tenant_id: tenantId, connection_id: connectionId, external_id: p.externalId, ...details })
       .returning("id").executeTakeFirstOrThrow()).id;
   }
@@ -104,7 +119,8 @@ export class ProductProjector {
     const gone = existing.filter((e) => !p.images!.some((i) => i.externalId === e.external_id)).map((e) => e.id);
     if (gone.length) await trx.deleteFrom("product_images").where("id", "in", gone).execute();
     // The main flag moves in two steps: one main picture per product at every moment.
-    await trx.updateTable("product_images").set({ is_main: false }).where("product_id", "=", productId).where("external_id", "is not", null).execute();
+    // Every picture of the product, Mizan's too (P3): the store's main picture is the only main one.
+    await trx.updateTable("product_images").set({ is_main: false }).where("product_id", "=", productId).execute();
     const now = new Date();
     for (const [position, img] of p.images.entries()) {
       const values = { url: img.url, alt: img.alt?.slice(0, 512) ?? null, width: img.width ?? null, height: img.height ?? null, position, is_main: img.externalId === main, updated_at: now };

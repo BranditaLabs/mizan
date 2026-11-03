@@ -430,3 +430,10 @@ export const VARIANTS_CREATE: GqlOperation = {
     }`,
   ],
 };
+
+/** P3: the shop's currency, so a product priced in another one is not published at the wrong prices. */
+export const SHOP_CURRENCY: GqlOperation = {
+  name: "MizanShopCurrency",
+  cost: 1,
+  variants: [`query MizanShopCurrency { shop { currencyCode } }`],
+};

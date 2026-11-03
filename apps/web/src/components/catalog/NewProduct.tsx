@@ -3,13 +3,13 @@
 import { toAsciiDigits } from "@mizan/shared";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Field, Select, TextArea } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Surface";
 import { Link, useRouter } from "@/i18n/navigation";
-import { ApiError, ok, type Schemas } from "@/lib/api/client";
+import { ApiError, idempotency, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { PRODUCT_EDITORS } from "./EditProduct";
@@ -22,8 +22,17 @@ const SKU = /^[\x21-\x7E]{1,64}$/;
 const ERRORS = new Set(["sku_taken", "barcode_taken", "variants_invalid", "options_invalid", "compare_at_low", "price_decimals"]);
 const decimal = (v: string) => toAsciiDigits(v).replace(/٫/g, ".").trim();
 const valuesOf = (o: Option) => [...new Set(o.values.split(/[,،]/).map((v) => v.trim()).filter(Boolean))];
-/** "Black / XL" → "BLACK-XL": a readable SKU part in Latin letters; other scripts give the value's position. */
-const part = (value: string, index: number) => value.normalize("NFKD").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "") || String(index + 1);
+/**
+ * "Black / XL" → "BLACK-XL": a readable SKU part when the value is Latin letters and digits only;
+ * any other script (أحمر 2) gives the value's position, so two values never share a part.
+ */
+const part = (value: string, index: number) => (/^[A-Za-z0-9 _./-]+$/.test(value) ? value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "") : "") || String(index + 1);
+/** Parts of one option's values, made unique ("S" and "s." would both be "S"). */
+const parts = (values: string[]) => {
+  const raw = values.map(part);
+  return raw.map((p, i) => (raw.indexOf(p) === i ? p : `${p}${i + 1}`));
+};
+const MAX_VARIANTS = 100;
 
 /**
  * P3: a product made in Mizan — for a store without a channel yet, or to publish to one later. Its
@@ -47,13 +56,21 @@ export function NewProduct() {
   const [rows, setRows] = useState<Row[]>([]);
 
   // One variant per combination of the options' values; what the person typed for one is kept.
-  const combos = options.map(valuesOf).filter((v) => v.length).length === options.length
-    ? options.reduce<Array<Array<{ name: string; value: string; index: number }>>>((acc, o) => acc.flatMap((c) => valuesOf(o).map((v, i) => [...c, { name: o.name.trim(), value: v, index: i }])), [[]])
+  // Counted before any is made: 60 sizes × 60 colours would be 3,600 rows.
+  const counts = options.map((o) => valuesOf(o).length);
+  const total = counts.reduce((n, c) => n * c, 1);
+  const tooMany = total > MAX_VARIANTS;
+  const combos = !tooMany && counts.every((c) => c > 0)
+    ? options.reduce<Array<Array<{ name: string; value: string; part: string }>>>((acc, o) => {
+      const vals = valuesOf(o);
+      const ps = parts(vals);
+      return acc.flatMap((c) => vals.map((v, i) => [...c, { name: o.name.trim(), value: v, part: ps[i]! }]));
+    }, [[]])
     : [];
   const shown: Row[] = combos.map((combo) => {
     const key = combo.map((c) => `${c.name}=${c.value}`).join("|");
     const kept = rows.find((r) => r.key === key);
-    const sku = [prefix.trim().toUpperCase(), ...combo.map((c) => part(c.value, c.index))].filter(Boolean).join("-");
+    const sku = [prefix.trim().toUpperCase(), ...combo.map((c) => c.part)].filter(Boolean).join("-");
     return {
       key, options: combo.map(({ name, value }) => ({ name, value })),
       sku: kept?.skuTouched ? kept.sku : sku, price: kept?.priceTouched ? kept.price : decimal(price), compareAt: kept?.compareAt ?? "",
@@ -64,10 +81,11 @@ export function NewProduct() {
 
   const optionNames = options.map((o) => o.name.trim().toLowerCase());
   const optionError = (o: Option) => (!o.name.trim() ? t("optionName") : optionNames.filter((n) => n === o.name.trim().toLowerCase()).length > 1 ? t("optionTwice") : !valuesOf(o).length ? t("optionValues") : null);
-  const rowError = (r: Row) => (!SKU.test(r.sku) ? t("skuInvalid") : !AMOUNT.test(decimal(r.price)) ? t("priceInvalid")
-    : decimal(r.compareAt) && (!AMOUNT.test(decimal(r.compareAt)) || Number(decimal(r.compareAt)) <= Number(decimal(r.price))) ? t("compareAtLow") : null);
+  const skuError = (r: Row) => (!SKU.test(r.sku) ? t("skuInvalid") : null);
+  const priceError = (r: Row) => (!AMOUNT.test(decimal(r.price)) ? t("priceInvalid") : null);
+  const compareError = (r: Row) => (decimal(r.compareAt) && (!AMOUNT.test(decimal(r.compareAt)) || Number(decimal(r.compareAt)) <= Number(decimal(r.price))) ? t("compareAtLow") : null);
   const skus = shown.map((r) => r.sku);
-  const invalid = !title.trim() || options.some((o) => optionError(o)) || shown.some((r) => rowError(r)) || new Set(skus).size !== skus.length || !shown.length || shown.length > 100;
+  const invalid = !title.trim() || options.some((o) => optionError(o)) || shown.some((r) => skuError(r) || priceError(r) || compareError(r)) || new Set(skus).size !== skus.length || !shown.length || tooMany;
 
   const body: Body = {
     title: title.trim(), status, tags: [...new Set(tags.split(/[,،]/).map((x) => x.trim()).filter(Boolean))],
@@ -75,8 +93,15 @@ export function NewProduct() {
     options: options.map((o) => ({ name: o.name.trim(), values: valuesOf(o) })),
     variants: shown.map((r) => ({ options: r.options, sku: r.sku, price: decimal(r.price), ...(decimal(r.compareAt) ? { compareAtPrice: decimal(r.compareAt) } : {}) })),
   };
+  // One key per form as filled: a create whose answer was lost, sent again unchanged, returns the
+  // same product; a changed form is a new request with a new key.
+  const attempt = useRef<{ body: string; key: string } | null>(null);
   const create = useMutation({
-    mutationFn: () => ok(api.POST("/v1/products", { body })),
+    mutationFn: () => {
+      const now = JSON.stringify(body);
+      if (attempt.current?.body !== now) attempt.current = { body: now, key: crypto.randomUUID() };
+      return ok(api.POST("/v1/products", { body, headers: idempotency(attempt.current.key) }));
+    },
     onSuccess: (r) => router.push(`/products/${r.id}`),
     meta: { toast: false },
   });
@@ -125,14 +150,14 @@ export function NewProduct() {
             <Field label={t("skuPrefix")} hint={t("skuPrefixHint")} ltr className="w-40" value={prefix} maxLength={30} onChange={(e) => setPrefix(e.target.value)} />
             <Field label={t("price")} hint={t("priceHint")} ltr inputMode="decimal" className="w-40" value={price} onChange={(e) => setPrice(e.target.value)} />
           </div>
-          {shown.length > 100 ? <Alert tone="warning">{t("tooMany")}</Alert> : null}
+          {tooMany ? <Alert tone="warning">{t("tooMany")}</Alert> : null}
           <ul className="flex flex-col divide-y divide-line" data-testid="new-variants">
             {shown.map((r) => (
               <li key={r.key} className="flex flex-wrap items-end gap-3 py-2">
                 <span className="min-w-24 flex-1 text-body-sm">{r.options.length ? r.options.map((o) => o.value).join(" / ") : t("single")}</span>
-                <Field label={t("sku")} ltr className="w-44" value={r.sku} onChange={(e) => setRow(r.key, { sku: e.target.value, skuTouched: true })} />
-                <Field label={t("variantPrice")} ltr inputMode="decimal" className="w-28" value={r.price} onChange={(e) => setRow(r.key, { price: e.target.value, priceTouched: true })} />
-                <Field label={t("compareAt")} ltr inputMode="decimal" className="w-28" value={r.compareAt} onChange={(e) => setRow(r.key, { compareAt: e.target.value })} error={r.sku && r.price ? rowError(r) : null} />
+                <Field label={t("sku")} ltr className="w-44" value={r.sku} onChange={(e) => setRow(r.key, { sku: e.target.value, skuTouched: true })} error={r.sku ? skuError(r) : null} />
+                <Field label={t("variantPrice")} ltr inputMode="decimal" className="w-28" value={r.price} onChange={(e) => setRow(r.key, { price: e.target.value, priceTouched: true })} error={r.price ? priceError(r) : null} />
+                <Field label={t("compareAt")} ltr inputMode="decimal" className="w-28" value={r.compareAt} onChange={(e) => setRow(r.key, { compareAt: e.target.value })} error={compareError(r)} />
               </li>
             ))}
           </ul>

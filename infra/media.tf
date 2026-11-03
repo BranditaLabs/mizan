@@ -37,3 +37,11 @@ resource "azurerm_role_assignment" "api_media" {
   principal_id         = azurerm_user_assigned_identity.api.principal_id
   principal_type       = "ServicePrincipal"
 }
+
+# Whoever applies Terraform reads the account's blob settings with Entra ID (no shared keys).
+resource "azurerm_role_assignment" "deployer_media" {
+  scope                = azurerm_storage_account.media.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+

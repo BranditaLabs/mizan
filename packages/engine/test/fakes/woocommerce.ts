@@ -349,7 +349,10 @@ export class FakeWooCommerce {
       const p = this.products.get(pid);
       if (!p) return json(404, { code: "woocommerce_rest_product_invalid_id", message: "Invalid ID.", data: { status: 404 } });
       const list = this.variationsOf.get(pid) ?? [];
+      const taken = (sku: string) => sku && ([...this.products.values()].some((x) => x.sku === sku) || [...this.variationsOf.values()].some((vs) => vs.some((v) => v.sku === sku)));
       const made = ((body.create ?? []) as Array<{ sku?: string; regular_price?: string; sale_price?: string; global_unique_id?: string; attributes: Array<{ name: string; option: string }> }>).map((x) => {
+        // Like WooCommerce: an item refused is an error in the 200 answer, the others are made.
+        if (taken(String(x.sku ?? ""))) return { id: 0, error: { code: "product_invalid_sku", message: "Invalid or duplicated SKU.", data: { status: 400 } } };
         const v: WooVariation = {
           id: ++this.seq, sku: String(x.sku ?? ""), global_unique_id: String(x.global_unique_id ?? ""), price: String(x.sale_price || x.regular_price || ""), regular_price: String(x.regular_price ?? ""), sale_price: String(x.sale_price ?? ""),
           manage_stock: false, stock_quantity: null, attributes: x.attributes.map((a) => ({ name: a.name, option: a.option })), status: "publish", image: null,

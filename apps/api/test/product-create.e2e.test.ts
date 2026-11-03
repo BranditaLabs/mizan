@@ -10,6 +10,7 @@ import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { ProductProjector } from "../src/modules/catalog/product-projector.js";
 import { ProductBuilderService } from "../src/modules/catalog/product-builder.service.js";
+import { ConnectionLifecycle } from "../src/integrations/connection-lifecycle.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
 /** P3: products made in Mizan — created, pictures uploaded and served, published to a store and linked to it. */
@@ -141,4 +142,45 @@ describe("products made in Mizan (P3)", () => {
     const keys = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select("idempotency_key").where("kind", "=", "shopify.createProduct").where(({ eb }) => eb("payload", "=", JSON.stringify({ productId: id }) as never)).execute());
     expect(keys.map((k) => k.idempotency_key).sort()).toEqual([`shopify:publish:${id}:1`, `shopify:publish:${id}:2`]);
   });
+
+  it("the store's copy arriving before the link adopts the product being published: one product, its variants and picture kept", async () => {
+    const { id } = (await http().post("/v1/products").set(as("owner")).send({ title: "Wool Shawl", options: [{ name: "Color", values: ["Grey"] }], variants: [{ options: [{ name: "Color", value: "Grey" }], sku: "SHW-G", price: "400" }] }).expect(201)).body;
+    const pic = (await http().post(`/v1/products/${id}/images`).set({ ...as("owner"), "Content-Type": "image/png" }).send(await png()).expect(201)).body;
+    // Renamed before publishing: the store's handle is still the one made with the product.
+    await http().patch(`/v1/products/${id}`).set(as("owner")).send({ title: "Wool Shawl, grey" }).expect(200);
+    await http().post(`/v1/products/${id}/publish`).set(as("owner")).send({ connectionId: shopify }).expect(202);
+    const builder = app.get(ProductBuilderService);
+    const draft = (await builder.loadDraft(store, id))!;
+    expect(draft.handle).toBe(`wool-shawl-${id.replace(/-/g, "").slice(0, 8)}`);
+    // Nothing changes while it is on its way.
+    expect((await http().patch(`/v1/products/${id}`).set(as("owner")).send({ title: "x" }).expect(409)).body.code).toBe("publishing");
+    expect((await http().post(`/v1/products/${id}/images`).set({ ...as("owner"), "Content-Type": "image/png" }).send(await png()).expect(409)).body.code).toBe("publishing");
+
+    // The store's webhook comes first: its copy has the same handle.
+    await app.get(ProductProjector).project(store, shopify, {
+      connector: "shopify", externalId: "gid://shopify/Product/950", title: "Wool Shawl, grey", handle: draft.handle, status: "active", tags: [], updatedAt: new Date().toISOString(),
+      images: [{ externalId: "gid://shopify/MediaImage/951", url: "https://cdn.shopify.com/s/files/1/shawl.webp" }], mainImageId: "gid://shopify/MediaImage/951",
+      options: [{ name: "Color", values: ["Grey"] }],
+      variants: [{ externalId: "gid://shopify/ProductVariant/952", sku: "SHW-G", title: "Grey", price: { amount: "400.00", currency: "EGP" }, options: [{ name: "Color", value: "Grey" }] }],
+    });
+    // The publish job still finishes (its draft is still there) and links the rest.
+    expect(await builder.loadDraft(store, id)).toBeDefined();
+    await builder.recordPublished(store, id, { ok: true, outcome: "already_created", externalId: "gid://shopify/Product/950", variants: { [draft.variants[0]!.variantId]: "gid://shopify/ProductVariant/952" }, images: { [pic.id]: "gid://shopify/MediaImage/951" } });
+    const rows = await db.tenant(store, (trx) => trx.selectFrom("products").select(["id", "external_id"]).where("external_id", "=", "gid://shopify/Product/950").execute());
+    expect(rows).toEqual([{ id, external_id: "gid://shopify/Product/950" }]);
+    const p = (await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body;
+    expect(p).toMatchObject({ publish: { status: "published" }, variants: [{ id: draft.variants[0]!.variantId, sku: "SHW-G" }] });
+    expect(p.images).toEqual([expect.objectContaining({ id: pic.id, url: "https://cdn.shopify.com/s/files/1/shawl.webp", isMain: true })]);
+  });
+
+  it("an image body sent to any other route stops at the normal limit; a store disconnected mid-publish fails the publish", async () => {
+    const big = Buffer.concat([await png(), Buffer.alloc(1_100_000)]);
+    expect((await http().post("/v1/orders").set({ ...as("owner"), "Content-Type": "image/png" }).send(big).expect(413)).body.code).toBe("payload_too_large");
+
+    const { id } = (await http().post("/v1/products").set(as("owner")).send({ title: "Cap", variants: [{ sku: "CAP-1", price: "120" }] }).expect(201)).body;
+    await http().post(`/v1/products/${id}/publish`).set(as("owner")).send({ connectionId: shopify }).expect(202);
+    await app.get(ConnectionLifecycle).providerRevoked(store, shopify, "app_uninstalled");
+    expect((await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body.publish).toMatchObject({ status: "failed", error: expect.stringMatching(/disconnected/) });
+  });
 });
+

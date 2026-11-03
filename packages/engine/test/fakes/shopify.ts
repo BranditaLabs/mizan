@@ -534,6 +534,8 @@ export class FakeShopify {
         this.mediaReorders++;
         return { productReorderMedia: { job: { id: this.nextId("Job") }, mediaUserErrors: [] } };
       }
+      case "MizanShopCurrency":
+        return { shop: { currencyCode: this.currency } };
       case "MizanProductByHandle": {
         const p = [...this.products.values()].find((x) => x.handle === v.handle);
         return { product: p ? this.created(p) : null };

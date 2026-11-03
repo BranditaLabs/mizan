@@ -194,6 +194,10 @@ export class WooCommerceConnector {
    * does not have yet, in one batch. Creates are not idempotent: each is preceded by a read.
    */
   async createProduct(d: ProductDraft): Promise<CreatedProduct> {
+    const currency = await this.storeCurrency();
+    if (currency && currency !== d.currency.toUpperCase()) {
+      throw new IntegrationError({ kind: "validation", connector: "woocommerce", message: `the store sells in ${currency}; this product is priced in ${d.currency}` });
+    }
     const find = async () => {
       const { json } = await this.rest.get<Array<Record<string, unknown>>>("findProduct", "/products", { slug: d.handle, status: "any" });
       return (Array.isArray(json) ? json : []).find((x) => x && String(x.slug ?? "") === d.handle) ?? null;
@@ -238,14 +242,18 @@ export class WooCommerceConnector {
       let have = await read();
       const missing = d.variants.filter((v) => !have.has(key(v.options)));
       if (missing.length) {
+        let batch: { create?: Array<{ error?: { code?: string; message?: string } }> } | undefined;
         try {
-          await this.rest.write("createVariations", "POST", `/products/${encodeURIComponent(id)}/variations/batch`, {
+          batch = await this.rest.write("createVariations", "POST", `/products/${encodeURIComponent(id)}/variations/batch`, {
             create: missing.map((v) => ({ sku: v.sku, ...prices(v), ...(v.barcode ? { global_unique_id: v.barcode } : {}), attributes: v.options.map((o) => ({ name: o.name, option: o.value })) })),
           }, false);
         } catch (err) {
           if (!(err instanceof IntegrationError) || (err.kind !== "timeout" && err.kind !== "transient")) throw err;
           throw new IntegrationError({ kind: "transient", connector: "woocommerce", message: "creating the variations got no answer: will read them and add what is missing", cause: err });
         }
+        // A batch answers 200 with an error per item it refused (a SKU another product has): the store's words.
+        const refused = (batch?.create ?? []).find((x) => x?.error);
+        if (refused?.error) throw new IntegrationError({ kind: "validation", connector: "woocommerce", message: refused.error.message ?? refused.error.code ?? "a variation was refused" });
         have = await read();
       }
       for (const v of d.variants) {

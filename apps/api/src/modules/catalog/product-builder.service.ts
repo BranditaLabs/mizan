@@ -10,7 +10,7 @@ import { AuditService, auditActor } from "../../platform/audit/audit.service.js"
 import { Database } from "../../platform/db/database.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
-import { MediaService } from "../../platform/media/media.service.js";
+import { MediaService, type PreparedPicture } from "../../platform/media/media.service.js";
 import type { NewProductSchema } from "./catalog.dto.js";
 import { textToHtml } from "./products.service.js";
 
@@ -57,6 +57,12 @@ export class ProductBuilderService {
     if (new Set(skus).size !== skus.length) throw new ProblemError(422, "sku_taken", "two variants have the same SKU");
 
     return this.db.tenant(tenantId, async (trx) => {
+      const unique = (e: unknown): never => {
+        const err = e as { code?: string; constraint?: string };
+        if (err?.code === "23505" && /barcode/.test(err.constraint ?? "")) throw new ProblemError(409, "barcode_taken", "a barcode is already another product's");
+        if (err?.code === "23505" && /sku/.test(err.constraint ?? "")) throw new ProblemError(409, "sku_taken", "a SKU is already another product's");
+        throw e;
+      };
       const currency = (await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow()).base_currency.trim();
       const taken = await trx.selectFrom("variants").select("sku").where("sku", "in", skus).execute();
       if (taken.length) throw new ProblemError(409, "sku_taken", `already used: ${taken.map((t) => t.sku).join(", ")}`);
@@ -83,7 +89,7 @@ export class ProductBuilderService {
           price_minor: price, compare_at_minor: cap, currency, options: JSON.stringify(ordered),
           ...(v.barcode ? { barcode: v.barcode, barcode_set_at: now } : {}),
           ...(v.cost !== undefined ? { cogs_minor: minor(v.cost), cogs_set_at: now } : {}),
-        }).execute();
+        }).execute().catch(unique);
       }
       await this.audit.record(trx, { action: "catalog.product_created", tenantId, ...auditActor(auth), entity: { type: "product", id }, after: { title: body.title, variants: body.variants.length, options: body.options.map((o) => o.name) } });
       await this.events.emit(trx, { type: "product.created", tenantId, entity: { type: "product", id }, actor: { type: "user", id: auth.user.id }, data: { title: body.title, variants: body.variants.length } });
@@ -95,25 +101,42 @@ export class ProductBuilderService {
   async addPicture(auth: AuthContext, productId: string, bytes: Buffer | undefined) {
     const tenantId = auth.tenant!.id;
     if (!Buffer.isBuffer(bytes)) throw new ProblemError(415, "picture_type", "send the picture's bytes as image/jpeg, image/png or image/webp");
-    return this.db.tenant(tenantId, async (trx) => {
+    // Checked first (no work for a product that cannot take it), encoded outside the transaction.
+    await this.db.tenant(tenantId, async (trx) => this.settled(await this.ownProduct(trx, productId)));
+    const prepared = await this.media.prepare(tenantId, `p/${productId}`, bytes);
+    try {
+      return await this.db.tenant(tenantId, async (trx) => this.attach(trx, auth, productId, prepared, bytes.length));
+    } catch (e) {
+      await this.media.discard(prepared);
+      throw e;
+    }
+  }
+
+  private async attach(trx: Transaction<DB>, auth: AuthContext, productId: string, prepared: PreparedPicture, size: number) {
+    const tenantId = auth.tenant!.id;
+    {
       const p = await this.ownProduct(trx, productId, true);
+      this.settled(p);
       const { n, last } = await trx.selectFrom("product_images").select([sql<string>`count(*)`.as("n"), sql<number | null>`max(position)`.as("last")]).where("product_id", "=", p.id).executeTakeFirstOrThrow();
       if (Number(n) >= MAX_PICTURES) throw new ProblemError(409, "too_many_pictures", `${MAX_PICTURES} pictures per product at most`);
-      const saved = await this.media.savePicture(trx, tenantId, `p/${p.id}`, bytes);
+      const saved = await this.media.record(trx, prepared);
       const row = await trx.insertInto("product_images").values({
         tenant_id: tenantId, product_id: p.id, media_id: saved.full.id, url: saved.full.url, thumb_url: saved.thumb.url,
         width: saved.full.width, height: saved.full.height, position: last === null ? 0 : Number(last) + 1, is_main: Number(n) === 0,
       }).returning(["id", "url", "thumb_url", "alt", "width", "height", "is_main"]).executeTakeFirstOrThrow();
       await trx.updateTable("products").set({ updated_at: new Date() }).where("id", "=", p.id).execute();
-      await this.audit.record(trx, { action: "catalog.picture_added", tenantId, ...auditActor(auth), entity: { type: "product", id: p.id }, after: { imageId: row.id, bytes: bytes.length } });
+      await this.audit.record(trx, { action: "catalog.picture_added", tenantId, ...auditActor(auth), entity: { type: "product", id: p.id }, after: { imageId: row.id, bytes: size } });
       return { id: row.id, url: row.url, thumbUrl: row.thumb_url, alt: row.alt, width: row.width, height: row.height, isMain: row.is_main };
-    });
+    }
   }
 
   async removePicture(auth: AuthContext, productId: string, imageId: string): Promise<void> {
     const tenantId = auth.tenant!.id;
-    await this.db.tenant(tenantId, async (trx) => {
+    // Blob files go once the rows are gone for good.
+    const keys = await this.db.tenant(tenantId, async (trx) => {
+      let gone: string[] = [];
       const p = await this.ownProduct(trx, productId, true);
+      this.settled(p);
       const img = await trx.selectFrom("product_images as i").leftJoin("media_objects as m", "m.id", "i.media_id")
         .select(["i.id", "i.is_main", "i.media_id", "m.key"]).where("i.id", "=", imageId).where("i.product_id", "=", p.id).executeTakeFirst();
       if (!img) throw new ProblemError(404, "not_found", "no such picture on this product");
@@ -125,11 +148,13 @@ export class ProductBuilderService {
       }
       if (img.media_id && img.key) {
         const thumb = await trx.selectFrom("media_objects").select("id").where("key", "=", img.key.replace(/\.webp$/, "_400.webp")).executeTakeFirst();
-        await this.media.remove(trx, tenantId, [img.media_id, ...(thumb ? [thumb.id] : [])]);
+        gone = await this.media.remove(trx, [img.media_id, ...(thumb ? [thumb.id] : [])]);
       }
       await trx.updateTable("products").set({ updated_at: new Date() }).where("id", "=", p.id).execute();
       await this.audit.record(trx, { action: "catalog.picture_removed", tenantId, ...auditActor(auth), entity: { type: "product", id: p.id }, before: { imageId: img.id } });
+      return gone;
     });
+    await this.media.purge(tenantId, keys);
   }
 
   /** Put a product made in Mizan on a connected store (outbox); the result comes back through the engine. */
@@ -156,7 +181,9 @@ export class ProductBuilderService {
   /** The engine's loadProductDraft hook: the product as the store should get it; only while it is being published. */
   async loadDraft(tenantId: string, productId: string): Promise<ProductDraft | undefined> {
     return this.db.tenant(tenantId, async (trx) => {
-      const p = await trx.selectFrom("products").selectAll().where("id", "=", productId).where("publish_status", "=", "publishing").where("connection_id", "is", null).executeTakeFirst();
+      // Not linked yet, or linked to that store already by its copy coming first (the job still finishes the variants).
+      const p = await trx.selectFrom("products").selectAll().where("id", "=", productId).where("publish_status", "=", "publishing")
+        .where((eb) => eb.or([eb("connection_id", "is", null), eb("connection_id", "=", eb.ref("publish_connection_id"))])).executeTakeFirst();
       if (!p) return undefined;
       const variants = await trx.selectFrom("variants").select(["id", "sku", "price_minor", "compare_at_minor", "currency", "barcode", "options"]).where("product_id", "=", p.id).orderBy("created_at").orderBy("sku").execute();
       const images = await trx.selectFrom("product_images").select(["id", "url", "alt"]).where("product_id", "=", p.id).where("media_id", "is not", null).orderBy("position").execute();
@@ -173,7 +200,8 @@ export class ProductBuilderService {
       });
       const currency = variants[0]?.currency.trim() ?? "EGP";
       return {
-        productId: p.id, title: p.title, handle: draftHandle(p.title, p.id), descriptionHtml: p.description_html ?? undefined,
+        // The handle made with the product: a rename between attempts must still find what an earlier one created.
+        productId: p.id, title: p.title, handle: p.handle ?? draftHandle(p.title, p.id), descriptionHtml: p.description_html ?? undefined,
         status: p.status as ProductDraft["status"], vendor: p.vendor ?? undefined, productType: p.product_type ?? undefined, tags: p.tags, options,
         variants: variants.map((v) => ({
           variantId: v.id, sku: v.sku, price: fromMinor(BigInt(v.price_minor), v.currency.trim()).amount,
@@ -194,6 +222,8 @@ export class ProductBuilderService {
     await this.db.tenant(tenantId, async (trx) => {
       const p = await trx.selectFrom("products").select(["id", "title", "publish_status", "publish_connection_id", "connection_id"]).where("id", "=", productId).forUpdate().executeTakeFirst();
       if (!p || p.publish_status !== "publishing" || !p.publish_connection_id) return;
+      // Adopted by the store's copy already (it came first): the same product, so linking goes on.
+      if (p.connection_id && p.connection_id !== p.publish_connection_id) return;
       const entity = { type: "product", id: p.id };
       if (!result.ok) {
         await trx.updateTable("products").set({ publish_status: "failed", publish_error: result.message.slice(0, 1000) }).where("id", "=", p.id).execute();
@@ -207,7 +237,12 @@ export class ProductBuilderService {
           .onConflict((oc) => oc.columns(["connection_id", "external_id"]).doUpdateSet({ variant_id: variantId, external_product_id: result.externalId })).execute();
       }
       for (const [imageId, externalId] of Object.entries(result.images)) {
-        await trx.updateTable("product_images").set({ external_id: externalId }).where("id", "=", imageId).where("product_id", "=", p.id).execute();
+        // The store's copy may have come first and added this picture itself: Mizan's row takes its place.
+        const theirs = await trx.selectFrom("product_images").select(["id", "url", "position", "is_main"]).where("product_id", "=", p.id)
+          .where("external_id", "=", externalId).where("id", "!=", imageId).executeTakeFirst();
+        if (theirs) await trx.deleteFrom("product_images").where("id", "=", theirs.id).execute();
+        await trx.updateTable("product_images").set({ external_id: externalId, ...(theirs ? { url: theirs.url, position: theirs.position, is_main: theirs.is_main } : {}) })
+          .where("id", "=", imageId).where("product_id", "=", p.id).execute();
       }
       await this.events.emit(trx, { type: "product.published", tenantId, entity, actor: { type: "engine" }, data: { connectionId: conn, externalId: result.externalId } });
     });
@@ -221,5 +256,10 @@ export class ProductBuilderService {
     if (!p) throw notFound();
     if (p.connection_id) throw new ProblemError(409, "store_product", "this product is the store's: change its pictures and publishing there");
     return p;
+  }
+
+  /** Pictures stay as they are while the store is taking the product (it gets the ones it was sent). */
+  private settled(p: { publish_status: string | null }) {
+    if (p.publish_status === "publishing") throw new ProblemError(409, "publishing", "the product is on its way to the store: wait until it is there");
   }
 }
