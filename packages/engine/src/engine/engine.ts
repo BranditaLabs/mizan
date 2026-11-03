@@ -198,6 +198,13 @@ interface ProductState {
 type Listener = (event: string, data: Record<string, unknown>) => void;
 
 /** Webhooks the engine handles (handleShopifyWebhook), as GraphQL WebhookSubscriptionTopic values. */
+/**
+ * What a product read from a store carries. Bumped when that grows (2: P1's pictures, options and
+ * details), so each store's catalogue is read again once: products imported before stay as they
+ * were until the store changes them otherwise (no pictures on a product or its order lines).
+ */
+export const CATALOG_VERSION = 2;
+
 export const SHOPIFY_WEBHOOK_TOPICS = ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "PRODUCTS_UPDATE", "APP_UNINSTALLED"] as const;
 
 const iso = (v: string | number | undefined) => (v === undefined ? undefined : new Date(v).toISOString());
@@ -446,6 +453,14 @@ export class MizanEngine {
    * reference that never exists). Runs as a job, never in a request: network trouble retries,
    * a refused key ends the job and reports through hooks.onAccessChecked.
    */
+  /**
+   * Read the store's whole catalogue again, once per CATALOG_VERSION: a page per job, the cursor in
+   * the next. Safe to queue every hour (the key, then the store record, make it once).
+   */
+  static catalogRefreshJob(provider: "shopify" | "woocommerce"): NewJob<{ cursor: string | null }> {
+    return { kind: `${provider}.catalogRefresh`, connection: provider, payload: { cursor: null }, idempotencyKey: `${provider}:catalog:v${CATALOG_VERSION}:start` };
+  }
+
   /** Import a WooCommerce store's orders changed since `sinceMs` (E5-7), a page per job. */
   static wooBackfillJob(runKey: string, sinceMs: number): NewJob<WooBackfillPage> {
     return { kind: "woocommerce.backfill", connection: "woocommerce", payload: { runKey, since: new Date(sinceMs).toISOString(), page: 1 }, idempotencyKey: `woocommerce:backfill:${runKey}:1` };
@@ -522,6 +537,30 @@ export class MizanEngine {
       kind: "shopify.backfill", connection: "shopify", idempotencyKey: `shopify:backfill:${runKey}:orders:start`,
       payload: { runKey, since: new Date(sinceMs).toISOString(), queuedAt, phase: "orders", after: null },
     };
+  }
+
+  private async catalogRefresh(provider: "shopify" | "woocommerce", cursor: string | null) {
+    const done = await this.store.get<{ version: number }>("catalog-version", provider);
+    if (!cursor && (done?.version ?? 0) >= CATALOG_VERSION) return; // read already (the job row may have been cleaned away)
+    let next: string | null;
+    let count: number;
+    if (provider === "shopify") {
+      const page = await this.shopify.productsPage(null, cursor);
+      for (const product of page.nodes) await this.ingestProductData(product);
+      next = page.next;
+      count = page.nodes.length;
+    } else {
+      const r = await this.wooConnector().productsPage(null, Number(cursor ?? 1), 50);
+      for (const product of r.nodes) await this.ingestProductData(product);
+      next = r.next === null ? null : String(r.next);
+      count = r.nodes.length;
+    }
+    if (next) {
+      await this.enqueue(`${provider}.catalogRefresh`, { cursor: next }, `${provider}:catalog:v${CATALOG_VERSION}:${next}`);
+    } else {
+      await this.store.put("catalog-version", provider, { version: CATALOG_VERSION }, this.now());
+      this.emit("catalog.refreshed", { provider, version: CATALOG_VERSION, lastPage: count });
+    }
   }
 
   /** Progress of the latest backfill, or null before the first connect. */
@@ -656,6 +695,8 @@ export class MizanEngine {
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
       "shopify.backfill": (j) => this.backfillPage(j.payload),
+      "shopify.catalogRefresh": (j) => this.catalogRefresh("shopify", j.payload.cursor),
+      "woocommerce.catalogRefresh": (j) => this.catalogRefresh("woocommerce", j.payload.cursor),
       "bosta.checkAccess": () => this.checkBostaAccess(),
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.reconcile": (j) => this.reconcile(j.payload),

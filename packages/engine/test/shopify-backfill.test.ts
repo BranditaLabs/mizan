@@ -1,9 +1,43 @@
 import { describe, expect, it } from "vitest";
-import { MizanEngine, type BackfillProgress } from "../src/engine/engine.js";
+import { CATALOG_VERSION, MizanEngine, type BackfillProgress } from "../src/engine/engine.js";
 import { MemoryStore } from "../src/sync/store.js";
-import { settle, setup } from "./fakes/setup.js";
+import { settle, setup, setupWoo } from "./fakes/setup.js";
 
 const DAY = 86_400_000;
+
+describe("the catalogue read again once per CATALOG_VERSION (pictures for products imported before P1)", () => {
+  it("Shopify: every product again, page by page through faults, then never again however often it is asked", async () => {
+    const store = new MemoryStore();
+    const seen: string[] = [];
+    const { engine, shop, clock, events } = setup({ hooks: { onProduct: async (p) => { seen.push(p.externalId); } } }, store);
+    for (let i = 0; i < 70; i++) shop.addProduct({ title: `P${i}`, price: "100.00", sku: `SKU-${i}` });
+    shop.faults.push({ op: "MizanProducts", fault: "500" });
+    await store.enqueue(MizanEngine.catalogRefreshJob("shopify"), clock.now());
+    await store.enqueue(MizanEngine.catalogRefreshJob("shopify"), clock.now()); // the hourly ask again
+    await settle(engine, store, clock);
+    expect(new Set(seen).size).toBe(70);
+    expect(await store.get("catalog-version", "shopify")).toEqual({ version: CATALOG_VERSION });
+    expect(events.filter((e) => e.event === "catalog.refreshed")).toHaveLength(1);
+
+    // The job rows cleaned away by retention: asked again, it reads nothing.
+    const before = seen.length;
+    const fresh = { ...MizanEngine.catalogRefreshJob("shopify"), idempotencyKey: "cleaned-away" };
+    await store.enqueue(fresh, clock.now());
+    await settle(engine, store, clock);
+    expect(seen.length).toBe(before);
+    expect(await store.jobs({ status: "dead" })).toEqual([]);
+  });
+
+  it("WooCommerce: every product again, once", async () => {
+    const seen: string[] = [];
+    const w = setupWoo({ hooks: { onProduct: async (p) => { seen.push(p.externalId); } } });
+    for (let i = 0; i < 60; i++) w.woo.addProduct({ name: `P${i}`, price: "100.00", sku: `W-${i}`, images: 2 });
+    await w.store.enqueue(MizanEngine.catalogRefreshJob("woocommerce"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(new Set(seen).size).toBe(60);
+    expect(await w.store.get("catalog-version", "woocommerce")).toEqual({ version: CATALOG_VERSION });
+  });
+});
 
 describe("Shopify backfill on connect", () => {
   it("imports 60 days of orders, then all products, page by page, through outages", async () => {

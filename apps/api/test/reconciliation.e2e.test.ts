@@ -58,6 +58,16 @@ describe("store days in the store's time zone", () => {
   });
 });
 
+describe("catalogue refresh (pictures for products imported before P1)", () => {
+  it("each active store gets one catalogue read, however often the hourly tick asks", async () => {
+    const svc = app.get(ReconciliationService);
+    expect(await svc.refreshCatalogues(new Date("2026-10-24T01:00:00.000Z"))).toBe(1);
+    expect(await svc.refreshCatalogues(new Date("2026-10-24T02:00:00.000Z"))).toBe(0);
+    const jobs = await db.tenant(T, (trx) => trx.selectFrom("mz_outbox").select(["kind", "connection_id"]).where("kind", "like", "%.catalogRefresh").execute());
+    expect(jobs).toEqual([{ kind: "shopify.catalogRefresh", connection_id: connectionId }]);
+  });
+});
+
 describe("nightly reconciliation (E5-8)", () => {
   it("before 03:00 store time nothing is queued; after, yesterday is, once", async () => {
     const svc = app.get(ReconciliationService);
