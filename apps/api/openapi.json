@@ -27683,6 +27683,51 @@
               "untracked"
             ]
           },
+          "items": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Pieces in the order (sum of quantities)"
+              },
+              "lines": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "pictures": {
+                "maxItems": 3,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "alt": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "alt"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Up to three items' pictures, the order's lines in order (O1)"
+              }
+            },
+            "required": [
+              "count",
+              "lines",
+              "pictures"
+            ],
+            "additionalProperties": false
+          },
           "externalId": {
             "nullable": true,
             "type": "string"
@@ -28068,6 +28113,33 @@
                   "type": "string",
                   "format": "uuid",
                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "productId": {
+                  "nullable": true,
+                  "description": "The catalogue product, to open its page (O1)",
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "picture": {
+                  "nullable": true,
+                  "description": "The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue",
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "alt": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "alt"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
@@ -28077,7 +28149,9 @@
                 "quantity",
                 "unitPrice",
                 "total",
-                "variantId"
+                "variantId",
+                "productId",
+                "picture"
               ],
               "additionalProperties": false
             }
@@ -28440,6 +28514,7 @@
           "placedAt",
           "duplicate",
           "stock",
+          "items",
           "externalId",
           "source",
           "currency",
@@ -29049,6 +29124,51 @@
                     "short",
                     "untracked"
                   ]
+                },
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Pieces in the order (sum of quantities)"
+                    },
+                    "lines": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "pictures": {
+                      "maxItems": 3,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "alt": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "alt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Up to three items' pictures, the order's lines in order (O1)"
+                    }
+                  },
+                  "required": [
+                    "count",
+                    "lines",
+                    "pictures"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
@@ -29066,7 +29186,8 @@
                 "tags",
                 "placedAt",
                 "duplicate",
-                "stock"
+                "stock",
+                "items"
               ],
               "additionalProperties": false
             }
@@ -29501,6 +29622,26 @@
                   "type": "integer",
                   "minimum": -9007199254740991,
                   "maximum": 9007199254740991
+                },
+                "picture": {
+                  "nullable": true,
+                  "description": "The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue",
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "alt": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "alt"
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
@@ -29508,7 +29649,8 @@
                 "sku",
                 "title",
                 "price",
-                "available"
+                "available",
+                "picture"
               ],
               "additionalProperties": false
             }
@@ -30483,6 +30625,26 @@
                   "minimum": -9007199254740991,
                   "maximum": 9007199254740991
                 },
+                "picture": {
+                  "nullable": true,
+                  "description": "The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue",
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "alt": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url",
+                    "alt"
+                  ],
+                  "additionalProperties": false
+                },
                 "bin": {
                   "nullable": true,
                   "type": "string"
@@ -30494,6 +30656,7 @@
                 "barcode",
                 "title",
                 "quantity",
+                "picture",
                 "bin"
               ],
               "additionalProperties": false
@@ -30545,6 +30708,26 @@
                         "type": "integer",
                         "minimum": -9007199254740991,
                         "maximum": 9007199254740991
+                      },
+                      "picture": {
+                        "nullable": true,
+                        "description": "The variant's picture, else its product's main picture; null when the product has none or is not in the catalogue",
+                        "type": "object",
+                        "properties": {
+                          "url": {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          "alt": {
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "url",
+                          "alt"
+                        ],
+                        "additionalProperties": false
                       }
                     },
                     "required": [
@@ -30552,7 +30735,8 @@
                       "sku",
                       "barcode",
                       "title",
-                      "quantity"
+                      "quantity",
+                      "picture"
                     ],
                     "additionalProperties": false
                   }

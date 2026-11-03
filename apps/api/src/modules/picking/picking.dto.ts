@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { LinePictureSchema } from "../catalog/pictures.js";
 
 /** E8-4c: a pick list from confirmed orders (these, or the oldest ready ones). */
 export const NewPickListSchema = z.strictObject({
@@ -8,6 +9,7 @@ export const NewPickListSchema = z.strictObject({
 
 const Line = z.object({
   variantId: z.uuid().nullable(), sku: z.string().nullable(), barcode: z.string().nullable(), title: z.string(), quantity: z.number().int(),
+  picture: LinePictureSchema,
 });
 
 export const PickListSchema = z.object({

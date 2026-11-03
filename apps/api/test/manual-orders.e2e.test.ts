@@ -54,7 +54,7 @@ afterAll(() => app.close());
 describe("manual orders (E5-5)", () => {
   it("the team picks products and enters the order; it is an order like any other", async () => {
     const products = await http().get("/v1/orders/products?q=aba").set(as("agent")).expect(200);
-    expect(products.body.data).toEqual([{ variantId: abaya, sku: "AB-1", title: "Abaya — Black / L", price: { amount: "1250.00", currency: "EGP" }, available: null }]);
+    expect(products.body.data).toEqual([{ variantId: abaya, sku: "AB-1", title: "Abaya — Black / L", price: { amount: "1250.00", currency: "EGP" }, available: null, picture: null }]);
 
     const r = await http().post("/v1/orders").set(as("owner")).send(body({ lines: [{ variantId: abaya, quantity: 2 }, { title: "Gift wrap", quantity: 1, unitPrice: "25" }] })).expect(201);
     expect(r.body).toEqual({ id: expect.any(String), number: "M-1001", status: expect.stringMatching(/new|pending_confirmation/) });

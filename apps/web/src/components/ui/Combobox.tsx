@@ -4,7 +4,7 @@ import { Icon } from "@mizan/design-system/icons/react";
 import { useId, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cx, matches, moveIndex } from "./logic";
 
-export interface ComboOption { value: string; label: string; hint?: ReactNode }
+export interface ComboOption { value: string; label: string; hint?: ReactNode; /** Shown before the label (a product picture). */ media?: ReactNode }
 
 /**
  * Combobox (ARIA 1.2 list autocomplete): type to filter, arrows move, Enter picks, Esc closes.
@@ -53,7 +53,7 @@ export function Combobox({ label, options, value, onChange, placeholder, emptyTe
             <li key={o.value} id={`${id}-opt-${i}`} role="option" aria-selected={o.value === value}
               className={cx("mz-menu__item justify-between", i === active && "bg-surface-hover")}
               onPointerDown={(e) => e.preventDefault()} onPointerEnter={() => setActive(i)} onClick={() => pick(o)}>
-              <span>{o.label}</span>
+              <span className="inline-flex min-w-0 items-center gap-2">{o.media}<span>{o.label}</span></span>
               {o.value === value ? <Icon name="confirm" size={14} /> : o.hint ? <span className="text-caption text-text-3">{o.hint}</span> : null}
             </li>
           ))}

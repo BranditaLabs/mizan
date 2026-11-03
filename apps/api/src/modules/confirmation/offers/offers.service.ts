@@ -116,7 +116,7 @@ export class OffersService {
     // (never a call inside this transaction). Not for a rule that already has the owner's words.
     if (s.ai && this.ai.available && !(offer.source === "rule" && offer.messageAr && offer.messageEn)) {
       const list = offer.source === "rule" ? [{ candidate: candidates.get(offer.variantId)!, together: boughtWith.get(offer.variantId) ?? 0, popular: popularity.get(offer.variantId) ?? 0 }] : shortlist(input, 5);
-      const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("id").limit(10).execute();
+      const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("position").orderBy("id").limit(10).execute();
       const payload: AiOfferPayload = {
         offerId: row.id, currency, orderTotalMinor: order.total_minor.toString(), orderVariantIds, maxDiscountPct: s.maxDiscountPct,
         fixed: offer.source === "rule" ? { variantId: offer.variantId, discountPct: offer.discountPct } : null,

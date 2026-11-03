@@ -155,7 +155,7 @@ export class DisputesService {
       const o = await trx.selectFrom("orders").selectAll().where("id", "=", orderId).executeTakeFirstOrThrow();
       const t = await trx.selectFrom("tenants").select(["name", "country"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
       const [lines, payments, shipments, runs, messages] = await Promise.all([
-        trx.selectFrom("order_lines").select(["title", "sku", "quantity", "unit_price_minor"]).where("order_id", "=", orderId).orderBy("id").execute(),
+        trx.selectFrom("order_lines").select(["title", "sku", "quantity", "unit_price_minor"]).where("order_id", "=", orderId).orderBy("position").orderBy("id").execute(),
         trx.selectFrom("payments").select(["kind", "method", "status", "amount_minor", "currency", "occurred_at"]).where("order_id", "=", orderId).orderBy("occurred_at").execute(),
         trx.selectFrom("shipments").select(["id", "provider", "tracking_number", "tracking_url", "status", "status_at"]).where("order_id", "=", orderId).orderBy("created_at").execute(),
         trx.selectFrom("confirmation_runs").select(["started_at", "finished_at", "outcome", "answered_channel"]).where("order_id", "=", orderId).orderBy("started_at").execute(),

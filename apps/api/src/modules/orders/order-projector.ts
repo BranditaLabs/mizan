@@ -289,9 +289,9 @@ export class OrderProjector {
       ? new Map((await trx.selectFrom("external_variants").select(["external_id", "variant_id"]).where("connection_id", "=", conn).where("external_id", "in", extIds).execute())
         .map((x) => [x.external_id, x.variant_id]))
       : new Map<string, string | null>();
-    for (const line of order.lines.filter((l) => l.quantity > 0)) {
+    for (const [position, line] of order.lines.filter((l) => l.quantity > 0).entries()) {
       const values = {
-        sku: line.sku ?? null, title: line.title, quantity: line.quantity,
+        sku: line.sku ?? null, title: line.title, quantity: line.quantity, position,
         unit_price_minor: toMinor({ ...line.unitPrice, currency: line.unitPrice.currency || order.currency }),
         external_variant_id: line.variantExternalId ?? null,
       };
