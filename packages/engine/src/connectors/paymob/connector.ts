@@ -70,14 +70,18 @@ export class PaymobConnector {
   /**
    * The latest transaction of the payment Mizan made with this reference, when no callback came
    * (E14-2b): `transaction_inquiry` by `merchant_order_id`. Null when there is none yet. The token goes
-   * in the header, as Postman has it (the docs page puts it in the body: confirm on a sandbox).
+   * in both the header (Postman) and the body (the docs page). A 404 is "none yet" but also what a
+   * wrong path would answer, so each one is noted as drift: a sweep that only ever finds nothing shows.
    */
   async inquire(reference: string): Promise<PaymobTransaction | null> {
     try {
-      const raw = await this.rest.withToken("inquire", "POST", "/api/ecommerce/orders/transaction_inquiry", { merchant_order_id: reference });
+      const raw = await this.rest.withToken("inquire", "POST", "/api/ecommerce/orders/transaction_inquiry", (token: string) => ({ merchant_order_id: reference, auth_token: token }));
       return mapTransaction(raw, { drift: this.drift, now: () => this.rt.clock.now() });
     } catch (e) {
-      if (e instanceof IntegrationError && e.kind === "not_found") return null;
+      if (e instanceof IntegrationError && e.kind === "not_found") {
+        this.drift.record({ connector: "paymob", entity: "inquiry", kind: "missing_field", field: "transaction", detail: "transaction_inquiry answered 404 (no payment yet, or the path moved)", at: this.rt.clock.now() });
+        return null;
+      }
       throw e;
     }
   }

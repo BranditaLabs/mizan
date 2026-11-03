@@ -1,9 +1,14 @@
 /**
  * A gateway payment as the platform's ledger takes it (E14-2b). The engine re-reads the
- * transaction (never trusting a callback body) and turns what changed since it last saw it into
- * lines: a sale or an authorization once, then each increase of what was captured or refunded, a
- * void once. Amounts are positive minor units; the ledger applies each kind's sign. Each line's
- * `externalRef` is unique for that change, so a repeat posts nothing.
+ * transaction (never trusting a callback body) and hands over two things:
+ * - `lines` that happen once per transaction (a sale, an authorization, a void), each with a
+ *   reference that never changes, so handing them over again posts nothing;
+ * - `totals`: what the gateway says was captured and refunded so far. Partial captures and
+ *   refunds are posted by `gatewayDeltaLines`, as the difference from what the ledger already
+ *   holds for this transaction, inside the platform's transaction with that payment's rows locked.
+ *   The ledger is the record: a snapshot kept beside it could go stale between a retry or two
+ *   workers and post the same refund twice.
+ * Amounts are positive minor units; the ledger applies each kind's sign.
  */
 export type GatewayState = "pending" | "failed" | "succeeded" | "authorized" | "voided" | "unknown";
 
@@ -14,8 +19,16 @@ export interface GatewayLine {
   occurredAt: string;
 }
 
+export interface GatewayTotals {
+  capturedMinor: bigint;
+  refundedMinor: bigint;
+  /** When the change was made: the child transaction's time (a refund or capture), else when Mizan saw it. */
+  changedAt: string;
+}
+
 export interface GatewayTransactionUpdate {
   gateway: "paymob";
+  /** The payment itself (the root of a refund, void or capture). */
   transactionId: string;
   /** The reference Mizan sent with the payment (`<order>:<purpose>:<attempt>`), when the gateway echoes it. */
   reference: string | null;
@@ -24,9 +37,26 @@ export interface GatewayTransactionUpdate {
   method: string;
   currency: string;
   amountMinor: bigint;
+  /** Once-only lines: sale, authorization, void. */
   lines: GatewayLine[];
-  /** A combination of flags Mizan does not know: nothing is guessed; a person looks. */
+  totals: GatewayTotals;
+  /** A combination Mizan does not know: nothing is guessed, nothing is posted; a person looks. */
   needsReview: boolean;
   /** A cash payment's reference to show the customer (kiosk), when the gateway gives one. */
   kioskReference?: string | undefined;
+}
+
+/**
+ * The capture and refund lines still to post: the totals less what the ledger already holds for
+ * this transaction (by kind). Call it with those rows locked, in the transaction that posts the
+ * lines. Each reference names the total it brings the ledger to, so a repeat after a crash posts
+ * nothing.
+ */
+export function gatewayDeltaLines(update: GatewayTransactionUpdate, held: { capturedMinor: bigint; refundedMinor: bigint }): GatewayLine[] {
+  if (update.needsReview) return [];
+  const out: GatewayLine[] = [];
+  const { capturedMinor, refundedMinor, changedAt } = update.totals;
+  if (capturedMinor > held.capturedMinor) out.push({ kind: "capture", amountMinor: capturedMinor - held.capturedMinor, externalRef: `${update.transactionId}:capture:${capturedMinor}`, occurredAt: changedAt });
+  if (refundedMinor > held.refundedMinor) out.push({ kind: "refund", amountMinor: refundedMinor - held.refundedMinor, externalRef: `${update.transactionId}:refund:${refundedMinor}`, occurredAt: changedAt });
+  return out;
 }

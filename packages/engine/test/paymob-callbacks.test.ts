@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { MizanEngine } from "../src/engine/engine.js";
 import { paymobHmac, paymobRedirectString, paymobTransactionString, verifyPaymobCallback, verifyPaymobRedirect } from "../src/connectors/paymob/webhooks.js";
 import { mapTransaction } from "../src/connectors/paymob/mapper.js";
-import type { GatewayTransactionUpdate } from "../src/core/gateway-transaction.js";
+import { gatewayDeltaLines, type GatewayLine, type GatewayTransactionUpdate } from "../src/core/gateway-transaction.js";
 import type { PaymentLinkOutcome, PaymentLinkRequest } from "../src/core/payment-link.js";
 import { settle, setupPaymob } from "./fakes/setup.js";
 
@@ -66,13 +66,24 @@ function world(seed = 0, rate = 0) {
   const requests = new Map<string, PaymentLinkRequest>();
   const links = new Map<string, PaymentLinkOutcome>();
   const updates: GatewayTransactionUpdate[] = [];
+  /** The ledger as the platform keeps it: rows unique by reference; deltas against what it holds, in one step. */
+  const posted: Array<GatewayLine & { txn: string }> = [];
+  const post = (u: GatewayTransactionUpdate) => {
+    const held = (kind: string) => posted.filter((l) => l.txn === u.transactionId && l.kind === kind).reduce((a, l) => a + l.amountMinor, 0n);
+    for (const l of [...u.lines, ...gatewayDeltaLines(u, { capturedMinor: held("capture"), refundedMinor: held("refund") })]) {
+      if (!posted.some((x) => x.externalRef === l.externalRef)) posted.push({ ...l, txn: u.transactionId });
+    }
+  };
   let failHook = 0;
+  let crashAfterCommit = 0;
   const w = setupPaymob({ hooks: {
     loadPaymentLink: async (id) => requests.get(id),
     onPaymentLink: async (id, r) => { links.set(id, r); },
     onGatewayTransaction: async (u) => {
       if (failHook > 0) { failHook--; throw new Error("ledger unavailable"); }
       updates.push(u);
+      if (!u.needsReview) post(u);
+      if (crashAfterCommit > 0) { crashAfterCommit--; throw new Error("the answer was lost after the commit"); }
     },
   } }, undefined, seed);
   /** A link made and an intention behind it, ready to pay. */
@@ -86,15 +97,11 @@ function world(seed = 0, rate = 0) {
     return out.intentionId;
   };
   const deliver = async (cb: { query: Record<string, string>; body: unknown }) => w.engine.handlePaymobWebhook(cb.query, cb.body);
-  /** Every line posted, by its reference (the ledger's unique key): a repeat posts nothing. */
-  const ledger = () => {
-    const byRef = new Map<string, { kind: string; amount: bigint; txn: string }>();
-    for (const u of updates) for (const l of u.lines) if (!byRef.has(l.externalRef)) byRef.set(l.externalRef, { kind: l.kind, amount: l.amountMinor, txn: u.transactionId });
-    return [...byRef.values()];
-  };
-  const allLines = () => updates.flatMap((u) => u.lines);
+  const ledger = () => posted.map((l) => ({ kind: l.kind, amount: l.amountMinor, txn: l.txn, at: l.occurredAt }));
+  const allLines = () => posted.map(({ txn: _t, ...l }) => l);
   w.paymob.randomFaultRate = rate;
-  return { ...w, updates, link, deliver, ledger, allLines, failNext: (n: number) => { failHook = n; } };
+  const ingest = (id: string) => (w.engine as unknown as { ingestPaymobTransaction(id: string): Promise<void> }).ingestPaymobTransaction(id);
+  return { ...w, updates, link, deliver, ledger, allLines, ingest, failNext: (n: number) => { failHook = n; }, crashNext: (n: number) => { crashAfterCommit = n; } };
 }
 
 const sum = (lines: Array<{ kind: string; amount: bigint }>, kind: string) => lines.filter((l) => l.kind === kind).reduce((a, l) => a + l.amount, 0n);
@@ -135,6 +142,18 @@ describe("callbacks to the ledger (E14-2b)", () => {
     expect(w.allLines()).toEqual([expect.objectContaining({ kind: "sale", amountMinor: 90000n })]);
   });
 
+  it("one valid hmac cannot mint new jobs by changing fields it does not sign", async () => {
+    const w = world();
+    const { callback } = w.paymob.pay(await w.link(1));
+    for (let n = 1; n <= 5; n++) {
+      const b = structuredClone(callback.body) as { obj: Record<string, unknown> };
+      b.obj.refunded_amount_cents = n;
+      b.obj.captured_amount = n;
+      expect((await w.deliver({ query: callback.query, body: b })).status).toBe(200);
+    }
+    expect(await w.store.jobs({ kind: "paymob.ingestTransaction" })).toHaveLength(1);
+  });
+
   it("a saved card's TOKEN callback is acknowledged and dropped; a forged one is refused", async () => {
     const w = world();
     const tok = w.paymob.tokenCallback();
@@ -160,6 +179,53 @@ describe("callbacks to the ledger (E14-2b)", () => {
     expect(w.updates.at(-1)).toMatchObject({ state: "succeeded", lines: [expect.objectContaining({ kind: "sale", amountMinor: 115000n })] });
   });
 
+  it("success and pending at once is not a documented row: unknown, a person looks, nothing posted", async () => {
+    const w = world();
+    const { transactionId, callback } = w.paymob.pay(await w.link(1));
+    w.paymob.transactions.get(transactionId)!.pending = true;
+    await w.deliver(callback);
+    await settle(w.engine, w.store, w.clock);
+    expect(w.updates).toEqual([expect.objectContaining({ state: "unknown", needsReview: true, lines: [] })]);
+    expect(w.ledger()).toEqual([]);
+  });
+
+  it("a payment whose amount cannot be read fails as drift, never a sale of 0", async () => {
+    const w = world();
+    const { transactionId, callback } = w.paymob.pay(await w.link(1));
+    w.paymob.transactions.get(transactionId)!.amount_cents = "1150.00"; // not whole cents
+    await w.deliver(callback);
+    await settle(w.engine, w.store, w.clock);
+    expect(w.ledger()).toEqual([]);
+    expect(await w.store.jobs({ status: "dead" })).toEqual([expect.objectContaining({ kind: "paymob.ingestTransaction" })]);
+    expect(() => mapTransaction({ ...OFFICIAL, amount_cents: undefined }, { drift, now: Date.now })).toThrow(/amount/);
+  });
+
+  it("a refund child whose parent cannot be read is never booked as a sale: a person looks", async () => {
+    const w = world();
+    const paid = w.paymob.pay(await w.link(1));
+    await w.deliver(paid.callback);
+    await settle(w.engine, w.store, w.clock);
+    const cb = w.paymob.refund(paid.transactionId, 15000);
+    w.paymob.transactions.get(w.paymob.lastId)!.parent_transaction = null; // has_parent_transaction stays true
+    await w.deliver(cb);
+    await settle(w.engine, w.store, w.clock);
+    expect(w.updates.at(-1)).toMatchObject({ transactionId: w.paymob.lastId, needsReview: true, lines: [] });
+    expect(w.ledger().map((l) => [l.kind, l.txn])).toEqual([["sale", paid.transactionId]]);
+  });
+
+  it("refunds are dated when they were made, not on the sale's day", async () => {
+    const w = world();
+    const paid = w.paymob.pay(await w.link(1));
+    await w.deliver(paid.callback);
+    await settle(w.engine, w.store, w.clock);
+    w.clock.advance(19 * 24 * 3600_000);
+    await w.deliver(w.paymob.refund(paid.transactionId, 5000));
+    await settle(w.engine, w.store, w.clock);
+    const [sale, refund] = w.ledger();
+    expect(refund!.kind).toBe("refund");
+    expect(Date.parse(refund!.at) - Date.parse(sale!.at)).toBeGreaterThanOrEqual(19 * 24 * 3600_000);
+  });
+
   it("refunds from the dashboard come as children: re-read through the parent, each partial refund once, by how much the total moved", async () => {
     const w = world();
     const paid = w.paymob.pay(await w.link(1));
@@ -174,6 +240,47 @@ describe("callbacks to the ledger (E14-2b)", () => {
     expect(sum(ledger, "refund")).toBe(20000n);
     expect(ledger.every((l) => l.txn === paid.transactionId)).toBe(true); // all on the parent
     expect(w.allLines().filter((l) => l.kind === "refund").reduce((a, l) => a + l.amountMinor, 0n)).toBe(20000n); // no line twice, even before the ledger's key
+  });
+
+  it("two ingests of the same payment at once, a stale read landing last, or a lost answer after the commit: each refund once", async () => {
+    const w = world();
+    const paid = w.paymob.pay(await w.link(1));
+    await w.deliver(paid.callback);
+    await settle(w.engine, w.store, w.clock);
+    w.paymob.refund(paid.transactionId, 15000);
+    const first = w.paymob.lastId;
+    w.paymob.refund(paid.transactionId, 5000);
+    const second = w.paymob.lastId;
+    await Promise.all([w.ingest(first), w.ingest(second), w.ingest(paid.transactionId)]);
+    expect(sum(w.ledger(), "refund")).toBe(20000n);
+    // A read from before the second refund, handed over after it: posts nothing.
+    w.paymob.transactions.get(paid.transactionId)!.refunded_amount_cents = 15000;
+    await w.ingest(first);
+    w.paymob.transactions.get(paid.transactionId)!.refunded_amount_cents = 20000;
+    expect(sum(w.ledger(), "refund")).toBe(20000n);
+    // Committed, then the answer lost: the retry finds it all in the ledger.
+    w.crashNext(1);
+    await w.deliver(w.paymob.refund(paid.transactionId, 1000));
+    await settle(w.engine, w.store, w.clock);
+    expect(sum(w.ledger(), "refund")).toBe(21000n);
+    expect(await w.store.jobs({ status: "dead" })).toEqual([]);
+  });
+
+  it("a refund on a capture walks up to the authorization; if its totals do not show it, a person looks", async () => {
+    const w = world();
+    const auth = w.paymob.pay(await w.link(1), { auth: true });
+    await w.deliver(auth.callback);
+    await w.deliver(w.paymob.capture(auth.transactionId, 115000));
+    await settle(w.engine, w.store, w.clock);
+    const capture = w.paymob.lastId;
+    await w.deliver(w.paymob.refundCapture(capture, 10000, true));
+    await settle(w.engine, w.store, w.clock);
+    expect(w.ledger().map((l) => [l.kind, l.amount, l.txn])).toEqual([["authorization", 115000n, auth.transactionId], ["capture", 115000n, auth.transactionId], ["refund", 10000n, auth.transactionId]]);
+    await w.deliver(w.paymob.refundCapture(capture, 5000, false)); // the authorization's total did not move
+    await settle(w.engine, w.store, w.clock);
+    expect(w.updates.at(-1)).toMatchObject({ transactionId: auth.transactionId, needsReview: true });
+    expect(sum(w.ledger(), "refund")).toBe(10000n);
+    expect(w.ledger().some((l) => l.kind === "sale")).toBe(false); // the capture is never a sale of its own
   });
 
   it("an authorization, a partial capture and a void of the rest", async () => {
@@ -220,6 +327,7 @@ describe("callbacks to the ledger (E14-2b)", () => {
     await w.store.enqueue(MizanEngine.paymobInquiryJob("order-9:full:1", "r1"), w.clock.now());
     await settle(w.engine, w.store, w.clock);
     expect(w.updates).toEqual([expect.objectContaining({ transactionId, state: "succeeded" })]);
+    expect(w.paymob.inquiries).toEqual([{ merchant_order_id: "order-1:full:1", auth_token: expect.any(String) }, { merchant_order_id: "order-9:full:1", auth_token: expect.any(String) }]);
     // The callback arriving late adds nothing.
     await w.deliver(w.paymob.callback(w.paymob.transactions.get(transactionId)!));
     await settle(w.engine, w.store, w.clock);

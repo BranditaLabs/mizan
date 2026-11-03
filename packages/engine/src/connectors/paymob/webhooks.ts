@@ -51,8 +51,8 @@ export type PaymobCallback =
 
 /**
  * A server callback (POST body + query): verified before anything in it is trusted. Returns the
- * transaction to re-read (thin webhook, fat fetch) and a key of its flags, so the same callback
- * delivered again dedupes while the same id after a refund, void or capture does not.
+ * transaction to re-read (thin webhook, fat fetch) and a key of its signed flags, so the same
+ * callback delivered again dedupes while the same id after a refund, void or capture does not.
  */
 export function verifyPaymobCallback(query: Record<string, string | undefined>, body: unknown, secret: string): PaymobCallback {
   const signature = query.hmac;
@@ -69,7 +69,9 @@ export function verifyPaymobCallback(query: Record<string, string | undefined>, 
   const id = text(obj.id);
   if (!/^\d{1,20}$/.test(id)) return { ok: false, reason: "shape" };
   const ref = at(obj, "order.merchant_order_id");
-  const flags = ["success", "pending", "is_voided", "is_refunded", "is_capture", "refunded_amount_cents", "captured_amount"].map((f) => text(obj[f])).join("|");
+  // Signed fields only: an unsigned one (refunded_amount_cents…) could be changed freely to mint new keys from one valid hmac.
+  // A second partial refund leaves the parent's signed flags as they were; its own child callback (a new id) and the sweep carry it.
+  const flags = ["success", "pending", "is_voided", "is_refunded", "is_capture", "is_auth", "error_occured", "has_parent_transaction", "amount_cents"].map((f) => text(obj[f])).join("|");
   return { ok: true, type: "TRANSACTION", transactionId: id, reference: typeof ref === "string" && ref ? ref : null, flagsKey: flags };
 }
 

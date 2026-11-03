@@ -27,6 +27,7 @@ export class FakePaymob {
   readonly integrations = { card: 4097558, wallet: 4097559, kiosk: 4097560 };
   readonly intentions = new Map<string, FakeIntention>();
   readonly transactions = new Map<string, Record<string, unknown>>();
+  readonly inquiries: Array<Record<string, unknown>> = [];
   faults: Array<{ path?: string; fault: Fault }> = [];
   randomFaultRate = 0;
   legacyShape = false;
@@ -68,7 +69,9 @@ export class FakePaymob {
       if (auth !== `Token ${this.secretKey}`) return json(401, { detail: "Authentication credentials were not provided." });
       res = this.createIntention(body);
     } else if (method === "POST" && path === "/api/ecommerce/orders/transaction_inquiry") {
-      const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+      // The docs put the token in the body, Postman in the header: either is taken; what came is kept.
+      this.inquiries.push(structuredClone(body));
+      const token = typeof body.auth_token === "string" ? body.auth_token : auth.startsWith("Bearer ") ? auth.slice(7) : "";
       const until = this.tokens.get(token);
       if (!until || until <= this.clock.now()) return json(401, { detail: "Invalid token." });
       // Like Paymob: only the order's most recent transaction.
@@ -130,6 +133,27 @@ export class FakePaymob {
     parent.captured_amount = Number(parent.captured_amount) + amount;
     parent.is_captured = true;
     return this.callback(this.child(parent, amount, { is_capture: true }));
+  }
+
+  /**
+   * A refund made on a capture child (auth/capture flows): the refund's parent is the capture. How
+   * Paymob totals it on the authorization is not documented: `rootToo` moves the root's total too.
+   */
+  refundCapture(captureId: string, amount: number, rootToo: boolean) {
+    const capture = this.transactions.get(captureId)!;
+    capture.refunded_amount_cents = Number(capture.refunded_amount_cents) + amount;
+    capture.is_refunded = true;
+    if (rootToo) {
+      const root = this.transactions.get(String(capture.parent_transaction))!;
+      root.refunded_amount_cents = Number(root.refunded_amount_cents) + amount;
+      root.is_refunded = true;
+    }
+    return this.callback(this.child(capture, amount, { is_refunded: true }));
+  }
+
+  /** The id of the newest transaction (a child just made). */
+  get lastId(): string {
+    return String(this.txnSeq);
   }
 
   /** A saved card's callback (verified, dropped by Mizan). */

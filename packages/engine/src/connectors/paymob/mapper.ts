@@ -1,6 +1,6 @@
 import { toMinor } from "@mizan/shared";
 import type { DriftSink } from "../../adapt/drift.js";
-import { Resolver } from "../../adapt/resolve.js";
+import { Resolver, SchemaDriftError } from "../../adapt/resolve.js";
 import { IntegrationError } from "../../core/errors.js";
 import { paymentReference, type PaymentLinkRequest } from "../../core/payment-link.js";
 
@@ -59,6 +59,9 @@ export function mapIntention(raw: unknown, ctx: PaymobMapCtx): PaymobIntention {
 export interface PaymobTransaction {
   id: string;
   parentId: string | null;
+  /** Paymob says it has a parent (a refund, void or capture child), whether or not its id could be read. */
+  hasParent: boolean;
+  isCapture: boolean;
   reference: string | null;
   currency: string;
   amountMinor: bigint;
@@ -92,9 +95,13 @@ export function mapTransaction(raw: unknown, ctx: PaymobMapCtx): PaymobTransacti
     const v = r.any(name, paths);
     return v === true || v === "true";
   };
-  const cents = (name: string, paths: string[]) => {
-    const n = r.num(name, paths);
-    return n !== undefined && Number.isFinite(n) && n > 0 ? BigInt(Math.round(n)) : 0n;
+  // Money: absent is 0 only where the field is optional; present but not a whole number of cents is drift, never 0.
+  const cents = (name: string, paths: string[], required = false) => {
+    const v = r.any(name, paths, { required });
+    if (v === undefined || v === null) return 0n;
+    const n = typeof v === "number" ? v : typeof v === "string" && /^\d{1,15}$/.test(v) ? Number(v) : NaN; // "1150.00" is major units, never cents
+    if (!Number.isInteger(n) || n < 0) throw new SchemaDriftError("paymob", "transaction", name, paths);
+    return BigInt(n);
   };
   const sourceType = (r.str("sourceType", ["source_data.type"]) ?? "").toLowerCase();
   const subType = (r.str("subType", ["source_data.sub_type"]) ?? "").toLowerCase();
@@ -108,9 +115,11 @@ export function mapTransaction(raw: unknown, ctx: PaymobMapCtx): PaymobTransacti
   return {
     id: r.str("id", ["id"], { required: true })!,
     parentId: parent && parent !== "0" && parent !== "null" ? parent : null,
+    hasParent: flag("hasParent", ["has_parent_transaction"]) || r.any("standalone", ["is_standalone_payment"]) === false,
+    isCapture: flag("isCapture", ["is_capture"]),
     reference: r.str("reference", ["order.merchant_order_id", "merchant_order_id"]) ?? null,
     currency: (r.str("currency", ["currency", "order.currency"], { required: true }) ?? "").toUpperCase(),
-    amountMinor: cents("amount", ["amount_cents"]),
+    amountMinor: cents("amount", ["amount_cents"], true),
     success: flag("success", ["success"]),
     pending: flag("pending", ["pending"]),
     errorOccurred: flag("errorOccurred", ["error_occured", "error_occurred"]),

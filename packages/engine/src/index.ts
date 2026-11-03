@@ -10,7 +10,7 @@ export { editMarker, type OrderEditOutcome, type OrderEditPlan } from "./core/or
 export { paymentReference, type PaymentLinkOutcome, type PaymentLinkRequest, type PaymentPurpose } from "./core/payment-link.js";
 export { PaymobConnector, INTENTION_PATH } from "./connectors/paymob/connector.js";
 export { verifyPaymobCallback, verifyPaymobRedirect, paymobHmac, paymobTransactionString, type PaymobCallback } from "./connectors/paymob/webhooks.js";
-export type { GatewayLine, GatewayState, GatewayTransactionUpdate } from "./core/gateway-transaction.js";
+export { gatewayDeltaLines, type GatewayLine, type GatewayState, type GatewayTotals, type GatewayTransactionUpdate } from "./core/gateway-transaction.js";
 export { PAYMOB_CHECKOUT, PAYMOB_HOSTS, type PaymobCredentials, type PaymobRegion } from "./connectors/paymob/client.js";
 export { draftHandle, type CreatedProduct, type ProductDraft, type ProductPublishOutcome } from "./core/product-draft.js";
 export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bosta/connector.js";

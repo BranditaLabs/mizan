@@ -58,14 +58,18 @@ export class PaymobRest {
     return res.json as T;
   }
 
-  /** A read with the auth token; a 401 renews the token once. */
+  /** A read with the auth token; a 401 renews the token once. A body made from the token gets the renewed one too. */
   async withToken<T>(op: string, method: "POST" | "GET", path: string, body?: unknown): Promise<T> {
+    const send = async () => {
+      const token = await this.authToken();
+      return (await this.call(op, method, path, `Bearer ${token}`, typeof body === "function" ? (body as (t: string) => unknown)(token) : body, true)).json as T;
+    };
     try {
-      return (await this.call(op, method, path, `Bearer ${await this.authToken()}`, body, true)).json as T;
+      return await send();
     } catch (e) {
       if (!(e instanceof IntegrationError) || e.kind !== "auth" || !this.token) throw e;
       this.token = undefined;
-      return (await this.call(op, method, path, `Bearer ${await this.authToken()}`, body, true)).json as T;
+      return send();
     }
   }
 

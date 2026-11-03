@@ -821,60 +821,70 @@ export class MizanEngine {
     return { status: 200, body: { ok: true } };
   }
 
-  /** Re-read a transaction (its parent, for a refund or void child) and hand the platform what changed. */
+  /** Re-read a transaction and hand the platform its payment (the root, for a refund, void or capture child). */
   private async ingestPaymobTransaction(transactionId: string) {
     if (!this.paymob) throw new IntegrationError({ kind: "permanent", connector: "paymob", message: "no Paymob account on this connection" });
-    let t = await this.paymob.readTransaction(transactionId);
-    if (t.parentId) t = await this.paymob.readTransaction(t.parentId);
-    await this.applyPaymob(t);
+    await this.applyPaymobChain(await this.paymob.readTransaction(transactionId));
   }
 
   /** The sweep's fallback: the latest transaction of this reference, if any, as if its callback had come. */
   private async inquirePaymob(reference: string) {
     if (!this.paymob) throw new IntegrationError({ kind: "permanent", connector: "paymob", message: "no Paymob account on this connection" });
     const t = await this.paymob.inquire(reference);
-    if (!t) return;
-    await this.applyPaymob(t.parentId ? await this.paymob.readTransaction(t.parentId) : t);
+    if (t) await this.applyPaymobChain(t);
   }
 
   /**
-   * The state from the flags (docs/06 §7 "States → Mizan"), and ledger lines for each increase
-   * since Mizan last saw this transaction: never guessed — a combination it does not know is
-   * `unknown`, needs a person, and posts nothing.
+   * Up the parents to the payment itself (a refund of a capture is two levels up). The change is
+   * dated by the child that made it. A child whose parent cannot be read, a chain deeper than
+   * Paymob's flows, or a refund on a capture the payment's totals do not show: a person looks.
    */
-  private async applyPaymob(t: PaymobTransaction) {
-    const seen = (await this.store.get<{ sold?: boolean; authorized?: boolean; voided?: boolean; captured?: string; refunded?: string }>("paymob-txn", t.id)) ?? {};
+  private async applyPaymobChain(first: PaymobTransaction) {
+    const chain = [first];
+    let t = first;
+    while (t.parentId && chain.length <= 3) {
+      t = await this.paymob!.readTransaction(t.parentId);
+      chain.push(t);
+    }
+    const why: string[] = [];
+    if (t.parentId) why.push("a chain of parents deeper than Paymob's flows");
+    if (t.hasParent && !t.parentId) why.push("a child transaction whose parent id cannot be read");
+    for (const mid of chain.slice(1, -1)) {
+      if (mid.refundedMinor > t.refundedMinor) why.push(`a refund on capture ${mid.id} that the payment's totals do not show`);
+    }
+    const changedAt = chain.length > 1 ? first.occurredAt : new Date(this.now()).toISOString();
+    await this.applyPaymob(t, changedAt, why);
+  }
+
+  /**
+   * The state from the flags (docs/06 §7 "States → Mizan"), each documented row exactly; any other
+   * combination is `unknown`, needs a person, and posts nothing. Once-only lines carry fixed
+   * references; captured and refunded go as totals, for `gatewayDeltaLines` against the ledger.
+   */
+  private async applyPaymob(t: PaymobTransaction, changedAt: string, why: string[]) {
     let state: GatewayState;
     if (t.pending && !t.success) state = "pending";
+    else if (t.pending) state = "unknown"; // success and pending at once: not a documented row
     else if (t.voided && (t.success || t.isAuth)) state = "voided";
     else if (t.success && t.isAuth) state = "authorized";
     else if (t.success) state = "succeeded";
-    else if (!t.success && !t.pending) state = "failed";
-    else state = "unknown";
-    const needsReview = state === "unknown" || (t.success && t.errorOccurred);
-    if (needsReview) this.drift.record({ connector: "paymob", entity: "transaction", kind: "unknown_status", detail: `flags Mizan does not map: success=${t.success} pending=${t.pending} error=${t.errorOccurred} auth=${t.isAuth} voided=${t.voided}`, at: this.now() });
+    else state = "failed";
+    if (state === "unknown") why.push(`flags Mizan does not map: success=${t.success} pending=${t.pending}`);
+    if (t.success && t.errorOccurred) why.push("success with error_occured");
+    if (t.isCapture && !t.isAuth) why.push("a capture child read as a payment of its own");
+    const needsReview = why.length > 0;
+    if (needsReview) this.drift.record({ connector: "paymob", entity: "transaction", kind: "unknown_status", detail: why.join("; "), at: this.now() });
     const lines: GatewayLine[] = [];
-    const at = t.occurredAt;
     if (!needsReview) {
-      if (t.success && !t.isAuth && !seen.sold) lines.push({ kind: "sale", amountMinor: t.amountMinor, externalRef: `${t.id}:sale`, occurredAt: at });
-      if (t.success && t.isAuth && !seen.authorized) lines.push({ kind: "authorization", amountMinor: t.amountMinor, externalRef: `${t.id}:auth`, occurredAt: at });
-      const captured = BigInt(seen.captured ?? "0");
-      if (t.isAuth && t.capturedMinor > captured) lines.push({ kind: "capture", amountMinor: t.capturedMinor - captured, externalRef: `${t.id}:capture:${t.capturedMinor}`, occurredAt: at });
-      if (t.voided && !seen.voided) lines.push({ kind: "void", amountMinor: t.isAuth ? t.amountMinor - t.capturedMinor : t.amountMinor, externalRef: `${t.id}:void`, occurredAt: at });
-      const refunded = BigInt(seen.refunded ?? "0");
-      if (t.refundedMinor > refunded) lines.push({ kind: "refund", amountMinor: t.refundedMinor - refunded, externalRef: `${t.id}:refund:${t.refundedMinor}`, occurredAt: at });
+      if (t.success && !t.isAuth) lines.push({ kind: "sale", amountMinor: t.amountMinor, externalRef: `${t.id}:sale`, occurredAt: t.occurredAt });
+      if (t.success && t.isAuth) lines.push({ kind: "authorization", amountMinor: t.amountMinor, externalRef: `${t.id}:auth`, occurredAt: t.occurredAt });
+      if (state === "voided") lines.push({ kind: "void", amountMinor: t.isAuth ? t.amountMinor - t.capturedMinor : t.amountMinor, externalRef: `${t.id}:void`, occurredAt: changedAt });
     }
     await this.runHook(() => this.opts.hooks?.onGatewayTransaction?.({
-      gateway: "paymob", transactionId: t.id, reference: t.reference, state, method: t.method, currency: t.currency, amountMinor: t.amountMinor, lines, needsReview,
+      gateway: "paymob", transactionId: t.id, reference: t.reference, state, method: t.method, currency: t.currency, amountMinor: t.amountMinor, lines,
+      totals: { capturedMinor: t.capturedMinor, refundedMinor: t.refundedMinor, changedAt }, needsReview,
       ...(t.kioskReference ? { kioskReference: t.kioskReference } : {}),
     }));
-    if (!needsReview) {
-      await this.store.put("paymob-txn", t.id, {
-        sold: seen.sold || (t.success && !t.isAuth), authorized: seen.authorized || (t.success && t.isAuth), voided: seen.voided || t.voided,
-        captured: (t.capturedMinor > BigInt(seen.captured ?? "0") ? t.capturedMinor : BigInt(seen.captured ?? "0")).toString(),
-        refunded: (t.refundedMinor > BigInt(seen.refunded ?? "0") ? t.refundedMinor : BigInt(seen.refunded ?? "0")).toString(),
-      }, this.now());
-    }
     this.emit("payment.ingested", { gateway: "paymob", transactionId: t.id, state, lines: lines.length });
   }
 
