@@ -1161,7 +1161,9 @@
         "courier_needs_attention": "the courier connection needs attention",
         "no_courier": "connect a courier first"
       },
-      "failedHint": "Some orders failed. Try them again in a moment."
+      "failedHint": "Some orders failed. Try them again in a moment.",
+      "invoices": "Invoices",
+      "slips": "Packing slips"
     },
     "waitingStock": "Waiting for stock",
     "emptyWaitingStock": {
@@ -1310,6 +1312,42 @@
         "currency_mismatch": "This product is priced in another currency.",
         "pii_redacted": "The customer's data was deleted, so the address can't be changed."
       }
+    },
+    "print": {
+      "pageTitle": "Print orders",
+      "back": "Orders",
+      "invoices": "{count, plural, one {# invoice} other {# invoices}}",
+      "slips": "{count, plural, one {# packing slip} other {# packing slips}}",
+      "showInvoices": "Invoices instead",
+      "showSlips": "Packing slips instead",
+      "print": "Print or save as PDF",
+      "none": "No orders chosen. Pick orders in the list first.",
+      "loading": "Preparing the documents",
+      "number": "Order",
+      "date": "Date",
+      "redacted": "The customer's details were deleted on request.",
+      "shipTo": "Deliver to",
+      "payment": "Payment",
+      "item": "Item",
+      "qty": "Qty",
+      "unit": "Price",
+      "lineTotal": "Total",
+      "subtotal": "Items",
+      "shipping": "Delivery",
+      "discount": "Discount",
+      "total": "Total",
+      "paid": "Paid",
+      "refunded": "Refunded",
+      "cod": "To collect on delivery",
+      "thanks": "Thank you for your order.",
+      "invoice": "Invoice",
+      "slip": "Packing slip",
+      "collect": "Collect on delivery",
+      "packed": "Packed",
+      "code": "SKU / barcode",
+      "pieces": "{count, plural, one {# piece in all} other {# pieces in all}}",
+      "printInvoice": "Print invoice",
+      "printSlip": "Packing slip"
     }
   },
   "costs": {

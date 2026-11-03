@@ -9,10 +9,11 @@ import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
   BulkActionSchema, BulkRequestSchema, DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
   RevealedCustomerSchema, type ListOrdersQuery,
-  OrderEditInputSchema, OrderEditResultSchema, OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema,
+  OrderDocumentsRequestSchema, OrderDocumentsSchema, OrderEditInputSchema, OrderEditResultSchema, OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema,
 } from "./orders.dto.js";
 import { OrderNotesService } from "./order-notes.service.js";
 import { OrderEditsService } from "./order-edits.service.js";
+import { OrderDocumentsService } from "./order-documents.service.js";
 import { ManualOrdersService } from "./manual-orders.service.js";
 import { BulkActionsService } from "./bulk.service.js";
 import { DuplicatesService, OrderSettingsSchema, type OrderSettings } from "./duplicates.service.js";
@@ -28,6 +29,7 @@ export class OrdersController {
     @Inject(BulkActionsService) private readonly bulk: BulkActionsService,
     @Inject(OrderNotesService) private readonly extras: OrderNotesService,
     @Inject(OrderEditsService) private readonly edits: OrderEditsService,
+    @Inject(OrderDocumentsService) private readonly docs: OrderDocumentsService,
   ) {}
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
@@ -76,6 +78,22 @@ export class OrdersController {
   @ApiJson(200, "OrderProducts", OrderProductsSchema, "Active products to add to a manual order (100 at most)")
   products(@Auth() auth: AuthContext, @Query(new ZodPipe(OrderProductsQuerySchema)) q: z.output<typeof OrderProductsQuerySchema>) {
     return this.manual.products(auth.tenant!.id, q.q);
+  }
+
+  /**
+   * O4: invoices or packing slips for up to 100 orders, with the delivery contact: decrypted for this
+   * caller only, never cached, each order's view in the audit log (customer.pii_viewed).
+   */
+  @Post("documents")
+  @HttpCode(200)
+  @Roles("owner", "admin", "ops_manager", "agent", "warehouse")
+  @NoIdempotency()
+  @Header("Cache-Control", "no-store")
+  @ApiJsonBody("OrderDocumentsRequest", OrderDocumentsRequestSchema)
+  @ApiJson(200, "OrderDocuments", OrderDocumentsSchema, "What the documents print, in the order asked; audited per order")
+  @ApiProblems(404, 422, 429)
+  documents(@Auth() auth: AuthContext, @Body(new ZodPipe(OrderDocumentsRequestSchema)) body: z.output<typeof OrderDocumentsRequestSchema>) {
+    return this.docs.documents(auth, body.orderIds, body.kind);
   }
 
   /** O2: the values the list's filters offer (tags, cities, couriers), within the caller's scope. */

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge, RiskMeter, Tag } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Card, EmptyState, KeyValue, SkeletonRows, Timeline } from "@/components/ui/Surface";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -31,6 +31,7 @@ import { ProfitCard } from "./ProfitCard";
 import { TicketsCard } from "./TicketsCard";
 import { NotesCard, TagsCard } from "./NotesCard";
 import { EditBanner, EditOrderButton, canEditOrder } from "./EditOrder";
+import { printHref } from "./PrintDocuments";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
 /** Risk reason codes the API writes (E6-1); an unknown code is shown as is. */
@@ -161,7 +162,11 @@ export function OrderDetail({ id }: { id: string }) {
         <Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>
         <Badge tone="neutral" dot={false}>{tp(o.paymentStatus)}</Badge>
         {o.stock === "short" ? <Badge tone="danger">{t("stock.short")}</Badge> : o.stock === "reserved" ? <Badge tone="success">{t("stock.reserved")}</Badge> : null}
-        {canEditOrder(o, store?.role) ? <div className="ms-auto"><EditOrderButton order={o} /></div> : null}
+        <div className="ms-auto flex flex-wrap gap-2">
+          <Link href={printHref("invoice", [o.id])} target="_blank" className={buttonClass("ghost")}><Icon name="invoice" size={16} />{t("print.printInvoice")}</Link>
+          <Link href={printHref("packing_slip", [o.id])} target="_blank" className={buttonClass("ghost")}><Icon name="print" size={16} />{t("print.printSlip")}</Link>
+          {canEditOrder(o, store?.role) ? <EditOrderButton order={o} /> : null}
+        </div>
         <p className="w-full text-body-sm text-text-2">
           {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{o.store.provider ? sourceName(o.store.provider) : t("manual")}
         </p>
