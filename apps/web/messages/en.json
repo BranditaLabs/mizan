@@ -46,7 +46,14 @@
       "create": "New store",
       "switched": "You're now in <b>{store}</b>"
     },
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "navGroups": {
+      "work": "Daily work",
+      "catalog": "Products & stock",
+      "money": "Money"
+    },
+    "more": "More",
+    "mobileNav": "Sections"
   },
   "home": {
     "title": "Welcome to Mizan",
@@ -300,7 +307,9 @@
         "navigate": "Go to",
         "stores": "Stores",
         "preferences": "Preferences",
-        "account": "Account"
+        "account": "Account",
+        "actions": "Do",
+        "orders": "Orders"
       },
       "commands": {
         "home": "Home",
@@ -315,8 +324,13 @@
           "en": "English"
         },
         "signOut": "Sign out",
-        "feedback": "Send feedback"
-      }
+        "feedback": "Send feedback",
+        "new-order": "New order",
+        "new-product": "New product",
+        "new-po": "New purchase order",
+        "invite": "Invite a team member"
+      },
+      "searching": "Looking for orders…"
     }
   },
   "payments": {

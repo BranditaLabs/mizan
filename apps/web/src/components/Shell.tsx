@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { NavLinks } from "./NavLinks";
+import { MobileNav } from "./MobileNav";
 import { FeedbackButton } from "./FeedbackButton";
 import { NotificationBell } from "./NotificationBell";
 import { PlanBanner } from "./PlanBanner";
@@ -60,7 +61,9 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <PlanBanner />
           <LegalBanner />
         </div>
-        <main id="main" className="min-h-0 flex-1 overflow-y-auto print:overflow-visible"><RouteMotion>{children}</RouteMotion></main>
+        {/* Below lg the phone bar covers the bottom: the page scrolls clear of it. */}
+        <main id="main" className="min-h-0 flex-1 overflow-y-auto pb-[calc(88px+env(safe-area-inset-bottom,0px))] lg:pb-0 print:overflow-visible print:pb-0"><RouteMotion>{children}</RouteMotion></main>
+        <MobileNav />
       </div>
     </div>
     </GlassRoot>
