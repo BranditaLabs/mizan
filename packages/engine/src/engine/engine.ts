@@ -1,5 +1,8 @@
 import type { OrderEditOutcome, OrderEditPlan } from "../core/order-edit.js";
 import type { CreatedProduct, ProductDraft, ProductPublishOutcome } from "../core/product-draft.js";
+import type { PaymentLinkOutcome, PaymentLinkRequest } from "../core/payment-link.js";
+import { PaymobConnector } from "../connectors/paymob/connector.js";
+import type { PaymobCredentials } from "../connectors/paymob/client.js";
 import { createHash } from "node:crypto";
 import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
@@ -30,6 +33,8 @@ export interface EngineOptions {
   bosta: BostaConfig;
   /** A WooCommerce store (E5-7): its orders come in by signed webhook and by polling. */
   woocommerce?: WooCommerceCredentials;
+  /** A Paymob account (E14-2a): payment links through the Intention API and the hosted checkout. */
+  paymob?: PaymobCredentials;
   /** Shopify location Mizan manages stock for. */
   locationId?: string;
   /** Which system wins when a field differs. Mizan-owned fields edited in Shopify are restored; Shopify-owned ones are accepted. */
@@ -83,6 +88,16 @@ export interface EngineOptions {
      * withdrew it): nothing is sent.
      */
     loadOrderEdit?: (editId: string) => Promise<OrderEditPlan | undefined>;
+    /**
+     * A payment link to make (E14-2a), read when its job runs: the customer's phone never goes into a
+     * job. Undefined when it is no longer wanted (paid another way, the order cancelled).
+     */
+    loadPaymentLink?: (linkId: string) => Promise<PaymentLinkRequest | undefined>;
+    /**
+     * The link the customer pays on, or why there is none (final). Called once per created link; the
+     * URL carries a secret for that payment, so the platform keeps it encrypted and never logs it.
+     */
+    onPaymentLink?: (linkId: string, result: PaymentLinkOutcome) => Promise<void>;
     /** A product made in Mizan, to publish (P3), read when the job runs. Undefined when it is gone or published already. */
     loadProductDraft?: (productId: string) => Promise<ProductDraft | undefined>;
     /**
@@ -247,7 +262,8 @@ export class MizanEngine {
   readonly woo: WooCommerceConnector | undefined;
   readonly worker: OutboxWorker;
   private readonly listeners: Listener[] = [];
-  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "woocommerce" | "worker" | "locationId" | "hooks" | "learned">> & Pick<EngineOptions, "locationId" | "hooks" | "learned">;
+  readonly paymob: PaymobConnector | undefined;
+  private readonly opts: Required<Omit<EngineOptions, "shopify" | "bosta" | "woocommerce" | "paymob" | "worker" | "locationId" | "hooks" | "learned">> & Pick<EngineOptions, "locationId" | "hooks" | "learned">;
   /** Last learned state persisted per provider (JSON), to persist only changes. */
   private readonly learnedSaved: Record<"shopify" | "bosta" | "woocommerce", string> = { shopify: "", bosta: "", woocommerce: "" };
 
@@ -267,6 +283,7 @@ export class MizanEngine {
     this.shopifyConn = options.shopify ? new ShopifyConnector(options.shopify, rt, this.drift, this.shapes) : undefined;
     this.bosta = new BostaConnector(options.bosta, rt, this.drift, this.shapes);
     this.woo = options.woocommerce ? new WooCommerceConnector({ ...options.woocommerce }, rt, this.drift, this.shapes) : undefined;
+    this.paymob = options.paymob ? new PaymobConnector({ ...options.paymob }, rt, this.drift) : undefined;
     this.worker = new OutboxWorker(store, rt, this.handlers(), { ...DEFAULT_WORKER, ...options.worker });
     this.worker.onOutcome((o) => this.onOutcome(o));
     this.drift.onNew((e) => this.emit("drift", { ...e }));
@@ -504,6 +521,11 @@ export class MizanEngine {
     return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
   }
 
+  /** Make a payment link on Paymob (E14-2a): one job per link; each run of it is a new attempt. */
+  static paymentLinkJob(linkId: string): NewJob<{ linkId: string }> {
+    return { kind: "paymob.createLink", connection: "paymob", payload: { linkId }, idempotencyKey: `paymob:link:${linkId}` };
+  }
+
   /** Publish a product made in Mizan to a store (P3); `attempt` makes a publish after a failure its own job. */
   static productPublishJob(provider: "shopify" | "woocommerce", productId: string, attempt: number): NewJob<{ productId: string }> {
     return { kind: `${provider}.createProduct`, connection: provider, payload: { productId }, idempotencyKey: `${provider}:publish:${productId}:${attempt}` };
@@ -700,6 +722,7 @@ export class MizanEngine {
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.editOrder": (j) => this.editOrder(j.payload.editId, "shopify"),
       "shopify.createProduct": (j) => this.publishProduct(j.payload.productId, "shopify"),
+      "paymob.createLink": (j) => this.createPaymentLink(j.payload.linkId),
       "woocommerce.createProduct": (j) => this.publishProduct(j.payload.productId, "woocommerce"),
       "woocommerce.editOrder": (j) => this.editOrder(j.payload.editId, "woocommerce"),
       "shopify.reconcile": (j) => this.reconcile(j.payload),
@@ -732,6 +755,34 @@ export class MizanEngine {
     await this.ingestOrder(p.orderId);
     await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, outcome));
     this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
+  }
+
+  /**
+   * E14-2a: one attempt at the link per run. The attempt number is recorded before the create is
+   * sent, so a run after a lost answer uses a new reference (the lost intention cannot be paid: its
+   * secret never left). Nothing secret is kept here: the link goes straight to the platform's hook.
+   */
+  private async createPaymentLink(linkId: string) {
+    const req = await this.opts.hooks?.loadPaymentLink?.(linkId);
+    if (!req) return; // no longer wanted
+    if (!this.paymob) throw new IntegrationError({ kind: "permanent", connector: "paymob", message: "no Paymob account on this connection" });
+    const rec = (await this.store.get<{ attempt: number }>("payment-link", linkId)) ?? { attempt: 0 };
+    const attempt = rec.attempt + 1;
+    await this.store.put("payment-link", linkId, { attempt }, this.now());
+    let outcome: PaymentLinkOutcome;
+    try {
+      const it = await this.paymob.createIntention(req, attempt);
+      outcome = { ok: true, url: this.paymob.checkoutUrl(it.clientSecret), intentionId: it.intentionId, gatewayOrderId: it.gatewayOrderId, reference: it.reference };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" ? "validation" : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onPaymentLink?.(linkId, { ok: false, reason, message: e.message }));
+      this.emit("payment_link.failed", { linkId, reason });
+      if (reason === "permission") throw e; // the keys need the merchant: surfaces as needs attention
+      return;
+    }
+    await this.runHook(() => this.opts.hooks?.onPaymentLink?.(linkId, outcome));
+    this.emit("payment_link.created", { linkId, attempt, intentionId: outcome.ok ? outcome.intentionId : null });
   }
 
   /** P3: the product into the store, its ids to the platform, then the product read back like any store change. */
@@ -1295,6 +1346,12 @@ export class MizanEngine {
         const p = o.job.payload as CancelJob;
         this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
           .catch((e) => this.rt.logger.log("error", "cancel result hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // A payment link never made (E14-2a): the team sends it another way, or asks for it again.
+      if (o.job.kind === "paymob.createLink" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as { linkId: string };
+        this.runHook(() => this.opts.hooks?.onPaymentLink?.(p.linkId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "payment link hook failed", { linkId: p.linkId, error: e instanceof Error ? e.message : String(e) }));
       }
       // A product that never reached the store (P3): the team can publish it again.
       if ((o.job.kind === "shopify.createProduct" || o.job.kind === "woocommerce.createProduct") && kind !== "auth" && kind !== "permission") {

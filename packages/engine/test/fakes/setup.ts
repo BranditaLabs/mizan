@@ -4,6 +4,7 @@ import { FakeBosta } from "./bosta.js";
 import { FakeClock, seeded, testRuntime } from "./clock.js";
 import { FakeShopify } from "./shopify.js";
 import { FakeWooCommerce } from "./woocommerce.js";
+import { FakePaymob } from "./paymob.js";
 
 export const LOCATION = "gid://shopify/Location/1";
 
@@ -25,6 +26,26 @@ export function setup(overrides: Partial<EngineOptions> = {}, store: Store = new
   const events: Array<{ event: string; data: Record<string, unknown> }> = [];
   engine.on((event, data) => events.push({ event, data }));
   return { clock, shop, bosta, rt, store, engine, events };
+}
+
+/** An engine with a Paymob account (E14-2a) next to the usual fakes. */
+export function setupPaymob(overrides: Partial<EngineOptions> = {}, store: Store = new MemoryStore(), seed = Number(process.env.CHAOS_SEED ?? 0)) {
+  const clock = new FakeClock();
+  const shop = new FakeShopify(clock, seeded(2 + seed * 7));
+  const bosta = new FakeBosta(clock, seeded(3 + seed * 7));
+  const paymob = new FakePaymob(clock, seeded(8 + seed * 7));
+  const logs: string[] = [];
+  const rt = { ...testRuntime(clock, { [shop.host]: shop.handler, [bosta.host]: bosta.handler, [paymob.host]: paymob.handler }, seeded(9 + seed * 7)),
+    logger: { log: (level: string, message: string, data?: Record<string, unknown>) => { logs.push(`${level} ${message} ${JSON.stringify(data ?? {})}`); } } };
+  const engine = new MizanEngine(store, rt, {
+    shopify: { shop: shop.host, accessToken: "shpat_test", apiVersion: "2026-10", clientSecret: shop.secret },
+    bosta: { apiKey: bosta.apiKey, baseUrl: bosta.baseUrl, webhookSecret: "whsec-bosta", webhookUrl: "https://mizan.test/webhooks/bosta" },
+    paymob: { region: "eg", secretKey: paymob.secretKey, publicKey: paymob.publicKey, apiKey: paymob.apiKey, hmacSecret: "hmac_fake", integrations: paymob.integrations },
+    ...overrides,
+  });
+  const events: Array<{ event: string; data: Record<string, unknown> }> = [];
+  engine.on((event, data) => events.push({ event, data }));
+  return { clock, paymob, rt, store, engine, events, logs };
 }
 
 /** An engine with a WooCommerce store (E5-7) next to the usual fakes. */
