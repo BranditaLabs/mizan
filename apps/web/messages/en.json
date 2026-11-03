@@ -331,6 +331,15 @@
         "invite": "Invite a team member"
       },
       "searching": "Looking for orders…"
+    },
+    "saveBar": {
+      "label": "Unsaved changes",
+      "unsaved": "You have unsaved changes.",
+      "discard": "Discard",
+      "save": "Save",
+      "leaveTitle": "Leave without saving?",
+      "leaveBody": "Your changes on this page will be lost.",
+      "leave": "Leave"
     }
   },
   "payments": {

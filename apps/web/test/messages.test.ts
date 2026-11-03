@@ -1,3 +1,4 @@
+import { ROLE_LABELS } from "@mizan/shared";
 import { describe, expect, it } from "vitest";
 import ar from "../messages/ar.json";
 import en from "../messages/en.json";
@@ -42,5 +43,15 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
       if (allowedLatin.has(k)) continue;
       expect(/[؀-ۿ]/.test(v), `${k}: ${v}`).toBe(true);
     }
+  });
+});
+
+describe("one name per role (U5 glossary)", () => {
+  it("the web's role labels are the shared ones, in both languages", () => {
+    for (const [role, l] of Object.entries(ROLE_LABELS)) {
+      expect((ar.roles as Record<string, string>)[role]).toBe(l.ar);
+      expect((en.roles as Record<string, string>)[role]).toBe(l.en);
+    }
+    expect(Object.keys(en.roles).sort()).toEqual(Object.keys(ROLE_LABELS).sort());
   });
 });

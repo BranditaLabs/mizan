@@ -11,14 +11,15 @@ export type MembershipStatus = (typeof MEMBERSHIP_STATUSES)[number];
 /** Roles that must sign in with a second factor in production (docs/07 §1). */
 export const MFA_REQUIRED_ROLES: ReadonlySet<MemberRole> = new Set(["owner", "admin"]);
 
+/** The one Arabic and English name of each role (the web's `roles` messages say the same; U5 glossary). */
 export const ROLE_LABELS: Readonly<Record<MemberRole, { en: string; ar: string }>> = {
-  owner: { en: "Owner", ar: "صاحب البيزنس" },
+  owner: { en: "Owner", ar: "صاحب المتجر" },
   admin: { en: "Admin", ar: "أدمن" },
   ops_manager: { en: "Ops manager", ar: "مدير العمليات" },
-  agent: { en: "Agent", ar: "موظف تأكيد / خدمة عملاء" },
-  warehouse: { en: "Warehouse", ar: "المخزن" },
-  finance: { en: "Finance", ar: "الحسابات" },
-  media_buyer: { en: "Media buyer", ar: "ميديا باير" },
+  agent: { en: "Confirmation agent", ar: "موظف تأكيد" },
+  warehouse: { en: "Warehouse", ar: "مخزن" },
+  finance: { en: "Finance", ar: "حسابات" },
+  media_buyer: { en: "Media buyer", ar: "مسؤول الإعلانات" },
 };
 
 export function isMemberRole(value: string): value is MemberRole {

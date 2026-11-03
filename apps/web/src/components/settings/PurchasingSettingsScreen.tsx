@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Field } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Pending } from "@/components/ui/QueryState";
@@ -57,7 +57,10 @@ export function PurchasingSettingsScreen() {
           ))}
         </div>
         {save.isError ? <Alert tone="danger">{problemText(save.error, tpr)}</Alert> : null}
-        {EDITORS.has(role) ? <div><Button type="submit" busy={save.isPending} disabled={!current.trim() || !daysValid}>{t("save")}</Button></div> : null}
+        {EDITORS.has(role) ? (
+          <SaveBar dirty={(value !== null && value.trim() !== (q.data?.approveOver ?? "")) || Object.keys(days).some((k) => days[k as keyof typeof days] !== String(q.data?.[k as keyof typeof days] ?? ""))}
+            busy={save.isPending} canSave={Boolean(current.trim()) && daysValid} onSave={() => save.mutate()} onDiscard={() => { setValue(null); setDays({}); }} />
+        ) : null}
       </form>
     );
   return (

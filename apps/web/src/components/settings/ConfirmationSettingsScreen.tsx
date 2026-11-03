@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonGroup, IconButton } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Switch } from "@/components/ui/Choice";
 import { Field, Select } from "@/components/ui/Field";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
@@ -159,10 +160,7 @@ export function ConfirmationSettingsScreen() {
         </div>
       </Card>
 
-      <ButtonGroup>
-        <Button busy={save.isPending} disabled={!draft || !hoursValid || !stepsValid || !routingValid} onClick={() => save.mutate(s)}>{t("save")}</Button>
-        {draft ? <Button variant="ghost" onClick={() => setDraft(null)}>{t("discard")}</Button> : null}
-      </ButtonGroup>
+      <SaveBar dirty={draft !== null} busy={save.isPending} canSave={hoursValid && stepsValid && routingValid} onSave={() => save.mutate(s)} onDiscard={() => setDraft(null)} />
     </>,
   );
 }

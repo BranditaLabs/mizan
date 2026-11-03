@@ -5,7 +5,8 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
-import { Button, ButtonGroup } from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
+import { SaveBar } from "@/components/ui/SaveBar";
 import { Checkbox, Switch } from "@/components/ui/Choice";
 import { Combobox } from "@/components/ui/Combobox";
 import { Field, Select } from "@/components/ui/Field";
@@ -96,10 +97,7 @@ export function OffersSettingsScreen() {
         </div>
       </Card>
 
-      <ButtonGroup>
-        <Button busy={save.isPending} disabled={!draft || !valid} onClick={() => save.mutate(s)}>{t("save")}</Button>
-        {draft ? <Button variant="ghost" onClick={() => setDraft(null)}>{t("discard")}</Button> : null}
-      </ButtonGroup>
+      <SaveBar dirty={draft !== null} busy={save.isPending} canSave={valid} onSave={() => save.mutate(s)} onDiscard={() => setDraft(null)} />
 
       <Rules />
     </>,
