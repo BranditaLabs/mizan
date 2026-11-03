@@ -1,6 +1,9 @@
 import type { OrderEditOutcome, OrderEditPlan } from "../core/order-edit.js";
 import type { CreatedProduct, ProductDraft, ProductPublishOutcome } from "../core/product-draft.js";
 import type { PaymentLinkOutcome, PaymentLinkRequest } from "../core/payment-link.js";
+import type { GatewayLine, GatewayState, GatewayTransactionUpdate } from "../core/gateway-transaction.js";
+import { verifyPaymobCallback } from "../connectors/paymob/webhooks.js";
+import type { PaymobTransaction } from "../connectors/paymob/mapper.js";
 import { PaymobConnector } from "../connectors/paymob/connector.js";
 import type { PaymobCredentials } from "../connectors/paymob/client.js";
 import { createHash } from "node:crypto";
@@ -98,6 +101,12 @@ export interface EngineOptions {
      * URL carries a secret for that payment, so the platform keeps it encrypted and never logs it.
      */
     onPaymentLink?: (linkId: string, result: PaymentLinkOutcome) => Promise<void>;
+    /**
+     * A gateway payment changed (E14-2b), re-read from the gateway: its state and the ledger lines
+     * for what changed since Mizan last saw it (each with a unique reference). Called before the
+     * engine records what it saw, so a failing hook retries the same lines. Must be idempotent.
+     */
+    onGatewayTransaction?: (update: GatewayTransactionUpdate) => Promise<void>;
     /** A product made in Mizan, to publish (P3), read when the job runs. Undefined when it is gone or published already. */
     loadProductDraft?: (productId: string) => Promise<ProductDraft | undefined>;
     /**
@@ -536,6 +545,11 @@ export class MizanEngine {
     return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
   }
 
+  /** Look a Paymob payment up by Mizan's reference when no callback came (E14-2b; the platform's sweep). */
+  static paymobInquiryJob(reference: string, round: string): NewJob<{ reference: string }> {
+    return { kind: "paymob.inquire", connection: "paymob", payload: { reference }, idempotencyKey: `paymob:inquire:${reference}:${round}` };
+  }
+
   /** Make a payment link on Paymob (E14-2a): one job per link; each run of it is a new attempt. */
   static paymentLinkJob(linkId: string): NewJob<{ linkId: string }> {
     return { kind: "paymob.createLink", connection: "paymob", payload: { linkId }, idempotencyKey: `paymob:link:${linkId}` };
@@ -764,6 +778,8 @@ export class MizanEngine {
       "shopify.editOrder": (j) => this.editOrder(j.payload.editId, "shopify"),
       "shopify.createProduct": (j) => this.publishProduct(j.payload.productId, "shopify"),
       "paymob.createLink": (j) => this.createPaymentLink(j.payload.linkId),
+      "paymob.ingestTransaction": (j) => this.ingestPaymobTransaction(j.payload.transactionId),
+      "paymob.inquire": (j) => this.inquirePaymob(j.payload.reference),
       "woocommerce.createProduct": (j) => this.publishProduct(j.payload.productId, "woocommerce"),
       "woocommerce.editOrder": (j) => this.editOrder(j.payload.editId, "woocommerce"),
       "shopify.reconcile": (j) => this.reconcile(j.payload),
@@ -824,6 +840,101 @@ export class MizanEngine {
     }
     await this.runHook(() => this.opts.hooks?.onPaymentLink?.(linkId, outcome));
     this.emit("payment_link.created", { linkId, attempt, intentionId: outcome.ok ? outcome.intentionId : null });
+  }
+
+  // ═════════════ Paymob callbacks (E14-2b) ═════════════
+
+  /**
+   * A Paymob server callback: verified by its HMAC (query `hmac`), then queued to re-read the
+   * transaction (thin webhook, fat fetch). The same callback again dedupes on the transaction id and
+   * its flags; the same id after a refund, void or capture is new. A saved-card (TOKEN) callback is
+   * acknowledged and dropped. Answer 200 whenever the signature holds.
+   */
+  async handlePaymobWebhook(query: Record<string, string | undefined>, body: unknown): Promise<WebhookResult> {
+    if (!this.paymob) return { status: 404, body: { error: "no Paymob account" } };
+    const v = verifyPaymobCallback(query, body, this.paymob.creds.hmacSecret);
+    if (!v.ok) {
+      this.emit("webhook.rejected", { provider: "paymob", reason: v.reason });
+      return { status: 401, body: { error: "invalid signature" } };
+    }
+    if (v.type === "TOKEN") return { status: 200, body: { ok: true } };
+    await this.enqueue("paymob.ingestTransaction", { transactionId: v.transactionId }, `paymob:txn:${v.transactionId}:${hash(v.flagsKey)}`);
+    return { status: 200, body: { ok: true } };
+  }
+
+  /** Re-read a transaction and hand the platform its payment (the root, for a refund, void or capture child). */
+  private async ingestPaymobTransaction(transactionId: string) {
+    if (!this.paymob) throw new IntegrationError({ kind: "permanent", connector: "paymob", message: "no Paymob account on this connection" });
+    await this.applyPaymobChain(await this.paymob.readTransaction(transactionId));
+  }
+
+  /** The sweep's fallback: the latest transaction of this reference, if any, as if its callback had come. */
+  private async inquirePaymob(reference: string) {
+    if (!this.paymob) throw new IntegrationError({ kind: "permanent", connector: "paymob", message: "no Paymob account on this connection" });
+    const t = await this.paymob.inquire(reference);
+    if (t) await this.applyPaymobChain(t);
+  }
+
+  /**
+   * Up the parents to the payment itself (a refund of a capture is two levels up). The change is
+   * dated by the child that made it. A child whose parent cannot be read, a chain deeper than
+   * Paymob's flows, or a refund on a capture the payment's totals do not show: a person looks.
+   */
+  private async applyPaymobChain(first: PaymobTransaction) {
+    const chain = [first];
+    let t = first;
+    while (t.parentId && chain.length <= 3) {
+      t = await this.paymob!.readTransaction(t.parentId);
+      chain.push(t);
+    }
+    const why: string[] = [];
+    if (t.parentId) why.push("a chain of parents deeper than Paymob's flows");
+    if (t.hasParent && !t.parentId) why.push("a child transaction whose parent id cannot be read");
+    for (const mid of chain.slice(1, -1)) {
+      if (mid.refundedMinor > t.refundedMinor) why.push(`a refund on capture ${mid.id} that the payment's totals do not show`);
+    }
+    // Each change dated by its own child in this chain, else when Mizan saw it.
+    const seenAt = new Date(this.now()).toISOString();
+    const children = chain.slice(0, -1);
+    const dates = {
+      capturedAt: children.find((c) => c.isCapture)?.occurredAt ?? seenAt,
+      refundedAt: children.find((c) => c.isRefunded && !c.isCapture)?.occurredAt ?? children.find((c) => c.isRefunded)?.occurredAt ?? seenAt,
+      voidedAt: children.find((c) => c.voided)?.occurredAt ?? seenAt,
+    };
+    await this.applyPaymob(t, dates, why);
+  }
+
+  /**
+   * The state from the flags (docs/06 §7 "States → Mizan"), each documented row exactly; any other
+   * combination is `unknown`, needs a person, and posts nothing. Once-only lines carry fixed
+   * references; captured and refunded go as totals, for `gatewayDeltaLines` against the ledger.
+   */
+  private async applyPaymob(t: PaymobTransaction, dates: { capturedAt: string; refundedAt: string; voidedAt: string }, why: string[]) {
+    let state: GatewayState;
+    if (t.pending && !t.success) state = "pending";
+    else if (t.pending) state = "unknown"; // success and pending at once: not a documented row
+    else if (t.voided && (t.success || t.isAuth)) state = "voided";
+    else if (t.success && t.isAuth) state = "authorized";
+    else if (t.success) state = "succeeded";
+    else state = "failed";
+    if (state === "unknown") why.push(`flags Mizan does not map: success=${t.success} pending=${t.pending}`);
+    if (t.success && t.errorOccurred) why.push("success with error_occured");
+    if (t.isCapture && !t.isAuth) why.push("a capture child read as a payment of its own");
+    if ((state === "failed" || state === "pending") && (t.refundedMinor > 0n || t.capturedMinor > 0n || t.voided)) why.push(`a ${state} payment with money refunded, captured or voided`);
+    const needsReview = why.length > 0;
+    if (needsReview) this.drift.record({ connector: "paymob", entity: "transaction", kind: "unknown_status", detail: why.join("; "), at: this.now() });
+    const lines: GatewayLine[] = [];
+    if (!needsReview) {
+      if (t.success && !t.isAuth) lines.push({ kind: "sale", amountMinor: t.amountMinor, externalRef: `${t.id}:sale`, occurredAt: t.occurredAt });
+      if (t.success && t.isAuth) lines.push({ kind: "authorization", amountMinor: t.amountMinor, externalRef: `${t.id}:auth`, occurredAt: t.occurredAt });
+      if (state === "voided") lines.push({ kind: "void", amountMinor: t.isAuth ? t.amountMinor - t.capturedMinor : t.amountMinor, externalRef: `${t.id}:void`, occurredAt: dates.voidedAt });
+    }
+    await this.runHook(() => this.opts.hooks?.onGatewayTransaction?.({
+      gateway: "paymob", transactionId: t.id, reference: t.reference, state, method: t.method, currency: t.currency, amountMinor: t.amountMinor, lines,
+      totals: { capturedMinor: t.isAuth ? t.capturedMinor : 0n, refundedMinor: t.refundedMinor, capturedAt: dates.capturedAt, refundedAt: dates.refundedAt }, needsReview,
+      ...(t.kioskReference ? { kioskReference: t.kioskReference } : {}),
+    }));
+    this.emit("payment.ingested", { gateway: "paymob", transactionId: t.id, state, lines: lines.length });
   }
 
   /** P3: the product into the store, its ids to the platform, then the product read back like any store change. */

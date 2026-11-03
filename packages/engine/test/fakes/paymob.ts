@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { hang, json, type FakeClock } from "./clock.js";
 
 /**
@@ -26,6 +27,7 @@ export class FakePaymob {
   readonly integrations = { card: 4097558, wallet: 4097559, kiosk: 4097560 };
   readonly intentions = new Map<string, FakeIntention>();
   readonly transactions = new Map<string, Record<string, unknown>>();
+  readonly inquiries: Array<Record<string, unknown>> = [];
   faults: Array<{ path?: string; fault: Fault }> = [];
   randomFaultRate = 0;
   legacyShape = false;
@@ -66,6 +68,15 @@ export class FakePaymob {
     } else if (method === "POST" && path === "/v1/intention/") {
       if (auth !== `Token ${this.secretKey}`) return json(401, { detail: "Authentication credentials were not provided." });
       res = this.createIntention(body);
+    } else if (method === "POST" && path === "/api/ecommerce/orders/transaction_inquiry") {
+      // The docs put the token in the body, Postman in the header: either is taken; what came is kept.
+      this.inquiries.push(structuredClone(body));
+      const token = typeof body.auth_token === "string" ? body.auth_token : auth.startsWith("Bearer ") ? auth.slice(7) : "";
+      const until = this.tokens.get(token);
+      if (!until || until <= this.clock.now()) return json(401, { detail: "Invalid token." });
+      // Like Paymob: only the order's most recent transaction.
+      const latest = [...this.transactions.values()].filter((t) => (t.order as { merchant_order_id: string }).merchant_order_id === body.merchant_order_id).at(-1);
+      res = latest ? json(200, latest) : json(404, { detail: "Not found." });
     } else if (method === "GET" && /^\/api\/acceptance\/transactions\/\d+$/.test(path)) {
       const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
       const until = this.tokens.get(token);
@@ -78,6 +89,103 @@ export class FakePaymob {
     if (fault === "lost") return hang(init); // carried out, the answer never comes
     return res;
   };
+
+  // ───────────── E14-2b: payments, the dashboard, callbacks ─────────────
+
+  readonly hmacSecret = "hmac_fake";
+  private txnSeq = 192036465;
+
+  /** The customer pays (or not) on the checkout page: a transaction, and the callback Paymob would POST. */
+  pay(intentionId: string, opts: { method?: "card" | "wallet" | "kiosk" | "valu"; outcome?: "success" | "declined" | "pending"; auth?: boolean } = {}) {
+    const it = this.intentions.get(intentionId)!;
+    const method = opts.method ?? "card";
+    const outcome = opts.outcome ?? "success";
+    const t = this.transaction({
+      amount_cents: it.amount, currency: it.currency, order: { id: it.orderId, merchant_order_id: it.reference },
+      success: outcome === "success", pending: outcome === "pending", is_auth: Boolean(opts.auth), is_capture: false,
+      source_data: method === "card" ? { pan: "2346", type: "card", sub_type: "MasterCard" } : method === "wallet" ? { pan: "01010101010", type: "wallet", sub_type: "wallet" } : method === "kiosk" ? { pan: null, type: "aggregator", sub_type: "AGGREGATOR" } : { pan: null, type: "valu", sub_type: "valu" },
+      ...(method === "kiosk" ? { data: { bill_reference: 7134651, message: "Pending" } } : {}),
+    });
+    return { transactionId: String(t.id), callback: this.callback(t) };
+  }
+
+  /** A kiosk reference paid in cash: the same transaction, now a success. */
+  complete(transactionId: string) {
+    const t = this.transactions.get(transactionId)!;
+    Object.assign(t, { pending: false, success: true });
+    return this.callback(t);
+  }
+
+  /** Done in the Paymob dashboard (or by Mizan in E14-2d): a child transaction; the parent's totals move. */
+  refund(transactionId: string, amount: number) {
+    const parent = this.transactions.get(transactionId)!;
+    parent.refunded_amount_cents = Number(parent.refunded_amount_cents) + amount;
+    parent.is_refunded = true;
+    return this.callback(this.child(parent, amount, { is_refunded: true }));
+  }
+  void(transactionId: string) {
+    const parent = this.transactions.get(transactionId)!;
+    parent.is_voided = true;
+    return this.callback(this.child(parent, Number(parent.amount_cents), { is_voided: true }));
+  }
+  capture(transactionId: string, amount: number) {
+    const parent = this.transactions.get(transactionId)!;
+    parent.captured_amount = Number(parent.captured_amount) + amount;
+    parent.is_captured = true;
+    return this.callback(this.child(parent, amount, { is_capture: true }));
+  }
+
+  /**
+   * A refund made on a capture child (auth/capture flows): the refund's parent is the capture. How
+   * Paymob totals it on the authorization is not documented: `rootToo` moves the root's total too.
+   */
+  refundCapture(captureId: string, amount: number, rootToo: boolean) {
+    const capture = this.transactions.get(captureId)!;
+    capture.refunded_amount_cents = Number(capture.refunded_amount_cents) + amount;
+    capture.is_refunded = true;
+    if (rootToo) {
+      const root = this.transactions.get(String(capture.parent_transaction))!;
+      root.refunded_amount_cents = Number(root.refunded_amount_cents) + amount;
+      root.is_refunded = true;
+    }
+    return this.callback(this.child(capture, amount, { is_refunded: true }));
+  }
+
+  /** The id of the newest transaction (a child just made). */
+  get lastId(): string {
+    return String(this.txnSeq);
+  }
+
+  /** A saved card's callback (verified, dropped by Mizan). */
+  tokenCallback() {
+    const obj = { card_subtype: "MasterCard", created_at: "2024-06-13T11:33:44.592345", email: "mona@example.com", id: 99, masked_pan: "xxxx-2346", merchant_id: 302852, order_id: 1, token: "tok_card" };
+    const msg = ["card_subtype", "created_at", "email", "id", "masked_pan", "merchant_id", "order_id", "token"].map((k) => String((obj as Record<string, unknown>)[k])).join("");
+    return { query: { hmac: createHmac("sha512", this.hmacSecret).update(msg).digest("hex") }, body: { type: "TOKEN", obj } };
+  }
+
+  private transaction(over: Record<string, unknown>): Record<string, unknown> {
+    const id = ++this.txnSeq;
+    const t: Record<string, unknown> = {
+      id, pending: false, amount_cents: 0, success: false, is_auth: false, is_capture: false, is_standalone_payment: true, is_voided: false, is_refunded: false, is_3d_secure: true,
+      integration_id: this.integrations.card, profile_id: 302852, has_parent_transaction: false, order: { id: 0, merchant_order_id: "" }, created_at: new Date(this.clock.now()).toISOString().replace("Z", ""),
+      currency: "EGP", source_data: { pan: "2346", type: "card", sub_type: "MasterCard" }, error_occured: false, refunded_amount_cents: 0, captured_amount: 0, owner: 302852, parent_transaction: null,
+      ...over,
+    };
+    this.transactions.set(String(id), t);
+    return t;
+  }
+
+  private child(parent: Record<string, unknown>, amount: number, flags: Record<string, unknown>) {
+    return this.transaction({ ...flags, amount_cents: amount, currency: parent.currency, order: parent.order, success: true, has_parent_transaction: true, parent_transaction: parent.id, source_data: parent.source_data, is_standalone_payment: false });
+  }
+
+  /** Signed like Paymob: HMAC-SHA512 over the 20 values in their order; `hmac` in the query string. */
+  callback(t: Record<string, unknown>) {
+    const at = (path: string) => path.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), t);
+    const msg = ["amount_cents", "created_at", "currency", "error_occured", "has_parent_transaction", "id", "integration_id", "is_3d_secure", "is_auth", "is_capture", "is_refunded", "is_standalone_payment", "is_voided", "order.id", "owner", "pending", "source_data.pan", "source_data.sub_type", "source_data.type", "success"]
+      .map((f) => { const v = at(f); return v === null || v === undefined ? "" : String(v); }).join("");
+    return { query: { hmac: createHmac("sha512", this.hmacSecret).update(msg).digest("hex") }, body: { type: "TRANSACTION", obj: structuredClone(t), issuer_bank: null, transaction_processed_callback_responses: [] } };
+  }
 
   private createIntention(b: Record<string, unknown>): Response {
     const amount = b.amount;
