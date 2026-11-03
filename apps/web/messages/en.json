@@ -642,7 +642,12 @@
         "other": "Something went wrong after {orders} orders. Nothing is lost: retry and Mizan picks up the rest."
       },
       "retryImport": "Retry the import",
-      "retryFailed": "Couldn't start the import again. Try again."
+      "retryFailed": "Couldn't start the import again. Try again.",
+      "otherStatus": {
+        "active": "Syncing",
+        "pending": "Checking…",
+        "needs_attention": "Needs attention"
+      }
     },
     "courier": {
       "title": "Connect your courier",
@@ -3663,6 +3668,27 @@
         "key_lacks_permission": "Shopify refused a permission Mizan needs. Connect the store again to approve it.",
         "webhooks_refused": "New orders arrive every few minutes instead of instantly until Shopify approves Mizan's access to customer data. Nothing to do on your side."
       }
+    },
+    "manage": {
+      "rename": "Rename",
+      "disconnect": "Disconnect",
+      "cancel": "Cancel",
+      "save": "Save",
+      "renamed": "Renamed",
+      "renameTitle": "Name this connection",
+      "renameBody": "A name your team recognises, shown instead of the address.",
+      "name": "Name",
+      "nameHint": "Leave it empty to show the address.",
+      "tooLong": "60 characters at most.",
+      "disconnectTitle": "Disconnect this store?",
+      "disconnectBody": "Mizan stops working with <b>{name}</b>.",
+      "disconnected": "Disconnected. You can connect it again any time.",
+      "effects": {
+        "stops": "Orders, products and stock stop syncing, and Mizan forgets its key. Jobs still waiting are dropped.",
+        "keeps": "Everything already in Mizan stays: orders, customers, history and reports.",
+        "shopify": "The Mizan app stays installed in Shopify until you remove it there."
+      },
+      "typeToConfirm": "Type {name} to confirm"
     }
   },
   "auditLog": {
@@ -3713,7 +3739,8 @@
         "key_saved": "Saved a key",
         "secret_rotated": "Rotated a key",
         "webhooks_refused": "Shopify refused some webhooks",
-        "webhooks_registered": "Shopify webhooks registered"
+        "webhooks_registered": "Shopify webhooks registered",
+        "renamed": "Renamed an integration"
       },
       "customer": {
         "pii_viewed": "Viewed a customer's contact"

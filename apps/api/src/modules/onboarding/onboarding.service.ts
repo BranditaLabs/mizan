@@ -64,6 +64,11 @@ export class OnboardingService {
         channel: s.settings.channel ?? (s.store ? (s.store.provider as "shopify" | "woocommerce") : null), provider: s.store?.provider ?? null,
         connectionId: s.store?.id ?? null, shop: s.store?.external_account ?? null, import: imported,
         missingScopes: s.store ? grantedMissing(s.store.config, this.config.SHOPIFY_SCOPES.split(",")) : [],
+        stores: s.stores.map((c) => ({
+          connectionId: c.id, provider: c.provider, shop: c.external_account, displayName: c.display_name,
+          status: (grantedMissing(c.config, this.config.SHOPIFY_SCOPES.split(",")).length && c.provider === "shopify" ? "needs_attention" : c.status) as "pending" | "active" | "needs_attention",
+          reason: c.status_reason,
+        })),
       },
       courier: { status: courierStatus, provider: s.courier?.provider ?? null, reason: s.courier?.status === "needs_attention" ? s.courier.status_reason : null },
       costs: { status: costsStatus, variants: s.variants, missingCost: s.missingCost },
@@ -110,7 +115,7 @@ export class OnboardingService {
     const t = await trx.selectFrom("tenants").select("settings").where("id", "=", tenantId).executeTakeFirstOrThrow();
     const tenantSettings = (t.settings ?? {}) as { onboarding?: OnboardingSettings; conversion?: unknown; refunds?: unknown };
     const settings = tenantSettings.onboarding ?? {};
-    const connections = await trx.selectFrom("connections").select(["id", "kind", "provider", "external_account", "status", "status_reason", "config"])
+    const connections = await trx.selectFrom("connections").select(["id", "kind", "provider", "external_account", "display_name", "status", "status_reason", "config"])
       .where("status", "!=", "disconnected").orderBy("created_at").execute();
     const counts = await trx.selectFrom("variants as v").innerJoin("products as p", "p.id", "v.product_id").where("p.status", "!=", "archived")
       .select([sql<string>`count(*)`.as("variants"), sql<string>`count(*) filter (where v.cogs_set_at is null)`.as("missing")]).executeTakeFirstOrThrow();
@@ -122,6 +127,7 @@ export class OnboardingService {
       whatsapp: connections.find((c) => c.kind === "whatsapp") ?? null,
       members: Number(team.n), invited: Number(invited.n),
       store: connections.find((c) => c.kind === "store") ?? null,
+      stores: connections.filter((c) => c.kind === "store"),
       // A courier Mizan books through an API first; one recorded by hand (E7-6) counts too.
       courier: connections.find((c) => c.kind === "courier" && c.provider !== "manual") ?? connections.find((c) => c.kind === "courier") ?? null,
       variants: Number(counts.variants), missingCost: Number(counts.missing),

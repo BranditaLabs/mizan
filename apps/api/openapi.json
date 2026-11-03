@@ -18005,6 +18005,190 @@
         ]
       }
     },
+    "/v1/connections/{id}": {
+      "patch": {
+        "operationId": "ConnectionsController_rename",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameConnection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Renamed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
+    "/v1/connections/{id}/disconnect": {
+      "post": {
+        "operationId": "ConnectionsController_disconnect",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisconnectConnection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Disconnected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Connection"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "connections"
+        ]
+      }
+    },
     "/v1/admin/integrations/health": {
       "get": {
         "operationId": "IntegrationsAdminController_health",
@@ -22581,6 +22765,10 @@
             "nullable": true,
             "type": "string"
           },
+          "displayName": {
+            "nullable": true,
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -22618,6 +22806,7 @@
           "kind",
           "provider",
           "account",
+          "displayName",
           "status",
           "reason",
           "missingScopes",
@@ -22654,6 +22843,10 @@
                   "type": "string"
                 },
                 "account": {
+                  "nullable": true,
+                  "type": "string"
+                },
+                "displayName": {
                   "nullable": true,
                   "type": "string"
                 },
@@ -22694,6 +22887,7 @@
                 "kind",
                 "provider",
                 "account",
+                "displayName",
                 "status",
                 "reason",
                 "missingScopes",
@@ -22735,6 +22929,10 @@
             "nullable": true,
             "type": "string"
           },
+          "displayName": {
+            "nullable": true,
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -22772,6 +22970,7 @@
           "kind",
           "provider",
           "account",
+          "displayName",
           "status",
           "reason",
           "missingScopes",
@@ -24031,6 +24230,20 @@
         },
         "required": [
           "reason"
+        ],
+        "additionalProperties": false
+      },
+      "DisconnectConnection": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "confirm"
         ],
         "additionalProperties": false
       },
@@ -28115,6 +28328,51 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "stores": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "connectionId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "shop": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "active",
+                            "needs_attention"
+                          ]
+                        },
+                        "reason": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "connectionId",
+                        "provider",
+                        "shop",
+                        "displayName",
+                        "status",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -28124,7 +28382,8 @@
                   "connectionId",
                   "shop",
                   "import",
-                  "missingScopes"
+                  "missingScopes",
+                  "stores"
                 ],
                 "additionalProperties": false
               },
@@ -38650,6 +38909,21 @@
             "maxLength": 500
           }
         },
+        "additionalProperties": false
+      },
+      "RenameConnection": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "nullable": true,
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          }
+        },
+        "required": [
+          "displayName"
+        ],
         "additionalProperties": false
       },
       "ReorderSuggestions": {

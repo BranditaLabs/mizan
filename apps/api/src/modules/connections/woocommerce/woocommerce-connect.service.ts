@@ -13,7 +13,7 @@ import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "../../../in
 import { WebhookRouter } from "../../../integrations/webhook-router.js";
 import { toConnectionView, type ConnectionView } from "../connections.dto.js";
 
-const CONNECTION_COLUMNS = ["id", "kind", "provider", "external_account", "status", "status_reason", "config", "updated_at"] as const;
+const CONNECTION_COLUMNS = ["id", "kind", "provider", "external_account", "display_name", "status", "status_reason", "config", "updated_at"] as const;
 /** History imported on connect, as for Shopify (E3-5). */
 export const WOO_BACKFILL_DAYS = 60;
 

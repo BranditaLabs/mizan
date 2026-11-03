@@ -156,6 +156,22 @@ export function StoreStep({ o }: { o: Onboarding }) {
           </p>
         ) : null}
         {retry.isError ? <Alert tone="danger">{t("retryFailed")}</Alert> : null}
+        {/* U7: the other stores too, each with its state: before, only the first could be retried or re-approved. */}
+        {s.stores.filter((x) => x.connectionId !== s.connectionId).length ? (
+          <ul className="flex flex-col divide-y divide-line rounded-md border border-line" data-testid="other-stores">
+            {s.stores.filter((x) => x.connectionId !== s.connectionId).map((x) => (
+              <li key={x.connectionId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-body-sm">
+                <span className="min-w-0"><Bdi>{x.displayName ?? x.shop ?? x.provider}</Bdi></span>
+                <span className="flex items-center gap-2">
+                  <span className={x.status === "active" ? "text-text-2" : "text-danger-text"}>{t(`otherStatus.${x.status}`)}</span>
+                  {x.status === "needs_attention" && x.provider === "shopify" && x.shop
+                    ? <Button size="sm" variant="secondary" busy={install.isPending} onClick={() => install.mutate(x.shop!)}>{t("approveScopes")}</Button> : null}
+                  {x.status !== "pending" ? <Button size="sm" variant="ghost" icon="refresh" busy={retry.isPending && retry.variables === x.connectionId} onClick={() => retry.mutate(x.connectionId)}>{t("retryImport")}</Button> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {/* Several stores per account (E2-7): each one syncs on its own. */}
         <div><Button variant="ghost" size="sm" icon="add" onClick={() => setPicked("shopify")}>{t("another")}</Button></div>
       </div>

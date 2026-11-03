@@ -7,6 +7,8 @@ export const ConnectionViewSchema = z.object({
   kind: z.enum(["store", "courier", "whatsapp", "ads", "payment", "tax"]),
   provider: z.string(),
   account: z.string().nullable(),
+  /** The team's own name for it ("Nile Shoes – main store"), or null (U7). */
+  displayName: z.string().nullable(),
   status: z.enum(["pending", "active", "needs_attention", "disconnected"]),
   /** Why it needs attention or was disconnected (key_refused, key_lacks_permission, app_uninstalled …). */
   reason: z.string().nullable().describe("key_refused, key_lacks_permission, app_uninstalled, scopes_changed …"),
@@ -18,6 +20,11 @@ export const ConnectionViewSchema = z.object({
 });
 export type ConnectionView = z.infer<typeof ConnectionViewSchema>;
 export const ConnectionListSchema = z.object({ data: z.array(ConnectionViewSchema) });
+
+/** PATCH /connections/{id} (U7): the team's name for a connection; null clears it. */
+export const RenameConnectionSchema = z.strictObject({ displayName: z.string().trim().min(1).max(60).nullable() });
+/** POST /connections/{id}/disconnect (U7): `confirm` is the store's address (or the provider's name), typed by the owner. */
+export const DisconnectConnectionSchema = z.strictObject({ confirm: z.string().trim().min(1).max(255) });
 
 export const BostaKeySchema = z.strictObject({
   /** From Bosta's dashboard (Settings → API integration). Stored encrypted; never shown again. */
@@ -41,7 +48,7 @@ export const WooCommerceAuthorizeUrlSchema = z.object({
   expiresAt: z.iso.datetime().describe("Approve before this; then ask for a new link"),
 });
 
-type Row = { id: string; kind: string; provider: string; external_account: string | null; status: string; status_reason: string | null; config: unknown; updated_at: Date };
+type Row = { id: string; kind: string; provider: string; external_account: string | null; display_name: string | null; status: string; status_reason: string | null; config: unknown; updated_at: Date };
 
 /**
  * kind and status are TEXT with CHECK constraints (migration 0001): the casts name what the database guarantees.
@@ -54,7 +61,7 @@ export function toConnectionView(c: Row, requiredScopes: string[] = []): Connect
   const granted = Array.isArray(config?.scopes) ? config.scopes.filter((x): x is string => typeof x === "string") : null;
   const missing = c.provider === "shopify" && c.status === "active" && granted && requiredScopes.length ? missingScopes(requiredScopes, granted) : [];
   return {
-    id: c.id, kind: c.kind as ConnectionView["kind"], provider: c.provider, account: c.external_account,
+    id: c.id, kind: c.kind as ConnectionView["kind"], provider: c.provider, account: c.external_account, displayName: c.display_name,
     status: missing.length ? "needs_attention" : c.status as ConnectionView["status"], reason: missing.length ? "scopes_changed" : c.status_reason,
     missingScopes: missing,
     verifiedAt: typeof verifiedAt === "string" ? verifiedAt : null, updatedAt: c.updated_at.toISOString(),
