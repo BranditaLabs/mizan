@@ -20,14 +20,18 @@ export function isPaletteShortcut(e: { key: string; metaKey: boolean; ctrlKey: b
  * typing. A modal dialog with a combobox and a grouped listbox; Esc closes and returns focus.
  * The caller owns `open` and listens for the shortcut (see useCommandPalette).
  */
-export function CommandPalette({ open, onClose, commands }: { open: boolean; onClose(): void; commands: readonly Command[] }) {
+export function CommandPalette({ open, onClose, commands, results = [], onQueryChange, busy = false }: {
+  open: boolean; onClose(): void; commands: readonly Command[];
+  /** Found by the caller for what is typed (orders by number or phone): shown after the matching commands, never filtered again. */
+  results?: readonly Command[]; onQueryChange?(query: string): void; busy?: boolean;
+}) {
   const t = useTranslations("ui.palette");
   const id = useId();
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const shown = useMemo(() => commands.filter((c) => matches(`${c.label} ${c.group} ${c.keywords ?? ""}`, query)), [commands, query]);
+  const shown = useMemo(() => [...commands.filter((c) => matches(`${c.label} ${c.group} ${c.keywords ?? ""}`, query)), ...results], [commands, query, results]);
 
-  const close = () => { setQuery(""); setActive(0); onClose(); };
+  const close = () => { setQuery(""); setActive(0); onQueryChange?.(""); onClose(); };
   const modal = useModal(open, close);
   const run = (c: Command) => { close(); c.run(); };
   const onKey = (e: KeyboardEvent) => {
@@ -46,11 +50,11 @@ export function CommandPalette({ open, onClose, commands }: { open: boolean; onC
             <input role="combobox" aria-expanded aria-controls={`${id}-list`} aria-autocomplete="list" data-autofocus
               aria-activedescendant={shown[active] ? `${id}-${shown[active].id}` : undefined} aria-label={t("label")}
               placeholder={t("placeholder")} className="h-12 flex-1 bg-transparent text-body outline-none placeholder:text-text-3"
-              value={query} onChange={(e) => { setQuery(e.target.value); setActive(0); }} onKeyDown={onKey} />
+              value={query} onChange={(e) => { setQuery(e.target.value); setActive(0); onQueryChange?.(e.target.value); }} onKeyDown={onKey} />
             <kbd className="mz-kbd" dir="ltr">{ESC}</kbd>
           </div>
           <ul id={`${id}-list`} role="listbox" aria-label={t("results")} className="max-h-[50dvh] overflow-y-auto p-1">
-            {shown.length === 0 ? <li className="px-3 py-6 text-center text-body-sm text-text-3">{t("empty")}</li> : null}
+            {shown.length === 0 ? <li className="px-3 py-6 text-center text-body-sm text-text-3">{t(busy ? "searching" : "empty")}</li> : null}
             {shown.map((c, i) => {
               const header = i === 0 || shown[i - 1]!.group !== c.group ? c.group : null;
               return (

@@ -46,7 +46,14 @@
       "create": "متجر جديد",
       "switched": "انت دلوقتي في <b>{store}</b>"
     },
-    "signOut": "خروج"
+    "signOut": "خروج",
+    "navGroups": {
+      "work": "الشغل اليومي",
+      "catalog": "المنتجات والمخزن",
+      "money": "الفلوس"
+    },
+    "more": "المزيد",
+    "mobileNav": "الأقسام"
   },
   "home": {
     "title": "أهلًا بيك في ميزان",
@@ -300,7 +307,9 @@
         "navigate": "روح لـ",
         "stores": "المتاجر",
         "preferences": "التفضيلات",
-        "account": "الحساب"
+        "account": "الحساب",
+        "actions": "اعمل",
+        "orders": "الأوردرات"
       },
       "commands": {
         "home": "الرئيسية",
@@ -315,8 +324,13 @@
           "en": "الإنجليزي (English)"
         },
         "signOut": "خروج",
-        "feedback": "ابعت رأيك"
-      }
+        "feedback": "ابعت رأيك",
+        "new-order": "أوردر جديد",
+        "new-product": "منتج جديد",
+        "new-po": "أمر شراء جديد",
+        "invite": "ادعي حد للفريق"
+      },
+      "searching": "بندوّر على الأوردرات…"
     }
   },
   "payments": {
