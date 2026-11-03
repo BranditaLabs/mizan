@@ -267,7 +267,7 @@ export class WooCommerceConnector {
       const mid = r.child(m, "product.image").str("id", ["id"]);
       if (mid && d.images[i]) images[d.images[i]!.imageId] = mid;
     }
-    return { outcome, externalId: id, variants, images };
+    return { outcome, externalId: id, variants, images, onlineStore: true };
   }
 
   /**

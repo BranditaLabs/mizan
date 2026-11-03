@@ -962,6 +962,7 @@ export interface Products {
   publish_status: string | null;
   publish_error: string | null;
   publish_attempts: Generated<number>;
+  publish_online_store: boolean | null;
 }
 
 export interface PurchaseOrderLines {

@@ -118,7 +118,7 @@ export function PublishCard({ product: p }: { product: Product }) {
           </div>
         ) : null}
         {/* Shopify adds a new product to no sales channel; putting it on one needs a permission Mizan does not ask for yet. */}
-        {stores.data?.find((c) => c.id === target)?.provider === "shopify" || (state === "published" && p.store?.provider === "shopify") ? <p className="text-caption text-text-3">{t("shopifyChannels")}</p> : null}
+        {state === "published" && p.store?.provider === "shopify" && p.publish?.onlineStore === false ? <p className="text-caption text-text-3">{t("shopifyChannels")}</p> : null}
         {publish.isError ? <Alert tone="danger">{publish.error instanceof ApiError && PUBLISH_ERRORS.has(publish.error.code) ? t(`errors.${publish.error.code as "publishing"}`) : problemText(publish.error, tpr)}</Alert> : null}
       </div>
     </Card>

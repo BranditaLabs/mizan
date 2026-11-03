@@ -178,3 +178,24 @@ describe("review fixes (P3)", () => {
     expect(mapProduct(ready, ctx).images).toEqual([expect.objectContaining({ externalId: "gid://shopify/MediaImage/1", url: "https://cdn.shopify.com/k.jpg" })]);
   });
 });
+
+describe("the Online Store (P3)", () => {
+  it("an active product goes on the Online Store only; a draft does not; a store without the permission still gets the product", async () => {
+    const w = shopifyWorld();
+    await w.publish(kaftan());
+    const p = w.made()[0]!;
+    expect([...(w.shop.publishedTo.get(p.id) ?? [])]).toEqual(["gid://shopify/Publication/1"]);
+    expect(w.results[0]).toMatchObject({ ok: true, onlineStore: true });
+
+    const draft = shopifyWorld();
+    await draft.publish(kaftan({ status: "draft" }));
+    expect(draft.shop.publishedTo.size).toBe(0);
+    expect(draft.results[0]).toMatchObject({ ok: true, onlineStore: false });
+
+    const old = shopifyWorld();
+    old.shop.denyFields.add("publications");
+    await old.publish(kaftan());
+    expect(old.made()).toHaveLength(1);
+    expect(old.results[0]).toMatchObject({ ok: true, onlineStore: false });
+  });
+});

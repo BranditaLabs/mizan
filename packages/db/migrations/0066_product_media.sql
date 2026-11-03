@@ -33,7 +33,9 @@ ALTER TABLE products
   ADD COLUMN publish_connection_id UUID REFERENCES connections(id) ON DELETE SET NULL,
   ADD COLUMN publish_status        TEXT CHECK (publish_status IN ('publishing', 'published', 'failed')),
   ADD COLUMN publish_error         TEXT CHECK (length(publish_error) <= 1000),
-  ADD COLUMN publish_attempts      INT NOT NULL DEFAULT 0 CHECK (publish_attempts >= 0);
+  ADD COLUMN publish_attempts      INT NOT NULL DEFAULT 0 CHECK (publish_attempts >= 0),
+  -- Shopify: put on the Online Store when published (false: draft, no Online Store, or the permission not approved yet)
+  ADD COLUMN publish_online_store  BOOLEAN;
 
 ALTER TABLE media_objects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE media_objects FORCE ROW LEVEL SECURITY;

@@ -100,7 +100,7 @@ describe("products made in Mizan (P3)", () => {
     expect((await http().post(`/v1/products/${id}/publish`).set(as("owner")).send({ connectionId: shopify }).expect(409)).body.code).toBe("publishing");
     const jobs = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select(["kind", "payload", "connection_id"]).where("kind", "=", "shopify.createProduct").execute());
     expect(jobs).toEqual([{ kind: "shopify.createProduct", connection_id: shopify, payload: { productId: id } }]);
-    expect((await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body.publish).toEqual({ status: "publishing", connectionId: shopify, error: null });
+    expect((await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body.publish).toEqual({ status: "publishing", connectionId: shopify, error: null, onlineStore: null });
 
     const builder = app.get(ProductBuilderService);
     const draft = await builder.loadDraft(store, id);
@@ -111,7 +111,7 @@ describe("products made in Mizan (P3)", () => {
     });
 
     const [vs, vm] = draft!.variants;
-    await builder.recordPublished(store, id, { ok: true, outcome: "created", externalId: "gid://shopify/Product/900", variants: { [vs!.variantId]: "gid://shopify/ProductVariant/901", [vm!.variantId]: "gid://shopify/ProductVariant/902" }, images: { [pic.id]: "gid://shopify/MediaImage/903" } });
+    await builder.recordPublished(store, id, { ok: true, outcome: "created", externalId: "gid://shopify/Product/900", variants: { [vs!.variantId]: "gid://shopify/ProductVariant/901", [vm!.variantId]: "gid://shopify/ProductVariant/902" }, images: { [pic.id]: "gid://shopify/MediaImage/903" }, onlineStore: true });
     expect(await builder.loadDraft(store, id)).toBeUndefined();
     // The store's copy, read back: the same product, variants and picture, now on the store's CDN.
     const fromStore: CanonicalProduct = {
@@ -137,7 +137,7 @@ describe("products made in Mizan (P3)", () => {
     const { id } = (await http().post("/v1/products").set(as("owner")).send({ title: "Bag", variants: [{ sku: "BAG-1", price: "300" }] }).expect(201)).body;
     await http().post(`/v1/products/${id}/publish`).set(as("owner")).send({ connectionId: shopify }).expect(202);
     await app.get(ProductBuilderService).recordPublished(store, id, { ok: false, reason: "validation", message: "Handle has already been taken" });
-    expect((await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body.publish).toEqual({ status: "failed", connectionId: shopify, error: "Handle has already been taken" });
+    expect((await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body.publish).toEqual({ status: "failed", connectionId: shopify, error: "Handle has already been taken", onlineStore: null });
     await http().post(`/v1/products/${id}/publish`).set(as("owner")).send({ connectionId: shopify }).expect(202);
     const keys = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select("idempotency_key").where("kind", "=", "shopify.createProduct").where(({ eb }) => eb("payload", "=", JSON.stringify({ productId: id }) as never)).execute());
     expect(keys.map((k) => k.idempotency_key).sort()).toEqual([`shopify:publish:${id}:1`, `shopify:publish:${id}:2`]);
@@ -165,7 +165,7 @@ describe("products made in Mizan (P3)", () => {
     });
     // The publish job still finishes (its draft is still there) and links the rest.
     expect(await builder.loadDraft(store, id)).toBeDefined();
-    await builder.recordPublished(store, id, { ok: true, outcome: "already_created", externalId: "gid://shopify/Product/950", variants: { [draft.variants[0]!.variantId]: "gid://shopify/ProductVariant/952" }, images: { [pic.id]: "gid://shopify/MediaImage/951" } });
+    await builder.recordPublished(store, id, { ok: true, outcome: "already_created", externalId: "gid://shopify/Product/950", variants: { [draft.variants[0]!.variantId]: "gid://shopify/ProductVariant/952" }, images: { [pic.id]: "gid://shopify/MediaImage/951" }, onlineStore: true });
     const rows = await db.tenant(store, (trx) => trx.selectFrom("products").select(["id", "external_id"]).where("external_id", "=", "gid://shopify/Product/950").execute());
     expect(rows).toEqual([{ id, external_id: "gid://shopify/Product/950" }]);
     const p = (await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body;

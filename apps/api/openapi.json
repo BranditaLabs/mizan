@@ -35009,12 +35009,18 @@
                 "nullable": true,
                 "description": "The store's words when it refused the product",
                 "type": "string"
+              },
+              "onlineStore": {
+                "nullable": true,
+                "description": "Shopify: on the Online Store once published (false: a draft, or the store has not approved the permission yet)",
+                "type": "boolean"
               }
             },
             "required": [
               "status",
               "connectionId",
-              "error"
+              "error",
+              "onlineStore"
             ],
             "additionalProperties": false
           },

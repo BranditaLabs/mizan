@@ -38,6 +38,12 @@ export type ProductPublishOutcome =
     variants: Record<string, string>;
     /** Mizan picture id → the store's picture id (those the store took). */
     images: Record<string, string>;
+    /**
+     * Shopify: on the Online Store now (an active product), or not — a draft or archived product, a
+     * shop without one, or a store that has not approved the permission yet (it is put there by hand).
+     * WooCommerce: always (its shop is the store).
+     */
+    onlineStore: boolean;
   }
   | { ok: false; reason: "validation" | "permission" | "failed"; message: string };
 

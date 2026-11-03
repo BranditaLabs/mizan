@@ -231,7 +231,7 @@ export class ProductBuilderService {
         return;
       }
       const conn = p.publish_connection_id;
-      await trx.updateTable("products").set({ connection_id: conn, external_id: result.externalId, publish_status: "published", publish_error: null, updated_at: new Date() }).where("id", "=", p.id).execute();
+      await trx.updateTable("products").set({ connection_id: conn, external_id: result.externalId, publish_status: "published", publish_error: null, publish_online_store: result.onlineStore, updated_at: new Date() }).where("id", "=", p.id).execute();
       for (const [variantId, externalId] of Object.entries(result.variants)) {
         await trx.insertInto("external_variants").values({ tenant_id: tenantId, connection_id: conn, external_id: externalId, external_product_id: result.externalId, variant_id: variantId })
           .onConflict((oc) => oc.columns(["connection_id", "external_id"]).doUpdateSet({ variant_id: variantId, external_product_id: result.externalId })).execute();

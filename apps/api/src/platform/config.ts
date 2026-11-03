@@ -18,6 +18,8 @@ const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"
 export const SHOPIFY_DEFAULT_SCOPES = [
   "read_orders", "write_orders", "write_order_edits", "read_products", "write_products", "read_inventory", "write_inventory",
   "read_merchant_managed_fulfillment_orders", "write_merchant_managed_fulfillment_orders", "read_customers",
+  // P3: a product published from Mizan goes on the Online Store.
+  "read_publications", "write_publications",
 ].join(",");
 
 const url = z.url({ protocol: /^https?$/, error: "must be an http(s) URL" });

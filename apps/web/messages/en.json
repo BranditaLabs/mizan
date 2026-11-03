@@ -2443,7 +2443,7 @@
         "store_not_active": "The store's connection needs attention first.",
         "variants_invalid": "The product has no variant."
       },
-      "shopifyChannels": "In Shopify, choose the sales channels it's sold on (Online Store and others): a new product is on none at first."
+      "shopifyChannels": "It isn't on your Online Store yet (a draft, or the store hasn't approved Mizan's new permission). Choose its sales channels in Shopify."
     }
   },
   "stock": {

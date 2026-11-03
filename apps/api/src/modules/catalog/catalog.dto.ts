@@ -95,6 +95,7 @@ export const ProductDetailSchema = CatalogProductSchema.omit({ mainImage: true, 
     status: z.enum(["publishing", "published", "failed"]),
     connectionId: z.uuid().nullable(),
     error: z.string().nullable().describe("The store's words when it refused the product"),
+    onlineStore: z.boolean().nullable().describe("Shopify: on the Online Store once published (false: a draft, or the store has not approved the permission yet)"),
   }).nullable().describe("A product made in Mizan, on its way to a store (P3); null for a store's product or one never published"),
   updatedAt: z.iso.datetime(),
   totals: z.object({

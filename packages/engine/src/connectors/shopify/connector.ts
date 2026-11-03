@@ -409,7 +409,27 @@ export class ShopifyConnector {
     // Pictures in the order they were sent.
     const images: Record<string, string> = {};
     for (const [i, m] of node.media.nodes.entries()) if (d.images[i]) images[d.images[i]!.imageId] = m.id;
-    return { outcome, externalId: node.id, variants, images };
+    const onlineStore = d.status === "active" ? await this.publishOnlineStore(node.id) : false;
+    return { outcome, externalId: node.id, variants, images, onlineStore };
+  }
+
+  /**
+   * Put a product on the shop's Online Store (P3): Shopify adds a new product to no sales channel.
+   * Safe to repeat. A store that has not approved read/write_publications yet (or has no Online
+   * Store) is not an error: the product is made, and the merchant picks its channels in Shopify.
+   */
+  async publishOnlineStore(productId: string): Promise<boolean> {
+    try {
+      const list = await this.gql.run<{ publications?: { nodes?: Array<{ id: string; name?: string | null; catalog?: { title?: string | null } | null }> } }>(Q.PUBLICATIONS, {}, { idempotent: true });
+      const online = (list.publications?.nodes ?? []).find((p) => /^online store$/i.test((p.catalog?.title ?? p.name ?? "").trim()));
+      if (!online) return false;
+      const d = await this.gql.run<{ publishablePublish: { userErrors: UserErrors } }>(Q.PUBLISHABLE_PUBLISH, { id: productId, input: [{ publicationId: online.id }] }, { idempotent: true });
+      assertNoUserErrors("publishablePublish", d.publishablePublish?.userErrors);
+      return true;
+    } catch (e) {
+      if (e instanceof IntegrationError && e.kind === "permission") return false;
+      throw e;
+    }
   }
 
   /**

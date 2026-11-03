@@ -437,3 +437,21 @@ export const SHOP_CURRENCY: GqlOperation = {
   cost: 1,
   variants: [`query MizanShopCurrency { shop { currencyCode } }`],
 };
+
+/** P3: the shop's sales channels, to put a published product on the Online Store (read_publications). */
+export const PUBLICATIONS: GqlOperation = {
+  name: "MizanPublications",
+  cost: 5,
+  variants: [`query MizanPublications { publications(first: 50) { nodes { id name catalog { title } } } }`],
+};
+
+/** Safe to repeat: a product already on the channel stays on it (write_publications). */
+export const PUBLISHABLE_PUBLISH: GqlOperation = {
+  name: "MizanPublishablePublish",
+  cost: 10,
+  variants: [
+    `mutation MizanPublishablePublish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) { userErrors { field message } }
+    }`,
+  ],
+};

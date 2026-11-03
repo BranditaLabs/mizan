@@ -76,6 +76,9 @@ export class FakeShopify {
   }>();
   /** P2: productReorderMedia calls applied. */
   mediaReorders = 0;
+  /** P3: the shop's sales channels, and which products are on which. */
+  readonly publications = [{ id: "gid://shopify/Publication/1", name: "Online Store" }, { id: "gid://shopify/Publication/2", name: "Point of Sale" }];
+  readonly publishedTo = new Map<string, Set<string>>();
   /** P3: products and variant batches created. */
   creates = 0;
   variantCreates = 0;
@@ -533,6 +536,17 @@ export class FakeShopify {
         p.updatedAt = this.touch();
         this.mediaReorders++;
         return { productReorderMedia: { job: { id: this.nextId("Job") }, mediaUserErrors: [] } };
+      }
+      case "MizanPublications":
+        return { publications: { nodes: this.publications.map((p) => ({ id: p.id, name: p.name, catalog: { title: p.name } })) } };
+      case "MizanPublishablePublish": {
+        const p = this.products.get(v.id);
+        if (!p) return { publishablePublish: { userErrors: [{ field: ["id"], message: "Product does not exist" }] } };
+        for (const i of v.input as Array<{ publicationId: string }>) {
+          if (!this.publications.some((x) => x.id === i.publicationId)) return { publishablePublish: { userErrors: [{ field: ["input"], message: "Publication does not exist" }] } };
+          (this.publishedTo.get(p.id) ?? this.publishedTo.set(p.id, new Set()).get(p.id)!).add(i.publicationId);
+        }
+        return { publishablePublish: { userErrors: [] } };
       }
       case "MizanShopCurrency":
         return { shop: { currencyCode: this.currency } };

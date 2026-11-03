@@ -7155,6 +7155,8 @@ export interface components {
                 connectionId: string | null;
                 /** @description The store's words when it refused the product */
                 error: string | null;
+                /** @description Shopify: on the Online Store once published (false: a draft, or the store has not approved the permission yet) */
+                onlineStore: boolean | null;
             } | null;
             /** Format: date-time */
             updatedAt: string;

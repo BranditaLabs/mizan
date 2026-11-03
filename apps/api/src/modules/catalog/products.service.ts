@@ -98,7 +98,7 @@ export class ProductsService {
     return this.db.tenant(tenantId, async (trx) => {
       const p = await trx.selectFrom("products as p").leftJoin("connections as c", "c.id", "p.connection_id")
         .select(["p.id", "p.title", "p.status", "p.handle", "p.description_html", "p.vendor", "p.product_type", "p.tags", "p.options", "p.updated_at",
-          "p.external_id", "p.connection_id", "c.provider", "c.external_account", "c.config", "p.publish_status", "p.publish_connection_id", "p.publish_error"])
+          "p.external_id", "p.connection_id", "c.provider", "c.external_account", "c.config", "p.publish_status", "p.publish_connection_id", "p.publish_error", "p.publish_online_store"])
         .where("p.id", "=", id).executeTakeFirst();
       if (!p) throw new ProblemError(404, "not_found", "this product does not exist in this store");
       const variants = await trx.selectFrom("variants").selectAll().where("product_id", "=", id).orderBy("created_at").orderBy("sku").execute();
@@ -115,7 +115,7 @@ export class ProductsService {
         handle: p.handle, description: htmlToText(p.description_html ?? ""),
         images: images.map((i) => imageView({ ...i, is_main: i.id === main })),
         storeUrl: storeUrl(p.provider, p.external_account, p.external_id, p.config),
-        publish: p.publish_status ? { status: p.publish_status as "publishing" | "published" | "failed", connectionId: p.publish_connection_id, error: p.publish_error } : null,
+        publish: p.publish_status ? { status: p.publish_status as "publishing" | "published" | "failed", connectionId: p.publish_connection_id, error: p.publish_error, onlineStore: p.publish_online_store } : null,
         updatedAt: p.updated_at.toISOString(),
         variants: inOptionOrder(variants.map(variantView), optionsOf(p.options)),
         totals: {
