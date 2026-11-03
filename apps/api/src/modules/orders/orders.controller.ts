@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
@@ -9,9 +9,10 @@ import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
   BulkActionSchema, BulkRequestSchema, DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
   RevealedCustomerSchema, type ListOrdersQuery,
-  OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema,
+  OrderEditInputSchema, OrderEditResultSchema, OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema,
 } from "./orders.dto.js";
 import { OrderNotesService } from "./order-notes.service.js";
+import { OrderEditsService } from "./order-edits.service.js";
 import { ManualOrdersService } from "./manual-orders.service.js";
 import { BulkActionsService } from "./bulk.service.js";
 import { DuplicatesService, OrderSettingsSchema, type OrderSettings } from "./duplicates.service.js";
@@ -26,6 +27,7 @@ export class OrdersController {
     @Inject(ManualOrdersService) private readonly manual: ManualOrdersService,
     @Inject(BulkActionsService) private readonly bulk: BulkActionsService,
     @Inject(OrderNotesService) private readonly extras: OrderNotesService,
+    @Inject(OrderEditsService) private readonly edits: OrderEditsService,
   ) {}
 
   /** M1 list (E5-1): newest first, filters, search, cursor pages, counts per status. */
@@ -129,6 +131,23 @@ export class OrdersController {
   @ApiProblems(404, 410, 429)
   reveal(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
     return this.orders.reveal(auth, id);
+  }
+
+  /**
+   * O3: change the order before it ships. A manual order changes now (200 applied); a store order's
+   * edit goes to the store and the order follows when the store has it (202 sending). Audited.
+   */
+  @Patch(":id")
+  @Roles("owner", "admin", "ops_manager", "agent")
+  @ApiJsonBody("OrderEditInput", OrderEditInputSchema)
+  @ApiJson(200, "OrderEditResult", OrderEditResultSchema, "applied: a manual order, changed now")
+  @ApiJson(202, "OrderEditResult", OrderEditResultSchema, "sending: on its way to the store; the order follows when the store has it")
+  @ApiProblems(404, 409, 422)
+  async editOrder(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(OrderEditInputSchema)) body: z.output<typeof OrderEditInputSchema>,
+    @Res({ passthrough: true }) reply: { status(code: number): unknown }) {
+    const r = await this.edits.edit(auth, id, body);
+    if (r.status === "sending") reply.status(202);
+    return r;
   }
 
   /** O2: the team's notes on the order, newest first; never sent to the store. */

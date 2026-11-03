@@ -1,3 +1,4 @@
+import type { OrderEditOutcome, OrderEditPlan } from "../core/order-edit.js";
 import { createHash } from "node:crypto";
 import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
@@ -75,6 +76,14 @@ export interface EngineOptions {
     onOfferResult?: (offerId: string, result: OfferOutcome) => Promise<void>;
     /** A store day was reconciled (E5-8): what the store had, and how many the engine recovered. */
     onReconciled?: (result: ReconcileResult) => Promise<void>;
+    /**
+     * An order edit as the platform keeps it (O3), read when the job runs: the new address is personal
+     * data and never goes into a job. Undefined when the edit is gone (the order shipped, the team
+     * withdrew it): nothing is sent.
+     */
+    loadOrderEdit?: (editId: string) => Promise<OrderEditPlan | undefined>;
+    /** An order edit reached the store (now, or before), or could not (final). Must be idempotent. */
+    onOrderEditResult?: (editId: string, result: OrderEditOutcome) => Promise<void>;
     /** The store's order was cancelled (E5-4), already was, or could not be (final). Must be idempotent. */
     onCancelResult?: (orderId: string, result: CancelOutcome) => Promise<void>;
     /**
@@ -490,6 +499,11 @@ export class MizanEngine {
     return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
   }
 
+  /** Change a store order before it ships (O3): one job per edit; what changes is read when it runs. */
+  static orderEditJob(provider: "shopify" | "woocommerce", editId: string): NewJob<{ editId: string }> {
+    return { kind: `${provider}.editOrder`, connection: provider, payload: { editId }, idempotencyKey: `${provider}:edit:${editId}` };
+  }
+
   /** Add an accepted offer to the store's order (E6-13): one job per offer, whatever happens. */
   static shopifyOfferJob(p: OfferJob): NewJob<OfferJob> {
     return { kind: "shopify.addOffer", connection: "shopify", payload: p, idempotencyKey: `shopify:offer:${p.offerId}` };
@@ -699,6 +713,8 @@ export class MizanEngine {
       "woocommerce.catalogRefresh": (j) => this.catalogRefresh("woocommerce", j.payload.cursor),
       "bosta.checkAccess": () => this.checkBostaAccess(),
       "shopify.addOffer": (j) => this.addOffer(j.payload),
+      "shopify.editOrder": (j) => this.editOrder(j.payload.editId, "shopify"),
+      "woocommerce.editOrder": (j) => this.editOrder(j.payload.editId, "woocommerce"),
       "shopify.reconcile": (j) => this.reconcile(j.payload),
       "shopify.cancelOrder": (j) => this.cancelOrder(j.payload),
       "woocommerce.ingestOrder": (j) => this.ingestWooOrder(j.payload.orderId),
@@ -729,6 +745,28 @@ export class MizanEngine {
     await this.ingestOrder(p.orderId);
     await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, outcome));
     this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
+  }
+
+  /** O3: the edit into the store's order, then the order read again (thin webhook, fat fetch) and the result reported. */
+  private async editOrder(editId: string, provider: "shopify" | "woocommerce") {
+    const plan = await this.opts.hooks?.loadOrderEdit?.(editId);
+    if (!plan) return; // withdrawn, or the order went out meanwhile: nothing to send
+    let outcome: OrderEditOutcome;
+    try {
+      const r = provider === "shopify" ? await this.shopify.editOrder(plan) : await this.wooConnector().editOrder(plan);
+      outcome = { ok: true, outcome: r };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onOrderEditResult?.(editId, { ok: false, reason, message: e.message }));
+      this.emit("order_edit.failed", { editId, orderId: plan.orderId, reason });
+      if (reason === "permission") throw e; // the store must allow order edits again: surfaces as needs attention
+      return;
+    }
+    // The store's new lines, totals and cash to collect come back like any other change.
+    if (provider === "shopify") await this.ingestOrder(plan.orderId); else await this.ingestWooOrder(plan.orderId);
+    await this.runHook(() => this.opts.hooks?.onOrderEditResult?.(editId, outcome));
+    this.emit("order_edit.applied", { editId, orderId: plan.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
   }
 
   private async cancelOrder(p: CancelJob | { orderId: string; note?: string }, provider: "shopify" | "woocommerce" = "shopify") {
@@ -1231,6 +1269,12 @@ export class MizanEngine {
         const p = o.job.payload as CancelJob;
         this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
           .catch((e) => this.rt.logger.log("error", "cancel result hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // An edit that never reached the store (O3): the team makes it there by hand.
+      if ((o.job.kind === "shopify.editOrder" || o.job.kind === "woocommerce.editOrder") && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as { editId: string };
+        this.runHook(() => this.opts.hooks?.onOrderEditResult?.(p.editId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "order edit result hook failed", { editId: p.editId, error: e instanceof Error ? e.message : String(e) }));
       }
       // An offer that never made it into the store's order: the team adds it by hand.
       if (o.job.kind === "shopify.addOffer" && kind !== "auth" && kind !== "permission") {

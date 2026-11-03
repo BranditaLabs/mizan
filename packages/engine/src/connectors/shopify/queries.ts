@@ -260,6 +260,10 @@ export const ORDER_EDIT_BEGIN: GqlOperation = {
   name: "MizanOrderEditBegin",
   cost: 10,
   variants: [
+    // O3 reads the calculated lines and shipping lines to change them; an offer only needs the id.
+    `mutation MizanOrderEditBegin($id: ID!) {
+      orderEditBegin(id: $id) { calculatedOrder { id lineItems(first: 100) { nodes { id quantity variant { id } } } shippingLines { id title } } userErrors { field message } }
+    }`,
     `mutation MizanOrderEditBegin($id: ID!) {
       orderEditBegin(id: $id) { calculatedOrder { id } userErrors { field message } }
     }`,
@@ -294,6 +298,52 @@ export const ORDER_EDIT_COMMIT: GqlOperation = {
   variants: [
     `mutation MizanOrderEditCommit($id: ID!, $notifyCustomer: Boolean, $staffNote: String) {
       orderEditCommit(id: $id, notifyCustomer: $notifyCustomer, staffNote: $staffNote) { order { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+/**
+ * O3: change an order before shipping. Quantities (0 removes the line, restocked), the delivery
+ * fee (the old shipping lines removed, one new added; 2024-04+) inside the edit; the address
+ * outside it, with orderUpdate. Confirm on a dev store that a CalculatedLineItem carries its
+ * LineItem's number (the connector falls back to the variant).
+ */
+export const ORDER_EDIT_SET_QUANTITY: GqlOperation = {
+  name: "MizanOrderEditSetQuantity",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditSetQuantity($id: ID!, $lineItemId: ID!, $quantity: Int!) {
+      orderEditSetQuantity(id: $id, lineItemId: $lineItemId, quantity: $quantity, restock: true) { calculatedOrder { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_REMOVE_SHIPPING: GqlOperation = {
+  name: "MizanOrderEditRemoveShippingLine",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditRemoveShippingLine($id: ID!, $shippingLineId: ID!) {
+      orderEditRemoveShippingLine(id: $id, shippingLineId: $shippingLineId) { calculatedOrder { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_EDIT_ADD_SHIPPING: GqlOperation = {
+  name: "MizanOrderEditAddShippingLine",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderEditAddShippingLine($id: ID!, $shippingLine: OrderEditAddShippingLineInput!) {
+      orderEditAddShippingLine(id: $id, shippingLine: $shippingLine) { calculatedShippingLine { id } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const ORDER_UPDATE: GqlOperation = {
+  name: "MizanOrderUpdate",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderUpdate($input: OrderInput!) {
+      orderUpdate(input: $input) { order { id } userErrors { field message } }
     }`,
   ],
 };

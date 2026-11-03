@@ -1,3 +1,4 @@
+import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
 import { IntegrationError } from "../../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
@@ -105,6 +106,76 @@ export class WooCommerceConnector {
       if (!exists) await this.rest.write("addOrderNote", "POST", `/orders/${encodeURIComponent(o.orderId)}/notes`, { note: o.note, customer_note: false });
     }
     return "cancelled";
+  }
+
+  /**
+   * Change an order before it ships (O3) in one update: quantities (0 removes the line), new items,
+   * prices, the delivery fee and the address; WooCommerce calculates the totals again. The update
+   * carries the edit's marker in the order's meta, so it is written once: an order that has the
+   * marker already has the edit, and an update whose answer was lost is checked by reading the
+   * order, never sent twice (a new item would be added twice). A completed, cancelled or refunded
+   * order is not edited (`validation`). Confirm on a real store that quantity 0 removes a line and
+   * that totals follow (WooCommerce REST, orders).
+   */
+  async editOrder(plan: OrderEditPlan): Promise<"applied" | "already_applied"> {
+    const path = `/orders/${encodeURIComponent(plan.orderId)}`;
+    const key = editMarker(plan.editId);
+    const read = async () => {
+      const { json } = await this.rest.get<Record<string, unknown>>("getOrder", path);
+      const r = new Resolver(json, { connector: "woocommerce", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+      const meta = r.arr<{ key?: unknown }>("meta_data", ["meta_data"]);
+      const shipping = r.arr("shipping_lines", ["shipping_lines"]).map((x) => {
+        const xr = r.child(x, "order.shippingLine");
+        return { id: xr.str("id", ["id"]), title: xr.str("title", ["method_title"]) };
+      });
+      return { marked: meta.some((m) => m?.key === key), status: (r.str("status", ["status"]) ?? "").toLowerCase(), shipping };
+    };
+    const before = await read();
+    if (before.marked) return "already_applied";
+    if (["completed", "cancelled", "refunded", "failed", "trash"].includes(before.status)) {
+      throw new IntegrationError({ kind: "validation", connector: "woocommerce", message: `order ${plan.orderId} is ${before.status} in the store: it cannot be edited` });
+    }
+    const total = (unit: string, qty: number) => (Number(unit) * qty).toFixed(2);
+    const lineItems: Array<Record<string, unknown>> = plan.lines.map((l) => ({
+      id: Number(l.lineId), quantity: l.quantity, ...(l.unitPrice !== undefined ? { subtotal: total(l.unitPrice, l.quantity), total: total(l.unitPrice, l.quantity) } : {}),
+    }));
+    for (const a of plan.add) {
+      // A variant is a simple product or a variation: the store says which, and its parent.
+      const { json } = await this.rest.get<Record<string, unknown>>("getProduct", `/products/${encodeURIComponent(a.variantId)}`);
+      const pr = new Resolver(json, { connector: "woocommerce", entity: "product", drift: this.drift, now: () => this.rt.clock.now() });
+      const variation = pr.str("type", ["type"]) === "variation";
+      const parent = pr.str("parent", ["parent_id"]);
+      if (variation && !parent) throw new IntegrationError({ kind: "schema_drift", connector: "woocommerce", message: `variation ${a.variantId} has no parent_id` });
+      lineItems.push({
+        product_id: Number(variation ? parent : a.variantId), ...(variation ? { variation_id: Number(a.variantId) } : {}), quantity: a.quantity,
+        ...(a.unitPrice !== undefined ? { subtotal: total(a.unitPrice, a.quantity), total: total(a.unitPrice, a.quantity) } : {}),
+      });
+    }
+    const body: Record<string, unknown> = { meta_data: [{ key, value: plan.editId }] };
+    if (lineItems.length) body.line_items = lineItems;
+    if (plan.shipping !== undefined) {
+      const fee = Number(plan.shipping).toFixed(2);
+      const [first, ...others] = before.shipping;
+      body.shipping_lines = first?.id
+        ? [{ id: Number(first.id), total: fee }, ...others.filter((x) => x.id).map((x) => ({ id: Number(x.id), method_id: null }))]
+        : [{ method_id: "flat_rate", method_title: "Shipping", total: fee }];
+    }
+    if (plan.address) {
+      const a = plan.address;
+      const [first, ...rest] = (a.name ?? "").trim().split(/\s+/);
+      body.shipping = {
+        address_1: a.line1, address_2: a.line2 ?? "", city: a.city, state: a.province ?? "",
+        ...(a.countryCode ? { country: a.countryCode } : {}), ...(a.phone ? { phone: a.phone } : {}),
+        ...(first ? { first_name: first, last_name: rest.join(" ") } : {}),
+      };
+    }
+    try {
+      await this.rest.write("editOrder", "PUT", path, body, false);
+    } catch (err) {
+      if (!(err instanceof IntegrationError) || (err.kind !== "timeout" && err.kind !== "transient")) throw err;
+      if (!(await read()).marked) throw new IntegrationError({ kind: "transient", connector: "woocommerce", message: "the order update got no answer and the order does not have the edit: will send it again", cause: err });
+    }
+    return "applied";
   }
 
   /**

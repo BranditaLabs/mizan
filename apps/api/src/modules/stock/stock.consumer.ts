@@ -11,7 +11,7 @@ import { StockService } from "./stock.service.js";
  * and events out of order end in the same place.
  */
 @Injectable()
-@EventConsumer({ name: "stock.orders", events: ["order.created", "order.confirmed", "order.updated", "order.cancelled", "offer.applied"] })
+@EventConsumer({ name: "stock.orders", events: ["order.created", "order.confirmed", "order.updated", "order.cancelled", "offer.applied", "order.edited"] })
 export class StockConsumer implements EventHandler {
   constructor(@Inject(StockService) private readonly stock: StockService) {}
 

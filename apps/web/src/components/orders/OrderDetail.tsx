@@ -30,6 +30,7 @@ import { DoorCard } from "./DoorCard";
 import { ProfitCard } from "./ProfitCard";
 import { TicketsCard } from "./TicketsCard";
 import { NotesCard, TagsCard } from "./NotesCard";
+import { EditBanner, EditOrderButton, canEditOrder } from "./EditOrder";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 
 /** Risk reason codes the API writes (E6-1); an unknown code is shown as is. */
@@ -68,7 +69,8 @@ export function OrderDetail({ id }: { id: string }) {
     enabled: Boolean(store),
     meta: { toast: false },
     // While the courier is being booked (E7-1), look again until it answers.
-    refetchInterval: (q) => (q.state.data?.shipments.some((s) => s.booking === "pending") ? 2000 : false),
+    // …and while an edit is on its way to the store (O3).
+    refetchInterval: (q) => (q.state.data?.shipments.some((s) => s.booking === "pending") || q.state.data?.edit?.status === "sending" ? 2000 : false),
   });
 
   const back = (
@@ -117,6 +119,9 @@ export function OrderDetail({ id }: { id: string }) {
       case "tagged": return t("events.tagged", { tags: tagList(e.data.tags) });
       case "untagged": return t("events.untagged", { tags: tagList(e.data.tags) });
       case "note_added": return t("events.note_added");
+      case "edit_requested": return t("events.edit_requested");
+      case "edited": return t("events.edited");
+      case "edit_failed": return t("events.edit_failed");
       default: return t("events.other");
     }
   };
@@ -156,11 +161,13 @@ export function OrderDetail({ id }: { id: string }) {
         <Tag icon={MODE_ICON[o.paymentMode]}>{tm(o.paymentMode)}</Tag>
         <Badge tone="neutral" dot={false}>{tp(o.paymentStatus)}</Badge>
         {o.stock === "short" ? <Badge tone="danger">{t("stock.short")}</Badge> : o.stock === "reserved" ? <Badge tone="success">{t("stock.reserved")}</Badge> : null}
+        {canEditOrder(o, store?.role) ? <div className="ms-auto"><EditOrderButton order={o} /></div> : null}
         <p className="w-full text-body-sm text-text-2">
           {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{o.store.provider ? sourceName(o.store.provider) : t("manual")}
         </p>
       </header>
 
+      <EditBanner order={o} />
       {o.duplicateOf && o.duplicate ? <DuplicateBanner order={o} /> : null}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">

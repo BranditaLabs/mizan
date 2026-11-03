@@ -82,6 +82,14 @@ export const OrderPageSchema = z.object({
 export const OrderIdParamSchema = z.uuid();
 
 const MoneyLine = MoneySchema;
+export const ORDER_EDIT_STATUSES = ["sending", "applied", "failed"] as const;
+export const OrderEditStateSchema = z.object({
+  id: z.uuid(), status: z.enum(ORDER_EDIT_STATUSES),
+  failure: z.enum(["validation", "not_found", "permission", "failed"]).nullable(),
+  message: z.string().nullable().describe("The store's words when it refused the edit"),
+  at: z.iso.datetime(),
+}).nullable().describe("The order's latest edit (O3)");
+
 /** Timeline entry. `data` keeps business facts only (source, changed fields, reason, payment from → to). */
 export const OrderEventSchema = z.object({
   id: z.uuid(),
@@ -145,6 +153,7 @@ export const OrderDetailSchema = OrderSummarySchema.extend({
   partialDelivery: z.object({ due: MoneyLine, items: z.array(z.object({ lineId: z.uuid(), quantity: z.number().int() })), at: z.iso.datetime() }).nullable(),
   /** E10-4: refused at the door, why, and whether they opened the box first. */
   refusal: z.object({ reason: z.string(), openBox: z.boolean(), at: z.iso.datetime() }).nullable(),
+  edit: OrderEditStateSchema,
   /** The earlier order this one likely repeats, and what matched (E5-3). */
   duplicateOf: z.object({
     id: z.uuid(), number: z.string(), status: z.enum(ORDER_STATUSES),
@@ -251,3 +260,27 @@ export const SavedViewSchema = z.object({
   id: z.uuid(), name: z.string(), filters: SavedViewFiltersSchema, shared: z.boolean(), mine: z.boolean(), createdAt: z.iso.datetime(),
 });
 export const SavedViewListSchema = z.object({ data: z.array(SavedViewSchema) });
+
+// ───────────── O3: edit an order before it ships ─────────────
+
+export const OrderEditInputSchema = z.strictObject({
+  lines: z.array(z.strictObject({
+    lineId: z.uuid().describe("A line of this order"),
+    quantity: z.number().int().min(0).max(999).describe("0 removes the line"),
+    unitPrice: Amount.optional().describe("A new price per piece (not for Shopify orders: Shopify keeps a line's price; change it there)"),
+  })).max(100).default([]),
+  add: z.array(z.strictObject({
+    variantId: z.uuid().describe("A product from the catalogue; a store order needs it in that store"),
+    quantity: z.number().int().min(1).max(999),
+    unitPrice: Amount.optional().describe("Not for Shopify orders: the store's price is used"),
+  })).max(20).default([]),
+  shipping: Amount.optional().describe("The new delivery fee"),
+  address: z.strictObject({
+    line1: z.string().trim().min(3).max(200), line2: z.string().trim().max(200).optional(),
+    city: z.string().trim().min(2).max(80), province: z.string().trim().max(80).optional(),
+  }).optional().describe("The new delivery address (the name and phone stay)"),
+}).refine((b) => b.lines.length + b.add.length > 0 || b.shipping !== undefined || b.address !== undefined, { message: "change something" });
+export const OrderEditResultSchema = z.object({
+  editId: z.uuid(),
+  status: z.enum(["applied", "sending"]).describe("applied: a manual order, changed now; sending: on its way to the store, the order follows when the store has it"),
+});

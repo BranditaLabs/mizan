@@ -2808,6 +2808,116 @@
         "tags": [
           "orders"
         ]
+      },
+      "patch": {
+        "operationId": "OrdersController_editOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderEditInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "applied: a manual order, changed now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEditResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "sending: on its way to the store; the order follows when the store has it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderEditResult"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
       }
     },
     "/v1/orders/{id}/reveal": {
@@ -29068,6 +29178,54 @@
             ],
             "additionalProperties": false
           },
+          "edit": {
+            "nullable": true,
+            "description": "The order's latest edit (O3)",
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "sending",
+                  "applied",
+                  "failed"
+                ]
+              },
+              "failure": {
+                "nullable": true,
+                "type": "string",
+                "enum": [
+                  "validation",
+                  "not_found",
+                  "permission",
+                  "failed"
+                ]
+              },
+              "message": {
+                "nullable": true,
+                "description": "The store's words when it refused the edit",
+                "type": "string"
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "id",
+              "status",
+              "failure",
+              "message",
+              "at"
+            ],
+            "additionalProperties": false
+          },
           "duplicateOf": {
             "nullable": true,
             "type": "object",
@@ -29251,8 +29409,135 @@
           "shipments",
           "partialDelivery",
           "refusal",
+          "edit",
           "duplicateOf",
           "events"
+        ],
+        "additionalProperties": false
+      },
+      "OrderEditInput": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "default": [],
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "lineId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                  "description": "A line of this order"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 999,
+                  "description": "0 removes the line"
+                },
+                "unitPrice": {
+                  "description": "A new price per piece (not for Shopify orders: Shopify keeps a line's price; change it there)",
+                  "type": "string",
+                  "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                }
+              },
+              "required": [
+                "lineId",
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "add": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                  "description": "A product from the catalogue; a store order needs it in that store"
+                },
+                "quantity": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 999
+                },
+                "unitPrice": {
+                  "description": "Not for Shopify orders: the store's price is used",
+                  "type": "string",
+                  "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+                }
+              },
+              "required": [
+                "variantId",
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "shipping": {
+            "description": "The new delivery fee",
+            "type": "string",
+            "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
+          },
+          "address": {
+            "description": "The new delivery address (the name and phone stay)",
+            "type": "object",
+            "properties": {
+              "line1": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 200
+              },
+              "line2": {
+                "type": "string",
+                "maxLength": 200
+              },
+              "city": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 80
+              },
+              "province": {
+                "type": "string",
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "line1",
+              "city"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "OrderEditResult": {
+        "type": "object",
+        "properties": {
+          "editId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "applied",
+              "sending"
+            ],
+            "description": "applied: a manual order, changed now; sending: on its way to the store, the order follows when the store has it"
+          }
+        },
+        "required": [
+          "editId",
+          "status"
         ],
         "additionalProperties": false
       },

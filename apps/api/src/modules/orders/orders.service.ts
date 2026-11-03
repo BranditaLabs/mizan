@@ -152,6 +152,8 @@ export class OrdersService {
       // O2: the latest delivery's courier and the team's notes count, as on the list.
       const courier = await trx.selectFrom("shipments as s").innerJoin("connections as k", "k.id", "s.connection_id").select(["k.id", "k.provider", "k.display_name"])
         .where("s.order_id", "=", id).where("s.is_return_leg", "=", false).orderBy("s.created_at", "desc").limit(1).executeTakeFirst();
+      const lastEdit = await trx.selectFrom("order_edits").select(["id", "status", "failure", "failure_message", "created_at", "settled_at"])
+        .where("order_id", "=", id).orderBy("created_at", "desc").limit(1).executeTakeFirst();
       const { n: noteCount } = await trx.selectFrom("order_notes").select(sql<string>`count(*)`.as("n")).where("order_id", "=", id).executeTakeFirstOrThrow();
       const twin = o.duplicate_of ? await trx.selectFrom("orders").select(["id", "number", "status"]).where("id", "=", o.duplicate_of).executeTakeFirst() : undefined;
       const why = (o.duplicate_reason ?? {}) as { items?: string[]; minutesApart?: number };
@@ -169,6 +171,10 @@ export class OrdersService {
         stock: o.stock_status as OrderDetail["stock"],
         duplicateOf: twin ? { id: twin.id, number: twin.number, status: twin.status as OrderDetail["status"], items: why.items ?? [], minutesApart: why.minutesApart ?? 0 } : null,
         area: { city: o.ship_city, province: o.ship_province, country: o.ship_country },
+        edit: lastEdit ? {
+          id: lastEdit.id, status: lastEdit.status as "sending" | "applied" | "failed", failure: lastEdit.failure as "validation" | null,
+          message: lastEdit.failure_message, at: (lastEdit.settled_at ?? lastEdit.created_at).toISOString(),
+        } : null,
         city: o.ship_city, courier: courier ? { id: courier.id, provider: courier.provider, name: courier.display_name } : null, notes: Number(noteCount),
         hasLocation: o.ship_lat !== null && o.ship_lng !== null,
         redacted: o.pii_redacted_at !== null,

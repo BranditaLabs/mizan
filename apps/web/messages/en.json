@@ -883,7 +883,10 @@
       "refused": "Refused at the door",
       "tagged": "Tagged {tags}",
       "untagged": "Tag removed: {tags}",
-      "note_added": "Note added"
+      "note_added": "Note added",
+      "edit_requested": "Edit sent to the store",
+      "edited": "Order edited",
+      "edit_failed": "The store refused the edit"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -1263,6 +1266,50 @@
       "sharedHint": "Everyone on the team sees it in their saved views.",
       "cancel": "Cancel",
       "saveConfirm": "Save"
+    },
+    "edit": {
+      "open": "Edit order",
+      "title": "Edit order {number}",
+      "manualNote": "The order changes as soon as you save.",
+      "storeNote": "The change goes to {store}; the order here follows once {store} has it.",
+      "items": "Items",
+      "quantity": "Quantity",
+      "price": "Price per piece",
+      "remove": "Remove {item}",
+      "new": "New",
+      "add": "Add a product",
+      "addPlaceholder": "Search by name or SKU",
+      "noProducts": "No products match",
+      "shopifyPrices": "Shopify keeps an item's price when an order is edited. To change a price, change it in Shopify.",
+      "fee": "Delivery fee",
+      "feeWas": "Now:",
+      "changeAddress": "Change the address",
+      "keepAddress": "Keep the address",
+      "address": {
+        "line1": "Street and building",
+        "line2": "Floor, apartment, landmark",
+        "city": "City",
+        "province": "Governorate"
+      },
+      "cancel": "Cancel",
+      "save": "Save changes",
+      "applied": "Order updated",
+      "sent": "Sent to {store}",
+      "sending": "Sending your change to {store}. The order here updates once {store} has it.",
+      "failed": "{store} refused the last edit: {message}. Change it in {store}, or edit it here again.",
+      "errors": {
+        "not_editable": "This order can't be edited now: it is with the courier or past that step.",
+        "edit_in_progress": "An earlier edit is still on its way to the store. Wait a moment.",
+        "price_in_store": "Shopify keeps an item's price when an order is edited. Change the price in Shopify.",
+        "not_in_store": "This product isn't in the order's store.",
+        "no_items": "An order needs at least one item. To drop everything, cancel the order.",
+        "no_change": "Nothing changed.",
+        "refund_first": "The customer paid more than the new total. Refund the difference first.",
+        "paid_order": "The customer paid ahead. A higher total needs a new payment, not an edit.",
+        "total_invalid": "The order would come to nothing.",
+        "currency_mismatch": "This product is priced in another currency.",
+        "pii_redacted": "The customer's data was deleted, so the address can't be changed."
+      }
     }
   },
   "costs": {

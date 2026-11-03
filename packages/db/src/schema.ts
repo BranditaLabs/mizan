@@ -578,6 +578,20 @@ export interface OpsOperations {
   received_at: Generated<Timestamp>;
 }
 
+export interface OrderEdits {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  requested_by: string | null;
+  status: Generated<string>;
+  changes: Json;
+  address: string | null;
+  failure: string | null;
+  failure_message: string | null;
+  created_at: Generated<Timestamp>;
+  settled_at: Timestamp | null;
+}
+
 export interface OrderEvents {
   id: Generated<string>;
   tenant_id: string;
@@ -1461,6 +1475,7 @@ export interface DB {
   notifications: Notifications;
   offer_rules: OfferRules;
   ops_operations: OpsOperations;
+  order_edits: OrderEdits;
   order_events: OrderEvents;
   order_lines: OrderLines;
   order_notes: OrderNotes;

@@ -2,7 +2,7 @@ import { engineSyncOptions, storeSyncOf } from "./store-sync-options.js";
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import { CANCEL_RESULTS } from "../modules/orders/ports.js";
+import { CANCEL_RESULTS, ORDER_EDITS, type OrderEditSink } from "../modules/orders/ports.js";
 import { SHIPMENT_RESULTS, type ShipmentResultSink } from "../modules/shipping/ports.js";
 import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
@@ -89,6 +89,10 @@ export class EngineRegistry {
 
   private get shipmentResults(): ShipmentResultSink | undefined {
     try { return this.moduleRef.get<ShipmentResultSink>(SHIPMENT_RESULTS, { strict: false }); } catch { return undefined; }
+  }
+
+  private get orderEdits(): OrderEditSink | undefined {
+    try { return this.moduleRef.get<OrderEditSink>(ORDER_EDITS, { strict: false }); } catch { return undefined; }
   }
 
   private get offerResults(): OfferResultSink | undefined {
@@ -208,6 +212,11 @@ export class EngineRegistry {
         // A bulk cancel reached the store's order, or could not (E5-4): a failure shows on the order.
         onCancelResult: async (orderId, result) => {
           await this.cancelResults?.recordStoreCancel(tenantId, storeConnection, orderId, result);
+        },
+        // O3: an order edit read when its job runs (the address stays out of the job), and the store's answer.
+        loadOrderEdit: async (editId) => this.orderEdits?.loadPlan(tenantId, editId),
+        onOrderEditResult: async (editId, result) => {
+          await this.orderEdits?.recordResult(tenantId, editId, result);
         },
         // An accepted offer is in the Shopify order now, or could not be added (E6-13).
         onOfferResult: async (offerId, result) => {
