@@ -15,7 +15,6 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 type Rule = Schemas["CostRule"];
 type NewRule = Schemas["CreateCostRule"];
@@ -118,8 +117,7 @@ export function CostsScreen() {
 
 function Page({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
   return (
-    <div className="mx-auto flex max-w-[1100px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5">
       <header>
         <h1 className="font-display text-heading-lg">{title}</h1>
         <p className="mt-1 text-body-sm text-text-2">{subtitle}</p>

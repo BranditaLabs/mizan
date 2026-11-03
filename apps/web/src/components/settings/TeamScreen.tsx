@@ -15,7 +15,6 @@ import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
 import { ok, type MemberRole } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 const ROLES: MemberRole[] = ["owner", "admin", "ops_manager", "agent", "warehouse", "finance", "media_buyer"];
 const EDITORS = new Set(["owner", "admin"]);
@@ -160,5 +159,5 @@ export function TeamScreen() {
 }
 
 function Frame({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="team-settings"><SettingsTabs />{children}</div>;
+  return <div className="flex min-w-0 flex-col gap-5" data-testid="team-settings">{children}</div>;
 }

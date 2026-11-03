@@ -13,7 +13,6 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 type Usage = Schemas["Usage"];
 type Row = Usage["history"][number];
@@ -111,8 +110,7 @@ export function UsageScreen() {
       </>
     );
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5">
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>

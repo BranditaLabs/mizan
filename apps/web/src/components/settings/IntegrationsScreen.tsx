@@ -14,7 +14,6 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { EngineHealth, ResolveCityDialog, unknownCity } from "./EngineHealth";
-import { SettingsTabs } from "./SettingsTabs";
 import { WooCommerceConnect } from "./WooCommerceConnect";
 
 const READERS = new Set(["owner", "admin", "ops_manager"]);
@@ -58,8 +57,7 @@ export function IntegrationsScreen() {
   const fixHref = (provider: string) => provider === "shopify" ? "/onboarding" : provider === "bosta" ? "/onboarding" : provider === "meta_whatsapp" || provider === "whatsapp" ? "/settings/confirmation" : null;
 
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="integrations-settings">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5" data-testid="integrations-settings">
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>

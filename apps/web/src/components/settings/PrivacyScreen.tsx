@@ -12,7 +12,6 @@ import { DateText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 type Row = Schemas["PrivacyRequests"]["data"][number];
 const READERS = new Set(["owner", "admin"]);
@@ -61,8 +60,7 @@ export function PrivacyScreen() {
     : <DataTable label={t("title")} columns={columns} rows={q.data.data} rowKey={(r) => r.id} rowLabel={(r) => r.id}
         empty={<EmptyState icon="customer" title={t("empty.title")} body={t("empty.body")} />} />;
   return (
-    <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6" data-testid="privacy-settings">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5" data-testid="privacy-settings">
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>

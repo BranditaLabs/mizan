@@ -123,3 +123,19 @@ test("owner in English: approves Mizan in WooCommerce in one click, and sees the
   await expect(page.locator(".mz-toast", { hasText: "WooCommerce didn't approve Mizan" })).toBeVisible();
   await expect(page).toHaveURL(/\/en\/settings\/integrations$/);
 });
+
+test("U4: settings open on an overview grouped by what they're for, with a side menu", async ({ page }) => {
+  const owner = await ownerWithStore("Nile Settings");
+  await page.goto("/en/sign-in");
+  await signInOwner(page, owner, "en");
+  await expect(page).toHaveURL(/\/en$/);
+  await page.getByRole("navigation", { name: "Main menu" }).getByRole("link", { name: "Settings" }).click();
+  await expect(page).toHaveURL(/\/en\/settings$/);
+  const home = page.getByTestId("settings-home");
+  for (const group of ["Brand", "Connections", "Orders & confirmation", "Money", "Stock & purchasing"]) await expect(home.getByRole("heading", { name: group })).toBeVisible();
+  await home.getByRole("link", { name: /Inventory/ }).click();
+  await expect(page).toHaveURL(/\/en\/settings\/inventory$/);
+  const menu = page.getByRole("navigation", { name: "Settings" });
+  await expect(menu.getByRole("link", { name: "Inventory" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByTestId("stock-sync")).toBeVisible();
+});

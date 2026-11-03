@@ -7,7 +7,6 @@ import { useEffect, useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
-import { Switch } from "@/components/ui/Choice";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
@@ -17,7 +16,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
-import { ErrorState, Pending } from "@/components/ui/QueryState";
+import { Pending } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -31,7 +30,6 @@ const KINDS: readonly Kind[] = ["receive", "count", "adjust"];
 const REASONS: readonly Reason[] = ["damaged", "lost", "found", "correction", "other"];
 const READERS = new Set(["owner", "admin", "ops_manager", "warehouse", "finance"]);
 const WRITERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
-const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
 const PICKERS = WRITERS;
 
 /**
@@ -123,7 +121,6 @@ export function StockScreen() {
           </span>
         </Alert>
       ) : null}
-      {MANAGERS.has(store?.role ?? "") ? <StoreSync /> : null}
       <Tabs label={t("filterLabel")} value={filter} onChange={setFilter} items={FILTERS.map((f) => ({ value: f, label: t(`filter.${f}`) }))}>
         <div className="flex flex-col gap-3">
           <SearchInput label={t("search")} placeholder={t("search")} value={text} onChange={(e) => setText(e.target.value)} className="w-full sm:w-80" />
@@ -216,30 +213,6 @@ function Threshold({ row }: { row: Row }) {
     <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3" data-testid="stock-threshold">
       <Field label={t("label")} hint={t("hint")} inputMode="numeric" ltr value={value} onChange={(e) => setValue(e.target.value)} error={n === undefined ? t("invalid") : null} className="grow" />
       <Button variant="secondary" busy={save.isPending} disabled={n === undefined || n === row.lowStockAt} onClick={() => save.mutate()}>{t("save")}</Button>
-    </div>
-  );
-}
-
-/** Send Mizan's count to the store (Shopify), so it never sells what's reserved or gone. */
-function StoreSync() {
-  const t = useTranslations("stock.sync");
-  const { api, user, store } = useSession();
-  const qc = useQueryClient();
-  const toast = useToast();
-  const key = ["inventorySettings", user?.uid ?? "", store?.tenantId ?? ""];
-  const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/settings/inventory")) });
-  const save = useMutation({
-    mutationFn: (pushToStore: boolean) => ok(api.PUT("/v1/settings/inventory", { body: { pushToStore } })),
-    onSuccess: (r) => { qc.setQueryData(key, r); toast({ message: r.pushToStore ? t("on") : t("off") }); },
-  });
-  // A failed load is not "off": say it could not be read instead of showing a switched-off toggle.
-  if (q.isError && !q.data) {
-    return <div className="mz-card" data-testid="stock-sync"><ErrorState compact error={q.error} onRetry={() => void q.refetch()} retrying={q.isRefetching} /></div>;
-  }
-  return (
-    <div className="mz-card p-4" data-testid="stock-sync">
-      <Switch label={t("label")} description={t("description")} checked={q.data?.pushToStore ?? false} disabled={!q.data || save.isPending}
-        onChange={(e) => save.mutate(e.target.checked)} />
     </div>
   );
 }

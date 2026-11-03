@@ -14,9 +14,7 @@ import { ErrorState } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { ConfirmationResults } from "./ConfirmationResults";
 import { ScriptEditor } from "./ScriptEditor";
-import { SettingsTabs } from "./SettingsTabs";
 
 type Settings = Schemas["ConfirmationSettings"];
 type Step = Settings["steps"][number];
@@ -48,8 +46,7 @@ export function ConfirmationSettingsScreen() {
   });
 
   const frame = (body: React.ReactNode) => (
-    <div className="mx-auto flex max-w-[860px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6">
-      <SettingsTabs />
+    <div className="flex min-w-0 flex-col gap-5">
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 text-body-sm text-text-2">{t("subtitle")}</p>
@@ -84,7 +81,6 @@ export function ConfirmationSettingsScreen() {
         <Switch label={t("enabled")} description={t("enabledHint")} checked={s.enabled} onChange={(e) => edit({ enabled: e.target.checked })} />
       </Card>
 
-      <ConfirmationResults />
 
       <Card title={t("channels.title")}>
         <ul className="flex flex-wrap gap-2" data-testid="confirmation-channels">

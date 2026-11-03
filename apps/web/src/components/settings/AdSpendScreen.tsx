@@ -16,7 +16,6 @@ import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { SettingsTabs } from "./SettingsTabs";
 
 type List = Schemas["AdSpendList"];
 type Platform = Schemas["SetAdSpend"]["platform"];
@@ -48,7 +47,6 @@ export function AdSpendScreen() {
 
   const frame = (body: ReactNode) => (
     <div className="mx-auto flex max-w-[960px] flex-col gap-5 px-4 pt-6 pb-14 md:px-6">
-      <SettingsTabs />
       <header>
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 text-body-sm text-text-2">{t("subtitle")}</p>
