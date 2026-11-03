@@ -18,6 +18,7 @@ import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 import { ProductImage } from "./ProductImage";
 import { EditVariant } from "./Products";
+import { EditProduct, PRODUCT_EDITORS } from "./EditProduct";
 
 type Product = Schemas["ProductDetail"];
 type Variant = Product["variants"][number];
@@ -28,8 +29,8 @@ const STATUS_TONE = { active: "success", draft: "neutral", archived: "neutral" }
 /**
  * One product in full (P1): its pictures with the main one, what the store says about it (options,
  * vendor, type, tags, description), every variant with its option values, picture, price, cost,
- * barcode and stock, and what is still missing. Store fields are edited in the store (the link
- * opens it); the cost and barcode are Mizan's and are edited here.
+ * barcode and stock, and what is still missing. The product's fields, pictures' order and prices
+ * are edited here and sent to the store (P2); the cost and barcode are Mizan's alone.
  */
 export function ProductDetail({ id }: { id: string }) {
   const t = useTranslations("products");
@@ -38,6 +39,7 @@ export function ProductDetail({ id }: { id: string }) {
   const list = (values: string[]) => new Intl.ListFormat(locale, { type: "unit", style: "short" }).format(values);
   const { api, user, store } = useSession();
   const [editing, setEditing] = useState<Variant | null>(null);
+  const [editingProduct, setEditingProduct] = useState(false);
   const product = useQuery({
     queryKey: ["products", "detail", user?.uid ?? "", store?.tenantId ?? "", id],
     queryFn: () => ok(api.GET("/v1/products/{id}", { params: { path: { id } } })),
@@ -129,6 +131,7 @@ export function ProductDetail({ id }: { id: string }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {PRODUCT_EDITORS.has(store?.role ?? "") ? <Button icon="edit" onClick={() => setEditingProduct(true)}>{t("editProduct.open")}</Button> : null}
           <Link href={`/orders?productId=${p.id}`} className={buttonClass("secondary")}>
             <Icon name="orders" size={16} />{t("detail.orders")}
           </Link>
@@ -179,6 +182,7 @@ export function ProductDetail({ id }: { id: string }) {
           empty={<EmptyState icon="product" title={t("detail.noVariants")} body="" />} />
       </Card>
       <p className="text-caption text-text-3">{t("ownership")}</p>
+      {editingProduct ? <EditProduct product={p} onClose={() => setEditingProduct(false)} /> : null}
       {editing ? <EditVariant row={{ product: { title: p.title }, variant: editing }} onClose={() => setEditing(null)} /> : null}
     </Page>
   );

@@ -2309,6 +2309,49 @@
       "marginValue": "{value}%",
       "priceRange": "<min></min> to <max></max>",
       "orders": "Orders with this product"
+    },
+    "editProduct": {
+      "open": "Edit product",
+      "title": "Edit product",
+      "storeNote": "Saved here at once and sent to {store}.",
+      "name": "Name",
+      "nameNeeded": "A product needs a name",
+      "status": "Status",
+      "statusName": {
+        "active": "Active",
+        "draft": "Draft",
+        "archived": "Archived"
+      },
+      "tags": "Tags",
+      "tagsHint": "Separated by commas",
+      "vendor": "Vendor",
+      "type": "Product type",
+      "description": "Description",
+      "descriptionHint": "Plain text; a blank line starts a new paragraph. The store's formatting is replaced.",
+      "pictures": "Pictures",
+      "picturesHint": "The first one is the main picture, in Mizan and in the store.",
+      "main": "Main picture",
+      "position": "Picture {n}",
+      "makeMain": "Make main",
+      "up": "Move up",
+      "down": "Move down",
+      "prices": "Prices",
+      "pricesHint": "Prices set here are Mizan's from then on: a change made in the store is put back.",
+      "price": "Price",
+      "compareAt": "Compare-at price",
+      "priceInvalid": "An amount like 150 or 150.50",
+      "compareAtLow": "Must be higher than the price",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Product saved",
+      "savedStore": "Saved and sent to {store}",
+      "errors": {
+        "field_not_in_store": "WooCommerce products have no vendor or product type.",
+        "images_mismatch": "The pictures changed meanwhile. Close and open the editor again.",
+        "images_not_in_store": "A picture isn't in the store yet, so the order can't be sent.",
+        "compare_at_low": "A compare-at price must be higher than the price.",
+        "unknown_variant": "A variant changed meanwhile. Close and open the editor again."
+      }
     }
   },
   "stock": {

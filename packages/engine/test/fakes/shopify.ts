@@ -74,6 +74,8 @@ export class FakeShopify {
     /** O3: new quantities by order line id, shipping lines removed and added. */
     qty: Map<string, number>; removedShipping: Set<string>; addedShipping: Array<{ id: string; title: string; price: string }>;
   }>();
+  /** P2: productReorderMedia calls applied. */
+  mediaReorders = 0;
   /** O3: address updates (orderUpdate) and quantity changes committed. */
   addressUpdates = 0;
   committedEdits = 0;
@@ -504,6 +506,22 @@ export class FakeShopify {
         if (!p) return { productUpdate: { product: null, userErrors: [{ field: ["id"], message: "Product does not exist" }] } };
         Object.assign(p, { ...v.product, id: p.id, status: v.product.status ?? p.status, updatedAt: this.touch() });
         return { productUpdate: { product: { id: p.id, updatedAt: p.updatedAt }, userErrors: [] } };
+      }
+      case "MizanProductReorderMedia": {
+        const p = this.products.get(v.id);
+        if (!p) return { productReorderMedia: { job: null, mediaUserErrors: [{ field: ["id"], message: "Product does not exist", code: "PRODUCT_DOES_NOT_EXIST" }] } };
+        // Moves apply in order: each takes the media out and puts it at its new position.
+        for (const mv of v.moves as Array<{ id: string; newPosition: string }>) {
+          const i = p.media.findIndex((m) => m.id === mv.id);
+          if (i < 0) return { productReorderMedia: { job: null, mediaUserErrors: [{ field: ["moves", "id"], message: "Media does not exist", code: "MEDIA_DOES_NOT_EXIST" }] } };
+          const [m] = p.media.splice(i, 1);
+          p.media.splice(Math.min(Number(mv.newPosition), p.media.length), 0, m!);
+        }
+        // Like Shopify: the product's featured media is its first.
+        p.featuredMediaId = p.media[0]?.id ?? null;
+        p.updatedAt = this.touch();
+        this.mediaReorders++;
+        return { productReorderMedia: { job: { id: this.nextId("Job") }, mediaUserErrors: [] } };
       }
       case "MizanVariantsUpdate": {
         const p = this.products.get(v.productId);

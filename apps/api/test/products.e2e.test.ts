@@ -151,7 +151,7 @@ describe("the full product (P1)", () => {
     const p = (await http().get(`/v1/products/${row.id}`).set(as("owner")).expect(200)).body;
     expect(p.images.map((i: { url: string; isMain: boolean }) => [i.url.slice(-11), i.isMain])).toEqual([["abaya-1.jpg", false], ["abaya-2.jpg", true], ["abaya-3.jpg", false]]);
     expect(p.images[0]).toMatchObject({ alt: "Front", width: 1200, height: 1500 });
-    expect(p.description).toBe("Soft linen & cotton.\n• Machine wash\n• Made in Egypt"); // no tags, no script
+    expect(p.description).toBe("Soft linen & cotton.\n\n• Machine wash\n• Made in Egypt"); // no tags, no script
     expect(p.storeUrl).toBe("https://admin.shopify.com/store/nile-abayas/products/9");
     expect(p.handle).toBe("linen-abaya");
     // Each variant: its option values and its picture (the colour's).

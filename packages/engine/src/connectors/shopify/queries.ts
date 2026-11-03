@@ -134,6 +134,21 @@ export const PRODUCT_UPDATE: GqlOperation = {
   ],
 };
 
+/**
+ * P2: the pictures in a new order. Moves apply one after another, so moving every picture to its
+ * place gives exactly that order (sending it twice changes nothing); the first is the main picture.
+ * Shopify reorders in the background (a Job); the next read shows it.
+ */
+export const PRODUCT_REORDER_MEDIA: GqlOperation = {
+  name: "MizanProductReorderMedia",
+  cost: 10,
+  variants: [
+    `mutation MizanProductReorderMedia($id: ID!, $moves: [MoveInput!]!) {
+      productReorderMedia(id: $id, moves: $moves) { job { id } mediaUserErrors { field message code } }
+    }`,
+  ],
+};
+
 export const VARIANTS_UPDATE: GqlOperation = {
   name: "MizanVariantsUpdate",
   cost: 10,

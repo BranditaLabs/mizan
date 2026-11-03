@@ -60,6 +60,8 @@ export class FakeWooCommerce {
   orders = new Map<number, WooOrder>();
   products = new Map<number, WooProduct>();
   variationsOf = new Map<number, WooVariation[]>();
+  /** P2: product and variation updates received. */
+  productWrites = 0;
   webhooks = new Map<number, { id: number; topic: string; delivery_url: string; status: string; secret: string }>();
   calls: Array<{ method: string; path: string }> = [];
   faults: Array<{ path?: string; fault: Fault }> = [];
@@ -359,7 +361,26 @@ export class FakeWooCommerce {
       const target = (v ?? p) as { manage_stock: boolean | "parent"; stock_quantity: number | null };
       if (body.manage_stock !== undefined) target.manage_stock = body.manage_stock;
       if (body.stock_quantity !== undefined) target.stock_quantity = body.stock_quantity;
-      this.stockWrites++;
+      if (body.manage_stock !== undefined || body.stock_quantity !== undefined) this.stockWrites++;
+      // P2: the product's own fields and prices, like WooCommerce (sale price empty = no sale).
+      const priced = (v ?? p) as { price: string; regular_price: string; sale_price: string };
+      if (body.regular_price !== undefined) priced.regular_price = String(body.regular_price);
+      if (body.sale_price !== undefined) priced.sale_price = String(body.sale_price);
+      if (body.regular_price !== undefined || body.sale_price !== undefined) priced.price = priced.sale_price || priced.regular_price;
+      if (!v) {
+        if (body.name !== undefined) p.name = String(body.name);
+        if (body.description !== undefined) p.description = String(body.description);
+        if (body.status !== undefined) p.status = String(body.status);
+        if (body.tags !== undefined) p.tags = (body.tags as Array<{ name: string }>).map((t, i) => ({ id: 100 + i, name: t.name }));
+        if (body.images !== undefined) {
+          // Only the pictures sent stay, in that order; an unknown id is refused.
+          const byId = new Map(p.images.map((x) => [x.id, x]));
+          const next = (body.images as Array<{ id: number }>).map((x) => byId.get(Number(x.id)));
+          if (next.some((x) => !x)) return json(400, { code: "woocommerce_product_invalid_image_id", message: "Invalid image ID.", data: { status: 400 } });
+          p.images = next as typeof p.images;
+        }
+      }
+      this.productWrites++;
       p.date_modified = p.date_modified_gmt = this.stamp();
       return json(200, v ?? p);
     }

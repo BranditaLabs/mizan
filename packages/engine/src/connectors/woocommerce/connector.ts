@@ -1,6 +1,6 @@
 import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
 import { IntegrationError } from "../../core/errors.js";
-import type { CanonicalOrder, CanonicalProduct } from "@mizan/shared";
+import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
@@ -18,6 +18,9 @@ export interface WooLearned { queryStringAuth: boolean }
  * WooCommerce connector (E5-7): reads orders and keeps the store's webhooks pointed at Mizan.
  * Reads only for now; the one write (webhooks) looks before it creates, so repeating it is safe.
  */
+/** Mizan's product status → WooCommerce's (no archive there: a private product is out of the shop). */
+const WOO_STATUS = { active: "publish", draft: "draft", archived: "private" } as const;
+
 export class WooCommerceConnector {
   readonly id = "woocommerce";
   readonly rest: WooRest;
@@ -106,6 +109,38 @@ export class WooCommerceConnector {
       if (!exists) await this.rest.write("addOrderNote", "POST", `/orders/${encodeURIComponent(o.orderId)}/notes`, { note: o.note, customer_note: false });
     }
     return "cancelled";
+  }
+
+  /**
+   * Push a product edited in Mizan (P2): name, description, status, tags, the pictures' order
+   * (the first is the main picture; the list is complete, as WooCommerce keeps only the pictures
+   * sent) and prices. Absolute values, so sending them twice changes nothing. A price with a
+   * higher compare-at price is a sale (regular = compare-at, sale = price); without one, the
+   * regular price and no sale. A simple product's prices are on the product; a variation's on
+   * the variation. WooCommerce has no vendor or product type field (`validation`).
+   */
+  async applyProductPatch(patch: ProductPatch): Promise<void> {
+    if (patch.vendor !== undefined || patch.productType !== undefined) {
+      throw new IntegrationError({ kind: "validation", connector: "woocommerce", message: "WooCommerce products have no vendor or product type field" });
+    }
+    const id = patch.productExternalId;
+    const body: Record<string, unknown> = {};
+    if (patch.title !== undefined) body.name = patch.title;
+    if (patch.descriptionHtml !== undefined) body.description = patch.descriptionHtml;
+    if (patch.status !== undefined && patch.status !== "unknown") body.status = WOO_STATUS[patch.status];
+    if (patch.tags !== undefined) body.tags = patch.tags.map((name) => ({ name }));
+    if (patch.mediaOrder?.length) body.images = patch.mediaOrder.map((m) => ({ id: Number(m) }));
+    const prices = (v: NonNullable<ProductPatch["variants"]>[number]) => {
+      if (!v.price) return {};
+      const cap = v.compareAtPrice && Number(v.compareAtPrice.amount) > Number(v.price.amount) ? v.compareAtPrice.amount : null;
+      return cap ? { regular_price: cap, sale_price: v.price.amount } : { regular_price: v.price.amount, sale_price: "" };
+    };
+    for (const v of patch.variants ?? []) if (v.externalId === id) Object.assign(body, prices(v));
+    if (Object.keys(body).length) await this.rest.write("updateProduct", "PUT", `/products/${encodeURIComponent(id)}`, body, true);
+    for (const v of patch.variants ?? []) {
+      if (v.externalId === id || !v.price) continue;
+      await this.rest.write("updateVariation", "PUT", `/products/${encodeURIComponent(id)}/variations/${encodeURIComponent(v.externalId)}`, prices(v), true);
+    }
   }
 
   /**

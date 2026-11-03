@@ -1,7 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
-import type { DB } from "@mizan/db";
-import { fromMinor, toMinor } from "@mizan/shared";
+import { trxQueryClient, type DB } from "@mizan/db";
+import { MizanEngine, SqlStore } from "@mizan/engine";
+import { fromMinor, toMinor, type ProductPatch } from "@mizan/shared";
+import type { z } from "zod";
 import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { Database } from "../../platform/db/database.js";
@@ -9,6 +11,7 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { ProductEventsService } from "../onboarding/product-events.service.js";
 import { parseCostCsv, type CostCsvProblem } from "./cost-csv.js";
+import type { ProductUpdateSchema } from "./catalog.dto.js";
 
 type Query = { search?: string | undefined; status: "active" | "draft" | "archived" | "all"; missing?: "cost" | "barcode" | undefined; limit: number; cursor?: string | undefined };
 
@@ -124,6 +127,110 @@ export class ProductsService {
         },
       };
     });
+  }
+
+  /**
+   * P2: the team edits the product. Saved at once; a store's product gets the change through the
+   * outbox (rule 3) as Mizan's desired values, so the latest edit wins whatever order the jobs run
+   * in. Prices set here are Mizan's from then on (the engine puts them back if the store changes
+   * them); other fields follow the last edit, here or in the store. Pictures are reordered, never
+   * added or dropped here (P3), and the main one is first, as both stores have it.
+   */
+  async edit(auth: AuthContext, id: string, body: z.output<typeof ProductUpdateSchema>) {
+    const tenantId = auth.tenant!.id;
+    await this.db.tenant(tenantId, async (trx) => {
+      const p = await trx.selectFrom("products as p").leftJoin("connections as c", "c.id", "p.connection_id")
+        .select(["p.id", "p.title", "p.status", "p.description_html", "p.tags", "p.vendor", "p.product_type", "p.external_id", "p.connection_id", "c.provider"])
+        .where("p.id", "=", id).forUpdate("p").executeTakeFirst();
+      if (!p) throw new ProblemError(404, "not_found", "this product does not exist in this store");
+      const provider = p.connection_id && p.external_id && (p.provider === "shopify" || p.provider === "woocommerce") ? p.provider : null;
+      if (provider === "woocommerce" && (body.vendor !== undefined || body.productType !== undefined)) {
+        throw new ProblemError(422, "field_not_in_store", "WooCommerce products have no vendor or product type");
+      }
+
+      // ── pictures: the same set, in the new order, the main one first ──
+      const images = await trx.selectFrom("product_images").select(["id", "external_id", "position", "is_main"]).where("product_id", "=", id).orderBy("position").execute();
+      let order: string[] | null = null;
+      if (body.images) {
+        const given = body.images.order;
+        const known = new Set(images.map((i) => i.id));
+        if (given.length !== images.length || new Set(given).size !== given.length || given.some((x) => !known.has(x))) {
+          throw new ProblemError(422, "images_mismatch", "list every picture of the product once");
+        }
+        const main = body.images.main ?? given[0]!;
+        if (!known.has(main)) throw new ProblemError(422, "images_mismatch", "the main picture is not one of the product's");
+        order = [main, ...given.filter((x) => x !== main)];
+        if (provider && images.some((i) => !i.external_id)) throw new ProblemError(422, "images_not_in_store", "a picture is not in the store yet");
+      }
+
+      // ── variants: their prices, a compare-at price above the price ──
+      const variants = body.variants?.length ? await trx.selectFrom("variants").select(["id", "price_minor", "compare_at_minor", "currency"])
+        .where("product_id", "=", id).where("id", "in", body.variants.map((v) => v.id)).execute() : [];
+      if (variants.length !== new Set(body.variants?.map((v) => v.id) ?? []).size) throw new ProblemError(422, "unknown_variant", "a variant is not this product's");
+      const prices = (body.variants ?? []).map((v) => {
+        const row = variants.find((x) => x.id === v.id)!;
+        const cur = row.currency.trim();
+        const price = v.price !== undefined ? toMinor({ amount: v.price, currency: cur }) : BigInt(row.price_minor);
+        const cap = v.compareAtPrice === undefined ? (row.compare_at_minor === null ? null : BigInt(row.compare_at_minor)) : v.compareAtPrice === null ? null : toMinor({ amount: v.compareAtPrice, currency: cur });
+        if (cap !== null && cap <= price) throw new ProblemError(422, "compare_at_low", "the compare-at price must be higher than the price");
+        return { id: v.id, cur, price, cap };
+      });
+
+      // ── saved here ──
+      const fields: Record<string, unknown> = {};
+      const html = body.description !== undefined ? textToHtml(body.description) : undefined;
+      if (body.title !== undefined) fields.title = body.title;
+      if (html !== undefined) fields.description_html = html;
+      if (body.status !== undefined) fields.status = body.status;
+      if (body.tags !== undefined) fields.tags = [...new Set(body.tags)];
+      if (body.vendor !== undefined) fields.vendor = body.vendor || null;
+      if (body.productType !== undefined) fields.product_type = body.productType || null;
+      await trx.updateTable("products").set({ ...fields, updated_at: new Date() }).where("id", "=", id).execute();
+      if (order) {
+        // Two steps: one main picture per product at every moment (product_images_one_main).
+        await trx.updateTable("product_images").set({ is_main: false }).where("product_id", "=", id).execute();
+        for (const [position, imageId] of order.entries()) {
+          await trx.updateTable("product_images").set({ position, is_main: position === 0, updated_at: new Date() }).where("id", "=", imageId).execute();
+        }
+      }
+      for (const v of prices) {
+        await trx.updateTable("variants").set({ price_minor: v.price, compare_at_minor: v.cap, updated_at: new Date() }).where("id", "=", v.id).execute();
+      }
+
+      // ── to the store ──
+      if (provider) {
+        const ext = prices.length ? new Map((await trx.selectFrom("external_variants").select(["variant_id", "external_id"])
+          .where("connection_id", "=", p.connection_id!).where("variant_id", "in", prices.map((v) => v.id)).execute()).map((x) => [x.variant_id, x.external_id])) : new Map<string, string>();
+        const extImage = new Map(images.map((i) => [i.id, i.external_id]));
+        const patch: ProductPatch = {
+          productExternalId: p.external_id!,
+          ...(body.title !== undefined ? { title: body.title } : {}),
+          ...(html !== undefined ? { descriptionHtml: html } : {}),
+          ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.tags !== undefined ? { tags: [...new Set(body.tags)] } : {}),
+          ...(body.vendor !== undefined ? { vendor: body.vendor } : {}),
+          ...(body.productType !== undefined ? { productType: body.productType } : {}),
+          ...(order ? { mediaOrder: order.map((x) => extImage.get(x)!) } : {}),
+          ...(prices.length ? {
+            variants: prices.filter((v) => ext.get(v.id)).map((v) => ({
+              externalId: ext.get(v.id)!, price: fromMinor(v.price, v.cur), compareAtPrice: v.cap === null ? null : fromMinor(v.cap, v.cur),
+            })),
+          } : {}),
+        };
+        const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { [provider]: p.connection_id! }, store: p.connection_id! });
+        const now = Date.now();
+        await store.enqueue(await MizanEngine.stageProductPatch(store, patch, now, provider), now);
+      }
+
+      const changed = [...Object.keys(body).filter((k) => body[k as keyof typeof body] !== undefined)];
+      await this.audit.record(trx, {
+        action: "catalog.product_updated", tenantId, ...auditActor(auth), entity: { type: "product", id },
+        before: { title: p.title, status: p.status, tags: p.tags, vendor: p.vendor, productType: p.product_type },
+        after: { changed, ...(body.title !== undefined ? { title: body.title } : {}), ...(body.status !== undefined ? { status: body.status } : {}), store: provider },
+      });
+      await this.events.emit(trx, { type: "product.updated", tenantId, entity: { type: "product", id }, actor: { type: "user", id: auth.user.id }, data: { changed, store: provider } });
+    });
+    return this.detail(tenantId, id);
   }
 
   /** One variant's cost and/or barcode. A barcode set here is Mizan's; null gives it back to the store. */
@@ -283,7 +390,9 @@ export function htmlToText(html: string): string {
   return html
     .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
     .replace(/<\s*br\s*\/?>/gi, "\n")
-    .replace(/<\s*\/\s*(p|div|li|h[1-6]|tr|blockquote)\s*>/gi, "\n")
+    // A paragraph ends with a blank line, a list item or a row with a line break: the editor reads them back the same way (P2).
+    .replace(/<\s*\/\s*(p|div|h[1-6]|blockquote|ul|ol|table)\s*>/gi, "\n\n")
+    .replace(/<\s*\/\s*(li|tr)\s*>/gi, "\n")
     .replace(/<\s*li[^>]*>/gi, "• ")
     .replace(/<[^>]*>/g, "")
     .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
@@ -313,4 +422,10 @@ function storeUrl(provider: string | null, account: string | null, externalId: s
     return `${base}/wp-admin/post.php?post=${externalId}&action=edit`;
   }
   return null;
+}
+
+/** Plain text as the store's HTML (P2): paragraphs by blank lines, line breaks kept, nothing else. */
+export function textToHtml(text: string): string {
+  const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return text.replace(/\r\n?/g, "\n").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
 }

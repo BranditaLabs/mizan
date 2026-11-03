@@ -590,7 +590,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        patch: operations["ProductsController_edit"];
         trace?: never;
     };
     "/v1/products/variants/{id}": {
@@ -7151,6 +7151,34 @@ export interface components {
                 missingBarcode: number;
             };
         };
+        ProductUpdate: {
+            title?: string;
+            /** @description Plain text: paragraphs by blank lines (the store's formatting is replaced) */
+            description?: string;
+            /** @enum {string} */
+            status?: "active" | "draft" | "archived";
+            tags?: string[];
+            /** @description Shopify only */
+            vendor?: string;
+            /** @description Shopify only */
+            productType?: string;
+            images?: {
+                /** @description Every picture of the product, in the new order */
+                order: string[];
+                /**
+                 * Format: uuid
+                 * @description The main picture (moved first); else the first of the order
+                 */
+                main?: string;
+            };
+            variants?: {
+                /** Format: uuid */
+                id: string;
+                price?: string;
+                /** @description Higher than the price: shown struck through; null removes it */
+                compareAtPrice?: string | null;
+            }[];
+        };
         ProfitBreakdown: {
             /** @enum {string} */
             by: "day" | "product" | "store" | "courier" | "country";
@@ -11658,6 +11686,63 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_edit: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductUpdate"];
+            };
+        };
+        responses: {
+            /** @description The product as saved; the store follows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

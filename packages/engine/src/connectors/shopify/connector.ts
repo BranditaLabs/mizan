@@ -132,6 +132,8 @@ export class ShopifyConnector {
     if (patch.descriptionHtml !== undefined) productFields.descriptionHtml = patch.descriptionHtml;
     if (patch.tags !== undefined) productFields.tags = patch.tags;
     if (patch.status !== undefined && patch.status !== "unknown") productFields.status = patch.status.toUpperCase();
+    if (patch.vendor !== undefined) productFields.vendor = patch.vendor;
+    if (patch.productType !== undefined) productFields.productType = patch.productType;
     if (Object.keys(productFields).length) {
       const d = await this.gql.run<{ productUpdate: { userErrors: UserErrors } }>(Q.PRODUCT_UPDATE, { product: { id: patch.productExternalId, ...productFields } }, { idempotent: true });
       assertNoUserErrors("productUpdate", d.productUpdate?.userErrors);
@@ -145,6 +147,12 @@ export class ShopifyConnector {
       }));
       const d = await this.gql.run<{ productVariantsBulkUpdate: { userErrors: UserErrors } }>(Q.VARIANTS_UPDATE, { productId: patch.productExternalId, variants }, { idempotent: true });
       assertNoUserErrors("productVariantsBulkUpdate", d.productVariantsBulkUpdate?.userErrors);
+    }
+
+    if (patch.mediaOrder?.length) {
+      const moves = patch.mediaOrder.map((id, newPosition) => ({ id, newPosition: String(newPosition) }));
+      const d = await this.gql.run<{ productReorderMedia: { mediaUserErrors?: UserErrors } }>(Q.PRODUCT_REORDER_MEDIA, { id: patch.productExternalId, moves }, { idempotent: true });
+      assertNoUserErrors("productReorderMedia", d.productReorderMedia?.mediaUserErrors);
     }
 
     for (const [i, inv] of (patch.inventory ?? []).entries()) {
