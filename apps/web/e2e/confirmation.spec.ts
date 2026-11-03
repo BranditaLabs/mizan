@@ -71,7 +71,7 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   await signInOwner(page, owner, "ar");
   await expect(page).toHaveURL(/\/ar$/);
   await page.getByRole("link", { name: "الإعدادات" }).click();
-  await page.getByRole("main").getByRole("link", { name: "التأكيد" }).click();
+  await page.getByRole("navigation", { name: "الإعدادات" }).getByRole("link", { name: "التأكيد" }).click();
   await expect(page).toHaveURL(/\/ar\/settings\/confirmation$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("التأكيد");

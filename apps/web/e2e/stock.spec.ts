@@ -91,14 +91,17 @@ test("manager in Arabic: turns on sending stock to the store and sets a low-stoc
     return route.fulfill({ json: { variantId: ABAYA, lowStockAt: 3, available: 4 } });
   });
 
-  await page.goto("/ar/stock");
-  const main = page.getByRole("main");
-  const sync = main.getByRole("switch", { name: /ابعت مخزون ميزان لمتجري/ });
+  // The switch lives in Settings → Inventory now (U4).
+  await page.goto("/ar/settings/inventory");
+  const sync = page.getByRole("main").getByRole("switch", { name: /ابعت مخزون ميزان لمتجري/ });
   await expect(sync).not.toBeChecked();
   await sync.click(); // saved first, then shown on
   await expect(page.locator(".mz-toast", { hasText: "متجرك بقى بياخد أرقام ميزان" })).toBeVisible();
   expect(push).toBe(true);
   await expect(sync).toBeChecked();
+
+  await page.goto("/ar/stock");
+  const main = page.getByRole("main");
   await expect(main.getByRole("tab", { name: "قرب يخلص" })).toBeVisible();
 
   await main.getByRole("button", { name: "حدّث ABY-1" }).click();
