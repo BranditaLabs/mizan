@@ -2049,7 +2049,9 @@
       "price": "Price",
       "cost": "Cost",
       "stock": "Stock",
-      "actions": "Actions"
+      "actions": "Actions",
+      "variant": "Variant",
+      "margin": "Margin"
     },
     "status": {
       "draft": "Draft",
@@ -2128,6 +2130,48 @@
         "barcode_taken": "Another product has this barcode",
         "other": "Couldn't read it"
       }
+    },
+    "statusName": {
+      "active": "Active",
+      "draft": "Draft",
+      "archived": "Archived"
+    },
+    "detail": {
+      "back": "Products",
+      "notFound": {
+        "title": "This product isn't here",
+        "body": "It may have been deleted in your store, or it belongs to another store."
+      },
+      "single": "Default",
+      "from": "From {store}",
+      "inMizan": "Added in Mizan",
+      "updated": "Updated",
+      "editIn": {
+        "shopify": "Edit in Shopify",
+        "woocommerce": "Edit in WooCommerce"
+      },
+      "price": "Price",
+      "stock": "In stock",
+      "about": "Details",
+      "vendor": "Vendor",
+      "type": "Type",
+      "options": "Options",
+      "noOptions": "One version only",
+      "tags": "Tags",
+      "handle": "Store address",
+      "description": "Description",
+      "noDescription": "Your store has no description for this product.",
+      "variants": "{count, plural, one {# variant} other {# variants}}",
+      "noVariants": "No variants",
+      "noPictures": {
+        "title": "No pictures yet",
+        "body": "Add pictures to this product in your store and they show up here on the next sync."
+      },
+      "pictures": "{count, plural, one {# picture} other {# pictures}}",
+      "main": "Main picture",
+      "showPicture": "Show picture {n} of {total}",
+      "marginValue": "{value}%",
+      "priceRange": "<min></min> to <max></max>"
     }
   },
   "stock": {

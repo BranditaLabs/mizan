@@ -13,8 +13,12 @@ import { hang, json, type FakeClock } from "./clock.js";
 /** lost: the call is carried out, then the response never arrives (a commit that "timed out"). */
 type Fault = "500" | "timeout" | "network" | "throttle" | "lost";
 
-interface Variant { id: string; sku: string; barcode?: string | null; title: string; price: string; compareAtPrice: string | null; inventoryItemId: string }
-interface Product { id: string; title: string; status: string; vendor: string; productType: string; tags: string[]; descriptionHtml: string; updatedAt: string; variants: Variant[] }
+interface Variant { id: string; sku: string; barcode?: string | null; title: string; price: string; compareAtPrice: string | null; inventoryItemId: string; options?: Array<{ name: string; value: string }>; mediaId?: string }
+interface Media { id: string; url: string; alt: string | null; width: number; height: number; type?: "IMAGE" | "VIDEO" }
+interface Product {
+  id: string; title: string; handle: string; status: string; vendor: string; productType: string; tags: string[]; descriptionHtml: string; updatedAt: string; variants: Variant[];
+  media: Media[]; featuredMediaId: string | null; options: Array<{ name: string; values: string[] }>;
+}
 interface Order {
   id: string; name: string; createdAt: string; updatedAt: string; cancelledAt: string | null; displayFinancialStatus: string;
   paymentGatewayNames: string[]; tags: string[]; currencyCode: string; email: string | null; phone: string | null;
@@ -98,16 +102,53 @@ export class FakeShopify {
     return new Date(this.clock.now()).toISOString();
   }
 
-  addProduct(p: { title: string; price: string; sku?: string; barcode?: string; stock?: number; location?: string }) {
+  /** The shop's currency (prices are in it). */
+  currency = "EGP";
+
+  addProduct(p: { title: string; price: string; sku?: string; barcode?: string; stock?: number; location?: string; images?: number }) {
     const id = this.nextId("Product");
     const vid = this.nextId("ProductVariant");
     const itemId = this.nextId("InventoryItem");
+    const media = Array.from({ length: p.images ?? 0 }, (_, i) => this.media(p.title, i));
     this.products.set(id, {
-      id, title: p.title, status: "ACTIVE", vendor: "Serum Beauty", productType: "Skincare", tags: [], descriptionHtml: "", updatedAt: this.touch(),
+      id, title: p.title, handle: p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"), status: "ACTIVE", vendor: "Serum Beauty", productType: "Skincare", tags: [], descriptionHtml: "", updatedAt: this.touch(),
+      media, featuredMediaId: media[0]?.id ?? null, options: [{ name: "Title", values: ["Default Title"] }],
       variants: [{ id: vid, sku: p.sku ?? "SKU", barcode: p.barcode ?? null, title: "Default", price: p.price, compareAtPrice: null, inventoryItemId: itemId }],
     });
     this.inventory.set(`${itemId}|${p.location ?? "gid://shopify/Location/1"}`, p.stock ?? 10);
     return { productId: id, variantId: vid, inventoryItemId: itemId };
+  }
+
+  /**
+   * A product with options ("Size": S, M; "Color": Black, White): a variant per combination, each
+   * with its option values, pictures in the store's order, the main one `featured` (default: the first),
+   * and each colour's picture on its variants.
+   */
+  addProductWithOptions(p: { title: string; price: string; options: Array<{ name: string; values: string[] }>; images: number; featured?: number; video?: boolean }) {
+    const id = this.nextId("Product");
+    const media = Array.from({ length: p.images }, (_, i) => this.media(p.title, i));
+    if (p.video) media.push({ ...this.media(p.title, p.images), type: "VIDEO" });
+    const combos = p.options.reduce<Array<Array<{ name: string; value: string }>>>((acc, o) => acc.flatMap((c) => o.values.map((v) => [...c, { name: o.name, value: v }])), [[]]);
+    const variants: Variant[] = combos.map((combo, i) => {
+      const itemId = this.nextId("InventoryItem");
+      this.inventory.set(`${itemId}|gid://shopify/Location/1`, 5);
+      const colour = combo.find((c) => c.name === "Color");
+      const colourIndex = colour ? p.options.find((o) => o.name === "Color")!.values.indexOf(colour.value) : -1;
+      return {
+        id: this.nextId("ProductVariant"), sku: `${p.title.slice(0, 3).toUpperCase()}-${i + 1}`, title: combo.map((c) => c.value).join(" / "), price: p.price, compareAtPrice: null,
+        inventoryItemId: itemId, options: combo, ...(colourIndex >= 0 && media[colourIndex] ? { mediaId: media[colourIndex]!.id } : {}),
+      };
+    });
+    this.products.set(id, {
+      id, title: p.title, handle: p.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"), status: "ACTIVE", vendor: "Nile Wear", productType: "Abaya", tags: ["new"],
+      descriptionHtml: `<p>${p.title}</p>`, updatedAt: this.touch(), media, featuredMediaId: media[p.featured ?? 0]?.id ?? null, options: p.options, variants,
+    });
+    return { productId: id, variantIds: variants.map((v) => v.id), mediaIds: media.map((m) => m.id) };
+  }
+
+  private media(title: string, i: number): Media {
+    const id = this.nextId("MediaImage");
+    return { id, url: `https://cdn.shopify.com/s/files/1/0001/products/${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${i + 1}.jpg`, alt: i === 0 ? title : null, width: 1200, height: 1500, type: "IMAGE" };
   }
 
   /**
@@ -408,8 +449,12 @@ export class FakeShopify {
 
   private gqlProduct(p: Product) {
     return {
-      id: p.id, title: p.title, status: p.status, vendor: p.vendor, productType: p.productType, tags: p.tags, descriptionHtml: p.descriptionHtml, updatedAt: p.updatedAt,
-      variants: { nodes: p.variants.map((v) => ({ id: v.id, sku: v.sku, barcode: v.barcode ?? null, title: v.title, price: v.price, compareAtPrice: v.compareAtPrice, inventoryQuantity: [...this.inventory.entries()].filter(([k]) => k.startsWith(v.inventoryItemId)).reduce((n, [, q]) => n + q, 0), inventoryItem: { id: v.inventoryItemId, inventoryLevels: { nodes: [...this.inventory.keys()].filter((k) => k.startsWith(`${v.inventoryItemId}|`)).map((k) => ({ location: { id: k.split("|")[1] } })) } } })) },
+      id: p.id, title: p.title, handle: p.handle, status: p.status, vendor: p.vendor, productType: p.productType, tags: p.tags, descriptionHtml: p.descriptionHtml, updatedAt: p.updatedAt,
+      priceRangeV2: { minVariantPrice: { currencyCode: this.currency } },
+      options: p.options, featuredMedia: p.featuredMediaId ? { id: p.featuredMediaId } : null,
+      media: { nodes: p.media.map((m) => ({ id: m.id, mediaContentType: m.type ?? "IMAGE", alt: m.alt, ...(m.type === "VIDEO" ? {} : { image: { url: m.url, width: m.width, height: m.height } }) })) },
+      variants: { nodes: p.variants.map((v) => ({ id: v.id, sku: v.sku, barcode: v.barcode ?? null, title: v.title, price: v.price, compareAtPrice: v.compareAtPrice,
+        selectedOptions: v.options ?? [{ name: "Title", value: "Default Title" }], media: { nodes: v.mediaId ? [{ id: v.mediaId }] : [] }, inventoryQuantity: [...this.inventory.entries()].filter(([k]) => k.startsWith(v.inventoryItemId)).reduce((n, [, q]) => n + q, 0), inventoryItem: { id: v.inventoryItemId, inventoryLevels: { nodes: [...this.inventory.keys()].filter((k) => k.startsWith(`${v.inventoryItemId}|`)).map((k) => ({ location: { id: k.split("|")[1] } })) } } })) },
     };
   }
 

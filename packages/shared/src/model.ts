@@ -108,6 +108,19 @@ export interface CanonicalVariant {
   /** Store locations that stock this variant (where Mizan's count is sent, E8-5). */
   locationIds?: string[];
   available?: number;
+  /** Its value for each of the product's options ("Size" → "M"). */
+  options?: Array<{ name: string; value: string }>;
+  /** The product image shown for this variant (an `images[].externalId`). */
+  imageId?: string;
+}
+
+/** A product picture as the store serves it (its CDN URL); Mizan never re-hosts store pictures. */
+export interface CanonicalImage {
+  externalId: string;
+  url: string;
+  alt?: string;
+  width?: number;
+  height?: number;
 }
 
 export const PRODUCT_STATUSES = ["active", "draft", "archived", "unknown"] as const;
@@ -122,6 +135,13 @@ export interface CanonicalProduct {
   productType?: string;
   tags: string[];
   descriptionHtml?: string;
+  /** The store's URL name (Shopify handle, WooCommerce slug). */
+  handle?: string;
+  /** Pictures in the store's order; the main one is `mainImageId`, else the first. */
+  images?: CanonicalImage[];
+  mainImageId?: string;
+  /** Options the variants differ by, in the store's order ("Size": S, M, L). */
+  options?: Array<{ name: string; values: string[] }>;
   variants: CanonicalVariant[];
   updatedAt: string;
   raw?: unknown;

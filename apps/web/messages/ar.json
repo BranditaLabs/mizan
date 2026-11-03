@@ -2049,7 +2049,9 @@
       "price": "السعر",
       "cost": "التكلفة",
       "stock": "المخزون",
-      "actions": "إجراءات"
+      "actions": "إجراءات",
+      "variant": "النوع",
+      "margin": "هامش الربح"
     },
     "status": {
       "draft": "مسودة",
@@ -2128,6 +2130,48 @@
         "barcode_taken": "الباركود ده على منتج تاني",
         "other": "ماقدرناش نقراه"
       }
+    },
+    "statusName": {
+      "active": "شغّال",
+      "draft": "مسودة",
+      "archived": "مؤرشف"
+    },
+    "detail": {
+      "back": "المنتجات",
+      "notFound": {
+        "title": "المنتج ده مش موجود",
+        "body": "ممكن يكون اتمسح من متجرك، أو تبع متجر تاني."
+      },
+      "single": "النوع الأساسي",
+      "from": "من {store}",
+      "inMizan": "متضاف في ميزان",
+      "updated": "اتحدّث",
+      "editIn": {
+        "shopify": "عدّله في شوبيفاي",
+        "woocommerce": "عدّله في ووكومرس"
+      },
+      "price": "السعر",
+      "stock": "في المخزن",
+      "about": "التفاصيل",
+      "vendor": "الماركة",
+      "type": "النوع",
+      "options": "الاختيارات",
+      "noOptions": "نسخة واحدة بس",
+      "tags": "التاجز",
+      "handle": "عنوانه في المتجر",
+      "description": "الوصف",
+      "noDescription": "متجرك مفيهوش وصف للمنتج ده.",
+      "variants": "{count, plural, one {نوع واحد} two {نوعين} few {# أنواع} many {# نوع} other {# نوع}}",
+      "noVariants": "مفيش أنواع",
+      "noPictures": {
+        "title": "لسه مفيش صور",
+        "body": "ضيف صور للمنتج ده في متجرك وهتظهر هنا مع أول مزامنة."
+      },
+      "pictures": "{count, plural, one {صورة واحدة} two {صورتين} few {# صور} many {# صورة} other {# صورة}}",
+      "main": "الصورة الأساسية",
+      "showPicture": "اعرض الصورة {n} من {total}",
+      "marginValue": "{value}٪",
+      "priceRange": "من <min></min> لـ <max></max>"
     }
   },
   "stock": {

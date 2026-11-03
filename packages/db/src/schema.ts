@@ -888,6 +888,21 @@ export interface ProductEvents {
   occurred_at: Generated<Timestamp>;
 }
 
+export interface ProductImages {
+  id: Generated<string>;
+  tenant_id: string;
+  product_id: string;
+  external_id: string | null;
+  url: string;
+  alt: string | null;
+  width: number | null;
+  height: number | null;
+  position: number;
+  is_main: Generated<boolean>;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Products {
   id: Generated<string>;
   tenant_id: string;
@@ -898,6 +913,12 @@ export interface Products {
   updated_at: Generated<Timestamp>;
   connection_id: string | null;
   external_id: string | null;
+  handle: string | null;
+  description_html: string | null;
+  vendor: string | null;
+  product_type: string | null;
+  tags: Generated<ArrayType<string>>;
+  options: Generated<Json>;
 }
 
 export interface PurchaseOrderLines {
@@ -1325,6 +1346,8 @@ export interface Variants {
   available_at: Timestamp | null;
   barcode_set_at: Timestamp | null;
   reorder_pack_size: number | null;
+  options: Generated<Json>;
+  image_id: string | null;
 }
 
 export interface Warehouses {
@@ -1434,6 +1457,7 @@ export interface DB {
   pos_shifts: PosShifts;
   privacy_requests: PrivacyRequests;
   product_events: ProductEvents;
+  product_images: ProductImages;
   products: Products;
   purchase_order_lines: PurchaseOrderLines;
   purchase_orders: PurchaseOrders;

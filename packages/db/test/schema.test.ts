@@ -65,6 +65,29 @@ describe("schema", () => {
     });
   });
 
+  it("keeps product pictures per store: https only, one main picture, a variant loses a removed picture (0062)", async () => {
+    await asTenant(T1, async () => {
+      const p = await db.query<{ id: string }>(`INSERT INTO products (tenant_id, title, tags, options) VALUES ($1, 'Abaya', '{linen}', '[{"name":"Size","values":["S","M"]}]') RETURNING id`, [T1]);
+      const pid = p.rows[0]!.id;
+      const img = (n: number, main: boolean, url = `https://cdn.shopify.com/a-${n}.jpg`) =>
+        db.query<{ id: string }>(`INSERT INTO product_images (tenant_id, product_id, external_id, url, position, is_main) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`, [T1, pid, `m${n}`, url, n, main]);
+      const first = (await img(1, true)).rows[0]!.id;
+      await img(2, false);
+      // Each refusal in its own savepoint: the transaction carries on after it.
+      const refused = async (run: () => Promise<unknown>) => {
+        await db.exec("SAVEPOINT s");
+        try { await run(); return "accepted"; } catch (e) { return (e as Error).message; } finally { await db.exec("ROLLBACK TO SAVEPOINT s"); }
+      };
+      expect(await refused(() => img(3, true))).toMatch(/product_images_one_main/);
+      expect(await refused(() => img(4, false, "http://cdn.example.com/a.jpg"))).toMatch(/url_check|check constraint/i);
+      const v = await db.query<{ id: string }>(`INSERT INTO variants (tenant_id, product_id, sku, currency, options, image_id) VALUES ($1, $2, 'ABY-S', 'EGP', '[{"name":"Size","value":"S"}]', $3) RETURNING id`, [T1, pid, first]);
+      await db.query(`DELETE FROM product_images WHERE id = $1`, [first]);
+      expect((await db.query<{ image_id: string | null }>(`SELECT image_id FROM variants WHERE id = $1`, [v.rows[0]!.id])).rows[0]!.image_id).toBeNull();
+    });
+    // Another store sees none of them.
+    expect(await asTenant(T2, async () => (await db.query(`SELECT id FROM product_images`)).rows)).toEqual([]);
+  });
+
   it("tracks a deposit + COD balance order across payment lines", async () => {
     const r = await asTenant(T1, async () => {
       const gw = await db.query<{ id: string }>(`INSERT INTO connections (tenant_id, kind, provider, external_account) VALUES ($1, 'payment', 'paymob', 'acct-1') RETURNING id`, [T1]);

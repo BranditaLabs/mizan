@@ -19,7 +19,8 @@ const csp = [
   `script-src 'self' 'unsafe-inline' ${recaptcha} https://apis.google.com` + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
-  "img-src 'self' data: blob:",
+  // Product pictures (P1) stay on each store's own host: Shopify's CDN or the WooCommerce site itself.
+  "img-src 'self' data: blob: https:",
   "manifest-src 'self'",
   `connect-src 'self' ${api} https://identitytoolkit.googleapis.com https://securetoken.googleapis.com ${authEmulator}`.trimEnd(),
   `frame-src https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/ ${authDomain}`.trimEnd(),

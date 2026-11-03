@@ -5,7 +5,7 @@ import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
-import { CatalogVariantSchema, CostsImportedSchema, ImportCostsSchema, ProductPageSchema, ProductQuerySchema, UpdateVariantSchema } from "./catalog.dto.js";
+import { CatalogVariantSchema, CostsImportedSchema, ImportCostsSchema, ProductDetailSchema, ProductPageSchema, ProductQuerySchema, UpdateVariantSchema } from "./catalog.dto.js";
 import { ProductsService } from "./products.service.js";
 
 /** The catalogue screen (M4, E8-1): products from the store, with the cost and barcode Mizan adds. */
@@ -20,6 +20,13 @@ export class ProductsController {
   @ApiJson(200, "ProductPage", ProductPageSchema, "Products by title, each with its variants")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ProductQuerySchema)) q: z.output<typeof ProductQuerySchema>) {
     return this.products.list(auth.tenant!.id, q);
+  }
+
+  @Get(":id")
+  @ApiJson(200, "ProductDetail", ProductDetailSchema, "The product in full: pictures (one main), options, variants, details, totals")
+  @ApiProblems(404)
+  detail(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
+    return this.products.detail(auth.tenant!.id, id);
   }
 
   @Patch("variants/:id")

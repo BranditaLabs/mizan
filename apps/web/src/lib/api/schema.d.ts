@@ -465,6 +465,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/products/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ProductsController_detail"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/products/variants/{id}": {
         parameters: {
             query?: never;
@@ -3461,6 +3477,16 @@ export interface components {
             } | null;
             /** @description Stock as the store last reported it; null = not known */
             available: number | null;
+            /** @description Its value for each of the product's options (P1) */
+            options: {
+                name: string;
+                value: string;
+            }[];
+            /**
+             * Format: uuid
+             * @description The product picture shown for this variant
+             */
+            imageId: string | null;
         };
         ChangePlan: {
             /** @enum {string} */
@@ -6549,6 +6575,103 @@ export interface components {
             }[];
             requestId?: string;
         };
+        ProductDetail: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** @enum {string} */
+            status: "active" | "draft" | "archived";
+            /** @description The store it syncs from; null = added in Mizan */
+            store: {
+                /** Format: uuid */
+                connectionId: string;
+                provider: string;
+                name: string;
+            } | null;
+            vendor: string | null;
+            productType: string | null;
+            tags: string[];
+            options: {
+                name: string;
+                values: string[];
+            }[];
+            variants: {
+                /** Format: uuid */
+                id: string;
+                title: string | null;
+                sku: string;
+                barcode: string | null;
+                /**
+                 * @description store: follows the store's barcode on every sync; mizan: set here, syncs leave it alone
+                 * @enum {string}
+                 */
+                barcodeOwner: "store" | "mizan";
+                price: {
+                    amount: string;
+                    currency: string;
+                };
+                compareAt: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description null until entered; 0 is a real cost */
+                cost: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                /** @description Stock as the store last reported it; null = not known */
+                available: number | null;
+                /** @description Its value for each of the product's options (P1) */
+                options: {
+                    name: string;
+                    value: string;
+                }[];
+                /**
+                 * Format: uuid
+                 * @description The product picture shown for this variant
+                 */
+                imageId: string | null;
+            }[];
+            handle: string | null;
+            /** @description The store's description as plain text (paragraphs on new lines); never HTML */
+            description: string;
+            /** @description In the store's order; one isMain */
+            images: {
+                /** Format: uuid */
+                id: string;
+                /**
+                 * Format: uri
+                 * @description The store's CDN address (https)
+                 */
+                url: string;
+                alt: string | null;
+                width: number | null;
+                height: number | null;
+                isMain: boolean;
+            }[];
+            /**
+             * Format: uri
+             * @description Where to edit it in the store's admin
+             */
+            storeUrl: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            totals: {
+                variants: number;
+                /** @description Sum of known stock; null when no variant's stock is known */
+                available: number | null;
+                priceMin: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                priceMax: {
+                    amount: string;
+                    currency: string;
+                } | null;
+                missingCost: number;
+                missingBarcode: number;
+            };
+        };
         ProductPage: {
             data: {
                 /** Format: uuid */
@@ -6563,6 +6686,28 @@ export interface components {
                     provider: string;
                     name: string;
                 } | null;
+                /** @description The product's main picture (P1); null = none */
+                mainImage: {
+                    /** Format: uuid */
+                    id: string;
+                    /**
+                     * Format: uri
+                     * @description The store's CDN address (https)
+                     */
+                    url: string;
+                    alt: string | null;
+                    width: number | null;
+                    height: number | null;
+                    isMain: boolean;
+                } | null;
+                imageCount: number;
+                vendor: string | null;
+                productType: string | null;
+                tags: string[];
+                options: {
+                    name: string;
+                    values: string[];
+                }[];
                 variants: {
                     /** Format: uuid */
                     id: string;
@@ -6589,6 +6734,16 @@ export interface components {
                     } | null;
                     /** @description Stock as the store last reported it; null = not known */
                     available: number | null;
+                    /** @description Its value for each of the product's options (P1) */
+                    options: {
+                        name: string;
+                        value: string;
+                    }[];
+                    /**
+                     * Format: uuid
+                     * @description The product picture shown for this variant
+                     */
+                    imageId: string | null;
                 }[];
             }[];
             nextCursor: string | null;
@@ -10348,6 +10503,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_detail: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The product in full: pictures (one main), options, variants, details, totals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductDetail"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */
