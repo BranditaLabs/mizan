@@ -24,13 +24,20 @@ export function formatNumber(value: number | bigint, locale: string, digits: Dig
   return new Intl.NumberFormat(tag(locale), { numberingSystem: digits }).format(value);
 }
 
-export function formatDate(date: Date | string, locale: string, digits: Digits = "latn", style: "short" | "medium" = "medium"): string {
-  return new Intl.DateTimeFormat(tag(locale), { dateStyle: style, numberingSystem: digits, timeZone: "Africa/Cairo" }).format(new Date(date));
+/** Dates are shown in the store's time zone (a KSA store sees Riyadh time); Cairo until the store is known. */
+export const DEFAULT_TIME_ZONE = "Africa/Cairo";
+
+/** A calendar day ("2026-11-01"): the same day in every time zone (UTC midnight would be the 31st in New York). */
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+
+export function formatDate(date: Date | string, locale: string, digits: Digits = "latn", style: "short" | "medium" = "medium", timeZone = DEFAULT_TIME_ZONE): string {
+  const day = typeof date === "string" && DAY.test(date);
+  return new Intl.DateTimeFormat(tag(locale), { dateStyle: style, numberingSystem: digits, timeZone: day ? "UTC" : timeZone }).format(new Date(date));
 }
 
-/** "Sat 10:00 AM" / "السبت ١٠:٠٠ ص" in Cairo time — when something comes due this week (a retry, a call). */
-export function formatWhen(date: Date | string, locale: string, digits: Digits = "latn"): string {
-  return new Intl.DateTimeFormat(tag(locale), { weekday: "short", hour: "numeric", minute: "2-digit", numberingSystem: digits, timeZone: "Africa/Cairo" }).format(new Date(date));
+/** "Sat 10:00 AM" / "السبت ١٠:٠٠ ص" in the store's time — when something comes due this week (a retry, a call). */
+export function formatWhen(date: Date | string, locale: string, digits: Digits = "latn", timeZone = DEFAULT_TIME_ZONE): string {
+  return new Intl.DateTimeFormat(tag(locale), { weekday: "short", hour: "numeric", minute: "2-digit", numberingSystem: digits, timeZone }).format(new Date(date));
 }
 
 /** "منذ ٦ دقائق" / "6 minutes ago" — for queues and timelines. */

@@ -11,7 +11,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { downloadText, toCsv } from "@/lib/csv";
 import { formatDate } from "@/lib/format";
-import { useSession } from "@/lib/session";
+import { useSession, useTimeZone } from "@/lib/session";
 
 type Breakdown = Schemas["ProfitBreakdown"];
 type Row = Breakdown["rows"][number];
@@ -28,6 +28,7 @@ const READERS = new Set(["owner", "admin", "finance", "ops_manager"]);
 export function ProfitBreakdown() {
   const t = useTranslations("profitBreakdown");
   const locale = useLocale();
+  const timeZone = useTimeZone();
   const { api, user, store } = useSession();
   const allowed = READERS.has(store?.role ?? "");
   const [by, setBy] = useState<By>("product");
@@ -43,7 +44,7 @@ export function ProfitBreakdown() {
   };
   const labelOf = (r: Row): string =>
     r.special ? t(`special.${r.key as "manual" | "none" | "unknown" | "no_products"}`)
-    : by === "day" ? formatDate(r.key, locale, "latn", "short")
+    : by === "day" ? formatDate(r.key, locale, "latn", "short", timeZone)
     : by === "country" ? region(r.key)
     : by === "courier" ? r.label.charAt(0).toUpperCase() + r.label.slice(1)
     : r.label;

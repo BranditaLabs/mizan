@@ -14,7 +14,7 @@ import { Bdi } from "@/components/Bdi";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { formatWhen } from "@/lib/format";
-import { useSession } from "@/lib/session";
+import { useSession, useTimeZone } from "@/lib/session";
 
 const CALLERS = new Set(["owner", "admin", "ops_manager", "agent"]);
 
@@ -27,6 +27,7 @@ const CALLERS = new Set(["owner", "admin", "ops_manager", "agent"]);
 export function CallQueue() {
   const t = useTranslations("callQueue");
   const locale = useLocale();
+  const timeZone = useTimeZone();
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const allowed = CALLERS.has(store?.role ?? "");
@@ -65,7 +66,7 @@ export function CallQueue() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="queue-counts">
         <StatCard label={t("waiting")} value={q?.waiting ?? "…"} />
         <StatCard label={t("mine")} value={q?.mine ?? "…"} />
-        <StatCard label={t("later")} value={q?.later ?? "…"} period={q?.nextAt ? t("nextAt", { at: formatWhen(q.nextAt, locale) }) : undefined} />
+        <StatCard label={t("later")} value={q?.later ?? "…"} period={q?.nextAt ? t("nextAt", { at: formatWhen(q.nextAt, locale, "latn", timeZone) }) : undefined} />
         <StatCard label={t("unreachable")} value={q?.unreachable ?? "…"} />
       </div>
 

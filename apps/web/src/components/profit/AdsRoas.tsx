@@ -11,13 +11,13 @@ import { MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
-import { useSession } from "@/lib/session";
+import { useSession, useTimeZone } from "@/lib/session";
 import { CampaignResults } from "./CampaignResults";
 import { OrderSources } from "./OrderSources";
 
 type Roas = Schemas["Roas"];
 const PERIODS = [7, 14, 30, 90] as const;
-const READERS = new Set(["owner", "admin", "finance", "ops_manager"]);
+const READERS = new Set(["owner", "admin", "finance", "ops_manager", "media_buyer"]);
 const PLATFORMS = new Set(["meta", "tiktok", "google", "snapchat", "other"]);
 
 /**
@@ -29,6 +29,7 @@ const PLATFORMS = new Set(["meta", "tiktok", "google", "snapchat", "other"]);
 export function AdsRoas() {
   const t = useTranslations("adsRoas");
   const locale = useLocale();
+  const timeZone = useTimeZone();
   const { api, user, store } = useSession();
   const allowed = READERS.has(store?.role ?? "");
   const [days, setDays] = useState<(typeof PERIODS)[number]>(30);
@@ -98,7 +99,7 @@ export function AdsRoas() {
                   <tbody>
                     {[...r.days].reverse().filter((d) => d.orders > 0 || Number(d.spend.amount) > 0).map((d) => (
                       <tr key={d.day}>
-                        <th scope="row" className="font-medium">{formatDate(d.day, locale, "latn", "short")}</th>
+                        <th scope="row" className="font-medium">{formatDate(d.day, locale, "latn", "short", timeZone)}</th>
                         <td className="mz-num"><MoneyText money={d.spend} /></td>
                         <td className="mz-num"><bdi>{d.orders}</bdi></td>
                         <td className="mz-num"><bdi>{d.delivered}</bdi></td>

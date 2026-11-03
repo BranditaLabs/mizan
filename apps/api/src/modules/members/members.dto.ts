@@ -27,6 +27,11 @@ export const MemberViewSchema = z.object({
   joinedAt: z.iso.datetime(),
 });
 export type MemberView = z.infer<typeof MemberViewSchema>;
+
+/** Who work can be given to (orders, calls): active members who handle orders. Their name only; without one, a masked hint to tell them apart. */
+export const AssignableSchema = z.object({
+  members: z.array(z.object({ userId: z.uuid(), displayName: z.string().nullable(), hint: z.string().nullable().describe("Masked email or phone (\"m•••@example.com\", \"•••• 4821\") when there is no name"), role: MemberRoleSchema })),
+});
 export type MemberStatus = MemberView["status"];
 
 export const InvitationViewSchema = z.object({

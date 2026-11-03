@@ -21,7 +21,7 @@ import { SettingsTabs } from "./SettingsTabs";
 type List = Schemas["AdSpendList"];
 type Platform = Schemas["SetAdSpend"]["platform"];
 const PLATFORMS: readonly Platform[] = ["meta", "tiktok", "google", "snapchat", "other"];
-const EDITORS = new Set(["owner", "admin", "finance"]);
+const EDITORS = new Set(["owner", "admin", "finance", "media_buyer"]);
 const READERS = new Set([...EDITORS, "ops_manager"]);
 const AMOUNT = /^\d{1,12}(\.\d{1,3})?$/;
 const decimal = (v: string) => toAsciiDigits(v).replace(/[٫,]/g, ".").trim();

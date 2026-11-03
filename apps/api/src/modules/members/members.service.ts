@@ -11,6 +11,19 @@ import { auditActor, AuditService } from "../../platform/audit/audit.service.js"
 import { ProblemError } from "../../platform/http/problem.js";
 import type { InvitationStatus, InvitationView, InviteBody, MemberStatus, MemberView, MyInvitationView, UpdateMemberBody } from "./members.dto.js";
 
+/** The roles that work orders and calls (E5-4 assign; the call queue). */
+export const ASSIGNABLE_ROLES = ["owner", "admin", "ops_manager", "agent"] as const;
+
+/** Enough to tell two unnamed colleagues apart, never their contact details: "m•••@example.com", "•••• 4821". */
+export function maskContact(email: string | null, phone: string | null): string | null {
+  if (email) {
+    const at = email.indexOf("@");
+    return at > 0 ? `${email[0]}•••${email.slice(at)}` : "•••";
+  }
+  if (phone) return `•••• ${phone.replace(/\D/g, "").slice(-4)}`;
+  return null;
+}
+
 export const INVITATION_TTL_DAYS = 7;
 
 /** What the identity provider vouches for: verified email, OTP phone. Used to match invitations. */
@@ -51,6 +64,17 @@ export class MembersService {
         })),
         invitations: invitations.map((i) => this.toInvitation(i)),
       };
+    });
+  }
+
+  /** Active members who take orders and calls, for assigning work (managers too, not only owners). */
+  async assignable(tenantId: string): Promise<{ members: Array<{ userId: string; displayName: string | null; hint: string | null; role: MemberRole }> }> {
+    return this.db.tenant(tenantId, async (trx) => {
+      const rows = await trx.selectFrom("memberships as m").innerJoin("users as u", "u.id", "m.user_id")
+        .select(["m.user_id", "m.role", "u.display_name", "u.email", "u.phone_e164"])
+        .where("m.status", "=", "active").where("m.role", "in", [...ASSIGNABLE_ROLES])
+        .orderBy("u.display_name").execute();
+      return { members: rows.map((r) => ({ userId: r.user_id, displayName: r.display_name, hint: r.display_name ? null : maskContact(r.email, r.phone_e164), role: r.role as MemberRole })) };
     });
   }
 

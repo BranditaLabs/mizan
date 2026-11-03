@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { Field, Select } from "@/components/ui/Field";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { ConfirmDialog } from "@/components/ui/Dialog";
 import { useToast } from "@/components/ui/Toast";
 import { DateText } from "@/components/ui/Values";
 import { ok, type MemberRole } from "@/lib/api/client";
@@ -55,6 +56,17 @@ export function TeamScreen() {
     onSuccess: () => done(t("revoked")),
   });
   const onInvite = (e: FormEvent) => { e.preventDefault(); if (contact.trim()) invite.mutate(); };
+  // Taking someone's access away, or changing what they can do, is asked first.
+  type Ask = { kind: "disable" | "remove"; userId: string; name: string } | { kind: "role"; userId: string; name: string; from: MemberRole; to: MemberRole } | { kind: "revoke"; id: string; name: string };
+  const [ask, setAsk] = useState<Ask | null>(null);
+  const confirmAsk = () => {
+    if (!ask) return;
+    const after = { onSettled: () => setAsk(null) };
+    if (ask.kind === "disable") update.mutate({ userId: ask.userId, status: "disabled" }, after);
+    else if (ask.kind === "role") update.mutate({ userId: ask.userId, role: ask.to }, after);
+    else if (ask.kind === "remove") remove.mutate(ask.userId, after);
+    else if (ask.kind === "revoke") revoke.mutate(ask.id, after);
+  };
   const myId = me?.user.id;
 
   const header = (
@@ -90,12 +102,13 @@ export function TeamScreen() {
               <tbody>
                 {q.data.members.map((m) => {
                   const self = m.userId === myId;
+                  const name = m.displayName ?? m.email ?? m.phone ?? "";
                   return (
                     <tr key={m.userId}>
                       <td><span className="font-medium">{m.displayName ?? "—"}</span><div className="text-caption text-text-2"><Bdi code>{m.email ?? m.phone ?? ""}</Bdi></div></td>
                       <td>
                         <Select label={t("role")} value={m.role} disabled={self || (m.role === "owner" && role !== "owner")}
-                          onChange={(e) => update.mutate({ userId: m.userId, role: e.target.value as MemberRole })}>
+                          onChange={(e) => setAsk({ kind: "role", userId: m.userId, name, from: m.role, to: e.target.value as MemberRole })}>
                           {ROLES.filter((r) => r !== "owner" || role === "owner" || m.role === "owner").map((r) => <option key={r} value={r}>{tr(r)}</option>)}
                         </Select>
                       </td>
@@ -104,10 +117,10 @@ export function TeamScreen() {
                       <td>
                         {self ? <span className="text-caption text-text-2">{t("you")}</span> : (
                           <div className="flex gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => update.mutate({ userId: m.userId, status: m.status === "active" ? "disabled" : "active" })}>
+                            <Button size="sm" variant="ghost" onClick={() => m.status === "active" ? setAsk({ kind: "disable", userId: m.userId, name }) : update.mutate({ userId: m.userId, status: "active" })}>
                               {m.status === "active" ? t("disable") : t("enable")}
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => remove.mutate(m.userId)}>{t("remove")}</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setAsk({ kind: "remove", userId: m.userId, name })}>{t("remove")}</Button>
                           </div>
                         )}
                       </td>
@@ -127,7 +140,7 @@ export function TeamScreen() {
                     <span className="flex items-center gap-2 text-caption text-text-2">
                       {t.rich("expires", { date: () => <DateText value={i.expiresAt} /> })}
                       <Button size="sm" variant="ghost" onClick={() => void navigator.clipboard?.writeText(i.acceptUrl).then(() => toast({ message: t("copied") }))}>{t("copyLink")}</Button>
-                      <Button size="sm" variant="ghost" onClick={() => revoke.mutate(i.id)}>{t("revoke")}</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setAsk({ kind: "revoke", id: i.id, name: i.email ?? i.phone ?? "" })}>{t("revoke")}</Button>
                     </span>
                   </li>
                 ))}
@@ -136,6 +149,11 @@ export function TeamScreen() {
           </section>
         </>
       )}
+      <ConfirmDialog open={ask !== null} onClose={() => setAsk(null)} onConfirm={confirmAsk} busy={update.isPending || remove.isPending || revoke.isPending}
+        title={ask ? t.rich(`ask.${ask.kind}.title`, { name: ask.name, b: (c) => <Bdi>{c}</Bdi> }) : ""}
+        description={ask ? (ask.kind === "role" ? t.rich("ask.role.body", { name: ask.name, from: tr(ask.from), to: tr(ask.to), b: (c) => <Bdi>{c}</Bdi> })
+          : t.rich(`ask.${ask.kind}.body`, { name: ask.name, b: (c) => <Bdi>{c}</Bdi> })) : ""}
+        confirmLabel={ask ? t(`ask.${ask.kind}.confirm`) : ""} />
     </Frame>
   );
 }

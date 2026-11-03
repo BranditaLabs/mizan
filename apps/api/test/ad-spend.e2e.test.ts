@@ -80,6 +80,9 @@ beforeAll(async () => {
   const inv = await http().post("/v1/members/invite").set(as("owner")).send({ phone: "01201114444", role: "agent" }).expect(201);
   fake.add("agent", { uid: "fb-agent-ads", phone: inv.body.phone });
   await http().post(`/v1/invitations/${inv.body.id}/accept`).set({ Authorization: "Bearer agent" }).expect(200);
+  const buyer = await http().post("/v1/members/invite").set(as("owner")).send({ phone: "01201115555", role: "media_buyer" }).expect(201);
+  fake.add("buyer", { uid: "fb-buyer-ads", phone: buyer.body.phone });
+  await http().post(`/v1/invitations/${buyer.body.id}/accept`).set({ Authorization: "Bearer buyer" }).expect(200);
   orders = [await newOrder(), await newOrder(), await newOrder()];
 });
 afterAll(() => app.close());
@@ -165,6 +168,11 @@ describe("ad spend (E9-3)", () => {
     expect(sum(await shares())).toBe(28001n);
     await put({ day: DAY, platform: "meta", amount: "1" }, "agent").expect(403);
     await http().get("/v1/ad-spend").set(as("agent")).expect(403);
+    // A media buyer enters the spend and reads what the ads brought (the audit found the role reached nothing).
+    await put({ day: addDays(DAY, 5), platform: "meta", amount: "1" }, "buyer").expect(422); // past the role check (agents get 403); a future day changes nothing
+    await http().get("/v1/ad-spend").set(as("buyer")).expect(200);
+    await http().get("/v1/attribution/roas").set(as("buyer")).expect(200);
+    await http().get(`/v1/orders/${orders[0]!.id}/pnl`).set(as("buyer")).expect(403); // not the order's profit
     await put({ day: addDays(DAY, 5), platform: "meta", amount: "1" }).expect(422);
     await put({ day: DAY, platform: "meta", amount: "1.005" }).expect(422);
     const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select("action").where("action", "=", "ad_spend.changed").execute());

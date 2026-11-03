@@ -43,7 +43,8 @@
     "store": {
       "label": "Store",
       "switch": "Switch store",
-      "create": "New store"
+      "create": "New store",
+      "switched": "You're now in <b>{store}</b>"
     },
     "signOut": "Sign out"
   },
@@ -1027,7 +1028,17 @@
         },
         "qty": "(qty <n>{qty}</n>)"
       },
-      "optedOut": "This customer wrote STOP: WhatsApp is skipped for them until they write START."
+      "optedOut": "This customer wrote STOP: WhatsApp is skipped for them until they write START.",
+      "keepOrder": "Keep the order",
+      "cancelReasonLabel": "Why is the customer cancelling?",
+      "cancelReasonPick": "Choose a reason",
+      "cancelReason": {
+        "changed_mind": "Changed their mind",
+        "ordered_by_mistake": "Ordered by mistake",
+        "found_cheaper": "Found it cheaper",
+        "delivery_too_late": "Delivery takes too long",
+        "other": "Another reason"
+      }
     },
     "answerChannel": {
       "link": "the customer's link",
@@ -3443,6 +3454,28 @@
     "notAllowed": {
       "title": "Not available for your role",
       "body": "Owners and admins manage the team."
+    },
+    "ask": {
+      "disable": {
+        "title": "Disable <b>{name}</b>?",
+        "body": "<b>{name}</b> can't sign in to this store until you enable them again. Their orders and calls stay assigned to them.",
+        "confirm": "Disable"
+      },
+      "remove": {
+        "title": "Remove <b>{name}</b> from the store?",
+        "body": "<b>{name}</b> loses access to this store. To bring them back you'll need to invite them again.",
+        "confirm": "Remove"
+      },
+      "role": {
+        "title": "Change <b>{name}</b>'s role?",
+        "body": "<b>{name}</b> goes from {from} to {to}. What they can see and do changes right away.",
+        "confirm": "Change role"
+      },
+      "revoke": {
+        "title": "Revoke the invitation to <b>{name}</b>?",
+        "body": "The link stops working. You can send a new invitation later.",
+        "confirm": "Revoke"
+      }
     }
   },
   "integrationsSettings": {

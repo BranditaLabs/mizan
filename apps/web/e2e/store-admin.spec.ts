@@ -22,13 +22,19 @@ test("owner in English: invites, changes a role, disables, revokes; the audit lo
   await page.getByRole("button", { name: "Send invitation" }).click();
   await expect(page.getByTestId("invitations")).toContainText(next.e164);
   await page.getByTestId("invitations").getByRole("button", { name: "Revoke" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
   await expect(page.getByText("No pending invitations.")).toBeVisible();
 
   // Make the agent an ops manager, then disable them.
   const agentRow = team.getByRole("row").filter({ hasText: agent.e164 });
   await agentRow.getByLabel("Role").selectOption("ops_manager");
+  const ask = page.getByRole("dialog");
+  await expect(ask).toContainText("goes from Confirmation agent to Ops manager");
+  await ask.getByRole("button", { name: "Change role" }).click();
   await expect(agentRow.getByLabel("Role")).toHaveValue("ops_manager");
   await agentRow.getByRole("button", { name: "Disable" }).click();
+  await expect(agentRow).not.toContainText("Disabled"); // nothing until it is confirmed
+  await ask.getByRole("button", { name: "Disable" }).click();
   await expect(agentRow).toContainText("Disabled");
 
   await page.goto("/en/settings/audit");

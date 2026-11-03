@@ -6,6 +6,7 @@ import { useLocale } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiClient, ApiError, ok, type ApiClient, type Me, type Membership } from "./api/client";
 import { authConfigured, firebaseAuth } from "./firebase";
+import { DEFAULT_TIME_ZONE } from "./format";
 
 /**
  * Who is signed in, which stores they can open, and the store they are in.
@@ -147,4 +148,10 @@ export function useSession(): Session {
 /** The typed API client for the current person and store (screens use it in queryFn / mutationFn). */
 export function useApi(): ApiClient {
   return useSession().api;
+}
+
+/** The current store's time zone for showing dates (Cairo before a store is chosen or outside a session). */
+export function useTimeZone(): string {
+  const ctx = useContext(Ctx);
+  return ctx?.store?.timezone || DEFAULT_TIME_ZONE;
 }

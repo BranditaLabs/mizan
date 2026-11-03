@@ -15,7 +15,7 @@ export class AttributionController {
   constructor(@Inject(AttributionService) private readonly attribution: AttributionService) {}
 
   @Get("roas")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Roles("owner", "admin", "ops_manager", "finance", "media_buyer")
   @ApiQueryZod(RoasQuerySchema)
   @ApiJson(200, "Roas", RoasSchema, "Ad spend against what the period's orders really brought: true, reported and projected ROAS, cost per delivered order, by day and platform")
   @ApiProblems(422)
@@ -24,7 +24,7 @@ export class AttributionController {
   }
 
   @Get("sources")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Roles("owner", "admin", "ops_manager", "finance", "media_buyer")
   @ApiQueryZod(RoasQuerySchema)
   @ApiJson(200, "OrderSources", OrderSourcesSchema, "The period's orders by source platform and UTM campaign: delivery, real money, profit, and true ROAS where spend is recorded")
   @ApiProblems(422)
@@ -33,7 +33,7 @@ export class AttributionController {
   }
 
   @Get("campaigns")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Roles("owner", "admin", "ops_manager", "finance", "media_buyer")
   @ApiQueryZod(CampaignQuerySchema)
   @ApiJson(200, "CampaignResults", CampaignResultsSchema, "Per campaign, ad set or ad: spend against what its orders really brought (true ROAS, cost per delivered order, delivered rate, fake-order share); untagged orders and unassigned spend always shown")
   @ApiProblems(422)

@@ -47,7 +47,7 @@ export class ProfitController {
   }
 
   @Get("ad-spend")
-  @Roles("owner", "admin", "finance", "ops_manager")
+  @Roles("owner", "admin", "finance", "ops_manager", "media_buyer")
   @ApiQueryZod(AdSpendQuerySchema)
   @ApiJson(200, "AdSpendList", AdSpendListSchema, "Spend per day and platform (default last 30 days), each day's share per order, unallocated spend")
   @ApiProblems(422)
@@ -56,7 +56,7 @@ export class ProfitController {
   }
 
   @Put("ad-spend")
-  @Roles("owner", "admin", "finance")
+  @Roles("owner", "admin", "finance", "media_buyer")
   @ApiJsonBody("SetAdSpend", SetAdSpendSchema)
   @ApiJson(200, "AdSpendSet", AdSpendRowSchema.pick({ day: true, platform: true, spend: true, connectionId: true }), "The day's spend on that platform (replaces what it had); that day's orders get their new share")
   @ApiProblems(404, 422)
@@ -65,7 +65,7 @@ export class ProfitController {
   }
 
   @Post("ad-spend/import")
-  @Roles("owner", "admin", "finance")
+  @Roles("owner", "admin", "finance", "media_buyer")
   @HttpCode(200)
   @ApiJsonBody("ImportAdSpend", ImportAdSpendSchema)
   @ApiJson(200, "AdSpendImported", AdSpendImportedSchema, "Every day and platform in the file replaced; any unreadable line: 422 csv_invalid naming each line, nothing saved")
@@ -75,7 +75,7 @@ export class ProfitController {
   }
 
   @Delete("ad-spend/:day/:platform")
-  @Roles("owner", "admin", "finance")
+  @Roles("owner", "admin", "finance", "media_buyer")
   @HttpCode(204)
   @ApiQueryZod(AdSpendDeleteQuerySchema)
   @ApiNoContent("That day's spend on that platform removed")

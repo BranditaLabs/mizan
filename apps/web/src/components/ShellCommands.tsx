@@ -6,6 +6,7 @@ import { useMemo, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { useSession } from "@/lib/session";
+import { useSwitchStore } from "@/lib/use-switch-store";
 import { chooseTheme, THEMES } from "@/lib/theme";
 import { openFeedback } from "./FeedbackButton";
 import { CommandPalette, useCommandPalette, type Command } from "./ui/CommandPalette";
@@ -20,14 +21,15 @@ export function ShellCommands() {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
-  const { stores, store, selectStore, signOut } = useSession();
+  const { stores, store, signOut } = useSession();
+  const switchStore = useSwitchStore();
   const { open, setOpen } = useCommandPalette();
   const mac = useSyncExternalStore(noop, isMac, () => true);
 
   const commands = useMemo<Command[]>(() => [
     { id: "go-home", group: t("groups.navigate"), label: t("commands.home"), icon: "home", run: () => router.push("/") },
     ...stores.filter((s) => s.tenantId !== store?.tenantId).map((s): Command => ({
-      id: `store-${s.tenantId}`, group: t("groups.stores"), label: t("commands.store", { store: s.tenantName }), icon: "channels", run: () => selectStore(s.tenantId),
+      id: `store-${s.tenantId}`, group: t("groups.stores"), label: t("commands.store", { store: s.tenantName }), icon: "channels", run: () => switchStore(s.tenantId),
     })),
     ...THEMES.map((th): Command => ({
       id: `theme-${th}`, group: t("groups.preferences"), label: t(`commands.theme.${th}`), icon: th === "light" ? "theme-light" : th === "dark" ? "theme-dark" : "device", run: () => chooseTheme(th),
@@ -37,7 +39,7 @@ export function ShellCommands() {
     })),
     ...(store ? [{ id: "feedback", group: t("groups.account"), label: t("commands.feedback"), icon: "message", keywords: "feedback idea problem bug رأي فكرة مشكلة", run: openFeedback } satisfies Command] : []),
     { id: "sign-out", group: t("groups.account"), label: t("commands.signOut"), icon: "logout", run: () => void signOut() },
-  ], [t, router, pathname, locale, stores, store, selectStore, signOut]);
+  ], [t, router, pathname, locale, stores, store, switchStore, signOut]);
 
   return (
     <>

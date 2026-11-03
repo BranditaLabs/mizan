@@ -191,4 +191,21 @@ describe("member management", () => {
     const list = await http().get("/v1/members").set(as("rival", other)).expect(200);
     expect(list.body.members).toHaveLength(1);
   });
+
+  it("managers see who work can be given to: active members who take orders, names only", async () => {
+    await join("assigner", "ops_manager", { email: "assigner@example.com" });
+    await join("cashier", "finance", { email: "cashier@example.com" });
+    const res = await http().get("/v1/members/assignable").set(as("assigner", store)).expect(200);
+    expect(res.body.members.length).toBeGreaterThan(0);
+    for (const m of res.body.members) {
+      expect(Object.keys(m).sort()).toEqual(["displayName", "hint", "role", "userId"]);
+      expect(["owner", "admin", "ops_manager", "agent"]).toContain(m.role);
+      expect(m.displayName ?? m.hint).toBeTruthy(); // something to tell them apart
+    }
+    // A colleague's contact details are not for a manager: masked only.
+    const raw = JSON.stringify(res.body);
+    expect(raw).not.toContain("assigner@example.com");
+    expect(raw).not.toMatch(/\+\d{10,}/);
+    expect((await http().get("/v1/members/assignable").set(as("cashier", store)).expect(403)).body.code).toBe("insufficient_role");
+  });
 });

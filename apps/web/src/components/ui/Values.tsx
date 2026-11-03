@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { formatDate, formatMoney, formatRelative, type Digits } from "@/lib/format";
 import { Bdi } from "../Bdi";
 import { maskPhone } from "./logic";
+import { useTimeZone } from "@/lib/session";
 
 /**
  * Money from a decimal string, isolated inside text of either direction ("1,150.00 ج.م." / "EGP 1,150.00").
@@ -74,7 +75,10 @@ export function PhoneText({ e164, revealable = false, onReveal }: { e164: string
 /** A moment: relative ("منذ ٦ دقائق") or a date, with the exact time in `dateTime` and on hover. */
 export function DateText({ value, relative = false, now }: { value: Date | string; relative?: boolean; now?: number }) {
   const locale = useLocale();
+  const timeZone = useTimeZone();
   const d = new Date(value);
-  const exact = new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-EG", { dateStyle: "medium", timeStyle: "short", numberingSystem: "latn", timeZone: "Africa/Cairo" }).format(d);
-  return <time dateTime={d.toISOString()} title={exact} suppressHydrationWarning>{relative ? formatRelative(d, locale, now) : formatDate(d, locale)}</time>;
+  // A calendar day has no time: shown as itself (formatDate keeps it in UTC), no hour on hover.
+  const exact = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? formatDate(value, locale)
+    : new Intl.DateTimeFormat(locale === "ar" ? "ar-EG" : "en-EG", { dateStyle: "medium", timeStyle: "short", numberingSystem: "latn", timeZone }).format(d);
+  return <time dateTime={d.toISOString()} title={exact} suppressHydrationWarning>{relative ? formatRelative(d, locale, now) : formatDate(typeof value === "string" ? value : d, locale, "latn", "medium", timeZone)}</time>;
 }

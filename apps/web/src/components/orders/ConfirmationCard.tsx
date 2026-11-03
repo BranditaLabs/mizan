@@ -7,7 +7,8 @@ import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button, ButtonGroup } from "@/components/ui/Button";
-import { ConfirmDialog } from "@/components/ui/Dialog";
+import { Dialog } from "@/components/ui/Dialog";
+import { Select } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -24,6 +25,7 @@ const OUT = new Set(["ask", "confirmed", "confirmed_offer", "offer_added", "offe
 const IN = new Set(["confirm", "change", "cancel", "reason", "keep", "note", "message", "location", "late", "ignored", "offer_yes", "offer_no", "opt_out", "opt_in"]);
 const OFFER_TONE: Record<string, BadgeTone> = { proposed: "info", accepted: "success", applying: "info", applied: "success", declined: "neutral", expired: "neutral", failed: "danger" };
 const CAN_ACT = new Set(["owner", "admin", "ops_manager", "agent"]);
+const CANCEL_REASONS = ["changed_mind", "ordered_by_mistake", "found_cheaper", "delivery_too_late", "other"] as const;
 
 /**
  * The order's confirmation (M2, E6-7, E6-10): where the cascade stands; the WhatsApp conversation
@@ -37,6 +39,9 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   const qc = useQueryClient();
   const toast = useToast();
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState<(typeof CANCEL_REASONS)[number] | "">("");
+  // Every cancel asks the customer's reason afresh: never a reason left from an earlier dialog.
+  const askCancel = () => { setCancelReason(""); setCancelOpen(true); };
   const allowed = CAN_ACT.has(store?.role ?? "");
   const key = ["orderConfirmation", user?.uid ?? "", store?.tenantId ?? "", orderId];
   const summary = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } } })), enabled: allowed, meta: { toast: false } });
@@ -44,7 +49,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
 
   const link = useMutation({ mutationFn: () => ok(api.POST("/v1/orders/{id}/confirmation/link", { params: { path: { id: orderId } } })), onSuccess: refresh });
   const answer = useMutation({
-    mutationFn: (a: "confirm" | "cancel") => ok(api.POST("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } }, body: { answer: a, byCall: true, ...(a === "cancel" ? { reason: "other" as const } : {}) } })),
+    mutationFn: (a: "confirm" | "cancel") => ok(api.POST("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } }, body: { answer: a, byCall: true, ...(a === "cancel" && cancelReason ? { reason: cancelReason } : {}) } })),
     onSuccess: (_r, a) => { setCancelOpen(false); toast({ message: t(a === "confirm" ? "confirmedToast" : "cancelledToast") }); refresh(); },
   });
   const offerDecision = useMutation({
@@ -154,7 +159,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
             <ButtonGroup>
               <Button size="sm" icon="confirm" busy={answer.isPending && answer.variables === "confirm"} onClick={() => answer.mutate("confirm")}>{t("calls.confirmed")}</Button>
               <Button size="sm" variant="secondary" icon="call" busy={noAnswer.isPending} onClick={() => noAnswer.mutate()}>{t("calls.noAnswer")}</Button>
-              <Button size="sm" variant="ghost" icon="close" onClick={() => setCancelOpen(true)}>{t("calls.cancelled")}</Button>
+              <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("calls.cancelled")}</Button>
             </ButtonGroup>
           </section>
         ) : null}
@@ -169,12 +174,22 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
         {unanswered && !calling ? (
           <ButtonGroup>
             <Button size="sm" variant="secondary" icon="confirm" busy={answer.isPending && answer.variables === "confirm"} onClick={() => answer.mutate("confirm")}>{t("markConfirmed")}</Button>
-            <Button size="sm" variant="ghost" icon="close" onClick={() => setCancelOpen(true)}>{t("markCancelled")}</Button>
+            <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("markCancelled")}</Button>
           </ButtonGroup>
         ) : null}
       </div>
-      <ConfirmDialog open={cancelOpen} onClose={() => setCancelOpen(false)} onConfirm={() => answer.mutate("cancel")} busy={answer.isPending}
-        title={t("cancelTitle")} description={t("cancelBody")} confirmLabel={t("markCancelled")} />
+      <Dialog open={cancelOpen} onClose={() => setCancelOpen(false)} title={t("cancelTitle")} description={t("cancelBody")}
+        footer={(
+          <>
+            <Button variant="secondary" onClick={() => setCancelOpen(false)} data-autofocus>{t("keepOrder")}</Button>
+            <Button variant="danger-solid" busy={answer.isPending} disabled={!cancelReason} onClick={() => answer.mutate("cancel")}>{t("markCancelled")}</Button>
+          </>
+        )}>
+        <Select label={t("cancelReasonLabel")} value={cancelReason} onChange={(e) => setCancelReason(e.target.value as (typeof CANCEL_REASONS)[number])} data-testid="cancel-reason">
+          <option value="" disabled>{t("cancelReasonPick")}</option>
+          {CANCEL_REASONS.map((r) => <option key={r} value={r}>{t(`cancelReason.${r}`)}</option>)}
+        </Select>
+      </Dialog>
     </Card>
   );
 }

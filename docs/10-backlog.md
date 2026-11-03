@@ -271,6 +271,34 @@ Two audiences (decided Oct 2026): **Mizan staff** (platform super-admin, separat
 - [x] **LINK-1** — every API route has a screen. Settings → Orders (duplicate window, `GET/PUT /v1/settings/orders`), Settings → Privacy (requests with due dates, the customer's data as JSON, `GET /v1/privacy-requests`, `/{id}/export`), shipment history on the shipping screen (`GET /v1/shipments/{id}/events`), "Try it" on order automations (`POST /v1/automations/{id}/test`, offered from `GET /v1/catalog`), "Recalculate profit" in Settings → Costs (`POST /v1/profit/recalculate`, 90 days), sync engine health and "Pick the city" on dead letters in Settings → Integrations (`GET /v1/admin/integrations/health`, new `GET /v1/admin/integrations/cities`, `POST …/cities/resolve`), pick lists in the dashboard (`/stock/picklists`: make, print by shelf, close), the dispute for ops managers (`GET /v1/disputes/{id}`), and Reports → All metrics (`GET /v1/metrics/catalogue`, `/values`). Reports follow the screen's language (`Accept-Language`) rather than only the profile's. Only `POST /v1/ops/sync` (the ops app) and `/health/ready` (infrastructure) stay without a screen.
 - [x] **A-8** — store admin area (team, settings, integrations, audit) ships with **E4** in `apps/web`, on the APIs already built (E1-5…E1-9, E2-5). ✅ Settings → Team (invite by phone or email, role, disable, remove, revoke, copy the link), Settings → Integrations (each connection with its state and reason, where to fix it, jobs that need a person with replay), Settings → Audit log (by family, Mizan staff marked, pages); AR/EN e2e. Settings → Store: name, time zone, customer-message language (`PATCH /v1/tenant`, audited); country and currency stay as signed up.
 
+### U · Screens and flows rebuild (from the UX audit, 3 Nov 2026)
+
+The audit of screens and flows (settings, stores, team and permissions, the daily flow, navigation) found 44 problems, 23 needing a rebuild; the full report with the proposed designs is the "Mizan Gap Audit" page. Built in this order:
+
+- [x] **U1** `S` Quick fixes. ✅ Media buyers reach ad spend and ROAS (they could be invited but reached nothing; a test now checks every role is named on a route); `GET /v1/members/assignable` so ops managers can assign orders (the bulk dialog was empty for them); taking access away asks first (disable, remove, change role with from → to, revoke an invitation); cancelling from a call asks the customer's reason (it always sent "other"); dates in the store's time zone (KSA and UAE saw Cairo time); switching store goes to the section's page (not another store's order) and says which store you are in.
+- [ ] **U2** `S` Load errors: `ErrorState` + `QueryBoundary` on the 33 screens that show "empty" or a skeleton forever when a request fails.
+- [ ] **U3** `M` Navigation registry (`lib/nav.ts`): a role-aware rail, a phone bottom bar with "More", ⌘K indexing every page, action and order/phone search.
+- [ ] **U4** `M` Settings rebuilt: `/settings` hub, grouped side nav (Account / Brand / This store), `SettingsTabs` removed; ad spend, inventory sync and results moved where they belong.
+- [ ] **U5** `M` One save pattern: `SettingsSection` + sticky `SaveBar` with a leave guard; copy and glossary pass.
+- [ ] **U6** `L` Permission catalogue in `@mizan/shared` + `@Can()` on the API + `useCan()` on the web; `/me` returns permissions; local role sets removed; CI role coverage.
+- [ ] **U7** `S` Disconnect a store (API + UI), rename a connection, every store's health in onboarding.
+- [ ] **U8** `L` Stores hub (`/stores`, add-store wizard, `/stores/[id]`) + one Connections area; raw dead letters and engine health move to the back office.
+- [ ] **U9** `M` Brand switcher popover, in-app "new brand", ask which brand on a Shopify install; "البراند" vs "متجر" wording.
+- [ ] **U10** `M` Filter by store on orders, home, profit, reports, products.
+- [ ] **U11** `M` Invitations rebuilt: send by WhatsApp or SMS, a real invitation page, resend.
+- [ ] **U12** `M` Employee drawer: access, open work (reassign on disable), activity by person.
+- [ ] **U13** `M` Today inbox per role (`GET /v1/inbox`) + counts on the rail.
+- [ ] **U14** `M` Order page: stage stepper and a next-step bar.
+- [ ] **U15** `M` Call queue: auto-advance, phone on claim, supervisor view.
+- [ ] **U16** `L` Fulfil screen: pack on the web, pack before ship, courier choice, manifest.
+- [ ] **U17** `M` Failed-attempts and returns queues; the automation actions they need.
+- [ ] **U18** `L` Ops app sign-in (E8-4b) with a store picker; device pairing and PIN.
+- [ ] **U19** `L` Courier settlements (M8): statements, matching, cash for store orders.
+- [ ] **U20** `L` Accounts above brands: one team across brands, invite once.
+- [ ] **U21** `M` Access limited to a warehouse or channel; personal account pages.
+- [ ] **U22** `L` One product across stores (match by SKU or barcode).
+- [ ] **U23** `M` DataTable v2 (server sort, phone cards, density) and a contrast test for glass surfaces.
+
 ### E13 · Launch readiness
 
 - [ ] **E13-1** Production Terraform, `deploy-prod.yml`, backups + restore drill. 🚧 **Done:** `envs/production.tfvars` (zone-redundant HA, warm replicas in Azure UAE North), `deploy-prod.yml` on `v*` tags with environment approval, the deployer restricted to the environment resource group, and the restore runbook. **Left:** private VNet integration for PostgreSQL, the first drill on staging.
