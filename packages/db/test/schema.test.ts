@@ -517,6 +517,23 @@ describe("schema", () => {
     expect((await asTenant(T2, () => db.query(`SELECT * FROM order_edits`))).rows).toEqual([]);
   });
 
+  it("keeps uploaded pictures per store, their bytes here or in Blob, and products' publishing state (0066, P3)", async () => {
+    const media = (key: string, storage: string, data: Buffer | null) => asTenant(T1, () => db.query<{ id: string }>(
+      `INSERT INTO media_objects (tenant_id, key, content_type, bytes, storage, data) VALUES ($1, $2, 'image/webp', 10, $3, $4) RETURNING id`, [T1, key, storage, data]));
+    const m = (await media("p/x/a.webp", "db", Buffer.from("webp"))).rows[0]!.id;
+    await media("p/x/b.webp", "blob", null);
+    await expect(media("p/x/c.webp", "db", null)).rejects.toThrow(/check/); // bytes here, or a blob: never neither
+    await expect(media("p/x/a.webp", "db", Buffer.from("x"))).rejects.toThrow(/duplicate|unique/);
+    await expect(media("../etc/passwd", "db", Buffer.from("x"))).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM media_objects`))).rows).toEqual([]);
+
+    const product = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Kaftan') RETURNING id`, [T1]))).rows[0]!.id;
+    const pic = (url: string, mediaId: string | null) => asTenant(T1, () => db.query(`INSERT INTO product_images (tenant_id, product_id, url, position, media_id) VALUES ($1, $2, $3, 0, $4)`, [T1, product, url, mediaId]));
+    await pic("http://localhost:8080/media/t/p/x/a.webp", m); // served by the API in development
+    await expect(pic("http://cdn.example/a.jpg", null)).rejects.toThrow(/check/); // a store's picture stays https
+    await expect(asTenant(T1, () => db.query(`UPDATE products SET publish_status = 'sent' WHERE id = $1`, [product]))).rejects.toThrow(/check/);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

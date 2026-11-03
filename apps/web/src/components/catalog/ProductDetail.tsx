@@ -19,6 +19,7 @@ import { useSession } from "@/lib/session";
 import { ProductImage } from "./ProductImage";
 import { EditVariant } from "./Products";
 import { EditProduct, PRODUCT_EDITORS } from "./EditProduct";
+import { PicturesCard, PublishCard } from "./MizanProductCards";
 
 type Product = Schemas["ProductDetail"];
 type Variant = Product["variants"][number];
@@ -45,6 +46,8 @@ export function ProductDetail({ id }: { id: string }) {
     queryFn: () => ok(api.GET("/v1/products/{id}", { params: { path: { id } } })),
     enabled: Boolean(store),
     meta: { toast: false },
+    // While a product made in Mizan is on its way to a store (P3).
+    refetchInterval: (q) => (q.state.data?.publish?.status === "publishing" ? 3000 : false),
   });
 
   const back = (
@@ -182,6 +185,12 @@ export function ProductDetail({ id }: { id: string }) {
           empty={<EmptyState icon="product" title={t("detail.noVariants")} body="" />} />
       </Card>
       <p className="text-caption text-text-3">{t("ownership")}</p>
+      {p.store ? null : (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <PicturesCard product={p} />
+          <PublishCard product={p} />
+        </div>
+      )}
       {editingProduct ? <EditProduct product={p} onClose={() => setEditingProduct(false)} /> : null}
       {editing ? <EditVariant row={{ product: { title: p.title }, variant: editing }} onClose={() => setEditing(null)} /> : null}
     </Page>

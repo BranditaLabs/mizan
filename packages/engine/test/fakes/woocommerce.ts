@@ -68,6 +68,9 @@ export class FakeWooCommerce {
   /** P2: the store's product tags (id → name); "abaya" is every new product's. */
   readonly tagNames = new Map<number, string>([[1, "abaya"]]);
   tagCreates = 0;
+  /** P3: products and variation batches created. */
+  productCreates = 0;
+  variationBatches = 0;
   webhooks = new Map<number, { id: number; topic: string; delivery_url: string; status: string; secret: string }>();
   calls: Array<{ method: string; path: string }> = [];
   faults: Array<{ path?: string; fault: Fault }> = [];
@@ -316,9 +319,52 @@ export class FakeWooCommerce {
       const perPage = Math.min(100, Number(url.searchParams.get("per_page") ?? 10));
       const page = Number(url.searchParams.get("page") ?? 1);
       const since = after ? Date.parse(`${after}Z`) : -Infinity;
-      const all = [...this.products.values()].filter((p) => Date.parse(`${p.date_modified_gmt}Z`) > since)
+      const slug = url.searchParams.get("slug");
+      const all = [...this.products.values()].filter((p) => Date.parse(`${p.date_modified_gmt}Z`) > since && (!slug || p.slug === slug))
         .sort((a, b) => a.date_modified_gmt.localeCompare(b.date_modified_gmt) || a.id - b.id);
       return json(200, all.slice((page - 1) * perPage, page * perPage), { "x-wp-totalpages": String(Math.max(1, Math.ceil(all.length / perPage))) });
+    }
+    if (method === "POST" && path === "/products") {
+      // P3: a product made in Mizan. Like WooCommerce: a slug already taken gets a suffix; pictures are downloaded from src.
+      const id = ++this.seq;
+      const now = this.stamp();
+      let slug = String(body.slug ?? `product-${id}`);
+      while ([...this.products.values()].some((x) => x.slug === slug)) slug = `${slug}-2`;
+      const product: WooProduct = {
+        id, name: String(body.name ?? ""), type: body.type === "variable" ? "variable" : "simple", status: String(body.status ?? "publish"), sku: String(body.sku ?? ""), global_unique_id: String(body.global_unique_id ?? ""),
+        price: String(body.sale_price || body.regular_price || ""), regular_price: String(body.regular_price ?? ""), sale_price: String(body.sale_price ?? ""), manage_stock: false, stock_quantity: null,
+        date_modified: now, date_modified_gmt: now, description: String(body.description ?? ""),
+        tags: ((body.tags ?? []) as Array<{ id?: number }>).filter((t) => t.id && this.tagNames.has(Number(t.id))).map((t) => ({ id: Number(t.id), name: this.tagNames.get(Number(t.id))! })),
+        categories: [], variations: [], slug,
+        images: ((body.images ?? []) as Array<{ src: string; alt?: string }>).map((im, i) => ({ id: 7000 + id * 10 + i, src: im.src, alt: im.alt ?? "", name: `image-${i + 1}` })),
+        attributes: ((body.attributes ?? []) as Array<{ name: string; options: string[]; variation?: boolean; visible?: boolean }>).map((a, i) => ({ id: i + 1, name: a.name, options: a.options, variation: a.variation !== false, visible: a.visible !== false })),
+      };
+      this.products.set(id, product);
+      if (product.type === "variable") this.variationsOf.set(id, []);
+      this.productCreates++;
+      return json(201, product);
+    }
+    if (method === "POST" && (m = path.match(/^\/products\/(\d+)\/variations\/batch$/))) {
+      const pid = Number(m[1]);
+      const p = this.products.get(pid);
+      if (!p) return json(404, { code: "woocommerce_rest_product_invalid_id", message: "Invalid ID.", data: { status: 404 } });
+      const list = this.variationsOf.get(pid) ?? [];
+      const taken = (sku: string) => sku && ([...this.products.values()].some((x) => x.sku === sku) || [...this.variationsOf.values()].some((vs) => vs.some((v) => v.sku === sku)));
+      const made = ((body.create ?? []) as Array<{ sku?: string; regular_price?: string; sale_price?: string; global_unique_id?: string; attributes: Array<{ name: string; option: string }> }>).map((x) => {
+        // Like WooCommerce: an item refused is an error in the 200 answer, the others are made.
+        if (taken(String(x.sku ?? ""))) return { id: 0, error: { code: "product_invalid_sku", message: "Invalid or duplicated SKU.", data: { status: 400 } } };
+        const v: WooVariation = {
+          id: ++this.seq, sku: String(x.sku ?? ""), global_unique_id: String(x.global_unique_id ?? ""), price: String(x.sale_price || x.regular_price || ""), regular_price: String(x.regular_price ?? ""), sale_price: String(x.sale_price ?? ""),
+          manage_stock: false, stock_quantity: null, attributes: x.attributes.map((a) => ({ name: a.name, option: a.option })), status: "publish", image: null,
+        };
+        list.push(v);
+        p.variations.push(v.id);
+        return v;
+      });
+      this.variationsOf.set(pid, list);
+      this.variationBatches++;
+      p.date_modified = p.date_modified_gmt = this.stamp();
+      return json(200, { create: made });
     }
     if (method === "PUT" && (m = path.match(/^\/orders\/(\d+)$/))) {
       const o = this.orders.get(Number(m[1]));

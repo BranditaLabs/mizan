@@ -21,7 +21,7 @@ const AMOUNT = /^\d{1,9}(\.\d{1,3})?$/;
 /** An amount as typed, in Western digits with a dot (٩٩٠٫٥ → 990.5). */
 const decimal = (v: string) => toAsciiDigits(v).replace(/٫/g, ".").trim();
 /** Why the API refused an edit, in the person's language. */
-const EDIT_ERRORS = new Set(["field_not_in_store", "images_mismatch", "images_not_in_store", "compare_at_low", "unknown_variant", "price_decimals"]);
+const EDIT_ERRORS = new Set(["publishing", "field_not_in_store", "images_mismatch", "images_not_in_store", "compare_at_low", "unknown_variant", "price_decimals"]);
 
 interface PriceRow { id: string; label: string; price: string; compareAt: string; was: { price: string; compareAt: string } }
 

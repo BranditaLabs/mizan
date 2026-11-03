@@ -18,6 +18,8 @@ const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace", "silent"
 export const SHOPIFY_DEFAULT_SCOPES = [
   "read_orders", "write_orders", "write_order_edits", "read_products", "write_products", "read_inventory", "write_inventory",
   "read_merchant_managed_fulfillment_orders", "write_merchant_managed_fulfillment_orders", "read_customers",
+  // P3: a product published from Mizan goes on the Online Store.
+  "read_publications", "write_publications",
 ].join(",");
 
 const url = z.url({ protocol: /^https?$/, error: "must be an http(s) URL" });
@@ -112,6 +114,12 @@ export const ConfigSchema = z.object({
   AZURE_CLIENT_ID: optionalString,
   // Development only: base64 of 32 random bytes (openssl rand -base64 32). Unset = ephemeral key.
   SECRETS_DEV_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
+
+  // Product pictures (P3): the Blob Storage container, e.g. https://mizanstagingmedia.blob.core.windows.net/media,
+  // written and read with the managed identity (AZURE_CLIENT_ID). Unset: pictures are kept in the database.
+  MEDIA_BLOB_URL: z.url({ protocol: /^https$/, error: "must be an https URL of a Blob container" }).regex(/^https:\/\/[a-z0-9]{3,24}\.blob\.core\.windows\.net\/[a-z0-9-]{3,63}$/, "must look like https://<account>.blob.core.windows.net/<container>").optional(),
+  /** The largest picture a person may upload (P3). */
+  MEDIA_MAX_BYTES: z.coerce.number().int().min(100_000).max(20 * 1024 * 1024).default(10 * 1024 * 1024),
 
   // Shopify app (E3)
   SHOPIFY_API_VERSION: z.string().regex(/^\d{4}-\d{2}$/, "must look like 2026-10").default("2026-10"),

@@ -34,6 +34,9 @@ export class ConnectionLifecycle {
       const by = { actor: { type: "system" as const } };
       if (c.secret_ref) await this.secrets.delete(trx, tenantId, c.secret_ref, by);
       const dropped = await trx.deleteFrom("mz_outbox").where("connection_id", "=", connectionId).where("status", "in", ["pending", "running"]).executeTakeFirst();
+      // Products made in Mizan on their way to this store (P3): their job went with it.
+      await trx.updateTable("products").set({ publish_status: "failed", publish_error: "the store disconnected Mizan before it had the product" })
+        .where("publish_connection_id", "=", connectionId).where("publish_status", "=", "publishing").execute();
       const entity = { type: "connection", id: connectionId };
       await this.audit.record(trx, { action: "connection.disconnected", tenantId, entity, before: { status: c.status }, after: { status: "disconnected", reason, jobsDropped: Number(dropped.numDeletedRows) }, ...by });
       await this.events.emit(trx, { type: "connection.disconnected", tenantId, entity, data: { provider: c.provider, reason }, actor: null });

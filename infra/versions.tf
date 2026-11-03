@@ -23,4 +23,6 @@ terraform {
 provider "azurerm" {
   features {}
   subscription_id = var.subscription_id != "" ? var.subscription_id : null
+  # P3: the media account has no shared keys; the provider reaches storage with Entra ID.
+  storage_use_azuread = true
 }

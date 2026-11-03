@@ -55,6 +55,29 @@ export async function hardenHttp(app: NestFastifyApplication, config: AppConfig)
   // rejection of an odd content type); the API takes JSON and forms within its own limit.
   fastify.removeAllContentTypeParsers();
   const limitFor = (url: string) => (isWebhook(url) ? config.WEBHOOK_MAX_BODY_BYTES : config.MAX_BODY_BYTES);
+  // A picture (P3): read as it streams in, stopped at the route's limit — the larger one only for an
+  // upload, so no other route (an anonymous one least of all) buffers a picture-sized body.
+  fastify.addContentTypeParser(["image/jpeg", "image/png", "image/webp"], (req, payload, done) => {
+    const upload = req.method === "POST" && isPictureUpload(req.url);
+    const limit = upload ? config.MEDIA_MAX_BYTES : config.MAX_BODY_BYTES;
+    const chunks: Buffer[] = [];
+    let size = 0;
+    let over = false;
+    payload.on("data", (c: Buffer) => {
+      if (over) return;
+      size += c.length;
+      if (size > limit) {
+        over = true;
+        chunks.length = 0;
+        done(new ProblemError(413, "payload_too_large", `the body is larger than ${limit} bytes`), undefined);
+        payload.resume(); // drain the rest without keeping it
+        return;
+      }
+      chunks.push(c);
+    });
+    payload.on("end", () => { if (!over) done(null, upload ? Buffer.concat(chunks) : undefined); });
+    payload.on("error", (e: Error) => { if (!over) { over = true; done(e, undefined); } });
+  });
   fastify.addContentTypeParser("*", { parseAs: "buffer", bodyLimit: Math.max(config.WEBHOOK_MAX_BODY_BYTES, config.MAX_BODY_BYTES) }, (req, body, done) => {
     const buf = body as Buffer;
     if (buf.length > limitFor(req.url)) return done(new ProblemError(413, "payload_too_large", `the body is larger than ${limitFor(req.url)} bytes`), undefined);
@@ -83,4 +106,9 @@ export function tuneServer(server: Server): void {
   server.keepAliveTimeout = 620_000;
   server.headersTimeout = 625_000;
   server.requestTimeout = 60_000;
+}
+
+/** POST /v1/products/{id}/images: the picture's bytes, as uploaded (P3). */
+function isPictureUpload(url: string): boolean {
+  return /^\/v1\/products\/[0-9a-f-]{36}\/images\/?(\?|$)/i.test(url);
 }

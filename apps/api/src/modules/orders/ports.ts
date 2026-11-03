@@ -7,6 +7,12 @@ import type { ShippingService } from "../shipping/shipping.service.js";
  */
 /** Where a store cancellation's outcome goes (E5-4: the bulk actions service), resolved lazily by the engine registry. */
 export const CANCEL_RESULTS = Symbol("CANCEL_RESULTS");
+/** Products made in Mizan (P3): the engine reads one when its publish job runs and reports the store's answer. */
+export const PRODUCT_PUBLISH = Symbol("PRODUCT_PUBLISH");
+export interface ProductPublishSink {
+  loadDraft(tenantId: string, productId: string): Promise<import("@mizan/engine").ProductDraft | undefined>;
+  recordPublished(tenantId: string, productId: string, result: import("@mizan/engine").ProductPublishOutcome): Promise<void>;
+}
 /** Order edits (O3): the engine reads an edit when its job runs and reports the store's answer. */
 export const ORDER_EDITS = Symbol("ORDER_EDITS");
 export interface OrderEditSink {

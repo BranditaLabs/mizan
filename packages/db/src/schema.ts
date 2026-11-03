@@ -474,6 +474,19 @@ export interface Listings {
   synced_at: Timestamp | null;
 }
 
+export interface MediaObjects {
+  id: Generated<string>;
+  tenant_id: string;
+  key: string;
+  content_type: string;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  storage: string;
+  data: Buffer | null;
+  created_at: Generated<Timestamp>;
+}
+
 export interface Memberships {
   tenant_id: string;
   user_id: string;
@@ -925,6 +938,8 @@ export interface ProductImages {
   is_main: Generated<boolean>;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  media_id: string | null;
+  thumb_url: string | null;
 }
 
 export interface Products {
@@ -943,6 +958,11 @@ export interface Products {
   product_type: string | null;
   tags: Generated<ArrayType<string>>;
   options: Generated<Json>;
+  publish_connection_id: string | null;
+  publish_status: string | null;
+  publish_error: string | null;
+  publish_attempts: Generated<number>;
+  publish_online_store: boolean | null;
 }
 
 export interface PurchaseOrderLines {
@@ -1466,6 +1486,7 @@ export interface DB {
   landed_costs: LandedCosts;
   legal_acceptances: LegalAcceptances;
   listings: Listings;
+  media_objects: MediaObjects;
   memberships: Memberships;
   messages: Messages;
   mz_inbound_events: MzInboundEvents;

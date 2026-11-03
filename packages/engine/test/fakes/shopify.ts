@@ -76,6 +76,12 @@ export class FakeShopify {
   }>();
   /** P2: productReorderMedia calls applied. */
   mediaReorders = 0;
+  /** P3: the shop's sales channels, and which products are on which. */
+  readonly publications = [{ id: "gid://shopify/Publication/1", name: "Online Store" }, { id: "gid://shopify/Publication/2", name: "Point of Sale" }];
+  readonly publishedTo = new Map<string, Set<string>>();
+  /** P3: products and variant batches created. */
+  creates = 0;
+  variantCreates = 0;
   /** O3: address updates (orderUpdate) and quantity changes committed. */
   addressUpdates = 0;
   committedEdits = 0;
@@ -441,6 +447,14 @@ export class FakeShopify {
     return null;
   }
 
+  /** P3: a product as productCreate and productByIdentifier return it. */
+  private created(p: Product) {
+    return {
+      id: p.id, variants: { nodes: p.variants.map((x) => ({ id: x.id, sku: x.sku || null, selectedOptions: x.options ?? [{ name: "Title", value: "Default Title" }] })) },
+      media: { nodes: p.media.map((m) => ({ id: m.id })) },
+    };
+  }
+
   private gqlOrder(o: Order) {
     const m = (a: string) => ({ shopMoney: { amount: a, currencyCode: "EGP" } });
     return {
@@ -523,6 +537,60 @@ export class FakeShopify {
         this.mediaReorders++;
         return { productReorderMedia: { job: { id: this.nextId("Job") }, mediaUserErrors: [] } };
       }
+      case "MizanPublications":
+        return { publications: { nodes: this.publications.map((p) => ({ id: p.id, name: p.name, catalog: { title: p.name } })) } };
+      case "MizanPublishablePublish": {
+        const p = this.products.get(v.id);
+        if (!p) return { publishablePublish: { userErrors: [{ field: ["id"], message: "Product does not exist" }] } };
+        for (const i of v.input as Array<{ publicationId: string }>) {
+          if (!this.publications.some((x) => x.id === i.publicationId)) return { publishablePublish: { userErrors: [{ field: ["input"], message: "Publication does not exist" }] } };
+          (this.publishedTo.get(p.id) ?? this.publishedTo.set(p.id, new Set()).get(p.id)!).add(i.publicationId);
+        }
+        return { publishablePublish: { userErrors: [] } };
+      }
+      case "MizanShopCurrency":
+        return { shop: { currencyCode: this.currency } };
+      case "MizanProductByHandle": {
+        const p = [...this.products.values()].find((x) => x.handle === v.handle);
+        return { product: p ? this.created(p) : null };
+      }
+      case "MizanProductCreate": {
+        const input = v.product;
+        if ([...this.products.values()].some((x) => x.handle === input.handle)) {
+          return { productCreate: { product: null, userErrors: [{ field: ["handle"], message: "Handle has already been taken" }] } };
+        }
+        const id = this.nextId("Product");
+        const options = (input.productOptions ?? []) as Array<{ name: string; values: Array<{ name: string }> }>;
+        // Like Shopify: one variant, of the first value of each option (or "Default Title"), without a SKU.
+        const first = options.map((o) => ({ name: o.name, value: o.values[0]!.name }));
+        const itemId = this.nextId("InventoryItem");
+        const media = ((v.media ?? []) as Array<{ originalSource: string; alt?: string }>).map((m) => ({ id: this.nextId("MediaImage"), url: m.originalSource, alt: m.alt ?? null, width: 1600, height: 1600 }));
+        this.products.set(id, {
+          id, title: input.title, handle: input.handle, status: input.status ?? "ACTIVE", vendor: input.vendor ?? "", productType: input.productType ?? "", tags: input.tags ?? [],
+          descriptionHtml: input.descriptionHtml ?? "", updatedAt: this.touch(), media, featuredMediaId: media[0]?.id ?? null,
+          options: options.length ? options.map((o) => ({ name: o.name, values: o.values.map((x) => x.name) })) : [{ name: "Title", values: ["Default Title"] }],
+          variants: [{ id: this.nextId("ProductVariant"), sku: "", barcode: null, title: first.map((f) => f.value).join(" / ") || "Default Title", price: "0.00", compareAtPrice: null, inventoryItemId: itemId, ...(first.length ? { options: first } : {}) }],
+        });
+        this.creates++;
+        return { productCreate: { product: this.created(this.products.get(id)!), userErrors: [] } };
+      }
+      case "MizanVariantsCreate": {
+        const p = this.products.get(v.productId);
+        if (!p) return { productVariantsBulkCreate: { productVariants: null, userErrors: [{ field: ["productId"], message: "Product does not exist" }] } };
+        const made = (v.variants as Array<{ price: string; compareAtPrice?: string; barcode?: string; inventoryItem?: { sku?: string }; optionValues: Array<{ optionName: string; name: string }> }>).map((x) => {
+          const opts = x.optionValues.map((o) => ({ name: o.optionName, value: o.name }));
+          return { id: this.nextId("ProductVariant"), sku: x.inventoryItem?.sku ?? "", barcode: x.barcode ?? null, title: opts.map((o) => o.value).join(" / "), price: String(x.price), compareAtPrice: x.compareAtPrice ?? null, inventoryItemId: this.nextId("InventoryItem"), options: opts };
+        });
+        const key = (o: Array<{ name: string; value: string }>) => o.map((x) => `${x.name}=${x.value}`).join("|");
+        const kept = v.strategy === "REMOVE_STANDALONE_VARIANT" ? [] : p.variants;
+        if (made.some((m) => kept.some((k) => key(k.options ?? []) === key(m.options)))) {
+          return { productVariantsBulkCreate: { productVariants: null, userErrors: [{ field: ["variants"], message: "The variant already exists" }] } };
+        }
+        p.variants = [...kept, ...made];
+        p.updatedAt = this.touch();
+        this.variantCreates++;
+        return { productVariantsBulkCreate: { productVariants: made.map((m) => ({ id: m.id, sku: m.sku, selectedOptions: m.options })), userErrors: [] } };
+      }
       case "MizanVariantsUpdate": {
         const p = this.products.get(v.productId);
         if (!p) return { productVariantsBulkUpdate: { productVariants: null, userErrors: [{ field: ["productId"], message: "Product does not exist" }] } };
@@ -531,6 +599,8 @@ export class FakeShopify {
           if (!variant) return { productVariantsBulkUpdate: { productVariants: null, userErrors: [{ field: ["variants", "id"], message: "Variant does not exist" }] } };
           if (upd.price !== undefined) variant.price = String(upd.price);
           if (upd.compareAtPrice !== undefined) variant.compareAtPrice = upd.compareAtPrice;
+          if (upd.inventoryItem?.sku !== undefined) variant.sku = String(upd.inventoryItem.sku);
+          if (upd.barcode !== undefined) variant.barcode = upd.barcode;
         }
         p.updatedAt = this.touch();
         return { productVariantsBulkUpdate: { productVariants: p.variants.map((x) => ({ id: x.id, price: x.price, compareAtPrice: x.compareAtPrice })), userErrors: [] } };

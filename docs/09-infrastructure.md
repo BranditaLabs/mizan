@@ -24,7 +24,7 @@ Each environment uses a separate Azure subscription and resource group (`rg-miza
 | Secrets | Azure Key Vault (RBAC) | Generated application secrets; per-secret access for runtime identities |
 | Merchant credentials | Azure Key Vault RSA 3072 key (`tenant-secrets`) | API identity can wrap/unwrap data keys |
 | Images | Azure Container Registry (Basic) | Admin user disabled; runtime identities have AcrPull |
-| Files | Azure Blob Storage (not provisioned by this Terraform yet) | Signed URLs and lifecycle rules when file storage is implemented |
+| Product pictures | Azure Blob Storage (`infra/media.tf`, ✅ P3) | One account per environment (LRS staging, ZRS production), private container `media`, no account keys or SAS (Entra only); the API identity is Storage Blob Data Contributor. The API writes and reads with its managed identity and serves the pictures itself at `/media/<tenant>/<key>` (public, cached a year). The provider runs with `storage_use_azuread = true` and the deploying principal gets Storage Blob Data Contributor on the account (shared keys are off). `MEDIA_BLOB_URL` points the API at it; unset (development, tests, before the first apply), pictures are kept in Postgres. 7-day soft delete |
 | Logs and metrics | Azure Monitor + Log Analytics | PII redaction remains in the application logger |
 | Errors | Sentry (or Error Reporting) | Scrub PII |
 

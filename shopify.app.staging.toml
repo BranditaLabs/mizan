@@ -16,7 +16,7 @@ embedded = false
 # Shopify-managed install: Shopify's own install link shows these scopes and installs the app, then
 # opens application_url; Mizan's OAuth there gets the token without a second approval. With the legacy
 # flow, Shopify's install link fails ("failed_grant_with_invalid_scopes", seen 2 Nov 2026).
-scopes = "read_orders,write_orders,write_order_edits,read_products,write_products,read_inventory,write_inventory,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_customers"
+scopes = "read_orders,write_orders,write_order_edits,read_products,write_products,read_inventory,write_inventory,read_merchant_managed_fulfillment_orders,write_merchant_managed_fulfillment_orders,read_customers,read_publications,write_publications"
 use_legacy_install_flow = false
 
 [auth]

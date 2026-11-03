@@ -189,6 +189,13 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
   const tags = Array.isArray(tagsRaw) ? tagsRaw.map(String) : typeof tagsRaw === "string" ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [];
   // Prices are in the shop's currency; without it the platform falls back to the store's base currency.
   const currency = r.str("currency", ["priceRangeV2.minVariantPrice.currencyCode"]) ?? "";
+  // A picture Shopify is still processing (just created) has no URL yet: until all have one, the
+  // product says nothing about its pictures, so the ones Mizan holds are kept (P3).
+  const processing = r.arr("images", ["media.nodes", "images.nodes", "images"]).some((m) => {
+    const mr = r.child(m, "product.media");
+    const type = mr.str("type", ["mediaContentType"]);
+    return (!type || type === "IMAGE") && !mr.str("url", ["image.url", "src", "url"]);
+  });
   const images = r.arr("images", ["media.nodes", "images.nodes", "images"]).flatMap((m) => {
     const mr = r.child(m, "product.media");
     const url = mr.str("url", ["image.url", "src", "url"]);
@@ -210,7 +217,7 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
     title: r.str("title", ["title"]) ?? "",
     ...(handle ? { handle } : {}),
     // An empty list when the store has no pictures (they were removed); nothing when the answer had no picture field.
-    ...(r.any("media", ["media", "images"]) !== undefined ? { images } : {}),
+    ...(r.any("media", ["media", "images"]) !== undefined && !processing ? { images } : {}),
     ...(mainImageId && images.some((i) => i.externalId === mainImageId) ? { mainImageId } : {}),
     ...(options.length ? { options } : {}),
     status: status === "active" || status === "draft" || status === "archived" ? status : "unknown",

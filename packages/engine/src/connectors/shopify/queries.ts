@@ -395,3 +395,63 @@ export const WEBHOOK_DELETE: GqlOperation = {
     }`,
   ],
 };
+
+/**
+ * P3: publishing a product made in Mizan. Found first by its handle (a direct read, not the search
+ * index, which lags behind a create), then created with its options and pictures (Shopify fetches
+ * each picture from its public URL), then its variants.
+ */
+const CREATED = `id variants(first: 250) { nodes { id sku selectedOptions { name value } } } media(first: 50) { nodes { id } }`;
+export const PRODUCT_BY_HANDLE: GqlOperation = {
+  name: "MizanProductByHandle",
+  cost: 20,
+  variants: [
+    `query MizanProductByHandle($handle: String!) { product: productByIdentifier(identifier: { handle: $handle }) { ${CREATED} } }`,
+    `query MizanProductByHandle($handle: String!) { product: productByHandle(handle: $handle) { ${CREATED} } }`,
+  ],
+};
+
+export const PRODUCT_CREATE: GqlOperation = {
+  name: "MizanProductCreate",
+  cost: 20,
+  variants: [
+    `mutation MizanProductCreate($product: ProductCreateInput!, $media: [CreateMediaInput!]) {
+      productCreate(product: $product, media: $media) { product { ${CREATED} } userErrors { field message } }
+    }`,
+  ],
+};
+
+export const VARIANTS_CREATE: GqlOperation = {
+  name: "MizanVariantsCreate",
+  cost: 20,
+  variants: [
+    `mutation MizanVariantsCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $strategy: ProductVariantsBulkCreateStrategy) {
+      productVariantsBulkCreate(productId: $productId, variants: $variants, strategy: $strategy) { productVariants { id sku selectedOptions { name value } } userErrors { field message } }
+    }`,
+  ],
+};
+
+/** P3: the shop's currency, so a product priced in another one is not published at the wrong prices. */
+export const SHOP_CURRENCY: GqlOperation = {
+  name: "MizanShopCurrency",
+  cost: 1,
+  variants: [`query MizanShopCurrency { shop { currencyCode } }`],
+};
+
+/** P3: the shop's sales channels, to put a published product on the Online Store (read_publications). */
+export const PUBLICATIONS: GqlOperation = {
+  name: "MizanPublications",
+  cost: 5,
+  variants: [`query MizanPublications { publications(first: 50) { nodes { id name catalog { title } } } }`],
+};
+
+/** Safe to repeat: a product already on the channel stays on it (write_publications). */
+export const PUBLISHABLE_PUBLISH: GqlOperation = {
+  name: "MizanPublishablePublish",
+  cost: 10,
+  variants: [
+    `mutation MizanPublishablePublish($id: ID!, $input: [PublicationInput!]!) {
+      publishablePublish(id: $id, input: $input) { userErrors { field message } }
+    }`,
+  ],
+};

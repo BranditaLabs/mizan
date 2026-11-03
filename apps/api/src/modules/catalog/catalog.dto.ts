@@ -62,7 +62,8 @@ export const CatalogVariantSchema = z.object({
 
 export const ProductImageSchema = z.object({
   id: z.uuid(),
-  url: z.url().describe("The store's CDN address (https)"),
+  url: z.url().describe("The store's CDN address, or Mizan's for a picture uploaded here (P3)"),
+  thumbUrl: z.url().nullable().describe("A 400 px copy, for pictures uploaded to Mizan (P3)"),
   alt: z.string().nullable(),
   width: z.number().int().nullable(),
   height: z.number().int().nullable(),
@@ -90,6 +91,12 @@ export const ProductDetailSchema = CatalogProductSchema.omit({ mainImage: true, 
   description: z.string().describe("The store's description as plain text (paragraphs on new lines); never HTML"),
   images: z.array(ProductImageSchema).describe("In the store's order; one isMain"),
   storeUrl: z.url().nullable().describe("Where to edit it in the store's admin"),
+  publish: z.object({
+    status: z.enum(["publishing", "published", "failed"]),
+    connectionId: z.uuid().nullable(),
+    error: z.string().nullable().describe("The store's words when it refused the product"),
+    onlineStore: z.boolean().nullable().describe("Shopify: on the Online Store once published (false: a draft, or the store has not approved the permission yet)"),
+  }).nullable().describe("A product made in Mizan, on its way to a store (P3); null for a store's product or one never published"),
   updatedAt: z.iso.datetime(),
   totals: z.object({
     variants: z.number().int(),
@@ -145,3 +152,30 @@ export const ProductUpdateSchema = z.strictObject({
     compareAtPrice: PriceAmount.nullable().optional().describe("Higher than the price: shown struck through; null removes it"),
   })).max(250).optional(),
 }).refine((b) => Object.values(b).some((v) => v !== undefined), { message: "change something" });
+
+// ───────────── P3: products made in Mizan ─────────────
+
+const Name = z.string().trim().min(1).max(60);
+const Sku = z.string().trim().regex(/^[\x21-\x7E]{1,64}$/, "letters, digits and symbols, no spaces, up to 64");
+export const NewProductSchema = z.strictObject({
+  title: z.string().trim().min(1).max(255),
+  description: z.string().max(20000).optional().describe("Plain text: paragraphs by blank lines"),
+  status: z.enum(["active", "draft", "archived"]).default("draft"),
+  vendor: z.string().trim().max(255).optional(),
+  productType: z.string().trim().max(255).optional(),
+  tags: z.array(z.string().trim().min(1).max(255)).max(50).default([]),
+  options: z.array(z.strictObject({ name: Name, values: z.array(Name).min(1).max(100) })).max(3).default([])
+    .describe("Up to three options (Size, Color…) and their values, in order"),
+  variants: z.array(z.strictObject({
+    options: z.array(z.strictObject({ name: Name, value: Name })).max(3).default([]).describe("One value of each option; none without options"),
+    sku: Sku,
+    price: PriceAmount,
+    compareAtPrice: PriceAmount.optional(),
+    barcode: z.string().trim().regex(/^[\x21-\x7E]{1,64}$/).optional(),
+    cost: PriceAmount.optional().describe("What one piece costs (profit)"),
+  })).min(1).max(100).describe("A product without options has exactly one"),
+});
+export const ProductCreatedSchema = z.object({ id: z.uuid() });
+export const PublishProductSchema = z.strictObject({ connectionId: z.uuid().describe("A connected Shopify or WooCommerce store") });
+export const PublishStartedSchema = z.object({ status: z.literal("publishing") });
+

@@ -27,7 +27,7 @@ export async function createApp(config: AppConfig, options: AppOptions = {}): Pr
   httpMetrics(app.getHttpAdapter().getInstance(), app.get(MetricsService));
   await hardenHttp(app, config);
   app.useLogger(app.get(Logger));
-  app.setGlobalPrefix("v1", { exclude: [{ path: "health", method: RequestMethod.GET }, { path: "health/ready", method: RequestMethod.GET }, { path: "webhooks/*path", method: RequestMethod.POST }, { path: "webhooks/*path", method: RequestMethod.GET }, { path: "metrics", method: RequestMethod.GET }] });
+  app.setGlobalPrefix("v1", { exclude: [{ path: "health", method: RequestMethod.GET }, { path: "health/ready", method: RequestMethod.GET }, { path: "webhooks/*path", method: RequestMethod.POST }, { path: "webhooks/*path", method: RequestMethod.GET }, { path: "metrics", method: RequestMethod.GET }, { path: "media/:tenant/p/:product/:file", method: RequestMethod.GET }] });
   mountOpenApi(app);
   return app;
 }

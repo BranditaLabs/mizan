@@ -46,6 +46,7 @@ locals {
     FX_SOURCE                 = "open-er-api"
     PLATFORM_BOOTSTRAP_EMAILS = var.platform_bootstrap_emails
     ADMIN_URL                 = local.admin_url
+    MEDIA_BLOB_URL            = "${azurerm_storage_account.media.primary_blob_endpoint}${azurerm_storage_container.media.name}"
   }, local.placeholder_env, var.api_env)
   api_env = { for key, value in local.api_plain_env : key => value if value != "" }
 }
