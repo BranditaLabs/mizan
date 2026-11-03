@@ -12,7 +12,13 @@ import { mapWooOrder, mapWooProduct, parseWooStockTarget } from "./mapper.js";
 /** Order topics Mizan subscribes to. */
 export const WOO_WEBHOOK_TOPICS = ["order.created", "order.updated", "order.deleted", "product.created", "product.updated"] as const;
 
-export interface WooLearned { queryStringAuth: boolean }
+export interface WooLearned {
+  queryStringAuth: boolean;
+  /** P4: the store's currency (WooCommerce → Settings → General), and when it was read. */
+  currency?: { code: string; at: number } | undefined;
+}
+/** How long the store's currency is trusted before it is read again. */
+const CURRENCY_TTL_MS = 24 * 3600_000;
 
 /**
  * WooCommerce connector (E5-7): reads orders and keeps the store's webhooks pointed at Mizan.
@@ -35,11 +41,34 @@ export class WooCommerceConnector {
   }
 
   exportLearned(): WooLearned {
-    return { queryStringAuth: this.rest.queryStringAuth };
+    return { queryStringAuth: this.rest.queryStringAuth, ...(this.currency ? { currency: this.currency } : {}) };
   }
 
   loadLearned(state: Partial<WooLearned> | undefined) {
     if (typeof state?.queryStringAuth === "boolean") this.creds.queryStringAuth = state.queryStringAuth;
+    if (state?.currency && /^[A-Z]{3}$/.test(state.currency.code)) this.currency = state.currency;
+  }
+
+  private currency: { code: string; at: number } | undefined;
+
+  /**
+   * The store's currency (P4), read from Settings → General and kept a day. Products carry none,
+   * so without it their prices would be read in Mizan's base currency. Keys that may not read
+   * settings leave it unknown (the base currency, as before), with a drift note; never an error.
+   */
+  async storeCurrency(): Promise<string | undefined> {
+    const now = this.rt.clock.now();
+    if (this.currency && now - this.currency.at < CURRENCY_TTL_MS) return this.currency.code;
+    try {
+      const { json } = await this.rest.get<Record<string, unknown>>("getCurrency", "/settings/general/woocommerce_currency");
+      const r = new Resolver(json, { connector: "woocommerce", entity: "setting", drift: this.drift, now: () => now });
+      const code = (r.str("value", ["value", "default"]) ?? "").trim().toUpperCase();
+      if (/^[A-Z]{3}$/.test(code)) this.currency = { code, at: now };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || !["permission", "auth", "not_found"].includes(e.kind)) throw e;
+      this.drift.record({ connector: "woocommerce", entity: "setting", kind: "fallback_field", field: "woocommerce_currency", detail: `cannot read the store's currency (${e.kind}): prices in the base currency`, at: now });
+    }
+    return this.currency?.code;
   }
 
   private ctx() {
@@ -74,7 +103,12 @@ export class WooCommerceConnector {
   async getProduct(id: string): Promise<CanonicalProduct> {
     const { json } = await this.rest.get<Record<string, unknown>>("getProduct", `/products/${encodeURIComponent(id)}`);
     if (!json || typeof json !== "object") throw new IntegrationError({ kind: "not_found", connector: "woocommerce", message: `product ${id} not found` });
-    return mapWooProduct(json, await this.variationsOf(json), this.ctx());
+    return mapWooProduct(json, await this.variationsOf(json), await this.productCtx());
+  }
+
+  private async productCtx() {
+    const currency = await this.storeCurrency();
+    return { ...this.ctx(), ...(currency ? { currency } : {}) };
   }
 
   /** One page of products modified at or after `sinceIso` (all when null), oldest change first. */
@@ -84,7 +118,8 @@ export class WooCommerceConnector {
     });
     const rows = (Array.isArray(json) ? json : []) as Array<Record<string, unknown>>;
     const nodes: CanonicalProduct[] = [];
-    for (const p of rows) nodes.push(mapWooProduct(p, await this.variationsOf(p), this.ctx()));
+    const ctx = await this.productCtx();
+    for (const p of rows) nodes.push(mapWooProduct(p, await this.variationsOf(p), ctx));
     return { nodes, next: page < totalPages && rows.length ? page + 1 : null };
   }
 

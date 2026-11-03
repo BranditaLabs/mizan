@@ -23,6 +23,8 @@ export interface WooMapCtx {
   drift: DriftSink;
   now: () => number;
   paymentPatterns?: Partial<Record<keyof typeof PAYMENT_PATTERNS, RegExp[]>>;
+  /** The store's currency (P4: woocommerce_currency); products carry none of their own. */
+  currency?: string;
 }
 
 /** WooCommerce's Egyptian state codes (i18n/states.php) → the governorate's name, as couriers read it. */
@@ -228,8 +230,8 @@ export function mapWooProduct(raw: unknown, variations: unknown[], ctx: WooMapCt
       sku: x.str("sku", ["sku"]) || undefined,
       barcode: x.str("barcode", ["global_unique_id"])?.trim() || undefined,
       ...(title ? { title } : {}),
-      price: { amount: price, currency: "" },
-      compareAtPrice: onSale ? { amount: regular!, currency: "" } : null,
+      price: { amount: price, currency: ctx.currency ?? "" },
+      compareAtPrice: onSale ? { amount: regular!, currency: ctx.currency ?? "" } : null,
       ...(available !== undefined ? { available } : {}),
       ...(stockAt ? { inventoryItemId: stockAt } : {}),
     };
