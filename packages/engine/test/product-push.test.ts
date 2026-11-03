@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProductPatch } from "@mizan/shared";
 import { MizanEngine } from "../src/engine/engine.js";
+import { mapWooProduct } from "../src/connectors/woocommerce/mapper.js";
 import { settle, setup, setupWoo } from "./fakes/setup.js";
 
 /**
@@ -105,5 +106,50 @@ describe("pushing a product to WooCommerce (P2)", () => {
     await w.push({ productExternalId: String(w.simple.id), title: `Edited ${seed}`, variants: [{ externalId: String(w.simple.id), price: egp("580.00"), compareAtPrice: null }] });
     await settle(w.engine, w.store, w.clock);
     expect(w.woo.products.get(w.simple.id)!).toMatchObject({ name: `Edited ${seed}`, regular_price: "580.00", sale_price: "" });
+  });
+});
+
+describe("review fixes (P2)", () => {
+  it("a field set back to an earlier value is pushed again (each edit is its own job)", async () => {
+    const w = shopifyWorld();
+    for (const status of ["draft", "active", "draft"] as const) {
+      await w.push({ productExternalId: w.p.productId, status });
+      await settle(w.engine, w.store, w.clock);
+      expect(w.product().status).toBe(status.toUpperCase());
+    }
+  });
+
+  it("WooCommerce: tags are sent by id, the missing one created once even with faults; an archived product reads back archived", async () => {
+    for (const seed of [0, 1, 2, 3]) {
+      const w = wooWorld(seed, seed ? 0.35 : 0);
+      await w.push({ productExternalId: String(w.simple.id), tags: ["abaya", "Crepe"], status: "archived" });
+      await settle(w.engine, w.store, w.clock);
+      const p = w.woo.products.get(w.simple.id)!;
+      expect(p.tags.map((t) => t.name)).toEqual(["abaya", "Crepe"]);
+      expect(w.woo.tagCreates).toBe(1);
+      expect(p.status).toBe("private");
+      const read = mapWooProduct(p as unknown as Record<string, unknown>, [], { drift: { record: () => undefined }, now: () => w.clock.now() });
+      expect(read.status).toBe("archived");
+    }
+  });
+
+  it("WooCommerce: reordering keeps the store's pictures Mizan does not hold, after the ordered ones", async () => {
+    const w = wooWorld();
+    const [a, b, c] = w.simple.images.map((i) => String(i.id));
+    await w.push({ productExternalId: String(w.simple.id), mediaOrder: [c!, a!] });
+    await settle(w.engine, w.store, w.clock);
+    expect(w.woo.products.get(w.simple.id)!.images.map((i) => String(i.id))).toEqual([c, a, b]);
+  });
+
+  it("WooCommerce: a price changed in WordPress is put back to Mizan's, sale and all", async () => {
+    const w = wooWorld();
+    await w.push({ productExternalId: String(w.simple.id), variants: [{ externalId: String(w.simple.id), price: egp("500.00"), compareAtPrice: egp("600.00") }] });
+    await settle(w.engine, w.store, w.clock);
+    const p = w.woo.products.get(w.simple.id)!;
+    Object.assign(p, { regular_price: "450.00", sale_price: "", price: "450.00" }); // the merchant, in WordPress
+    w.clock.advance(10 * 60_000); // past the echo window
+    await w.store.enqueue({ kind: "woocommerce.ingestProduct", connection: "woocommerce", payload: { productId: String(w.simple.id) }, idempotencyKey: "ingest:after-merchant" }, w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(w.woo.products.get(w.simple.id)!).toMatchObject({ regular_price: "600.00", sale_price: "500.00", price: "500.00" });
   });
 });

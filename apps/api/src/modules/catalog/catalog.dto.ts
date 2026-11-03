@@ -126,7 +126,8 @@ export const CostsImportedSchema = z.object({
 
 // ───────────── P2: edit a product, pushed to its store ─────────────
 
-const PriceAmount = z.string().trim().regex(/^\d{1,9}(\.\d{1,2})?$/, "an amount like 150 or 150.50");
+/** Up to 3 decimals (KWD, BHD, OMR); the currency's own decimals are checked when saving. */
+const PriceAmount = z.string().trim().regex(/^\d{1,9}(\.\d{1,3})?$/, "an amount like 150 or 150.50");
 export const ProductUpdateSchema = z.strictObject({
   title: z.string().trim().min(1).max(255).optional(),
   description: z.string().max(20000).optional().describe("Plain text: paragraphs by blank lines (the store's formatting is replaced)"),

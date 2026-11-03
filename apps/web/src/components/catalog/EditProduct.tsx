@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toAsciiDigits } from "@mizan/shared";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
@@ -16,9 +17,11 @@ import { ProductImage } from "./ProductImage";
 type Product = Schemas["ProductDetail"];
 type Body = Schemas["ProductUpdate"];
 export const PRODUCT_EDITORS = new Set(["owner", "admin", "ops_manager"]);
-const AMOUNT = /^\d{1,9}(\.\d{1,2})?$/;
+const AMOUNT = /^\d{1,9}(\.\d{1,3})?$/;
+/** An amount as typed, in Western digits with a dot (٩٩٠٫٥ → 990.5). */
+const decimal = (v: string) => toAsciiDigits(v).replace(/٫/g, ".").trim();
 /** Why the API refused an edit, in the person's language. */
-const EDIT_ERRORS = new Set(["field_not_in_store", "images_mismatch", "images_not_in_store", "compare_at_low", "unknown_variant"]);
+const EDIT_ERRORS = new Set(["field_not_in_store", "images_mismatch", "images_not_in_store", "compare_at_low", "unknown_variant", "price_decimals"]);
 
 interface PriceRow { id: string; label: string; price: string; compareAt: string; was: { price: string; compareAt: string } }
 
@@ -57,6 +60,8 @@ export function EditProduct({ product: p, onClose }: { product: Product; onClose
     return next;
   });
   const tagList = [...new Set(tags.split(/[,،]/).map((x) => x.trim()).filter(Boolean))];
+  const changed = (r: PriceRow) => decimal(r.price) !== r.was.price || decimal(r.compareAt) !== r.was.compareAt;
+  const changedPrices = prices.filter(changed);
   const orderChanged = images.map((i) => i.id).join() !== p.images.map((i) => i.id).join();
   const body: Body = {
     ...(title.trim() !== p.title ? { title: title.trim() } : {}),
@@ -66,14 +71,14 @@ export function EditProduct({ product: p, onClose }: { product: Product; onClose
     ...(tagList.join("\n") !== p.tags.join("\n") ? { tags: tagList } : {}),
     ...(description !== p.description ? { description } : {}),
     ...(orderChanged ? { images: { order: images.map((i) => i.id) } } : {}),
-    ...(prices.some((r) => r.price !== r.was.price || r.compareAt !== r.was.compareAt) ? {
-      variants: prices.filter((r) => r.price !== r.was.price || r.compareAt !== r.was.compareAt)
-        .map((r) => ({ id: r.id, price: r.price, compareAtPrice: r.compareAt.trim() ? r.compareAt.trim() : null })),
+    ...(changedPrices.length ? {
+      variants: changedPrices.map((r) => ({ id: r.id, price: decimal(r.price), compareAtPrice: decimal(r.compareAt) ? decimal(r.compareAt) : null })),
     } : {}),
   };
-  const priceError = (r: PriceRow) => (!AMOUNT.test(r.price) ? t("priceInvalid")
-    : r.compareAt.trim() && (!AMOUNT.test(r.compareAt.trim()) || Number(r.compareAt) <= Number(r.price)) ? t("compareAtLow") : null);
-  const invalid = !title.trim() || prices.some((r) => priceError(r));
+  // Only rows the person changed are checked: a store's odd compare-at price never blocks other edits.
+  const priceError = (r: PriceRow) => (changed(r) && !AMOUNT.test(decimal(r.price)) ? t("priceInvalid") : null);
+  const compareError = (r: PriceRow) => (changed(r) && decimal(r.compareAt) && (!AMOUNT.test(decimal(r.compareAt)) || Number(decimal(r.compareAt)) <= Number(decimal(r.price))) ? t("compareAtLow") : null);
+  const invalid = !title.trim() || prices.some((r) => priceError(r) || compareError(r));
   const empty = Object.keys(body).length === 0;
 
   const save = useMutation({
@@ -136,7 +141,7 @@ export function EditProduct({ product: p, onClose }: { product: Product; onClose
               <span className="min-w-32 flex-1 text-body-sm">{r.label}</span>
               <Field label={t("price")} ltr inputMode="decimal" className="w-32" value={r.price} error={priceError(r)}
                 onChange={(e) => setPrices((xs) => xs.map((x, j) => (j === i ? { ...x, price: e.target.value } : x)))} />
-              <Field label={t("compareAt")} ltr inputMode="decimal" className="w-32" value={r.compareAt}
+              <Field label={t("compareAt")} ltr inputMode="decimal" className="w-32" value={r.compareAt} error={compareError(r)}
                 onChange={(e) => setPrices((xs) => xs.map((x, j) => (j === i ? { ...x, compareAt: e.target.value } : x)))} />
             </div>
           ))}

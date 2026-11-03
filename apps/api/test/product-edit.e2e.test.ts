@@ -75,8 +75,9 @@ describe("editing a product (P2)", () => {
       vendor: "Nile", productType: "Robe", mediaOrder: [img(3).externalId, img(1).externalId, img(2).externalId],
       variants: [{ externalId: "gid://shopify/ProductVariant/11", price: { amount: "990.00", currency: "EGP" }, compareAtPrice: { amount: "1150.00", currency: "EGP" } }],
     } } }]);
-    const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select(["after"]).where("action", "=", "catalog.product_updated").execute());
-    expect(audit[0]!.after).toMatchObject({ changed: expect.arrayContaining(["title", "images", "variants"]), store: "shopify" });
+    const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select(["before", "after"]).where("action", "=", "catalog.product_updated").execute());
+    expect(audit[0]!.after).toMatchObject({ changed: expect.arrayContaining(["title", "images", "variants"]), store: "shopify", variants: [{ id: variant, price: "990.00", compareAtPrice: "1150.00" }] });
+    expect(audit[0]!.before).toMatchObject({ variants: [{ id: variant, price: "1150.00", compareAtPrice: null }] });
   });
 
   it("WooCommerce: refuses a vendor or type; pushes the rest with both prices to its own connection", async () => {
@@ -98,6 +99,7 @@ describe("editing a product (P2)", () => {
     expect(await code({ images: { order: ids.slice(0, 2) } }, 422)).toBe("images_mismatch");
     expect(await code({ images: { order: [ids[0], ids[0], ids[1]] } }, 422)).toBe("images_mismatch");
     expect(await code({ variants: [{ id: p.variants[0].id, price: "1000", compareAtPrice: "1000" }] }, 422)).toBe("compare_at_low");
+    expect(await code({ variants: [{ id: p.variants[0].id, price: "990.125" }] }, 422)).toBe("price_decimals"); // EGP has 2
     const other = (await http().get(`/v1/products/${await productId("77")}`).set(as("owner")).expect(200)).body.variants[0].id;
     expect(await code({ variants: [{ id: other, price: "10" }] }, 422)).toBe("unknown_variant");
     await code({ title: "x" }, 403, "finance");

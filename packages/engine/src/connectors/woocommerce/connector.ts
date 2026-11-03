@@ -112,9 +112,9 @@ export class WooCommerceConnector {
   }
 
   /**
-   * Push a product edited in Mizan (P2): name, description, status, tags, the pictures' order
-   * (the first is the main picture; the list is complete, as WooCommerce keeps only the pictures
-   * sent) and prices. Absolute values, so sending them twice changes nothing. A price with a
+   * Push a product edited in Mizan (P2): name, description, status, tags (by id: found or created),
+   * the pictures' order (the first is the main picture; the store's other pictures stay after them,
+   * as WooCommerce keeps only the pictures sent) and prices. Absolute values, so sending them twice changes nothing. A price with a
    * higher compare-at price is a sale (regular = compare-at, sale = price); without one, the
    * regular price and no sale. A simple product's prices are on the product; a variation's on
    * the variation. WooCommerce has no vendor or product type field (`validation`).
@@ -128,8 +128,16 @@ export class WooCommerceConnector {
     if (patch.title !== undefined) body.name = patch.title;
     if (patch.descriptionHtml !== undefined) body.description = patch.descriptionHtml;
     if (patch.status !== undefined && patch.status !== "unknown") body.status = WOO_STATUS[patch.status];
-    if (patch.tags !== undefined) body.tags = patch.tags.map((name) => ({ name }));
-    if (patch.mediaOrder?.length) body.images = patch.mediaOrder.map((m) => ({ id: Number(m) }));
+    // WooCommerce takes tags by id only (a name alone is dropped): each is found, or created once.
+    if (patch.tags !== undefined) body.tags = (await this.tagIds(patch.tags)).map((tid) => ({ id: tid }));
+    if (patch.mediaOrder?.length) {
+      // WooCommerce keeps only the pictures sent: ones Mizan does not hold (not https, added in WordPress since) stay, after the ordered ones.
+      const { json } = await this.rest.get<Record<string, unknown>>("getProduct", `/products/${encodeURIComponent(id)}`);
+      const r = new Resolver(json, { connector: "woocommerce", entity: "product", drift: this.drift, now: () => this.rt.clock.now() });
+      const current = r.arr("images", ["images"]).map((m) => r.child(m, "product.image").str("id", ["id"])).filter((x): x is string => Boolean(x));
+      const ordered = patch.mediaOrder.filter((m) => current.includes(m));
+      body.images = [...ordered, ...current.filter((m) => !ordered.includes(m))].map((m) => ({ id: Number(m) }));
+    }
     const prices = (v: NonNullable<ProductPatch["variants"]>[number]) => {
       if (!v.price) return {};
       const cap = v.compareAtPrice && Number(v.compareAtPrice.amount) > Number(v.price.amount) ? v.compareAtPrice.amount : null;
@@ -141,6 +149,36 @@ export class WooCommerceConnector {
       if (v.externalId === id || !v.price) continue;
       await this.rest.write("updateVariation", "PUT", `/products/${encodeURIComponent(id)}/variations/${encodeURIComponent(v.externalId)}`, prices(v), true);
     }
+  }
+
+  /**
+   * The ids of these tag names (P2), creating the missing ones. Looked up before every create, so a
+   * create whose answer was lost is found on the retry, never made twice.
+   */
+  private async tagIds(names: readonly string[]): Promise<number[]> {
+    const ids: number[] = [];
+    for (const name of [...new Set(names)]) {
+      const find = async () => {
+        const { json } = await this.rest.get<Array<{ id?: unknown; name?: unknown }>>("findTag", "/products/tags", { search: name, per_page: 100 });
+        const hit = (Array.isArray(json) ? json : []).find((t) => typeof t?.name === "string" && t.name.trim().toLowerCase() === name.trim().toLowerCase());
+        return hit && Number(hit.id) > 0 ? Number(hit.id) : null;
+      };
+      let tid = await find();
+      if (tid === null) {
+        try {
+          const made = await this.rest.write<{ id?: unknown }>("createTag", "POST", "/products/tags", { name }, false);
+          tid = Number(made?.id) || null;
+        } catch (e) {
+          // Created already (by us, a moment ago), or the answer was lost: look again.
+          if (!(e instanceof IntegrationError) || !["timeout", "transient", "validation", "conflict"].includes(e.kind)) throw e;
+          tid = await find();
+          if (tid === null) throw e;
+        }
+        if (tid === null) throw new IntegrationError({ kind: "schema_drift", connector: "woocommerce", message: `creating tag "${name}" returned no id` });
+      }
+      ids.push(tid);
+    }
+    return ids;
   }
 
   /**

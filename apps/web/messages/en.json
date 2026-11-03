@@ -2350,7 +2350,8 @@
         "images_mismatch": "The pictures changed meanwhile. Close and open the editor again.",
         "images_not_in_store": "A picture isn't in the store yet, so the order can't be sent.",
         "compare_at_low": "A compare-at price must be higher than the price.",
-        "unknown_variant": "A variant changed meanwhile. Close and open the editor again."
+        "unknown_variant": "A variant changed meanwhile. Close and open the editor again.",
+        "price_decimals": "Prices in this currency take fewer decimals."
       }
     }
   },

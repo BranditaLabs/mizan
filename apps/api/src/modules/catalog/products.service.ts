@@ -170,10 +170,13 @@ export class ProductsService {
       const prices = (body.variants ?? []).map((v) => {
         const row = variants.find((x) => x.id === v.id)!;
         const cur = row.currency.trim();
-        const price = v.price !== undefined ? toMinor({ amount: v.price, currency: cur }) : BigInt(row.price_minor);
-        const cap = v.compareAtPrice === undefined ? (row.compare_at_minor === null ? null : BigInt(row.compare_at_minor)) : v.compareAtPrice === null ? null : toMinor({ amount: v.compareAtPrice, currency: cur });
+        const minor = (amount: string) => {
+          try { return toMinor({ amount, currency: cur }); } catch { throw new ProblemError(422, "price_decimals", `${cur} prices take fewer decimals`); }
+        };
+        const price = v.price !== undefined ? minor(v.price) : BigInt(row.price_minor);
+        const cap = v.compareAtPrice === undefined ? (row.compare_at_minor === null ? null : BigInt(row.compare_at_minor)) : v.compareAtPrice === null ? null : minor(v.compareAtPrice);
         if (cap !== null && cap <= price) throw new ProblemError(422, "compare_at_low", "the compare-at price must be higher than the price");
-        return { id: v.id, cur, price, cap };
+        return { id: v.id, cur, price, cap, was: { price: BigInt(row.price_minor), cap: row.compare_at_minor === null ? null : BigInt(row.compare_at_minor) } };
       });
 
       // ── saved here ──
@@ -225,8 +228,15 @@ export class ProductsService {
       const changed = [...Object.keys(body).filter((k) => body[k as keyof typeof body] !== undefined)];
       await this.audit.record(trx, {
         action: "catalog.product_updated", tenantId, ...auditActor(auth), entity: { type: "product", id },
-        before: { title: p.title, status: p.status, tags: p.tags, vendor: p.vendor, productType: p.product_type },
-        after: { changed, ...(body.title !== undefined ? { title: body.title } : {}), ...(body.status !== undefined ? { status: body.status } : {}), store: provider },
+        // Prices from and to, per variant: what the store sells at is worth a trace.
+        before: {
+          title: p.title, status: p.status, tags: p.tags, vendor: p.vendor, productType: p.product_type,
+          ...(prices.length ? { variants: prices.map((v) => ({ id: v.id, price: fromMinor(v.was.price, v.cur).amount, compareAtPrice: v.was.cap === null ? null : fromMinor(v.was.cap, v.cur).amount })) } : {}),
+        },
+        after: {
+          changed, ...(body.title !== undefined ? { title: body.title } : {}), ...(body.status !== undefined ? { status: body.status } : {}), store: provider,
+          ...(prices.length ? { variants: prices.map((v) => ({ id: v.id, price: fromMinor(v.price, v.cur).amount, compareAtPrice: v.cap === null ? null : fromMinor(v.cap, v.cur).amount })) } : {}),
+        },
       });
       await this.events.emit(trx, { type: "product.updated", tenantId, entity: { type: "product", id }, actor: { type: "user", id: auth.user.id }, data: { changed, store: provider } });
     });

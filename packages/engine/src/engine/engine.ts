@@ -205,6 +205,8 @@ interface ProductState {
     inventory: Record<string, number>; // `${inventoryItemId}|${locationId}` → available
     fields?: ProductFields;
   };
+  /** One more per staged edit (P2): a return to an earlier value is a new job, never the old one's key. */
+  rev?: number;
   lastWriteAt?: number;
   snapshot?: CanonicalProduct;
 }
@@ -443,8 +445,9 @@ export class MizanEngine {
     const fields: Record<string, unknown> = { ...(state.desired.fields ?? {}) };
     for (const k of PRODUCT_FIELDS) if (patch[k] !== undefined) fields[k] = patch[k];
     state.desired.fields = fields as ProductFields;
+    state.rev = (state.rev ?? 0) + 1;
     await store.put("product-state", patch.productExternalId, state, now);
-    return { kind: `${provider}.pushProduct`, connection: provider, payload: { patch }, idempotencyKey: `push:${patch.productExternalId}:${hash({ patch, desired: state.desired })}` };
+    return { kind: `${provider}.pushProduct`, connection: provider, payload: { patch }, idempotencyKey: `push:${patch.productExternalId}:${state.rev}:${hash({ patch, desired: state.desired })}` };
   }
 
   /**
@@ -1009,6 +1012,7 @@ export class MizanEngine {
     const state = (await this.store.get<ProductState>("product-state", productId)) ?? { productId, desired: { variants: {}, inventory: {} } };
     const inFlight = state.lastWriteAt !== undefined && this.now() - state.lastWriteAt < this.opts.echoWindowMs;
     const restore: NonNullable<ProductPatch["variants"]> = [];
+    const accepted: Array<{ variant: string; price?: string; compareAtPrice?: string | null }> = [];
 
     for (const v of product.variants) {
       const want = state.desired.variants[v.externalId];
@@ -1021,21 +1025,34 @@ export class MizanEngine {
       const fix: { externalId: string; price?: { amount: string; currency: string }; compareAtPrice?: { amount: string; currency: string } | null } = { externalId: v.externalId };
       if (priceDiff) {
         if (this.opts.ownership.price === "mizan") fix.price = { amount: want.price!, currency: "" };
-        else want.price = v.price.amount;
+        else accepted.push({ variant: v.externalId, price: v.price.amount });
       }
       if (capDiff) {
         if (this.opts.ownership.compareAtPrice === "mizan") fix.compareAtPrice = want.compareAtPrice ? { amount: want.compareAtPrice, currency: "" } : null;
-        else want.compareAtPrice = capHave;
+        else accepted.push({ variant: v.externalId, compareAtPrice: capHave });
       }
-      if (fix.price || fix.compareAtPrice !== undefined) restore.push(fix);
+      if (fix.price || fix.compareAtPrice !== undefined) {
+        // Both prices: WooCommerce sets a sale from the pair (P2).
+        fix.price ??= { amount: want.price ?? v.price.amount, currency: "" };
+        if (fix.compareAtPrice === undefined) fix.compareAtPrice = want.compareAtPrice !== undefined ? (want.compareAtPrice ? { amount: want.compareAtPrice, currency: "" } : null) : (capHave ? { amount: capHave, currency: "" } : null);
+        restore.push(fix);
+      }
       this.emit("product.conflict", { productId, variantId: v.externalId, shopifyPrice: v.price.amount, mizanPrice: want.price, action: fix.price || fix.compareAtPrice !== undefined ? "restore_mizan_value" : "accepted_shopify_value" });
     }
 
-    await this.store.put<ProductState>("product-state", productId, { ...state, snapshot: { ...product, raw: undefined } }, this.now());
+    const latest = (await this.store.get<ProductState>("product-state", productId)) ?? state;
+    for (const a of accepted) {
+      const cur = (latest.desired.variants[a.variant] ??= {});
+      if (a.price !== undefined) cur.price = a.price;
+      if (a.compareAtPrice !== undefined) cur.compareAtPrice = a.compareAtPrice;
+    }
+    await this.store.put<ProductState>("product-state", productId, { ...latest, snapshot: { ...product, raw: undefined } }, this.now());
     await this.runHook(() => this.opts.hooks?.onProduct?.({ ...product, raw: undefined }));
     this.emit("product.ingested", { productId, title: product.title, status: product.status });
-    if (restore.length && this.shopifyConn) {
-      await this.enqueue("shopify.pushProduct", { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
+    // Mizan's prices go back to the store the product came from (Shopify or WooCommerce).
+    const provider = product.connector === "woocommerce" ? "woocommerce" : "shopify";
+    if (restore.length && (provider === "woocommerce" ? this.woo : this.shopifyConn)) {
+      await this.enqueue(`${provider}.pushProduct`, { patch: { productExternalId: productId, variants: restore } }, `restore:${productId}:${hash(restore)}:${product.updatedAt}`);
     }
   }
 

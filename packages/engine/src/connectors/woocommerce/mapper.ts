@@ -199,7 +199,8 @@ export function wooOrderIdFromWebhook(payload: unknown): string | undefined {
   return typeof id === "number" || (typeof id === "string" && id) ? String(id) : undefined;
 }
 
-const PRODUCT_STATUS: Record<string, CanonicalProduct["status"]> = { publish: "active", draft: "draft", pending: "draft", private: "draft" };
+/** private is out of the shop, as Mizan's archived: an archive pushed from Mizan reads back the same (P2). */
+const PRODUCT_STATUS: Record<string, CanonicalProduct["status"]> = { publish: "active", draft: "draft", pending: "draft", private: "archived" };
 
 /**
  * A WooCommerce product → canonical (E5-7). A simple product is its own single variant (its id is
