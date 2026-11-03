@@ -1,4 +1,5 @@
 import type { OrderEditOutcome, OrderEditPlan } from "../core/order-edit.js";
+import type { CreatedProduct, ProductDraft, ProductPublishOutcome } from "../core/product-draft.js";
 import { createHash } from "node:crypto";
 import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
@@ -82,6 +83,14 @@ export interface EngineOptions {
      * withdrew it): nothing is sent.
      */
     loadOrderEdit?: (editId: string) => Promise<OrderEditPlan | undefined>;
+    /** A product made in Mizan, to publish (P3), read when the job runs. Undefined when it is gone or published already. */
+    loadProductDraft?: (productId: string) => Promise<ProductDraft | undefined>;
+    /**
+     * The store has the product (now, or from an earlier attempt), with its ids; or could not take
+     * it (final). Called before the product is read back, so the platform links its own product
+     * first and the read updates it rather than making a second one. Must be idempotent.
+     */
+    onProductPublished?: (productId: string, result: ProductPublishOutcome) => Promise<void>;
     /** An order edit reached the store (now, or before), or could not (final). Must be idempotent. */
     onOrderEditResult?: (editId: string, result: OrderEditOutcome) => Promise<void>;
     /** The store's order was cancelled (E5-4), already was, or could not be (final). Must be idempotent. */
@@ -495,6 +504,11 @@ export class MizanEngine {
     return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
   }
 
+  /** Publish a product made in Mizan to a store (P3); `attempt` makes a publish after a failure its own job. */
+  static productPublishJob(provider: "shopify" | "woocommerce", productId: string, attempt: number): NewJob<{ productId: string }> {
+    return { kind: `${provider}.createProduct`, connection: provider, payload: { productId }, idempotencyKey: `${provider}:publish:${productId}:${attempt}` };
+  }
+
   /** Change a store order before it ships (O3): one job per edit; what changes is read when it runs. */
   static orderEditJob(provider: "shopify" | "woocommerce", editId: string): NewJob<{ editId: string }> {
     return { kind: `${provider}.editOrder`, connection: provider, payload: { editId }, idempotencyKey: `${provider}:edit:${editId}` };
@@ -685,6 +699,8 @@ export class MizanEngine {
       "bosta.checkAccess": () => this.checkBostaAccess(),
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.editOrder": (j) => this.editOrder(j.payload.editId, "shopify"),
+      "shopify.createProduct": (j) => this.publishProduct(j.payload.productId, "shopify"),
+      "woocommerce.createProduct": (j) => this.publishProduct(j.payload.productId, "woocommerce"),
       "woocommerce.editOrder": (j) => this.editOrder(j.payload.editId, "woocommerce"),
       "shopify.reconcile": (j) => this.reconcile(j.payload),
       "shopify.cancelOrder": (j) => this.cancelOrder(j.payload),
@@ -716,6 +732,26 @@ export class MizanEngine {
     await this.ingestOrder(p.orderId);
     await this.runHook(() => this.opts.hooks?.onOfferResult?.(p.offerId, outcome));
     this.emit("offer.applied", { offerId: p.offerId, orderId: p.orderId, outcome: outcome.ok ? outcome.outcome : "failed" });
+  }
+
+  /** P3: the product into the store, its ids to the platform, then the product read back like any store change. */
+  private async publishProduct(productId: string, provider: "shopify" | "woocommerce") {
+    const draft = await this.opts.hooks?.loadProductDraft?.(productId);
+    if (!draft) return; // published already, or gone
+    let created: CreatedProduct;
+    try {
+      created = provider === "shopify" ? await this.shopify.createProduct(draft) : await this.wooConnector().createProduct(draft);
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" ? "validation" : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onProductPublished?.(productId, { ok: false, reason, message: e.message }));
+      this.emit("product.publish_failed", { productId, reason });
+      if (reason === "permission") throw e;
+      return;
+    }
+    await this.runHook(() => this.opts.hooks?.onProductPublished?.(productId, { ok: true, ...created }));
+    if (provider === "shopify") await this.ingestProduct(created.externalId); else await this.ingestWooProduct(created.externalId);
+    this.emit("product.published", { productId, externalId: created.externalId, outcome: created.outcome });
   }
 
   /** O3: the edit into the store's order, then the order read again (thin webhook, fat fetch) and the result reported. */
@@ -1258,6 +1294,12 @@ export class MizanEngine {
         const p = o.job.payload as CancelJob;
         this.runHook(() => this.opts.hooks?.onCancelResult?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
           .catch((e) => this.rt.logger.log("error", "cancel result hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // A product that never reached the store (P3): the team can publish it again.
+      if ((o.job.kind === "shopify.createProduct" || o.job.kind === "woocommerce.createProduct") && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as { productId: string };
+        this.runHook(() => this.opts.hooks?.onProductPublished?.(p.productId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "product publish hook failed", { productId: p.productId, error: e instanceof Error ? e.message : String(e) }));
       }
       // An edit that never reached the store (O3): the team makes it there by hand.
       if ((o.job.kind === "shopify.editOrder" || o.job.kind === "woocommerce.editOrder") && kind !== "auth" && kind !== "permission") {

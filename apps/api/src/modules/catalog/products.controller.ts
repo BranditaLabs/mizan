@@ -1,19 +1,69 @@
-import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
 import { Auth, Roles } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
-import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
+import { ApiBody } from "@nestjs/swagger";
+import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
-import { CatalogVariantSchema, CostsImportedSchema, ImportCostsSchema, ProductDetailSchema, ProductPageSchema, ProductQuerySchema, ProductUpdateSchema, UpdateVariantSchema } from "./catalog.dto.js";
+import {
+  CatalogVariantSchema, CostsImportedSchema, ImportCostsSchema, NewProductSchema, ProductCreatedSchema, ProductDetailSchema, ProductImageSchema, ProductPageSchema, ProductQuerySchema,
+  ProductUpdateSchema, PublishProductSchema, PublishStartedSchema, UpdateVariantSchema,
+} from "./catalog.dto.js";
 import { ProductsService } from "./products.service.js";
+import { ProductBuilderService } from "./product-builder.service.js";
 
 /** The catalogue screen (M4, E8-1): products from the store, with the cost and barcode Mizan adds. */
 @ApiTags("catalog")
 @Controller("products")
 @Roles("owner", "admin", "ops_manager", "finance")
 export class ProductsController {
-  constructor(@Inject(ProductsService) private readonly products: ProductsService) {}
+  constructor(
+    @Inject(ProductsService) private readonly products: ProductsService,
+    @Inject(ProductBuilderService) private readonly builder: ProductBuilderService,
+  ) {}
+
+  /** P3: a product made in Mizan, with its options and variants (SKUs unique in the store). Audited. */
+  @Post()
+  @HttpCode(201)
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("NewProduct", NewProductSchema)
+  @ApiJson(201, "ProductCreated", ProductCreatedSchema, "Created as a draft unless status says otherwise; not in any store until published")
+  @ApiProblems(409, 422)
+  create(@Auth() auth: AuthContext, @Body(new ZodPipe(NewProductSchema)) body: z.output<typeof NewProductSchema>) {
+    return this.builder.create(auth, body);
+  }
+
+  /** P3: a picture for a product made in Mizan: the bytes as the body (image/jpeg, image/png or image/webp). */
+  @Post(":id/images")
+  @HttpCode(201)
+  @Roles("owner", "admin", "ops_manager")
+  @ApiBody({ description: "The picture's bytes (JPEG, PNG or WebP; MEDIA_MAX_BYTES at most)", required: true, schema: { type: "string", format: "binary" } })
+  @ApiJson(201, "ProductImage", ProductImageSchema, "Checked, turned upright, re-encoded without metadata; the first is the main picture")
+  @ApiProblems(404, 409, 413, 415, 422)
+  addPicture(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body() body: unknown) {
+    return this.builder.addPicture(auth, id, Buffer.isBuffer(body) ? body : undefined);
+  }
+
+  @Delete(":id/images/:imageId")
+  @HttpCode(204)
+  @Roles("owner", "admin", "ops_manager")
+  @ApiNoContent("Removed with its files; the next picture is the main one if this was")
+  @ApiProblems(404, 409)
+  async removePicture(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Param("imageId", new ParseUUIDPipe()) imageId: string) {
+    await this.builder.removePicture(auth, id, imageId);
+  }
+
+  /** P3: put a product made in Mizan on a connected store; it becomes that store's once the store has it. */
+  @Post(":id/publish")
+  @HttpCode(202)
+  @Roles("owner", "admin", "ops_manager")
+  @ApiJsonBody("PublishProduct", PublishProductSchema)
+  @ApiJson(202, "PublishStarted", PublishStartedSchema, "On its way (outbox); GET the product for publish.status")
+  @ApiProblems(404, 409, 422)
+  publish(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(PublishProductSchema)) body: z.output<typeof PublishProductSchema>) {
+    return this.builder.publish(auth, id, body.connectionId);
+  }
 
   @Get()
   @ApiQueryZod(ProductQuerySchema)

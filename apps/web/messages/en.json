@@ -2353,6 +2353,94 @@
         "unknown_variant": "A variant changed meanwhile. Close and open the editor again.",
         "price_decimals": "Prices in this currency take fewer decimals."
       }
+    },
+    "newProduct": {
+      "open": "New product",
+      "back": "Products",
+      "title": "New product",
+      "subtitle": "A product made in Mizan, for a store without a channel or to publish to one later.",
+      "details": "Details",
+      "name": "Name",
+      "status": "Status",
+      "statusName": {
+        "draft": "Draft",
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "tags": "Tags",
+      "tagsHint": "Separated by commas",
+      "vendor": "Vendor",
+      "type": "Product type",
+      "description": "Description",
+      "descriptionHint": "Plain text; a blank line starts a new paragraph.",
+      "options": "Options",
+      "optionsHint": "Up to three, like Size or Color. Each combination of their values is a variant.",
+      "optionNameLabel": "Option",
+      "optionNamePlaceholder": "Size",
+      "optionValuesLabel": "Values",
+      "optionValuesPlaceholder": "S, M, L",
+      "optionName": "Name the option",
+      "optionTwice": "Two options have this name",
+      "optionValues": "Add at least one value",
+      "removeOption": "Remove the option {name}",
+      "addOption": "Add an option",
+      "variants": "Variants",
+      "skuPrefix": "SKU prefix",
+      "skuPrefixHint": "Each variant's SKU starts with it",
+      "price": "Price",
+      "priceHint": "For every variant; change any below",
+      "single": "The product",
+      "sku": "SKU",
+      "variantPrice": "Price",
+      "compareAt": "Compare-at",
+      "skuInvalid": "Letters, digits and symbols, no spaces",
+      "priceInvalid": "An amount like 150 or 150.50",
+      "compareAtLow": "Must be higher than the price",
+      "skuTwice": "Two variants have the same SKU.",
+      "tooMany": "100 variants at most: fewer values, please.",
+      "cancel": "Cancel",
+      "create": "Create product",
+      "errors": {
+        "sku_taken": "A SKU is already another product's. Change it and try again.",
+        "barcode_taken": "A barcode is already another product's.",
+        "variants_invalid": "The variants don't match the options. Check each one.",
+        "options_invalid": "Two options, or two values of one, are the same.",
+        "compare_at_low": "A compare-at price must be higher than the price.",
+        "price_decimals": "Prices in this currency take fewer decimals."
+      }
+    },
+    "pictures": {
+      "title": "Pictures",
+      "add": "Add pictures",
+      "choose": "Choose pictures",
+      "hint": "JPEG, PNG or WebP, up to 10 MB, at least 200 × 200. The first one is the main picture. Location and camera data are removed.",
+      "none": "No pictures yet.",
+      "main": "Main",
+      "remove": "Remove picture",
+      "errors": {
+        "picture_type": "Only JPEG, PNG or WebP pictures.",
+        "picture_too_small": "The picture is too small: at least 200 × 200 pixels.",
+        "picture_too_large": "The picture is larger than 10 MB.",
+        "payload_too_large": "The picture is larger than 10 MB.",
+        "picture_unreadable": "The picture couldn't be read.",
+        "too_many_pictures": "20 pictures per product at most."
+      }
+    },
+    "publish": {
+      "title": "Publish to a store",
+      "body": "Put this product on a connected store. Once the store has it, it's the store's: edit it from its page as for any store product.",
+      "publishing": "On its way to the store…",
+      "failed": "The store refused it: {message}",
+      "noStore": "Connect a Shopify or WooCommerce store first (Settings → Integrations).",
+      "store": "Store",
+      "go": "Publish",
+      "again": "Publish again",
+      "errors": {
+        "publishing": "It's on its way to the store already.",
+        "not_a_store": "Choose a connected Shopify or WooCommerce store.",
+        "store_not_active": "The store's connection needs attention first.",
+        "variants_invalid": "The product has no variant."
+      }
     }
   },
   "stock": {

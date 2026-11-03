@@ -570,7 +570,55 @@ export interface paths {
         };
         get: operations["ProductsController_list"];
         put?: never;
+        post: operations["ProductsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{id}/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ProductsController_addPicture"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{id}/images/{imageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
         post?: never;
+        delete: operations["ProductsController_removePicture"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/products/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ProductsController_publish"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5031,6 +5079,45 @@ export interface components {
              */
             limit: number;
         };
+        NewProduct: {
+            title: string;
+            /** @description Plain text: paragraphs by blank lines */
+            description?: string;
+            /**
+             * @default draft
+             * @enum {string}
+             */
+            status: "active" | "draft" | "archived";
+            vendor?: string;
+            productType?: string;
+            /** @default [] */
+            tags: string[];
+            /**
+             * @description Up to three options (Size, Color…) and their values, in order
+             * @default []
+             */
+            options: {
+                name: string;
+                values: string[];
+            }[];
+            /** @description A product without options has exactly one */
+            variants: {
+                /**
+                 * @description One value of each option; none without options
+                 * @default []
+                 */
+                options: {
+                    name: string;
+                    value: string;
+                }[];
+                sku: string;
+                price: string;
+                compareAtPrice?: string;
+                barcode?: string;
+                /** @description What one piece costs (profit) */
+                cost?: string;
+            }[];
+        };
         NewPurchaseOrder: {
             /** Format: uuid */
             supplierId: string;
@@ -6972,6 +7059,10 @@ export interface components {
             }[];
             requestId?: string;
         };
+        ProductCreated: {
+            /** Format: uuid */
+            id: string;
+        };
         ProductDetail: {
             /** Format: uuid */
             id: string;
@@ -7038,9 +7129,14 @@ export interface components {
                 id: string;
                 /**
                  * Format: uri
-                 * @description The store's CDN address (https)
+                 * @description The store's CDN address, or Mizan's for a picture uploaded here (P3)
                  */
                 url: string;
+                /**
+                 * Format: uri
+                 * @description A 400 px copy, for pictures uploaded to Mizan (P3)
+                 */
+                thumbUrl: string | null;
                 alt: string | null;
                 width: number | null;
                 height: number | null;
@@ -7051,6 +7147,15 @@ export interface components {
              * @description Where to edit it in the store's admin
              */
             storeUrl: string | null;
+            /** @description A product made in Mizan, on its way to a store (P3); null for a store's product or one never published */
+            publish: {
+                /** @enum {string} */
+                status: "publishing" | "published" | "failed";
+                /** Format: uuid */
+                connectionId: string | null;
+                /** @description The store's words when it refused the product */
+                error: string | null;
+            } | null;
             /** Format: date-time */
             updatedAt: string;
             totals: {
@@ -7068,6 +7173,24 @@ export interface components {
                 missingCost: number;
                 missingBarcode: number;
             };
+        };
+        ProductImage: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uri
+             * @description The store's CDN address, or Mizan's for a picture uploaded here (P3)
+             */
+            url: string;
+            /**
+             * Format: uri
+             * @description A 400 px copy, for pictures uploaded to Mizan (P3)
+             */
+            thumbUrl: string | null;
+            alt: string | null;
+            width: number | null;
+            height: number | null;
+            isMain: boolean;
         };
         ProductPage: {
             data: {
@@ -7089,9 +7212,14 @@ export interface components {
                     id: string;
                     /**
                      * Format: uri
-                     * @description The store's CDN address (https)
+                     * @description The store's CDN address, or Mizan's for a picture uploaded here (P3)
                      */
                     url: string;
+                    /**
+                     * Format: uri
+                     * @description A 400 px copy, for pictures uploaded to Mizan (P3)
+                     */
+                    thumbUrl: string | null;
                     alt: string | null;
                     width: number | null;
                     height: number | null;
@@ -7519,6 +7647,17 @@ export interface components {
                 key: "terms" | "privacy" | "dpa";
                 version: string;
             }[];
+        };
+        PublishProduct: {
+            /**
+             * Format: uuid
+             * @description A connected Shopify or WooCommerce store
+             */
+            connectionId: string;
+        };
+        PublishStarted: {
+            /** @enum {string} */
+            status: "publishing";
         };
         PurchaseOrder: {
             /** Format: uuid */
@@ -11647,6 +11786,264 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProductPage"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_create: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewProduct"];
+            };
+        };
+        responses: {
+            /** @description Created as a draft unless status says otherwise; not in any store until published */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductCreated"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_addPicture: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description The picture's bytes (JPEG, PNG or WebP; MEDIA_MAX_BYTES at most) */
+        requestBody: {
+            content: {
+                "application/json": string;
+            };
+        };
+        responses: {
+            /** @description Checked, turned upright, re-encoded without metadata; the first is the main picture */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductImage"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_removePicture: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+                imageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed with its files; the next picture is the main one if this was */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ProductsController_publish: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishProduct"];
+            };
+        };
+        responses: {
+            /** @description On its way (outbox); GET the product for publish.status */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishStarted"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */

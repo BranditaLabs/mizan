@@ -1,4 +1,5 @@
 import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
+import type { CreatedProduct, ProductDraft } from "../../core/product-draft.js";
 import { IntegrationError } from "../../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
@@ -327,6 +328,84 @@ export class ShopifyConnector {
     }
     await this.addTags(o.orderId, [tag]);
     return "added";
+  }
+
+  /**
+   * Publish a product made in Mizan (P3), once: found by its handle first (an earlier attempt that
+   * created it, its answer lost), else created; then the variants it does not have yet — all of them
+   * in place of the one Shopify makes with the product, or only the missing ones on a retry. The
+   * create mutations are not idempotent: each is preceded by a read, and a lost answer is read again.
+   * Returns the store's product, variant (by Mizan id) and picture ids (by Mizan id, in order).
+   */
+  async createProduct(d: ProductDraft): Promise<CreatedProduct> {
+    type Node = { id: string; variants: { nodes: Array<{ id: string; sku: string | null; selectedOptions: Array<{ name: string; value: string }> }> }; media: { nodes: Array<{ id: string }> } };
+    const read = async () => (await this.gql.run<{ product: Node | null }>(Q.PRODUCT_BY_HANDLE, { handle: d.handle }, { idempotent: true })).product;
+    let node = await read();
+    let outcome: CreatedProduct["outcome"] = "already_created";
+    if (!node) {
+      outcome = "created";
+      try {
+        const c = await this.gql.run<{ productCreate: { product: Node | null; userErrors: UserErrors } }>(Q.PRODUCT_CREATE, {
+          product: {
+            title: d.title, handle: d.handle, status: d.status.toUpperCase(), tags: d.tags,
+            ...(d.descriptionHtml ? { descriptionHtml: d.descriptionHtml } : {}), ...(d.vendor ? { vendor: d.vendor } : {}), ...(d.productType ? { productType: d.productType } : {}),
+            ...(d.options.length ? { productOptions: d.options.map((o) => ({ name: o.name, values: o.values.map((name) => ({ name })) })) } : {}),
+          },
+          media: d.images.map((i) => ({ originalSource: i.url, mediaContentType: "IMAGE", ...(i.alt ? { alt: i.alt } : {}) })),
+        }, { idempotent: false });
+        assertNoUserErrors("productCreate", c.productCreate?.userErrors);
+        node = c.productCreate?.product ?? null;
+      } catch (err) {
+        if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+        node = await read();
+        if (!node) throw new IntegrationError({ kind: "transient", connector: "shopify", message: "productCreate timed out and no product has the handle: will try again", cause: err });
+      }
+      if (!node) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "productCreate returned no product" });
+    }
+
+    const key = (opts: ReadonlyArray<{ name: string; value: string }>) => opts.map((o) => `${o.name}=${o.value}`).join("|");
+    const variants: Record<string, string> = {};
+    const input = (v: ProductDraft["variants"][number]) => ({
+      price: v.price, ...(v.compareAtPrice ? { compareAtPrice: v.compareAtPrice } : {}), ...(v.barcode ? { barcode: v.barcode } : {}), inventoryItem: { sku: v.sku },
+    });
+    let have = node.variants.nodes;
+    if (!d.options.length) {
+      // One variant, made with the product: its price, SKU and barcode (an update, safe to repeat).
+      const v = have[0];
+      if (!v) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "the product has no variant" });
+      const u = await this.gql.run<{ productVariantsBulkUpdate: { userErrors: UserErrors } }>(Q.VARIANTS_UPDATE, { productId: node.id, variants: [{ id: v.id, ...input(d.variants[0]!) }] }, { idempotent: true });
+      assertNoUserErrors("productVariantsBulkUpdate", u.productVariantsBulkUpdate?.userErrors);
+      variants[d.variants[0]!.variantId] = v.id;
+    } else {
+      // Only the variant Shopify made with the product (no SKU yet): replace it with all of them.
+      const fresh = have.length <= 1 && !have[0]?.sku;
+      const byKey = new Map(have.map((v) => [key(v.selectedOptions), v.id]));
+      const missing = fresh ? d.variants : d.variants.filter((v) => !byKey.has(key(v.options)));
+      if (missing.length) {
+        try {
+          const c = await this.gql.run<{ productVariantsBulkCreate: { productVariants: Node["variants"]["nodes"] | null; userErrors: UserErrors } }>(Q.VARIANTS_CREATE, {
+            productId: node.id, strategy: fresh ? "REMOVE_STANDALONE_VARIANT" : "DEFAULT",
+            variants: missing.map((v) => ({ ...input(v), optionValues: v.options.map((o) => ({ optionName: o.name, name: o.value })) })),
+          }, { idempotent: false });
+          assertNoUserErrors("productVariantsBulkCreate", c.productVariantsBulkCreate?.userErrors);
+          have = fresh ? (c.productVariantsBulkCreate?.productVariants ?? []) : [...have, ...(c.productVariantsBulkCreate?.productVariants ?? [])];
+        } catch (err) {
+          if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+          // Made or not, the retry reads the product again and adds only what is still missing.
+          throw new IntegrationError({ kind: "transient", connector: "shopify", message: "productVariantsBulkCreate timed out: will read the product and add what is missing", cause: err });
+        }
+      }
+      const ids = new Map(have.map((v) => [key(v.selectedOptions), v.id]));
+      for (const v of d.variants) {
+        const id = ids.get(key(v.options));
+        if (!id) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: `no variant for ${key(v.options)} after creating them` });
+        variants[v.variantId] = id;
+      }
+    }
+    // Pictures in the order they were sent.
+    const images: Record<string, string> = {};
+    for (const [i, m] of node.media.nodes.entries()) if (d.images[i]) images[d.images[i]!.imageId] = m.id;
+    return { outcome, externalId: node.id, variants, images };
   }
 
   /**

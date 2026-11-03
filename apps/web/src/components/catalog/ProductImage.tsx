@@ -4,7 +4,7 @@ import { Icon } from "@mizan/design-system/icons/react";
 import { useState } from "react";
 import { cx } from "@/components/ui/logic";
 
-type Image = { url: string; alt: string | null; width: number | null; height: number | null };
+type Image = { url: string; thumbUrl?: string | null; alt: string | null; width: number | null; height: number | null };
 
 /**
  * A product picture from the store's CDN (P1). Store pictures live on Shopify's CDN or the
@@ -24,7 +24,7 @@ export function ProductImage({ image, alt, size = 48, className }: { image: Imag
   return (
     <span className={box} style={{ width: size, height: size }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- store CDN pictures: not optimised through Next */}
-      <img src={image.url} alt={image.alt || alt} width={image.width ?? size} height={image.height ?? size} loading="lazy" decoding="async"
+      <img src={size <= 160 && image.thumbUrl ? image.thumbUrl : image.url} alt={image.alt || alt} width={image.width ?? size} height={image.height ?? size} loading="lazy" decoding="async"
         referrerPolicy="no-referrer" onError={() => setBroken(true)} className="h-full w-full object-cover" />
     </span>
   );

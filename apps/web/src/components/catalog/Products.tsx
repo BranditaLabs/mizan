@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
-import { Button, ButtonGroup } from "@/components/ui/Button";
+import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, SearchInput, TextArea } from "@/components/ui/Field";
@@ -21,6 +21,8 @@ import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { downloadText, toCsv } from "@/lib/csv";
 import { useSession } from "@/lib/session";
 import { ProductImage } from "./ProductImage";
+import { PRODUCT_EDITORS } from "./EditProduct";
+import { Icon } from "@mizan/design-system/icons/react";
 
 type Product = Schemas["ProductPage"]["data"][number];
 type Variant = Schemas["CatalogVariant"];
@@ -168,6 +170,7 @@ export function Products() {
       <ImportCosts open={importing} onClose={() => setImporting(false)} />
     </>,
     <ButtonGroup>
+      {PRODUCT_EDITORS.has(store?.role ?? "") ? <Link href="/products/new" className={buttonClass("primary")}><Icon name="add" size={16} />{t("newProduct.open")}</Link> : null}
       <Button variant="secondary" icon="download" busy={exporting} disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
       <Button icon="upload" onClick={() => setImporting(true)}>{t("import.open")}</Button>
     </ButtonGroup>,

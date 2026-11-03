@@ -67,7 +67,7 @@ export class ProductsService {
         ? await trx.selectFrom("variants").selectAll().where("product_id", "in", page.map((p) => p.id)).orderBy("created_at").orderBy("sku").execute()
         : [];
       const images = page.length
-        ? await trx.selectFrom("product_images").select(["id", "product_id", "url", "alt", "width", "height", "is_main"]).where("product_id", "in", page.map((p) => p.id)).orderBy("position").execute()
+        ? await trx.selectFrom("product_images").select(["id", "product_id", "url", "thumb_url", "alt", "width", "height", "is_main"]).where("product_id", "in", page.map((p) => p.id)).orderBy("position").execute()
         : [];
       const counts = await trx.selectFrom("variants as v").innerJoin("products as p", "p.id", "v.product_id").where("p.status", "!=", "archived")
         .select([
@@ -98,11 +98,11 @@ export class ProductsService {
     return this.db.tenant(tenantId, async (trx) => {
       const p = await trx.selectFrom("products as p").leftJoin("connections as c", "c.id", "p.connection_id")
         .select(["p.id", "p.title", "p.status", "p.handle", "p.description_html", "p.vendor", "p.product_type", "p.tags", "p.options", "p.updated_at",
-          "p.external_id", "p.connection_id", "c.provider", "c.external_account", "c.config"])
+          "p.external_id", "p.connection_id", "c.provider", "c.external_account", "c.config", "p.publish_status", "p.publish_connection_id", "p.publish_error"])
         .where("p.id", "=", id).executeTakeFirst();
       if (!p) throw new ProblemError(404, "not_found", "this product does not exist in this store");
       const variants = await trx.selectFrom("variants").selectAll().where("product_id", "=", id).orderBy("created_at").orderBy("sku").execute();
-      const images = await trx.selectFrom("product_images").select(["id", "url", "alt", "width", "height", "is_main"]).where("product_id", "=", id).orderBy("position").execute();
+      const images = await trx.selectFrom("product_images").select(["id", "url", "thumb_url", "alt", "width", "height", "is_main"]).where("product_id", "=", id).orderBy("position").execute();
       const main = images.find((i) => i.is_main)?.id ?? images[0]?.id;
       const prices = variants.map((v) => ({ minor: BigInt(v.price_minor), currency: v.currency }));
       const one = prices.length > 0 && prices.every((x) => x.currency === prices[0]!.currency);
@@ -115,6 +115,7 @@ export class ProductsService {
         handle: p.handle, description: htmlToText(p.description_html ?? ""),
         images: images.map((i) => imageView({ ...i, is_main: i.id === main })),
         storeUrl: storeUrl(p.provider, p.external_account, p.external_id, p.config),
+        publish: p.publish_status ? { status: p.publish_status as "publishing" | "published" | "failed", connectionId: p.publish_connection_id, error: p.publish_error } : null,
         updatedAt: p.updated_at.toISOString(),
         variants: inOptionOrder(variants.map(variantView), optionsOf(p.options)),
         totals: {
@@ -382,8 +383,8 @@ function inOptionOrder<V extends { options: Array<{ name: string; value: string 
   }).map((x) => x.v);
 }
 
-function imageView(i: { id: string; url: string; alt: string | null; width: number | null; height: number | null; is_main: boolean }) {
-  return { id: i.id, url: i.url, alt: i.alt, width: i.width, height: i.height, isMain: i.is_main };
+function imageView(i: { id: string; url: string; thumb_url?: string | null; alt: string | null; width: number | null; height: number | null; is_main: boolean }) {
+  return { id: i.id, url: i.url, thumbUrl: i.thumb_url ?? null, alt: i.alt, width: i.width, height: i.height, isMain: i.is_main };
 }
 
 function optionsOf(raw: unknown): Array<{ name: string; values: string[] }> {

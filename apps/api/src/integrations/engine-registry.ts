@@ -2,7 +2,7 @@ import { engineSyncOptions, storeSyncOf } from "./store-sync-options.js";
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import { CANCEL_RESULTS, ORDER_EDITS, type OrderEditSink } from "../modules/orders/ports.js";
+import { CANCEL_RESULTS, ORDER_EDITS, PRODUCT_PUBLISH, type OrderEditSink, type ProductPublishSink } from "../modules/orders/ports.js";
 import { SHIPMENT_RESULTS, type ShipmentResultSink } from "../modules/shipping/ports.js";
 import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
@@ -89,6 +89,10 @@ export class EngineRegistry {
 
   private get shipmentResults(): ShipmentResultSink | undefined {
     try { return this.moduleRef.get<ShipmentResultSink>(SHIPMENT_RESULTS, { strict: false }); } catch { return undefined; }
+  }
+
+  private get productPublish(): ProductPublishSink | undefined {
+    try { return this.moduleRef.get<ProductPublishSink>(PRODUCT_PUBLISH, { strict: false }); } catch { return undefined; }
   }
 
   private get orderEdits(): OrderEditSink | undefined {
@@ -212,6 +216,11 @@ export class EngineRegistry {
         // A bulk cancel reached the store's order, or could not (E5-4): a failure shows on the order.
         onCancelResult: async (orderId, result) => {
           await this.cancelResults?.recordStoreCancel(tenantId, storeConnection, orderId, result);
+        },
+        // P3: a product made in Mizan, read when its publish job runs; the store's ids before the product is read back.
+        loadProductDraft: async (productId) => this.productPublish?.loadDraft(tenantId, productId),
+        onProductPublished: async (productId, result) => {
+          await this.productPublish?.recordPublished(tenantId, productId, result);
         },
         // O3: an order edit read when its job runs (the address stays out of the job), and the store's answer.
         loadOrderEdit: async (editId) => this.orderEdits?.loadPlan(tenantId, editId),

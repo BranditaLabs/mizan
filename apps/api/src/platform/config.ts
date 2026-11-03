@@ -113,6 +113,12 @@ export const ConfigSchema = z.object({
   // Development only: base64 of 32 random bytes (openssl rand -base64 32). Unset = ephemeral key.
   SECRETS_DEV_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
 
+  // Product pictures (P3): the Blob Storage container, e.g. https://mizanstagingmedia.blob.core.windows.net/media,
+  // written and read with the managed identity (AZURE_CLIENT_ID). Unset: pictures are kept in the database.
+  MEDIA_BLOB_URL: z.url({ protocol: /^https$/, error: "must be an https URL of a Blob container" }).regex(/^https:\/\/[a-z0-9]{3,24}\.blob\.core\.windows\.net\/[a-z0-9-]{3,63}$/, "must look like https://<account>.blob.core.windows.net/<container>").optional(),
+  /** The largest picture a person may upload (P3). */
+  MEDIA_MAX_BYTES: z.coerce.number().int().min(100_000).max(20 * 1024 * 1024).default(10 * 1024 * 1024),
+
   // Shopify app (E3)
   SHOPIFY_API_VERSION: z.string().regex(/^\d{4}-\d{2}$/, "must look like 2026-10").default("2026-10"),
 

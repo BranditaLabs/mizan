@@ -1,4 +1,5 @@
 import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
+import type { CreatedProduct, ProductDraft } from "../../core/product-draft.js";
 import { IntegrationError } from "../../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
@@ -184,6 +185,81 @@ export class WooCommerceConnector {
       if (v.externalId === id || !v.price) continue;
       await this.rest.write("updateVariation", "PUT", `/products/${encodeURIComponent(id)}/variations/${encodeURIComponent(v.externalId)}`, prices(v), true);
     }
+  }
+
+  /**
+   * Publish a product made in Mizan (P3), once: found by its slug first (an earlier attempt whose
+   * answer was lost), else created — simple with its price and SKU, or variable with its attributes
+   * — with its pictures (WooCommerce downloads each from its public URL); then the variations it
+   * does not have yet, in one batch. Creates are not idempotent: each is preceded by a read.
+   */
+  async createProduct(d: ProductDraft): Promise<CreatedProduct> {
+    const find = async () => {
+      const { json } = await this.rest.get<Array<Record<string, unknown>>>("findProduct", "/products", { slug: d.handle, status: "any" });
+      return (Array.isArray(json) ? json : []).find((x) => x && String(x.slug ?? "") === d.handle) ?? null;
+    };
+    const prices = (v: { price: string; compareAtPrice?: string | undefined }) => (v.compareAtPrice && Number(v.compareAtPrice) > Number(v.price)
+      ? { regular_price: v.compareAtPrice, sale_price: v.price } : { regular_price: v.price, sale_price: "" });
+    const variable = d.options.length > 0;
+    let product = await find();
+    let outcome: CreatedProduct["outcome"] = "already_created";
+    if (!product) {
+      outcome = "created";
+      const one = d.variants[0]!;
+      const body = {
+        name: d.title, slug: d.handle, type: variable ? "variable" : "simple", status: WOO_STATUS[d.status],
+        ...(d.descriptionHtml ? { description: d.descriptionHtml } : {}),
+        ...(d.tags.length ? { tags: (await this.tagIds(d.tags)).map((id) => ({ id })) } : {}),
+        images: d.images.map((i) => ({ src: i.url, ...(i.alt ? { alt: i.alt } : {}) })),
+        ...(variable
+          ? { attributes: d.options.map((o, position) => ({ name: o.name, options: o.values, variation: true, visible: true, position })) }
+          : { sku: one.sku, ...prices(one), ...(one.barcode ? { global_unique_id: one.barcode } : {}) }),
+      };
+      try {
+        product = await this.rest.write<Record<string, unknown>>("createProduct", "POST", "/products", body, false);
+      } catch (err) {
+        if (!(err instanceof IntegrationError) || (err.kind !== "timeout" && err.kind !== "transient")) throw err;
+        product = await find();
+        if (!product) throw new IntegrationError({ kind: "transient", connector: "woocommerce", message: "creating the product got no answer and no product has the slug: will try again", cause: err });
+      }
+    }
+    const r = new Resolver(product, { connector: "woocommerce", entity: "product", drift: this.drift, now: () => this.rt.clock.now() });
+    const id = r.str("id", ["id"], { required: true })!;
+    const variants: Record<string, string> = {};
+    if (!variable) {
+      variants[d.variants[0]!.variantId] = id;
+    } else {
+      const key = (opts: ReadonlyArray<{ name: string; value: string }>) => opts.map((o) => `${o.name.toLowerCase()}=${o.value}`).join("|");
+      const read = async () => new Map((await this.variationsOf(product!) as Array<Record<string, unknown>>).map((v) => {
+        const vr = r.child(v, "product.variation");
+        const attrs = vr.arr<{ name?: unknown; option?: unknown }>("attributes", ["attributes"]).map((a) => ({ name: String(a?.name ?? ""), value: String(a?.option ?? "") }));
+        return [key(attrs), vr.str("id", ["id"])!] as const;
+      }));
+      let have = await read();
+      const missing = d.variants.filter((v) => !have.has(key(v.options)));
+      if (missing.length) {
+        try {
+          await this.rest.write("createVariations", "POST", `/products/${encodeURIComponent(id)}/variations/batch`, {
+            create: missing.map((v) => ({ sku: v.sku, ...prices(v), ...(v.barcode ? { global_unique_id: v.barcode } : {}), attributes: v.options.map((o) => ({ name: o.name, option: o.value })) })),
+          }, false);
+        } catch (err) {
+          if (!(err instanceof IntegrationError) || (err.kind !== "timeout" && err.kind !== "transient")) throw err;
+          throw new IntegrationError({ kind: "transient", connector: "woocommerce", message: "creating the variations got no answer: will read them and add what is missing", cause: err });
+        }
+        have = await read();
+      }
+      for (const v of d.variants) {
+        const vid = have.get(key(v.options));
+        if (!vid) throw new IntegrationError({ kind: "schema_drift", connector: "woocommerce", message: `no variation for ${key(v.options)} after creating them` });
+        variants[v.variantId] = vid;
+      }
+    }
+    const images: Record<string, string> = {};
+    for (const [i, m] of r.arr("images", ["images"]).entries()) {
+      const mid = r.child(m, "product.image").str("id", ["id"]);
+      if (mid && d.images[i]) images[d.images[i]!.imageId] = mid;
+    }
+    return { outcome, externalId: id, variants, images };
   }
 
   /**

@@ -54,11 +54,13 @@ export async function hardenHttp(app: NestFastifyApplication, config: AppConfig)
   // Bodies: one parser for every content type. Webhooks keep their bytes (no parsing, no
   // rejection of an odd content type); the API takes JSON and forms within its own limit.
   fastify.removeAllContentTypeParsers();
-  const limitFor = (url: string) => (isWebhook(url) ? config.WEBHOOK_MAX_BODY_BYTES : config.MAX_BODY_BYTES);
-  fastify.addContentTypeParser("*", { parseAs: "buffer", bodyLimit: Math.max(config.WEBHOOK_MAX_BODY_BYTES, config.MAX_BODY_BYTES) }, (req, body, done) => {
+  // A picture upload (P3) is the only other raw body: its own, larger limit.
+  const limitFor = (url: string) => (isWebhook(url) ? config.WEBHOOK_MAX_BODY_BYTES : isPictureUpload(url) ? config.MEDIA_MAX_BYTES : config.MAX_BODY_BYTES);
+  fastify.addContentTypeParser("*", { parseAs: "buffer", bodyLimit: Math.max(config.WEBHOOK_MAX_BODY_BYTES, config.MAX_BODY_BYTES, config.MEDIA_MAX_BYTES) }, (req, body, done) => {
     const buf = body as Buffer;
     if (buf.length > limitFor(req.url)) return done(new ProblemError(413, "payload_too_large", `the body is larger than ${limitFor(req.url)} bytes`), undefined);
     if (isWebhook(req.url)) return done(null, buf);
+    if (isPictureUpload(req.url) && req.method === "POST") return done(null, buf);
     if (buf.length === 0) return done(null, undefined);
     const type = (req.headers["content-type"] ?? "").split(";")[0]!.trim().toLowerCase();
     if (type === "application/json" || type.endsWith("+json")) {
@@ -83,4 +85,9 @@ export function tuneServer(server: Server): void {
   server.keepAliveTimeout = 620_000;
   server.headersTimeout = 625_000;
   server.requestTimeout = 60_000;
+}
+
+/** POST /v1/products/{id}/images: the picture's bytes, as uploaded (P3). */
+function isPictureUpload(url: string): boolean {
+  return /^\/v1\/products\/[0-9a-f-]{36}\/images\/?(\?|$)/i.test(url);
 }
