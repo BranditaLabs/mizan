@@ -30,7 +30,7 @@ How Mizan gets access to each outside system, what the engine already supports, 
 | J&T, Mylerz | ⏳ MVP / V2 | — |
 | Claude (Anthropic Messages API) | ✅ E6-12 offer writer: raw HTTP through `send()` (breaker, bucket, error taxonomy: 429 `rate_limit_error` and 529 `overloaded_error` retried with `retry-after`, 401/403/402 stop, 400/404 ours), `anthropic-version: 2026-10-21`, structured JSON output, `fallbacks: "default"` (`server-side-fallback-2026-07-01`), low effort; refusals and cut-off answers fall back to Mizan's own offer; fake server + chaos tests. Key `ANTHROPIC_API_KEY` (Secret Manager), model `ANTHROPIC_MODEL` (default `claude-opus-5-5`) | `packages/engine/src/connectors/ai/claude.ts` |
 | WhatsApp Cloud API | ✅ E6-4a connector: templates with quick replies, reply buttons, lists, text, template review status; Meta body-coded errors classified (`send()` `classify` hook); webhook signature, subscription challenge, messages and statuses parsed through the `Resolver`; fake Graph server + chaos suite (10/25/50 %). ⏳ Connecting a number (E6-4b) and the API webhook endpoint (E6-10) | `packages/engine/src/connectors/whatsapp` |
-| Paymob (links, refunds, transactions) | ⏳ MVP backlog | — |
+| Paymob (links, refunds, transactions) | 🚧 E14-2a built and tested: payment links through the Intention API (`POST /v1/intention/`, `Authorization: Token <secret key>`; amounts in the currency's minor units; one non-PII item; minimal billing data; `special_reference` `<order>:<purpose>:<attempt>`) and the Unified Checkout page per region (EG, KSA, UAE, OM); the 60-minute auth token from the API key for reads, renewed on 401; error classes (404 integration of the other mode → validation, never retried); a create is sent once per attempt — a lost answer makes the next attempt a new intention, the lost one never reaches anyone; engine job `paymob.createLink` with hooks `loadPaymentLink` / `onPaymentLink` (the phone and the checkout secret never go into a job or a log). Fake server + chaos (10/25/50 %). ⏳ Callbacks and the ledger (E14-2b), the API and screens (E14-2c), refunds (E14-2d), reports (E14-2e) | `packages/engine/src/connectors/paymob` |
 | Meta / TikTok / Snap ads + CAPI | ⏳ V2 | — |
 | Kashier, Fawry, Moyasar, Tap, HyperPay, Checkout.com, Stripe | ⏳ V2 (per market) | — |
 | Noon, Amazon, Jumia | ⏳ V2 | — |
@@ -151,6 +151,206 @@ Full payment model: `docs/12-payments.md`. Payments always go to the **merchant'
 | InstaPay | EG | Open question: no public merchant API confirmed; match via bank statements (M8) | V2 |
 
 For each provider confirm: authentication model, webhook signing, payment-link API, refunds API, transaction and payout reports (API or file), sandbox.
+
+### Paymob in depth (E14-2, researched 3 Nov 2026)
+
+Sources checked November 2026. **Postman** means Paymob's official collection, https://github.com/PaymobAccept/API-Postman-Collections. **Skill** means Paymob's own agent guide, https://github.com/PaymobAccept/Paymob-AI-Integration-Skill. **Docs** means pages under https://developers.paymob.com/paymob-docs/. The legacy site `docs.paymob.com` (and `docs.oman.paymob.com`) fails TLS, so anything that rests on it alone is in *Confirm before building*.
+
+#### Accounts, hosts, credentials
+
+- **Regional hosts** (Postman README; Docs `intention-apis/overview`): Egypt `https://accept.paymob.com`, KSA `https://ksa.paymob.com`, UAE `https://uae.paymob.com`, Oman `https://oman.paymob.com`. Every region uses the same paths. Test and live share a host; the mode comes only from the keys and integration IDs.
+- There is no global account (Docs FAQ), so Mizan needs **one connection per merchant per region**.
+- Paymob Payouts (disbursements, `payouts.paymobsolutions.com`, OAuth2 `/o/token/`, `expires_in` 3600) is a separate product. Its credentials are not acceptance credentials (Payouts docs).
+
+Each connection stores (encrypted, through the secrets service): region, mode, Secret Key, Public Key, API Key, HMAC secret, and the integration ID of each enabled method.
+
+| Credential | Where | Mode | Used for | Header |
+| --- | --- | --- | --- | --- |
+| Secret Key (`sk_live_…`) | Dashboard → Settings → API Keys | Per mode | Intention create, refund, void, capture | `Authorization: Token <secret_key>` (the literal word `Token`, not `Bearer`) — Docs `create-intention`; Postman refund/void/capture |
+| Public Key (`pk_live_…`) | Same page | Per mode | Checkout URL only (client side), never sent on create | — |
+| API Key | Same page (Postman says Settings → Account Info) | Same key in Test and Live (Docs `getting-integration-credentials`; Postman) | `POST /api/auth/tokens {"api_key"}` → `{token}`, which **expires after 60 min** (Postman, Transaction Inquiry) | `Authorization: Bearer <token>` for the inquiry calls |
+| Integration IDs | Settings → Payment Integrations, per mode | Per mode | `payment_methods` on create | — |
+| HMAC secret | Location not documented (see *Confirm*) | Probably per mode | Callback signatures | — |
+
+- The engine caches the auth token per connection and refreshes it on 401 or before 60 min.
+- Every method needs its own integration ID, enabled by the account manager (Docs overview).
+- If an ID doesn't belong to the account, or its Live/Test mode doesn't match the key's, create returns **404 "Integration ID/Name does not exist"** (Docs `create-intention`, FAQ). Classify this as `validation` (configuration), never as retry.
+- No rate limits or 429 behaviour are published for any Accept API (Postman; Skill says only "don't poll in a tight loop"). Use a conservative per-connection bucket in `send()`.
+
+#### Creating a payment (Intention API)
+
+`POST {host}/v1/intention/`, `Authorization: Token <secret_key>`, JSON body.
+
+The path appears in Postman's Intention collection. The Docs page leaves both host and path blank ("POST /"), so check the path in sandbox (see *Confirm*).
+
+| Field | Rule (Docs `create-intention` unless noted) |
+| --- | --- |
+| `amount` | Required, integer minor units. Get the factor from the currency's ISO decimals, never ×100 hard-coded (OMR ×1000 per a third-party integration; KWD/BHD 3 decimals is ISO 4217). `toMinor` already handles 3-decimal currencies. |
+| `currency` | Required. Must match the integration IDs' currency. |
+| `payment_methods` | Required. Integration IDs **as integers** (FAQ) or names (`"card"`). Same mode as the key. |
+| `items` | Not marked required, but each item needs `name` and `amount` (otherwise 400). Mizan sends **one item**, `Order <number>`, with `amount` equal to the intention amount. This avoids product data and the unconfirmed rule on whether items must add up to `amount`. |
+| `billing_data` | Optional as an object, but if present it needs `phone_number` (otherwise 400). Send the minimum (PII rule 12). Other required fields and the phone format are unconfirmed. |
+| `special_reference` | Optional, "unique reference". Comes back as `order.merchant_order_id` in callbacks, and transactions can be looked up by it (FAQ). **Not a documented idempotency key.** Mizan sets `<order_id>:<purpose>:<attempt>` (`purpose` = `full`, `deposit` or `balance`). |
+| `notification_url` | Server POST with the transaction on success or failure, for all methods, plus the card TOKEN callback. Postman: it **overrides** the integration ID's Transaction Processed URL. Mizan sets a per-connection URL carrying the connection's webhook token. |
+| `redirection_url` | Customer redirect with query params, Card and Wallet only. Postman: it overrides the Response URL for card/wallet; other methods use the integration's URL. |
+| `extras` | Custom fields, returned under `payment_key_claims`. Put only Mizan IDs here, no PII. |
+| `expiration` | Optional number; no unit or default documented (see *Confirm*). |
+| `is_auth` | Authorize only: `is_auth: true` (Skill), or on some accounts `payment_type: "AUTH"`. Auth/Capture must be enabled on the account. Default in Mizan: off (sale). |
+
+**Response** is `201` with `id` (intention), `intention_order_id` (the Paymob order ID seen in callbacks; this is inferred, because the sample shows it equal to `payment_keys[].order_id`), `client_secret`, `payment_keys`, `payment_methods`, `special_reference`, `extras`, `confirmed`, `status`, `created`. Store `id`, `intention_order_id` and `special_reference`. `client_secret` is a credential for this intention: store it encrypted and never log it.
+
+**Full, deposit, balance.** Paymob has no partial-payment or deposit feature on intentions or links (Docs; QuickLink page). Each amount is its own intention:
+
+- `full` = what the courier would collect (`cashToCollect`) or the order total for prepaid.
+- `deposit` = the offer's deposit (E14-3 default 30%).
+- `balance` = `orders.balance_minor` at the time of creation.
+
+Paying one never pays another. Before creating a balance intention, Mizan re-reads the order's balance.
+
+**Hosted checkout** (Unified Checkout, Docs `unified-checkout-redirection`): `https://{eg|uae|ksa|om}.checkout.paymob.com/?publicKey=<pk>&clientSecret=<client_secret>`. There is no sandbox host; test keys go in the same URL. Paymob recommends this over the legacy iFrame, and a new iFrame needs support. Card data stays on Paymob's page (rule 13). This URL is the "payment link" Mizan sends by WhatsApp.
+
+**QuickLink API (alternative links)** (Docs `create-quicklink`):
+
+- `POST` (official path blank; a third party uses `/api/ecommerce/payment-links`, multipart) with `Authorization: Bearer <auth token>`.
+- All body fields are typed as strings: `amount_cents`, `payment_methods`, `expires_at` (must be in the future), `reference_id`, `is_live`, `full_name`, `email`, `phone_number`, `notification_url`, and others.
+- Response `200` with `id`, `client_url`, `shorten_url`, `state`, `paid_at`, `order`, `reference_id`, `expires_at`.
+- Errors: 400 "Reference ID already exists.", 400 for a past `expires_at`, 401, and 404 when `is_live` doesn't match the integration.
+- `email` and `phone_number` make **Paymob email or SMS the customer**. Mizan never sends them (PII, and a link from a retried create must not reach the customer).
+- The dashboard can cancel unpaid links (Docs `no-code/payment-links`). The cancel endpoint is third-party only.
+- Use QuickLink only if the intention's `client_secret` turns out to be too short-lived for a 24 h offer (see *Confirm*).
+
+#### Callbacks
+
+Two callbacks (Docs `manage-callback/transaction-callbacks`, `integration-paths/apis`):
+
+- **Processed** callback: a server POST with a JSON body. It is the source of truth.
+- **Response** callback: a browser GET with flat query params. Paymob says never to update the order from it, because the customer may not complete the redirect.
+- Verify every callback by HMAC before trusting it.
+- There are no event names. Every transaction callback has `type: "TRANSACTION"`. A saved-card callback is a separate POST to the same URL with `type: "TOKEN"`. Branch on `type`.
+
+**POST body:** `{ type, obj, issuer_bank, transaction_processed_callback_responses }`. `obj` has:
+
+- identifiers and amounts: `id`, `amount_cents`, `currency`, `integration_id`, `profile_id`, `owner`, `created_at`, `updated_at`
+- status flags: `pending`, `success`, `error_occured`, `is_auth`, `is_capture`, `is_captured`, `captured_amount`, `is_voided`, `is_refunded`, `refunded_amount_cents`, `parent_transaction`
+- nested objects: `order {id, merchant_order_id}`, `source_data {type, pan, sub_type}`, `data {message, txn_response_code, acq_response_code, card_type}`
+- other: `payment_key_claims`, `is_hidden`
+
+The reference table on that page wrongly calls `type` a unique transaction ID.
+
+**Transaction HMAC** (Docs `hmac-transaction-callback`):
+
+1. Take the values of these 20 keys in this exact order: `amount_cents, created_at, currency, error_occured, has_parent_transaction, id, integration_id, is_3d_secure, is_auth, is_capture, is_refunded, is_standalone_payment, is_voided, order.id, owner, pending, source_data.pan, source_data.sub_type, source_data.type, success`.
+2. Join them with no separator.
+3. Compute HMAC-SHA512 with the connection's HMAC secret.
+4. Compare in constant time against `?hmac=` in the **query string**. It is not in the body or a header.
+
+Details:
+
+- Booleans render as lowercase `true`/`false`.
+- For the POST, the values come from `obj` (`obj.order.id`, `obj.source_data.*`). For the GET, the order field is `order_id` per the HMAC page, but the sample URL shows `order=`.
+- Output is lowercase hex (inferred from the sample).
+- **Unit-test vector** (official): `amount_cents=100000, created_at=2024-06-13T11:33:44.592345, currency=EGP, error_occured=false, has_parent_transaction=false, id=192036465, integration_id=4097558, is_3d_secure=true, is_auth=false, is_capture=false, is_refunded=false, is_standalone_payment=true, is_voided=false, order.id=217503754, owner=302852, pending=false, source_data.pan=2346, source_data.sub_type=MasterCard, source_data.type=card, success=true` → `fa8ac0b7f3852e60c50e7fdd4ea5ef0bda96030c19dea1d55df8c76d6c08ab1877774662cbb04981dc84839ad4da560bcc8cb53b8973548657f7e8f8d2e79930`.
+
+**TOKEN HMAC** (Docs `hmac-for-card-tokens`): HMAC-SHA512 over `card_subtype, created_at, email, id, masked_pan, merchant_id, order_id, token`, in that order. Mizan does not store card tokens. It verifies the callback, acknowledges it and drops it.
+
+**Delivery:**
+
+- Paymob documents no retry schedule, timeout, required status code, resend, or source IPs (Docs `webhook-callbacks-and-hmac`). Hookdeck's guide says the same outcome "can arrive more than once".
+- The docs disagree on when callbacks fire. The overview says only on success or decline. The transaction-callbacks page says "after any action on the payment", and the testing tool covers refund, void and capture. **Assume pending callbacks may never come, and poll.**
+- Handler: verify HMAC → dedupe on `obj.id` + a hash of the status flags (the same `id` recurs after refund, void or capture; this key is a Mizan design) → enqueue → 200. The worker then **re-reads** the transaction (rule 6).
+- Test with the Webhook Testing Tool `hooks.paymob.com` (temporary endpoint per integration ID). Capture real payloads for each method there, for the fake server's fixtures.
+
+#### Re-reading
+
+Auth for both calls is `Bearer <auth token>` (Postman, Transaction Inquiry).
+
+| Call | Use |
+| --- | --- |
+| `GET {host}/api/acceptance/transactions/{transaction_id}` | Full transaction: the flags above plus `is_settled`, `is_live`, `refunded_amount_cents` (cumulative across partial refunds), `captured_amount`, `parent_transaction`, `order{…, paid_amount_cents, commission_fees}`, `merchant_commission`, `paid_at`. In card `data.*`, amounts are in **major** units (`data.captured_amount: 20` next to `amount_cents: 2000`), and `data.migs_transaction.acquirer.settlementDate`/`batch` are present. Never read money from `data.*`. |
+| `POST {host}/api/ecommerce/orders/transaction_inquiry` `{order_id}` or `{merchant_order_id}` | Returns **only the most recent** transaction of the order. The Docs page puts `auth_token` in the body; Postman uses the Bearer header. Send both. This is the fallback when no callback arrived: inquire by `special_reference`. |
+
+#### States → Mizan
+
+The outcome comes from the booleans (Docs `transaction-callbacks`). Mizan acts on the **re-read** transaction, never on the callback body. Money lines come from the parent's cumulative fields, the same way as the Shopify running totals (docs/12 §3). That way it doesn't matter whether Paymob sends child callbacks, or which transaction they carry. A child transaction (`has_parent_transaction=true`) only triggers a re-read of its parent.
+
+| Paymob (re-read) | `payment_status` effect | Ledger line (`LedgerService.post`) | `external_ref` |
+| --- | --- | --- | --- |
+| `pending=true` (3DS, kiosk reference made, cash awaiting collection) | Unchanged (`unpaid`); kiosk reference shown | None | — |
+| `success=false, pending=false` | Attempt failed; `payment.failed` | None | — |
+| `success=true, pending=false, is_auth=false` | Paid or partially paid | `sale` +`amount_cents` | `<txn id>:sale` |
+| `success=true, is_auth=true` | `authorized`; never treated as paid (Skill) | `authorization` +`amount_cents` | `<txn id>:auth` |
+| `captured_amount` rises | Paid | `capture` + the increase | `<txn id>:capture:<new total>` |
+| `is_voided=true` | `voided` | `void` − the amount held | `<txn id>:void` |
+| `refunded_amount_cents` rises | `partially_refunded` / `refunded` | `refund` − the increase | `<txn id>:refund:<new total>` |
+
+- A refund increase that matches an approved Mizan refund (E14-4) completes that refund. Otherwise it is a refund made **in the Paymob dashboard** (refunds, voids and captures can all be done there; Docs `manage-payment-apis/*`). Post it as an outside refund, never ignore it.
+- There is no chargeback API, and disputes go through Paymob support (Skill). They stay team-recorded (E14-5). Paymob advises asking it before refunding a disputed transaction, because a refund plus a lost dispute debits the merchant twice. Mizan blocks a gateway refund on an order with an open dispute.
+
+#### Refund, void, capture
+
+All three use `Authorization: Token <secret_key>` with a JSON body (Postman *Refund & Void & Capture*). None has an idempotency key, and none has a documented response or error shape: no saved responses exist.
+
+| Call | Body | Rules |
+| --- | --- | --- |
+| `POST /api/acceptance/void_refund/refund` | `{transaction_id: int, amount_cents: int}` | Full or partial. ≤ the original amount, repeatable until fully refunded (Postman; Docs `refund`). Returns to the same method; timing varies by method and bank. **No refund for Kiosk.** Transaction fees apply to the refund. |
+| `POST /api/acceptance/void_refund/void` | `{transaction_id: int}` | Full amount (no amount field). **Card payments only** (Docs `void`): Apple Pay and Google Pay can be voided; wallets, StcPay, BNPL, installments and kiosk cannot (Skill). Same business day, before settlement; no fee. The cutoff time is undocumented. |
+| `POST /api/acceptance/capture` | `{transaction_id: int, amount_cents: int}` | Full or partial, ≤ the authorized amount. Card Auth transactions only. **Auto-voided if not captured within 14 days** (Postman). |
+
+Per method (Skill tables, "checked 2026-10"; the Skill says support can vary by account):
+
+- **BNPL:** Tamara, Premium and Seven refund **in full only**. valU, Souhoola, Forsa, Aman, Sympl, Halan, Klivvr, Contact, MOGO, TRU, Mylo and Tabby refund in full or in part.
+- **Egyptian wallets and StcPay:** refund, no void.
+- **Bank installments (EG):** full or partial refund, no void.
+
+The connector checks these rules before queueing the job and refuses with a reason the screen can show.
+
+#### Idempotency per write (rule 5)
+
+| Write | Provider key | Mizan strategy |
+| --- | --- | --- |
+| Create intention | None documented. Behaviour on a repeated `special_reference` is unknown. | Outbox job keyed `<order>:<purpose>:<attempt>`. On a timeout or 5xx, Mizan **abandons** that attempt and creates `attempt+1`. Safe because a lost intention's `client_secret` never reached the customer, so it cannot be paid. A callback for an unknown attempt's `merchant_order_id` is still matched by its order prefix, re-read and posted, never dropped. |
+| QuickLink (if used) | `reference_id` must be unique (400 if it already exists) | Same key. A duplicate 400 means the link exists. A lookup by reference is unconfirmed, so cancel it and use a new attempt. Never send `email`/`phone_number`. |
+| Refund | None | One job in flight per parent transaction. The job stores the parent's `refunded_amount_cents` **before** sending. On a timeout or ambiguous reply, Mizan never re-sends (Skill: "never auto-retry after a timeout"; "a 200 alone doesn't prove the result"). It re-reads the parent with backoff: a total ≥ before + amount means done; still unchanged after the verify window → retry once more; anything else → review. |
+| Void | None | Re-read `is_voided` before any retry. Past the business day, switch to a refund only by a team decision. |
+| Capture | None | One in flight per transaction. Compare `captured_amount` before and after, as for refunds. |
+
+#### Pending methods, sandbox, fees, settlement
+
+- **Methods (EG)** (Docs overview): cards (Visa, Mastercard, Amex, 3DS), Apple Pay, Google Pay; wallets Vodafone Cash, Orange Cash, e& money, WE Pay; BNPL valU, Sympl, Souhoola, Halan, TRU, MOGO. The lists continue ("and others"), and availability depends on the account. The SDKs use the names `kiosk` (Python) and `card-installment` (Node).
+- **InstaPay through Paymob:** treat as unavailable ("launching soon", WooCommerce listing).
+- **Other regions:** KSA cards, Apple Pay, Google Pay, STC Pay, Tabby, Tamara; UAE cards, Apple Pay, Google Pay, Tabby, Tamara; Oman Oman Net (WooCommerce listing).
+- **Kiosk** (EG only; Docs `kiosk-egy`): the customer generates a reference and pays cash; no refunds. A `pending=true` callback marks "reference generated" (Docs callbacks). Payment mode is `bank_transfer`-like: no shipping until it is paid.
+- **Test credentials** (Docs `test-credentials`): Mastercard 5123456789012346 and 5123450000000008, Visa 4111111111111111, name "Test Account", expiry 01/39, CVV 123. Wallet 01010101010, MPin 123456, OTP 123456. PayMe is Live only (FAQ).
+- **Fees:** there is no per-transaction fee field. `merchant_commission` and `order.commission_fees` are null in every official sample. Fees come from the store's rate card (`fee_is_actual=false`) and are replaced from settlement files later. The published Egypt standard rate is **2.75% + 3 EGP per transaction**, with no monthly fee (paymob.com/en/pricing). Use it only as a pre-filled suggestion; fees are contractual (Skill).
+- **Settlement:** Paymob's own pages disagree. The pricing page says "weekly". The WooCommerce readme says T+1 for most methods, BNPL may vary, and instant settlement is optional. Treat timing as a per-merchant setting.
+- **Reports:** there is no server-to-server settlement or payout API. The dashboard shows settlement summaries and balance, and downloads payment, settlement and refund reports; the format is unpublished. Paymob's MCP server (`export_transactions`, `get_merchant_transfers`, and others) is Egypt only and signs in by dashboard password through the browser, so it can't serve as an unattended connector (Docs `ai-solutions/model-context-protocol-mcp`). Reconciliation is a **file import** plus the per-transaction re-read.
+
+#### Confirm before building
+
+1. `POST /v1/intention/` against a sandbox account. Docs leave both host and path blank; it is in Postman only.
+2. What a repeated `special_reference` does (rejected, ignored, or returns the existing intention).
+3. The `expiration` unit and default, and how long `client_secret` lives. A third party says seconds and 3600, but that source is now 404. This decides between intention and QuickLink for a 24 h offer.
+4. Required `billing_data` fields beyond `phone_number`, the phone format (the Python SDK sends `"9135210487"` with no `+`), and whether `"NA"` placeholders are accepted.
+5. Whether the item amounts must add up to `amount`.
+6. Where the HMAC secret is in the current dashboard, and whether Test and Live differ. Sources disagree: Profile tab; Settings → Account Info → HMAC with a Test/Live toggle; a "Recreate" button.
+7. How null values (for example `source_data.pan` for wallet or kiosk) appear in the HMAC string. Verify per method with sandbox callbacks.
+8. The GET redirect's keys: `order` vs `order_id`, and `source_data.pan` vs `source_data_pan`.
+9. Whether the dashboard Webhook URL is **also** called when `notification_url` overrides it.
+10. Whether pending (3DS, wallet) callbacks are sent at all. Kiosk under Unified Checkout: where `bill_reference` appears, its expiry, and callbacks when a reference is created or expires. Whether Fawry is a Paymob kiosk partner (current docs name Aman and Masary).
+11. Refunds and voids as child transactions: which transaction gets the callback, and the child's `parent_transaction` value. Not documented today.
+12. Response and error shapes for refund, void and capture: over-refund, short merchant balance (a legacy warning says you need enough balance), void after cutoff, duplicate refund. Whether an identical repeated refund is deduped.
+13. The minimum refund amount (legacy "1 pound", snippet only).
+14. The void cutoff time and time zone per region.
+15. `is_auth: true` vs `payment_type: "AUTH"` per account.
+16. Inquiry token scope: Postman says the API Key is the same in Test and Live, but the Skill says a test token sees only test transactions. The Skill also shows `?token=` in place of Bearer.
+17. The listing endpoints `GET /api/acceptance/transactions?page=N`, `GET /api/ecommerce/orders?page=N` and `GET /api/ecommerce/orders/{id}` (all attempts): Skill only, page size and date filters unknown.
+18. QuickLink: official path, content type, `expires_at` format and time zone, the cancel endpoint, lookup by `reference_id`.
+19. Methods per region through the Intention API, mada in KSA (the sources place mada in UAE or in no country), BNPL settlement timing, Apple Pay in test mode.
+20. Whether `merchant_commission` / `commission_fees` are filled on live transactions.
+21. The settlement report's format and columns. Get a sample export from a pilot merchant.
+22. Rate limits (none published).
+23. That new accounts start in Test mode with a test card integration (not stated on the credentials page).
+24. Hosts `pakistan.paymob.com` and `flashapi.paymob.com` (not verified; not used).
 
 ## 8. Marketplaces (V2)
 

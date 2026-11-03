@@ -177,7 +177,51 @@ Legend: `S` ≈ ½ day, `M` ≈ 1–2 days, `L` ≈ 3–5 days (split before sta
 ### E14 · M15 Payments and refunds
 
 - [x] **E14-1** `M` Payment ledger service over `payments` (signed lines, invariants, `paid_minor`/`refunded_minor` maintained in the same transaction); ledger panel on order detail. *Accept:* property tests prove ledger lines always sum to the order balance. ✅ Migration 0034 (source, note, signs, one line per reference), `LedgerService` (checked posts; store syncs keep the team's lines), `GET/POST /v1/orders/{id}/payments`, ledger panel with "Record payment" (owner, admin, finance); property tests in the pure ledger and through Postgres.
-- [ ] **E14-2** `L` Paymob connector (via `/new-connector`): payment links (full, deposit, balance), webhook signature, transaction re-read, refunds, transaction report. Fake + chaos suite. Split before starting.
+- [ ] **E14-2** `L` Paymob connector (via `/new-connector`): payment links (full, deposit, balance), webhook signature, transaction re-read, refunds, transaction report. Fake + chaos suite. Split 3 Nov 2026 from the research in docs/06 §7 (Paymob in depth):
+  - [x] **E14-2a** `M` **Paymob connector core: intentions and checkout links** (engine, `/new-connector`). ✅ `PaymobConnector` (client with both auth schemes and its own breaker and bucket; mapper by candidate paths; `createIntention` per attempt; `checkoutUrl`; `getTransaction`), engine job `paymob.createLink` (+ hooks, dead-letter report), fake Paymob (token expiry, Token/Bearer, other-mode integration 404, missing phone or item name 400, integer amounts, 5xx/429/hang/lost, the older answer shape), 13 tests incl. the 3-decimal currencies, a lost create, no secret in logs and chaos at 10/25/50 %. Still to confirm on a sandbox account: the intention path, a repeated `special_reference`, `expiration`, required billing fields (docs/06 §7 confirm list 1–5).
+    - **Builds:** `PaymobConnector` per connection (region host, mode); both auth schemes (`Token <secret>`, and a cached 60-min Bearer token refreshed on 401); `createIntention` for `full`, `deposit` and `balance` amounts with exact minor units from the currency's decimals; the Unified Checkout URL per region; error classification into `ErrorKind` (404 integration mismatch → `validation`; 400 missing field → `validation`; 401 → `auth`; 5xx and timeouts → retry with a **new attempt**, never a blind re-send); the attempt-numbered `special_reference`; a single non-PII item; minimal `billing_data`; `client_secret` redacted everywhere.
+    - **Fake server quirks:** blank-docs paths (one constant for the path); 404 when integration mode ≠ key mode; 400 without `phone_number` or an item `name`; token expiry at 60 min; create committed but response lost; slow 5xx bursts; OMR/KWD 3-decimal amounts; integer-vs-string integration IDs.
+    - **Tests:** amount conversion property tests (EGP, SAR, AED, OMR); a timeout creates attempt+1 and the orphan never surfaces; no secret or `client_secret` in logs; the chaos suite under 50% failure.
+
+  - [ ] **E14-2b** `M` **Callbacks, re-read and state mapping** (engine).
+    - **Builds:** `verifyPaymobHmac` (20-field order, POST from `obj`, GET flat params accepting `order`/`order_id` and `source_data.pan`/`source_data_pan`, constant-time, `hmac` from the query string); TOKEN callbacks verified and dropped; `getTransaction(id)` and `inquireByMerchantOrderId`; mapping from the re-read flags to canonical payment events and cumulative ledger deltas (table above); unknown flag combinations → `unknown` + drift + review, never a guessed terminal state.
+    - **Fake server quirks:** duplicate, out-of-order and late callbacks; a callback arriving before the create response; callbacks that never come (pending forever); null `pan` for wallet and kiosk; the same `id` recurring after refund, void and capture; child refund transactions with and without a callback; inquiry returning only the latest transaction; a dashboard-made refund.
+    - **Tests:** the official HMAC vector; tampered fields rejected; dedupe on id + flag hash; replaying all callbacks in any order gives the same ledger (property test); the chaos suite.
+
+  - [ ] **E14-2c** `M` **Paymob in the API and on screens: connect, take payments, sweep** (`apps/api`, `apps/web`).
+    - **Builds:**
+      - Settings → Payments → Paymob (AR/EN, RTL): region, mode, keys and HMAC secret into the secrets service, an integration ID per method, a sandbox test-connection button.
+      - The webhook route `POST /v1/webhooks/paymob/{connectionToken}`: verify → dedupe → enqueue → 200. The worker re-reads and posts lines through `LedgerService.post` with the external refs above.
+      - `payment.send_link` and E14-3's *Convert to prepaid* send a gateway link (full or deposit) beside the manual methods.
+      - The balance link on `partial` orders.
+      - A sweep job for open intentions with no terminal state (inquire by `special_reference`, with backoff).
+      - Events `payment.received`, `payment.failed`, `payment.link_paid`, `order.payment_changed`.
+      - A kiosk reference shown on the order.
+      - zod schemas, openapi and web types regenerated.
+      - docs/04, 05 and 12 updated.
+    - **Tests:** API e2e against the fake (link paid → courier cash drops → booked shipment to review); a wrong connection token is refused; a cross-tenant token is refused; ledger property suite with Paymob histories; a web unit test for the settings form; i18n check.
+
+  - [ ] **E14-2d** `M` **Money back: refund, void, capture** (engine + API).
+    - **Builds:**
+      - Outbox jobs `paymob.refund`, `paymob.void` and `paymob.capture`, one in flight per transaction, each storing the totals before sending and verifying by re-read (never re-sending after a timeout).
+      - Method rules checked before queueing: kiosk no refund; Tamara, Premium and Seven full only; void card-only and same day; capture ≤ authorized.
+      - E14-4 "original method" refunds on Mizan's own orders go through Paymob and complete on the re-read total.
+      - Dashboard-made refunds, voids and captures are posted as outside lines.
+      - Refunds are blocked while a dispute is open.
+      - Alerts for authorizations nearing 14 days, then auto-void handling.
+    - **Fake server quirks:** no idempotency (a resend makes a second refund); refund committed but response lost; refund applied seconds after the reply; over-refund and short-balance errors with an unknown shape; void after cutoff rejected; 14-day auto-void.
+    - **Tests:** a timed-out refund is never doubled (chaos); concurrent refund requests are serialized; partial refunds sum to at most the original; ledger `over_refund` is never hit through the connector.
+
+  - [ ] **E14-2e** `S` **Paymob reconciliation and actual fees** (API, M8). *Blocked on a sample settlement export from a pilot merchant (confirm list items 20–21).*
+    - **Builds:**
+      - Import of the dashboard's payment, settlement and refund reports (CSV/Excel, column mapping kept per connection).
+      - Lines matched to ledger lines by transaction id.
+      - Actual fees replace the estimates (`fee_is_actual=true`).
+      - Unmatched rows go to the review queue.
+      - The rate card pre-filled with the published Egypt rate as a suggestion.
+      - Settlement timing as a store setting.
+    - **Fake quirks:** a report row for a transaction Mizan never saw, a row for a refund made in the dashboard, amounts in major units, duplicated rows across overlapping date ranges.
+    - **Tests:** importing the same file twice is a no-op; profit per order moves from estimated to actual fee; AR/EN on the import screen.
 - [x] **E14-3** `M` COD-to-prepaid conversion: link from verification queue and automation action `order.convert_to_prepaid`; shipment COD amount updated or re-booked. ✅ Manual methods (InstaPay, wallet, bank transfer, the store's payment page): the offer and its AR/EN message on the order screen, Settings → Payments, the automation action, paid through the ledger with the courier's cash lowered, a booked shipment sent to review. Discount for paying first and gateway links wait for E14-2.
 - [x] **E14-4** `M` Refunds: approval thresholds, destinations (original method, store credit, bank transfer), audit; ticket integration (M6). ✅ Migration 0036 (refund numbers, who asked and approved, rejection reason, the ledger line; ticket history `refund` steps, once each); request/approve/reject/complete with four eyes over the threshold; store credit completes on approval; store refunds complete approved original-method refunds when the store reports them; Settings → Refunds; refunds card on the order, refunds to handle on the payments screen, steps in the ticket's history (AR/EN). Gateway refund calls come with E14-2.
 - [x] **E14-5** `S` Disputes: record chargebacks from gateway webhooks; evidence pack PDF (order, tracking, chat, address). ✅ Recorded by the team (gateway webhooks with E14-2): ledger line with the fee, deadline and case number, evidence pack AR/EN printed to PDF (audited), evidence sent, won/lost/accepted; queue on the payments screen. Fixed: profit now counts chargebacks as a cost (it had used the ledger's negative sign).
