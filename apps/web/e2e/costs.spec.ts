@@ -13,6 +13,8 @@ test("owner in Arabic: sets packaging, COD fee and a courier rate; they stay aft
   await expect(page).toHaveURL(/\/ar$/);
 
   await page.getByRole("link", { name: "الإعدادات" }).click();
+  await expect(page).toHaveURL(/\/ar\/settings$/); // the overview (U4), then the page
+  await page.getByRole("navigation", { name: "الإعدادات" }).getByRole("link", { name: "التكاليف" }).click();
   await expect(page).toHaveURL(/\/ar\/settings\/costs$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("التكاليف");
