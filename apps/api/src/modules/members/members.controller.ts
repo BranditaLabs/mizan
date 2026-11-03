@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems } from "../../platform/http/api-schema.js";
-import { Auth, NoSupport, NoTenant, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can, NoSupport, NoTenant } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
@@ -16,14 +16,14 @@ export class MembersController {
   constructor(@Inject(MembersService) private readonly members: MembersService) {}
 
   @Get("members")
-  @Roles("owner", "admin")
+  @Can("team.manage")
   @ApiJson(200, "Team", TeamSchema, "Members and pending invitations")
   list(@Auth() auth: AuthContext) {
     return this.members.list(auth.tenant!.id);
   }
 
   @Get("members/assignable")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("team.assignable")
   @ApiJson(200, "Assignable", AssignableSchema, "Active members who take orders and calls: names and roles only, for assigning work")
   assignable(@Auth() auth: AuthContext) {
     return this.members.assignable(auth.tenant!.id);
@@ -31,7 +31,7 @@ export class MembersController {
 
   @Post("members/invite")
   @NoSupport()
-  @Roles("owner", "admin")
+  @Can("team.manage")
   @HttpCode(201)
   @ApiJsonBody("Invite", InviteSchema)
   @ApiJson(201, "Invitation", InvitationViewSchema, "The invitation, with a link to share")
@@ -42,7 +42,7 @@ export class MembersController {
 
   @Patch("members/:userId")
   @NoSupport()
-  @Roles("owner", "admin")
+  @Can("team.manage")
   @ApiJsonBody("UpdateMember", UpdateMemberSchema)
   @ApiJson(200, "Member", MemberViewSchema, "The member after the change")
   @ApiProblems(404, 409)
@@ -52,7 +52,7 @@ export class MembersController {
 
   @Delete("members/:userId")
   @NoSupport()
-  @Roles("owner", "admin")
+  @Can("team.manage")
   @HttpCode(204)
   @ApiNoContent("Removed from the store")
   @ApiProblems(404, 409)
@@ -62,7 +62,7 @@ export class MembersController {
 
   @Delete("invitations/:id")
   @NoSupport()
-  @Roles("owner", "admin")
+  @Can("team.manage")
   @HttpCode(204)
   @ApiNoContent("Invitation revoked")
   @ApiProblems(404)

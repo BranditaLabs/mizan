@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -11,7 +11,7 @@ import { PickingService } from "./picking.service.js";
 /** M4 pick lists (E8-4c): the warehouse batches confirmed orders, picks by shelf, packs by scan on the phone. */
 @ApiTags("picking")
 @Controller("picklists")
-@Roles("owner", "admin", "ops_manager", "warehouse")
+@Can("picking.work")
 export class PickingController {
   constructor(@Inject(PickingService) private readonly picking: PickingService) {}
 

@@ -40,13 +40,18 @@ The REST API serves the web dashboard, the ops app and merchants' own integratio
 
 Error `code` values are stable and documented; UI maps them to AR/EN messages.
 
+
+### Permissions (U6)
+
+Every restricted route names a permission (`@Can("orders.read")`), never a list of roles. `PERMISSIONS` in `packages/shared/src/permissions.ts` says which roles have each one; the web shows or hides each place with the same name (`can(role, …)`, `rolesWith(…)`), and `GET /v1/me` lists a member's permissions per store. Two are checked inside services rather than on a route (`orders.lead`, `purchasing.approve_large`). A test fails when a route uses `@Roles` or a permission is unused.
+
 ## 2. Endpoints (MVP)
 
 ### Platform
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/me` | ✅ Current user (created on first sign-in; profile follows Firebase) and memberships across stores with role, status, country, currency, locale, timezone. No `X-Tenant-Id` |
+| GET | `/me` | ✅ Current user (created on first sign-in; profile follows Firebase) and memberships across stores with role, `permissions` (U6: what that role may do there, the names in `PERMISSIONS` of `@mizan/shared`), status, country, currency, locale, timezone. No `X-Tenant-Id` |
 | POST | `/tenants` | ✅ Create tenant (signup) — creator becomes owner. Body `{ name, country, slug?, language?, acceptLegal?: { terms, dpa } }`; `acceptLegal` (L1-3) records the owner's acceptance of the terms and DPA with the store, in the same transaction (`tenant.legal_accepted`), and must carry the current versions (409 `legal_version_changed`, nothing created); country defaults (currency, timezone, locale, week start, phone country) from `@mizan/shared` `COUNTRY_DEFAULTS`; default warehouse; slug derived and de-duplicated. Errors: `slug_taken` (409), `tenant_limit_reached` (422, 10 owned stores), `validation_failed` |
 | GET / PATCH | `/tenant` | Tenant settings (currency, timezone, locale). ✅ GET (any member); ✅ PATCH (A-8, owner/admin) `{ name?, timezone? (IANA), locale? (ar-XX \| en-XX) }`; country and currency never change (money, FX). Audited `tenant.updated` (only what changed; the name as `storeName`) |
 | GET | `/public/legal` | ✅ L1-3. No sign-in. `{ status: draft\|published, documents[{ key: terms\|privacy\|dpa, version }] }` from `@mizan/shared` (`LEGAL_STATUS`, `LEGAL_VERSIONS`). The texts are the web app's pages `/{locale}/legal/{terms,privacy,dpa}` |

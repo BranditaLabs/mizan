@@ -1,5 +1,6 @@
 import { MEMBER_ROLES } from "@mizan/shared";
 import { describe, expect, it } from "vitest";
+import { can } from "@mizan/shared";
 import { activeKey, NAV, navFor, primaryFor } from "../src/lib/nav";
 
 describe("navigation follows the role (U3)", () => {
@@ -7,7 +8,7 @@ describe("navigation follows the role (U3)", () => {
     for (const role of MEMBER_ROLES) {
       const keys = navFor(role).map((n) => n.key);
       expect(keys).toContain("home");
-      for (const n of NAV) expect(keys.includes(n.key)).toBe(n.roles.includes(role));
+      for (const n of NAV) expect(keys.includes(n.key)).toBe(n.can === null || n.can.some((p) => can(role, p)));
     }
     expect(navFor("owner")).toHaveLength(NAV.length);
     expect(navFor(undefined)).toEqual([]);

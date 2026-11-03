@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -10,7 +10,7 @@ import { ConversionService } from "./conversion.service.js";
 /** E14-3: convert a COD order to prepaid (or a deposit) before shipping. */
 @ApiTags("payments")
 @Controller("orders/:id/conversion")
-@Roles("owner", "admin", "ops_manager", "agent", "finance")
+@Can("payments.convert")
 export class OrderConversionController {
   constructor(@Inject(ConversionService) private readonly conversions: ConversionService) {}
 
@@ -46,14 +46,14 @@ export class ConversionSettingsController {
   constructor(@Inject(ConversionService) private readonly conversions: ConversionService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("payments.settings.read")
   @ApiJson(200, "ConversionSettings", ConversionSettingsSchema, "Deposit share, offer time and the store's pay-to details per method")
   get(@Auth() auth: AuthContext) {
     return this.conversions.getSettings(auth.tenant!.id);
   }
 
   @Put()
-  @Roles("owner", "admin", "finance")
+  @Can("payments.settings")
   @ApiJsonBody("ConversionSettingsInput", ConversionSettingsSchema)
   @ApiJson(200, "ConversionSettings", ConversionSettingsSchema, "Saved; audited")
   put(@Auth() auth: AuthContext, @Body(new ZodPipe(ConversionSettingsSchema)) body: ConversionSettings) {

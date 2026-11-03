@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -25,7 +26,7 @@ const REASONS = ["team_call", "no_reply", "no_channel", "change_requested", "cus
 const OUT = new Set(["ask", "confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already", "opted_out", "opted_in"]);
 const IN = new Set(["confirm", "change", "cancel", "reason", "keep", "note", "message", "location", "late", "ignored", "offer_yes", "offer_no", "opt_out", "opt_in"]);
 const OFFER_TONE: Record<string, BadgeTone> = { proposed: "info", accepted: "success", applying: "info", applied: "success", declined: "neutral", expired: "neutral", failed: "danger" };
-const CAN_ACT = new Set(["owner", "admin", "ops_manager", "agent"]);
+const CAN_ACT = rolesWith("confirmation.work");
 const CANCEL_REASONS = ["changed_mind", "ordered_by_mistake", "found_cheaper", "delivery_too_late", "other"] as const;
 
 /**

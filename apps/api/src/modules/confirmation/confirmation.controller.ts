@@ -2,7 +2,7 @@ import { Body, Controller, Get, Header, HttpCode, Inject, Param, ParseUUIDPipe, 
 import { ApiTags } from "@nestjs/swagger";
 import type { HttpReply as Response, HttpRequest as Request } from "../../platform/http/http.types.js";
 import type { z } from "zod";
-import { Auth, Public, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can, Public } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
@@ -30,7 +30,7 @@ export class ConfirmationController {
   ) {}
 
   @Get("orders/:id/confirmation")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @ApiJson(200, "OrderConfirmation", OrderConfirmationSchema, "The order's confirmation run, its steps and the answers so far")
   @ApiProblems(404)
   summary(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -38,7 +38,7 @@ export class ConfirmationController {
   }
 
   @Post("orders/:id/confirmation/link")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @HttpCode(200)
   @NoIdempotency()
   @Header("Cache-Control", "no-store")
@@ -49,7 +49,7 @@ export class ConfirmationController {
   }
 
   @Post("orders/:id/confirmation")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @HttpCode(200)
   @ApiJsonBody("AgentAnswer", AgentAnswerSchema)
   @ApiJson(200, "AnswerResult", AnswerResultSchema, "Confirmed or cancelled by an agent; audited")
@@ -59,7 +59,7 @@ export class ConfirmationController {
   }
 
   @Post("orders/:id/confirmation/no-answer")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @HttpCode(200)
   @ApiJson(200, "NoAnswer", NoAnswerSchema, "The team called and nobody answered: the order leaves the call list until the store's retry time; audited")
   @ApiProblems(404, 409)
@@ -68,7 +68,7 @@ export class ConfirmationController {
   }
 
   @Post("connections/whatsapp")
-  @Roles("owner", "admin")
+  @Can("whatsapp.connect")
   @HttpCode(200)
   @NoIdempotency()
   @ApiJsonBody("WhatsAppConnect", WhatsAppConnectSchema)
@@ -79,7 +79,7 @@ export class ConfirmationController {
   }
 
   @Post("connections/whatsapp/check")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("connections.read")
   @HttpCode(200)
   @ApiJson(200, "ConnectionView", ConnectionViewSchema, "Check the WhatsApp number again (after a template is approved)")
   @ApiProblems(404)
@@ -88,14 +88,14 @@ export class ConfirmationController {
   }
 
   @Get("confirmation/queue")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @ApiJson(200, "CallQueue", CallQueueSchema, "Orders waiting for the team's call: due now, mine, retrying later, unreachable")
   queueSummary(@Auth() auth: AuthContext) {
     return this.queue.summary(auth);
   }
 
   @Post("confirmation/queue/next")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @HttpCode(200)
   @ApiJson(200, "CallQueueNext", CallQueueNextSchema, "The next order to call, claimed for the caller (mine first, retries due before new, the unreachable last)")
   queueNext(@Auth() auth: AuthContext) {
@@ -103,7 +103,7 @@ export class ConfirmationController {
   }
 
   @Get("confirmation/summary")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("confirmation.manage")
   @ApiQueryZod(ConfirmationSummaryQuerySchema)
   @ApiJson(200, "ConfirmationSummary", ConfirmationSummarySchema, "How confirmation went: rate, time to confirm, by route and by channel (counts only)")
   results(@Auth() auth: AuthContext, @Query(new ZodPipe(ConfirmationSummaryQuerySchema)) q: z.output<typeof ConfirmationSummaryQuerySchema>) {
@@ -111,7 +111,7 @@ export class ConfirmationController {
   }
 
   @Get("settings/confirmation")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("confirmation.manage")
   @ApiJson(200, "ConfirmationSettingsView", ConfirmationSettingsViewSchema, "The store's cascade, waits, calling hours, and which channels are connected")
   settings(@Auth() auth: AuthContext) {
     return this.confirmations.getSettings(auth.tenant!.id);
@@ -119,7 +119,7 @@ export class ConfirmationController {
 
   @Post("settings/confirmation/preview")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager")
+  @Can("confirmation.manage")
   @ApiJsonBody("ScriptPreviewRequest", ScriptPreviewRequestSchema)
   @ApiJson(200, "ScriptPreview", ScriptPreviewSchema, "E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script")
   @ApiProblems(404, 422)
@@ -128,7 +128,7 @@ export class ConfirmationController {
   }
 
   @Put("settings/confirmation")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("confirmation.manage")
   @ApiJsonBody("ConfirmationSettings", ConfirmationSettingsSchema)
   @ApiJson(200, "ConfirmationSettingsView", ConfirmationSettingsViewSchema, "Saved; applies to orders that start confirmation from now on")
   saveSettings(@Auth() auth: AuthContext, @Body(new ZodPipe(ConfirmationSettingsSchema)) body: ConfirmationSettings) {

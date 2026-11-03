@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -16,8 +17,8 @@ import { useSession } from "@/lib/session";
 import { EngineHealth, ResolveCityDialog, unknownCity } from "./EngineHealth";
 import { WooCommerceConnect } from "./WooCommerceConnect";
 
-const READERS = new Set(["owner", "admin", "ops_manager"]);
-const CONNECTORS = new Set(["owner", "admin"]);
+const READERS = rolesWith("connections.read");
+const CONNECTORS = rolesWith("connections.manage");
 const TONE: Record<string, BadgeTone> = { active: "success", pending: "info", needs_attention: "danger", disconnected: "neutral" };
 
 /**

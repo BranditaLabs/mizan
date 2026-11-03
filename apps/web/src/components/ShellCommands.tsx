@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
@@ -18,7 +19,7 @@ const noop = () => () => {};
 const SHORTCUT = { mac: "⌘K", other: "Ctrl K" } as const;
 const isMac = () => /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
-const ORDER_READERS = new Set(["owner", "admin", "ops_manager", "finance", "agent", "warehouse"]);
+const ORDER_READERS = rolesWith("orders.read");
 /** Who may start each action (the same roles as the pages that do it). */
 const ACTIONS = [
   { id: "new-order", href: "/orders/new", icon: "add", roles: ["owner", "admin", "ops_manager", "agent"], keywords: "new order create أوردر جديد" },

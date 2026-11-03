@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -24,7 +25,7 @@ type Row = Schemas["ShipmentPage"]["data"][number];
 type ShipmentView = "active" | "review" | "delivered" | "returned" | "all";
 type View = "ready" | ShipmentView;
 const VIEWS: readonly View[] = ["ready", "active", "review", "delivered", "returned", "all"];
-const MANAGERS = new Set(["owner", "admin", "ops_manager"]);
+const MANAGERS = rolesWith("shipments.manage");
 const STATUSES = ["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"] as const;
 type Status = (typeof STATUSES)[number];
 const SETTABLE = STATUSES.filter((s) => s !== "unknown");

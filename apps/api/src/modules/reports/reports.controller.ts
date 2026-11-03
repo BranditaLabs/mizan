@@ -1,6 +1,6 @@
 import { Controller, Get, Inject, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -16,14 +16,14 @@ export class ReportsController {
 
   // Not `GET /v1/metrics`: the bare `GET /metrics` is the Prometheus endpoint (left out of the v1 prefix).
   @Get("catalogue")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("reports.read")
   @ApiJson(200, "MetricCatalogue", MetricCatalogueSchema, "The semantic metric catalogue the caller may see (name and definition in their language)")
   catalogue(@Reader() auth: AuthContext) {
     return this.metrics.catalogue(auth);
   }
 
   @Get("values")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("reports.read")
   @ApiQueryZod(MetricValuesQuerySchema)
   @ApiJson(200, "MetricValues", MetricValuesSchema, "Values for a period of store days; metrics the caller may not see are left out, never zero")
   @ApiProblems(422)

@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -14,7 +14,7 @@ export class ReturnsController {
   constructor(@Inject(ReturnsService) private readonly returns: ReturnsService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance", "warehouse")
+  @Can("returns.read")
   @ApiJson(200, "ReturnState", ReturnStateSchema, "Each line: how many units came back sellable, damaged or written off, and how many are left")
   @ApiProblems(404)
   state(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -23,7 +23,7 @@ export class ReturnsController {
 
   @Post("inspect")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("returns.inspect")
   @ApiJsonBody("Inspect", InspectSchema)
   @ApiJson(200, "ReturnState", ReturnStateSchema, "Recorded: restocked units go back into stock, lost units count on the order's profit; audited")
   @ApiProblems(404, 409, 422)

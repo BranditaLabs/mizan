@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -31,7 +31,7 @@ export class ProfitController {
   ) {}
 
   @Get("profit/home")
-  @Roles("owner", "admin", "finance", "ops_manager")
+  @Can("profit.read")
   @ApiQueryZod(HomeQuerySchema)
   @ApiJson(200, "ProfitHome", ProfitHomeSchema, "What the store kept over the last 7, 30 or 90 days and yesterday, where it went, cash with couriers, leaks")
   home(@Auth() auth: AuthContext, @Query(new ZodPipe(HomeQuerySchema)) q: z.output<typeof HomeQuerySchema>) {
@@ -39,7 +39,7 @@ export class ProfitController {
   }
 
   @Get("profit/breakdown")
-  @Roles("owner", "admin", "finance", "ops_manager")
+  @Can("profit.read")
   @ApiQueryZod(BreakdownQuerySchema)
   @ApiJson(200, "ProfitBreakdown", ProfitBreakdownSchema, "Profit by day, product, store, courier or country over a range of store days, with the total")
   breakdown(@Auth() auth: AuthContext, @Query(new ZodPipe(BreakdownQuerySchema)) q: z.output<typeof BreakdownQuerySchema>) {
@@ -47,7 +47,7 @@ export class ProfitController {
   }
 
   @Get("ad-spend")
-  @Roles("owner", "admin", "finance", "ops_manager", "media_buyer")
+  @Can("ads.read")
   @ApiQueryZod(AdSpendQuerySchema)
   @ApiJson(200, "AdSpendList", AdSpendListSchema, "Spend per day and platform (default last 30 days), each day's share per order, unallocated spend")
   @ApiProblems(422)
@@ -56,7 +56,7 @@ export class ProfitController {
   }
 
   @Put("ad-spend")
-  @Roles("owner", "admin", "finance", "media_buyer")
+  @Can("ads.spend")
   @ApiJsonBody("SetAdSpend", SetAdSpendSchema)
   @ApiJson(200, "AdSpendSet", AdSpendRowSchema.pick({ day: true, platform: true, spend: true, connectionId: true }), "The day's spend on that platform (replaces what it had); that day's orders get their new share")
   @ApiProblems(404, 422)
@@ -65,7 +65,7 @@ export class ProfitController {
   }
 
   @Post("ad-spend/import")
-  @Roles("owner", "admin", "finance", "media_buyer")
+  @Can("ads.spend")
   @HttpCode(200)
   @ApiJsonBody("ImportAdSpend", ImportAdSpendSchema)
   @ApiJson(200, "AdSpendImported", AdSpendImportedSchema, "Every day and platform in the file replaced; any unreadable line: 422 csv_invalid naming each line, nothing saved")
@@ -75,7 +75,7 @@ export class ProfitController {
   }
 
   @Delete("ad-spend/:day/:platform")
-  @Roles("owner", "admin", "finance", "media_buyer")
+  @Can("ads.spend")
   @HttpCode(204)
   @ApiQueryZod(AdSpendDeleteQuerySchema)
   @ApiNoContent("That day's spend on that platform removed")
@@ -88,7 +88,7 @@ export class ProfitController {
   }
 
   @Get("orders/:id/pnl")
-  @Roles("owner", "admin", "finance", "ops_manager")
+  @Can("profit.read")
   @ApiJson(200, "OrderPnl", OrderPnlSchema, "One order's profit: realised components, expected profit, missing inputs")
   @ApiProblems(404)
   orderPnl(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -96,7 +96,7 @@ export class ProfitController {
   }
 
   @Post("profit/recalculate")
-  @Roles("owner", "admin", "finance")
+  @Can("profit.manage")
   @HttpCode(200)
   @ApiJsonBody("Recalculate", RecalculateSchema)
   @ApiJson(200, "Recalculated", RecalculatedSchema, "Provisional orders in the range recomputed (up to 2,000 per call)")
@@ -105,7 +105,7 @@ export class ProfitController {
   }
 
   @Get("cost-rules")
-  @Roles("owner", "admin", "finance", "ops_manager")
+  @Can("profit.read")
   @ApiQueryZod(CostRuleQuerySchema)
   @ApiJson(200, "CostRuleList", CostRuleListSchema, "Rules that apply on a day (default today), or every version")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(CostRuleQuerySchema)) q: z.output<typeof CostRuleQuerySchema>) {
@@ -113,7 +113,7 @@ export class ProfitController {
   }
 
   @Post("cost-rules")
-  @Roles("owner", "admin", "finance")
+  @Can("profit.manage")
   @HttpCode(201)
   @ApiJsonBody("CreateCostRule", CreateCostRuleSchema)
   @ApiJson(201, "CostRule", CostRuleSchema, "The new version; the previous one for the same kind and scope now ends the day before")
@@ -123,7 +123,7 @@ export class ProfitController {
   }
 
   @Delete("cost-rules/:id")
-  @Roles("owner", "admin", "finance")
+  @Can("profit.manage")
   @HttpCode(204)
   @ApiNoContent("Ended: applies through today, not after (a version that has not started is withdrawn)")
   @ApiProblems(404)
@@ -132,7 +132,7 @@ export class ProfitController {
   }
 
   @Get("fx-rates")
-  @Roles("owner", "admin", "finance", "ops_manager")
+  @Can("profit.read")
   @ApiQueryZod(FxQuerySchema)
   @ApiJson(200, "FxRates", FxRatesSchema, "The store's base currency against USD and the currencies its orders used in the last 90 days")
   rates(@Auth() auth: AuthContext, @Query(new ZodPipe(FxQuerySchema)) q: z.output<typeof FxQuerySchema>) {
@@ -140,7 +140,7 @@ export class ProfitController {
   }
 
   @Put("fx-rates/:day/:quote")
-  @Roles("owner", "admin", "finance")
+  @Can("profit.manage")
   @ApiJsonBody("SetFxRate", SetFxRateSchema)
   @ApiJson(200, "FxRate", FxRateSchema, "The store's own rate for that day; it wins over the feed")
   setRate(

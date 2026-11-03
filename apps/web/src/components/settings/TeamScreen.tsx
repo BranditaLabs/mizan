@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -17,7 +18,7 @@ import { ok, type MemberRole } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
 const ROLES: MemberRole[] = ["owner", "admin", "ops_manager", "agent", "warehouse", "finance", "media_buyer"];
-const EDITORS = new Set(["owner", "admin"]);
+const EDITORS = rolesWith("team.manage");
 
 /**
  * Settings → Team (A-8, on E1-7): who works in the store and what each may do. Invite by email or

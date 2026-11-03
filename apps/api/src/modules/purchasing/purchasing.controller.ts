@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { z } from "zod";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -26,7 +26,7 @@ export class SuppliersController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("suppliers.read")
   @ApiQueryZod(SuppliersQuerySchema)
   @ApiJson(200, "SupplierList", SupplierListSchema, "Active (or archived) suppliers by name, with their open POs")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(SuppliersQuerySchema)) q: z.output<typeof SuppliersQuerySchema>) {
@@ -34,7 +34,7 @@ export class SuppliersController {
   }
 
   @Post()
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJsonBody("NewSupplier", NewSupplierSchema)
   @ApiJson(201, "Supplier", SupplierSchema, "Created; the name is unique among active suppliers; audited")
   @ApiProblems(409)
@@ -43,7 +43,7 @@ export class SuppliersController {
   }
 
   @Patch(":id")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJsonBody("UpdateSupplier", UpdateSupplierSchema)
   @ApiJson(200, "Supplier", SupplierSchema, "Changed fields, or archived/restored; audited")
   @ApiProblems(404, 409)
@@ -59,7 +59,7 @@ export class PurchaseOrdersController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance", "warehouse")
+  @Can("purchasing.read")
   @ApiQueryZod(PurchaseOrdersQuerySchema)
   @ApiJson(200, "PurchaseOrderList", PurchaseOrderListSchema, "Newest first, with a count per status; open = what can still be received")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(PurchaseOrdersQuerySchema)) q: z.output<typeof PurchaseOrdersQuerySchema>) {
@@ -67,7 +67,7 @@ export class PurchaseOrdersController {
   }
 
   @Post()
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJsonBody("NewPurchaseOrder", NewPurchaseOrderSchema)
   @ApiJson(201, "PurchaseOrder", PurchaseOrderSchema, "A draft numbered PO-0001…, in the supplier's currency unless given; audited")
   @ApiProblems(404, 409, 422)
@@ -76,7 +76,7 @@ export class PurchaseOrdersController {
   }
 
   @Get(":id")
-  @Roles("owner", "admin", "ops_manager", "finance", "warehouse")
+  @Can("purchasing.read")
   @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "Lines with what arrived, and each receipt with its locked FX rate")
   @ApiProblems(404)
   get(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -84,7 +84,7 @@ export class PurchaseOrdersController {
   }
 
   @Put(":id")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJsonBody("NewPurchaseOrder", NewPurchaseOrderSchema)
   @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "A draft replaced as a whole; audited")
   @ApiProblems(404, 409, 422)
@@ -94,7 +94,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/approve")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "Approved; above the store's threshold or in a foreign currency only by the owner or an admin (403 needs_owner); audited")
   @ApiProblems(403, 404, 409)
   approve(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -103,7 +103,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/send")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "Marked as sent to the supplier; repeating it changes nothing; audited")
   @ApiProblems(404, 409)
   send(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -112,7 +112,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/cancel")
   @HttpCode(200)
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "Cancelled while nothing was received; audited")
   @ApiProblems(404, 409)
   cancel(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -121,7 +121,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/receipts")
   @HttpCode(201)
-  @Roles("owner", "admin", "ops_manager", "warehouse")
+  @Can("purchasing.receive")
   @ApiJsonBody("NewReceipt", NewReceiptSchema)
   @ApiJson(201, "PurchaseOrder", PurchaseOrderSchema, "Good units into stock, damaged recorded, moving-average cost at the day's FX rate; more than ordered needs allowOver (409 over_receipt); audited")
   @ApiProblems(403, 404, 409, 422)
@@ -137,7 +137,7 @@ export class ReorderController {
   constructor(@Inject(ReorderService) private readonly reorder: ReorderService) {}
 
   @Get("reorder-suggestions")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("purchasing.plan")
   @ApiQueryZod(ReorderQuerySchema)
   @ApiJson(200, "ReorderSuggestions", ReorderSuggestionsSchema, "Items at or under their reorder point with the quantity to order, the least cover first")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ReorderQuerySchema)) q: z.output<typeof ReorderQuerySchema>) {
@@ -145,7 +145,7 @@ export class ReorderController {
   }
 
   @Post("purchase-orders/from-suggestions")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("purchasing.manage")
   @ApiJsonBody("DraftFromSuggestions", DraftFromSuggestionsSchema)
   @ApiJson(201, "PurchaseOrder", PurchaseOrderSchema, "A draft for the supplier at its last price per item (else the item's cost in the same currency, else 0 to fill in); audited")
   @ApiProblems(404, 409, 422)
@@ -161,7 +161,7 @@ export class LandedCostsController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
 
   @Post()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("purchasing.plan")
   @ApiJsonBody("NewLandedCost", NewLandedCostSchema)
   @ApiJson(201, "PurchaseOrder", PurchaseOrderSchema, "Added while stock can still arrive; spread into the unit cost of later receipts at their day's FX; audited")
   @ApiProblems(404, 409, 422)
@@ -170,7 +170,7 @@ export class LandedCostsController {
   }
 
   @Delete(":costId")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("purchasing.plan")
   @ApiJson(200, "PurchaseOrder", PurchaseOrderSchema, "Removed; receipts already taken keep their cost; audited")
   @ApiProblems(404, 409)
   remove(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Param("costId", new ParseUUIDPipe()) costId: string) {
@@ -185,14 +185,14 @@ export class PurchasingSettingsController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("purchasing.plan")
   @ApiJson(200, "PurchasingSettings", SettingsViewSchema, "The approval threshold in the store's base currency and the reorder rule")
   get(@Auth() auth: AuthContext) {
     return this.purchasing.getSettings(auth.tenant!.id);
   }
 
   @Put()
-  @Roles("owner", "admin")
+  @Can("purchasing.settings")
   @ApiJsonBody("PurchasingSettingsInput", PurchasingSettingsSchema)
   @ApiJson(200, "PurchasingSettings", SettingsViewSchema, "Saved; audited")
   @ApiProblems(422)

@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -16,8 +17,8 @@ import { useSession } from "@/lib/session";
 type Order = Schemas["OrderDetail"];
 type Reason = Schemas["Refusal"]["reason"];
 const REASONS: readonly Reason[] = ["changed_mind", "wrong_item", "wrong_size", "damaged", "not_as_described", "quality", "price", "late_delivery", "courier_behaviour", "other"];
-const PARTIAL = new Set(["owner", "admin", "ops_manager", "warehouse"]);
-const REFUSAL = new Set(["owner", "admin", "ops_manager", "agent", "warehouse"]);
+const PARTIAL = rolesWith("delivery.partial");
+const REFUSAL = rolesWith("delivery.refusal");
 
 /**
  * At the door (M6, E10-4): the customer kept part of the order (what they owe now, the rest comes

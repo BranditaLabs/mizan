@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -14,7 +14,7 @@ export class ExchangesController {
   constructor(@Inject(ExchangesService) private readonly exchanges: ExchangesService) {}
 
   @Post("exchanges")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("exchanges.create")
   @ApiJsonBody("NewExchange", NewExchangeSchema)
   @ApiJson(201, "Exchange", ExchangeSchema, "The replacement order (confirmed), the credit moved from the original, what the courier collects or the refund due; audited")
   @ApiProblems(404, 409, 422)
@@ -23,7 +23,7 @@ export class ExchangesController {
   }
 
   @Get("orders/:id/exchanges")
-  @Roles("owner", "admin", "ops_manager", "finance", "agent", "warehouse")
+  @Can("exchanges.read")
   @ApiJson(200, "OrderExchanges", OrderExchangesSchema, "Exchanges made from this order, and the one it is the replacement of")
   @ApiProblems(404)
   forOrder(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {

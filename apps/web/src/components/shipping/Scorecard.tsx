@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,7 +14,7 @@ import { useSession } from "@/lib/session";
 type Courier = Schemas["CourierScorecard"]["couriers"][number];
 type Zone = Courier["zones"][number];
 const PERIODS = [30, 90, 180] as const;
-const READERS = new Set(["owner", "admin", "ops_manager", "finance"]);
+const READERS = rolesWith("couriers.scorecard");
 const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**

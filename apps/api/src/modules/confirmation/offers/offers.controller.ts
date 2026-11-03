@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Patch, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { z } from "zod";
-import { Auth, Roles } from "../../../platform/auth/decorators.js";
+import { Auth, Can } from "../../../platform/auth/decorators.js";
 import type { AuthContext } from "../../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "../../../platform/http/api-schema.js";
 import { ZodPipe } from "../../../platform/http/zod.pipe.js";
@@ -19,14 +19,14 @@ export class OffersController {
   constructor(@Inject(OffersService) private readonly offers: OffersService) {}
 
   @Get("settings/offers")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("offers.manage")
   @ApiJson(200, "OfferSettings", OfferSettingsSchema, "Offers on or off, rules or recommendations, discount caps, where they show")
   settings(@Auth() auth: AuthContext) {
     return this.offers.getSettings(auth.tenant!.id);
   }
 
   @Put("settings/offers")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("offers.manage")
   @ApiJsonBody("OfferSettings", OfferSettingsSchema)
   @ApiJson(200, "OfferSettings", OfferSettingsSchema, "Saved; applies to confirmations that start from now on; audited")
   saveSettings(@Auth() auth: AuthContext, @Body(new ZodPipe(OfferSettingsSchema)) body: OfferSettings) {
@@ -34,14 +34,14 @@ export class OffersController {
   }
 
   @Get("offer-rules")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("offers.manage")
   @ApiJson(200, "OfferRuleList", OfferRuleListSchema, "The owner's offer rules, active first")
   rules(@Auth() auth: AuthContext) {
     return this.offers.rules(auth.tenant!.id);
   }
 
   @Post("offer-rules")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("offers.manage")
   @ApiJsonBody("OfferRuleCreate", OfferRuleCreateSchema)
   @ApiJson(201, "Id", IdSchema, "Rule added; audited")
   @ApiProblems(404, 422)
@@ -50,7 +50,7 @@ export class OffersController {
   }
 
   @Patch("offer-rules/:id")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("offers.manage")
   @HttpCode(204)
   @ApiJsonBody("OfferRuleUpdate", OfferRuleUpdateSchema)
   @ApiNoContent("Stopped or restarted; audited")
@@ -60,7 +60,7 @@ export class OffersController {
   }
 
   @Get("offer-products")
-  @Roles("owner", "admin", "ops_manager")
+  @Can("offers.manage")
   @ApiQueryZod(OfferProductsQuerySchema)
   @ApiJson(200, "OfferProducts", OfferProductsSchema, "Active products to pick in a rule (100 at most)")
   products(@Auth() auth: AuthContext, @Query(new ZodPipe(OfferProductsQuerySchema)) q: z.output<typeof OfferProductsQuerySchema>) {
@@ -68,7 +68,7 @@ export class OffersController {
   }
 
   @Get("offers/summary")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("offers.results")
   @ApiQueryZod(OfferSummaryQuerySchema)
   @ApiJson(200, "OfferSummary", OfferSummarySchema, "Offers made and taken, and what they added")
   summary(@Auth() auth: AuthContext, @Query(new ZodPipe(OfferSummaryQuerySchema)) q: z.output<typeof OfferSummaryQuerySchema>) {
@@ -76,7 +76,7 @@ export class OffersController {
   }
 
   @Post("orders/:id/offer")
-  @Roles("owner", "admin", "ops_manager", "agent")
+  @Can("confirmation.work")
   @HttpCode(200)
   @ApiJsonBody("OfferDecision", OfferDecisionSchema)
   @ApiJson(200, "OfferDecided", OfferDecidedSchema, "The customer's answer to the offer on the team's call; expired when too late; audited")

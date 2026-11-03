@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,7 +19,7 @@ import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 
 type Order = Schemas["OrderDetail"];
-const EDITORS = new Set(["owner", "admin", "ops_manager", "agent"]);
+const EDITORS = rolesWith("orders.create");
 const BEFORE_COURIER = new Set(["new", "pending_confirmation", "confirmed"]);
 const STORES = new Set(["shopify", "woocommerce"]);
 const AMOUNT = /^\d{1,9}(\.\d{1,2})?$/;

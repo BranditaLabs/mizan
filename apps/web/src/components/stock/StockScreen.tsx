@@ -1,6 +1,6 @@
 "use client";
 
-import { toAsciiDigits } from "@mizan/shared";
+import { toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -28,8 +28,8 @@ type Reason = "damaged" | "lost" | "found" | "correction" | "other";
 const FILTERS: readonly Filter[] = ["all", "counted", "not_counted", "low", "out"];
 const KINDS: readonly Kind[] = ["receive", "count", "adjust"];
 const REASONS: readonly Reason[] = ["damaged", "lost", "found", "correction", "other"];
-const READERS = new Set(["owner", "admin", "ops_manager", "warehouse", "finance"]);
-const WRITERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
+const READERS = rolesWith("stock.read");
+const WRITERS = rolesWith("stock.manage");
 const PICKERS = WRITERS;
 
 /**

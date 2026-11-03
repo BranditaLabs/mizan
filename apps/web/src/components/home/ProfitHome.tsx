@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
@@ -22,7 +23,7 @@ import { useSession } from "@/lib/session";
 type Home = Schemas["ProfitHome"];
 type Money = Home["period"]["net"];
 type Leak = Home["leaks"][number];
-const READERS = new Set(["owner", "admin", "finance", "ops_manager"]);
+const READERS = rolesWith("profit.read");
 const PERIODS = [7, 30, 90] as const;
 const REFRESH_MS = 60_000;
 const minor = (m: Money) => Math.round(Number(m.amount) * 100);

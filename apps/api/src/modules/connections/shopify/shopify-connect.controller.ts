@@ -2,7 +2,7 @@ import { Body, Controller, Get, Inject, Post, Query, Res } from "@nestjs/common"
 import { ApiExcludeEndpoint, ApiQuery, ApiTags } from "@nestjs/swagger";
 import type { HttpReply as Response } from "../../../platform/http/http.types.js";
 import { z } from "zod";
-import { Auth, Public, Roles } from "../../../platform/auth/decorators.js";
+import { Auth, Can, Public } from "../../../platform/auth/decorators.js";
 import type { AuthContext } from "../../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems } from "../../../platform/http/api-schema.js";
 import { ZodPipe } from "../../../platform/http/zod.pipe.js";
@@ -27,7 +27,7 @@ export class ShopifyConnectController {
 
   /** Start connecting a store from inside Mizan: returns Shopify's authorize URL for the browser. */
   @Get("install")
-  @Roles("owner", "admin")
+  @Can("connections.manage")
   @ApiQuery({ name: "shop", required: true, description: "The store's myshopify.com domain", schema: { type: "string" } })
   @ApiJson(200, "ShopifyInstallStart", InstallStartSchema, "Shopify's authorize URL")
   @ApiProblems(422)
@@ -53,7 +53,7 @@ export class ShopifyConnectController {
 
   /** Attach the approved install to the current store. */
   @Post("claim")
-  @Roles("owner", "admin")
+  @Can("connections.manage")
   @ApiJsonBody("ShopifyClaim", ClaimSchema)
   @ApiJson(201, "ShopifyClaimResult", ClaimResultSchema, "The store is connected (or reconnected)")
   @ApiProblems(404, 409)

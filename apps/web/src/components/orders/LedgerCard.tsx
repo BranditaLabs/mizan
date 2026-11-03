@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -19,7 +20,7 @@ import { useSession } from "@/lib/session";
 
 type Ledger = Schemas["Ledger"];
 type Body = Schemas["RecordPayment"];
-const READERS = new Set(["owner", "admin", "ops_manager", "finance"]);
+const READERS = rolesWith("payments.read");
 const KINDS = new Set(["authorization", "capture", "sale", "cod_collection", "refund", "chargeback", "chargeback_reversal", "void"]);
 const METHODS = new Set(["cod", "card", "wallet", "apple_pay", "bnpl", "bank_transfer", "instapay", "fawry_ref", "store_credit", "cash_pos", "marketplace"]);
 const MANUAL: Body["method"][] = ["bank_transfer", "instapay", "wallet", "cash_pos", "store_credit"];

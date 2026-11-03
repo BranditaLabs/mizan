@@ -7,3 +7,4 @@ export * from "./countries.js";
 export * from "./events.js";
 export * from "./attribution.js";
 export * from "./legal.js";
+export * from "./permissions.js";

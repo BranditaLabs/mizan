@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Put, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -18,7 +18,7 @@ export class OrderRefundsController {
   constructor(@Inject(RefundsService) private readonly refunds: RefundsService) {}
 
   @Get("options")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("refunds.read")
   @ApiJson(200, "RefundOptions", RefundOptionsSchema, "What can still go back on this order, where to, and the approval threshold")
   @ApiProblems(404)
   options(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
@@ -27,7 +27,7 @@ export class OrderRefundsController {
 
   @Post()
   @HttpCode(201)
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("refunds.request")
   @ApiJsonBody("NewRefund", NewRefundSchema)
   @ApiJson(201, "Refund", RefundSchema, "Numbered R-1001…; approved at once under the store's threshold (store credit then completes); audited")
   @ApiProblems(404, 409, 422)
@@ -43,7 +43,7 @@ export class RefundsController {
   constructor(@Inject(RefundsService) private readonly refunds: RefundsService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("refunds.read")
   @ApiQueryZod(ListRefundsQuerySchema)
   @ApiJson(200, "RefundList", RefundListSchema, "Newest first; open (default) is what still needs approving or sending")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ListRefundsQuerySchema)) q: ListRefundsQuery) {
@@ -52,7 +52,7 @@ export class RefundsController {
 
   @Post(":refundId/approve")
   @HttpCode(200)
-  @Roles("owner", "admin", "finance")
+  @Can("refunds.approve")
   @ApiJson(200, "Refund", RefundSchema, "Approved; never by whoever asked unless the owner; store credit completes at once; audited")
   @ApiProblems(403, 404, 409)
   approve(@Auth() auth: AuthContext, @Param("refundId", new ParseUUIDPipe()) id: string) {
@@ -61,7 +61,7 @@ export class RefundsController {
 
   @Post(":refundId/reject")
   @HttpCode(200)
-  @Roles("owner", "admin", "finance")
+  @Can("refunds.approve")
   @ApiJsonBody("RejectRefund", RejectRefundSchema)
   @ApiJson(200, "Refund", RefundSchema, "Rejected with a reason; audited")
   @ApiProblems(404, 409)
@@ -71,7 +71,7 @@ export class RefundsController {
 
   @Post(":refundId/complete")
   @HttpCode(200)
-  @Roles("owner", "admin", "finance")
+  @Can("refunds.approve")
   @ApiJsonBody("CompleteRefund", CompleteRefundSchema)
   @ApiJson(200, "Refund", RefundSchema, "The money went back (a transfer, cash, or a gateway refund on Mizan's own orders): a refund line in the ledger; audited")
   @ApiProblems(404, 409)
@@ -87,14 +87,14 @@ export class RefundSettingsController {
   constructor(@Inject(RefundsService) private readonly refunds: RefundsService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("refunds.read")
   @ApiJson(200, "RefundSettingsView", RefundSettingsViewSchema, "Refunds above approveOver (base currency) need owner, admin or finance")
   get(@Auth() auth: AuthContext) {
     return this.refunds.getSettings(auth);
   }
 
   @Put()
-  @Roles("owner", "admin")
+  @Can("refunds.settings")
   @ApiJsonBody("RefundSettings", RefundSettingsSchema)
   @ApiJson(200, "RefundSettingsView", RefundSettingsViewSchema, "Saved for refunds asked from now on; audited")
   @ApiProblems(422)

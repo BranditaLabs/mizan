@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, ParseUUIDPipe, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -18,7 +18,7 @@ export class OrderDisputesController {
 
   @Post()
   @HttpCode(201)
-  @Roles("owner", "admin", "finance")
+  @Can("disputes.manage")
   @ApiJsonBody("NewDispute", NewDisputeSchema)
   @ApiJson(201, "Dispute", DisputeSchema, "Numbered D-1001…; the amount leaves the ledger as a chargeback with its fee; the same case again returns it; audited")
   @ApiProblems(404, 409, 422)
@@ -34,7 +34,7 @@ export class DisputesController {
   constructor(@Inject(DisputesService) private readonly disputes: DisputesService) {}
 
   @Get()
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("disputes.read")
   @ApiQueryZod(ListDisputesQuerySchema)
   @ApiJson(200, "DisputeList", DisputeListSchema, "The nearest deadline first, then the newest")
   list(@Auth() auth: AuthContext, @Query(new ZodPipe(ListDisputesQuerySchema)) q: ListDisputesQuery) {
@@ -42,7 +42,7 @@ export class DisputesController {
   }
 
   @Get(":disputeId")
-  @Roles("owner", "admin", "ops_manager", "finance")
+  @Can("disputes.read")
   @ApiJson(200, "Dispute", DisputeSchema, "One dispute")
   @ApiProblems(404)
   get(@Auth() auth: AuthContext, @Param("disputeId", new ParseUUIDPipe()) id: string) {
@@ -50,7 +50,7 @@ export class DisputesController {
   }
 
   @Get(":disputeId/evidence")
-  @Roles("owner", "admin", "finance")
+  @Can("disputes.manage")
   @ApiJson(200, "EvidencePack", EvidencePackSchema, "The order, delivery, chat actions and payments to send the gateway; the customer's name and address are decrypted and the access audited")
   @ApiProblems(404)
   evidence(@Auth() auth: AuthContext, @Param("disputeId", new ParseUUIDPipe()) id: string) {
@@ -59,7 +59,7 @@ export class DisputesController {
 
   @Post(":disputeId/evidence")
   @HttpCode(200)
-  @Roles("owner", "admin", "finance")
+  @Can("disputes.manage")
   @ApiJsonBody("SubmitEvidence", SubmitEvidenceSchema)
   @ApiJson(200, "Dispute", DisputeSchema, "Marks the evidence sent to the gateway; audited")
   @ApiProblems(404, 409)
@@ -69,7 +69,7 @@ export class DisputesController {
 
   @Post(":disputeId/close")
   @HttpCode(200)
-  @Roles("owner", "admin", "finance")
+  @Can("disputes.manage")
   @ApiJsonBody("CloseDispute", CloseDisputeSchema)
   @ApiJson(200, "Dispute", DisputeSchema, "won puts the amount back in the ledger (the fee stays a cost); lost or accepted closes it; audited")
   @ApiProblems(404, 409)

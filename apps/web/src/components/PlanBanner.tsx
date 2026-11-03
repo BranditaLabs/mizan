@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -7,7 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
-const READERS = new Set(["owner", "admin", "finance"]);
+const READERS = rolesWith("billing.read");
 const key = (tenantId: string, level: string) => `mizan-plan-banner:${tenantId}:${level}`;
 
 /**

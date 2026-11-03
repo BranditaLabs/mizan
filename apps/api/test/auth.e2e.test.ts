@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { Writable } from "node:stream";
 import { Controller, Get, Module, type INestApplication } from "@nestjs/common";
-import { MEMBER_ROLES, type MemberRole } from "@mizan/shared";
+import { MEMBER_ROLES, type MemberRole, permissionsFor } from "@mizan/shared";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
@@ -163,9 +163,9 @@ describe("GET /v1/me", () => {
     const res = await http().get("/v1/me").set(as("finance")).expect(200);
     expect(res.body.memberships).toEqual([
       { tenantId: OTHER, tenantName: "Gulf Perfumes", tenantSlug: "gulf", tenantStatus: "active", country: "SA", baseCurrency: "SAR",
-        locale: "ar-SA", timezone: "Asia/Riyadh", role: "owner", status: "active" },
+        locale: "ar-SA", timezone: "Asia/Riyadh", role: "owner", permissions: permissionsFor("owner"), status: "active" },
       { tenantId: STORE, tenantName: "Nile Abayas", tenantSlug: "nile", tenantStatus: "active", country: "EG", baseCurrency: "EGP",
-        locale: "ar-EG", timezone: "Africa/Cairo", role: "finance", status: "active" },
+        locale: "ar-EG", timezone: "Africa/Cairo", role: "finance", permissions: permissionsFor("finance"), status: "active" },
     ]);
   });
 });

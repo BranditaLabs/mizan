@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith, can } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Alert } from "@/components/ui/Alert";
@@ -16,7 +17,7 @@ import { useSession } from "@/lib/session";
 
 type Usage = Schemas["Usage"];
 type Row = Usage["history"][number];
-const READERS = new Set(["owner", "admin", "finance"]);
+const READERS = rolesWith("billing.read");
 
 /** One meter: used against the plan's limit (none: just the count). Amber from 80%, red past it. */
 function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
@@ -105,7 +106,7 @@ export function UsageScreen() {
             <Alert key={a.metric} tone={a.level === "over" ? "danger" : "warning"}>{t(`alert.${a.metric}_${a.level}`, { used: a.used, limit: a.limit })}</Alert>
           ))}
         </section>
-        {u.nextPlan ? <Upgrade usage={u} canAsk={store?.role === "owner" || store?.role === "admin"} /> : null}
+        {u.nextPlan ? <Upgrade usage={u} canAsk={can(store?.role, "billing.manage")} /> : null}
         <DataTable label={t("history")} columns={columns} rows={u.history} rowKey={(r) => r.month} />
       </>
     );

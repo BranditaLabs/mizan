@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,7 +14,7 @@ import { ok } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 
-const EDITORS = new Set(["owner", "admin", "ops_manager"]);
+const EDITORS = rolesWith("orders.settings");
 
 /** Settings → Orders (M1, E5-3): how long after one order the same customer's same product is a likely duplicate. */
 export function OrderSettingsScreen() {

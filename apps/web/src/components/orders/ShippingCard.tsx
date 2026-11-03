@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -16,7 +17,7 @@ import { useSession } from "@/lib/session";
 
 type Order = Schemas["OrderDetail"];
 type Shipment = Order["shipments"][number];
-const SHIPPERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
+const SHIPPERS = rolesWith("shipping.ship");
 const ERRORS = new Set(["city_unknown", "address_invalid", "payment_blocks", "cancelled", "not_found", "courier_refused_key", "courier_failed"]);
 const STATUSES = new Set(["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"]);
 const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -20,8 +21,8 @@ import { useSession } from "@/lib/session";
 type Order = Schemas["OrderDetail"];
 type Exchange = Schemas["Exchange"];
 type Reason = Schemas["NewExchange"]["reason"];
-const MAKERS = new Set(["owner", "admin", "ops_manager", "agent"]);
-const READERS = new Set(["owner", "admin", "ops_manager", "finance", "agent", "warehouse"]);
+const MAKERS = rolesWith("exchanges.create");
+const READERS = rolesWith("exchanges.read");
 const REASONS: readonly Reason[] = ["wrong_size", "wrong_item", "damaged", "missing_item", "not_as_described", "quality", "changed_mind", "other"];
 /** An item that is not in the catalogue: typed with its price. */
 const OTHER = "__other__";

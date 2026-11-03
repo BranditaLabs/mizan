@@ -1,3 +1,4 @@
+import { rolesWith } from "@mizan/shared";
 import type { BadgeTone } from "@/components/ui/Badge";
 import type { Schemas } from "@/lib/api/client";
 
@@ -10,4 +11,4 @@ export const STATUS_TONE: Record<TicketStatus, BadgeTone> = {
   open: "info", waiting_customer: "warning", waiting_courier: "warning", in_inspection: "info", resolved: "success", closed: "neutral",
 };
 /** Roles that open tickets; everyone with the menu item reads them. */
-export const CREATE_ROLES: ReadonlySet<string> = new Set(["owner", "admin", "ops_manager", "finance", "agent"]);
+export const CREATE_ROLES: ReadonlySet<string> = rolesWith("tickets.create");

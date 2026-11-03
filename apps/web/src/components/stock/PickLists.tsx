@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -22,7 +23,7 @@ import { useSession } from "@/lib/session";
 
 type Row = Schemas["PickListPage"]["data"][number];
 type Status = "open" | "closed";
-const PICKERS = new Set(["owner", "admin", "ops_manager", "warehouse"]);
+const PICKERS = rolesWith("picking.work");
 
 /**
  * Pick lists (M4, E8-4c) from the dashboard: batch the confirmed orders ready to pack, print the

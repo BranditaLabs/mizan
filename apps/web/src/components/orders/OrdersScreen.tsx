@@ -1,5 +1,6 @@
 "use client";
 
+import { can } from "@mizan/shared";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -81,7 +82,7 @@ export function OrdersScreen({ initialStatus, initialQuery, initialFilters = {} 
   });
   const rows = orders.data?.pages.flatMap((p) => p.data) ?? [];
   const counts = orders.data?.pages[0]?.counts;
-  const canSetUp = store?.role === "owner" || store?.role === "admin";
+  const canSetUp = can(store?.role, "onboarding.manage");
   const canCreate = ["owner", "admin", "ops_manager", "agent"].includes(store?.role ?? "");
   const canBulk = BULK_ROLES.has(store?.role ?? "");
 

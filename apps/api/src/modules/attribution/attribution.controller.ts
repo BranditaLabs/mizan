@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Controller, Get, HttpCode, Inject, Post, Query } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
-import { Auth, Roles } from "../../platform/auth/decorators.js";
+import { Auth, Can } from "../../platform/auth/decorators.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
@@ -15,7 +15,7 @@ export class AttributionController {
   constructor(@Inject(AttributionService) private readonly attribution: AttributionService) {}
 
   @Get("roas")
-  @Roles("owner", "admin", "ops_manager", "finance", "media_buyer")
+  @Can("ads.read")
   @ApiQueryZod(RoasQuerySchema)
   @ApiJson(200, "Roas", RoasSchema, "Ad spend against what the period's orders really brought: true, reported and projected ROAS, cost per delivered order, by day and platform")
   @ApiProblems(422)
@@ -24,7 +24,7 @@ export class AttributionController {
   }
 
   @Get("sources")
-  @Roles("owner", "admin", "ops_manager", "finance", "media_buyer")
+  @Can("ads.read")
   @ApiQueryZod(RoasQuerySchema)
   @ApiJson(200, "OrderSources", OrderSourcesSchema, "The period's orders by source platform and UTM campaign: delivery, real money, profit, and true ROAS where spend is recorded")
   @ApiProblems(422)
@@ -33,7 +33,7 @@ export class AttributionController {
   }
 
   @Get("campaigns")
-  @Roles("owner", "admin", "ops_manager", "finance", "media_buyer")
+  @Can("ads.read")
   @ApiQueryZod(CampaignQuerySchema)
   @ApiJson(200, "CampaignResults", CampaignResultsSchema, "Per campaign, ad set or ad: spend against what its orders really brought (true ROAS, cost per delivered order, delivered rate, fake-order share); untagged orders and unassigned spend always shown")
   @ApiProblems(422)
@@ -43,7 +43,7 @@ export class AttributionController {
 
   @Post("sources/backfill")
   @HttpCode(202)
-  @Roles("owner", "admin")
+  @Can("ads.backfill")
   @ApiJson(202, "BackfillSources", BackfillSourcesSchema, "Read the stores' recent orders again so each one's source is captured (Shopify: the last 60 days)")
   backfill(@Auth() auth: AuthContext) {
     return this.attribution.backfillSources(auth, randomUUID());

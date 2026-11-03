@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -235,7 +236,7 @@ function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onC
 }
 
 const LANDED_KINDS = ["freight", "customs", "insurance", "clearance", "other"] as const;
-const LANDED_EDITORS = new Set(["owner", "admin", "ops_manager", "finance"]);
+const LANDED_EDITORS = rolesWith("purchasing.plan");
 
 /** Freight, customs and fees (M16-4a): spread into the unit cost of the units received after them. */
 function LandedCosts({ po, role }: { po: Po; role: string }) {

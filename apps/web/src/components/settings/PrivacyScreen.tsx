@@ -1,5 +1,6 @@
 "use client";
 
+import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -14,7 +15,7 @@ import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
 
 type Row = Schemas["PrivacyRequests"]["data"][number];
-const READERS = new Set(["owner", "admin"]);
+const READERS = rolesWith("privacy.manage");
 const SOURCES = new Set(["shopify_customers_data_request", "shopify_customers_redact", "shopify_shop_redact", "merchant", "customer"]);
 const STATUSES = new Set(["received", "in_progress", "done", "rejected"]);
 const TONE: Record<string, BadgeTone> = { received: "info", in_progress: "warning", done: "success", rejected: "neutral" };
