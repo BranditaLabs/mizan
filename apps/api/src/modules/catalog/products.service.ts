@@ -43,7 +43,7 @@ export class ProductsService {
     const after = q.cursor ? decode(q.cursor) : null;
     return this.db.tenant(tenantId, async (trx) => {
       let query = trx.selectFrom("products as p").leftJoin("connections as c", "c.id", "p.connection_id")
-        .select(["p.id", "p.title", "p.status", "p.connection_id", "c.provider", "c.external_account"])
+        .select(["p.id", "p.title", "p.status", "p.connection_id", "c.provider", "c.external_account", "p.vendor", "p.product_type", "p.tags", "p.options"])
         .orderBy("p.title").orderBy("p.id").limit(q.limit + 1);
       query = q.status === "all" ? query.where("p.status", "!=", "archived") : query.where("p.status", "=", q.status);
       if (q.search) {
@@ -63,6 +63,9 @@ export class ProductsService {
       const variants = page.length
         ? await trx.selectFrom("variants").selectAll().where("product_id", "in", page.map((p) => p.id)).orderBy("created_at").orderBy("sku").execute()
         : [];
+      const images = page.length
+        ? await trx.selectFrom("product_images").select(["id", "product_id", "url", "alt", "width", "height", "is_main"]).where("product_id", "in", page.map((p) => p.id)).orderBy("position").execute()
+        : [];
       const counts = await trx.selectFrom("variants as v").innerJoin("products as p", "p.id", "v.product_id").where("p.status", "!=", "archived")
         .select([
           sql<string>`count(distinct p.id)`.as("products"), sql<string>`count(*)`.as("variants"),
@@ -70,19 +73,55 @@ export class ProductsService {
         ]).executeTakeFirstOrThrow();
       const last = page.at(-1);
       return {
-        data: page.map((p) => ({
-          id: p.id, title: p.title, status: p.status as "active" | "draft" | "archived",
-          store: p.connection_id && p.provider ? { connectionId: p.connection_id, provider: p.provider, name: p.external_account ?? p.provider } : null,
-          variants: variants.filter((v) => v.product_id === p.id).map((v) => ({
-            id: v.id, title: v.title, sku: v.sku, barcode: v.barcode, barcodeOwner: v.barcode_set_at ? "mizan" as const : "store" as const,
-            price: fromMinor(BigInt(v.price_minor), v.currency),
-            compareAt: v.compare_at_minor === null ? null : fromMinor(BigInt(v.compare_at_minor), v.currency),
-            cost: v.cogs_set_at ? fromMinor(BigInt(v.cogs_minor), v.currency) : null,
-            available: v.available,
-          })),
-        })),
+        data: page.map((p) => {
+          const own = images.filter((i) => i.product_id === p.id);
+          const main = own.find((i) => i.is_main) ?? own[0];
+          return {
+            id: p.id, title: p.title, status: p.status as "active" | "draft" | "archived",
+            store: p.connection_id && p.provider ? { connectionId: p.connection_id, provider: p.provider, name: p.external_account ?? p.provider } : null,
+            mainImage: main ? imageView({ ...main, is_main: true }) : null, imageCount: own.length,
+            vendor: p.vendor, productType: p.product_type, tags: p.tags, options: optionsOf(p.options),
+            variants: inOptionOrder(variants.filter((v) => v.product_id === p.id).map(variantView), optionsOf(p.options)),
+          };
+        }),
         nextCursor: rows.length > q.limit && last ? encode(last.title, last.id) : null,
         counts: { products: Number(counts.products), variants: Number(counts.variants), missingCost: Number(counts.missing_cost), missingBarcode: Number(counts.missing_barcode) },
+      };
+    });
+  }
+
+  /** One product in full (P1): pictures with the main one, options, every variant, details and totals. */
+  async detail(tenantId: string, id: string) {
+    return this.db.tenant(tenantId, async (trx) => {
+      const p = await trx.selectFrom("products as p").leftJoin("connections as c", "c.id", "p.connection_id")
+        .select(["p.id", "p.title", "p.status", "p.handle", "p.description_html", "p.vendor", "p.product_type", "p.tags", "p.options", "p.updated_at",
+          "p.external_id", "p.connection_id", "c.provider", "c.external_account", "c.config"])
+        .where("p.id", "=", id).executeTakeFirst();
+      if (!p) throw new ProblemError(404, "not_found", "this product does not exist in this store");
+      const variants = await trx.selectFrom("variants").selectAll().where("product_id", "=", id).orderBy("created_at").orderBy("sku").execute();
+      const images = await trx.selectFrom("product_images").select(["id", "url", "alt", "width", "height", "is_main"]).where("product_id", "=", id).orderBy("position").execute();
+      const main = images.find((i) => i.is_main)?.id ?? images[0]?.id;
+      const prices = variants.map((v) => ({ minor: BigInt(v.price_minor), currency: v.currency }));
+      const one = prices.length > 0 && prices.every((x) => x.currency === prices[0]!.currency);
+      const sorted = one ? [...prices].sort((a, b) => (a.minor < b.minor ? -1 : a.minor > b.minor ? 1 : 0)) : [];
+      const known = variants.filter((v) => v.available !== null);
+      return {
+        id: p.id, title: p.title, status: p.status as "active" | "draft" | "archived",
+        store: p.connection_id && p.provider ? { connectionId: p.connection_id, provider: p.provider, name: p.external_account ?? p.provider } : null,
+        vendor: p.vendor, productType: p.product_type, tags: p.tags, options: optionsOf(p.options),
+        handle: p.handle, description: htmlToText(p.description_html ?? ""),
+        images: images.map((i) => imageView({ ...i, is_main: i.id === main })),
+        storeUrl: storeUrl(p.provider, p.external_account, p.external_id, p.config),
+        updatedAt: p.updated_at.toISOString(),
+        variants: inOptionOrder(variants.map(variantView), optionsOf(p.options)),
+        totals: {
+          variants: variants.length,
+          available: known.length ? known.reduce((n, v) => n + (v.available ?? 0), 0) : null,
+          priceMin: sorted[0] ? fromMinor(sorted[0].minor, sorted[0].currency) : null,
+          priceMax: sorted.at(-1) ? fromMinor(sorted.at(-1)!.minor, sorted.at(-1)!.currency) : null,
+          missingCost: variants.filter((v) => !v.cogs_set_at).length,
+          missingBarcode: variants.filter((v) => !v.barcode).length,
+        },
       };
     });
   }
@@ -110,14 +149,7 @@ export class ProductsService {
           ...auditActor(auth),
         });
         if (body.cost !== undefined) await this.costsChanged(trx, auth, [id]);
-        const after = await trx.selectFrom("variants").selectAll().where("id", "=", id).executeTakeFirstOrThrow();
-        return {
-          id, title: after.title, sku: after.sku, barcode: after.barcode, barcodeOwner: after.barcode_set_at ? "mizan" as const : "store" as const,
-          price: fromMinor(BigInt(after.price_minor), after.currency),
-          compareAt: after.compare_at_minor === null ? null : fromMinor(BigInt(after.compare_at_minor), after.currency),
-          cost: after.cogs_set_at ? fromMinor(BigInt(after.cogs_minor), after.currency) : null,
-          available: after.available,
-        };
+        return variantView(await trx.selectFrom("variants").selectAll().where("id", "=", id).executeTakeFirstOrThrow());
       });
     } catch (e) {
       if (isBarcodeClash(e)) throw new ProblemError(409, "barcode_taken", "another variant in this store already has this barcode");
@@ -199,4 +231,86 @@ export class ProductsService {
       await this.events.emit(trx, { type: "costs.changed", tenantId, entity: { type: "tenant", id: tenantId }, actor: { type: "user", id: auth.user.id }, data: { kind: "product_cost", variantIds: ids.slice(i, i + 500) } });
     }
   }
+}
+
+type VariantRow = {
+  id: string; title: string | null; sku: string; barcode: string | null; barcode_set_at: Date | null; price_minor: string | bigint | number;
+  compare_at_minor: string | bigint | number | null; currency: string; cogs_minor: string | bigint | number; cogs_set_at: Date | null; available: number | null;
+  options: unknown; image_id: string | null;
+};
+
+function variantView(v: VariantRow) {
+  return {
+    id: v.id, title: v.title, sku: v.sku, barcode: v.barcode, barcodeOwner: v.barcode_set_at ? "mizan" as const : "store" as const,
+    price: fromMinor(BigInt(v.price_minor), v.currency),
+    compareAt: v.compare_at_minor === null ? null : fromMinor(BigInt(v.compare_at_minor), v.currency),
+    cost: v.cogs_set_at ? fromMinor(BigInt(v.cogs_minor), v.currency) : null,
+    available: v.available,
+    options: (Array.isArray(v.options) ? v.options : []).filter((o): o is { name: string; value: string } =>
+      Boolean(o) && typeof (o as { name?: unknown }).name === "string" && typeof (o as { value?: unknown }).value === "string"),
+    imageId: v.image_id,
+  };
+}
+
+/** Variants in the store's option order (Black before Sand, S before M); the rest keep their order. */
+function inOptionOrder<V extends { options: Array<{ name: string; value: string }> }>(variants: V[], options: Array<{ name: string; values: string[] }>): V[] {
+  if (!options.length) return variants;
+  const rank = (v: V) => options.map((o) => {
+    const i = o.values.indexOf(v.options.find((x) => x.name === o.name)?.value ?? "");
+    return i < 0 ? o.values.length : i;
+  });
+  return variants.map((v, i) => ({ v, i, r: rank(v) })).sort((a, b) => {
+    for (let k = 0; k < a.r.length; k++) if (a.r[k] !== b.r[k]) return a.r[k]! - b.r[k]!;
+    return a.i - b.i;
+  }).map((x) => x.v);
+}
+
+function imageView(i: { id: string; url: string; alt: string | null; width: number | null; height: number | null; is_main: boolean }) {
+  return { id: i.id, url: i.url, alt: i.alt, width: i.width, height: i.height, isMain: i.is_main };
+}
+
+function optionsOf(raw: unknown): Array<{ name: string; values: string[] }> {
+  return (Array.isArray(raw) ? raw : []).flatMap((o) => {
+    const r = o as { name?: unknown; values?: unknown };
+    return typeof r?.name === "string" && Array.isArray(r.values) ? [{ name: r.name, values: r.values.map(String) }] : [];
+  });
+}
+
+const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/** A store's description HTML as plain text: block ends become new lines, tags go, entities are decoded. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+    .replace(/<\s*br\s*\/?>/gi, "\n")
+    .replace(/<\s*\/\s*(p|div|li|h[1-6]|tr|blockquote)\s*>/gi, "\n")
+    .replace(/<\s*li[^>]*>/gi, "• ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (m, e: string) => {
+      if (e[0] === "#") {
+        const code = e[1]?.toLowerCase() === "x" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+        return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : "";
+      }
+      return ENTITIES[e.toLowerCase()] ?? m;
+    })
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .slice(0, 20_000);
+}
+
+/** Where the merchant edits this product in the store's own admin. */
+function storeUrl(provider: string | null, account: string | null, externalId: string | null, config: unknown): string | null {
+  if (!provider || !account || !externalId) return null;
+  if (provider === "shopify") {
+    const store = account.replace(/\.myshopify\.com$/, "");
+    const numeric = externalId.split("/").pop();
+    return numeric && /^\d+$/.test(numeric) ? `https://admin.shopify.com/store/${encodeURIComponent(store)}/products/${numeric}` : null;
+  }
+  if (provider === "woocommerce" && /^\d+$/.test(externalId)) {
+    const site = (config as { siteUrl?: unknown } | null)?.siteUrl;
+    const base = typeof site === "string" && /^https:\/\//.test(site) ? site.replace(/\/+$/, "") : `https://${account}`;
+    return `${base}/wp-admin/post.php?post=${externalId}&action=edit`;
+  }
+  return null;
 }

@@ -56,14 +56,49 @@ export const CatalogVariantSchema = z.object({
   compareAt: MoneySchema.nullable(),
   cost: MoneySchema.nullable().describe("null until entered; 0 is a real cost"),
   available: z.number().int().nullable().describe("Stock as the store last reported it; null = not known"),
+  options: z.array(z.object({ name: z.string(), value: z.string() })).describe("Its value for each of the product's options (P1)"),
+  imageId: z.uuid().nullable().describe("The product picture shown for this variant"),
 });
+
+export const ProductImageSchema = z.object({
+  id: z.uuid(),
+  url: z.url().describe("The store's CDN address (https)"),
+  alt: z.string().nullable(),
+  width: z.number().int().nullable(),
+  height: z.number().int().nullable(),
+  isMain: z.boolean(),
+});
+export const ProductOptionSchema = z.object({ name: z.string(), values: z.array(z.string()) });
+const ProductStoreSchema = z.object({ connectionId: z.uuid(), provider: z.string(), name: z.string() });
 
 export const CatalogProductSchema = z.object({
   id: z.uuid(),
   title: z.string(),
   status: z.enum(["active", "draft", "archived"]),
-  store: z.object({ connectionId: z.uuid(), provider: z.string(), name: z.string() }).nullable().describe("The store it syncs from; null = added in Mizan"),
+  store: ProductStoreSchema.nullable().describe("The store it syncs from; null = added in Mizan"),
+  mainImage: ProductImageSchema.nullable().describe("The product's main picture (P1); null = none"),
+  imageCount: z.number().int(),
+  vendor: z.string().nullable(),
+  productType: z.string().nullable(),
+  tags: z.array(z.string()),
+  options: z.array(ProductOptionSchema),
   variants: z.array(CatalogVariantSchema),
+});
+
+export const ProductDetailSchema = CatalogProductSchema.omit({ mainImage: true, imageCount: true }).extend({
+  handle: z.string().nullable(),
+  description: z.string().describe("The store's description as plain text (paragraphs on new lines); never HTML"),
+  images: z.array(ProductImageSchema).describe("In the store's order; one isMain"),
+  storeUrl: z.url().nullable().describe("Where to edit it in the store's admin"),
+  updatedAt: z.iso.datetime(),
+  totals: z.object({
+    variants: z.number().int(),
+    available: z.number().int().nullable().describe("Sum of known stock; null when no variant's stock is known"),
+    priceMin: MoneySchema.nullable(),
+    priceMax: MoneySchema.nullable(),
+    missingCost: z.number().int(),
+    missingBarcode: z.number().int(),
+  }),
 });
 
 export const ProductPageSchema = z.object({

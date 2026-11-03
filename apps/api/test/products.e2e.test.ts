@@ -125,3 +125,62 @@ describe("the catalogue (E8-1)", () => {
     expect((await list("?missing=cost")).data.map((p: { title: string }) => p.title)).toEqual(["Scarf"]);
   });
 });
+
+describe("the full product (P1)", () => {
+  const img = (n: number, alt?: string) => ({ externalId: `gid://shopify/MediaImage/${n}`, url: `https://cdn.shopify.com/s/files/1/abaya-${n}.jpg`, width: 1200, height: 1500, ...(alt ? { alt } : {}) });
+  const linen = (images: ReturnType<typeof img>[], main?: string): CanonicalProduct => ({
+    connector: "shopify", externalId: "gid://shopify/Product/9", title: "Linen Abaya", status: "active", updatedAt: at,
+    handle: "linen-abaya", vendor: "Nile Wear", productType: "Abaya", tags: ["linen", "summer"],
+    descriptionHtml: "<p>Soft linen &amp; cotton.</p><ul><li>Machine wash</li><li>Made in Egypt</li></ul><script>alert(1)</script>",
+    options: [{ name: "Color", values: ["Black", "Sand"] }, { name: "Size", values: ["S", "M"] }],
+    images, ...(main ? { mainImageId: main } : {}),
+    variants: [["Black", "S", 1], ["Black", "M", 1], ["Sand", "S", 2], ["Sand", "M", 2]].map(([c, z, i], n) => ({
+      externalId: `gid://shopify/ProductVariant/9${n}`, sku: `LIN-${c}-${z}`, title: `${c} / ${z}`, price: { amount: n < 2 ? "1250.00" : "1350.00", currency: "EGP" },
+      available: n === 3 ? undefined : 4, options: [{ name: "Color", value: c as string }, { name: "Size", value: z as string }], imageId: `gid://shopify/MediaImage/${i}`,
+    })),
+  });
+
+  it("pictures with the main one, options, details; the product page has it all, the description as plain text", async () => {
+    await sync(linen([img(1, "Front"), img(2), img(3)], "gid://shopify/MediaImage/2"));
+    const row = (await list("?search=linen")).data[0];
+    expect(row).toMatchObject({
+      title: "Linen Abaya", vendor: "Nile Wear", productType: "Abaya", tags: ["linen", "summer"], imageCount: 3,
+      mainImage: { url: "https://cdn.shopify.com/s/files/1/abaya-2.jpg", isMain: true },
+      options: [{ name: "Color", values: ["Black", "Sand"] }, { name: "Size", values: ["S", "M"] }],
+    });
+    const p = (await http().get(`/v1/products/${row.id}`).set(as("owner")).expect(200)).body;
+    expect(p.images.map((i: { url: string; isMain: boolean }) => [i.url.slice(-11), i.isMain])).toEqual([["abaya-1.jpg", false], ["abaya-2.jpg", true], ["abaya-3.jpg", false]]);
+    expect(p.images[0]).toMatchObject({ alt: "Front", width: 1200, height: 1500 });
+    expect(p.description).toBe("Soft linen & cotton.\n• Machine wash\n• Made in Egypt"); // no tags, no script
+    expect(p.storeUrl).toBe("https://admin.shopify.com/store/nile-abayas/products/9");
+    expect(p.handle).toBe("linen-abaya");
+    // Each variant: its option values and its picture (the colour's).
+    expect(p.variants.map((v: { options: Array<{ value: string }>; imageId: string }) => [v.options.map((o) => o.value).join("/"), p.images.findIndex((i: { id: string }) => i.id === v.imageId)]))
+      .toEqual([["Black/S", 0], ["Black/M", 0], ["Sand/S", 1], ["Sand/M", 1]]);
+    expect(p.totals).toEqual({
+      variants: 4, available: 12, priceMin: { amount: "1250.00", currency: "EGP" }, priceMax: { amount: "1350.00", currency: "EGP" }, missingCost: 4, missingBarcode: 4,
+    });
+  });
+
+  it("the store reorders, swaps the main picture, removes one: Mizan follows; variants pointing at the removed one lose it", async () => {
+    await sync(linen([img(3), img(1, "Front")], undefined)); // picture 2 removed, 3 first, no featured: the first is main
+    const id = (await list("?search=linen")).data[0].id;
+    const p = (await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body;
+    expect(p.images.map((i: { url: string; isMain: boolean }) => [i.url.slice(-11), i.isMain])).toEqual([["abaya-3.jpg", true], ["abaya-1.jpg", false]]);
+    expect(p.variants.slice(2).map((v: { imageId: string | null }) => v.imageId)).toEqual([null, null]);
+    // The same pictures again: nothing moves, no duplicates.
+    await sync(linen([img(3), img(1, "Front")]));
+    const n = await db.tenant(store, (trx) => trx.selectFrom("product_images").select("id").where("product_id", "=", id).execute());
+    expect(n).toHaveLength(2);
+    // All pictures removed in the store.
+    await sync(linen([]));
+    expect((await http().get(`/v1/products/${id}`).set(as("owner")).expect(200)).body.images).toEqual([]);
+  });
+
+  it("an unknown product is 404; agents cannot open products", async () => {
+    await http().get("/v1/products/00000000-0000-4000-8000-000000000000").set(as("owner")).expect(404);
+    const id = (await list("?search=linen")).data[0].id;
+    await http().get(`/v1/products/${id}`).set(as("agent")).expect(403);
+  });
+});
+

@@ -236,16 +236,38 @@ export function mapWooProduct(raw: unknown, variations: unknown[], ctx: WooMapCt
   const variants = type === "variable"
     ? variations.map((v) => {
       const vr = r.child(v, "product.variation");
-      const attrs = vr.arr<{ option?: unknown }>("attributes", ["attributes"]).map((a) => (a && typeof a.option === "string" ? a.option : "")).filter(Boolean);
-      return variant(vr, vr.str("id", ["id"], { required: true })!, attrs.join(" / ") || undefined, true);
+      const pairs = vr.arr<{ name?: unknown; option?: unknown }>("attributes", ["attributes"])
+        .filter((a) => a && typeof a.name === "string" && typeof a.option === "string" && a.option).map((a) => ({ name: a.name as string, value: a.option as string }));
+      const imageId = vr.str("imageId", ["image.id"]);
+      return {
+        ...variant(vr, vr.str("id", ["id"], { required: true })!, pairs.map((p) => p.value).join(" / ") || undefined, true),
+        ...(pairs.length ? { options: pairs } : {}),
+        // A variation's own picture is in the product's gallery or not: Mizan only links ones it knows.
+        ...(imageId && imageId !== "0" ? { imageId } : {}),
+      };
     })
     : [variant(r, id, "Default")];
+  // Pictures in the store's order; WooCommerce's first one is the product's main picture.
+  const images = r.arr("images", ["images"]).flatMap((m) => {
+    const mr = r.child(m, "product.image");
+    const url = mr.str("url", ["src", "url"]);
+    if (!url || !/^https:\/\//.test(url)) return [];
+    const alt = mr.str("alt", ["alt", "name"]);
+    return [{ externalId: mr.str("id", ["id"], { required: true })!, url, ...(alt ? { alt } : {}) }];
+  });
+  const options = r.arr<{ name?: unknown; options?: unknown; variation?: unknown }>("options", ["attributes"])
+    .filter((a) => a && typeof a.name === "string" && Array.isArray(a.options) && (type !== "variable" || a.variation !== false))
+    .map((a) => ({ name: a.name as string, values: (a.options as unknown[]).map(String) }));
+  const handle = r.str("handle", ["slug"]);
   const tags = r.arr<{ name?: unknown }>("tags", ["tags"]).map((t) => (t && typeof t.name === "string" ? t.name : "")).filter(Boolean);
   const category = r.arr<{ name?: unknown }>("categories", ["categories"]).map((c) => (c && typeof c.name === "string" ? c.name : "")).find(Boolean);
   return {
     connector: "woocommerce",
     externalId: id,
     title: r.str("name", ["name"]) ?? "",
+    ...(handle ? { handle } : {}),
+    ...(r.any("images", ["images"]) !== undefined ? { images, ...(images[0] ? { mainImageId: images[0].externalId } : {}) } : {}),
+    ...(options.length ? { options } : {}),
     status: PRODUCT_STATUS[(r.str("status", ["status"]) ?? "").toLowerCase()] ?? "unknown",
     ...(category ? { productType: category } : {}),
     tags,

@@ -39,11 +39,16 @@ export interface WooProduct {
   id: number; name: string; type: "simple" | "variable"; status: string; sku: string; global_unique_id: string;
   price: string; regular_price: string; sale_price: string; manage_stock: boolean; stock_quantity: number | null;
   date_modified: string; date_modified_gmt: string; description: string; tags: Array<{ id: number; name: string }>; categories: Array<{ id: number; name: string }>;
-  variations: number[];
+  variations: number[]; slug: string;
+  /** Gallery in the store's order: WooCommerce's first picture is the product's main one. */
+  images: Array<{ id: number; src: string; alt: string; name: string }>;
+  attributes: Array<{ id: number; name: string; options: string[]; variation: boolean; visible: boolean }>;
 }
 export interface WooVariation {
   id: number; sku: string; global_unique_id: string; price: string; regular_price: string; sale_price: string;
   manage_stock: boolean | "parent"; stock_quantity: number | null; attributes: Array<{ name: string; option: string }>; status: string;
+  /** WooCommerce sends an empty image as id 0. */
+  image: { id: number; src: string } | null;
 }
 
 export class FakeWooCommerce {
@@ -108,7 +113,7 @@ export class FakeWooCommerce {
   }
 
   /** A simple product, or a variable one with sizes (the first shares the product's stock: `manage_stock: "parent"`). */
-  addProduct(p: Partial<{ name: string; price: string; sale: string; sku: string; gtin: string; stock: number | null; sizes: string[]; status: string }> = {}) {
+  addProduct(p: Partial<{ name: string; price: string; sale: string; sku: string; gtin: string; stock: number | null; sizes: string[]; status: string; images: number }> = {}) {
     const id = ++this.seq;
     const now = this.stamp();
     const variable = Boolean(p.sizes?.length);
@@ -117,11 +122,14 @@ export class FakeWooCommerce {
       id, name: p.name ?? "عباية سادة", type: variable ? "variable" : "simple", status: p.status ?? "publish", sku: p.sku ?? (variable ? "" : `AB-${id}`), global_unique_id: p.gtin ?? "",
       price: p.sale ?? price, regular_price: price, sale_price: p.sale ?? "", manage_stock: p.stock !== null, stock_quantity: p.stock === undefined ? 10 : p.stock,
       date_modified: now, date_modified_gmt: now, description: "<p>قماش كريب</p>", tags: [{ id: 1, name: "abaya" }], categories: [{ id: 2, name: "Abayas" }], variations: [],
+      slug: `abaya-${id}`, images: Array.from({ length: p.images ?? 0 }, (_, i) => ({ id: 9000 + id * 10 + i, src: `${this.siteUrl}/wp-content/uploads/abaya-${id}-${i + 1}.jpg`, alt: i === 0 ? "عباية" : "", name: `abaya-${i + 1}` })),
+      attributes: variable ? [{ id: 1, name: "Size", options: p.sizes!, variation: true, visible: true }, { id: 0, name: "Fabric", options: ["Crepe"], variation: false, visible: true }] : [],
     };
     if (variable) {
       const vs = p.sizes!.map((size, i): WooVariation => ({
         id: ++this.seq, sku: `AB-${id}-${size}`, global_unique_id: i === 0 ? "6221234567890" : "", price, regular_price: price, sale_price: "",
         manage_stock: i === 0 ? "parent" : true, stock_quantity: i === 0 ? null : 3 + i, attributes: [{ name: "Size", option: size }], status: "publish",
+        image: product.images[i] ? { id: product.images[i]!.id, src: product.images[i]!.src } : { id: 0, src: "" },
       }));
       product.variations = vs.map((v) => v.id);
       this.variationsOf.set(id, vs);

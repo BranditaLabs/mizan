@@ -16,13 +16,17 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
+import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { downloadText, toCsv } from "@/lib/csv";
 import { useSession } from "@/lib/session";
+import { ProductImage } from "./ProductImage";
 
 type Product = Schemas["ProductPage"]["data"][number];
 type Variant = Schemas["CatalogVariant"];
 type Row = { product: Product; variant: Variant };
+/** What the variant editor needs to know about the product (the list row or the product page). */
+type EditRow = { product: Pick<Product, "title">; variant: Variant };
 type Filter = "all" | "cost" | "barcode";
 const FILTERS: readonly Filter[] = ["all", "cost", "barcode"];
 const EDITORS = new Set(["owner", "admin", "ops_manager", "finance"]);
@@ -106,7 +110,13 @@ export function Products() {
   const columns: Column<Row>[] = [
     {
       id: "product", header: t("col.product"),
-      cell: ({ product, variant }) => <Cell main={product.title} sub={[variant.title, product.status !== "active" ? t(`status.${product.status}`) : null].filter(Boolean).join(" · ") || null} />,
+      cell: ({ product, variant }) => (
+        <div className="flex items-center gap-3">
+          <ProductImage image={product.mainImage} alt={product.title} size={40} />
+          <Cell main={<Link href={`/products/${product.id}`} className="hover:underline">{product.title}</Link>}
+            sub={[variant.title, product.status !== "active" ? t(`status.${product.status}`) : null].filter(Boolean).join(" · ") || null} />
+        </div>
+      ),
     },
     { id: "sku", header: t("col.sku"), cell: ({ variant }) => <IdCell>{variant.sku}</IdCell> },
     {
@@ -165,7 +175,7 @@ export function Products() {
 }
 
 /** One variant's cost and barcode; a barcode set here stays through store syncs until given back. */
-function EditVariant({ row, onClose }: { row: Row; onClose(): void }) {
+export function EditVariant({ row, onClose }: { row: EditRow; onClose(): void }) {
   const t = useTranslations("products.editor");
   const { api } = useSession();
   const qc = useQueryClient();

@@ -13,6 +13,8 @@ const STATUS: Record<CanonicalProduct["status"], "active" | "draft" | "archived"
  * so it must be idempotent. Fields the store owns (title, price, SKU, status, stock) follow the
  * store; the cost (cogs_minor, cogs_set_at) belongs to Mizan and is never touched here. The barcode
  * is the store's until the merchant sets one in Mizan (barcode_set_at), then it is left alone.
+ * P1: the product's description, vendor, type, tags and options, and its pictures as the store
+ * orders them, the store's featured one as main (else the first); a picture the store dropped goes.
  */
 @Injectable()
 export class ProductProjector {
@@ -25,6 +27,7 @@ export class ProductProjector {
     await this.db.tenant(tenantId, async (trx) => {
       const base = (await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow()).base_currency;
       const productId = await this.upsertProduct(trx, tenantId, connectionId, product);
+      const images = await this.syncImages(trx, tenantId, productId, product);
       const linked: string[] = [];
       for (const v of product.variants) {
         const currency = v.price.currency || base;
@@ -36,6 +39,7 @@ export class ProductProjector {
           price_minor: toMinor(v.price.amount, currency),
           compare_at_minor: v.compareAtPrice ? toMinor(v.compareAtPrice.amount, v.compareAtPrice.currency || currency) : null,
           currency, updated_at: new Date(),
+          options: JSON.stringify(v.options ?? []), image_id: (v.imageId && images.get(v.imageId)) ?? null,
           ...(v.available !== undefined ? { available: v.available, available_at: new Date() } : {}),
         };
         let variantId = link?.variant_id ?? null;
@@ -75,12 +79,41 @@ export class ProductProjector {
   private async upsertProduct(trx: Transaction<DB>, tenantId: string, connectionId: string, p: CanonicalProduct): Promise<string> {
     const row = await trx.selectFrom("products").select("id")
       .where("connection_id", "=", connectionId).where("external_id", "=", p.externalId).executeTakeFirst();
+    const details = {
+      title: p.title, status: STATUS[p.status], handle: p.handle?.slice(0, 255) ?? null, description_html: p.descriptionHtml ?? null,
+      vendor: p.vendor?.slice(0, 255) || null, product_type: p.productType?.slice(0, 255) || null, tags: p.tags, options: JSON.stringify(p.options ?? []),
+    };
     if (row) {
-      await trx.updateTable("products").set({ title: p.title, status: STATUS[p.status], updated_at: new Date() }).where("id", "=", row.id).execute();
+      await trx.updateTable("products").set({ ...details, updated_at: new Date() }).where("id", "=", row.id).execute();
       return row.id;
     }
-    return (await trx.insertInto("products").values({ tenant_id: tenantId, connection_id: connectionId, external_id: p.externalId, title: p.title, status: STATUS[p.status] })
+    return (await trx.insertInto("products").values({ tenant_id: tenantId, connection_id: connectionId, external_id: p.externalId, ...details })
       .returning("id").executeTakeFirstOrThrow()).id;
+  }
+
+  /**
+   * The store's pictures, in its order, keyed by the store's id: kept, moved, added or removed to
+   * match. Returns store id → Mizan id for the variants' pictures. Pictures added in Mizan (no
+   * external id) are left alone. A store that sends no picture field (an older query) changes nothing.
+   */
+  private async syncImages(trx: Transaction<DB>, tenantId: string, productId: string, p: CanonicalProduct): Promise<Map<string, string>> {
+    const existing = await trx.selectFrom("product_images").select(["id", "external_id"]).where("product_id", "=", productId).where("external_id", "is not", null).execute();
+    const ids = new Map(existing.map((e) => [e.external_id!, e.id]));
+    if (!p.images) return ids;
+    const main = p.mainImageId ?? p.images[0]?.externalId;
+    const gone = existing.filter((e) => !p.images!.some((i) => i.externalId === e.external_id)).map((e) => e.id);
+    if (gone.length) await trx.deleteFrom("product_images").where("id", "in", gone).execute();
+    // The main flag moves in two steps: one main picture per product at every moment.
+    await trx.updateTable("product_images").set({ is_main: false }).where("product_id", "=", productId).where("external_id", "is not", null).execute();
+    const now = new Date();
+    for (const [position, img] of p.images.entries()) {
+      const values = { url: img.url, alt: img.alt?.slice(0, 512) ?? null, width: img.width ?? null, height: img.height ?? null, position, is_main: img.externalId === main, updated_at: now };
+      const id = ids.get(img.externalId);
+      if (id) await trx.updateTable("product_images").set(values).where("id", "=", id).execute();
+      else ids.set(img.externalId, (await trx.insertInto("product_images").values({ tenant_id: tenantId, product_id: productId, external_id: img.externalId, ...values }).returning("id").executeTakeFirstOrThrow()).id);
+    }
+    for (const g of existing.filter((e) => gone.includes(e.id))) ids.delete(g.external_id!);
+    return ids;
   }
 
   /**

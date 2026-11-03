@@ -187,10 +187,32 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
   const status = (r.str("status", ["status"]) ?? "").toLowerCase();
   const tagsRaw = r.any("tags", ["tags"]);
   const tags = Array.isArray(tagsRaw) ? tagsRaw.map(String) : typeof tagsRaw === "string" ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [];
+  // Prices are in the shop's currency; without it the platform falls back to the store's base currency.
+  const currency = r.str("currency", ["priceRangeV2.minVariantPrice.currencyCode"]) ?? "";
+  const images = r.arr("images", ["media.nodes", "images.nodes", "images"]).flatMap((m) => {
+    const mr = r.child(m, "product.media");
+    const url = mr.str("url", ["image.url", "src", "url"]);
+    const type = mr.str("type", ["mediaContentType"]);
+    if (!url || !/^https:\/\//.test(url) || (type && type !== "IMAGE")) return [];
+    const width = mr.num("width", ["image.width", "width"]);
+    const height = mr.num("height", ["image.height", "height"]);
+    const alt = mr.str("alt", ["alt", "altText", "image.altText"]);
+    return [{ externalId: mr.str("id", ["id", "admin_graphql_api_id"], { required: true })!, url, ...(alt ? { alt } : {}), ...(width ? { width } : {}), ...(height ? { height } : {}) }];
+  });
+  const mainImageId = r.str("mainImageId", ["featuredMedia.id"]);
+  const options = r.arr<{ name?: unknown; values?: unknown }>("options", ["options"])
+    .map((o) => ({ name: typeof o?.name === "string" ? o.name : "", values: Array.isArray(o?.values) ? o.values.map(String) : [] }))
+    .filter((o) => o.name && !(o.name === "Title" && o.values.length === 1 && o.values[0] === "Default Title"));
+  const handle = r.str("handle", ["handle"]);
   return {
     connector: "shopify",
     externalId: r.str("id", ["id", "admin_graphql_api_id"], { required: true })!,
     title: r.str("title", ["title"]) ?? "",
+    ...(handle ? { handle } : {}),
+    // An empty list when the store has no pictures (they were removed); nothing when the answer had no picture field.
+    ...(r.any("media", ["media", "images"]) !== undefined ? { images } : {}),
+    ...(mainImageId && images.some((i) => i.externalId === mainImageId) ? { mainImageId } : {}),
+    ...(options.length ? { options } : {}),
     status: status === "active" || status === "draft" || status === "archived" ? status : "unknown",
     vendor: r.str("vendor", ["vendor"]),
     productType: r.str("productType", ["productType", "product_type"]),
@@ -206,8 +228,9 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
         sku: vr.str("sku", ["sku"]),
         barcode: vr.str("barcode", ["barcode"])?.trim() || undefined,
         title: vr.str("title", ["title"]),
-        price: { amount: price, currency: "" },
-        compareAtPrice: cap ? { amount: cap, currency: "" } : null,
+        price: { amount: price, currency },
+        compareAtPrice: cap ? { amount: cap, currency } : null,
+        ...variantLooks(vr, options.length > 0),
         inventoryItemId: vr.str("inventoryItemId", ["inventoryItem.id", "inventory_item_id"]),
         locationIds: vr.arr<{ location?: { id?: unknown } }>("locationIds", ["inventoryItem.inventoryLevels.nodes"])
           .map((n) => n?.location?.id).filter((id): id is string => typeof id === "string"),
@@ -216,6 +239,16 @@ export function mapProduct(raw: unknown, ctx: MapCtx): CanonicalProduct {
     }),
     raw,
   };
+}
+
+/** A variant's option values (when the product has real options) and its picture. */
+function variantLooks(vr: Resolver, hasOptions: boolean): { options?: Array<{ name: string; value: string }>; imageId?: string } {
+  const options = hasOptions
+    ? vr.arr<{ name?: unknown; value?: unknown }>("options", ["selectedOptions"])
+      .filter((o) => typeof o?.name === "string" && typeof o?.value === "string").map((o) => ({ name: o.name as string, value: o.value as string }))
+    : [];
+  const imageId = vr.str("imageId", ["media.nodes.0.id", "image.id", "image_id"]);
+  return { ...(options.length ? { options } : {}), ...(imageId ? { imageId } : {}) };
 }
 
 /** Webhook payloads are REST-shaped; resolve the GraphQL id to re-fetch the full record. */

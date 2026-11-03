@@ -75,28 +75,43 @@ export const ORDERS_UPDATED: GqlOperation = {
   ),
 };
 
-const PRODUCT_FIELDS = `
+const BASE_PRODUCT_FIELDS = `
   id title status vendor productType tags descriptionHtml updatedAt
   variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity inventoryItem { id inventoryLevels(first: 10) { nodes { location { id } } } } } }
 `;
 
+/**
+ * The full product (P1): pictures with the main one, options, each variant's option values and
+ * picture, the handle and the shop's currency (prices are in it). Variant 1 is the older shape,
+ * used if a version refuses any of these.
+ */
+const PRODUCT_FIELDS = `
+  id title handle status vendor productType tags descriptionHtml updatedAt
+  priceRangeV2 { minVariantPrice { currencyCode } }
+  options { name values }
+  featuredMedia { id }
+  media(first: 20) { nodes { id mediaContentType alt ... on MediaImage { image { url width height } } } }
+  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity selectedOptions { name value } media(first: 1) { nodes { id } } inventoryItem { id inventoryLevels(first: 10) { nodes { location { id } } } } } }
+`;
+
 export const PRODUCT_BY_ID: GqlOperation = {
   name: "MizanProduct",
-  cost: 20,
-  variants: [`query MizanProduct($id: ID!) { product(id: $id) { ${PRODUCT_FIELDS} } }`],
+  cost: 30,
+  variants: [
+    `query MizanProduct($id: ID!) { product(id: $id) { ${PRODUCT_FIELDS} } }`,
+    `query MizanProduct($id: ID!) { product(id: $id) { ${BASE_PRODUCT_FIELDS} } }`,
+  ],
 };
 
 export const PRODUCTS_UPDATED: GqlOperation = {
   name: "MizanProducts",
-  cost: 200,
-  variants: [
-    `query MizanProducts($first: Int!, $after: String, $query: String) {
+  cost: 300,
+  variants: [PRODUCT_FIELDS, BASE_PRODUCT_FIELDS].map((fields) => `query MizanProducts($first: Int!, $after: String, $query: String) {
       products(first: $first, after: $after, query: $query, sortKey: UPDATED_AT) {
         pageInfo { hasNextPage endCursor }
-        nodes { ${PRODUCT_FIELDS} }
+        nodes { ${fields} }
       }
-    }`,
-  ],
+    }`),
 };
 
 export const INVENTORY_LEVEL: GqlOperation = {

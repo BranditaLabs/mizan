@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   PAYMENT_MODES, PAYMENT_STATUSES, PRODUCT_STATUSES, SHIPMENT_STATUSES,
   type Address, type CanonicalOrder, type CanonicalProduct, type CanonicalShipment,
-  type CanonicalVariant, type ConnectorId, type FulfillmentGroup, type Money,
+  type CanonicalImage, type CanonicalVariant, type ConnectorId, type FulfillmentGroup, type Money,
   type OrderLine, type ProductPatch,
 } from "./model.js";
 import type { OrderSourceHints, SourceVisit, Utm } from "./attribution.js";
@@ -100,7 +100,17 @@ export const CanonicalVariantSchema = z.object({
   compareAtPrice: MoneySchema.nullable().optional(),
   inventoryItemId: z.string().optional(),
   available: z.number().int().optional(),
+  options: z.array(z.object({ name: z.string(), value: z.string() })).optional(),
+  imageId: z.string().optional(),
 }) satisfies z.ZodType<CanonicalVariant>;
+
+export const CanonicalImageSchema = z.object({
+  externalId: z.string().min(1),
+  url: z.url({ protocol: /^https$/ }),
+  alt: z.string().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+}) satisfies z.ZodType<CanonicalImage>;
 
 export const CanonicalProductSchema = z.object({
   connector: ConnectorIdSchema,
@@ -111,6 +121,10 @@ export const CanonicalProductSchema = z.object({
   productType: z.string().optional(),
   tags: z.array(z.string()),
   descriptionHtml: z.string().optional(),
+  handle: z.string().optional(),
+  images: z.array(CanonicalImageSchema).optional(),
+  mainImageId: z.string().optional(),
+  options: z.array(z.object({ name: z.string(), values: z.array(z.string()) })).optional(),
   variants: z.array(CanonicalVariantSchema),
   updatedAt: isoDateTime,
   raw: z.unknown().optional(),
