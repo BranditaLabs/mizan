@@ -30,3 +30,6 @@
   body { background: none !important; }
   .mz-card { break-inside: avoid; box-shadow: none; }
 }
+
+/* The app shell scrolls the page itself: the light fields stay put behind it instead of stretching with it. */
+.app-shell > .fields { position: fixed; }

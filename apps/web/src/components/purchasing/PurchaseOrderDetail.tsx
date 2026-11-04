@@ -108,7 +108,7 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
             ) : <p className="text-body-sm text-text-2">{t("receipts.none")}</p>}
           </Card>
         </div>
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
           <NextStep po={po} role={role} onReceive={() => setReceiving(true)} />
           <LandedCosts po={po} role={role} />
         </aside>

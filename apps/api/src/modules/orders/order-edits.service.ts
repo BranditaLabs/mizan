@@ -124,6 +124,8 @@ export class OrderEditsService {
       if (PAID_AHEAD.has(o.payment_mode) && total > BigInt(o.total_minor)) throw problem(409, "paid_order", "the customer paid ahead: a higher total needs a new payment, not an edit");
 
       const changes: Changes = { lines, add: adds, ...(shipping !== undefined ? { shipping } : {}), address: Boolean(input.address) };
+      // A new address takes its own pin, or none: the old pin would send the driver to the old place.
+      if (input.address) await trx.updateTable("orders").set({ ship_lat: input.address.location?.lat ?? null, ship_lng: input.address.location?.lng ?? null }).where("id", "=", o.id).execute();
       const pii = await this.cipher.forTenant(trx, tenantId);
       const summary = { lines: lines.length, added: adds.length, shipping: shipping !== undefined, address: Boolean(input.address) };
 

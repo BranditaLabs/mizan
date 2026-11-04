@@ -1,6 +1,6 @@
 "use client";
 
-import { rolesWith } from "@mizan/shared";
+import { findRegion, rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -17,6 +17,7 @@ import { MoneyText } from "@/components/ui/Values";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
+import { addressBody, addressProblems, AddressFields, type AddressValue } from "./AddressFields";
 
 type Order = Schemas["OrderDetail"];
 const EDITORS = rolesWith("orders.create");
@@ -70,7 +71,12 @@ function EditOrderDialog({ order: o, onClose }: { order: Order; onClose(): void 
   const [added, setAdded] = useState<Added[]>([]);
   const [fee, setFee] = useState(o.shipping.amount);
   const [moving, setMoving] = useState(false);
-  const [address, setAddress] = useState({ line1: "", line2: "", city: o.area.city ?? "", province: o.area.province ?? "" });
+  const country = store?.country ?? "EG";
+  // The governorate as the list knows it (the store may have sent a code or the Arabic name).
+  const [address, setAddress] = useState<AddressValue>(() => ({
+    line1: "", line2: "", locationText: "", city: o.area.city ?? "",
+    province: findRegion(country, o.area.province ?? "", o.area.city ?? "")?.en ?? o.area.province ?? "",
+  }));
 
   const products = useQuery({
     queryKey: ["order-products", user?.uid ?? "", store?.tenantId ?? ""],
@@ -96,11 +102,11 @@ function EditOrderDialog({ order: o, onClose }: { order: Order; onClose(): void 
     }),
     add: added.map((a) => ({ variantId: a.variantId, quantity: qty(a.quantity) })),
     ...(fee !== o.shipping.amount ? { shipping: fee } : {}),
-    ...(moving ? { address: { line1: address.line1.trim(), city: address.city.trim(), ...(address.line2.trim() ? { line2: address.line2.trim() } : {}), ...(address.province.trim() ? { province: address.province.trim() } : {}) } } : {}),
+    ...(moving ? { address: addressBody(address) } : {}),
   };
   const invalid = [...rows.map((r) => r.quantity), ...added.map((a) => a.quantity)].some((q) => Number.isNaN(qty(q)))
     || added.some((a) => qty(a.quantity) < 1) || rows.some((r) => !AMOUNT.test(r.price)) || !AMOUNT.test(fee)
-    || (moving && (address.line1.trim().length < 3 || address.city.trim().length < 2));
+    || (moving && Object.keys(addressProblems(address, country)).length > 0);
   const empty = !body.lines.length && !body.add.length && !("shipping" in body) && !moving;
 
   const save = useMutation({
@@ -167,10 +173,7 @@ function EditOrderDialog({ order: o, onClose }: { order: Order; onClose(): void 
         <section className="flex flex-col gap-3">
           {moving ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label={t("address.line1")} className="sm:col-span-2" value={address.line1} onChange={(e) => setAddress({ ...address, line1: e.target.value })} />
-              <Field label={t("address.line2")} value={address.line2} onChange={(e) => setAddress({ ...address, line2: e.target.value })} />
-              <Field label={t("address.city")} value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
-              <Field label={t("address.province")} value={address.province} onChange={(e) => setAddress({ ...address, province: e.target.value })} />
+              <div className="sm:col-span-2"><AddressFields value={address} onChange={setAddress} country={country} showErrors={address.line1.trim().length > 0} /></div>
               <div className="sm:col-span-2"><Button size="sm" variant="ghost" onClick={() => setMoving(false)}>{t("keepAddress")}</Button></div>
             </div>
           ) : <div><Button size="sm" variant="secondary" icon="pin" onClick={() => setMoving(true)}>{t("changeAddress")}</Button></div>}

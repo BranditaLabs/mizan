@@ -141,7 +141,7 @@ export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {})
             </div>
           </Card>
         </div>
-        <aside className="flex flex-col gap-4 lg:sticky lg:top-6">
+        <aside className="flex flex-col gap-4 lg:sticky lg:top-20">
           <Card title={t("new.summary")}>
             <div className="flex flex-col gap-3">
               <KeyValue items={[

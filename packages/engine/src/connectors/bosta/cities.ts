@@ -6,11 +6,13 @@
  * cities. Resolution order:
  *   1. learned aliases (ops picked the city once; remembered forever)
  *   2. exact normalized match on Bosta's English or Arabic name
- *   3. built-in aliases for common Egyptian spellings and districts
+ *   3. built-in aliases for common Egyptian spellings and districts, then any district or city in
+ *      the shared list of governorates (packages/shared places.ts)
  *   4. containment match ("New Cairo" contains "Cairo") on city, then province
  * If nothing matches, the job stops with the three closest suggestions, and
  * the ops choice becomes a learned alias for every later order.
  */
+import { findRegion } from "@mizan/shared";
 
 export interface BostaCity {
   id: string;
@@ -81,6 +83,14 @@ export class CityResolver {
       for (const [alias, target] of Object.entries(EG_ALIASES)) {
         if (n === normalize(alias) || n.includes(normalize(alias))) {
           const c = this.byNorm.get(normalize(target));
+          if (c) return { city: c, via: "alias" };
+        }
+      }
+      // A district or city people name instead of the governorate ("Sheraton", "التجمع الخامس"): its governorate.
+      const region = findRegion("EG", text);
+      if (region) {
+        for (const name of [region.courier, region.en, region.ar, ...(region.also ?? [])]) {
+          const c = name ? this.byNorm.get(normalize(name)) : undefined;
           if (c) return { city: c, via: "alias" };
         }
       }

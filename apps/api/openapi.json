@@ -2397,6 +2397,80 @@
         ]
       }
     },
+    "/v1/orders/customer-history": {
+      "get": {
+        "operationId": "OrdersController_customerHistory",
+        "parameters": [
+          {
+            "name": "phone",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 24
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What Mizan knows of this phone: orders by outcome, open orders (a possible duplicate), the last address",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerHistory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "orders"
+        ]
+      }
+    },
     "/v1/orders/products": {
       "get": {
         "operationId": "OrdersController_products",
@@ -23978,6 +24052,143 @@
         ],
         "additionalProperties": false
       },
+      "CustomerHistory": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "E.164, as Mizan reads what was typed"
+          },
+          "known": {
+            "type": "boolean"
+          },
+          "name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "orders": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "delivered": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "returned": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "cancelled": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "open": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "total",
+              "delivered",
+              "returned",
+              "cancelled",
+              "open"
+            ],
+            "additionalProperties": false
+          },
+          "openOrders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "number": {
+                  "type": "string"
+                },
+                "placedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "placedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "lastAddress": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "line1": {
+                "nullable": true,
+                "type": "string"
+              },
+              "line2": {
+                "nullable": true,
+                "type": "string"
+              },
+              "city": {
+                "nullable": true,
+                "type": "string"
+              },
+              "province": {
+                "nullable": true,
+                "type": "string"
+              },
+              "location": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number"
+                  },
+                  "lng": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "line1",
+              "line2",
+              "city",
+              "province",
+              "location"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "phone",
+          "known",
+          "name",
+          "orders",
+          "openOrders",
+          "lastAddress"
+        ],
+        "additionalProperties": false
+      },
       "Dashboard": {
         "type": "object",
         "properties": {
@@ -27213,20 +27424,45 @@
               "line1": {
                 "type": "string",
                 "minLength": 3,
-                "maxLength": 200
+                "maxLength": 200,
+                "description": "Street and building"
               },
               "line2": {
+                "description": "Landmark, floor, apartment",
                 "type": "string",
                 "maxLength": 200
               },
               "city": {
                 "type": "string",
                 "minLength": 2,
-                "maxLength": 80
+                "maxLength": 80,
+                "description": "The area: city or district (Nasr City, Smouha…)"
               },
               "province": {
+                "description": "The governorate or region (Cairo, Alexandria…): what the courier books by",
                 "type": "string",
                 "maxLength": 80
+              },
+              "location": {
+                "description": "The map pin, when the customer shared one",
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lng": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [
@@ -31048,26 +31284,51 @@
             "pattern": "^\\d{1,9}(\\.\\d{1,2})?$"
           },
           "address": {
-            "description": "The new delivery address (the name and phone stay)",
+            "description": "The new delivery address (the name and phone stay); without a new pin the old one is cleared",
             "type": "object",
             "properties": {
               "line1": {
                 "type": "string",
                 "minLength": 3,
-                "maxLength": 200
+                "maxLength": 200,
+                "description": "Street and building"
               },
               "line2": {
+                "description": "Landmark, floor, apartment",
                 "type": "string",
                 "maxLength": 200
               },
               "city": {
                 "type": "string",
                 "minLength": 2,
-                "maxLength": 80
+                "maxLength": 80,
+                "description": "The area: city or district (Nasr City, Smouha…)"
               },
               "province": {
+                "description": "The governorate or region (Cairo, Alexandria…): what the courier books by",
                 "type": "string",
                 "maxLength": 80
+              },
+              "location": {
+                "description": "The map pin, when the customer shared one",
+                "type": "object",
+                "properties": {
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lng": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  }
+                },
+                "required": [
+                  "lat",
+                  "lng"
+                ],
+                "additionalProperties": false
               }
             },
             "required": [

@@ -89,6 +89,12 @@ describe("city resolution", () => {
     ["الإسكندرية", undefined, "Alexandria"],
     ["Mansoura", "Ad Daqahliyah", "Dakahlia"],
     ["Zagazig", undefined, "Sharqia"],
+    // Districts typed as the city (the staging booking that failed on "sheraton"): their governorate.
+    ["sheraton", undefined, "Cairo"],
+    ["شيراتون", undefined, "Cairo"],
+    ["التجمع الخامس", undefined, "Cairo"],
+    ["Sheikh Zayed", undefined, "Giza"],
+    ["Smouha", undefined, "Alexandria"],
   ])("%s / %s → %s", (city, province, expected) => {
     expect(r.resolve(city, province)?.city.name).toBe(expected);
   });
