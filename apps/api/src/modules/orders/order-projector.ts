@@ -40,6 +40,8 @@ export function customerLabel(name: string | null | undefined): string | null {
 /** Stores whose orders carry tags; Mizan writes its tags there too. */
 const STORE_TAGS = new Set<string>(["shopify"]);
 const TRACKED = ["status", "payment_mode", "payment_status", "total_minor", "paid_minor", "refunded_minor", "cod_minor", "tags"] as const;
+/** Statuses an order can be shipped from in the store before Mizan ships it. */
+const FULFILLABLE = new Set(["new", "pending_confirmation", "confirmed"]);
 const PAYMENT_FIELDS = new Set<string>(["payment_status", "paid_minor", "refunded_minor"]);
 
 const money = (v: { paid_minor: bigint; refunded_minor: bigint; payment_status: string; cod_minor: bigint; total_minor: bigint; payment_mode: string }) =>
@@ -173,6 +175,23 @@ export class OrderProjector {
           paidMinor: String(values.paid_minor), refundedMinor: String(values.refunded_minor), currency: values.currency,
         },
       });
+    }
+
+    // Two-way delivery, store → Mizan: shipped in the store with another courier (a fulfillment with
+    // a tracking number Mizan never booked) becomes a Mizan shipment, so the order leaves the
+    // confirmation and shipping queues and its statuses can follow.
+    if (FULFILLABLE.has(status)) {
+      const fulfilled = (order.storeFulfillments ?? []).filter((f) => f.status === "SUCCESS" && f.trackingNumber);
+      if (fulfilled.length) {
+        const known = new Set((await trx.selectFrom("shipments").select("tracking_number").where("order_id", "=", existing.id).where("tracking_number", "is not", null).execute()).map((r) => r.tracking_number));
+        const f = fulfilled.find((x) => !known.has(x.trackingNumber!));
+        if (f) {
+          await this.events.emit(trx, {
+            type: "order.store_fulfilled", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" },
+            data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber!, trackingUrl: f.trackingUrl ?? null },
+          });
+        }
+      }
     }
 
     if (changed.length) {

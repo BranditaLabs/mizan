@@ -8,6 +8,7 @@ import { EngineJobRunner } from "./engine-runner.js";
 import { ShopifyTokens } from "./shopify-tokens.js";
 import { ShopifyConnectedConsumer } from "./shopify-connected.consumer.js";
 import { ConnectionNoticesConsumer } from "./connection-notices.consumer.js";
+import { StoreWritebackConsumer } from "./store-writeback.consumer.js";
 import { WebhookRouter } from "./webhook-router.js";
 import { WebhooksController } from "./webhooks.controller.js";
 
@@ -28,6 +29,7 @@ export class IntegrationsModule {
         EngineJobRunner,
         ShopifyConnectedConsumer,
         ConnectionNoticesConsumer,
+        StoreWritebackConsumer,
         ConnectionLifecycle,
         CourierAccess,
         SyncResults,

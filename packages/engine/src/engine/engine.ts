@@ -254,7 +254,7 @@ type Listener = (event: string, data: Record<string, unknown>) => void;
  */
 export const CATALOG_VERSION = 2;
 
-export const SHOPIFY_WEBHOOK_TOPICS = ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "PRODUCTS_UPDATE", "APP_UNINSTALLED"] as const;
+export const SHOPIFY_WEBHOOK_TOPICS = ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "PRODUCTS_CREATE", "PRODUCTS_UPDATE", "APP_UNINSTALLED"] as const;
 
 const iso = (v: string | number | undefined) => (v === undefined ? undefined : new Date(v).toISOString());
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 16);
@@ -584,6 +584,30 @@ export class MizanEngine {
     return { kind: "woocommerce.cancelOrder", connection: "woocommerce", payload: p, idempotencyKey: `woocommerce:cancel:${p.orderId}` };
   }
 
+  /**
+   * Two-way delivery, Mizan → Shopify, for what the platform knows outside the engine (a courier
+   * recorded by hand, statuses set by a person or a CSV, money in the ledger). The keys are the
+   * engine's own, so a step the engine already queued is never queued twice.
+   */
+  static shopifyFulfillJob(p: { orderId: string; trackingNumber: string; company?: string; url?: string }): NewJob<{ orderId: string; trackingNumber: string; company?: string; url?: string }> {
+    return { kind: "shopify.fulfill", connection: "shopify", payload: p, idempotencyKey: `fulfill:${p.orderId}:${p.trackingNumber}` };
+  }
+
+  /** A courier step as a Shopify fulfillment event; null for a status Shopify has no event for. */
+  static shopifyProgressJob(orderId: string, trackingNumber: string, status: ShipmentStatus, happenedAt: string): NewJob<{ orderId: string; trackingNumber: string; status: FulfillmentEventStatus; happenedAt: string; message?: string }> | null {
+    const event = fulfillmentEventFor(status);
+    if (!event) return null;
+    return {
+      kind: "shopify.fulfillmentEvent", connection: "shopify",
+      payload: { orderId, trackingNumber, status: event.status, happenedAt, ...(event.message ? { message: event.message } : {}) },
+      idempotencyKey: `event:${orderId}:${trackingNumber}:${status}`,
+    };
+  }
+
+  static shopifyMarkPaidJob(orderId: string): NewJob<{ orderId: string }> {
+    return { kind: "shopify.markPaid", connection: "shopify", payload: { orderId }, idempotencyKey: `paid:${orderId}` };
+  }
+
   static shopifyCancelJob(p: CancelJob): NewJob<CancelJob> {
     return { kind: "shopify.cancelOrder", connection: "shopify", payload: p, idempotencyKey: `shopify:cancel:${p.orderId}` };
   }
@@ -761,7 +785,7 @@ export class MizanEngine {
       "bosta.pollActive": () => this.pollActiveShipments(),
       "bosta.createShipment": (j) => this.createShipment(j.payload.orderId, j.attempts),
       "bosta.ship": (j) => this.ship(j.payload as ShipJob, j.attempts),
-      "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber),
+      "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber, j.payload.company, j.payload.url),
       "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber, j.payload.hint ? "webhook" : "poll"),
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
       "shopify.fulfillmentEvent": (j) => this.fulfillmentEvent(j.payload),
@@ -1146,10 +1170,10 @@ export class MizanEngine {
     if (p.storeOrderId) await this.enqueue("shopify.fulfill", { orderId: p.storeOrderId, trackingNumber: tn }, `fulfill:${p.storeOrderId}:${tn}`);
   }
 
-  private async fulfill(orderId: string, trackingNumber: string) {
-    const result = await this.shopify.fulfillWithTracking(orderId, {
-      company: this.opts.trackingCompany, number: trackingNumber, url: this.bosta.trackingUrl(trackingNumber),
-    });
+  private async fulfill(orderId: string, trackingNumber: string, company?: string, url?: string) {
+    // Another courier (recorded by hand in Mizan) gives its own name and link; Bosta's are the default.
+    const tracking = company ? { company, number: trackingNumber, ...(url ? { url } : {}) } : { company: this.opts.trackingCompany, number: trackingNumber, url: this.bosta.trackingUrl(trackingNumber) };
+    const result = await this.shopify.fulfillWithTracking(orderId, tracking);
     const rec = await this.store.get<OrderRecord>("order", orderId);
     if (rec) await this.store.put<OrderRecord>("order", orderId, { ...rec, fulfilled: true }, this.now());
     this.emit("order.fulfilled", { orderId, trackingNumber, result });

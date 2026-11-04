@@ -38283,7 +38283,7 @@
           },
           "markPaidOnDelivery": {
             "type": "boolean",
-            "description": "Mark cash-on-delivery orders paid in Shopify when delivered"
+            "description": "Mark orders paid in Shopify when the money is in: cash collected on delivery, a payment link paid, a transfer received"
           },
           "tagReturned": {
             "type": "boolean",
@@ -42249,7 +42249,7 @@
           },
           "markPaidOnDelivery": {
             "type": "boolean",
-            "description": "Mark cash-on-delivery orders paid in Shopify when delivered"
+            "description": "Mark orders paid in Shopify when the money is in: cash collected on delivery, a payment link paid, a transfer received"
           },
           "tagReturned": {
             "type": "boolean",
