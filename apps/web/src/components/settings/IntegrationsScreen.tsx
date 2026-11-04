@@ -14,6 +14,7 @@ import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { ConnectionActions } from "./ConnectionManage";
 import { EngineHealth, ResolveCityDialog, unknownCity } from "./EngineHealth";
 import { WooCommerceConnect } from "./WooCommerceConnect";
 
@@ -76,7 +77,8 @@ export function IntegrationsScreen() {
                   return (
                     <li key={c.id} className="mz-card flex flex-wrap items-start justify-between gap-3 p-4">
                       <div>
-                        <p className="font-medium">{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : c.provider} <Bdi code>{c.account ?? ""}</Bdi></p>
+                        {c.displayName ? <p className="font-medium"><Bdi>{c.displayName}</Bdi></p> : null}
+                        <p className={c.displayName ? "text-body-sm text-text-2" : "font-medium"}>{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : c.provider} <Bdi code>{c.account ?? ""}</Bdi></p>
                         {c.reason ? <p className="text-body-sm text-danger-text">{reasonText(c.provider, c.reason)}</p> : null}
                         {c.missingScopes.length ? <p className="text-caption text-text-2">{t("missingScopes")} <Bdi code>{c.missingScopes.join(", ")}</Bdi></p> : null}
                         <p className="text-caption text-text-2">{t("updated")} <DateText value={c.updatedAt} relative /></p>
@@ -86,6 +88,7 @@ export function IntegrationsScreen() {
                         {href ? <Link href={href} className="text-body-sm font-medium underline">{t("fix")}</Link> : null}
                         {c.provider === "woocommerce" && c.status !== "active" && CONNECTORS.has(role)
                           ? <Button size="sm" variant="secondary" onClick={() => setWoo({ site: `https://${c.account ?? ""}` })}>{t("woo.newKeys")}</Button> : null}
+                        {CONNECTORS.has(role) ? <ConnectionActions c={c} /> : null}
                       </div>
                     </li>
                   );

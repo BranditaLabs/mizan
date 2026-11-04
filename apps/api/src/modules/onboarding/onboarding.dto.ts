@@ -23,6 +23,11 @@ export const OnboardingSchema = z.object({
       }).nullable(),
       /** Permissions added since the store was connected; the owner approves them in Shopify (connect again). */
       missingScopes: z.array(z.string()),
+      /** Every connected store, not only the first (U7): each with its state, to retry or fix. */
+      stores: z.array(z.object({
+        connectionId: z.uuid(), provider: z.string(), shop: z.string().nullable(), displayName: z.string().nullable(),
+        status: z.enum(["pending", "active", "needs_attention"]), reason: z.string().nullable(),
+      })),
     }),
     courier: z.object({
       status: z.enum(["todo", "checking", "done", "needs_attention", "skipped"]),

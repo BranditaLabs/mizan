@@ -26,12 +26,25 @@ export class ConnectionLifecycle {
   ) {}
 
   async providerRevoked(tenantId: string, connectionId: string, reason: "app_uninstalled"): Promise<boolean> {
+    return this.disconnect(tenantId, connectionId, reason, { actor: { type: "system" } });
+  }
+
+  /**
+   * The team disconnects a store or courier (U7): the same end as an uninstall. Mizan stops
+   * syncing, forgets the credential and drops queued jobs; orders and history stay. On Shopify the
+   * app stays installed until the owner removes it there (the screen says so).
+   */
+  async disconnectByTeam(tenantId: string, connectionId: string, by: { actor: { type: "user"; id: string }; ip?: string }): Promise<boolean> {
+    return this.disconnect(tenantId, connectionId, "by_team", by);
+  }
+
+  private async disconnect(tenantId: string, connectionId: string, reason: "app_uninstalled" | "by_team",
+    by: { actor: { type: "system" } | { type: "user"; id: string }; ip?: string }): Promise<boolean> {
     const done = await this.db.tenant(tenantId, async (trx) => {
       const c = await trx.selectFrom("connections").select(["provider", "status", "secret_ref"]).where("id", "=", connectionId).forUpdate().executeTakeFirst();
       if (!c || c.status === "disconnected") return false;
       await trx.updateTable("connections").set({ status: "disconnected", status_reason: reason, secret_ref: null, updated_at: new Date() })
         .where("id", "=", connectionId).execute();
-      const by = { actor: { type: "system" as const } };
       if (c.secret_ref) await this.secrets.delete(trx, tenantId, c.secret_ref, by);
       const dropped = await trx.deleteFrom("mz_outbox").where("connection_id", "=", connectionId).where("status", "in", ["pending", "running"]).executeTakeFirst();
       // Products made in Mizan on their way to this store (P3): their job went with it.
@@ -39,12 +52,13 @@ export class ConnectionLifecycle {
         .where("publish_connection_id", "=", connectionId).where("publish_status", "=", "publishing").execute();
       const entity = { type: "connection", id: connectionId };
       await this.audit.record(trx, { action: "connection.disconnected", tenantId, entity, before: { status: c.status }, after: { status: "disconnected", reason, jobsDropped: Number(dropped.numDeletedRows) }, ...by });
-      await this.events.emit(trx, { type: "connection.disconnected", tenantId, entity, data: { provider: c.provider, reason }, actor: null });
+      await this.events.emit(trx, { type: "connection.disconnected", tenantId, entity, data: { provider: c.provider, reason },
+        actor: by.actor.type === "user" ? { type: "user", id: by.actor.id } : null });
       return true;
     });
     this.registry.invalidate(tenantId);
     this.router.forget(connectionId);
-    if (done) this.log.log({ tenantId, connectionId, reason }, "connection disconnected by the provider");
+    if (done) this.log.log({ tenantId, connectionId, reason }, reason === "by_team" ? "connection disconnected by the team" : "connection disconnected by the provider");
     return done;
   }
 }

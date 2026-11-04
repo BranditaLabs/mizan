@@ -10,9 +10,10 @@ import { ProblemError } from "../../../platform/http/problem.js";
 import { SecretsService } from "../../../platform/secrets/secrets.service.js";
 import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "../../../integrations/engine-registry.js";
 import { STORE_PROVIDERS } from "../../../integrations/connection-resolver.js";
+import { ConnectionLifecycle } from "../../../integrations/connection-lifecycle.js";
 import { toConnectionView, type ConnectionView } from "../connections.dto.js";
 
-const CONNECTION_COLUMNS = ["id", "kind", "provider", "external_account", "status", "status_reason", "config", "updated_at"] as const;
+const CONNECTION_COLUMNS = ["id", "kind", "provider", "external_account", "display_name", "status", "status_reason", "config", "updated_at"] as const;
 
 /**
  * Connect Bosta with the merchant's API key (E4-5). The key is stored encrypted with a webhook token
@@ -29,6 +30,7 @@ export class BostaConnectService {
     @Inject(EngineRegistry) private readonly registry: EngineRegistry,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(ConnectionLifecycle) private readonly lifecycle: ConnectionLifecycle,
   ) {}
 
   async saveKey(auth: AuthContext, apiKey: string): Promise<ConnectionView> {
@@ -67,6 +69,37 @@ export class BostaConnectService {
     });
     this.registry.invalidate(tenantId); // the next engine reads the new key
     return view;
+  }
+
+  /** U7: the team's own name for a connection (audited). */
+  async rename(auth: AuthContext, id: string, displayName: string | null): Promise<ConnectionView> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const before = await trx.selectFrom("connections").select(["display_name"]).where("id", "=", id).forUpdate().executeTakeFirst();
+      if (!before) throw new ProblemError(404, "not_found", "no connection with this id");
+      const row = await trx.updateTable("connections").set({ display_name: displayName, updated_at: new Date() }).where("id", "=", id)
+        .returning([...CONNECTION_COLUMNS]).executeTakeFirstOrThrow();
+      await this.audit.record(trx, { action: "connection.renamed", tenantId, ...auditActor(auth), entity: { type: "connection", id }, before: { displayName: before.display_name }, after: { displayName } });
+      return toConnectionView(row, this.config.SHOPIFY_SCOPES.split(","));
+    });
+  }
+
+  /**
+   * U7: the team stops using a store or courier. The owner types the store's address (or the
+   * provider's name) to confirm; the lifecycle drops the credential and queued jobs, history stays.
+   */
+  async disconnect(auth: AuthContext, id: string, confirm: string, ip?: string): Promise<ConnectionView> {
+    const tenantId = auth.tenant!.id;
+    const c = await this.db.tenant(tenantId, (trx) => trx.selectFrom("connections").select(["provider", "external_account", "status"]).where("id", "=", id).executeTakeFirst());
+    if (!c) throw new ProblemError(404, "not_found", "no connection with this id");
+    if (c.status === "disconnected") throw new ProblemError(409, "already_disconnected", "this connection is already disconnected");
+    const expected = (c.external_account ?? c.provider).trim().toLowerCase();
+    if (confirm.trim().toLowerCase() !== expected) {
+      throw new ProblemError(422, "validation_failed", "type the store's address to confirm", [{ path: "confirm", code: "does_not_match" }]);
+    }
+    await this.lifecycle.disconnectByTeam(tenantId, id, { actor: { type: "user", id: auth.user.id }, ...(ip ? { ip } : {}) });
+    const row = await this.db.tenant(tenantId, (trx) => trx.selectFrom("connections").select([...CONNECTION_COLUMNS]).where("id", "=", id).executeTakeFirstOrThrow());
+    return toConnectionView(row);
   }
 
   async list(tenantId: string): Promise<ConnectionView[]> {

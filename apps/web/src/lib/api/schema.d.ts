@@ -2849,6 +2849,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/connections/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ConnectionsController_rename"];
+        trace?: never;
+    };
+    "/v1/connections/{id}/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConnectionsController_disconnect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/integrations/health": {
         parameters: {
             query?: never;
@@ -3882,6 +3914,7 @@ export interface components {
             kind: "store" | "courier" | "whatsapp" | "ads" | "payment" | "tax";
             provider: string;
             account: string | null;
+            displayName: string | null;
             /** @enum {string} */
             status: "pending" | "active" | "needs_attention" | "disconnected";
             /** @description key_refused, key_lacks_permission, app_uninstalled, scopes_changed … */
@@ -3900,6 +3933,7 @@ export interface components {
                 kind: "store" | "courier" | "whatsapp" | "ads" | "payment" | "tax";
                 provider: string;
                 account: string | null;
+                displayName: string | null;
                 /** @enum {string} */
                 status: "pending" | "active" | "needs_attention" | "disconnected";
                 /** @description key_refused, key_lacks_permission, app_uninstalled, scopes_changed … */
@@ -3918,6 +3952,7 @@ export interface components {
             kind: "store" | "courier" | "whatsapp" | "ads" | "payment" | "tax";
             provider: string;
             account: string | null;
+            displayName: string | null;
             /** @enum {string} */
             status: "pending" | "active" | "needs_attention" | "disconnected";
             /** @description key_refused, key_lacks_permission, app_uninstalled, scopes_changed … */
@@ -4292,6 +4327,9 @@ export interface components {
         DisableUser: {
             /** @description Shown to the stores they belong to */
             reason: string;
+        };
+        DisconnectConnection: {
+            confirm: string;
         };
         Dispute: {
             /** Format: uuid */
@@ -5396,6 +5434,16 @@ export interface components {
                         error: string | null;
                     } | null;
                     missingScopes: string[];
+                    stores: {
+                        /** Format: uuid */
+                        connectionId: string;
+                        provider: string;
+                        shop: string | null;
+                        displayName: string | null;
+                        /** @enum {string} */
+                        status: "pending" | "active" | "needs_attention";
+                        reason: string | null;
+                    }[];
                 };
                 courier: {
                     /** @enum {string} */
@@ -8096,6 +8144,9 @@ export interface components {
         };
         RemoveSsoDomain: {
             reason?: string;
+        };
+        RenameConnection: {
+            displayName: string | null;
         };
         ReorderSuggestions: {
             /** @description Items at or under their reorder point, the least cover first */
@@ -20229,6 +20280,120 @@ export interface operations {
             };
             /** @description Conflict with the current state */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConnectionsController_rename: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameConnection"];
+            };
+        };
+        responses: {
+            /** @description Renamed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConnectionsController_disconnect: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DisconnectConnection"];
+            };
+        };
+        responses: {
+            /** @description Disconnected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

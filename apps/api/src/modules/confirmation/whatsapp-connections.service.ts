@@ -12,7 +12,7 @@ import { WebhookRouter } from "../../integrations/webhook-router.js";
 import { TEMPLATES, templateName } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 
-const COLUMNS = ["id", "kind", "provider", "external_account", "status", "status_reason", "config", "updated_at"] as const;
+const COLUMNS = ["id", "kind", "provider", "external_account", "display_name", "status", "status_reason", "config", "updated_at"] as const;
 /** A failed check (Meta down) is tried again after this long. */
 const RECHECK_MS = 60_000;
 
