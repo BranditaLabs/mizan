@@ -28,6 +28,21 @@ describe("the catalogue read again once per CATALOG_VERSION (pictures for produc
     expect(await store.jobs({ status: "dead" })).toEqual([]);
   });
 
+  it("a shop whose full pages cost too much: the page shrinks to what Shopify allows, nothing lost, nothing dead", async () => {
+    const store = new MemoryStore();
+    const seen: string[] = [];
+    const { engine, shop, clock } = setup({ hooks: { onProduct: async (p) => { seen.push(p.externalId); } } }, store);
+    for (let i = 0; i < 9; i++) shop.addProduct({ title: `Big ${i}`, price: "100.00", sku: `BIG-${i}` });
+    shop.costPerItem = 300; // 50 per page would cost 15,000; Shopify allows 1,000
+    await store.enqueue(MizanEngine.catalogRefreshJob("shopify"), clock.now());
+    await settle(engine, store, clock);
+    expect(new Set(seen).size).toBe(9);
+    const sizes = shop.calls.filter((c) => c.op === "MizanProducts").map((c) => Number(c.variables.first));
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(3); // fits: 3 × 300 ≤ 1,000
+    expect(shop.calls.filter((c) => c.op === "MizanProducts:refused")).toHaveLength(1); // learned once, kept for later pages
+    expect(await store.jobs({ status: "dead" })).toEqual([]);
+  });
+
   it("WooCommerce: every product again, once", async () => {
     const seen: string[] = [];
     const w = setupWoo({ hooks: { onProduct: async (p) => { seen.push(p.externalId); } } });

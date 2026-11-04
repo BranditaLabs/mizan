@@ -141,7 +141,10 @@ export class ShopifyGraphql {
     }
     if (codes.includes("ACCESS_DENIED")) return new IntegrationError({ kind: "permission", connector: "shopify", message: `${op.name}: ${text}`, details: errs });
     if (codes.includes("INTERNAL_SERVER_ERROR")) return new IntegrationError({ kind: "transient", connector: "shopify", message: `${op.name}: ${text}`, details: errs });
-    if (codes.includes("MAX_COST_EXCEEDED")) return new IntegrationError({ kind: "validation", connector: "shopify", message: `${op.name}: query too expensive — lower page size`, details: errs });
+    if (codes.includes("MAX_COST_EXCEEDED")) {
+      const cost = queryCost(errs, text);
+      return new IntegrationError({ kind: "validation", connector: "shopify", message: `${op.name}: query too expensive${cost ? ` (cost ${cost.cost} of ${cost.max})` : ""} — lower page size`, details: { errors: errs, ...(cost ?? {}) } });
+    }
     if (SCHEMA_ERROR.test(text) || codes.some((c) => /undefined|argumentNotAccepted|missingRequiredArguments/i.test(c))) {
       return new IntegrationError({ kind: "schema_drift", connector: "shopify", message: `${op.name}: ${text}`, details: errs });
     }
@@ -196,4 +199,24 @@ export function assertNoUserErrors(op: string, errors: Array<{ field?: string[] 
   const text = errors.map((e) => `${(e.field ?? []).join(".")}: ${e.message}`).join("; ");
   const conflict = errors.some((e) => /stale|compare|changeFrom|mismatch|has changed|concurrent|version/i.test(`${e.code ?? ""} ${e.message}`));
   throw new IntegrationError({ kind: conflict ? "conflict" : "validation", connector: "shopify", message: `${op}: ${text}`, details: errors });
+}
+
+/**
+ * What Shopify said a refused query would cost, and its limit: from `extensions.cost`/`maxCost`, or
+ * the message ("Query cost is 1302, which exceeds the single query max cost limit (1000)").
+ */
+export function queryCost(errs: Array<{ message: string; extensions?: Record<string, unknown> }>, text: string): { cost: number; max: number } | null {
+  for (const e of errs) {
+    const c = Number(e.extensions?.cost), m = Number(e.extensions?.maxCost);
+    if (Number.isFinite(c) && Number.isFinite(m) && c > 0 && m > 0) return { cost: c, max: m };
+  }
+  const m = /cost is (\d+)[^(]*\((\d+)\)/i.exec(text);
+  return m ? { cost: Number(m[1]), max: Number(m[2]) } : null;
+}
+
+/** A refused-for-cost error from this client, with what Shopify said (null otherwise). */
+export function costRefusal(e: unknown): { cost: number; max: number } | null | false {
+  if (!(e instanceof IntegrationError) || e.kind !== "validation" || !/query too expensive/.test(e.message)) return false;
+  const d = e.details as { cost?: number; max?: number } | undefined;
+  return d?.cost && d.max ? { cost: d.cost, max: d.max } : null;
 }

@@ -6,7 +6,7 @@ import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
 import type { ShapeWatch } from "../../adapt/shape.js";
-import { assertNoUserErrors, ShopifyGraphql, type ShopifyCredentials } from "./client.js";
+import { assertNoUserErrors, ShopifyGraphql, type ShopifyCredentials, costRefusal } from "./client.js";
 import { mapOrder, mapProduct } from "./mapper.js";
 import * as Q from "./queries.js";
 
@@ -86,8 +86,32 @@ export class ShopifyConnector {
   /** One page of orders matching a Shopify search query, oldest update first; `next` is null on the last page. */
   async ordersPage(query: string | null, after: string | null, pageSize = 50): Promise<{ nodes: CanonicalOrder[]; next: string | null }> {
     const data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
-      await this.gql.run(Q.ORDERS_UPDATED, { first: pageSize, after, query }, { idempotent: true });
+      await this.fitting("orders", pageSize, (first) => this.gql.run(Q.ORDERS_UPDATED, { first, after, query }, { idempotent: true }));
     return { nodes: data.orders.nodes.map((n) => mapOrder(n, this.ctx())), next: data.orders.pageInfo.hasNextPage ? data.orders.pageInfo.endCursor : null };
+  }
+
+  /** Page sizes Shopify accepted for this shop, learned when a bigger page cost too much. */
+  private readonly fits = new Map<string, number>();
+
+  /**
+   * A page that fits Shopify's limit of 1,000 per query. A shop with many variants or order lines
+   * makes a full page cost more: Shopify says by how much, the page shrinks to fit (with room to
+   * spare), and the size is kept for the next pages. One item that still costs too much is an error.
+   */
+  private async fitting<T>(what: string, wanted: number, run: (first: number) => Promise<T>): Promise<T> {
+    let first = Math.min(wanted, this.fits.get(what) ?? wanted);
+    for (;;) {
+      try {
+        return await run(first);
+      } catch (e) {
+        const refusal = costRefusal(e);
+        if (refusal === false || first <= 1) throw e;
+        const next = refusal ? Math.max(1, Math.floor((first * refusal.max * 0.8) / refusal.cost)) : Math.max(1, Math.floor(first / 2));
+        first = Math.min(next, first - 1);
+        this.fits.set(what, first);
+        this.drift.record({ connector: "shopify", entity: what, kind: "fallback_field", detail: `page too expensive for this shop: now ${first} per page`, at: this.rt.clock.now() });
+      }
+    }
   }
 
   async getProduct(id: string): Promise<CanonicalProduct> {
@@ -107,7 +131,7 @@ export class ShopifyConnector {
 
   async productsPage(query: string | null, after: string | null, pageSize = 50): Promise<{ nodes: CanonicalProduct[]; next: string | null }> {
     const data: { products: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: unknown[] } } =
-      await this.gql.run(Q.PRODUCTS_UPDATED, { first: pageSize, after, query }, { idempotent: true });
+      await this.fitting("products", pageSize, (first) => this.gql.run(Q.PRODUCTS_UPDATED, { first, after, query }, { idempotent: true }));
     return { nodes: data.products.nodes.map((n) => mapProduct(n, this.ctx())), next: data.products.pageInfo.hasNextPage ? data.products.pageInfo.endCursor : null };
   }
 

@@ -94,6 +94,8 @@ export class FakeShopify {
   randomFaultRate = 0;
   servedVersion = "2026-10";
   bucket = { max: 1000, available: 1000, restore: 100, last: 0 };
+  /** Requested cost per product or order on a page (Shopify refuses a query over 1,000): 0 = never refused. */
+  costPerItem = 0;
   costPerCall = 10;
   rejectFields = new Set<string>();
   /** Fields this app may not read (a missing scope or protected data level): Shopify nulls them and answers ACCESS_DENIED. */
@@ -387,6 +389,12 @@ export class FakeShopify {
     }
     for (const f of this.rejectFields) {
       if (query.includes(f)) return json(200, { errors: [{ message: `Field '${f}' doesn't exist on type 'Customer'`, extensions: { code: "undefinedField" } }] }, headers);
+    }
+    const first = Number(variables?.first ?? 0);
+    if (this.costPerItem && (op === "MizanProducts" || op === "MizanOrders") && first * this.costPerItem > 1000) {
+      const cost = first * this.costPerItem;
+      this.calls.push({ op: `${op}:refused`, variables });
+      return json(200, { errors: [{ message: `Query cost is ${cost}, which exceeds the single query max cost limit (1000).`, extensions: { code: "MAX_COST_EXCEEDED", cost, maxCost: 1000 } }] }, headers);
     }
     this.bucket.available -= this.costPerCall;
     this.calls.push({ op, variables });
