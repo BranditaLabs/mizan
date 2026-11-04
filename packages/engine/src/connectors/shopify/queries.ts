@@ -77,7 +77,7 @@ export const ORDERS_UPDATED: GqlOperation = {
 
 const BASE_PRODUCT_FIELDS = `
   id title status vendor productType tags descriptionHtml updatedAt
-  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity inventoryItem { id inventoryLevels(first: 10) { nodes { location { id } } } } } }
+  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity inventoryItem { id inventoryLevels(first: 1) { nodes { location { id } } } } } }
 `;
 
 /**
@@ -91,7 +91,7 @@ const PRODUCT_FIELDS = `
   options { name values }
   featuredMedia { id }
   media(first: 20) { nodes { id mediaContentType alt ... on MediaImage { image { url width height } } } }
-  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity selectedOptions { name value } media(first: 1) { nodes { id } } inventoryItem { id inventoryLevels(first: 10) { nodes { location { id } } } } } }
+  variants(first: 100) { nodes { id sku barcode title price compareAtPrice inventoryQuantity selectedOptions { name value } media(first: 1) { nodes { id } } inventoryItem { id inventoryLevels(first: 1) { nodes { location { id } } } } } }
 `;
 
 export const PRODUCT_BY_ID: GqlOperation = {
