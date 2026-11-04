@@ -6,6 +6,8 @@ import type { ShipmentStatus } from "@mizan/shared";
 import { APP_CONFIG, runsWorkerInProcess, type AppConfig } from "../platform/config.js";
 import { Database } from "../platform/db/database.js";
 import { EventsService } from "../platform/events/events.service.js";
+import { ModuleRef } from "@nestjs/core";
+import { STORE_ORDERS, type StoreOrderSink } from "../modules/orders/ports.js";
 import { NotConnectedError } from "./connection-resolver.js";
 import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "./engine-registry.js";
 import { storeSyncOf } from "./store-sync-options.js";
@@ -64,7 +66,13 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
+
+  /** Orders made in Mizan, copied to the store (the orders module): resolved when first needed. */
+  private get storeOrders(): StoreOrderSink | undefined {
+    try { return this.moduleRef.get<StoreOrderSink>(STORE_ORDERS, { strict: false }); } catch { return undefined; }
+  }
 
   onApplicationBootstrap(): void {
     if (runsWorkerInProcess(this.config)) this.start();
@@ -165,8 +173,10 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
       const shopify = engineQueue({ shopify: storeId });
       // Shipments of this store's orders: the fulfillment with its tracking, and a final step's writes.
       const shipped = await trx.selectFrom("shipments as s").innerJoin("orders as o", "o.id", "s.order_id").innerJoin("connections as k", "k.id", "s.connection_id")
-        .select(["s.tracking_number", "s.tracking_url", "s.status", "s.status_at", "s.provider", "s.external_id as shipment_ref", "k.provider as courier", "o.external_id", "o.payment_mode"])
-        .where("o.connection_id", "=", storeId).where("o.external_id", "is not", null).where("s.booking", "=", "booked").where("s.is_return_leg", "=", false)
+        .select(["s.tracking_number", "s.tracking_url", "s.status", "s.status_at", "s.provider", "s.external_id as shipment_ref", "k.provider as courier", "o.payment_mode",
+          sql<string>`case when o.connection_id is not null then o.external_id else o.store_copy_id end`.as("external_id")])
+        .where((w) => w.or([w.and([w("o.connection_id", "=", storeId), w("o.external_id", "is not", null)]), w.and([w("o.store_copy_connection_id", "=", storeId), w("o.store_copy_id", "is not", null)])]))
+        .where("s.booking", "=", "booked").where("s.is_return_leg", "=", false)
         .where("s.tracking_number", "is not", null).where("s.updated_at", ">", since).execute();
       for (const s of shipped) {
         const tn = s.tracking_number!;
@@ -187,8 +197,9 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
 
     // Cancelled in Mizan (not by the store): the store's order cancelled too.
     const cancelled = await trx.selectFrom("orders as o").innerJoin("domain_events as e", (j) => j.onRef("e.entity_id", "=", "o.id").on("e.type", "=", "order.cancelled"))
-      .select(["o.external_id", sql<string>`e.data->>'reason'`.as("reason")])
-      .where("o.connection_id", "=", storeId).where("o.status", "=", "cancelled").where("o.external_id", "is not", null)
+      .select([sql<string>`case when o.connection_id is not null then o.external_id else o.store_copy_id end`.as("external_id"), sql<string>`e.data->>'reason'`.as("reason")])
+      .where((w) => w.or([w.and([w("o.connection_id", "=", storeId), w("o.external_id", "is not", null)]), w.and([w("o.store_copy_connection_id", "=", storeId), w("o.store_copy_id", "is not", null)])]))
+      .where("o.status", "=", "cancelled")
       .where("o.cancelled_at", ">", since).execute();
     for (const c of cancelled) {
       if (c.reason === "cancelled_in_store") continue;
@@ -201,6 +212,15 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
     }
 
     await engineQueue({}).put<GuardRound>("guardian", "round", { at: new Date(now).toISOString() }, clock);
+    // Orders made in Mizan with no copy in the store yet (the job lost, or made before the switch): queued (a no-op when queued).
+    if (provider === "shopify") {
+      const first = await trx.selectFrom("connections").select("id").where("kind", "=", "store").where("provider", "=", "shopify").where("status", "=", "active").orderBy("created_at").executeTakeFirst();
+      const missing = await trx.selectFrom("orders").select("id").where("connection_id", "is", null).where("status", "!=", "cancelled").where("created_at", ">", since)
+        .where((w) => w.or([w("store_copy_status", "=", "pending").and("store_copy_connection_id", "=", storeId), first?.id === storeId ? w("store_copy_status", "is", null) : w.val(false)]))
+        .limit(200).execute();
+      for (const m of missing) if (await this.storeOrders?.queue(trx, tenantId, m.id)) reasserted++;
+    }
+
     if (rebooked || reasserted) {
       await this.events.emit(trx, { type: "sync.recovered", tenantId, entity: { type: "connection", id: storeId }, actor: { type: "system" }, data: { rebooked, reasserted } });
     }

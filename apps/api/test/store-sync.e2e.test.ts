@@ -34,16 +34,16 @@ afterAll(() => app.close());
 
 describe("store sync switches (E7-7)", () => {
   it("are all on by default, map to the engine's options, and ignore junk in the config", () => {
-    expect(storeSyncOf({})).toEqual({ progressEvents: true, markPaidOnDelivery: true, tagReturned: true, tagLost: true });
+    expect(storeSyncOf({})).toEqual({ progressEvents: true, markPaidOnDelivery: true, tagReturned: true, tagLost: true, createManualOrders: true });
     expect(storeSyncOf({ sync: { progressEvents: "no", tagLost: false } })).toMatchObject({ progressEvents: true, tagLost: false });
-    expect(engineSyncOptions({ progressEvents: false, markPaidOnDelivery: true, tagReturned: true, tagLost: false }))
+    expect(engineSyncOptions({ progressEvents: false, markPaidOnDelivery: true, tagReturned: true, tagLost: false, createManualOrders: true }))
       .toEqual({ fulfillmentEvents: false, markCodPaidOnDelivery: true, tagOnReturn: "mizan-returned", tagOnLost: null });
   });
 
   it("owners read and change them per store; audited; only Shopify stores", async () => {
-    expect((await http().get(`/v1/connections/${shopify}/sync`).set(as("owner")).expect(200)).body).toEqual({ progressEvents: true, markPaidOnDelivery: true, tagReturned: true, tagLost: true });
+    expect((await http().get(`/v1/connections/${shopify}/sync`).set(as("owner")).expect(200)).body).toEqual({ progressEvents: true, markPaidOnDelivery: true, tagReturned: true, tagLost: true, createManualOrders: true });
     const after = (await http().put(`/v1/connections/${shopify}/sync`).set(as("owner")).send({ progressEvents: false, tagLost: false }).expect(200)).body;
-    expect(after).toEqual({ progressEvents: false, markPaidOnDelivery: true, tagReturned: true, tagLost: false });
+    expect(after).toEqual({ progressEvents: false, markPaidOnDelivery: true, tagReturned: true, tagLost: false, createManualOrders: true });
     expect((await http().get(`/v1/connections/${shopify}/sync`).set(as("owner")).expect(200)).body.progressEvents).toBe(false);
     await http().put(`/v1/connections/${shopify}/sync`).set(as("owner")).send({}).expect(422);
     await http().put(`/v1/connections/${shopify}/sync`).set(as("owner")).send({ colour: "red" }).expect(422);

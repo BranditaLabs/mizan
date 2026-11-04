@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { Writable } from "node:stream";
 import type { INestApplication } from "@nestjs/common";
 import { FakeBosta, FakeClock, FakeShopify, seeded, testRuntime } from "@mizan/engine/testing";
+import { sql } from "kysely";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
@@ -465,3 +466,73 @@ describe("sync guardian: drops and errors recover on their own", () => {
     await http().get("/v1/admin/integrations/sync").set(as("agent")).expect(403);
   });
 });
+
+describe("orders made in Mizan reach Shopify: one record in Mizan, Shopify and the courier", () => {
+  const shopifyId = async () => (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "shopify").executeTakeFirstOrThrow())).id;
+  const copyOf = (id: string) => [...shop.orders.values()].filter((o) => o.sourceIdentifier === `mizan:${id}`);
+  const settle = async () => { await drainEvents(); await runJobs(); await drainEvents(); await runJobs(); await drainEvents(); };
+  const storeOrders = () => db.tenant(store, async (trx) => Number((await trx.selectFrom("orders").select(sql<string>`count(*)`.as("n")).where("channel", "!=", "manual").executeTakeFirstOrThrow()).n));
+
+  it("a typed order is created in Shopify once, named like Mizan's; its copy comes back linked, not as a second order", async () => {
+    const before = await storeOrders();
+    const id = await manual({ mode: "partial", method: "instapay", paid: "300" });
+    await settle();
+    const [copy] = copyOf(id);
+    const d = await detail(id);
+    expect(copy).toMatchObject({ name: d.number, received: "300.00", displayFinancialStatus: "PARTIALLY_PAID", tags: ["mizan"] });
+    expect(copy!.shippingAddress).toMatchObject({ address1: "12 Abbas El Akkad St", countryCodeV2: "EG" });
+    expect(d.storeCopy).toEqual({ status: "created", name: d.number, error: null });
+    // The store's webhook for the copy: linked, never imported.
+    const wh = shop.webhook("orders/create", copy!);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+    expect(await storeOrders()).toBe(before);
+    expect(copyOf(id)).toHaveLength(1);
+  });
+
+  it("shipped with Bosta: the copy in Shopify is fulfilled with the tracking number", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    await confirm(id);
+    await ship(id).expect(202);
+    await settle();
+    const tn = (await detail(id)).shipments[0].trackingNumber as string;
+    expect(copyOf(id)[0]!.fulfillments[0]!.trackingInfo[0]).toMatchObject({ number: tn });
+  });
+
+  it("cancelled in Mizan: cancelled in Shopify; cancelled in Shopify: cancelled in Mizan, not sent back", async () => {
+    const a = await manual({ mode: "cod" });
+    await settle();
+    await db.tenant(store, async (trx) => {
+      await trx.updateTable("orders").set({ status: "cancelled", cancelled_at: new Date() }).where("id", "=", a).execute();
+      await app.get(EventsService).emit(trx, { type: "order.cancelled", tenantId: store, entity: { type: "order", id: a }, actor: { type: "system" }, data: { number: "x", reason: "customer_cancelled" } });
+    });
+    await settle();
+    expect(copyOf(a)[0]!.cancelledAt).toEqual(expect.any(String));
+
+    const b = await manual({ mode: "cod" });
+    await settle();
+    const copy = copyOf(b)[0]!;
+    copy.cancelledAt = new Date(clock.now()).toISOString();
+    copy.updatedAt = copy.cancelledAt;
+    const wh = shop.webhook("orders/cancelled", copy);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+    expect((await detail(b)).status).toBe("cancelled");
+  });
+
+  it("a second copy in Shopify (two creates that raced) is cancelled there; Mizan keeps one order", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    const before = await storeOrders();
+    const extra = shop.addOrder({ name: "M-extra" });
+    extra.sourceIdentifier = `mizan:${id}`;
+    const wh = shop.webhook("orders/create", extra);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+    expect(shop.orders.get(extra.id)!.cancelledAt).toEqual(expect.any(String));
+    expect(copyOf(id).filter((o) => !o.cancelledAt)).toHaveLength(1);
+    expect(await storeOrders()).toBe(before);
+  });
+});
+

@@ -905,7 +905,10 @@
       "timeline": {
         "title": "النشاط",
         "empty": "مفيش حاجة لسه."
-      }
+      },
+      "copyCreated": "في Shopify باسم <b>{name}</b>",
+      "copyPending": "بيتعمل في Shopify",
+      "copyFailed": "Shopify رفضه: شوف الإعدادات ← الربط"
     },
     "events": {
       "created": "الأوردر وصل من {source}",
@@ -933,7 +936,9 @@
       "note_added": "اتضافت ملاحظة",
       "edit_requested": "التعديل اتبعت للمتجر",
       "edited": "الأوردر اتعدّل",
-      "edit_failed": "المتجر رفض التعديل"
+      "edit_failed": "المتجر رفض التعديل",
+      "store_copy_created": "اتعمل في Shopify باسم {name}",
+      "store_copy_failed": "Shopify رفض يعمله"
     },
     "confirmation": {
       "title": "التأكيد",
@@ -3515,6 +3520,10 @@
     "none": {
       "title": "مفيش متجر Shopify مربوط",
       "body": "اربط متجر الأول؛ الاختيارات بتاعته هتظهر هنا."
+    },
+    "createManualOrders": {
+      "label": "اعمل أوردرات ميزان في المتجر ده",
+      "hint": "الأوردرات اللي الفريق بيكتبها في ميزان بتتعمل هنا كمان، بنفس الرقم (M-1001). العميل مش بيوصله إيميل."
     }
   },
   "team": {

@@ -905,7 +905,10 @@
       "timeline": {
         "title": "Activity",
         "empty": "Nothing yet."
-      }
+      },
+      "copyCreated": "in Shopify as <b>{name}</b>",
+      "copyPending": "being created in Shopify",
+      "copyFailed": "Shopify refused it: see Settings → Integrations"
     },
     "events": {
       "created": "Order received from {source}",
@@ -933,7 +936,9 @@
       "note_added": "Note added",
       "edit_requested": "Edit sent to the store",
       "edited": "Order edited",
-      "edit_failed": "The store refused the edit"
+      "edit_failed": "The store refused the edit",
+      "store_copy_created": "Created in Shopify as {name}",
+      "store_copy_failed": "Shopify refused to create it"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -3515,6 +3520,10 @@
     "none": {
       "title": "No Shopify store connected",
       "body": "Connect a store first; its switches show here."
+    },
+    "createManualOrders": {
+      "label": "Create Mizan's orders in this store",
+      "hint": "Orders the team types in Mizan are created here too, with the same number (M-1001). Customers get no email."
     }
   },
   "team": {

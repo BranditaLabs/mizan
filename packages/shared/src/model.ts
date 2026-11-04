@@ -98,6 +98,8 @@ export interface CanonicalOrder {
   shippingAddress?: Address;
   lines: OrderLine[];
   fulfillmentGroups: FulfillmentGroup[];
+  /** The Mizan order this store order is the copy of (an order made in Mizan and created in the store). */
+  mizanOrderId?: string;
   /** Shipments recorded in the store, with their tracking (two-way delivery: one made outside Mizan becomes a Mizan shipment). */
   storeFulfillments?: StoreFulfillment[];
   tags: string[];

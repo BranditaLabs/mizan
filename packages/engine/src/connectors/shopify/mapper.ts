@@ -1,3 +1,4 @@
+import { mizanOrderIdOf } from "../../core/store-order.js";
 import type { CanonicalOrder, CanonicalProduct, Money, OrderSourceHints, PaymentMode, PaymentStatus, SourceVisit } from "@mizan/shared";
 import { sourceAttributes, toMinor } from "@mizan/shared";
 import type { DriftSink } from "../../adapt/drift.js";
@@ -163,6 +164,7 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
     lines,
     fulfillmentGroups,
     storeFulfillments,
+    ...(mizanOrderIdOf(r.str("sourceIdentifier", ["sourceIdentifier", "source_identifier"])) ? { mizanOrderId: mizanOrderIdOf(r.str("sourceIdentifier", ["sourceIdentifier", "source_identifier"]))! } : {}),
     tags: r.arr<string>("tags", ["tags"]).map(String),
     ...sourceHints(r),
     raw,

@@ -1,3 +1,4 @@
+import type { StoreOrderDraft, StoreOrderOutcome } from "../core/store-order.js";
 import type { OrderEditOutcome, OrderEditPlan } from "../core/order-edit.js";
 import type { CreatedProduct, ProductDraft, ProductPublishOutcome } from "../core/product-draft.js";
 import type { PaymentLinkOutcome, PaymentLinkRequest } from "../core/payment-link.js";
@@ -107,6 +108,10 @@ export interface EngineOptions {
      * engine records what it saw, so a failing hook retries the same lines. Must be idempotent.
      */
     onGatewayTransaction?: (update: GatewayTransactionUpdate) => Promise<void>;
+    /** An order made in Mizan, to create in the store (read when the job runs). Undefined when it is gone, cancelled before, or in the store already. */
+    loadStoreOrderDraft?: (orderId: string) => Promise<StoreOrderDraft | undefined>;
+    /** The store has the order (now, or from an earlier attempt), or refused it (final). Before it is read back, so the copy is linked, never imported. Must be idempotent. */
+    onStoreOrderCreated?: (orderId: string, result: StoreOrderOutcome) => Promise<void>;
     /** A product made in Mizan, to publish (P3), read when the job runs. Undefined when it is gone or published already. */
     loadProductDraft?: (productId: string) => Promise<ProductDraft | undefined>;
     /**
@@ -608,6 +613,11 @@ export class MizanEngine {
     return { kind: "shopify.markPaid", connection: "shopify", payload: { orderId }, idempotencyKey: `paid:${orderId}` };
   }
 
+  /** An order made in Mizan, created in the Shopify store (once: found by Mizan's id first). */
+  static shopifyCreateOrderJob(orderId: string): NewJob<{ orderId: string }> {
+    return { kind: "shopify.createOrder", connection: "shopify", payload: { orderId }, idempotencyKey: `shopify:create-order:${orderId}` };
+  }
+
   static shopifyCancelJob(p: CancelJob): NewJob<CancelJob> {
     return { kind: "shopify.cancelOrder", connection: "shopify", payload: p, idempotencyKey: `shopify:cancel:${p.orderId}` };
   }
@@ -801,6 +811,7 @@ export class MizanEngine {
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.editOrder": (j) => this.editOrder(j.payload.editId, "shopify"),
       "shopify.createProduct": (j) => this.publishProduct(j.payload.productId, "shopify"),
+      "shopify.createOrder": (j) => this.createStoreOrder(j.payload.orderId),
       "paymob.createLink": (j) => this.createPaymentLink(j.payload.linkId),
       "paymob.ingestTransaction": (j) => this.ingestPaymobTransaction(j.payload.transactionId),
       "paymob.inquire": (j) => this.inquirePaymob(j.payload.reference),
@@ -962,6 +973,27 @@ export class MizanEngine {
   }
 
   /** P3: the product into the store, its ids to the platform, then the product read back like any store change. */
+  /** An order made in Mizan, created in the store once (found by Mizan's id first), then read back as the store has it. */
+  private async createStoreOrder(orderId: string) {
+    const draft = await this.opts.hooks?.loadStoreOrderDraft?.(orderId);
+    if (!draft) return;
+    let created: { externalId: string; name: string; outcome: "created" | "already_created" };
+    try {
+      created = await this.shopify.createOrder(draft);
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" ? "validation" : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onStoreOrderCreated?.(orderId, { ok: false, reason, message: e.message }));
+      this.emit("store_order.failed", { orderId, reason });
+      if (reason === "permission") throw e;
+      return;
+    }
+    await this.runHook(() => this.opts.hooks?.onStoreOrderCreated?.(orderId, { ok: true, ...created }));
+    // Read back as its own job: linked already, so the copy updates Mizan's order instead of making a second one.
+    await this.enqueue("shopify.ingestOrder", { orderId: created.externalId }, `shopify:order:${created.externalId}:created:${orderId}`);
+    this.emit("store_order.created", { orderId, externalId: created.externalId, outcome: created.outcome });
+  }
+
   private async publishProduct(productId: string, provider: "shopify" | "woocommerce") {
     const draft = await this.opts.hooks?.loadProductDraft?.(productId);
     if (!draft) return; // published already, or gone

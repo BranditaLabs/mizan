@@ -72,7 +72,8 @@ export class ShippingService implements ShipmentResultSink {
     if (!courier) throw new ProblemError(409, "no_courier", "connect a courier first");
     if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
     // Jobs run in a store's engine: the order's own store, else the tenant's first (a courier is only connected after a store).
-    const fromStore = o.store_provider && (STORE_PROVIDERS as readonly string[]).includes(o.store_provider) && o.store_status !== "disconnected" ? o.connection_id : null;
+    const fromStore = o.store_provider && (STORE_PROVIDERS as readonly string[]).includes(o.store_provider) && o.store_status !== "disconnected" ? o.connection_id
+      : o.store_copy_id ? o.store_copy_connection_id : null; // a Mizan order with its copy in the store: fulfilled there too
     const storeId = fromStore ?? (await trx.selectFrom("connections").select("id").where("provider", "in", [...STORE_PROVIDERS]).where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
     if (!storeId) throw new ProblemError(409, "store_not_connected", "connect the store first");
 
@@ -82,8 +83,8 @@ export class ShippingService implements ShipmentResultSink {
     }).returning([...SHIPMENT_COLUMNS]).executeTakeFirstOrThrow();
     const store = new SqlStore(trxQueryClient(trx), { tenantId, store: storeId, connections: { bosta: courier.id } });
     // Only a Shopify order is fulfilled in the store with the tracking number (WooCommerce has no core shipment tracking).
-    const fulfilInStore = fromStore && o.store_provider === "shopify" && o.external_id;
-    await store.enqueue(MizanEngine.bostaShipJob({ shipmentId: row.id, orderId, ...(fulfilInStore ? { storeOrderId: o.external_id! } : {}) }), this.runtime(tenantId).clock.now());
+    const storeOrderId = o.connection_id ? (o.store_provider === "shopify" ? o.external_id : null) : o.store_copy_id;
+    await store.enqueue(MizanEngine.bostaShipJob({ shipmentId: row.id, orderId, ...(fromStore && storeOrderId ? { storeOrderId } : {}) }), this.runtime(tenantId).clock.now());
     await timeline(trx, tenantId, orderId, "ship_requested", { ...data, shipmentId: row.id, provider: courier.provider }, userId ?? undefined);
     return { created: true, shipment: view(row) };
   }
@@ -163,7 +164,7 @@ export class ShippingService implements ShipmentResultSink {
   private async shippable(trx: Trx, orderId: string, needAddress: boolean) {
     const o = await trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id")
       .select(["o.id", "o.number", "o.status", "o.currency", "o.total_minor", "o.paid_minor", "o.refunded_minor", "o.payment_mode", "o.payment_status",
-        "o.ship_line1", "o.ship_city", "o.ship_phone", "o.external_id", "o.connection_id", "c.provider as store_provider", "c.status as store_status"])
+        "o.ship_line1", "o.ship_city", "o.ship_phone", "o.external_id", "o.connection_id", "c.provider as store_provider", "c.status as store_status", "o.store_copy_connection_id", "o.store_copy_id"])
       .where("o.id", "=", orderId).forUpdate("o").executeTakeFirst();
     if (!o) throw new ProblemError(404, "not_found", "order not found");
     const live = await trx.selectFrom("shipments").select([...SHIPMENT_COLUMNS]).where("order_id", "=", orderId).where("is_return_leg", "=", false)

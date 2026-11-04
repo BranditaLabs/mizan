@@ -32,6 +32,7 @@ const ORDER_BASE = `
   lineItems(first: 100) { nodes { id title sku quantity variant { id } originalUnitPriceSet { ${MONEY} } } }
   fulfillmentOrders(first: 10) { nodes { id status lineItems(first: 100) { nodes { id lineItem { id } } } } }
   fulfillments(first: 10) { id status trackingInfo { company number url } }
+  sourceIdentifier
 `;
 
 /** What was received, what is still owed, what was refunded: the basis for COD amounts and payment status. */
@@ -427,6 +428,39 @@ export const VARIANTS_CREATE: GqlOperation = {
   variants: [
     `mutation MizanVariantsCreate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $strategy: ProductVariantsBulkCreateStrategy) {
       productVariantsBulkCreate(productId: $productId, variants: $variants, strategy: $strategy) { productVariants { id sku selectedOptions { name value } } userErrors { field message } }
+    }`,
+  ],
+};
+
+/**
+ * Orders made in Mizan, created in the store: Mizan's id in a unique order metafield (the store
+ * refuses a second order with it, and finds the first by it directly, not through the search index
+ * that lags behind a create).
+ */
+export const ORDER_ID_DEFINITION: GqlOperation = {
+  name: "MizanOrderIdDefinition",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderIdDefinition($definition: MetafieldDefinitionInput!) {
+      metafieldDefinitionCreate(definition: $definition) { createdDefinition { id } userErrors { field message code } }
+    }`,
+  ],
+};
+
+export const ORDER_BY_MIZAN_ID: GqlOperation = {
+  name: "MizanOrderByMizanId",
+  cost: 2,
+  variants: [
+    `query MizanOrderByMizanId($value: String!) { order: orderByIdentifier(identifier: { customId: { namespace: "$app:mizan", key: "order_id", value: $value } }) { id name } }`,
+  ],
+};
+
+export const ORDER_CREATE: GqlOperation = {
+  name: "MizanOrderCreate",
+  cost: 10,
+  variants: [
+    `mutation MizanOrderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
+      orderCreate(order: $order, options: $options) { order { id name } userErrors { field message } }
     }`,
   ],
 };

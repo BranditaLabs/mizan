@@ -109,6 +109,7 @@ export const OrderEventSchema = z.object({
     tags: z.array(z.string()).optional().describe("tagged / untagged: the tags added or taken off (O2)"),
     into: z.string().optional().describe("duplicate_merged: the order it was merged into"),
     status: z.string().optional().describe("shipment_status: the courier's status (canonical)"),
+    name: z.string().optional().describe("store_copy_created: the order's name in the store"),
   }),
 });
 
@@ -118,6 +119,8 @@ export const OrderEventSchema = z.object({
  */
 export const OrderDetailSchema = OrderSummarySchema.extend({
   externalId: z.string().nullable(),
+  /** An order made in Mizan, copied to the store: where that copy stands (null for a store's own order, or no copy). */
+  storeCopy: z.object({ status: z.enum(["pending", "created", "failed"]), name: z.string().nullable(), error: z.string().nullable() }).nullable(),
   source: OrderSourceSchema.nullable().describe("Where the order came from (M7-2); null until it is known"),
   currency: z.string(),
   subtotal: MoneyLine,

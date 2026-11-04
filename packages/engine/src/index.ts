@@ -12,6 +12,7 @@ export { PaymobConnector, INTENTION_PATH } from "./connectors/paymob/connector.j
 export { verifyPaymobCallback, verifyPaymobRedirect, paymobHmac, paymobTransactionString, type PaymobCallback } from "./connectors/paymob/webhooks.js";
 export { gatewayDeltaLines, type GatewayLine, type GatewayState, type GatewayTotals, type GatewayTransactionUpdate } from "./core/gateway-transaction.js";
 export { PAYMOB_CHECKOUT, PAYMOB_HOSTS, type PaymobCredentials, type PaymobRegion } from "./connectors/paymob/client.js";
+export { mizanOrderIdOf, mizanOrderRef, type StoreOrderDraft, type StoreOrderOutcome } from "./core/store-order.js";
 export { draftHandle, type CreatedProduct, type ProductDraft, type ProductPublishOutcome } from "./core/product-draft.js";
 export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bosta/connector.js";
 export type { ShopifyLearned } from "./connectors/shopify/connector.js";

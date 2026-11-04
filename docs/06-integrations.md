@@ -75,6 +75,7 @@ Every write is an outbox job keyed so a step is never sent twice; webhooks are h
 | Shopify | order cancelled | order cancelled | — | a booked delivery is flagged for the team to terminate |
 | Shopify | order fulfilled with another courier | ✅ shipment recorded with that courier and tracking, order shipped, out of confirmation (`order.store_fulfilled`) | not sent back | — |
 | Shopify | product created / updated | ✅ catalogue (created arrives by webhook now, not only the refresh) | — | — |
+| Mizan | ✅ order typed by the team (manual) | order | created in the store once, named like Mizan's (M-1001), no emails; Mizan's id in a unique order metafield (`$app:mizan.order_id`) and `sourceIdentifier` `mizan:<id>`, so a retry adopts it and the copy coming back is linked, never imported; a second copy is cancelled. Then every row below reaches the copy (Settings → Store sync: "Create Mizan's orders in this store") | — |
 | Mizan | confirmed / tagged / untagged | tags, timeline | tags | — |
 | Mizan | cancelled (team, bulk, customer in confirmation, duplicate) | order cancelled | ✅ cancelled (any path; one the store cancelled is not sent back) | — |
 | Mizan | edited before shipping | rebuilt | order edit (or refused, with the store's words) | — |

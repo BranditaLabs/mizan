@@ -32,7 +32,7 @@ function eventData(raw: unknown): OrderDetail["events"][number]["data"] {
   const text = (k: string) => (typeof d[k] === "string" ? { [k]: d[k] as string } : {});
   const tags = Array.isArray(d.tags) ? { tags: d.tags.filter((x): x is string => typeof x === "string") } : {};
   const changed = Array.isArray(d.changed) ? { changed: d.changed.filter((x): x is string => typeof x === "string") } : {};
-  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...text("of"), ...text("into"), ...text("status"), ...changed, ...tags };
+  return { ...text("source"), ...text("channel"), ...text("reason"), ...text("from"), ...text("to"), ...text("of"), ...text("into"), ...text("status"), ...text("name"), ...changed, ...tags };
 }
 /** Risk reasons as codes (E6-1 writes them; strings or { code }). */
 const reasonCodes = (raw: unknown): string[] =>
@@ -160,6 +160,7 @@ export class OrdersService {
       const money = (minor: string | number | bigint, currency = o.currency) => fromMinor(BigInt(minor), currency);
       return {
         id: o.id, number: o.number, externalId: o.external_id, status: o.status as OrderDetail["status"], channel: o.channel,
+        storeCopy: o.store_copy_status ? { status: o.store_copy_status as "pending" | "created" | "failed", name: o.store_copy_name, error: o.store_copy_error } : null,
         store: { connectionId: o.connection_id, provider: o.provider },
         customer: { label: pii?.decrypt(o.customer_label, "orders.customer_label") ?? null, phoneLast4: o.phone_last4 },
         currency: o.currency,

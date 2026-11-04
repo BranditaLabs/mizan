@@ -5876,6 +5876,12 @@ export interface components {
             /** @description The team's notes on the order (O2) */
             notes: number;
             externalId: string | null;
+            storeCopy: {
+                /** @enum {string} */
+                status: "pending" | "created" | "failed";
+                name: string | null;
+                error: string | null;
+            } | null;
             /** @description Where the order came from (M7-2); null until it is known */
             source: {
                 /** @enum {string} */
@@ -6083,6 +6089,8 @@ export interface components {
                     into?: string;
                     /** @description shipment_status: the courier's status (canonical) */
                     status?: string;
+                    /** @description store_copy_created: the order's name in the store */
+                    name?: string;
                 };
             }[];
         };
@@ -7990,6 +7998,8 @@ export interface components {
             tagReturned?: boolean;
             /** @description Tag mizan-lost when the courier lost it */
             tagLost?: boolean;
+            /** @description Create the orders the team types in Mizan in this store too (same number, no emails to the customer) */
+            createManualOrders?: boolean;
         };
         ReactivateStore: {
             reason?: string;
@@ -9087,6 +9097,8 @@ export interface components {
             tagReturned: boolean;
             /** @description Tag mizan-lost when the courier lost it */
             tagLost: boolean;
+            /** @description Create the orders the team types in Mizan in this store too (same number, no emails to the customer) */
+            createManualOrders: boolean;
         };
         SubmitEvidence: {
             /** @description What was sent and how (portal, email); no card numbers */

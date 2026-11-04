@@ -1,3 +1,6 @@
+import { ENGINE_RUNTIME, type RuntimeFactory } from "../../integrations/engine-runtime.js";
+import { trxQueryClient } from "@mizan/db";
+import { MizanEngine, SqlStore } from "@mizan/engine";
 import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
@@ -96,6 +99,7 @@ export class OrderProjector {
     @Inject(DuplicatesService) private readonly duplicates: DuplicatesService,
     @Inject(RiskService) private readonly risk: RiskService,
     @Inject(LedgerService) private readonly ledger: LedgerService,
+    @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
   ) {}
 
   async project(tenantId: string, connectionId: string | null, order: CanonicalOrder, opts: ProjectOptions = {}): Promise<ProjectResult> {
@@ -104,6 +108,12 @@ export class OrderProjector {
 
   /** The same, inside the caller's tenant transaction (a manual order numbers itself first). */
   async projectIn(trx: Transaction<DB>, tenantId: string, connectionId: string | null, order: CanonicalOrder, opts: ProjectOptions = {}): Promise<ProjectResult> {
+    // Two-way orders: the store's copy of an order made in Mizan is linked to it, never imported as a second order.
+    if (connectionId && order.mizanOrderId) {
+      const own = await trx.selectFrom("orders").select(["id", "number", "status", "store_copy_connection_id", "store_copy_id"])
+        .where("id", "=", order.mizanOrderId).where("connection_id", "is", null).forUpdate().executeTakeFirst();
+      if (own) return this.projectCopy(trx, tenantId, connectionId, order, own);
+    }
     const pii = await this.cipher.forTenant(trx, tenantId);
     const phoneCountry = await phoneCountryOf(trx, tenantId);
 
@@ -180,19 +190,7 @@ export class OrderProjector {
     // Two-way delivery, store → Mizan: shipped in the store with another courier (a fulfillment with
     // a tracking number Mizan never booked) becomes a Mizan shipment, so the order leaves the
     // confirmation and shipping queues and its statuses can follow.
-    if (FULFILLABLE.has(status)) {
-      const fulfilled = (order.storeFulfillments ?? []).filter((f) => f.status === "SUCCESS" && f.trackingNumber);
-      if (fulfilled.length) {
-        const known = new Set((await trx.selectFrom("shipments").select("tracking_number").where("order_id", "=", existing.id).where("tracking_number", "is not", null).execute()).map((r) => r.tracking_number));
-        const f = fulfilled.find((x) => !known.has(x.trackingNumber!));
-        if (f) {
-          await this.events.emit(trx, {
-            type: "order.store_fulfilled", tenantId, entity: { type: "order", id: existing.id }, actor: { type: "engine" },
-            data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber!, trackingUrl: f.trackingUrl ?? null },
-          });
-        }
-      }
-    }
+    if (FULFILLABLE.has(status)) await this.storeFulfilled(trx, tenantId, existing.id, order);
 
     if (changed.length) {
       await trx.insertInto("order_events").values({
@@ -205,6 +203,51 @@ export class OrderProjector {
       }
     }
     return { orderId: existing.id, created: false, changed };
+  }
+
+  /**
+   * The store's copy of an order made in Mizan. The order stays Mizan's (lines, money, address are
+   * Mizan's own): the copy is linked, and only what happens in the store comes back — a cancel, a
+   * shipment made there. A second copy (two creates that raced) is cancelled in the store.
+   */
+  private async projectCopy(trx: Transaction<DB>, tenantId: string, connectionId: string, order: CanonicalOrder,
+    own: { id: string; number: string; status: string; store_copy_connection_id: string | null; store_copy_id: string | null }): Promise<ProjectResult> {
+    if (own.store_copy_id && (own.store_copy_id !== order.externalId || own.store_copy_connection_id !== connectionId)) {
+      if (!order.cancelled) {
+        const store = new SqlStore(trxQueryClient(trx), { tenantId, connections: { shopify: connectionId } });
+        await store.enqueue(MizanEngine.shopifyCancelJob({ orderId: order.externalId, reason: "OTHER", note: `Mizan: a second copy of ${own.number}` }), this.runtime(tenantId).clock.now());
+      }
+      return { orderId: own.id, created: false, changed: [] };
+    }
+    if (!own.store_copy_id) {
+      await trx.updateTable("orders").set({ store_copy_connection_id: connectionId, store_copy_id: order.externalId, store_copy_name: order.number || null, store_copy_status: "created", store_copy_error: null })
+        .where("id", "=", own.id).execute();
+    }
+    if (order.cancelled && CANCELLABLE.has(own.status)) {
+      await trx.updateTable("orders").set({ status: "cancelled", cancelled_at: new Date(), updated_at: new Date() }).where("id", "=", own.id).execute();
+      await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: own.id, type: "updated", from_status: own.status, to_status: "cancelled", actor_type: "system", data: JSON.stringify({ changed: ["status"], source: "store_copy" }) }).execute();
+      await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: own.id }, actor: { type: "engine" }, data: { number: own.number, reason: "cancelled_in_store" } });
+      return { orderId: own.id, created: false, changed: ["status"] };
+    }
+    if (FULFILLABLE.has(own.status)) await this.storeFulfilled(trx, tenantId, own.id, order);
+    return { orderId: own.id, created: false, changed: [] };
+  }
+
+  /**
+   * Two-way delivery, store → Mizan: shipped in the store with another courier (a fulfillment with
+   * a tracking number Mizan never booked) becomes a Mizan shipment, so the order leaves the
+   * confirmation and shipping queues and its statuses can follow.
+   */
+  private async storeFulfilled(trx: Transaction<DB>, tenantId: string, orderId: string, order: CanonicalOrder) {
+    const fulfilled = (order.storeFulfillments ?? []).filter((f) => f.status === "SUCCESS" && f.trackingNumber);
+    if (!fulfilled.length) return;
+    const known = new Set((await trx.selectFrom("shipments").select("tracking_number").where("order_id", "=", orderId).where("tracking_number", "is not", null).execute()).map((r) => r.tracking_number));
+    const f = fulfilled.find((x) => !known.has(x.trackingNumber!));
+    if (!f) return;
+    await this.events.emit(trx, {
+      type: "order.store_fulfilled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
+      data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber!, trackingUrl: f.trackingUrl ?? null },
+    });
   }
 
   /**

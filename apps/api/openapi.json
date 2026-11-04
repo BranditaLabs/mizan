@@ -30003,6 +30003,34 @@
             "nullable": true,
             "type": "string"
           },
+          "storeCopy": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "created",
+                  "failed"
+                ]
+              },
+              "name": {
+                "nullable": true,
+                "type": "string"
+              },
+              "error": {
+                "nullable": true,
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "name",
+              "error"
+            ],
+            "additionalProperties": false
+          },
           "source": {
             "nullable": true,
             "description": "Where the order came from (M7-2); null until it is known",
@@ -30806,6 +30834,10 @@
                     "status": {
                       "description": "shipment_status: the courier's status (canonical)",
                       "type": "string"
+                    },
+                    "name": {
+                      "description": "store_copy_created: the order's name in the store",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -30845,6 +30877,7 @@
           "courier",
           "notes",
           "externalId",
+          "storeCopy",
           "source",
           "currency",
           "subtotal",
@@ -38354,6 +38387,10 @@
           "tagLost": {
             "type": "boolean",
             "description": "Tag mizan-lost when the courier lost it"
+          },
+          "createManualOrders": {
+            "type": "boolean",
+            "description": "Create the orders the team types in Mizan in this store too (same number, no emails to the customer)"
           }
         },
         "additionalProperties": false
@@ -42320,13 +42357,18 @@
           "tagLost": {
             "type": "boolean",
             "description": "Tag mizan-lost when the courier lost it"
+          },
+          "createManualOrders": {
+            "type": "boolean",
+            "description": "Create the orders the team types in Mizan in this store too (same number, no emails to the customer)"
           }
         },
         "required": [
           "progressEvents",
           "markPaidOnDelivery",
           "tagReturned",
-          "tagLost"
+          "tagLost",
+          "createManualOrders"
         ],
         "additionalProperties": false
       },

@@ -791,6 +791,11 @@ export interface Orders {
   packed_at: Timestamp | null;
   packed_by: string | null;
   pack_op_id: string | null;
+  store_copy_connection_id: string | null;
+  store_copy_id: string | null;
+  store_copy_name: string | null;
+  store_copy_status: string | null;
+  store_copy_error: string | null;
 }
 
 export interface PaymentLinks {
