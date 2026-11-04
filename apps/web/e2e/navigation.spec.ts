@@ -15,8 +15,12 @@ test("an agent's menu has only what an agent can open", async ({ page }) => {
   for (const hidden of ["Payments", "Profit", "Products", "Automations", "Settings"]) await expect(nav.getByRole("link", { name: hidden })).toHaveCount(0);
 
   // ⌘K offers the same pages, never one the agent cannot open.
-  await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog", { name: "Search or jump to" });
+  // Right after sign-in the shortcut may not be listening yet: press until the palette opens.
+  await expect(async () => {
+    await page.keyboard.press("Control+k");
+    await expect(palette).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await palette.getByRole("combobox").fill("pay");
   await expect(palette.getByRole("option", { name: "Payments" })).toHaveCount(0);
 });
@@ -36,8 +40,12 @@ test("⌘K jumps to pages and actions, and finds an order by number", async ({ p
   await page.goto("/en/sign-in");
   await signInOwner(page, owner, "en");
   await expect(page).toHaveURL(/\/en$/);
-  await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog", { name: "Search or jump to" });
+  // Right after sign-in the shortcut may not be listening yet: press until the palette opens.
+  await expect(async () => {
+    await page.keyboard.press("Control+k");
+    await expect(palette).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await palette.getByRole("combobox").fill("purchase");
   await expect(palette.getByRole("option", { name: "New purchase order" })).toBeVisible();
   await palette.getByRole("combobox").fill("1042");
