@@ -69,7 +69,7 @@ export function AddressFields({ value: v, onChange, country, showErrors }: {
   const preview = addressLine({ ...v, province: region ? name(region) : v.province }, locale === "ar" ? "، " : ", ");
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2" data-testid="address-fields">
+    <div className="grid gap-4 sm:grid-cols-2 sm:items-start" data-testid="address-fields">
       {regions.length ? (
         <Select label={t("province")} value={v.province} error={err("province")} onChange={(e) => set({ province: e.target.value })}>
           <option value="" disabled>{t("choose")}</option>
