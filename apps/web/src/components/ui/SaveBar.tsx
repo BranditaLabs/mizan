@@ -16,9 +16,6 @@ export function SaveBar({ dirty, busy = false, canSave = true, onSave, onDiscard
   dirty: boolean; busy?: boolean; canSave?: boolean; onSave(): void; onDiscard(): void;
 }) {
   const t = useTranslations("ui.saveBar");
-  const router = useRouter();
-  const [leaveTo, setLeaveTo] = useState<string | null>(null);
-  useLeaveGuard(dirty, setLeaveTo);
   return (
     <>
       {dirty ? (
@@ -29,9 +26,20 @@ export function SaveBar({ dirty, busy = false, canSave = true, onSave, onDiscard
           <Button busy={busy} disabled={!canSave} onClick={onSave}>{t("save")}</Button>
         </div>
       ) : null}
-      <ConfirmDialog open={leaveTo !== null} onClose={() => setLeaveTo(null)} title={t("leaveTitle")} description={t("leaveBody")} confirmLabel={t("leave")}
-        onConfirm={() => { const to = leaveTo; setLeaveTo(null); onDiscard(); if (to) router.push(to); }} />
+      <LeaveGuard when={dirty} onLeave={onDiscard} />
     </>
+  );
+}
+
+/** While `when`: in-app links ask "Leave without saving?" (then `onLeave` runs), closing the tab gets the browser's warning. */
+export function LeaveGuard({ when, onLeave }: { when: boolean; onLeave?(): void }) {
+  const t = useTranslations("ui.saveBar");
+  const router = useRouter();
+  const [leaveTo, setLeaveTo] = useState<string | null>(null);
+  useLeaveGuard(when, setLeaveTo);
+  return (
+    <ConfirmDialog open={leaveTo !== null} onClose={() => setLeaveTo(null)} title={t("leaveTitle")} description={t("leaveBody")} confirmLabel={t("leave")}
+      onConfirm={() => { const to = leaveTo; setLeaveTo(null); onLeave?.(); if (to) router.push(to); }} />
   );
 }
 

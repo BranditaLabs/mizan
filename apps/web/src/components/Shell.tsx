@@ -27,10 +27,12 @@ import { GlassRoot } from "./GlassRoot";
 export function Shell({ children, theme }: { children: ReactNode; theme: Theme }) {
   const t = useTranslations("shell");
   return (
-    <GlassRoot theme={theme} className="h-dvh print:h-auto">
-    <div className="grid h-dvh grid-cols-1 gap-3 lg:grid-cols-[248px_minmax(0,1fr)] lg:p-3 print:block print:h-auto">
+    <GlassRoot theme={theme} className="app-shell min-h-dvh print:min-h-0">
+    {/* The page scrolls, not a panel inside it: links land at the top, the browser keeps each page's
+        place on Back, phones can hide their address bar, and there is one scrollbar. */}
+    <div className="grid min-h-dvh grid-cols-1 gap-3 lg:grid-cols-[248px_minmax(0,1fr)] lg:items-start lg:p-3 print:block print:min-h-0">
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded-sm focus:bg-surface focus:px-3 focus:py-2">{t("skip")}</a>
-      <aside className="g hidden print:hidden min-h-0 flex-col overflow-hidden pt-5 text-rail-text lg:flex">
+      <aside className="g hidden print:hidden min-h-0 flex-col overflow-hidden pt-5 text-rail-text lg:sticky lg:top-3 lg:flex lg:h-[calc(100dvh-24px)]">
         <div className="px-6 pb-6">
           <ThemedWordmark />
           <p className="mt-2 text-caption text-rail-text-2">{t("tagline")}</p>
@@ -42,8 +44,8 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
         {/* Only the menu scrolls, like a native list; the brand and the store stay put. */}
         <div className="mz-scroll min-h-0 flex-1 px-3 pb-4"><NavLinks /></div>
       </aside>
-      <div className="flex min-h-0 min-w-0 flex-col print:block">
-        <header className="g print:hidden sticky top-0 z-30 mx-3 mt-3 flex h-14 items-center gap-2 px-3 sm:px-4 md:gap-3 md:px-5 lg:mx-0 lg:mt-0">
+      <div className="flex min-w-0 flex-col print:block">
+        <header className="g print:hidden sticky top-3 z-30 mx-3 mt-3 flex h-14 items-center gap-2 px-3 sm:px-4 md:gap-3 md:px-5 lg:mx-0 lg:mt-0">
           <ThemedWordmark className="shrink-0 lg:hidden" />
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
@@ -62,7 +64,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
           <LegalBanner />
         </div>
         {/* Below lg the phone bar covers the bottom: the page scrolls clear of it. */}
-        <main id="main" className="min-h-0 flex-1 overflow-y-auto pb-[calc(88px+env(safe-area-inset-bottom,0px))] lg:pb-0 print:overflow-visible print:pb-0"><RouteMotion>{children}</RouteMotion></main>
+        <main id="main" className="flex-1 pb-[calc(88px+env(safe-area-inset-bottom,0px))] lg:pb-0 print:pb-0"><RouteMotion>{children}</RouteMotion></main>
         <MobileNav />
       </div>
     </div>

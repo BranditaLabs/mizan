@@ -337,6 +337,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orders/customer-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["OrdersController_customerHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/products": {
         parameters: {
             query?: never;
@@ -4269,6 +4285,36 @@ export interface components {
                 dpa: string;
             };
         };
+        CustomerHistory: {
+            /** @description E.164, as Mizan reads what was typed */
+            phone: string;
+            known: boolean;
+            name: string | null;
+            orders: {
+                total: number;
+                delivered: number;
+                returned: number;
+                cancelled: number;
+                open: number;
+            };
+            openOrders: {
+                /** Format: uuid */
+                id: string;
+                number: string;
+                /** Format: date-time */
+                placedAt: string;
+            }[];
+            lastAddress: {
+                line1: string | null;
+                line2: string | null;
+                city: string | null;
+                province: string | null;
+                location: {
+                    lat: number;
+                    lng: number;
+                } | null;
+            } | null;
+        };
         Dashboard: {
             /** @enum {string} */
             id: "home" | "operations" | "profit" | "payments" | "stock" | "pilot";
@@ -5102,10 +5148,19 @@ export interface components {
                 phone: string;
             };
             address: {
+                /** @description Street and building */
                 line1: string;
+                /** @description Landmark, floor, apartment */
                 line2?: string;
+                /** @description The area: city or district (Nasr City, Smouha…) */
                 city: string;
+                /** @description The governorate or region (Cairo, Alexandria…): what the courier books by */
                 province?: string;
+                /** @description The map pin, when the customer shared one */
+                location?: {
+                    lat: number;
+                    lng: number;
+                };
             };
             lines: {
                 /**
@@ -6126,12 +6181,21 @@ export interface components {
             }[];
             /** @description The new delivery fee */
             shipping?: string;
-            /** @description The new delivery address (the name and phone stay) */
+            /** @description The new delivery address (the name and phone stay); without a new pin the old one is cleared */
             address?: {
+                /** @description Street and building */
                 line1: string;
+                /** @description Landmark, floor, apartment */
                 line2?: string;
+                /** @description The area: city or district (Nasr City, Smouha…) */
                 city: string;
+                /** @description The governorate or region (Cairo, Alexandria…): what the courier books by */
                 province?: string;
+                /** @description The map pin, when the customer shared one */
+                location?: {
+                    lat: number;
+                    lng: number;
+                };
             };
         };
         OrderEditResult: {
@@ -10861,6 +10925,50 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    OrdersController_customerHistory: {
+        parameters: {
+            query: {
+                phone: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What Mizan knows of this phone: orders by outcome, open orders (a possible duplicate), the last address */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerHistory"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

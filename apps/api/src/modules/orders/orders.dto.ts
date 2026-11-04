@@ -178,15 +178,25 @@ export type RevealedCustomer = z.infer<typeof RevealedCustomerSchema>;
 export const ResolveDuplicateSchema = z.strictObject({ action: z.enum(["keep", "merge"]).describe("keep: both are real orders; merge: cancel this one as a duplicate of the earlier") });
 export const DuplicateResolvedSchema = z.object({ status: z.enum(["kept", "merged"]) });
 
+/**
+ * A delivery address the team types (manual orders, edits): the street and building, a landmark or
+ * the apartment, the area (city or district) and the governorate/region, and where on the map when
+ * the customer shared it. The courier books by the governorate; the pin helps the driver.
+ */
+export const AddressInputSchema = z.strictObject({
+  line1: z.string().trim().min(3).max(200).describe("Street and building"),
+  line2: z.string().trim().max(200).optional().describe("Landmark, floor, apartment"),
+  city: z.string().trim().min(2).max(80).describe("The area: city or district (Nasr City, Smouha…)"),
+  province: z.string().trim().max(80).optional().describe("The governorate or region (Cairo, Alexandria…): what the courier books by"),
+  location: z.strictObject({ lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).optional().describe("The map pin, when the customer shared one"),
+});
+
 /** E5-5: an order the team enters by hand (phone, WhatsApp, Instagram, walk-in). */
 const Amount = z.string().trim().regex(/^\d{1,9}(\.\d{1,2})?$/, "an amount like 150 or 150.50");
 export const NewOrderSchema = z.strictObject({
   source: z.enum(ORDER_SOURCES).describe("Where the customer ordered"),
   customer: z.strictObject({ name: z.string().trim().min(2).max(120), phone: z.string().trim().min(6).max(24).describe("Local or international; checked for the store's country") }),
-  address: z.strictObject({
-    line1: z.string().trim().min(3).max(200), line2: z.string().trim().max(200).optional(),
-    city: z.string().trim().min(2).max(80), province: z.string().trim().max(80).optional(),
-  }),
+  address: AddressInputSchema,
   lines: z.array(z.strictObject({
     variantId: z.uuid().optional().describe("A product from the catalogue (its price unless unitPrice is given)"),
     title: z.string().trim().min(1).max(200).optional().describe("An item not in the catalogue (needs unitPrice)"),
@@ -275,10 +285,7 @@ export const OrderEditInputSchema = z.strictObject({
     unitPrice: Amount.optional().describe("Not for Shopify orders: the store's price is used"),
   })).max(20).default([]),
   shipping: Amount.optional().describe("The new delivery fee"),
-  address: z.strictObject({
-    line1: z.string().trim().min(3).max(200), line2: z.string().trim().max(200).optional(),
-    city: z.string().trim().min(2).max(80), province: z.string().trim().max(80).optional(),
-  }).optional().describe("The new delivery address (the name and phone stay)"),
+  address: AddressInputSchema.optional().describe("The new delivery address (the name and phone stay); without a new pin the old one is cleared"),
 }).refine((b) => b.lines.length + b.add.length > 0 || b.shipping !== undefined || b.address !== undefined, { message: "change something" });
 export const OrderEditResultSchema = z.object({
   editId: z.uuid(),
@@ -312,3 +319,20 @@ export const OrderDocumentsSchema = z.object({
     cod: DocMoney.describe("What the courier collects (cashToCollect), 0 when prepaid"),
   })),
 });
+
+/** GET /orders/customer-history?phone= : what Mizan knows of a phone, before an order is typed (mistakes avoided). */
+export const CustomerHistoryQuerySchema = z.object({ phone: z.string().trim().min(6).max(24) });
+export const CustomerHistorySchema = z.object({
+  phone: z.string().describe("E.164, as Mizan reads what was typed"),
+  known: z.boolean(),
+  name: z.string().nullable(),
+  orders: z.object({ total: z.number().int(), delivered: z.number().int(), returned: z.number().int(), cancelled: z.number().int(), open: z.number().int() }),
+  /** Orders not shipped yet: a second order may be a duplicate. */
+  openOrders: z.array(z.object({ id: z.uuid(), number: z.string(), placedAt: z.iso.datetime() })),
+  /** The address of the last order, to use again (viewing it is audited). */
+  lastAddress: z.object({
+    line1: z.string().nullable(), line2: z.string().nullable(), city: z.string().nullable(), province: z.string().nullable(),
+    location: z.object({ lat: z.number(), lng: z.number() }).nullable(),
+  }).nullable(),
+});
+export type CustomerHistory = z.infer<typeof CustomerHistorySchema>;

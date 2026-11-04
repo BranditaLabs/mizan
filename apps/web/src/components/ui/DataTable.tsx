@@ -75,7 +75,8 @@ export function DataTable<T>({ label, columns, rows, rowKey, rowLabel, selectabl
           <Button variant="ghost" size="sm" onClick={clear}>{t("clear")}</Button>
         </div>
       ) : null}
-      <div className="mz-table-wrap max-h-[70dvh]">
+      {/* No height cap: a table inside the page scroll made two scrollbars (and trapped the wheel on phones). */}
+      <div className="mz-table-wrap">
         <table className="mz-table">
           <caption className="sr-only">{label}</caption>
           <thead>

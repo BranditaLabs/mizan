@@ -22,7 +22,7 @@ export function SettingsLayout({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto flex max-w-[1280px] gap-8 px-4 pt-6 pb-14 md:px-6" data-testid="settings-layout">
       <aside className="hidden w-[232px] shrink-0 lg:block">
-        <div className="sticky top-0 flex flex-col gap-1">
+        <div className="sticky top-20 flex flex-col gap-1">
           <Link href="/settings" className={cx("mb-2 font-display text-heading-sm", atHome ? "text-text" : "text-text-2 hover:text-text")} aria-current={atHome ? "page" : undefined}>{t("label")}</Link>
           <SettingsNav />
         </div>

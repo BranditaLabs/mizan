@@ -7,9 +7,7 @@ import { ApiJson, ApiJsonBody, ApiNoContent, ApiProblems, ApiQueryZod } from "..
 import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  BulkActionSchema, BulkRequestSchema, DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema,
-  RevealedCustomerSchema, type ListOrdersQuery,
-  OrderDocumentsRequestSchema, OrderDocumentsSchema, OrderEditInputSchema, OrderEditResultSchema, OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema,
+  BulkActionSchema, BulkRequestSchema, DuplicateResolvedSchema, ListOrdersQuerySchema, NewOrderSchema, OrderCreatedSchema, OrderDetailSchema, OrderPageSchema, OrderProductsQuerySchema, OrderProductsSchema, ResolveDuplicateSchema, RevealedCustomerSchema, type ListOrdersQuery, OrderDocumentsRequestSchema, OrderDocumentsSchema, OrderEditInputSchema, OrderEditResultSchema, OrderFiltersSchema, OrderNoteInputSchema, OrderNoteSchema, OrderNotesSchema, OrderTagsPatchSchema, OrderTagsSchema, SavedViewInputSchema, SavedViewListSchema, SavedViewSchema, CustomerHistoryQuerySchema, CustomerHistorySchema,
 } from "./orders.dto.js";
 import { OrderNotesService } from "./order-notes.service.js";
 import { OrderEditsService } from "./order-edits.service.js";
@@ -70,6 +68,16 @@ export class OrdersController {
   @ApiProblems(404)
   bulkProgress(@Auth() auth: AuthContext, @Param("bulkId", new ParseUUIDPipe()) id: string) {
     return this.bulk.get(auth.tenant!.id, id);
+  }
+
+  /** Before typing an order: the phone's past orders, open ones and last address (viewing it is audited). */
+  @Get("customer-history")
+  @Can("orders.create")
+  @ApiQueryZod(CustomerHistoryQuerySchema)
+  @ApiJson(200, "CustomerHistory", CustomerHistorySchema, "What Mizan knows of this phone: orders by outcome, open orders (a possible duplicate), the last address")
+  @ApiProblems(422)
+  customerHistory(@Auth() auth: AuthContext, @Query(new ZodPipe(CustomerHistoryQuerySchema)) q: z.output<typeof CustomerHistoryQuerySchema>) {
+    return this.manual.customerHistory(auth, q.phone);
   }
 
   @Get("products")

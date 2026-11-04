@@ -1344,12 +1344,6 @@
       "feeWas": "Now:",
       "changeAddress": "Change the address",
       "keepAddress": "Keep the address",
-      "address": {
-        "line1": "Street and building",
-        "line2": "Floor, apartment, landmark",
-        "city": "City",
-        "province": "Governorate"
-      },
       "cancel": "Cancel",
       "save": "Save changes",
       "applied": "Order updated",
@@ -2086,7 +2080,8 @@
       "name": "Name",
       "phone": "Phone",
       "phonePlaceholder": "e.g. 01001234567",
-      "source": "Ordered through"
+      "source": "Ordered through",
+      "phoneRead": "Reads as"
     },
     "source": {
       "phone": "Phone call",
@@ -2098,11 +2093,7 @@
       "other": "Other"
     },
     "address": {
-      "title": "Delivery address",
-      "line1": "Street and building",
-      "line2": "Floor, flat, landmark",
-      "line2Hint": "Optional",
-      "city": "City or area"
+      "title": "Delivery address"
     },
     "items": {
       "title": "Items",
@@ -2115,7 +2106,14 @@
       "remove": "Remove {title}",
       "custom": "An item not in the catalogue",
       "customTitle": "Item",
-      "addCustom": "Add item"
+      "addCustom": "Add item",
+      "inStock": "{n} in stock",
+      "outOfStock": "Out of stock",
+      "less": "One less",
+      "more": "One more",
+      "changePrice": "Change the price",
+      "short": "Only {n} in stock. The order will wait for stock.",
+      "priceChanged": "Changed from <was></was>"
     },
     "payment": {
       "title": "Payment and delivery",
@@ -2153,14 +2151,37 @@
     "errors": {
       "name": "Enter the customer's name",
       "phone": "Enter a phone number",
-      "line1": "Enter the street and building",
-      "city": "Enter the city or area",
       "lines": "Add at least one item",
       "linePrice": "Every item needs a price",
       "amount": "An amount like 150 or 150.50",
-      "total": "The discount is larger than the order",
       "deposit": "The deposit must be more than zero and less than the total",
-      "fix": "Fix the highlighted fields first."
+      "fix": "Fix the highlighted fields first.",
+      "phoneInvalid": "Not a mobile number for this country",
+      "address": "Complete the address",
+      "discount": "The discount is larger than the items"
+    },
+    "history": {
+      "new": "A new customer: no orders with this phone before.",
+      "returning": "Ordered before: {name}",
+      "counts": "{total, plural, one {# order} other {# orders}}: {delivered} delivered, {returned} returned, {cancelled} cancelled",
+      "refused": "Refused or cancelled {n, plural, one {once} other {# times}} before. Confirm carefully or take a deposit.",
+      "open": "Order <b>{number}</b> is still open, placed",
+      "useName": "Use the name",
+      "useAddress": "Use the last address"
+    },
+    "review": {
+      "open": "Review the order",
+      "title": "Check before you create it",
+      "body": "Read it back to the customer if you can.",
+      "back": "Back to edit",
+      "customer": "Customer",
+      "address": "Delivery address",
+      "items": "Items",
+      "pin": "With the map pin",
+      "noPin": "No map pin",
+      "duplicate": "This customer has order {number} still open. Make sure this isn't the same order twice.",
+      "failed": "The order wasn't created. Check your connection and try again.",
+      "line": "{n} × {title}"
     }
   },
   "profitBreakdown": {
@@ -4618,5 +4639,30 @@
     "done": "Imported {orders} orders",
     "failed": "Import stopped: retry",
     "attention": "A store needs attention"
+  },
+  "address": {
+    "province": "Governorate",
+    "provinceFree": "Region or state",
+    "choose": "Choose the governorate",
+    "city": "Area",
+    "cityHint": "City or district, e.g. Nasr City",
+    "elsewhere": "{area} is in {region}, not the governorate chosen.",
+    "inRegion": "{area} is in {region}.",
+    "useRegion": "Use {region}",
+    "line1": "Street and building",
+    "line1Hint": "e.g. 12 Abbas El Akkad St, building 5",
+    "line2": "Landmark, floor, flat",
+    "line2Hint": "Optional. What helps the driver find it",
+    "location": "Map location",
+    "locationHint": "Optional. Paste the Google Maps link or the coordinates the customer sent",
+    "pinSet": "Pin set",
+    "openMap": "Open the map",
+    "preview": "The courier will read",
+    "errors": {
+      "province": "Choose the governorate",
+      "city": "Enter the area",
+      "line1": "Enter the street and building",
+      "location": "Not a map link or coordinates. A short maps.app.goo.gl link has to be opened first and the full link copied"
+    }
   }
 }

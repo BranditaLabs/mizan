@@ -24,11 +24,14 @@ test("owner in Arabic edits a manual order before shipping; the totals and the t
   await edit.getByLabel("مصاريف الشحن").fill("60");
   await edit.getByRole("button", { name: "غيّر العنوان" }).click();
   await edit.getByLabel("الشارع والعمارة").fill("9 شارع النيل");
-  await edit.getByLabel("المدينة").fill("الجيزة");
+  // Nasr City brought Cairo with it; the new address is in Giza.
+  await expect(edit.getByLabel("المحافظة")).toHaveValue("Cairo");
+  await edit.getByLabel("المحافظة").selectOption("Giza");
+  await edit.getByLabel("المنطقة").fill("الدقي");
   await dialog.getByRole("button", { name: "احفظ التعديل" }).click();
   await expect(dialog).toHaveCount(0);
 
   await expect(main.getByText("الأوردر اتعدّل").first()).toBeVisible(); // the toast, then the timeline
-  await expect(main.getByText("الجيزة").first()).toBeVisible();
+  await expect(main.getByText("الدقي").first()).toBeVisible();
   await expect(main).toContainText("610"); // 550 + 60: the new total, and the cash the courier collects
 });

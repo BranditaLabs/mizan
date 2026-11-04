@@ -102,4 +102,27 @@ describe("manual orders (E5-5)", () => {
     const n = await db.tenant(store, (trx) => trx.selectFrom("orders").select((eb) => eb.fn.countAll<string>().as("n")).where("channel", "=", "manual").executeTakeFirstOrThrow());
     expect(Number(n.n)).toBe(2); // nothing half-made
   });
+
+describe("the address and the customer's history (rebuild)", () => {
+  it("keeps the governorate and the map pin; a phone's history shows outcomes, open orders and the last address (audited)", async () => {
+    const r = await http().post("/v1/orders").set(as("owner")).send(body({
+      customer: { name: "Laila Fathy", phone: "01005556667" },
+      address: { line1: "12 Abbas El Akkad St, building 4", line2: "Near Genena Mall, floor 3", city: "Nasr City", province: "Cairo", location: { lat: 30.0566, lng: 31.3466 } },
+    })).expect(201);
+    const o = await db.tenant(store, (trx) => trx.selectFrom("orders").select(["ship_city", "ship_province", "ship_lat", "ship_lng"]).where("id", "=", r.body.id).executeTakeFirstOrThrow());
+    expect(o).toEqual({ ship_city: "Nasr City", ship_province: "Cairo", ship_lat: 30.0566, ship_lng: 31.3466 });
+
+    const h = (await http().get("/v1/orders/customer-history?phone=010%2005556667").set(as("agent")).expect(200)).body;
+    expect(h).toMatchObject({ phone: "+201005556667", known: true, name: "Laila Fathy", orders: { total: 1, open: 1, delivered: 0 }, openOrders: [{ id: r.body.id }] });
+    expect(h.lastAddress).toEqual({ line1: "12 Abbas El Akkad St, building 4", line2: "Near Genena Mall, floor 3", city: "Nasr City", province: "Cairo", location: { lat: 30.0566, lng: 31.3466 } });
+    const audit = (await http().get("/v1/audit-log?action=customer.pii_viewed").set(as("owner")).expect(200)).body.data;
+    expect(audit[0]).toMatchObject({ after: { fields: ["address"], via: "order_entry" } });
+
+    const unknown = (await http().get("/v1/orders/customer-history?phone=01009998887").set(as("owner")).expect(200)).body;
+    expect(unknown).toMatchObject({ known: false, orders: { total: 0 }, openOrders: [], lastAddress: null });
+    expect((await http().get("/v1/orders/customer-history?phone=123456").set(as("owner")).expect(422)).body.code).toBe("validation_failed");
+    await http().get("/v1/orders/customer-history?phone=01005556667").set(as("finance")).expect(403);
+    await http().post("/v1/orders").set(as("owner")).send(body({ address: { line1: "Somewhere 1", city: "Giza", location: { lat: 200, lng: 31 } } })).expect(422);
+  });
+});
 });
