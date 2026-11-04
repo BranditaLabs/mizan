@@ -3497,8 +3497,8 @@
       "hint": "Picked up, in transit, out for delivery, delivery attempts, delivered, and failures (refused, lost)."
     },
     "markPaidOnDelivery": {
-      "label": "Mark cash on delivery orders paid",
-      "hint": "When the courier delivers and collects the cash."
+      "label": "Mark orders paid in Shopify",
+      "hint": "When the money is in: cash the courier collected, a payment link paid, a transfer received."
     },
     "tagReturned": {
       "label": "Tag returned orders",

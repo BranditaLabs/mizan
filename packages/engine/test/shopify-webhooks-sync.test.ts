@@ -33,7 +33,7 @@ describe("Shopify webhook registration", () => {
     shop.customerDataApproved = false; // seen on staging, Nov 2026: order topics refused, and before this fix app/uninstalled never registered
     await engine.registerShopifyWebhooks("install-1");
     await settle(engine, store, clock);
-    expect([...shop.webhooks.values()].map((w) => w.topic).sort()).toEqual(["APP_UNINSTALLED", "PRODUCTS_UPDATE"]);
+    expect([...shop.webhooks.values()].map((w) => w.topic).sort()).toEqual(["APP_UNINSTALLED", "PRODUCTS_CREATE", "PRODUCTS_UPDATE"]);
     const synced = events.filter((e) => e.event === "shopify.webhooks_synced");
     expect(synced.at(-1)!.data).toMatchObject({ refused: ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED"] });
     expect(events.some((e) => e.event === "job.dead")).toBe(false); // not a dead job for a person

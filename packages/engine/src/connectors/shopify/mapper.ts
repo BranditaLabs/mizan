@@ -113,6 +113,20 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
     };
   });
 
+  const storeFulfillments = r.arr("fulfillments", ["fulfillments"]).map((f) => {
+    const fr = r.child(f, "order.fulfillment");
+    const t = fr.arr("trackingInfo", ["trackingInfo", "tracking_info"])[0];
+    const tr = r.child(t ?? {}, "order.fulfillment.tracking");
+    const company = t ? tr.str("company", ["company"]) : undefined;
+    const trackingNumber = t ? tr.str("number", ["number"]) : undefined;
+    const trackingUrl = t ? tr.str("url", ["url"]) : undefined;
+    return {
+      externalId: fr.str("id", ["id", "admin_graphql_api_id"], { required: true })!,
+      status: fr.str("status", ["status"]) ?? "UNKNOWN",
+      ...(company ? { company } : {}), ...(trackingNumber ? { trackingNumber } : {}), ...(trackingUrl ? { trackingUrl } : {}),
+    };
+  });
+
   return {
     connector: "shopify",
     externalId: r.str("id", ["id", "admin_graphql_api_id"], { required: true })!,
@@ -148,6 +162,7 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
     },
     lines,
     fulfillmentGroups,
+    storeFulfillments,
     tags: r.arr<string>("tags", ["tags"]).map(String),
     ...sourceHints(r),
     raw,
