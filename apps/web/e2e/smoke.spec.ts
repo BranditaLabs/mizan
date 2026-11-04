@@ -89,8 +89,12 @@ test("English from the browser language, and the switch remembers the choice", a
   await page.screenshot({ path: "test-results/home-en-dark.png", fullPage: true });
 
   // ⌘K / Ctrl+K: the command palette runs the same theme choice the switch shows.
-  await page.keyboard.press("Control+k");
   const palette = page.getByRole("dialog", { name: "Search or jump to" });
+  // Right after sign-in the shortcut may not be listening yet: press until the palette opens.
+  await expect(async () => {
+    await page.keyboard.press("Control+k");
+    await expect(palette).toBeVisible({ timeout: 1000 });
+  }).toPass();
   await expect(palette).toBeVisible();
   await palette.getByRole("combobox").fill("light");
   await expect(palette.getByRole("option")).toHaveText(["Light theme"]);
