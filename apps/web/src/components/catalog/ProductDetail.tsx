@@ -147,7 +147,7 @@ export function ProductDetail({ id }: { id: string }) {
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
-        <Gallery images={p.images} title={p.title} />
+        <Gallery images={p.images} title={p.title} inMizan={!p.store} />
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label={t("detail.price")} value={price} />
@@ -198,7 +198,7 @@ export function ProductDetail({ id }: { id: string }) {
 }
 
 /** The main picture large, the others as thumbnails in the store's order; choosing one shows it. */
-function Gallery({ images, title }: { images: Image[]; title: string }) {
+function Gallery({ images, title, inMizan }: { images: Image[]; title: string; inMizan: boolean }) {
   const t = useTranslations("products.detail");
   const main = images.find((i) => i.isMain) ?? images[0] ?? null;
   const [shown, setShown] = useState<string | null>(null);
@@ -206,7 +206,7 @@ function Gallery({ images, title }: { images: Image[]; title: string }) {
   if (!current) {
     return (
       <div className="mz-card flex aspect-square items-center justify-center" data-testid="product-gallery">
-        <EmptyState icon="product" title={t("noPictures.title")} body={t("noPictures.body")} />
+        <EmptyState icon="product" title={t("noPictures.title")} body={t(inMizan ? "noPictures.bodyMizan" : "noPictures.body")} />
       </div>
     );
   }
