@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { matchDistrict } from "../src/connectors/bosta/cities.js";
+import { DISTRICTS } from "./fakes/bosta.js";
 import { settle, setup } from "./fakes/setup.js";
 
 async function shippedOrder(ctx: ReturnType<typeof setup>, opts: Parameters<ReturnType<typeof setup>["shop"]["addOrder"]>[0] = {}) {
@@ -24,6 +26,28 @@ describe("Bosta connector", () => {
     const f = ctx.shop.orders.get(order.id)!.fulfillments;
     expect(f).toHaveLength(1);
     expect(f[0].trackingInfo[0]).toMatchObject({ company: "Bosta", number: tn });
+  });
+
+  it("names the district Bosta asks for: the area found in the city's list, or by name", async () => {
+    // Bosta refuses a delivery without one: "dropOffAddress must contain at least one of [districtId, districtName]".
+    const ctx = setup();
+    const nasr = await shippedOrder(ctx); // "Nasr City", Cairo
+    expect(ctx.bosta.deliveries.get(nasr.tn!)!.dropOffAddress).toMatchObject({ city: "Cairo", districtId: "d-nasr-1" });
+    const sheraton = await shippedOrder(ctx, { city: "شيراتون", province: "Cairo" }); // Arabic, matched to "Sheraton"
+    expect(ctx.bosta.deliveries.get(sheraton.tn!)!.dropOffAddress).toMatchObject({ city: "Cairo", districtId: "d-sheraton" });
+    const assiut = await shippedOrder(ctx, { city: "Manfalut", province: "Assiut" }); // no list for the city: by name
+    expect(ctx.bosta.deliveries.get(assiut.tn!)!.dropOffAddress).toMatchObject({ city: "Assiut", districtName: "Manfalut" });
+    expect(ctx.bosta.count("GET", "cities/c-cairo/districts")).toBe(1); // a day at a time
+  });
+
+  it("matches a district by any spelling, then by a name inside it", () => {
+    const cairo = DISTRICTS["c-cairo"]!.flatMap((z) => z.districts.map((d) => ({ id: d.districtId, name: d.districtName, nameAr: d.districtOtherName })));
+    expect(matchDistrict(cairo, "sheraton")?.id).toBe("d-sheraton");
+    expect(matchDistrict(cairo, "Sheraton Heliopolis")?.id).toBe("d-sheraton"); // another spelling in the shared list
+    expect(matchDistrict(cairo, "الكوربه")?.id).toBe("d-korba");
+    expect(matchDistrict(cairo, "مدينة نصر")?.id).toBe("d-nasr-1");
+    expect(matchDistrict(cairo, "Zamalek")).toBeNull();
+    expect(matchDistrict(cairo, "", null, "12 El Korba St")?.id).toBe("d-korba"); // the street names it
   });
 
   it("never creates a duplicate when Bosta's create response is lost", async () => {

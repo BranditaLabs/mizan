@@ -12,7 +12,7 @@
  * If nothing matches, the job stops with the three closest suggestions, and
  * the ops choice becomes a learned alias for every later order.
  */
-import { findRegion } from "@mizan/shared";
+import { findArea, findRegion } from "@mizan/shared";
 
 export interface BostaCity {
   id: string;
@@ -114,6 +114,41 @@ export class CityResolver {
       .slice(0, n)
       .map((x) => x.c);
   }
+}
+
+export interface BostaDistrict {
+  id: string;
+  name: string;
+  nameAr?: string;
+  zone?: string;
+}
+
+/**
+ * Address → Bosta district (Bosta books a delivery by city and district: "dropOffAddress must
+ * contain at least one of [districtId, districtName]"). The area as typed, and its other spellings
+ * from the shared list ("شيراتون" is Sheraton), against the city's districts: exact name first, then
+ * a district whose name contains the area or is contained in it.
+ */
+export function matchDistrict(districts: readonly BostaDistrict[], ...texts: Array<string | null | undefined>): BostaDistrict | null {
+  const names = new Set<string>();
+  for (const t of texts) {
+    if (!t) continue;
+    names.add(normalize(t));
+    const known = findArea("EG", t);
+    if (known) for (const n of [known.area.en, known.area.ar, ...(known.area.also ?? [])]) names.add(normalize(n));
+  }
+  names.delete("");
+  const keys = (d: BostaDistrict) => [normalize(d.name), normalize(d.nameAr)].filter(Boolean);
+  for (const n of names) {
+    const exact = districts.find((d) => keys(d).includes(n));
+    if (exact) return exact;
+  }
+  for (const n of names) {
+    if (n.length < 4) continue;
+    const near = districts.find((d) => keys(d).some((k) => k.length >= 4 && (k.includes(n) || n.includes(k))));
+    if (near) return near;
+  }
+  return null;
 }
 
 function lev(a: string, b: string): number {

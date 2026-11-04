@@ -100,6 +100,7 @@ Scopes: `read_orders` (+ `read_all_orders` for > 60 days), `write_orders` (mark 
 - `POST /deliveries?apiVersion=1` (create; type `SEND = 10`), `GET /deliveries/business/{trackingNumber}`, `PUT` same, `DELETE /deliveries/business/{tn}/terminate`, `POST /deliveries/search`, `POST /deliveries/bulk`, `GET /cities`, `GET /cities/{id}/zones`.
 - No idempotency key on create → engine searches by `businessReference` before creating.
 - Webhooks are not signed → per-connection secret token in the URL.
+- **Confirmed on staging (Nov 2026):** `city` by name works ("Cairo"); a delivery must also name its district, or Bosta answers 400 "dropOffAddress must contain at least one of [districtId, districtName]". The connector reads `GET cities/{cityId}/districts` (zones of districts, cached a day), matches the area typed in any spelling (`matchDistrict`, with the shared list of areas), sends `districtId`, and falls back to `districtName` with the area as typed.
 - **Confirm before production:** numeric state codes (Bosta's own SDKs disagree), `deliveries/search` body, `dropOffAddress` city field (`city` / `cityCode` / `cityId`), public tracking URL.
 
 ## 5. WhatsApp Business Platform (Meta)

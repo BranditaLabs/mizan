@@ -24,6 +24,22 @@ export const CITIES = [
   { _id: "c-sharqia", name: "Sharqia", nameAr: "الشرقية" },
 ];
 
+/** Districts by city, grouped in zones as Bosta returns them. */
+export const DISTRICTS: Record<string, Array<{ zoneId: string; zoneName: string; zoneOtherName: string; districts: Array<{ districtId: string; districtName: string; districtOtherName: string }> }>> = {
+  "c-cairo": [
+    { zoneId: "z-helio", zoneName: "Heliopolis", zoneOtherName: "مصر الجديدة", districts: [
+      { districtId: "d-sheraton", districtName: "Sheraton", districtOtherName: "شيراتون" },
+      { districtId: "d-korba", districtName: "El Korba", districtOtherName: "الكوربة" },
+    ] },
+    { zoneId: "z-nasr", zoneName: "Nasr City", zoneOtherName: "مدينة نصر", districts: [
+      { districtId: "d-nasr-1", districtName: "Nasr City - 1st District", districtOtherName: "مدينة نصر - الحي الأول" },
+    ] },
+  ],
+  "c-giza": [
+    { zoneId: "z-dokki", zoneName: "Dokki", zoneOtherName: "الدقي", districts: [{ districtId: "d-dokki", districtName: "Dokki", districtOtherName: "الدقي" }] },
+  ],
+};
+
 export class FakeBosta {
   readonly host = "fake-bosta.test";
   readonly apiKey = "bosta-key-123";
@@ -32,6 +48,8 @@ export class FakeBosta {
   faults: Array<{ path?: string; fault: Fault }> = [];
   randomFaultRate = 0;
   shape: Shape = "object";
+  /** Bosta's rule since 2026: a delivery names its district (by id or name). Off for the old behaviour. */
+  requireDistrict = true;
   /** Create succeeds server-side, but the response never reaches the client. */
   loseNextCreateResponses = 0;
   private seq = 7_000_000;
@@ -82,11 +100,19 @@ export class FakeBosta {
     const body = init.body ? JSON.parse(String(init.body)) : undefined;
 
     if (method === "GET" && path === "cities") return json(200, { success: true, data: CITIES });
+    const dm = method === "GET" ? path.match(/^cities\/([^/]+)\/districts$/) : null;
+    if (dm) {
+      const zones = DISTRICTS[decodeURIComponent(dm[1])];
+      return zones ? json(200, { success: true, data: zones }) : json(404, { success: false, message: "City not found" });
+    }
 
     if (method === "POST" && path === "deliveries") {
       const city = body?.dropOffAddress?.city;
       if (!CITIES.some((c) => c.name === city)) return json(400, { success: false, message: `City ${city} is not supported` });
       if (!/^01[0125]\d{8}$/.test(body?.receiver?.phone ?? "")) return json(400, { success: false, message: "Invalid receiver phone" });
+      if (this.requireDistrict && !body?.dropOffAddress?.districtId && !body?.dropOffAddress?.districtName) {
+        return json(400, { success: false, message: "dropOffAddress must contain at least one of [districtId, districtName]" });
+      }
       const tn = String(++this.seq);
       const d: Delivery = {
         _id: `d-${tn}`, trackingNumber: tn, businessReference: body.businessReference, cod: body.cod,
