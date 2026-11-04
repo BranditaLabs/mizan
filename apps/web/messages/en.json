@@ -2393,7 +2393,8 @@
       "noVariants": "No variants",
       "noPictures": {
         "title": "No pictures yet",
-        "body": "Add pictures to this product in your store and they show up here on the next sync."
+        "body": "Add pictures to this product in your store and they show up here on the next sync.",
+        "bodyMizan": "Add pictures below: the first one is the main picture."
       },
       "pictures": "{count, plural, one {# picture} other {# pictures}}",
       "main": "Main picture",

@@ -56,6 +56,8 @@ export function IntegrationsScreen() {
     const key = own && t.has(own) ? own : `reasons.${reason}`;
     return t.has(key) ? t(key as "reasons.key_refused") : reason;
   };
+  // The installer stores the shop's address as its name: show a name only when the team gave one.
+  const named = (c: { displayName: string | null; account: string | null }) => Boolean(c.displayName && c.displayName !== c.account);
   const fixHref = (provider: string) => provider === "shopify" ? "/onboarding" : provider === "bosta" ? "/onboarding" : provider === "meta_whatsapp" || provider === "whatsapp" ? "/settings/confirmation" : null;
 
   return (
@@ -77,8 +79,8 @@ export function IntegrationsScreen() {
                   return (
                     <li key={c.id} className="mz-card flex flex-wrap items-start justify-between gap-3 p-4">
                       <div>
-                        {c.displayName ? <p className="font-medium"><Bdi>{c.displayName}</Bdi></p> : null}
-                        <p className={c.displayName ? "text-body-sm text-text-2" : "font-medium"}>{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : c.provider} <Bdi code>{c.account ?? ""}</Bdi></p>
+                        {named(c) ? <p className="font-medium"><Bdi>{c.displayName}</Bdi></p> : null}
+                        <p className={named(c) ? "text-body-sm text-text-2" : "font-medium"}>{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : c.provider} <Bdi code>{c.account ?? ""}</Bdi></p>
                         {c.reason ? <p className="text-body-sm text-danger-text">{reasonText(c.provider, c.reason)}</p> : null}
                         {c.missingScopes.length ? <p className="text-caption text-text-2">{t("missingScopes")} <Bdi code>{c.missingScopes.join(", ")}</Bdi></p> : null}
                         <p className="text-caption text-text-2">{t("updated")} <DateText value={c.updatedAt} relative /></p>
