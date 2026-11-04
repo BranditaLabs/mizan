@@ -11,7 +11,7 @@ import { StatusMapper } from "../../adapt/status.js";
 import { CircuitBreaker } from "../../resilience/circuit.js";
 import { send, type HttpResponse } from "../../resilience/http.js";
 import { AdaptiveBucket } from "../../resilience/limiter.js";
-import { CityResolver, normalize, type BostaCity } from "./cities.js";
+import { CityResolver, matchDistrict, normalize, type BostaCity, type BostaDistrict } from "./cities.js";
 import { BOSTA_STATUS_CONFIG } from "./states.js";
 
 export interface BostaLearned {
@@ -62,6 +62,7 @@ export class BostaConnector {
   readonly bucket: AdaptiveBucket;
   readonly statuses: StatusMapper;
   private cityResolver?: { at: number; resolver: CityResolver };
+  private readonly districtLists = new Map<string, { at: number; list: BostaDistrict[] }>();
   private readonly learnedCodes = new Map<string, LearnedStatus>();
   private readonly learnedCities = new Map<string, string>();
 
@@ -129,6 +130,41 @@ export class BostaConnector {
     return resolver;
   }
 
+  /**
+   * The districts Bosta delivers to in a city (`GET cities/{id}/districts`), a day at a time. Bosta
+   * groups them in zones (`[{ zoneName, districts: [{ districtId, districtName, districtOtherName }] }]`);
+   * a flat list is read too. A city Bosta has no list for gives none: the area goes by name.
+   */
+  async districts(cityId: string): Promise<BostaDistrict[]> {
+    const day = 24 * 3600_000;
+    const hit = this.districtLists.get(cityId);
+    if (hit && this.rt.clock.now() - hit.at < day) return hit.list;
+    let data: unknown;
+    try {
+      data = await this.call("districts", "GET", `cities/${encodeURIComponent(cityId)}/districts`, undefined, true);
+    } catch (e) {
+      if (e instanceof IntegrationError && (e.kind === "not_found" || e.kind === "validation")) return [];
+      throw e;
+    }
+    const r = this.resolver(data, "districts");
+    const top = Array.isArray(data) ? data : r.arr("list", ["list", "districts", "zones", "data"]);
+    const list: BostaDistrict[] = [];
+    for (const item of top) {
+      const ir = r.child(item, "district");
+      const zone = ir.str("zone", ["zoneName", "zone.name", "name"]);
+      const inner = ir.arr("districts", ["districts"]);
+      for (const d of inner.length ? inner : [item]) {
+        const dr = r.child(d, "district");
+        const id = dr.str("id", ["districtId", "_id", "id"]);
+        const name = dr.str("name", ["districtName", "name", "nameEn"]);
+        if (!id || !name) continue;
+        list.push({ id, name, nameAr: dr.str("nameAr", ["districtOtherName", "nameAr", "otherName", "name_ar"]), ...(inner.length && zone ? { zone } : {}) });
+      }
+    }
+    this.districtLists.set(cityId, { at: this.rt.clock.now(), list });
+    return list;
+  }
+
   /** Called when ops picks the city for an address the resolver could not match. */
   learnCityAlias(text: string, cityId: string) {
     this.learnedCities.set(normalize(text), cityId);
@@ -162,6 +198,11 @@ export class BostaConnector {
     }
     const cityField = this.cfg.cityField ?? "city";
     const cityValue = cityField === "cityId" ? match.city.id : cityField === "cityCode" ? match.city.code ?? match.city.name : match.city.name;
+    // Bosta needs the district too: the area typed ("Sheraton", "مدينة نصر") found in the city's list,
+    // or the area by name when it is not there (Bosta then says what it makes of it).
+    const area = [a.city, a.province].map((x) => x?.trim()).find((x) => x && normalize(x) !== normalize(match.city.name) && normalize(x) !== normalize(match.city.nameAr)) ?? a.city?.trim() ?? "";
+    const district = matchDistrict(await this.districts(match.city.id), area, a.line2, a.line1);
+    const where = district ? { districtId: district.id } : area ? { districtName: area } : {};
     const [firstName, ...rest] = (a.name ?? order.customer.name ?? "Customer").trim().split(/\s+/);
     const items = order.lines.reduce((n, l) => n + l.quantity, 0);
     const cod = Number(cashToCollect(order).amount); // what the customer still owes; 0 for prepaid, balance for deposits; throws if the order must not ship
@@ -173,7 +214,7 @@ export class BostaConnector {
         packageDetails: { itemsCount: Math.max(1, items), description: order.lines.map((l) => `${l.quantity}× ${l.title}`).join(", ").slice(0, 200) },
       },
       cod,
-      dropOffAddress: { [cityField]: cityValue, firstLine: a.line1, ...(a.line2 ? { secondLine: a.line2 } : {}) },
+      dropOffAddress: { [cityField]: cityValue, ...where, firstLine: a.line1, ...(a.line2 ? { secondLine: a.line2 } : {}) },
       receiver: { firstName: firstName || "Customer", lastName: rest.join(" ") || "-", phone, ...(order.customer.email ? { email: order.customer.email } : {}) },
       businessReference: reference,
       notes: `Mizan order ${order.number}`,

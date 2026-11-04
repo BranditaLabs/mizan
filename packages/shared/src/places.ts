@@ -113,6 +113,17 @@ export function findRegion(country: string | null | undefined, ...texts: Array<s
   return null;
 }
 
+/** The area a text names (any spelling, Arabic or English), with its region: "شيراتون" is Sheraton, Cairo. */
+export function findArea(country: string | null | undefined, text: string | null | undefined): { region: Region; area: Area } | null {
+  const k = placeKey(text);
+  if (!k) return null;
+  for (const region of regionsOf(country)) {
+    const area = region.areas.find((x) => keysOf(x).includes(k));
+    if (area) return { region, area };
+  }
+  return null;
+}
+
 /** Areas of a region matching what is typed (start of a word first), for the area picker. */
 export function searchAreas(region: Region | null, text: string, limit = 8): Area[] {
   if (!region) return [];
