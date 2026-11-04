@@ -86,6 +86,13 @@ Every write is an outbox job keyed so a step is never sent twice; webhooks are h
 | Mizan | stock counted / changed | stock | available quantity (when "send our count" is on) | — |
 | Mizan | product edited / created | catalogue | product updated / published | — |
 
+**Recovery (sync guardian, every 5 minutes in the worker):**
+- **Drops:** each store's engine polls what webhooks may have lost — Shopify / WooCommerce orders changed since its last look (overlap kept), every Bosta shipment still moving (45 days at most), and hourly the webhook subscriptions. The nightly store-day check (E5-8) stays as the last net for new orders.
+- **Errors:** a job retries with backoff up to 12 times; one that died of trouble that passes (rate limits, timeouts, 5xx, an open circuit) is brought back 1 h, 6 h and 24 h after it died (`revivals`, capped at 3). Events whose consumers failed are brought back the same way. Refusals that need a person (validation, auth, permission, not found) are never retried blindly: they stay in Settings → Integrations with the provider's words and a Replay button.
+- **Lost writes:** for the last 3 days, every write the store should have from Mizan's state (fulfillment with tracking, the courier's final step, paid on delivery, return / lost tag, cancel) is queued again under its usual key — a no-op when it was made, the missing step after a crash.
+- **Stuck bookings:** a Bosta booking with no answer after 30 minutes and no job behind it is asked again; the engine looks the reference up first, so it is adopted, never booked twice.
+- Anything recovered emits `sync.recovered` and is logged.
+
 Not synced, on purpose: refunds of money (Shopify would move real money; refunds are recorded in Mizan), and a delivery cancelled after booking (the team terminates it with the courier).
 
 ### Shopify specifics (already handled by the engine)

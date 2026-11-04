@@ -534,6 +534,12 @@ describe("schema", () => {
     await expect(asTenant(T1, () => db.query(`UPDATE products SET publish_status = 'sent' WHERE id = $1`, [product]))).rejects.toThrow(/check/);
   });
 
+  it("counts how often a dead job or event was brought back, from zero (0067, sync guardian)", async () => {
+    const cols = await db.query<{ table_name: string; column_default: string }>(
+      `SELECT table_name, column_default FROM information_schema.columns WHERE column_name = 'revivals' AND table_name IN ('mz_outbox', 'domain_events') ORDER BY table_name`);
+    expect(cols.rows).toEqual([{ table_name: "domain_events", column_default: "0" }, { table_name: "mz_outbox", column_default: "0" }]);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

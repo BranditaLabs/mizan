@@ -127,7 +127,7 @@ export class ShippingService implements ShipmentResultSink {
    * courier (a courier without an API, statuses by a person or a report), the order is shipped
    * (out of confirmation), and `shipment.created` says it came from the store, so nothing is sent back.
    */
-  async recordStoreFulfillment(trx: Trx, tenantId: string, orderId: string, f: { company: string | null; trackingNumber: string; trackingUrl: string | null }, now = new Date()): Promise<"recorded" | "skipped"> {
+  async recordStoreFulfillment(trx: Trx, tenantId: string, orderId: string, f: { company: string | null; trackingNumber: string; trackingUrl: string | null; fulfillmentId?: string | null }, now = new Date()): Promise<"recorded" | "skipped"> {
     const o = await trx.selectFrom("orders").select(["id", "number", "status", "currency", "total_minor", "paid_minor", "refunded_minor", "payment_mode", "payment_status"])
       .where("id", "=", orderId).forUpdate().executeTakeFirst();
     if (!o || !["new", "pending_confirmation", "confirmed"].includes(o.status)) return "skipped";
@@ -146,7 +146,7 @@ export class ShippingService implements ShipmentResultSink {
     const provider = courier.display_name ?? name;
     const row = await trx.insertInto("shipments").values({
       tenant_id: tenantId, order_id: orderId, connection_id: courier.id, provider, currency: o.currency, cod_minor: cod, booking: "booked", status: "created",
-      tracking_number: f.trackingNumber, tracking_url: f.trackingUrl, status_at: now, booked_at: now, created_at: now, updated_at: now,
+      tracking_number: f.trackingNumber, tracking_url: f.trackingUrl, external_id: f.fulfillmentId ?? null, status_at: now, booked_at: now, created_at: now, updated_at: now,
     }).returning(["id"]).executeTakeFirstOrThrow();
     const actor = { type: "engine" as const };
     await trx.updateTable("orders").set({ status: "shipped", shipped_at: now, updated_at: now }).where("id", "=", orderId).execute();

@@ -312,6 +312,7 @@ export interface DomainEvents {
   locked_until: Timestamp | null;
   last_error: string | null;
   dead_at: Timestamp | null;
+  revivals: Generated<number>;
 }
 
 export interface EventDeliveries {
@@ -533,6 +534,7 @@ export interface MzOutbox {
   updated_at: Int8;
   connection_id: string | null;
   scope: Generated<string>;
+  revivals: Generated<number>;
 }
 
 export interface MzRecords {
