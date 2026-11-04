@@ -3,7 +3,7 @@ import { z } from "zod";
 /** What Mizan writes back to a Shopify store as the courier reports (E7-7). Every switch is on by default. */
 export const StoreSyncSchema = z.object({
   progressEvents: z.boolean().describe("Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures"),
-  markPaidOnDelivery: z.boolean().describe("Mark cash-on-delivery orders paid in Shopify when delivered"),
+  markPaidOnDelivery: z.boolean().describe("Mark orders paid in Shopify when the money is in: cash collected on delivery, a payment link paid, a transfer received"),
   tagReturned: z.boolean().describe("Tag mizan-returned when the parcel is back"),
   tagLost: z.boolean().describe("Tag mizan-lost when the courier lost it"),
 });

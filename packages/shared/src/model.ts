@@ -38,6 +38,15 @@ export interface OrderLine {
   unitPrice: Money;
 }
 
+/** A shipment the store recorded (Shopify fulfillment): Mizan's own, or one the merchant made with another courier. */
+export interface StoreFulfillment {
+  externalId: string;
+  status: string;
+  company?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+}
+
 export interface FulfillmentGroup {
   /** Shopify fulfillment order id, or equivalent on other platforms. */
   externalId: string;
@@ -89,6 +98,8 @@ export interface CanonicalOrder {
   shippingAddress?: Address;
   lines: OrderLine[];
   fulfillmentGroups: FulfillmentGroup[];
+  /** Shipments recorded in the store, with their tracking (two-way delivery: one made outside Mizan becomes a Mizan shipment). */
+  storeFulfillments?: StoreFulfillment[];
   tags: string[];
   /** Where the order came from, as the store recorded it (M7-2); resolved by `resolveOrderSource`. */
   source?: OrderSourceHints;

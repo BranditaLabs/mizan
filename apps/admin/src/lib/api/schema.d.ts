@@ -7963,7 +7963,7 @@ export interface components {
         PutStoreSync: {
             /** @description Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures */
             progressEvents?: boolean;
-            /** @description Mark cash-on-delivery orders paid in Shopify when delivered */
+            /** @description Mark orders paid in Shopify when the money is in: cash collected on delivery, a payment link paid, a transfer received */
             markPaidOnDelivery?: boolean;
             /** @description Tag mizan-returned when the parcel is back */
             tagReturned?: boolean;
@@ -9060,7 +9060,7 @@ export interface components {
         StoreSync: {
             /** @description Courier steps as Shopify fulfillment events: picked up, in transit, out for delivery, attempts, delivered, failures */
             progressEvents: boolean;
-            /** @description Mark cash-on-delivery orders paid in Shopify when delivered */
+            /** @description Mark orders paid in Shopify when the money is in: cash collected on delivery, a payment link paid, a transfer received */
             markPaidOnDelivery: boolean;
             /** @description Tag mizan-returned when the parcel is back */
             tagReturned: boolean;

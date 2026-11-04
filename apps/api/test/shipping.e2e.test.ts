@@ -303,3 +303,70 @@ describe("shipping (E7-1)", () => {
     expect(after).not.toContain(a);
   });
 });
+
+describe("two-way delivery: Mizan, the courier and the store keep each other told", () => {
+  const shopifyId = async () => (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "shopify").executeTakeFirstOrThrow())).id;
+  /** A Shopify order as the store sends it, confirmed in Mizan. */
+  async function storeOrder(name: string) {
+    const o = shop.addOrder({ name });
+    const wh = shop.webhook("orders/create", o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await runJobs();
+    const row = await db.tenant(store, (trx) => trx.selectFrom("orders").select("id").where("number", "=", name).executeTakeFirstOrThrow());
+    return { shop: o, id: row.id };
+  }
+  const settle = async () => { await drainEvents(); await runJobs(); await drainEvents(); };
+
+  it("a courier recorded by hand: the store gets the fulfillment, then each status a person sets, paid on delivery", async () => {
+    const o = await storeOrder("#3001");
+    await confirm(o.id);
+    const s = (await http().post(`/v1/orders/${o.id}/ship/manual`).set(as("owner")).send({ courier: "Mylerz", trackingNumber: "MY-777" }).expect(201)).body;
+    await settle();
+    const f = shop.orders.get(o.shop.id)!.fulfillments;
+    expect(f).toHaveLength(1);
+    expect(f[0]!.trackingInfo[0]).toMatchObject({ company: "Mylerz", number: "MY-777" });
+
+    await http().post(`/v1/shipments/${s.id}/status`).set(as("owner")).send({ status: "out_for_delivery" }).expect(200);
+    await http().post(`/v1/shipments/${s.id}/status`).set(as("owner")).send({ status: "delivered" }).expect(200);
+    await settle();
+    expect(shop.orders.get(o.shop.id)!.fulfillments[0]!.events?.map((e) => e.status).sort()).toEqual(["DELIVERED", "OUT_FOR_DELIVERY"]); // Shopify orders them by when they happened
+    expect(shop.orders.get(o.shop.id)!.displayFinancialStatus).toBe("PAID");
+    expect(shop.orders.get(o.shop.id)!.fulfillments).toHaveLength(1); // never fulfilled twice
+  });
+
+  it("cancelled in Mizan by any path (here: the customer in confirmation) is cancelled in Shopify; cancelled in Shopify is not sent back", async () => {
+    const o = await storeOrder("#3002");
+    await db.tenant(store, async (trx) => {
+      await trx.updateTable("orders").set({ status: "cancelled", cancelled_at: new Date() }).where("id", "=", o.id).execute();
+      await app.get(EventsService).emit(trx, { type: "order.cancelled", tenantId: store, entity: { type: "order", id: o.id }, actor: { type: "system" }, data: { number: "#3002", reason: "customer_cancelled" } });
+    });
+    await settle();
+    expect(shop.orders.get(o.shop.id)!.cancelledAt).toEqual(expect.any(String));
+
+    const other = await storeOrder("#3003");
+    await db.tenant(store, (trx) => app.get(EventsService).emit(trx, { type: "order.cancelled", tenantId: store, entity: { type: "order", id: other.id }, actor: { type: "engine" }, data: { number: "#3003", reason: "cancelled_in_store" } }));
+    await settle();
+    expect(shop.orders.get(other.shop.id)!.cancelledAt).toBeNull();
+  });
+
+  it("shipped in Shopify with the merchant's own courier: Mizan records the shipment and leaves confirmation; nothing is sent back", async () => {
+    const o = await storeOrder("#3004");
+    const so = shop.orders.get(o.shop.id)!;
+    so.fulfillments.push({ id: "gid://shopify/Fulfillment/990001", status: "SUCCESS", trackingInfo: [{ company: "Aramex", number: "AX-55", url: "https://aramex.test/AX-55" }] });
+    so.updatedAt = new Date(clock.now() + 1000).toISOString();
+    const wh = shop.webhook("orders/updated", so);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await runJobs();
+    await settle();
+    const d = await detail(o.id);
+    expect(d.status).toBe("shipped");
+    expect(d.shipments).toEqual([expect.objectContaining({ provider: "Aramex", trackingNumber: "AX-55", booking: "booked" })]);
+    expect(shop.orders.get(o.shop.id)!.fulfillments).toHaveLength(1);
+    // The same order again from the store changes nothing.
+    const again = shop.webhook("orders/updated", so);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(again.headers).send(again.body).expect(200);
+    await settle();
+    expect((await detail(o.id)).shipments).toHaveLength(1);
+  });
+});
+

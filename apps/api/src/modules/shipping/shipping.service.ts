@@ -121,6 +121,44 @@ export class ShippingService implements ShipmentResultSink {
     });
   }
 
+  /**
+   * Two-way delivery, store → Mizan: the merchant shipped the order in the store with another
+   * courier (a Shopify fulfillment Mizan did not make). It becomes a booked shipment with that
+   * courier (a courier without an API, statuses by a person or a report), the order is shipped
+   * (out of confirmation), and `shipment.created` says it came from the store, so nothing is sent back.
+   */
+  async recordStoreFulfillment(trx: Trx, tenantId: string, orderId: string, f: { company: string | null; trackingNumber: string; trackingUrl: string | null }, now = new Date()): Promise<"recorded" | "skipped"> {
+    const o = await trx.selectFrom("orders").select(["id", "number", "status", "currency", "total_minor", "paid_minor", "refunded_minor", "payment_mode", "payment_status"])
+      .where("id", "=", orderId).forUpdate().executeTakeFirst();
+    if (!o || !["new", "pending_confirmation", "confirmed"].includes(o.status)) return "skipped";
+    const live = await trx.selectFrom("shipments").select("id").where("order_id", "=", orderId).where("is_return_leg", "=", false)
+      .where("booking", "!=", "failed").where("status", "!=", "cancelled").executeTakeFirst();
+    if (live) return "skipped";
+    const name = f.company?.trim() || "Store courier";
+    const key = name.toLowerCase().replace(/\s+/g, " ");
+    let courier = await trx.selectFrom("connections").select(["id", "display_name"]).where("kind", "=", "courier").where("provider", "=", "manual").where("external_account", "=", key).executeTakeFirst();
+    courier ??= await trx.insertInto("connections").values({ tenant_id: tenantId, kind: "courier", provider: "manual", external_account: key, display_name: name, status: "active" })
+      .returning(["id", "display_name"]).executeTakeFirstOrThrow();
+    const taken = await trx.selectFrom("shipments").select("id").where("connection_id", "=", courier.id).where("tracking_number", "=", f.trackingNumber).executeTakeFirst();
+    if (taken) return "skipped";
+    let cod = 0n;
+    try { cod = toMinor(cashToCollect(paymentView(o))); } catch { /* the store shipped it anyway: nothing Mizan can collect */ }
+    const provider = courier.display_name ?? name;
+    const row = await trx.insertInto("shipments").values({
+      tenant_id: tenantId, order_id: orderId, connection_id: courier.id, provider, currency: o.currency, cod_minor: cod, booking: "booked", status: "created",
+      tracking_number: f.trackingNumber, tracking_url: f.trackingUrl, status_at: now, booked_at: now, created_at: now, updated_at: now,
+    }).returning(["id"]).executeTakeFirstOrThrow();
+    const actor = { type: "engine" as const };
+    await trx.updateTable("orders").set({ status: "shipped", shipped_at: now, updated_at: now }).where("id", "=", orderId).execute();
+    await trx.insertInto("order_events").values({
+      tenant_id: tenantId, order_id: orderId, type: "shipped", from_status: o.status, to_status: "shipped", actor_type: "system",
+      data: JSON.stringify({ shipmentId: row.id, provider, trackingNumber: f.trackingNumber, source: "store" }),
+    }).execute();
+    await this.events.emit(trx, { type: "shipment.created", tenantId, entity: { type: "shipment", id: row.id }, actor, data: { orderId, number: o.number, provider, trackingNumber: f.trackingNumber, codMinor: String(cod), currency: o.currency, adopted: false, source: "store" } });
+    await this.events.emit(trx, { type: "order.updated", tenantId, entity: { type: "order", id: orderId }, actor, data: { number: o.number, status: "shipped", changed: ["status"] } });
+    return "recorded";
+  }
+
   /** The checks every way of shipping makes: the order ships now, with this much to collect — or it already has a live shipment. */
   private async shippable(trx: Trx, orderId: string, needAddress: boolean) {
     const o = await trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id")
