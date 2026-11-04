@@ -9,6 +9,7 @@ import { ShopifyTokens } from "./shopify-tokens.js";
 import { ShopifyConnectedConsumer } from "./shopify-connected.consumer.js";
 import { ConnectionNoticesConsumer } from "./connection-notices.consumer.js";
 import { StoreWritebackConsumer } from "./store-writeback.consumer.js";
+import { SyncGuardian } from "./sync-guardian.js";
 import { WebhookRouter } from "./webhook-router.js";
 import { WebhooksController } from "./webhooks.controller.js";
 
@@ -30,6 +31,7 @@ export class IntegrationsModule {
         ShopifyConnectedConsumer,
         ConnectionNoticesConsumer,
         StoreWritebackConsumer,
+        SyncGuardian,
         ConnectionLifecycle,
         CourierAccess,
         SyncResults,
@@ -37,7 +39,7 @@ export class IntegrationsModule {
         { provide: ENGINE_RUNTIME, useValue: runtime },
         { provide: ENGINE_EVENT_SINK, useValue: sink },
       ],
-      exports: [ConnectionLifecycle, ShopifyTokens, ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
+      exports: [SyncGuardian, ConnectionLifecycle, ShopifyTokens, ConnectionResolver, EngineRegistry, EngineJobRunner, WebhookRouter, ENGINE_RUNTIME],
     };
   }
 }

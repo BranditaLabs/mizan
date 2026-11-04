@@ -11,6 +11,7 @@ import { EventDispatcher } from "../src/platform/events/dispatcher.js";
 import { EventsService } from "../src/platform/events/events.service.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { EngineJobRunner } from "../src/integrations/engine-runner.js";
+import { SyncGuardian } from "../src/integrations/sync-guardian.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
@@ -367,6 +368,78 @@ describe("two-way delivery: Mizan, the courier and the store keep each other tol
     await http().post(`/webhooks/shopify/${await shopifyId()}`).set(again.headers).send(again.body).expect(200);
     await settle();
     expect((await detail(o.id)).shipments).toHaveLength(1);
+  });
+});
+
+describe("sync guardian: drops and errors recover on their own", () => {
+  const guardian = () => app.get(SyncGuardian);
+  const shopifyId = async () => (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "shopify").executeTakeFirstOrThrow())).id;
+  async function storeOrder(name: string) {
+    const o = shop.addOrder({ name });
+    const wh = shop.webhook("orders/create", o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await runJobs();
+    const row = await db.tenant(store, (trx) => trx.selectFrom("orders").select("id").where("number", "=", name).executeTakeFirstOrThrow());
+    return { shop: o, id: row.id };
+  }
+  const round = async () => { clock.advance(6 * 60_000); await guardian().round(Date.now(), clock.now()); await drainEvents(); await runJobs(); await drainEvents(); };
+
+  it("a Bosta webhook that never came: the next round reads the shipment and moves it", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    await ship(id).expect(202);
+    await runJobs();
+    const tn = (await detail(id)).shipments[0].trackingNumber as string;
+    bosta.setState(tn, 24, "In transit"); // no webhook
+    await round();
+    expect((await detail(id)).shipments[0]).toMatchObject({ status: "in_transit" });
+  });
+
+  it("a Shopify update whose webhook was dropped: the poll brings it (here: shipped in Shopify)", async () => {
+    const o = await storeOrder("#4001");
+    const so = shop.orders.get(o.shop.id)!;
+    so.fulfillments.push({ id: "gid://shopify/Fulfillment/990101", status: "SUCCESS", trackingInfo: [{ company: "Aramex", number: "AX-4001" }] });
+    so.updatedAt = new Date(clock.now() + 1000).toISOString(); // no webhook
+    await round();
+    expect((await detail(o.id)).shipments).toEqual([expect.objectContaining({ trackingNumber: "AX-4001" })]);
+    await round(); // and it is never sent back to Shopify
+    expect(shop.orders.get(o.shop.id)!.fulfillments).toHaveLength(1);
+  });
+
+  it("a write lost with a crash is queued again; one that died of passing trouble runs again later, three times at most", async () => {
+    const o = await storeOrder("#4002");
+    await confirm(o.id);
+    await http().post(`/v1/orders/${o.id}/ship/manual`).set(as("owner")).send({ courier: "Mylerz", trackingNumber: "MY-4002" }).expect(201);
+    // The fulfillment job never made it (a crash between the commit and the queue).
+    await drainEvents();
+    await db.tenant(store, (trx) => trx.deleteFrom("mz_outbox").where("idempotency_key", "=", `fulfill:${o.shop.id}:MY-4002`).execute());
+    await round();
+    expect(shop.orders.get(o.shop.id)!.fulfillments[0]!.trackingInfo[0]).toMatchObject({ company: "Mylerz", number: "MY-4002" });
+
+    // A job that gave up on a provider outage: brought back an hour after it died, at most three times.
+    const dead = await db.tenant(store, async (trx) => (await trx.updateTable("mz_outbox").set({ status: "dead", last_error: "gave up after 12 attempts — transient: 503", updated_at: clock.now() - 2 * 3_600_000 })
+      .where("idempotency_key", "=", `fulfill:${o.shop.id}:MY-4002`).returning("id").executeTakeFirstOrThrow()).id);
+    expect((await guardian().revive(clock.now())).jobs).toBe(1);
+    const back = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select(["status", "revivals"]).where("id", "=", dead).executeTakeFirstOrThrow());
+    expect(back).toEqual({ status: "pending", revivals: 1 });
+    await db.tenant(store, (trx) => trx.updateTable("mz_outbox").set({ status: "dead", revivals: 3, updated_at: clock.now() - 48 * 3_600_000 }).where("id", "=", dead).execute());
+    expect((await guardian().revive(clock.now())).jobs).toBe(0); // three times is enough: a person looks
+    // A refusal that needs a person is never retried on its own.
+    await db.tenant(store, (trx) => trx.updateTable("mz_outbox").set({ revivals: 0, last_error: "validation: address rejected" }).where("id", "=", dead).execute());
+    expect((await guardian().revive(clock.now())).jobs).toBe(0);
+  });
+
+  it("a Bosta booking with no answer and no job behind it is asked again, and booked once", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    await db.tenant(store, async (trx) => {
+      await trx.deleteFrom("mz_outbox").where("idempotency_key", "=", `bosta:ship:${s.id}`).execute();
+      await trx.updateTable("shipments").set({ created_at: new Date(Date.now() - 40 * 60_000) }).where("id", "=", s.id).execute();
+    });
+    await round();
+    expect((await detail(id)).shipments[0]).toMatchObject({ booking: "booked", trackingNumber: expect.any(String) });
+    expect([...bosta.deliveries.values()].filter((d) => d.businessReference === s.id)).toHaveLength(1);
   });
 });
 

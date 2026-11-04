@@ -1472,6 +1472,7 @@ export class MizanEngine {
     const slot = Math.floor(this.now() / 60_000);
     for (const { key, value } of await this.store.list<ShipmentRecord>("shipment")) {
       if (TERMINAL_STATUSES.has(value.shipment.status)) continue;
+      if (this.now() - value.statusAt > 45 * 86_400_000) continue; // settled outside the courier's feed (by a person) or abandoned
       await this.enqueue("bosta.ingestStatus", { trackingNumber: key }, `bosta:poll:${key}:${slot}`);
     }
   }
