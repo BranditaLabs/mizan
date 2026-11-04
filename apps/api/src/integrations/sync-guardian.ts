@@ -26,6 +26,15 @@ const RETRYABLE = /^(gave up after|rate_limited|transient|timeout|circuit_open|c
 const COLLECTS_ON_DELIVERY = new Set(["cod", "partial"]);
 const TERMINAL_FOR_STORE = new Set<ShipmentStatus>(["delivered", "returned", "lost"]);
 
+/** When the guardian will bring a dead job back on its own (engine-clock ms), or null when it needs a person. */
+export function autoRetryAt(lastError: string | null, revivals: number, diedAt: number): number | null {
+  if (!lastError || revivals >= GUARD.revivalDelays.length || !RETRYABLE.test(lastError)) return null;
+  return diedAt + GUARD.revivalDelays[revivals]!;
+}
+
+/** What the guardian keeps per store (engine record "guardian/round"). */
+export interface GuardRound { at: string }
+
 export interface GuardStats { stores: number; polled: number; revivedJobs: number; revivedEvents: number; rebooked: number; reasserted: number; failed: number }
 
 /**
@@ -191,6 +200,7 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
       }
     }
 
+    await engineQueue({}).put<GuardRound>("guardian", "round", { at: new Date(now).toISOString() }, clock);
     if (rebooked || reasserted) {
       await this.events.emit(trx, { type: "sync.recovered", tenantId, entity: { type: "connection", id: storeId }, actor: { type: "system" }, data: { rebooked, reasserted } });
     }

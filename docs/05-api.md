@@ -387,7 +387,8 @@ Merchants subscribe to Mizan events (`order.confirmed`, `shipment.delivered` …
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/admin/integrations/health` | Connections, engine circuits and rate budgets, outbox counts, last dead letters, drift report, ✅ `backfill` (E3-5: `{ status: running \| done, phase, orders, products, pages, startedAt, finishedAt }` of the latest history import, or null); `{ connected: false, reason }` without a store connection. ✅ E2-7: `?connectionId=` picks the store (default: the first) |
-| GET | `/admin/integrations/dead-letters` | Jobs needing a person (`?limit≤200`), newest first, from every store (E2-7); replay and city fixes run in the job's own store |
+| GET | `/admin/integrations/dead-letters` | Jobs needing a person (`?limit≤200`), newest first, from every store (E2-7); replay and city fixes run in the job's own store; ✅ each with `autoRetryAt` (when the sync guardian brings it back on its own, or null when it needs a person) |
+| GET | `/admin/integrations/sync` | ✅ The sync guardian: `{ checkedAt, stores[{ connectionId, provider, name, checkedAt }], recovered{ rebooked, reasserted, revived } (last 24 h), retrying{ count, nextAt }, needsYou }`. Settings → Integrations → Sync health. Who can read connections |
 | POST | `/admin/integrations/jobs/{id}/replay` | Replay a dead-lettered job after a fix; `job_not_found` otherwise |
 | GET | `/admin/integrations/cities` | `q?` (what the customer typed), `limit` 1–50 (10) → `{ data[{ id, name, nameAr }] }`: Bosta's cities closest to the text, to pick for an address it could not match. 409 `not_connected`, 502 `courier_unavailable` |
 | POST | `/admin/integrations/cities/resolve` | `{ text, cityId, jobId? }`: teach a city alias (kept on the Bosta connection), replay the stuck job |

@@ -2929,6 +2929,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/admin/integrations/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["IntegrationsAdminController_sync"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/admin/integrations/jobs/{id}/replay": {
         parameters: {
             query?: never;
@@ -4368,6 +4384,11 @@ export interface components {
                 payload: unknown;
                 /** Format: date-time */
                 failedAt: string;
+                /**
+                 * Format: date-time
+                 * @description When Mizan tries it again on its own; null when it needs a person
+                 */
+                autoRetryAt: string | null;
             }[];
         };
         DisableUser: {
@@ -9142,6 +9163,37 @@ export interface components {
         SuspendStore: {
             /** @description Shown to the store in its audit log */
             reason: string;
+        };
+        SyncHealth: {
+            /**
+             * Format: date-time
+             * @description The guardian's last look at any store (every 5 minutes)
+             */
+            checkedAt: string | null;
+            stores: {
+                /** Format: uuid */
+                connectionId: string;
+                provider: string;
+                name: string | null;
+                /** Format: date-time */
+                checkedAt: string | null;
+            }[];
+            recovered: {
+                /** @description Courier bookings asked again, last 24 h */
+                rebooked: number;
+                /** @description Writes to the store queued again after they were lost, last 24 h */
+                reasserted: number;
+                /** @description Jobs brought back after passing trouble, last 24 h */
+                revived: number;
+            };
+            /** @description Dead jobs the guardian will bring back on its own */
+            retrying: {
+                count: number;
+                /** Format: date-time */
+                nextAt: string | null;
+            };
+            /** @description Dead jobs that need a person (a refusal, a key, three tries done) */
+            needsYou: number;
         };
         SystemHealth: {
             /** Format: date-time */
@@ -20578,6 +20630,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeadLetters"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    IntegrationsAdminController_sync: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The sync guardian: last look per store, what it recovered in 24 h, dead jobs it will retry and those that need a person */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncHealth"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */
