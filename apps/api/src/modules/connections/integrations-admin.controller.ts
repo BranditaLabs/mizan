@@ -12,6 +12,10 @@ import { scrubText } from "../../platform/logging/redact.js";
 import { isIntegrationError } from "@mizan/engine";
 import { NotConnectedError } from "../../integrations/connection-resolver.js";
 import { EngineRegistry } from "../../integrations/engine-registry.js";
+import { autoRetryAt, type GuardRound } from "../../integrations/sync-guardian.js";
+import { sql } from "kysely";
+import { trxQueryClient } from "@mizan/db";
+import { SqlStore } from "@mizan/engine";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -52,9 +56,22 @@ type IntegrationsHealth = z.infer<typeof IntegrationsHealthSchema>;
 const DeadLettersSchema = z.object({
   data: z.array(z.object({
     id: z.string(), kind: z.string(), provider: z.string(), attempts: z.number().int(), error: z.string().nullable(), payload: z.unknown(), failedAt: z.iso.datetime(),
+    autoRetryAt: z.iso.datetime().nullable().describe("When Mizan tries it again on its own; null when it needs a person"),
   })),
 });
 const ReplayedSchema = z.object({ replayed: z.literal(true) });
+/** The sync guardian at a glance: when it last looked, what it fixed on its own, what waits for a person. */
+const SyncHealthSchema = z.object({
+  checkedAt: z.iso.datetime().nullable().describe("The guardian's last look at any store (every 5 minutes)"),
+  stores: z.array(z.object({ connectionId: z.uuid(), provider: z.string(), name: z.string().nullable(), checkedAt: z.iso.datetime().nullable() })),
+  recovered: z.object({
+    rebooked: z.number().int().describe("Courier bookings asked again, last 24 h"),
+    reasserted: z.number().int().describe("Writes to the store queued again after they were lost, last 24 h"),
+    revived: z.number().int().describe("Jobs brought back after passing trouble, last 24 h"),
+  }),
+  retrying: z.object({ count: z.number().int(), nextAt: z.iso.datetime().nullable() }).describe("Dead jobs the guardian will bring back on its own"),
+  needsYou: z.number().int().describe("Dead jobs that need a person (a refusal, a key, three tries done)"),
+});
 const CityResolvedSchema = z.object({ saved: z.literal(true), replayed: z.boolean() });
 
 /**
@@ -105,14 +122,53 @@ export class IntegrationsAdminController {
   @ApiJson(200, "DeadLetters", DeadLettersSchema, "Jobs that need a person, newest first (every store)")
   async deadLetters(@Auth() auth: AuthContext, @Query(new ZodPipe(ListSchema)) q: z.infer<typeof ListSchema>) {
     const dead = (await Promise.all((await this.registry.forTenant(auth.tenant!.id)).map((e) => e.store.jobs({ status: "dead" }))))
-      .flat().sort((a, b) => a.updatedAt - b.updatedAt);
+      .flat().sort((a, b) => a.updatedAt - b.updatedAt).slice(-q.limit).reverse();
+    const revivals = await this.revivals(auth.tenant!.id, dead.map((j) => j.id));
     return {
-      data: dead.slice(-q.limit).reverse().map((j) => ({
-        id: j.id, kind: j.kind, provider: j.connection, attempts: j.attempts,
-        error: j.lastError ? scrubText(j.lastError) : null,
-        payload: j.payload, failedAt: new Date(j.updatedAt).toISOString(),
-      })),
+      data: dead.map((j) => {
+        const at = autoRetryAt(j.lastError ?? null, revivals.get(j.id) ?? 0, j.updatedAt);
+        return {
+          id: j.id, kind: j.kind, provider: j.connection, attempts: j.attempts,
+          error: j.lastError ? scrubText(j.lastError) : null,
+          payload: j.payload, failedAt: new Date(j.updatedAt).toISOString(), autoRetryAt: at === null ? null : new Date(at).toISOString(),
+        };
+      }),
     };
+  }
+
+  @Get("sync")
+  @ApiJson(200, "SyncHealth", SyncHealthSchema, "The sync guardian: last look per store, what it recovered in 24 h, dead jobs it will retry and those that need a person")
+  async sync(@Auth() auth: AuthContext): Promise<z.infer<typeof SyncHealthSchema>> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const stores = await trx.selectFrom("connections").select(["id", "provider", "display_name", "external_account"])
+        .where("kind", "=", "store").where("provider", "in", ["shopify", "woocommerce"]).where("status", "!=", "disconnected").orderBy("created_at").execute();
+      const rows = await Promise.all(stores.map(async (s) => {
+        const round = await new SqlStore(trxQueryClient(trx), { tenantId, store: s.id }).get<GuardRound>("guardian", "round");
+        return { connectionId: s.id, provider: s.provider, name: s.display_name ?? s.external_account, checkedAt: round?.at ?? null };
+      }));
+      const day = new Date(Date.now() - 24 * 3_600_000);
+      const ev = await trx.selectFrom("domain_events").select([
+        sql<string>`coalesce(sum((data->>'rebooked')::int), 0)`.as("rebooked"), sql<string>`coalesce(sum((data->>'reasserted')::int), 0)`.as("reasserted"),
+      ]).where("type", "=", "sync.recovered").where("occurred_at", ">", day).executeTakeFirstOrThrow();
+      const dead = await trx.selectFrom("mz_outbox").select(["last_error", "revivals", "updated_at"]).where("status", "=", "dead").execute();
+      const revived = await trx.selectFrom("mz_outbox").select(sql<string>`count(*)`.as("n")).where("revivals", ">", 0).where(sql<boolean>`updated_at > ${Date.now() - 24 * 3_600_000}`).executeTakeFirstOrThrow();
+      const next = dead.map((d) => autoRetryAt(d.last_error, d.revivals, Number(d.updated_at))).filter((x): x is number => x !== null);
+      const checked = rows.map((r) => r.checkedAt).filter((x): x is string => Boolean(x)).sort();
+      return {
+        checkedAt: checked.at(-1) ?? null,
+        stores: rows,
+        recovered: { rebooked: Number(ev.rebooked), reasserted: Number(ev.reasserted), revived: Number(revived.n) },
+        retrying: { count: next.length, nextAt: next.length ? new Date(Math.min(...next)).toISOString() : null },
+        needsYou: dead.length - next.length,
+      };
+    });
+  }
+
+  private async revivals(tenantId: string, ids: string[]): Promise<Map<string, number>> {
+    if (!ids.length) return new Map();
+    const rows = await this.db.tenant(tenantId, (trx) => trx.selectFrom("mz_outbox").select(["id", "revivals"]).where("id", "in", ids).execute());
+    return new Map(rows.map((r) => [r.id, r.revivals]));
   }
 
   @Post("jobs/:id/replay")

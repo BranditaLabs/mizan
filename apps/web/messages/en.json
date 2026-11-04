@@ -3617,7 +3617,9 @@
       "title": "Jobs that need you",
       "subtitle": "Work that failed after its retries (for example a city the courier didn't know). Fix the cause, then send it again.",
       "none": "Nothing waiting.",
-      "replay": "Send again"
+      "replay": "Send again",
+      "auto": "Mizan tries again on its own",
+      "needsYou": "Needs you: fix the cause, then Replay"
     },
     "notAllowed": {
       "title": "Not available for your role",
@@ -3711,6 +3713,24 @@
         "shopify": "The Mizan app stays installed in Shopify until you remove it there."
       },
       "typeToConfirm": "Type {name} to confirm"
+    },
+    "sync": {
+      "title": "Sync health",
+      "subtitle": "Every 5 minutes Mizan checks Shopify and the courier for anything a webhook dropped, retries what failed for a passing reason, and sends again what a store should have.",
+      "loading": "Loading sync health",
+      "checked": "Last check",
+      "never": "Not yet",
+      "fixed": "Fixed on its own (24 h)",
+      "retrying": "Will retry on its own",
+      "next": "next",
+      "needsYou": "Waiting for you",
+      "how": "Failures from a provider being down, slow or busy are retried 1 hour, 6 hours and a day later. Refusals (an address, a key, a permission) wait for you below.",
+      "state": {
+        "ok": "In sync",
+        "retrying": "Recovering",
+        "late": "Not checked lately",
+        "needsYou": "{n, plural, one {# needs you} other {# need you}}"
+      }
     }
   },
   "auditLog": {

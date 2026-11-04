@@ -16,6 +16,7 @@ import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { ConnectionActions } from "./ConnectionManage";
 import { EngineHealth, ResolveCityDialog, unknownCity } from "./EngineHealth";
+import { SyncHealth } from "./SyncHealth";
 import { WooCommerceConnect } from "./WooCommerceConnect";
 
 const READERS = rolesWith("connections.read");
@@ -48,7 +49,7 @@ export function IntegrationsScreen() {
   const dead = useQuery({ queryKey: ["deadLetters", ...scope], queryFn: () => ok(api.GET("/v1/admin/integrations/dead-letters", { params: { query: { limit: 50 } } })), enabled: READERS.has(role) });
   const replay = useMutation({
     mutationFn: (id: string) => ok(api.POST("/v1/admin/integrations/jobs/{id}/replay", { params: { path: { id } } })),
-    onSuccess: () => { toast({ message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); void qc.invalidateQueries({ queryKey: ["integrationsHealth"] }); },
+    onSuccess: () => { toast({ message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); void qc.invalidateQueries({ queryKey: ["integrationsHealth"] }); void qc.invalidateQueries({ queryKey: ["syncHealth"] }); },
   });
   const reasonText = (provider: string, reason: string) => {
     // A store platform's own words first (WooCommerce keys, Shopify's app access), then the shared ones.
@@ -97,6 +98,7 @@ export function IntegrationsScreen() {
                 })}
               </ul>
             ) : <div className="mz-card"><EmptyState icon="link" title={t("none.title")} body={t("none.body")} action={<Link href="/onboarding" className="font-medium underline">{t("none.action")}</Link>} /></div>}
+            <SyncHealth />
             <section className="mz-card p-5">
               <h2 className="text-heading-sm">{t("dead.title")}</h2>
               <p className="text-body-sm text-text-2">{t("dead.subtitle")}</p>
@@ -109,6 +111,10 @@ export function IntegrationsScreen() {
                       <div className="min-w-0">
                         <p className="font-medium"><Bdi code>{j.kind}</Bdi></p>
                         <p className="truncate text-caption text-text-2"><Bdi>{j.error ?? ""}</Bdi></p>
+                        {/* Trouble that passes comes back on its own; the rest waits for a person. */}
+                        <p className="text-caption">{j.autoRetryAt
+                          ? <span className="text-text-2">{t("dead.auto")} <DateText value={j.autoRetryAt} relative /></span>
+                          : <span className="text-danger-text">{t("dead.needsYou")}</span>}</p>
                       </div>
                       <span className="flex items-center gap-2 text-caption text-text-2">
                         <DateText value={j.failedAt} relative />

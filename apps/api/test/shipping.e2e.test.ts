@@ -441,5 +441,27 @@ describe("sync guardian: drops and errors recover on their own", () => {
     expect((await detail(id)).shipments[0]).toMatchObject({ booking: "booked", trackingNumber: expect.any(String) });
     expect([...bosta.deliveries.values()].filter((d) => d.businessReference === s.id)).toHaveLength(1);
   });
-});
 
+  it("the team sees it: when the guardian last looked, what it fixed on its own, what it will retry and what needs them", async () => {
+    await round();
+    const h = (await http().get("/v1/admin/integrations/sync").set(as("owner")).expect(200)).body;
+    expect(h.checkedAt).toEqual(expect.any(String));
+    expect(h.stores).toEqual([expect.objectContaining({ provider: "shopify", checkedAt: expect.any(String) })]);
+    expect(h.recovered.rebooked + h.recovered.reasserted).toBeGreaterThanOrEqual(2); // the lost fulfillment and the stuck booking above
+
+    // One dead job that will come back on its own, one that needs a person.
+    const [a, b] = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select("id").where("status", "=", "done").orderBy("created_at", "desc").limit(2).execute());
+    await db.tenant(store, async (trx) => {
+      await trx.updateTable("mz_outbox").set({ status: "dead", revivals: 0, last_error: "timeout: no answer", updated_at: clock.now() }).where("id", "=", a!.id).execute();
+      await trx.updateTable("mz_outbox").set({ status: "dead", revivals: 0, last_error: "validation: address rejected", updated_at: clock.now() }).where("id", "=", b!.id).execute();
+    });
+    const after = (await http().get("/v1/admin/integrations/sync").set(as("owner")).expect(200)).body;
+    expect(after.retrying.count).toBeGreaterThanOrEqual(1);
+    expect(after.retrying.nextAt).toEqual(new Date(clock.now() + 3_600_000).toISOString());
+    expect(after.needsYou).toBeGreaterThanOrEqual(1);
+    const letters = (await http().get("/v1/admin/integrations/dead-letters").set(as("owner")).expect(200)).body.data;
+    expect(letters.find((d: { id: string }) => d.id === a!.id).autoRetryAt).toEqual(new Date(clock.now() + 3_600_000).toISOString());
+    expect(letters.find((d: { id: string }) => d.id === b!.id).autoRetryAt).toBeNull();
+    await http().get("/v1/admin/integrations/sync").set(as("agent")).expect(403);
+  });
+});
