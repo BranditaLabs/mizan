@@ -97,12 +97,16 @@ const stable = (v: unknown): string => JSON.stringify(v, (_k, x: unknown) => (x 
   ? Object.fromEntries(Object.entries(x as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))) : x));
 
 /** A store copy of a Mizan order as Mizan last saw it: what the next read is compared with. */
-interface CopySnapshot { lines: Record<string, { q: number; p: string }>; shipping: string; total: string; address: string; name: string; tags: string[]; sentPaid: string }
+interface CopySnapshot { v: number; lines: Record<string, { q: number; p: string }>; shipping: string; total: string; address: string; name: string; tags: string[]; sentPaid: string }
+/** A baseline is trusted only when this code recorded it (an older one, from before or during a deploy, counts as none). */
+export const COPY_SNAPSHOT_VERSION = 2;
 function copySnapshot(o: CanonicalOrder): Omit<CopySnapshot, "sentPaid"> {
+  const v = COPY_SNAPSHOT_VERSION;
   const a = o.shippingAddress;
   // Shopify needs a last name: a one-word name was sent as "Name -"; that placeholder is not a new name.
   const name = (a?.name ?? "").replace(/\s+-$/, "").trim();
   return {
+    v,
     lines: Object.fromEntries(o.lines.filter((l) => l.quantity > 0).map((l) => [l.externalLineId, { q: l.quantity, p: l.unitPrice.amount }])),
     shipping: o.shipping?.amount ?? "0", total: o.total.amount,
     address: JSON.stringify([a?.line1 ?? "", a?.line2 ?? "", a?.city ?? "", a?.province ?? "", a?.phone ?? ""]), name,
@@ -271,7 +275,7 @@ export class OrderProjector {
 
     // No baseline yet (the first read since copies were read three-way): the copy is taken as it is, since Mizan
     // pushes its own edits to it; unless a Mizan edit is still on its way there, or the store refused one.
-    const baseline = Boolean(prev.lines);
+    const baseline = Boolean(prev.lines) && prev.v === COPY_SNAPSHOT_VERSION;
     const editPending = !baseline && Boolean(await trx.selectFrom("mz_outbox").select("id").where("idempotency_key", "like", `shopify:copy-edit:${o.id}:%`)
       .where("status", "in", ["pending", "running"]).executeTakeFirst());
     if (baseline || (!editPending && o.store_copy_status !== "failed")) {

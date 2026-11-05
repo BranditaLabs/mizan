@@ -826,8 +826,9 @@ describe("copies read three-way: only what changed in Shopify since the last rea
 
   it("a copy read for the first time (no baseline) takes the change made in Shopify", async () => {
     const id = await typed({});
-    await db.tenant(store, (trx) => trx.updateTable("orders").set({ store_copy_snapshot: JSON.stringify({ sentPaid: "0" }) }).where("id", "=", id).execute());
+    // A baseline recorded by older code (lines, no version), e.g. by the previous worker during a deploy: counts as none.
     const c = copyOf(id);
+    await db.tenant(store, (trx) => trx.updateTable("orders").set({ store_copy_snapshot: JSON.stringify({ sentPaid: "0", lines: { [c.lines[0]!.id]: { q: 3, p: c.lines[0]!.price } } }) }).where("id", "=", id).execute());
     c.lines[0]!.quantity = 3;
     c.total = (3 * Number(c.lines[0]!.price) + 50).toFixed(2);
     c.tags = [...c.tags, "from-shopify"];
