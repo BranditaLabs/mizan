@@ -28,6 +28,8 @@ async function main(): Promise<void> {
   const { ConfirmationRunner } = await import("./modules/confirmation/confirmation.runner.js");
   const { ReconciliationService } = await import("./modules/orders/reconciliation.service.js");
   const { ReorderService } = await import("./modules/purchasing/reorder.service.js");
+  const { SyncGuardian } = await import("./integrations/sync-guardian.js");
+  const { UsageCloser } = await import("./modules/billing/usage-closer.service.js");
   const { exitOnSignals } = await import("./platform/shutdown.js");
   const { Logger: NestLogger } = await import("@nestjs/common");
   const { MetricsService } = await import("./platform/metrics/metrics.service.js");
@@ -46,6 +48,9 @@ async function main(): Promise<void> {
   app.get(ConfirmationRunner).start();
   app.get(ReconciliationService).start();
   app.get(ReorderService).start();
+  // Every background loop the API process would run in development (runsWorkerInProcess) runs here: test/worker-loops.test.ts.
+  app.get(SyncGuardian).start();
+  app.get(UsageCloser).start();
 }
 
 void main();

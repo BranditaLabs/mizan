@@ -22,7 +22,11 @@ export class UsageCloser implements OnApplicationBootstrap, OnApplicationShutdow
   ) {}
 
   onApplicationBootstrap(): void {
-    if (!runsWorkerInProcess(this.config)) return;
+    if (runsWorkerInProcess(this.config)) this.start();
+  }
+
+  start(): void {
+    if (this.timer) return;
     const tick = () => { this.running = this.runOnce().catch((err) => this.logger.error({ err }, "usage close failed")); };
     this.timer = setInterval(tick, 60 * 60_000);
     this.timer.unref();
