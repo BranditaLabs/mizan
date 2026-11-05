@@ -810,4 +810,18 @@ describe("copies read three-way: only what changed in Shopify since the last rea
     await read(c);
     expect(await detail(id)).toMatchObject({ refunded: { amount: "300.00" } });
   });
+
+  it("the fulfillment of a Bosta delivery cancelled in Shopify: the shipment waits for a person (Bosta still has the parcel)", async () => {
+    const id = await typed({});
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    await settle();
+    const c = copyOf(id);
+    c.fulfillments[0]!.status = "CANCELLED";
+    await read(c);
+    const row = (await http().get("/v1/shipments?view=review").set(as("owner")).expect(200)).body.data.find((x: { id: string }) => x.id === s.id);
+    expect(row).toMatchObject({ needsReview: true, reviewReason: expect.stringMatching(/Fulfillment cancelled in Shopify/) });
+    expect((await detail(id)).shipments[0]).toMatchObject({ booking: "booked" });
+  });
 });
+

@@ -348,6 +348,11 @@ export class OrderProjector {
     const fresh = all.filter((f) => f.status === "SUCCESS" && f.trackingNumber && !known.has(f.trackingNumber));
     // A fulfillment made in the store and then cancelled there: Mizan's record of it is cancelled too, and a
     // replacement made in the same change is recorded after it, in one step (never in the wrong order).
+    // The store cancelled the fulfillment of a delivery Mizan booked (the courier still has the parcel): a person decides.
+    for (const f of all.filter((x) => x.status === "CANCELLED" && x.trackingNumber)) {
+      const booked = mine.find((m) => m.tracking_number === f.trackingNumber && m.status !== "cancelled" && !m.external_id?.startsWith("gid://shopify/Fulfillment/"));
+      if (booked) await this.events.emit(trx, { type: "order.store_fulfillment_cancelled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" }, data: { number: order.number, fulfillmentId: f.externalId, trackingNumber: f.trackingNumber!, mizanBooked: true } });
+    }
     const gone = all.find((x) => x.status === "CANCELLED" && mine.some((m) => m.external_id === x.externalId && m.status !== "cancelled"));
     if (gone) {
       const r = fresh[0];
