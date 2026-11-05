@@ -261,7 +261,7 @@ export class OrderProjector {
    * The order stays Mizan's in how it is paid and numbered; money counts beyond what Mizan sent with the copy.
    */
   private async applyCopy(trx: Transaction<DB>, tenantId: string, connectionId: string, order: CanonicalOrder, orderId: string): Promise<ProjectResult> {
-    const o = await trx.selectFrom("orders").select(["id", "number", "status", "tags", "currency", "payment_mode", "payment_status", "paid_minor", "refunded_minor", "cod_minor", "total_minor", "pii_redacted_at", "store_copy_snapshot"])
+    const o = await trx.selectFrom("orders").select(["id", "number", "status", "tags", "currency", "payment_mode", "payment_status", "paid_minor", "refunded_minor", "cod_minor", "total_minor", "pii_redacted_at", "store_copy_snapshot", "store_copy_status"])
       .where("id", "=", orderId).forUpdate().executeTakeFirstOrThrow();
     const prev = (o.store_copy_snapshot ?? {}) as Partial<CopySnapshot>;
     const now = copySnapshot(order);
@@ -269,7 +269,12 @@ export class OrderProjector {
     const changed: string[] = [];
     const set: Record<string, unknown> = {};
 
-    if (prev.lines) {
+    // No baseline yet (the first read since copies were read three-way): the copy is taken as it is, since Mizan
+    // pushes its own edits to it; unless a Mizan edit is still on its way there, or the store refused one.
+    const baseline = Boolean(prev.lines);
+    const editPending = !baseline && Boolean(await trx.selectFrom("mz_outbox").select("id").where("idempotency_key", "like", `shopify:copy-edit:${o.id}:%`)
+      .where("status", "in", ["pending", "running"]).executeTakeFirst());
+    if (baseline || (!editPending && o.store_copy_status !== "failed")) {
       // Items, quantities, prices or the delivery fee changed in the store: the order takes the copy's lines and money.
       if (stable(prev.lines) !== stable(now.lines) || prev.shipping !== now.shipping || prev.total !== now.total) {
         await this.syncLines(trx, tenantId, o.id, order, undefined, connectionId);
