@@ -686,6 +686,12 @@ export class FakeShopify {
         this.idempotency.set(v.idempotencyKey, result);
         return result;
       }
+      case "MizanFulfillmentCancel": {
+        const f = [...this.orders.values()].flatMap((o) => o.fulfillments).find((x) => x.id === v.id);
+        if (!f) return { fulfillmentCancel: { fulfillment: null, userErrors: [{ field: ["id"], message: "Fulfillment does not exist" }] } };
+        f.status = "CANCELLED";
+        return { fulfillmentCancel: { fulfillment: { id: f.id, status: f.status }, userErrors: [] } };
+      }
       case "MizanFulfillmentCreate": {
         const foIds = v.fulfillment.lineItemsByFulfillmentOrder.map((x: { fulfillmentOrderId: string }) => x.fulfillmentOrderId);
         const order = [...this.orders.values()].find((o) => o.fulfillmentOrders.some((f) => foIds.includes(f.id)));

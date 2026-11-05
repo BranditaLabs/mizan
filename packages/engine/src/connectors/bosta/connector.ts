@@ -229,7 +229,11 @@ export class BostaConnector {
    */
   async createShipmentOnce(order: CanonicalOrder, reference: string, verifyFirst: boolean): Promise<{ shipment: CanonicalShipment; adopted: boolean }> {
     if (verifyFirst) {
-      const existing = await this.findByReference(reference);
+      // Unsure whether a delivery exists and unable to look: wait and look again, never create blind.
+      const existing = await this.findByReference(reference).catch((e: unknown) => {
+        if (e instanceof IntegrationError && !e.retryable) throw new IntegrationError({ kind: "transient", connector: "bosta", message: `could not check for an earlier delivery: ${e.message}`, cause: e });
+        throw e;
+      });
       if (existing) return { shipment: existing, adopted: true };
     }
     const payload = await this.buildDeliveryPayload(order, reference);
@@ -270,7 +274,8 @@ export class BostaConnector {
   }
 
   async cancelShipment(trackingNumber: string): Promise<void> {
-    await this.call("terminateDelivery", "DELETE", `deliveries/business/${encodeURIComponent(trackingNumber)}/terminate`, undefined, true);
+    // Not repeated blindly: a terminate whose answer is lost is checked by reading the delivery (the engine does).
+    await this.call("terminateDelivery", "DELETE", `deliveries/business/${encodeURIComponent(trackingNumber)}/terminate`, undefined, false);
   }
 
   trackingUrl(tn: string) {

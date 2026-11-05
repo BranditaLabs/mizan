@@ -6821,6 +6821,88 @@
         ]
       }
     },
+    "/v1/shipments/{id}/cancel": {
+      "post": {
+        "operationId": "TrackingController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Queued once; audited. Bosta refuses a parcel already picked up: the shipment then waits in review with why",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourierCancelQueued"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "shipping"
+        ]
+      }
+    },
     "/v1/couriers/scorecard": {
       "get": {
         "operationId": "ScorecardController_get",
@@ -23539,6 +23621,19 @@
         "required": [
           "updated",
           "missingCost"
+        ],
+        "additionalProperties": false
+      },
+      "CourierCancelQueued": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean",
+            "description": "false when it was asked already"
+          }
+        },
+        "required": [
+          "queued"
         ],
         "additionalProperties": false
       },
@@ -41047,6 +41142,11 @@
                 "needsReview": {
                   "type": "boolean"
                 },
+                "reviewReason": {
+                  "nullable": true,
+                  "description": "Why a person must decide (the store cancelled after booking, the cash changed, shipped twice, a cancel refused); null for a courier status Mizan could not read",
+                  "type": "string"
+                },
                 "errorCode": {
                   "nullable": true,
                   "type": "string"
@@ -41108,6 +41208,7 @@
                 "statusRaw",
                 "statusAt",
                 "needsReview",
+                "reviewReason",
                 "errorCode",
                 "trackingNumber",
                 "trackingUrl",

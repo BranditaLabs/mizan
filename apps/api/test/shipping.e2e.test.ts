@@ -536,3 +536,161 @@ describe("orders made in Mizan reach Shopify: one record in Mizan, Shopify and t
   });
 });
 
+describe("review fixes: one record, whatever fails or repeats", () => {
+  const shopifyId = async () => (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "shopify").executeTakeFirstOrThrow())).id;
+  const settle = async () => { await drainEvents(); await runJobs(); await drainEvents(); await runJobs(); await drainEvents(); };
+  async function storeOrder(name: string) {
+    const o = shop.addOrder({ name });
+    const wh = shop.webhook("orders/create", o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+    const row = await db.tenant(store, (trx) => trx.selectFrom("orders").select("id").where("number", "=", name).executeTakeFirstOrThrow());
+    return { shop: o, id: row.id };
+  }
+  const webhook = async (topic: string, o: Parameters<typeof shop.webhook>[1]) => {
+    o.updatedAt = new Date(clock.now() + 1000).toISOString();
+    const wh = shop.webhook(topic, o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+  };
+  const reviewRow = async (shipmentId: string) => (await http().get("/v1/shipments?view=review").set(as("owner")).expect(200)).body.data.find((x: { id: string }) => x.id === shipmentId);
+
+  it("a booking job run again (replayed, revived) adopts the delivery Bosta has: never two", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    await settle();
+    // As if the answer was lost: the shipment still waits, and the job is brought back with its count reset.
+    await db.tenant(store, async (trx) => {
+      await trx.updateTable("shipments").set({ booking: "pending" }).where("id", "=", s.id).execute();
+      await trx.updateTable("mz_outbox").set({ status: "dead", attempts: 0, last_error: "gave up after 12 attempts — timeout: lost" }).where("idempotency_key", "=", `bosta:ship:${s.id}`).execute();
+    });
+    clock.advance(2 * 3_600_000);
+    await app.get(SyncGuardian).revive(clock.now());
+    await settle();
+    expect([...bosta.deliveries.values()].filter((d) => d.businessReference === s.id)).toHaveLength(1);
+    expect((await detail(id)).shipments[0]).toMatchObject({ booking: "booked" });
+  });
+
+  it("money recorded in Mizan and marked paid in Shopify is counted once", async () => {
+    const o = await storeOrder("#5001");
+    await http().post(`/v1/orders/${o.id}/payments`).set(as("owner")).send({ type: "received", method: "instapay", amount: "1150" }).expect(201);
+    await settle();
+    expect(shop.orders.get(o.shop.id)!.displayFinancialStatus).toBe("PAID");
+    await webhook("orders/updated", shop.orders.get(o.shop.id)!);
+    expect(await detail(o.id)).toMatchObject({ paymentStatus: "paid", paid: { amount: "1150.00" } });
+  });
+
+  it("a Bosta delivery is cancelled at Bosta, not only in Mizan; the order can ship again", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    await settle();
+    expect((await http().post(`/v1/shipments/${s.id}/status`).set(as("owner")).send({ status: "cancelled" }).expect(409)).body.code).toBe("cancel_at_courier");
+    expect((await http().post(`/v1/shipments/${s.id}/cancel`).set(as("owner")).expect(202)).body).toEqual({ queued: true });
+    await settle();
+    const d = await detail(id);
+    expect(bosta.deliveries.get(d.shipments[0].trackingNumber)!.state.code).toBe(48);
+    expect(d.shipments[0]).toMatchObject({ status: "cancelled" });
+    expect(d.status).toBe("confirmed");
+  });
+
+  it("Bosta refuses to cancel a parcel already picked up: the shipment waits in review with why", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    await settle();
+    bosta.setState((await detail(id)).shipments[0].trackingNumber, 24, "In transit");
+    await http().post(`/v1/shipments/${s.id}/cancel`).set(as("owner")).expect(202);
+    await settle();
+    expect(await reviewRow(s.id)).toMatchObject({ needsReview: true, reviewReason: expect.stringMatching(/Bosta refused to cancel/) });
+    expect((await http().post(`/v1/shipments/${s.id}/cancel`).set(as("owner")).expect(202)).body).toEqual({ queued: true }); // asked again after the refusal
+  });
+
+  it("cancelled in Shopify after booking: flagged for a person; cancelling at Bosta cancels the order", async () => {
+    const o = await storeOrder("#5002");
+    await confirm(o.id);
+    const s = (await ship(o.id).expect(202)).body;
+    await settle();
+    const so = shop.orders.get(o.shop.id)!;
+    so.cancelledAt = new Date(clock.now()).toISOString();
+    await webhook("orders/cancelled", so);
+    expect(await reviewRow(s.id)).toMatchObject({ needsReview: true, reviewReason: expect.stringMatching(/Cancelled in the store/) });
+    // The courier's next update keeps the review open: only a person decides.
+    const tn = (await detail(o.id)).shipments[0].trackingNumber as string;
+    bosta.setState(tn, 10, "Pickup requested");
+    clock.advance(6 * 60_000);
+    await app.get(SyncGuardian).round(Date.now(), clock.now());
+    await settle();
+    expect(await reviewRow(s.id)).toMatchObject({ needsReview: true, reviewReason: expect.stringMatching(/Cancelled in the store/) });
+    await http().post(`/v1/shipments/${s.id}/cancel`).set(as("owner")).expect(202);
+    await settle();
+    expect((await detail(o.id)).status).toBe("cancelled");
+    // The Shopify fulfillment of the cancelled delivery is cancelled too; the next store update brings no ghost shipment.
+    expect(shop.orders.get(o.shop.id)!.fulfillments.find((f) => f.trackingInfo[0]?.number === tn)!.status).toBe("CANCELLED");
+    await webhook("orders/updated", shop.orders.get(o.shop.id)!);
+    expect((await detail(o.id)).shipments).toHaveLength(1);
+  });
+
+  it("a deposit paid in Shopify and cash the team recorded are both counted, once each", async () => {
+    const o = shop.addOrder({ name: "#5009", payment: "deposit", total: "1150.00" }); // 300 paid in Shopify
+    const wh = shop.webhook("orders/create", o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+    const id = (await db.tenant(store, (trx) => trx.selectFrom("orders").select("id").where("number", "=", "#5009").executeTakeFirstOrThrow())).id;
+    await http().post(`/v1/orders/${id}/payments`).set(as("owner")).send({ type: "received", method: "instapay", amount: "300" }).expect(201);
+    await settle();
+    await webhook("orders/updated", shop.orders.get(o.id)!); // Shopify still says 300 received
+    expect(await detail(id)).toMatchObject({ paid: { amount: "600.00" } });
+  });
+
+  it("the cash to collect changed after booking (paid meanwhile): flagged, the courier still has the old amount", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    await settle();
+    await http().post(`/v1/orders/${id}/payments`).set(as("owner")).send({ type: "received", method: "instapay", amount: "1250" }).expect(201);
+    await settle();
+    expect(await reviewRow(s.id)).toMatchObject({ needsReview: true }); // once (the payment conversion's flag), not twice
+    const flags = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select("id").where("type", "=", "shipment.needs_review").where("entity_id", "=", s.id).execute());
+    expect(flags).toHaveLength(1);
+  });
+
+  it("a fulfillment cancelled in Shopify cancels Mizan's record of it; a new one is recorded", async () => {
+    const o = await storeOrder("#5003");
+    const so = shop.orders.get(o.shop.id)!;
+    so.fulfillments.push({ id: "gid://shopify/Fulfillment/995001", status: "SUCCESS", trackingInfo: [{ company: "Aramex", number: "AX-T1" }] });
+    await webhook("orders/updated", so);
+    expect((await detail(o.id)).status).toBe("shipped");
+    so.fulfillments[0]!.status = "CANCELLED";
+    so.fulfillments.push({ id: "gid://shopify/Fulfillment/995002", status: "SUCCESS", trackingInfo: [{ company: "Aramex", number: "AX-T2" }] });
+    await webhook("orders/updated", so);
+    await webhook("orders/updated", so);
+    const d = await detail(o.id);
+    expect(d.shipments.find((x: { trackingNumber: string }) => x.trackingNumber === "AX-T1")).toMatchObject({ status: "cancelled" });
+    expect(d.shipments.find((x: { trackingNumber: string }) => x.trackingNumber === "AX-T2")).toMatchObject({ booking: "booked" });
+    expect(d.status).toBe("shipped");
+  });
+
+  it("an order made in Mizan and edited: its Shopify copy follows", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    const before = await detail(id);
+    await http().patch(`/v1/orders/${id}`).set(as("owner")).send({ lines: [{ lineId: before.lines[0].id, quantity: 3 }], add: [], shipping: "60" }).expect(200);
+    await settle();
+    const copy = [...shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`)!;
+    expect(copy.lines[0]!.quantity).toBe(3);
+    expect((await detail(id)).storeCopy).toMatchObject({ status: "created", error: null });
+  });
+
+  it("a store copy that failed is tried again after the order is fixed", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    for (const [k, o] of shop.orders) if (o.sourceIdentifier === `mizan:${id}`) { shop.orders.delete(k); }
+    await db.tenant(store, (trx) => trx.updateTable("orders").set({ store_copy_status: "failed", store_copy_id: null, store_copy_error: "refused" }).where("id", "=", id).execute());
+    const lines = (await detail(id)).lines;
+    await http().patch(`/v1/orders/${id}`).set(as("owner")).send({ lines: [{ lineId: lines[0].id, quantity: 2 }], add: [] }).expect(200);
+    await settle();
+    expect((await detail(id)).storeCopy).toMatchObject({ status: "created" });
+  });
+});

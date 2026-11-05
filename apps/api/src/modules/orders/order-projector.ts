@@ -45,6 +45,8 @@ const STORE_TAGS = new Set<string>(["shopify"]);
 const TRACKED = ["status", "payment_mode", "payment_status", "total_minor", "paid_minor", "refunded_minor", "cod_minor", "tags"] as const;
 /** Statuses an order can be shipped from in the store before Mizan ships it. */
 const FULFILLABLE = new Set(["new", "pending_confirmation", "confirmed"]);
+/** Statuses where what the store does with the parcel still matters (before the delivery ends). */
+const LIVE = new Set([...FULFILLABLE, "shipped"]);
 const PAYMENT_FIELDS = new Set<string>(["payment_status", "paid_minor", "refunded_minor"]);
 
 const money = (v: { paid_minor: bigint; refunded_minor: bigint; payment_status: string; cod_minor: bigint; total_minor: bigint; payment_mode: string }) =>
@@ -190,7 +192,9 @@ export class OrderProjector {
     // Two-way delivery, store → Mizan: shipped in the store with another courier (a fulfillment with
     // a tracking number Mizan never booked) becomes a Mizan shipment, so the order leaves the
     // confirmation and shipping queues and its statuses can follow.
-    if (FULFILLABLE.has(status)) await this.storeFulfilled(trx, tenantId, existing.id, order);
+    if (LIVE.has(status)) await this.storeFulfilled(trx, tenantId, existing.id, order);
+    // Cancelled in the store after the courier has it: the delivery waits for a person (cancel at the courier, or keep it). Once.
+    if (order.cancelled && status !== "cancelled" && existing.status === "shipped") await this.storeCancelledAfterShipping(trx, tenantId, existing.id, order.number);
 
     if (changed.length) {
       await trx.insertInto("order_events").values({
@@ -229,7 +233,8 @@ export class OrderProjector {
       await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: own.id }, actor: { type: "engine" }, data: { number: own.number, reason: "cancelled_in_store" } });
       return { orderId: own.id, created: false, changed: ["status"] };
     }
-    if (FULFILLABLE.has(own.status)) await this.storeFulfilled(trx, tenantId, own.id, order);
+    if (order.cancelled && own.status === "shipped") await this.storeCancelledAfterShipping(trx, tenantId, own.id, own.number);
+    if (LIVE.has(own.status)) await this.storeFulfilled(trx, tenantId, own.id, order);
     return { orderId: own.id, created: false, changed: [] };
   }
 
@@ -238,11 +243,31 @@ export class OrderProjector {
    * a tracking number Mizan never booked) becomes a Mizan shipment, so the order leaves the
    * confirmation and shipping queues and its statuses can follow.
    */
+  /** The store cancelled an order the courier already has: marked once, and the delivery waits for a person. */
+  private async storeCancelledAfterShipping(trx: Transaction<DB>, tenantId: string, orderId: string, number: string) {
+    const r = await trx.updateTable("orders").set({ store_cancelled_at: new Date() }).where("id", "=", orderId).where("store_cancelled_at", "is", null).executeTakeFirst();
+    if (!Number(r.numUpdatedRows)) return;
+    await this.events.emit(trx, { type: "order.cancelled_after_shipping", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" }, data: { number } });
+  }
+
   private async storeFulfilled(trx: Transaction<DB>, tenantId: string, orderId: string, order: CanonicalOrder) {
-    const fulfilled = (order.storeFulfillments ?? []).filter((f) => f.status === "SUCCESS" && f.trackingNumber);
-    if (!fulfilled.length) return;
-    const known = new Set((await trx.selectFrom("shipments").select("tracking_number").where("order_id", "=", orderId).where("tracking_number", "is not", null).execute()).map((r) => r.tracking_number));
-    const f = fulfilled.find((x) => !known.has(x.trackingNumber!));
+    const all = order.storeFulfillments ?? [];
+    if (!all.length) return;
+    const mine = await trx.selectFrom("shipments").select(["tracking_number", "external_id", "status"]).where("order_id", "=", orderId).execute();
+    // Tracking numbers Mizan knows: every one it booked (a delivery cancelled at the courier stays known: its old
+    // fulfillment in the store is not a new parcel), except a store's own fulfillment that was cancelled there.
+    const known = new Set(mine.filter((m) => m.tracking_number && !(m.status === "cancelled" && m.external_id?.startsWith("gid://shopify/Fulfillment/"))).map((m) => m.tracking_number));
+    const fresh = all.filter((f) => f.status === "SUCCESS" && f.trackingNumber && !known.has(f.trackingNumber));
+    // A fulfillment made in the store and then cancelled there: Mizan's record of it is cancelled too, and a
+    // replacement made in the same change is recorded after it, in one step (never in the wrong order).
+    const gone = all.find((x) => x.status === "CANCELLED" && mine.some((m) => m.external_id === x.externalId && m.status !== "cancelled"));
+    if (gone) {
+      const r = fresh[0];
+      await this.events.emit(trx, { type: "order.store_fulfillment_cancelled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
+        data: { number: order.number, fulfillmentId: gone.externalId, ...(r ? { replacement: { fulfillmentId: r.externalId, company: r.company ?? null, trackingNumber: r.trackingNumber!, trackingUrl: r.trackingUrl ?? null } } : {}) } });
+      return;
+    }
+    const f = fresh[0];
     if (!f) return;
     await this.events.emit(trx, {
       type: "order.store_fulfilled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },

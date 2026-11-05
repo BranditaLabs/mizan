@@ -125,6 +125,8 @@ export function OrderDetail({ id }: { id: string }) {
       case "edit_failed": return t("events.edit_failed");
       case "store_copy_created": return t("events.store_copy_created", { name: e.data.name ?? "" });
       case "store_copy_failed": return t("events.store_copy_failed");
+      case "store_copy_synced": return t("events.store_copy_synced");
+      case "cancel_requested": return t("events.cancel_requested");
       default: return t("events.other");
     }
   };

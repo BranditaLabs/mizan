@@ -1,3 +1,4 @@
+import type { DomainEvent } from "@mizan/shared";
 import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import { trxQueryClient, type DB } from "@mizan/db";
@@ -31,6 +32,9 @@ const DB_STATUSES = new Set<string>(SHIPMENT_STATUSES.filter((s) => s !== "excep
  * answer is found by its reference) with cashToCollect(order), and reports back to `recordResult`:
  * the tracking number and the order shipped, or why the courier or the order refused.
  */
+/** Why a delivery waits for a person after the store cancelled the order. */
+export const STORE_CANCELLED = "Cancelled in the store after booking: cancel at the courier, or keep it";
+
 @Injectable()
 export class ShippingService implements ShipmentResultSink {
   constructor(
@@ -73,7 +77,8 @@ export class ShippingService implements ShipmentResultSink {
     if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
     // Jobs run in a store's engine: the order's own store, else the tenant's first (a courier is only connected after a store).
     const fromStore = o.store_provider && (STORE_PROVIDERS as readonly string[]).includes(o.store_provider) && o.store_status !== "disconnected" ? o.connection_id
-      : o.store_copy_id ? o.store_copy_connection_id : null; // a Mizan order with its copy in the store: fulfilled there too
+      : o.store_copy_id && (await trx.selectFrom("connections").select("status").where("id", "=", o.store_copy_connection_id!).executeTakeFirst())?.status !== "disconnected"
+        ? o.store_copy_connection_id : null; // a Mizan order with its copy in the store: fulfilled there too
     const storeId = fromStore ?? (await trx.selectFrom("connections").select("id").where("provider", "in", [...STORE_PROVIDERS]).where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
     if (!storeId) throw new ProblemError(409, "store_not_connected", "connect the store first");
 
@@ -131,10 +136,14 @@ export class ShippingService implements ShipmentResultSink {
   async recordStoreFulfillment(trx: Trx, tenantId: string, orderId: string, f: { company: string | null; trackingNumber: string; trackingUrl: string | null; fulfillmentId?: string | null }, now = new Date()): Promise<"recorded" | "skipped"> {
     const o = await trx.selectFrom("orders").select(["id", "number", "status", "currency", "total_minor", "paid_minor", "refunded_minor", "payment_mode", "payment_status"])
       .where("id", "=", orderId).forUpdate().executeTakeFirst();
-    if (!o || !["new", "pending_confirmation", "confirmed"].includes(o.status)) return "skipped";
-    const live = await trx.selectFrom("shipments").select("id").where("order_id", "=", orderId).where("is_return_leg", "=", false)
+    if (!o || !["new", "pending_confirmation", "confirmed", "shipped"].includes(o.status)) return "skipped";
+    const live = await trx.selectFrom("shipments").select(["id", "tracking_number"]).where("order_id", "=", orderId).where("is_return_leg", "=", false)
       .where("booking", "!=", "failed").where("status", "!=", "cancelled").executeTakeFirst();
-    if (live) return "skipped";
+    if (live) {
+      // Shipped twice: Mizan has a delivery and the store recorded another. A person decides which goes.
+      if (live.tracking_number !== f.trackingNumber) await this.tracking.flag(trx, tenantId, live.id, `Also shipped in the store: ${f.company ?? "another courier"} ${f.trackingNumber}`);
+      return "skipped";
+    }
     const name = f.company?.trim() || "Store courier";
     const key = name.toLowerCase().replace(/\s+/g, " ");
     let courier = await trx.selectFrom("connections").select(["id", "display_name"]).where("kind", "=", "courier").where("provider", "=", "manual").where("external_account", "=", key).executeTakeFirst();
@@ -158,6 +167,102 @@ export class ShippingService implements ShipmentResultSink {
     await this.events.emit(trx, { type: "shipment.created", tenantId, entity: { type: "shipment", id: row.id }, actor, data: { orderId, number: o.number, provider, trackingNumber: f.trackingNumber, codMinor: String(cod), currency: o.currency, adopted: false, source: "store" } });
     await this.events.emit(trx, { type: "order.updated", tenantId, entity: { type: "order", id: orderId }, actor, data: { number: o.number, status: "shipped", changed: ["status"] } });
     return "recorded";
+  }
+
+  /**
+   * Cancel a booked delivery at the courier (Bosta: terminate). Queued once per shipment; the shipment is
+   * cancelled when Bosta confirms (recordCancelled), so a parcel already picked up is never shown cancelled.
+   */
+  async cancelAtCourier(auth: AuthContext, shipmentId: string): Promise<{ queued: boolean }> {
+    const tenantId = auth.tenant!.id;
+    return this.db.tenant(tenantId, async (trx) => {
+      const s = await trx.selectFrom("shipments as s").innerJoin("connections as k", "k.id", "s.connection_id")
+        .select(["s.id", "s.order_id", "s.status", "s.booking", "s.tracking_number", "s.connection_id", "k.provider as courier"]).where("s.id", "=", shipmentId).executeTakeFirst();
+      if (!s) throw new ProblemError(404, "not_found", "shipment not found");
+      if (s.courier !== "bosta") throw new ProblemError(409, "no_courier_api", "this courier has no API: set the status by hand");
+      if (s.booking !== "booked" || !s.tracking_number) throw new ProblemError(409, "not_booked", "the courier has not booked this shipment");
+      if (["delivered", "returned", "lost", "cancelled"].includes(s.status)) throw new ProblemError(409, "already_final", "this delivery is over");
+      const storeId = await this.engineStoreOf(trx, s.order_id);
+      if (!storeId) throw new ProblemError(409, "store_not_connected", "connect the store first");
+      const store = new SqlStore(trxQueryClient(trx), { tenantId, store: storeId, connections: { bosta: s.connection_id } });
+      // One request at a time; after a refusal or a failure, a new one (Bosta is read before anything is said).
+      const asked = await trx.selectFrom("mz_outbox").select(["status"]).where("idempotency_key", "like", `bosta:cancel:${s.id}%`).execute();
+      if (asked.some((j) => j.status === "pending" || j.status === "running")) return { queued: false };
+      const r = await store.enqueue(MizanEngine.bostaCancelJob({ shipmentId: s.id, trackingNumber: s.tracking_number }, asked.length), this.runtime(tenantId).clock.now());
+      if (r.created) {
+        await timeline(trx, tenantId, s.order_id, "cancel_requested", { shipmentId: s.id }, auth.user.id);
+        await this.audit.record(trx, { action: "shipment.cancel_requested", tenantId, entity: { type: "shipment", id: s.id }, after: { trackingNumber: s.tracking_number }, ...auditActor(auth) });
+      }
+      return { queued: r.created };
+    });
+  }
+
+  /** Bosta's answer to a cancel: the shipment cancelled and the order freed to ship again (or cancelled, when the store cancelled it); or why not. */
+  async recordCancelled(tenantId: string, shipmentId: string, result: { ok: true } | { ok: false; reason: string; message: string }): Promise<void> {
+    await this.db.tenant(tenantId, async (trx) => {
+      const before = await trx.selectFrom("shipments").select(["status"]).where("id", "=", shipmentId).executeTakeFirst();
+      if (!before) return;
+      if (!result.ok) {
+        await this.tracking.flag(trx, tenantId, shipmentId, `Bosta refused to cancel: ${result.message}`);
+        return;
+      }
+      if (before.status === "cancelled") return;
+      // The shipment is cancelled; the order follows (shipped → confirmed, or cancelled when the store had cancelled it).
+      await this.tracking.courierCancelled(trx, tenantId, shipmentId);
+    });
+  }
+
+  /** The store whose engine queue carries this order's courier jobs (as book() picks it). */
+  private async engineStoreOf(trx: Trx, orderId: string): Promise<string | null> {
+    const o = await trx.selectFrom("orders as o").leftJoin("connections as c", "c.id", "o.connection_id")
+      .select(["o.connection_id", "c.provider", "c.status", "o.store_copy_connection_id", "o.store_copy_id"]).where("o.id", "=", orderId).executeTakeFirst();
+    if (!o) return null;
+    const own = o.provider && (STORE_PROVIDERS as readonly string[]).includes(o.provider) && o.status !== "disconnected" ? o.connection_id : null;
+    if (own) return own;
+    if (o.store_copy_id && o.store_copy_connection_id) {
+      const k = await trx.selectFrom("connections").select("status").where("id", "=", o.store_copy_connection_id).executeTakeFirst();
+      if (k && k.status !== "disconnected") return o.store_copy_connection_id;
+    }
+    return (await trx.selectFrom("connections").select("id").where("provider", "in", [...STORE_PROVIDERS]).where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id ?? null;
+  }
+
+  /**
+   * What the store says about an order with a live delivery (shipping's watch on the order): cancelled after booking,
+   * the cash to collect changed, shipped there too, a fulfillment cancelled there. A person decides; nothing is guessed.
+   */
+  async watch(trx: Trx, event: DomainEvent): Promise<void> {
+    const tenantId = event.tenantId;
+    const orderId = event.entity.id;
+    const live = await trx.selectFrom("shipments").select(["id", "cod_minor", "status", "booking", "external_id", "tracking_number", "needs_review"])
+      .where("order_id", "=", orderId).where("is_return_leg", "=", false).where("booking", "in", ["booked", "pending"])
+      .where("status", "not in", ["delivered", "returned", "lost", "cancelled"]).orderBy("created_at", "desc").executeTakeFirst();
+    const d = event.data as Record<string, unknown>;
+    if (event.type === "order.store_fulfillment_cancelled") {
+      // Shipped in the store with another courier, and that fulfillment was cancelled there: so is Mizan's record of it.
+      const s = await trx.selectFrom("shipments").select(["id", "status"]).where("order_id", "=", orderId).where("external_id", "=", String(d.fulfillmentId ?? "")).executeTakeFirst();
+      if (!s || s.status === "cancelled") return;
+      await this.tracking.courierCancelled(trx, tenantId, s.id); // the order follows (shipped → confirmed)
+      // The replacement made in the same change in the store, recorded after the cancel (never before it).
+      const r = d.replacement as { company?: string | null; trackingNumber?: string; trackingUrl?: string | null; fulfillmentId?: string } | undefined;
+      if (r?.trackingNumber) await this.recordStoreFulfillment(trx, tenantId, orderId, { company: r.company ?? null, trackingNumber: r.trackingNumber, trackingUrl: r.trackingUrl ?? null, fulfillmentId: r.fulfillmentId ?? null });
+      return;
+    }
+    if (!live) return;
+    if (event.type === "order.cancelled_after_shipping") {
+      await this.tracking.flag(trx, tenantId, live.id, STORE_CANCELLED);
+      return;
+    }
+    // The cash to collect changed after booking (a refund, a payment, an edit): the courier still has the old amount.
+    const o = await trx.selectFrom("orders").select(["cod_minor", "currency", "status"]).where("id", "=", orderId).executeTakeFirst();
+    if (o?.status !== "shipped") return; // delivered (fully or in part), returned, or not out yet: nothing for the courier to change
+    // (A booking still pending reads the order when it runs, so it books the new amount.)
+    // Already waiting for a person (e.g. the payment conversion flagged it): no second flag.
+    if (o && live.booking === "booked" && !live.needs_review && BigInt(o.cod_minor) !== BigInt(live.cod_minor)) {
+      const was = fromMinor(BigInt(live.cod_minor), o.currency.trim()).amount;
+      const now = fromMinor(BigInt(o.cod_minor), o.currency.trim()).amount;
+      await this.tracking.flag(trx, tenantId, live.id, `Cash to collect changed after booking: the courier has ${was}, the order now says ${now}`,
+        { reason: "cod_changed", fromMinor: String(live.cod_minor), toMinor: String(o.cod_minor), currency: o.currency.trim() });
+    }
   }
 
   /** The checks every way of shipping makes: the order ships now, with this much to collect — or it already has a live shipment. */

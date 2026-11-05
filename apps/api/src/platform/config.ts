@@ -106,6 +106,8 @@ export const ConfigSchema = z.object({
   MAX_SHOPIFY_STORES: z.coerce.number().int().min(1).max(50).default(3),
   BOSTA_BASE_URL: url.optional(),
   BOSTA_TRACKING_URL_TEMPLATE: z.string().includes("{tn}", { error: "must contain {tn}" }).optional(),
+  /** Tests of the engine's own flows only: a store order with this tag is booked by the engine. Never set in production (Mizan books through its shipping). */
+  ENGINE_AUTO_SHIP_TAG: z.string().min(1).optional(),
 
   // Secrets: Azure Key Vault key that wraps per-secret data keys (required in production), e.g.
   // https://mizan-staging-kv.vault.azure.net/keys/tenant-secrets; read with the managed identity

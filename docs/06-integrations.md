@@ -94,6 +94,16 @@ Every write is an outbox job keyed so a step is never sent twice; webhooks are h
 - **Stuck bookings:** a Bosta booking with no answer after 30 minutes and no job behind it is asked again; the engine looks the reference up first, so it is adopted, never booked twice.
 - Anything recovered emits `sync.recovered` and is logged.
 
+**Guarantees after the sync review (Nov 2026):**
+- Every Bosta booking looks the reference up before creating, on every run (a revived or replayed job adopts the delivery Bosta has: one delivery per shipment).
+- The guardian re-queues a stuck booking only when no job for it exists in any store's queue, and only in the store the booking uses.
+- Money Mizan holds from its own sources that Shopify then shows (marked paid from Mizan) is not counted again (`ledger.syncStore`).
+- The standalone engine's auto-ship on the `mizan-confirmed` tag is off in the platform: the courier is booked only through Mizan's shipping.
+- A delivery is cancelled at Bosta (`POST /shipments/{id}/cancel`, terminate) and marked cancelled when Bosta confirms; a person cannot mark a Bosta delivery cancelled without it. Bosta refusing (picked up already) puts the shipment in review with why.
+- To review, with why: an order cancelled in the store after booking, the cash to collect changing after booking, a parcel shipped both by Mizan and in the store. A fulfillment cancelled in Shopify cancels Mizan's record of it.
+- An order made in Mizan and edited: its Shopify copy follows (quantities, catalogue items, delivery fee, address). Shopify cannot change a line's price or add an item outside the catalogue by an edit: refused, said on the order ("out of date in Shopify"), made in Shopify by the team. A refused copy is tried again after the order is edited.
+- Not yet automatic: changing the COD or address of a delivery Bosta already has (Bosta's update API unconfirmed): flagged for a person.
+
 Not synced, on purpose: refunds of money (Shopify would move real money; refunds are recorded in Mizan), and a delivery cancelled after booking (the team terminates it with the courier).
 
 ### Shopify specifics (already handled by the engine)

@@ -938,7 +938,9 @@
       "edited": "Order edited",
       "edit_failed": "The store refused the edit",
       "store_copy_created": "Created in Shopify as {name}",
-      "store_copy_failed": "Shopify refused to create it"
+      "store_copy_failed": "Shopify refused to create it",
+      "store_copy_synced": "The Shopify copy follows the edit",
+      "cancel_requested": "Asked the courier to cancel the delivery"
     },
     "confirmation": {
       "title": "Confirmation",
@@ -3275,6 +3277,15 @@
       "tracking": "Tracking number",
       "save": "Record",
       "cancel": "Cancel"
+    },
+    "cancelAtCourier": {
+      "open": "Cancel at Bosta",
+      "title": "Cancel this delivery at Bosta?",
+      "body": "Bosta stops the delivery. It is marked cancelled when Bosta confirms. A parcel already picked up cannot be cancelled: it then waits in review with Bosta's answer.",
+      "confirm": "Cancel the delivery",
+      "back": "Keep it",
+      "queued": "Asked Bosta to cancel the delivery",
+      "already": "Already asked: waiting for Bosta"
     }
   },
   "shipments": {
@@ -3365,7 +3376,8 @@
         "empty": "no rows",
         "unknown_tracking": "no shipment with this number",
         "not_booked": "the shipment isn't booked yet",
-        "other": "can't be applied"
+        "other": "can't be applied",
+        "cancel_at_courier": "a Bosta delivery is cancelled at Bosta (Cancel at Bosta), not by a file"
       }
     },
     "scorecard": {

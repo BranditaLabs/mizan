@@ -10,7 +10,7 @@ export interface StoreOrderDraft {
   /** Mizan's number (M-1001): the store's order is named the same. */
   number: string;
   currency: string;
-  lines: Array<{ variantExternalId?: string; title: string; sku?: string | null; quantity: number; unitPrice: string }>;
+  lines: Array<{ variantExternalId?: string; title: string; sku?: string | null; quantity: number; unitPrice: string; /** The catalogue price (what the store charges for the variant). */ listPrice?: string }>;
   shipping: string;
   discount: string;
   /** What was paid already (a deposit, a transfer, a prepaid order), recorded as one payment in the store. */

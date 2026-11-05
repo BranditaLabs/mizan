@@ -25,6 +25,8 @@ export interface StoreOrderSink {
   queue(trx: import("kysely").Transaction<import("@mizan/db").DB>, tenantId: string, orderId: string): Promise<boolean>;
   loadDraft(tenantId: string, orderId: string): Promise<import("@mizan/engine").StoreOrderDraft | undefined>;
   recordCreated(tenantId: string, orderId: string, result: import("@mizan/engine").StoreOrderOutcome): Promise<void>;
+  loadCopy(tenantId: string, orderId: string): Promise<{ copyId: string; draft: import("@mizan/engine").StoreOrderDraft } | undefined>;
+  recordSynced(tenantId: string, orderId: string, result: import("@mizan/engine").OrderEditOutcome): Promise<void>;
 }
 /** Confirmation's answer for an order (E5-4 bulk confirm), provided by the confirmation module. */
 export const ORDER_ANSWERS = Symbol("ORDER_ANSWERS");

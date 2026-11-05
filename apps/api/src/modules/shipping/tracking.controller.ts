@@ -6,15 +6,17 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod } from "../../platform/http/api-schema.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import { ImportStatusesSchema, ListShipmentsQuerySchema, SetStatusSchema, StatusesImportedSchema, ShipmentHistorySchema, ShipmentPageSchema, type ListShipmentsQuery, type SetStatusBody } from "./tracking.dto.js";
+import { ShippingService } from "./shipping.service.js";
 import { TrackingService } from "./tracking.service.js";
 
 const StatusSetSchema = z.object({ id: z.uuid(), status: z.string() });
+const CourierCancelSchema = z.object({ queued: z.boolean().describe("false when it was asked already") });
 
 /** M3 tracking (E7-3): shipments with the courier, the needs-review queue, and a person's override. */
 @ApiTags("shipping")
 @Controller("shipments")
 export class TrackingController {
-  constructor(@Inject(TrackingService) private readonly tracking: TrackingService) {}
+  constructor(@Inject(TrackingService) private readonly tracking: TrackingService, @Inject(ShippingService) private readonly shipping: ShippingService) {}
 
   @Get()
   @Can("shipments.read")
@@ -51,5 +53,15 @@ export class TrackingController {
   @ApiProblems(404, 409, 422)
   setStatus(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string, @Body(new ZodPipe(SetStatusSchema)) body: SetStatusBody) {
     return this.tracking.setStatus(auth, id, body);
+  }
+
+  /** Cancel a booked delivery at the courier (Bosta: terminate); the shipment is cancelled when Bosta confirms. */
+  @Post(":id/cancel")
+  @HttpCode(202)
+  @Can("shipments.manage")
+  @ApiJson(202, "CourierCancelQueued", CourierCancelSchema, "Queued once; audited. Bosta refuses a parcel already picked up: the shipment then waits in review with why")
+  @ApiProblems(404, 409)
+  cancel(@Auth() auth: AuthContext, @Param("id", new ParseUUIDPipe()) id: string) {
+    return this.shipping.cancelAtCourier(auth, id);
   }
 }

@@ -86,7 +86,7 @@ export class WhatsAppCloudConnector implements MessagingProvider, WhatsAppChat {
 
   private request(op: string, method: "GET" | "POST", path: string, body?: unknown, idempotent = method === "GET"): Promise<HttpResponse> {
     return send(this.rt, {
-      connector: "whatsapp", op: `whatsapp.${op}`, method, url: `${this.base}/${path}`, body, idempotent,
+      connector: "whatsapp", op: `whatsapp.${op}`, method, url: `${this.base}/${path}`, body, idempotent, retryServerErrors: true,
       headers: { authorization: `Bearer ${this.cfg.accessToken}` },
       timeoutMs: 10_000, maxAttempts: idempotent ? 5 : 3,
       classify: (res) => classifyGraphError(`whatsapp.${op}`, res, this.rt.clock.now()),

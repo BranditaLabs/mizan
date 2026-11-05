@@ -63,7 +63,7 @@ async function runUntilQuiet(rounds = 60) {
 
 beforeAll(async () => {
   const shopSecret = fakes.get(A)!.shop.secret;
-  const config = loadConfig({
+  const config = loadConfig({ ENGINE_AUTO_SHIP_TAG: "mizan-confirmed",
     NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000",
     SHOPIFY_API_SECRET: shopSecret, BOSTA_BASE_URL: fakes.get(A)!.bosta.baseUrl,
   });

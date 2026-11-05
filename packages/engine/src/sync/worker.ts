@@ -72,7 +72,8 @@ export class OutboxWorker {
         this.rt.logger.log("warn", "job will retry", { kind: job.kind, attempts: job.attempts, errorKind: err.kind, inMs: at - now() });
         return this.emit({ type: "retry", job, at, error: err });
       }
-      const reason = exhausted ? `gave up after ${job.attempts} attempts — ${err.kind}: ${err.message}` : `${err.kind}: ${err.message}`;
+      // "gave up after" only for trouble that passes (the guardian brings those back); a refusal keeps its kind first.
+      const reason = exhausted && err.retryable ? `gave up after ${job.attempts} attempts — ${err.kind}: ${err.message}` : `${err.kind}: ${err.message}`;
       await this.store.bury(job.id, reason, now());
       this.rt.logger.log("error", "job dead-lettered", { kind: job.kind, reason });
       this.emit({ type: "dead", job, error: err });

@@ -74,11 +74,17 @@ export class LedgerService {
     const own = totals(storeRows.map(asLine));
     // The count makes a total that comes back (paid, voided, paid again) a new line, not a replay.
     const n = storeRows.length;
+    // The store's money counts up to what the order still owes after the money Mizan holds from its own sources
+    // (the team, a gateway, the courier): when Mizan marked the order paid in the store, the store shows that same
+    // money again and it is not counted twice; a payment the customer made in the store still counts in full.
+    const mizanIn = totals(rows.filter((r) => r.source !== "store").map(asLine)).paid;
+    const room = after.total_minor > mizanIn ? after.total_minor - mizanIn : 0n;
+    const storeIn = after.paid_minor < room ? after.paid_minor : room;
     const lines: Array<{ kind: LedgerKind; method: string; amount: bigint; ref: string }> = [];
-    if (after.paid_minor !== own.paid) {
+    if (storeIn !== own.paid) {
       const method = store.method(own.paid === 0n);
-      const kind = after.paid_minor < own.paid ? "void" : method === "cod" ? "cod_collection" : "sale";
-      lines.push({ kind, method, amount: after.paid_minor - own.paid, ref: `${store.externalId}:in:${after.paid_minor}#${n}` });
+      const kind = storeIn < own.paid ? "void" : method === "cod" ? "cod_collection" : "sale";
+      lines.push({ kind, method, amount: storeIn - own.paid, ref: `${store.externalId}:in:${storeIn}#${n}` });
     }
     if (after.refunded_minor > own.refunded) {
       lines.push({ kind: "refund", method: store.method(false), amount: -(after.refunded_minor - own.refunded), ref: `${store.externalId}:refund:${after.refunded_minor}#${n}` });

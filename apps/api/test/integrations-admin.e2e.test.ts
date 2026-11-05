@@ -36,7 +36,7 @@ async function drain() {
 }
 
 beforeAll(async () => {
-  const config = loadConfig({ NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000", SHOPIFY_API_SECRET: shop.secret, BOSTA_BASE_URL: bosta.baseUrl });
+  const config = loadConfig({ ENGINE_AUTO_SHIP_TAG: "mizan-confirmed", NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000", SHOPIFY_API_SECRET: shop.secret, BOSTA_BASE_URL: bosta.baseUrl });
   app = await createApp(config, {
     logDestination: new Writable({ write: (_c, _e, d) => d() }), tokenVerifier: fake,
     engineRuntime: () => testRuntime(clock, { [shop.host]: shop.handler, [bosta.host]: bosta.handler }, seeded(3)),

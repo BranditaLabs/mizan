@@ -52,6 +52,10 @@ export class FakeBosta {
   requireDistrict = true;
   /** Create succeeds server-side, but the response never reaches the client. */
   loseNextCreateResponses = 0;
+  /** Create succeeds server-side, then the gateway answers 503 or the connection drops (the outcome is unknown to the caller). */
+  failAfterCreate: Array<"503" | "drop"> = [];
+  /** The next terminates succeed server-side but their answer is lost. */
+  loseNextTerminates = 0;
   private seq = 7_000_000;
 
   constructor(private readonly clock: FakeClock, private readonly random: () => number = Math.random) {}
@@ -120,6 +124,9 @@ export class FakeBosta {
         updatedAt: new Date(this.clock.now()).toISOString(),
       };
       this.deliveries.set(tn, d);
+      const after = this.failAfterCreate.shift();
+      if (after === "503") return json(503, { success: false, message: "Service unavailable" });
+      if (after === "drop") throw new TypeError("fetch failed: socket hang up");
       if (this.loseNextCreateResponses > 0) {
         this.loseNextCreateResponses--;
         return hang(init);
@@ -137,7 +144,11 @@ export class FakeBosta {
       const d = this.deliveries.get(decodeURIComponent(m[1]));
       if (!d) return json(404, { success: false, message: "Delivery not found" });
       if (method === "DELETE" && m[2]) {
+        // Like Bosta: a parcel already picked up or done cannot be terminated.
+        // A delivery terminated already is refused too (the engine reads it and sees it done).
+        if (d.state.code !== 10) return json(400, { success: false, message: `Delivery ${d.trackingNumber} can't be terminated in state ${d.state.value}` });
         d.state = { code: 48, value: "Terminated" };
+        if (this.loseNextTerminates > 0) { this.loseNextTerminates--; return hang(init); }
         return json(200, { success: true, message: "Terminated" });
       }
       return json(200, { success: true, data: this.render(d) });

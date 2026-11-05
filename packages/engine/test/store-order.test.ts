@@ -88,4 +88,33 @@ describe("an order made in Mizan, created in Shopify", () => {
       expect(await w.store.jobs({ status: "dead" })).toEqual([]);
     }
   });
+
+  it("an edit reaches the copy: quantities follow; an item added at another price than the store's is refused, not re-priced", async () => {
+    const synced: Array<{ ok: boolean; reason?: string }> = [];
+    const drafts = new Map<string, StoreOrderDraft>();
+    const w = setup({ hooks: {
+      loadStoreOrderDraft: async (id) => drafts.get(id),
+      onStoreOrderCreated: async () => {},
+      loadStoreCopy: async (id) => { const d = drafts.get(id); const c = [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`); return d && c ? { copyId: c.id, draft: d } : undefined; },
+      onStoreCopySynced: async (_id, r) => { synced.push(r as { ok: boolean; reason?: string }); },
+    } });
+    drafts.set(OID, draft());
+    await w.store.enqueue(MizanEngine.shopifyCreateOrderJob(OID), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    const copy = () => [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${OID}`)!;
+    drafts.set(OID, draft({ lines: [{ title: "Abaya, plain", sku: "ABY-1", quantity: 3, unitPrice: "1150.00" }] }));
+    await w.store.enqueue(MizanEngine.shopifyCopyEditJob(OID, "e1"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(copy().lines[0]!.quantity).toBe(3);
+    expect(synced.at(-1)).toMatchObject({ ok: true });
+
+    const product = w.shop.addProduct({ title: "Serum", price: "450.00", sku: "SER-1" });
+    const variant = (product as unknown as { variants: Array<{ id: string; price: string }> }).variants?.[0] ?? [...w.shop.products.values()].at(-1)!.variants[0]!;
+    drafts.set(OID, draft({ lines: [{ title: "Abaya, plain", sku: "ABY-1", quantity: 3, unitPrice: "1150.00" }, { variantExternalId: variant.id, title: "Serum", quantity: 1, unitPrice: "1.00", listPrice: variant.price }] }));
+    await w.store.enqueue(MizanEngine.shopifyCopyEditJob(OID, "e2"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(synced.at(-1)).toMatchObject({ ok: false, reason: "validation" });
+    expect(copy().lines).toHaveLength(1);
+  });
 });
+

@@ -32,7 +32,7 @@ const WORDS: Array<[RegExp, ShipmentStatus]> = [
 
 export const MAX_STATUS_ROWS = 5000;
 export interface StatusRow { line: number; tracking: string; status: ShipmentStatus; at?: Date; note?: string }
-export interface StatusCsvProblem { line: number; problem: "header" | "columns" | "tracking" | "status" | "date" | "duplicate" | "too_many" | "empty" | "unknown_tracking" | "not_booked"; value?: string }
+export interface StatusCsvProblem { line: number; problem: "header" | "columns" | "tracking" | "status" | "date" | "duplicate" | "too_many" | "empty" | "unknown_tracking" | "not_booked" | "cancel_at_courier"; value?: string }
 
 export function statusOf(text: string): ShipmentStatus | null {
   const v = text.trim().replace(/\s+/g, " ");

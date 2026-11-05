@@ -1,5 +1,6 @@
 "use client";
 
+import { CancelAtCourier } from "./CancelAtCourier";
 import { rolesWith } from "@mizan/shared";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -142,7 +143,8 @@ function SetStatusDialog({ row, onClose }: { row: Row; onClose(): void }) {
     <Dialog open onClose={onClose} title={t("title", { number: row.order.number })} description={t("body")} footer={(
       <>
         <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!status} onClick={() => save.mutate()}>{t("save")}</Button>
+        {row.provider === "bosta" && !["delivered", "returned", "lost", "cancelled"].includes(row.status) ? <CancelAtCourier shipmentId={row.id} /> : null}
+        <Button busy={save.isPending} disabled={!status || (status === "cancelled" && row.provider === "bosta")} onClick={() => save.mutate()}>{t("save")}</Button>
       </>
     )}>
       <div className="flex flex-col gap-3">

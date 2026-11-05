@@ -181,6 +181,15 @@ export const INVENTORY_SET: GqlOperation = {
   ],
 };
 
+/** A delivery cancelled at the courier: its fulfillment in the store is cancelled too (the parcel is not coming). */
+export const FULFILLMENT_CANCEL: GqlOperation = {
+  name: "MizanFulfillmentCancel",
+  cost: 10,
+  variants: [
+    `mutation MizanFulfillmentCancel($id: ID!) { fulfillmentCancel(id: $id) { fulfillment { id status } userErrors { field message } } }`,
+  ],
+};
+
 export const FULFILLMENT_CREATE: GqlOperation = {
   name: "MizanFulfillmentCreate",
   cost: 10,

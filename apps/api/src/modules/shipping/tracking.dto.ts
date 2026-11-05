@@ -23,6 +23,7 @@ const Row = z.object({
   statusRaw: z.string().nullable().describe("What the courier sent, verbatim"),
   statusAt: z.iso.datetime().nullable(),
   needsReview: z.boolean(),
+  reviewReason: z.string().nullable().describe("Why a person must decide (the store cancelled after booking, the cash changed, shipped twice, a cancel refused); null for a courier status Mizan could not read"),
   errorCode: z.string().nullable(),
   trackingNumber: z.string().nullable(),
   trackingUrl: z.string().nullable(),

@@ -26,6 +26,8 @@ export interface RequestSpec {
    * the caller must verify (look the record up) before trying again.
    */
   idempotent: boolean;
+  /** A write that is not safe to repeat but where the provider answers a 5xx before acting (WhatsApp sends): retried on 5xx like before. Off by default: an unclear outcome is never re-sent. */
+  retryServerErrors?: boolean;
   maxAttempts?: number;
   /** Tokens to reserve in the rate limiter (Shopify: estimated query cost). */
   cost?: number;
@@ -84,7 +86,11 @@ export async function send(rt: Runtime, spec: RequestSpec, guards: Guards = {}):
         else guards.circuit?.onNeutral(); // provider answered (429, 4xx): it is up
       }
 
-      const unknownOutcome = err.kind === "timeout" && !spec.idempotent;
+      // A write that is not safe to repeat, which may have reached the provider (no answer, a 5xx, a dropped
+      // connection, a conflict): its outcome is unknown. Never re-sent here; the caller verifies (rule 5).
+      // A 429 or an open circuit was never processed, so those still retry.
+      const unknownOutcome = !spec.idempotent && admitted && err.kind !== "rate_limited" && err.kind !== "circuit_open" && err.retryable
+        && !(spec.retryServerErrors && err.kind === "transient");
       const canRetry = err.retryable && !unknownOutcome && attempt + 1 < maxAttempts;
       rt.logger.log(canRetry ? "warn" : "error", "request failed", {
         connector: spec.connector, op: spec.op, attempt: attempt + 1, kind: err.kind, status: err.status, message: err.message,

@@ -65,6 +65,12 @@ export class TrackingService {
       const s = await this.lock(trx, (q) => q.where("s.id", "=", id));
       if (!s) throw new ProblemError(404, "not_found", "shipment not found");
       if (s.booking !== "booked") throw new ProblemError(409, "not_booked", "the courier has not booked this shipment");
+      // A delivery booked through the courier's API is cancelled there first (Cancel at the courier), never only here:
+      // otherwise the parcel still goes out and shipping again books a second delivery.
+      if (body.status === "cancelled" && s.status !== "cancelled") {
+        const k = await trx.selectFrom("connections").select("provider").where("id", "=", s.connection_id).executeTakeFirst();
+        if (k?.provider === "bosta") throw new ProblemError(409, "cancel_at_courier", "cancel this delivery at the courier (Cancel at Bosta); it is marked cancelled when Bosta confirms");
+      }
       const before = { status: s.status, needsReview: s.needs_review };
       await this.apply(trx, tenantId, s, { status: body.status as ShipmentStatus, raw: null, at: now, source: "ops", needsReview: false, note: body.note, userId: auth.user.id }, { type: "user", id: auth.user.id });
       await this.audit.record(trx, { action: "shipment.status_set", tenantId, entity: { type: "shipment", id }, before, after: { status: body.status, note: body.note ?? null }, ...auditActor(auth) });
@@ -86,11 +92,13 @@ export class TrackingService {
         .orderBy("s.id").forUpdate("s").execute();
       const byTracking = new Map<string, typeof found>();
       for (const f of found) byTracking.set(f.tracking_number!, [...(byTracking.get(f.tracking_number!) ?? []), f]);
+      const bosta = new Set((await trx.selectFrom("connections").select("id").where("provider", "=", "bosta").execute()).map((k) => k.id));
       const missing: StatusCsvProblem[] = [];
       for (const r of rows) {
         const hits = byTracking.get(r.tracking) ?? [];
         if (hits.length !== 1) missing.push({ line: r.line, problem: hits.length ? "duplicate" : "unknown_tracking", value: r.tracking });
         else if (hits[0]!.booking !== "booked") missing.push({ line: r.line, problem: "not_booked", value: r.tracking });
+        else if (r.status === "cancelled" && hits[0]!.status !== "cancelled" && bosta.has(hits[0]!.connection_id)) missing.push({ line: r.line, problem: "cancel_at_courier", value: r.tracking });
       }
       if (missing.length) throw invalid(missing);
       const result = { rows: rows.length, changed: 0, unchanged: 0, review: 0 };
@@ -117,7 +125,7 @@ export class TrackingService {
     return this.db.tenant(auth.tenant!.id, async (trx) => {
       const search = q.q ? (() => { const n = q.q.replace(/^#/, ""); return sql<SqlBool>`(s.tracking_number = ${q.q} or o.number in (${n}, ${`#${n}`}))`; })() : sql<SqlBool>`true`;
       let rows = trx.selectFrom("shipments as s").innerJoin("orders as o", "o.id", "s.order_id")
-        .select(["s.id", "s.provider", "s.booking", "s.status", "s.status_raw", "s.status_at", "s.needs_review", "s.error_code", "s.tracking_number", "s.tracking_url", "s.cod_minor", "s.currency", "s.created_at",
+        .select(["s.id", "s.provider", "s.booking", "s.status", "s.status_raw", "s.status_at", "s.needs_review", "s.review_reason", "s.error_code", "s.tracking_number", "s.tracking_url", "s.cod_minor", "s.currency", "s.created_at",
           "o.id as order_id", "o.number", "o.status as order_status", "o.ship_city", "o.ship_province"])
         .where("s.is_return_leg", "=", false).where(sql<SqlBool>`${VIEW_SQL[q.view]} and ${search}`)
         .orderBy("s.created_at", "desc").orderBy("s.id", "desc").limit(q.limit + 1);
@@ -130,7 +138,7 @@ export class TrackingService {
       return {
         data: page.map((r) => ({
           id: r.id, order: { id: r.order_id, number: r.number, status: r.order_status }, provider: r.provider, booking: r.booking as "booked", status: r.status,
-          statusRaw: r.status_raw, statusAt: r.status_at?.toISOString() ?? null, needsReview: r.needs_review, errorCode: r.error_code,
+          statusRaw: r.status_raw, statusAt: r.status_at?.toISOString() ?? null, needsReview: r.needs_review, reviewReason: r.review_reason, errorCode: r.error_code,
           trackingNumber: r.tracking_number, trackingUrl: r.tracking_url, cod: fromMinor(BigInt(r.cod_minor), r.currency.trim()),
           area: { city: r.ship_city, province: r.ship_province }, createdAt: r.created_at.toISOString(),
         })),
@@ -146,7 +154,7 @@ export class TrackingService {
 
   private base(trx: Trx) {
     return trx.selectFrom("shipments as s").innerJoin("orders as o", "o.id", "s.order_id")
-      .select(["s.id", "s.order_id", "s.status", "s.status_raw", "s.needs_review", "s.booking", "s.tracking_number", "s.provider", "s.cod_minor", "s.currency", "s.connection_id", "o.number", "o.status as order_status"]);
+      .select(["s.id", "s.order_id", "s.status", "s.status_raw", "s.needs_review", "s.review_reason", "s.booking", "s.tracking_number", "s.provider", "s.cod_minor", "s.currency", "s.connection_id", "o.number", "o.status as order_status", "o.store_cancelled_at"]);
   }
 
   private async apply(trx: Trx, tenantId: string, s: NonNullable<Awaited<ReturnType<TrackingService["lock"]>>>, c: Change, actor: EventActor): Promise<"changed" | "unchanged" | "review"> {
@@ -163,12 +171,14 @@ export class TrackingService {
     if (c.source !== "ops" && TERMINAL_STATUSES.has(current) && c.status !== current) return review(true); // final: a person decides
     if (c.status === current) {
       if (c.source === "ops" && s.needs_review) { // a person confirmed what it is
-        await trx.updateTable("shipments").set({ needs_review: false, updated_at: new Date() }).where("id", "=", s.id).execute();
+        await trx.updateTable("shipments").set({ needs_review: false, review_reason: null, updated_at: new Date() }).where("id", "=", s.id).execute();
         await this.event(trx, tenantId, s.id, c.status, c);
       }
       return "unchanged";
     }
-    await trx.updateTable("shipments").set({ status: c.status, status_raw: c.raw, status_at: c.at, needs_review: false, updated_at: new Date() }).where("id", "=", s.id).execute();
+    // A courier update never closes a review a person must decide (store cancelled, cash changed…); a person's update does.
+    const keep = c.source !== "ops" && Boolean(s.review_reason);
+    await trx.updateTable("shipments").set({ status: c.status, status_raw: c.raw, status_at: c.at, needs_review: keep, ...(keep ? {} : { review_reason: null }), updated_at: new Date() }).where("id", "=", s.id).execute();
     await this.event(trx, tenantId, s.id, c.status, c);
     await this.events.emit(trx, { type: "shipment.status_changed", tenantId, entity: { type: "shipment", id: s.id }, actor, data: { ...ref, from: current, to: c.status, source: c.source } });
     // The courier collected the cash (M15 posts it to the ledger for orders Mizan holds the money of).
@@ -176,17 +186,42 @@ export class TrackingService {
     if (c.status === "returned") await this.events.emit(trx, { type: "shipment.returned", tenantId, entity: { type: "shipment", id: s.id }, actor, data: ref });
 
     // The order follows the parcel's end: delivered, or back with the merchant.
+    // A delivery cancelled (at the courier, by a person or by the courier) frees a shipped order to ship again,
+    // or cancels it when the store had cancelled it.
     const next = c.status === "delivered" && ["shipped", "returned"].includes(s.order_status) ? "delivered"
-      : c.status === "returned" && ["shipped", "delivered"].includes(s.order_status) ? "returned" : null;
+      : c.status === "returned" && ["shipped", "delivered"].includes(s.order_status) ? "returned"
+      : c.status === "cancelled" && s.order_status === "shipped" ? (s.store_cancelled_at ? "cancelled" : "confirmed") : null;
     await trx.insertInto("order_events").values({
       tenant_id: tenantId, order_id: s.order_id, type: "shipment_status", from_status: s.order_status, to_status: next ?? s.order_status,
       actor_type: c.userId ? "user" : "system", actor_id: c.userId ?? null, data: JSON.stringify({ shipmentId: s.id, status: c.status, trackingNumber: s.tracking_number, source: c.source }),
     }).execute();
     if (next) {
-      await trx.updateTable("orders").set({ status: next, ...(next === "delivered" ? { delivered_at: c.at } : {}), updated_at: new Date() }).where("id", "=", s.order_id).execute();
+      await trx.updateTable("orders").set({ status: next, ...(next === "delivered" ? { delivered_at: c.at } : {}), ...(next === "cancelled" ? { cancelled_at: new Date() } : {}), updated_at: new Date() }).where("id", "=", s.order_id).execute();
       await this.events.emit(trx, { type: "order.updated", tenantId, entity: { type: "order", id: s.order_id }, actor, data: { number: s.number, status: next, changed: ["status"] } });
+      if (next === "cancelled") await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: s.order_id }, actor, data: { number: s.number, reason: "cancelled_in_store" } });
     }
     return "changed";
+  }
+
+  /** The courier confirmed a delivery is cancelled (terminated at Mizan's request): the shipment follows. */
+  async courierCancelled(trx: Trx, tenantId: string, shipmentId: string, now = new Date()) {
+    const s = await this.lock(trx, (q) => q.where("s.id", "=", shipmentId));
+    if (!s) return null;
+    await this.apply(trx, tenantId, s, { status: "cancelled", raw: "terminated at the courier", at: now, source: "ops", needsReview: false, note: "Cancelled at the courier" }, { type: "engine" });
+    return s;
+  }
+
+  /**
+   * Something a person must decide about a live delivery (cancelled in the store after booking, the cash to
+   * collect changed, shipped twice): to the review queue with why. Once per reason: the same flag again is no news.
+   */
+  async flag(trx: Trx, tenantId: string, shipmentId: string, reason: string, extra: Record<string, string> = {}): Promise<boolean> {
+    const s = await this.lock(trx, (q) => q.where("s.id", "=", shipmentId));
+    if (!s || (s.needs_review && s.review_reason === reason.slice(0, 300))) return false;
+    await trx.updateTable("shipments").set({ needs_review: true, review_reason: reason.slice(0, 300), updated_at: new Date() }).where("id", "=", s.id).execute();
+    await this.events.emit(trx, { type: "shipment.needs_review", tenantId, entity: { type: "shipment", id: s.id }, actor: { type: "engine" },
+      data: { orderId: s.order_id, number: s.number, provider: s.provider, trackingNumber: s.tracking_number, raw: reason.slice(0, 300), current: s.status, ...extra } });
+    return true;
   }
 
   private event(trx: Trx, tenantId: string, shipmentId: string, status: string, c: Change) {

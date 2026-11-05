@@ -222,6 +222,16 @@ export class ShopifyConnector {
    * checks whether a fulfillment with this tracking number already exists
    * (a previous attempt may have succeeded before a timeout).
    */
+  /** Cancel the order's fulfillment carrying this tracking number (safe to repeat: a cancelled or missing one is done). */
+  async cancelFulfillment(orderId: string, trackingNumber: string): Promise<"cancelled" | "already_cancelled"> {
+    const order = await this.getOrder(orderId);
+    const f = (order.storeFulfillments ?? []).find((x) => x.trackingNumber === trackingNumber && x.status !== "CANCELLED");
+    if (!f) return "already_cancelled";
+    const r = await this.gql.run<{ fulfillmentCancel: { userErrors: UserErrors } }>(Q.FULFILLMENT_CANCEL, { id: f.externalId }, { idempotent: true });
+    assertNoUserErrors("fulfillmentCancel", r.fulfillmentCancel?.userErrors);
+    return "cancelled";
+  }
+
   async fulfillWithTracking(orderId: string, tracking: Tracking, notifyCustomer = true): Promise<"created" | "already_fulfilled"> {
     const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: orderId }, { idempotent: true });
     if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${orderId} not found` });
@@ -406,10 +416,11 @@ export class ShopifyConnector {
       if (!o) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderCreate returned no order" });
       return { externalId: o.id, name: o.name, outcome: "created" };
     } catch (err) {
-      if (!(err instanceof IntegrationError) || err.kind !== "timeout") throw err;
+      // No answer, a 5xx, a dropped connection: the order may exist. Read it by Mizan's id before anyone tries again.
+      if (!(err instanceof IntegrationError) || !["timeout", "transient", "conflict"].includes(err.kind)) throw err;
       const again = await read();
       if (again) return { externalId: again.id, name: again.name, outcome: "already_created" };
-      throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderCreate timed out and no order has Mizan's id: will try again", cause: err });
+      throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderCreate had no clear answer and no order has Mizan's id: will try again", cause: err });
     }
   }
 

@@ -17,3 +17,14 @@ export class StoreFulfilledConsumer implements EventHandler {
     await this.shipping.recordStoreFulfillment(trx, event.tenantId, event.entity.id, { company: d.company ?? null, trackingNumber: d.trackingNumber, trackingUrl: d.trackingUrl ?? null, fulfillmentId: d.fulfillmentId ?? null });
   }
 }
+
+/** Shipping's watch on an order with a live delivery: the store cancelled it, the cash changed, a store fulfillment was cancelled. */
+@Injectable()
+@EventConsumer({ name: "shipping.watch-order", events: ["order.cancelled_after_shipping", "order.store_fulfillment_cancelled", "order.payment_changed", "order.updated"] })
+export class ShippingWatchConsumer implements EventHandler {
+  constructor(@Inject(ShippingService) private readonly shipping: ShippingService) {}
+
+  async handle(event: DomainEvent, trx: Transaction<DB>): Promise<void> {
+    await this.shipping.watch(trx, event);
+  }
+}

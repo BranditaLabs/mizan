@@ -551,6 +551,12 @@ describe("schema", () => {
     await expect(link(b, "gid://shopify/Order/2", "lost")).rejects.toThrow(/check/);
   });
 
+  it("keeps why a delivery waits for a person apart from the courier's words, and when the store cancelled an order (0069)", async () => {
+    const cols = await db.query<{ table_name: string; column_name: string }>(
+      `SELECT table_name, column_name FROM information_schema.columns WHERE (table_name, column_name) IN (('shipments', 'review_reason'), ('orders', 'store_cancelled_at')) ORDER BY table_name`);
+    expect(cols.rows).toEqual([{ table_name: "orders", column_name: "store_cancelled_at" }, { table_name: "shipments", column_name: "review_reason" }]);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

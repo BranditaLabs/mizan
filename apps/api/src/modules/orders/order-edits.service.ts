@@ -1,3 +1,4 @@
+import { StoreCopyService } from "./store-copy.service.js";
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import { trxQueryClient, type DB } from "@mizan/db";
@@ -47,6 +48,7 @@ export class OrderEditsService {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(OrderProjector) private readonly projector: OrderProjector,
+    @Inject(StoreCopyService) private readonly copies: StoreCopyService,
   ) {}
 
   async edit(auth: AuthContext, orderId: string, input: Input): Promise<Result> {
@@ -136,6 +138,8 @@ export class OrderEditsService {
         await this.timeline(trx, tenantId, o.id, "edited", summary, auth.user.id);
         await this.events.emit(trx, { type: "order.edited", tenantId, entity: { type: "order", id: o.id }, actor: { type: "user", id: auth.user.id }, data: { number: o.number, editId: row.id, ...summary } });
         await this.audit.record(trx, { action: "order.edited", tenantId, ...auditActor(auth), entity: { type: "order", id: o.id }, after: { editId: row.id, ...summary } });
+        // An order made in Mizan with a copy in the store: the copy follows (or a refused copy is tried again).
+        await this.copies.edited(trx, tenantId, o.id, row.id);
         return { editId: row.id, status: "applied" as const };
       }
 

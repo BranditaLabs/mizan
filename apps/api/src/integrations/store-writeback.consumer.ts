@@ -37,7 +37,7 @@ export class StoreWritebackConsumer implements EventHandler {
     if (!orderId) return;
     const row = await trx.selectFrom("orders as o")
       .innerJoin("connections as c", (j) => j.on(sql<boolean>`c.id = coalesce(o.connection_id, o.store_copy_connection_id)`))
-      .select(["o.id", "o.external_id", "o.connection_id", "o.store_copy_connection_id", "o.store_copy_id", "o.payment_mode", "c.provider", "c.status as connection_status", "c.config"])
+      .select(["o.id", "o.external_id", "o.connection_id", "o.store_copy_connection_id", "o.store_copy_id", "o.payment_mode", "o.paid_minor", "c.provider", "c.status as connection_status", "c.config"])
       .where("o.id", "=", orderId).executeTakeFirst();
     // The store's order: the order itself (from the store), or the copy of one made in Mizan.
     const o = row ? { ...row, external_id: row.connection_id ? row.external_id : row.store_copy_id, connection_id: row.connection_id ?? row.store_copy_connection_id } : null;
@@ -52,6 +52,8 @@ export class StoreWritebackConsumer implements EventHandler {
       case "order.cancelled": {
         const reason = String(data.reason ?? "other");
         if (reason === "cancelled_in_store") return; // it came from the store
+        // A store's own duplicate is cancelled there by the duplicates decision (never a paid one); a Mizan order's copy here, unpaid only.
+        if (reason === "duplicate" && (row?.connection_id || BigInt(o.paid_minor) > 0n)) return;
         if (shopify) {
           // Default scope, as the bulk cancel and duplicates queue it: one cancel per order.
           const store = new SqlStore(trxQueryClient(trx), { tenantId: event.tenantId, connections: { shopify: o.connection_id } });
@@ -73,9 +75,16 @@ export class StoreWritebackConsumer implements EventHandler {
         return;
       }
       case "shipment.status_changed": {
-        // Statuses the courier sent reach Shopify through the engine; these are a person's or a report's.
-        if (!shopify || data.source !== "ops" || typeof data.trackingNumber !== "string") return;
+        if (!shopify || typeof data.trackingNumber !== "string") return;
         const to = data.to as ShipmentStatus;
+        // A delivery Mizan booked, cancelled (at the courier, by the courier or a person): the store's fulfillment for it too.
+        if (to === "cancelled") {
+          const s = await trx.selectFrom("shipments").select("external_id").where("id", "=", event.entity.id).executeTakeFirst();
+          if (!s?.external_id?.startsWith("gid://shopify/Fulfillment/")) await queue.enqueue(MizanEngine.shopifyCancelFulfillmentJob(o.external_id, data.trackingNumber), now);
+          return;
+        }
+        // Statuses the courier sent reach Shopify through the engine; these are a person's or a report's.
+        if (data.source !== "ops") return;
         if (sync.progressEvents) {
           const job = MizanEngine.shopifyProgressJob(o.external_id, data.trackingNumber, to, event.occurredAt);
           if (job) await queue.enqueue(job, now);

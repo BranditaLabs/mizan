@@ -27,7 +27,7 @@ const send = (path: string, wh: { headers: Record<string, string>; body: string 
   http().post(path).set(wh.headers).set("Content-Type", "application/json").send(wh.body);
 
 beforeAll(async () => {
-  const config = loadConfig({ NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000", SHOPIFY_API_SECRET: shop.secret, BOSTA_BASE_URL: bosta.baseUrl, MAX_BODY_BYTES: "1024" });
+  const config = loadConfig({ ENGINE_AUTO_SHIP_TAG: "mizan-confirmed", NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "http://localhost:3000", SHOPIFY_API_SECRET: shop.secret, BOSTA_BASE_URL: bosta.baseUrl, MAX_BODY_BYTES: "1024" });
   app = await createApp(config, {
     logDestination: new Writable({ write: (_c, _e, d) => d() }),
     engineRuntime: () => testRuntime(clock, { [shop.host]: shop.handler, [bosta.host]: bosta.handler }, seeded(3)),
