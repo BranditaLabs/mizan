@@ -10,6 +10,7 @@ import { Button, ButtonGroup } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
 import { IdCell } from "@/components/ui/DataTable";
+import { CancelAtCourier } from "@/components/shipping/CancelAtCourier";
 import { Card } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
@@ -33,6 +34,7 @@ export function ShippingCard({ order: o }: { order: Order }) {
   const { api, store } = useSession();
   const qc = useQueryClient();
   const canShip = SHIPPERS.has(store?.role ?? "");
+  const FINAL = new Set(["delivered", "returned", "lost", "cancelled"]);
   const live = o.shipments.find(isLive);
   const [manual, setManual] = useState(false);
   const ship = useMutation({
@@ -71,6 +73,8 @@ export function ShippingCard({ order: o }: { order: Order }) {
                   {s.trackingUrl && s.trackingNumber ? <>{" · "}<a href={s.trackingUrl} target="_blank" rel="noreferrer" className="underline">{t("track")}</a></> : null}
                 </p>
               )}
+              {/* A booked Bosta delivery that is not over can be cancelled there (it is never only marked cancelled here). */}
+              {canShip && s.provider === "bosta" && s.booking === "booked" && !FINAL.has(s.status) ? <div><CancelAtCourier shipmentId={s.id} /></div> : null}
             </li>
           ))}
         </ul>

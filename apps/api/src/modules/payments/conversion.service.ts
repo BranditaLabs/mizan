@@ -129,7 +129,7 @@ export class ConversionService {
       data: { number: o.number, conversionId: link.id, amountMinor: String(link.amount_minor), codMinor: String(o.cod_minor), currency: o.currency },
     });
     const stale = await trx.selectFrom("shipments").select(["id", "cod_minor", "provider"]).where("order_id", "=", orderId).where("booking", "=", "booked")
-      .where("status", "not in", LIVE_SHIPMENT).where("cod_minor", "!=", o.cod_minor).execute();
+      .where("status", "not in", LIVE_SHIPMENT).where("cod_minor", "!=", o.cod_minor).where("needs_review", "=", false).execute(); // flagged already (shipping's watch): once
     for (const sh of stale) {
       await trx.updateTable("shipments").set({ needs_review: true }).where("id", "=", sh.id).execute();
       await this.events.emit(trx, {

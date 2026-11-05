@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { matchDistrict } from "../src/connectors/bosta/cities.js";
 import { DISTRICTS } from "./fakes/bosta.js";
+import { MizanEngine } from "../src/engine/engine.js";
 import { settle, setup } from "./fakes/setup.js";
 
 async function shippedOrder(ctx: ReturnType<typeof setup>, opts: Parameters<ReturnType<typeof setup>["shop"]["addOrder"]>[0] = {}) {
@@ -205,4 +206,27 @@ describe("Bosta connector", () => {
     await settle(engine, store, clock);
     expect(await status()).toBe("delivered");
   });
+
+  it("Bosta makes the delivery, then answers 503 or drops the connection: never re-sent, still one delivery", async () => {
+    for (const fault of ["503", "drop"] as const) {
+      const ctx = setup();
+      ctx.bosta.failAfterCreate.push(fault);
+      const { tn } = await shippedOrder(ctx);
+      expect(tn).toBeTruthy();
+      expect(ctx.bosta.deliveries.size).toBe(1);
+    }
+  });
+
+  it("a cancel whose answer is lost is read back: terminated is done, a second terminate is never needed", async () => {
+    const ctx = setup({ hooks: { onShipmentCancelled: async (_id, r) => { results.push(r); } } });
+    const results: Array<{ ok: boolean }> = [];
+    const { tn } = await shippedOrder(ctx);
+    ctx.bosta.setState(tn!, 10, "Pickup requested");
+    ctx.bosta.loseNextTerminates = 1;
+    await ctx.store.enqueue(MizanEngine.bostaCancelJob({ shipmentId: "s-1", trackingNumber: tn! }), ctx.clock.now());
+    await settle(ctx.engine, ctx.store, ctx.clock);
+    expect(ctx.bosta.deliveries.get(tn!)!.state.code).toBe(48);
+    expect(results).toEqual([{ ok: true }]);
+  });
 });
+

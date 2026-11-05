@@ -993,6 +993,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shipments/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["TrackingController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/couriers/scorecard": {
         parameters: {
             query?: never;
@@ -4134,6 +4150,10 @@ export interface components {
             updated: number;
             missingCost: number;
         };
+        CourierCancelQueued: {
+            /** @description false when it was asked already */
+            queued: boolean;
+        };
         CourierCities: {
             data: {
                 id: string;
@@ -5876,6 +5896,12 @@ export interface components {
             /** @description The team's notes on the order (O2) */
             notes: number;
             externalId: string | null;
+            storeCopy: {
+                /** @enum {string} */
+                status: "pending" | "created" | "failed";
+                name: string | null;
+                error: string | null;
+            } | null;
             /** @description Where the order came from (M7-2); null until it is known */
             source: {
                 /** @enum {string} */
@@ -6083,6 +6109,8 @@ export interface components {
                     into?: string;
                     /** @description shipment_status: the courier's status (canonical) */
                     status?: string;
+                    /** @description store_copy_created: the order's name in the store */
+                    name?: string;
                 };
             }[];
         };
@@ -7990,6 +8018,8 @@ export interface components {
             tagReturned?: boolean;
             /** @description Tag mizan-lost when the courier lost it */
             tagLost?: boolean;
+            /** @description Create the orders the team types in Mizan in this store too (same number, no emails to the customer) */
+            createManualOrders?: boolean;
         };
         ReactivateStore: {
             reason?: string;
@@ -8754,6 +8784,8 @@ export interface components {
                 /** Format: date-time */
                 statusAt: string | null;
                 needsReview: boolean;
+                /** @description Why a person must decide (the store cancelled after booking, the cash changed, shipped twice, a cancel refused); null for a courier status Mizan could not read */
+                reviewReason: string | null;
                 errorCode: string | null;
                 trackingNumber: string | null;
                 trackingUrl: string | null;
@@ -9087,6 +9119,8 @@ export interface components {
             tagReturned: boolean;
             /** @description Tag mizan-lost when the courier lost it */
             tagLost: boolean;
+            /** @description Create the orders the team types in Mizan in this store too (same number, no emails to the customer) */
+            createManualOrders: boolean;
         };
         SubmitEvidence: {
             /** @description What was sent and how (portal, email); no card numbers */
@@ -13652,6 +13686,59 @@ export interface operations {
             };
             /** @description Understood but refused (a business rule) */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TrackingController_cancel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued once; audited. Bosta refuses a parcel already picked up: the shipment then waits in review with why */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourierCancelQueued"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

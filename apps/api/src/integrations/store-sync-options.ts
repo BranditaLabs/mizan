@@ -6,11 +6,12 @@ export const StoreSyncSchema = z.object({
   markPaidOnDelivery: z.boolean().describe("Mark orders paid in Shopify when the money is in: cash collected on delivery, a payment link paid, a transfer received"),
   tagReturned: z.boolean().describe("Tag mizan-returned when the parcel is back"),
   tagLost: z.boolean().describe("Tag mizan-lost when the courier lost it"),
+  createManualOrders: z.boolean().describe("Create the orders the team types in Mizan in this store too (same number, no emails to the customer)"),
 });
 export type StoreSync = z.infer<typeof StoreSyncSchema>;
 export const PutStoreSyncSchema = StoreSyncSchema.partial().strict().refine((b) => Object.keys(b).length > 0, "change at least one switch");
 
-export const DEFAULT_SYNC: StoreSync = { progressEvents: true, markPaidOnDelivery: true, tagReturned: true, tagLost: true };
+export const DEFAULT_SYNC: StoreSync = { progressEvents: true, markPaidOnDelivery: true, tagReturned: true, tagLost: true, createManualOrders: true };
 
 /** The switches as stored in connections.config.sync (unknown or missing values fall back to on). */
 export function storeSyncOf(config: Record<string, unknown> | null | undefined): StoreSync {

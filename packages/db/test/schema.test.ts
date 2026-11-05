@@ -540,6 +540,23 @@ describe("schema", () => {
     expect(cols.rows).toEqual([{ table_name: "domain_events", column_default: "0" }, { table_name: "mz_outbox", column_default: "0" }]);
   });
 
+  it("links an order made in Mizan to one copy in a store, a store's order to one Mizan order (0068)", async () => {
+    const conn = (await asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO connections (tenant_id, kind, provider, external_account) VALUES ($1, 'store', 'shopify', 'copy.myshopify.com') RETURNING id`, [T1]))).rows[0]!.id;
+    const order = (n: string) => asTenant(T1, () => db.query<{ id: string }>(`INSERT INTO orders (tenant_id, number, external_id, currency, total_minor, placed_at) VALUES ($1, $2, $2, 'EGP', 0, now()) RETURNING id`, [T1, n])).then((r) => r.rows[0]!.id);
+    const link = (id: string, copy: string, status = "created") => asTenant(T1, () => db.query(`UPDATE orders SET store_copy_connection_id = $2, store_copy_id = $3, store_copy_status = $4 WHERE id = $1`, [id, conn, copy, status]));
+    const a = await order("M-9001");
+    const b = await order("M-9002");
+    await link(a, "gid://shopify/Order/1");
+    await expect(link(b, "gid://shopify/Order/1")).rejects.toThrow(/duplicate|unique/);
+    await expect(link(b, "gid://shopify/Order/2", "lost")).rejects.toThrow(/check/);
+  });
+
+  it("keeps why a delivery waits for a person apart from the courier's words, and when the store cancelled an order (0069)", async () => {
+    const cols = await db.query<{ table_name: string; column_name: string }>(
+      `SELECT table_name, column_name FROM information_schema.columns WHERE (table_name, column_name) IN (('shipments', 'review_reason'), ('orders', 'store_cancelled_at')) ORDER BY table_name`);
+    expect(cols.rows).toEqual([{ table_name: "orders", column_name: "store_cancelled_at" }, { table_name: "shipments", column_name: "review_reason" }]);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

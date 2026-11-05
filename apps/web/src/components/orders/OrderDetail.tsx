@@ -123,6 +123,10 @@ export function OrderDetail({ id }: { id: string }) {
       case "edit_requested": return t("events.edit_requested");
       case "edited": return t("events.edited");
       case "edit_failed": return t("events.edit_failed");
+      case "store_copy_created": return t("events.store_copy_created", { name: e.data.name ?? "" });
+      case "store_copy_failed": return t("events.store_copy_failed");
+      case "store_copy_synced": return t("events.store_copy_synced");
+      case "cancel_requested": return t("events.cancel_requested");
       default: return t("events.other");
     }
   };
@@ -169,6 +173,11 @@ export function OrderDetail({ id }: { id: string }) {
         </div>
         <p className="w-full text-body-sm text-text-2">
           {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{o.store.provider ? sourceName(o.store.provider) : t("manual")}
+          {/* Made in Mizan and copied to the store: the same order there, or why not yet. */}
+          {o.storeCopy ? <>{" · "}<span className={o.storeCopy.status === "failed" ? "text-danger-text" : undefined} data-testid="store-copy">
+            {o.storeCopy.status === "created" ? t.rich("detail.copyCreated", { name: o.storeCopy.name ?? "", b: (c) => <bdi className="mz-id">{c}</bdi> })
+              : o.storeCopy.status === "pending" ? t("detail.copyPending") : t("detail.copyFailed")}
+          </span></> : null}
         </p>
       </header>
 

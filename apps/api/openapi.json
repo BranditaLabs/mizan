@@ -6821,6 +6821,88 @@
         ]
       }
     },
+    "/v1/shipments/{id}/cancel": {
+      "post": {
+        "operationId": "TrackingController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Queued once; audited. Bosta refuses a parcel already picked up: the shipment then waits in review with why",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourierCancelQueued"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "shipping"
+        ]
+      }
+    },
     "/v1/couriers/scorecard": {
       "get": {
         "operationId": "ScorecardController_get",
@@ -23542,6 +23624,19 @@
         ],
         "additionalProperties": false
       },
+      "CourierCancelQueued": {
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "boolean",
+            "description": "false when it was asked already"
+          }
+        },
+        "required": [
+          "queued"
+        ],
+        "additionalProperties": false
+      },
       "CourierCities": {
         "type": "object",
         "properties": {
@@ -30003,6 +30098,34 @@
             "nullable": true,
             "type": "string"
           },
+          "storeCopy": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "created",
+                  "failed"
+                ]
+              },
+              "name": {
+                "nullable": true,
+                "type": "string"
+              },
+              "error": {
+                "nullable": true,
+                "type": "string"
+              }
+            },
+            "required": [
+              "status",
+              "name",
+              "error"
+            ],
+            "additionalProperties": false
+          },
           "source": {
             "nullable": true,
             "description": "Where the order came from (M7-2); null until it is known",
@@ -30806,6 +30929,10 @@
                     "status": {
                       "description": "shipment_status: the courier's status (canonical)",
                       "type": "string"
+                    },
+                    "name": {
+                      "description": "store_copy_created: the order's name in the store",
+                      "type": "string"
                     }
                   },
                   "additionalProperties": false
@@ -30845,6 +30972,7 @@
           "courier",
           "notes",
           "externalId",
+          "storeCopy",
           "source",
           "currency",
           "subtotal",
@@ -38354,6 +38482,10 @@
           "tagLost": {
             "type": "boolean",
             "description": "Tag mizan-lost when the courier lost it"
+          },
+          "createManualOrders": {
+            "type": "boolean",
+            "description": "Create the orders the team types in Mizan in this store too (same number, no emails to the customer)"
           }
         },
         "additionalProperties": false
@@ -41010,6 +41142,11 @@
                 "needsReview": {
                   "type": "boolean"
                 },
+                "reviewReason": {
+                  "nullable": true,
+                  "description": "Why a person must decide (the store cancelled after booking, the cash changed, shipped twice, a cancel refused); null for a courier status Mizan could not read",
+                  "type": "string"
+                },
                 "errorCode": {
                   "nullable": true,
                   "type": "string"
@@ -41071,6 +41208,7 @@
                 "statusRaw",
                 "statusAt",
                 "needsReview",
+                "reviewReason",
                 "errorCode",
                 "trackingNumber",
                 "trackingUrl",
@@ -42320,13 +42458,18 @@
           "tagLost": {
             "type": "boolean",
             "description": "Tag mizan-lost when the courier lost it"
+          },
+          "createManualOrders": {
+            "type": "boolean",
+            "description": "Create the orders the team types in Mizan in this store too (same number, no emails to the customer)"
           }
         },
         "required": [
           "progressEvents",
           "markPaidOnDelivery",
           "tagReturned",
-          "tagLost"
+          "tagLost",
+          "createManualOrders"
         ],
         "additionalProperties": false
       },

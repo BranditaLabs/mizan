@@ -13,7 +13,7 @@ import { useSession } from "@/lib/session";
 
 const EDITORS = rolesWith("connections.manage");
 type Sync = Schemas["StoreSync"];
-const SWITCHES = ["progressEvents", "markPaidOnDelivery", "tagReturned", "tagLost"] as const;
+const SWITCHES = ["createManualOrders", "progressEvents", "markPaidOnDelivery", "tagReturned", "tagLost"] as const;
 
 /** One Shopify store's switches: what Mizan writes back to it as the courier reports (E7-7). */
 function StoreSyncCard({ id, shop }: { id: string; shop: string }) {

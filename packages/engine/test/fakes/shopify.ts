@@ -30,6 +30,10 @@ interface Order {
   fulfillments: Array<{ id: string; status: string; trackingInfo: Array<{ company: string; number: string; url?: string }>; events?: Array<{ id: string; status: string; happenedAt: string; message?: string }> }>;
   /** Where the order came from (M7-2), as Shopify reports it. */
   source?: OrderSource;
+  /** Set by an app's orderCreate (Mizan: "mizan:<id>"). */
+  sourceIdentifier?: string | null;
+  /** Unique order metafields (namespace.key → value). */
+  metafields?: Record<string, string>;
 }
 
 type Visit = { landingPage?: string | null; referrerUrl?: string | null; source?: string; sourceType?: string | null; occurredAt?: string; utmParameters?: { source?: string; medium?: string; campaign?: string; content?: string; term?: string } | null };
@@ -81,6 +85,10 @@ export class FakeShopify {
   readonly publishedTo = new Map<string, Set<string>>();
   /** P3: products and variant batches created. */
   creates = 0;
+  /** orderCreate calls that made an order (a refused or adopted one is not counted). */
+  orderCreates = 0;
+  /** Order metafields with a unique-values definition ("namespace.key"). */
+  uniqueOrderFields = new Set<string>();
   variantCreates = 0;
   /** O3: address updates (orderUpdate) and quantity changes committed. */
   addressUpdates = 0;
@@ -475,6 +483,7 @@ export class FakeShopify {
       lineItems: { nodes: o.lines.map((l) => ({ id: l.id, title: l.title, sku: l.sku, quantity: l.quantity, variant: this.variantBySku(l.sku), originalUnitPriceSet: m(l.price) })) },
       fulfillmentOrders: { nodes: o.fulfillmentOrders.map((f) => ({ id: f.id, status: f.status, lineItems: { nodes: o.lines.map((l) => ({ id: `${f.id}-${l.id}`, lineItem: { id: l.id } })) } })) },
       fulfillments: o.fulfillments,
+      sourceIdentifier: o.sourceIdentifier ?? null,
       sourceName: o.source?.sourceName ?? "web", discountCodes: o.source?.discountCodes ?? [], customAttributes: o.source?.customAttributes ?? [],
       customerJourneySummary: o.source?.journey ?? { ready: false, firstVisit: null, lastVisit: null },
     };
@@ -556,6 +565,50 @@ export class FakeShopify {
         }
         return { publishablePublish: { userErrors: [] } };
       }
+      case "MizanOrderIdDefinition": {
+        const key = `${v.definition.namespace}.${v.definition.key}`;
+        if (this.uniqueOrderFields.has(key)) return { metafieldDefinitionCreate: { createdDefinition: null, userErrors: [{ field: ["definition", "key"], message: "Key is in use for Order metafields on the 'app--1--mizan' namespace.", code: "TAKEN" }] } };
+        this.uniqueOrderFields.add(key);
+        return { metafieldDefinitionCreate: { createdDefinition: { id: this.nextId("MetafieldDefinition") }, userErrors: [] } };
+      }
+      case "MizanOrderByMizanId": {
+        // A direct read by a unique metafield: consistent at once (unlike the search index).
+        const o = [...this.orders.values()].find((x) => x.metafields?.["$app:mizan.order_id"] === v.value);
+        return { order: o ? { id: o.id, name: o.name } : null };
+      }
+      case "MizanOrderCreate": {
+        const input = v.order;
+        const mf = Object.fromEntries(((input.metafields ?? []) as Array<{ namespace: string; key: string; value: string }>).map((m) => [`${m.namespace}.${m.key}`, m.value]));
+        for (const [k, val] of Object.entries(mf)) {
+          if (this.uniqueOrderFields.has(k) && [...this.orders.values()].some((x) => x.metafields?.[k] === val)) {
+            return { orderCreate: { order: null, userErrors: [{ field: ["order", "metafields", "0", "value"], message: "Value is already assigned to another order" }] } };
+          }
+        }
+        const known = new Set([...this.products.values()].flatMap((p) => p.variants.map((x) => x.id)));
+        const missing = ((input.lineItems ?? []) as Array<{ variantId?: string }>).find((l) => l.variantId && !known.has(l.variantId));
+        if (missing) return { orderCreate: { order: null, userErrors: [{ field: ["order", "lineItems", "0", "variantId"], message: `Variant ${missing.variantId} does not exist` }] } };
+        const id = this.nextId("Order");
+        const now = this.touch();
+        const lines = (input.lineItems as Array<{ variantId?: string; title?: string; sku?: string; quantity: number; priceSet: { shopMoney: { amount: string } } }>).map((l) => {
+          const variant = l.variantId ? [...this.products.values()].flatMap((p) => p.variants.map((x) => ({ p, x }))).find((y) => y.x.id === l.variantId) : undefined;
+          return { id: this.nextId("LineItem"), title: variant?.p.title ?? l.title ?? "Item", sku: variant?.x.sku ?? l.sku ?? "", quantity: l.quantity, price: Number(l.priceSet.shopMoney.amount).toFixed(2) };
+        });
+        const shipping = ((input.shippingLines ?? []) as Array<{ title: string; priceSet: { shopMoney: { amount: string } } }>).map((x) => ({ id: this.nextId("ShippingLine"), title: x.title, price: Number(x.priceSet.shopMoney.amount).toFixed(2) }));
+        const discount = Number(input.discountCode?.itemFixedDiscountCode?.amountSet?.shopMoney?.amount ?? 0);
+        const total = (lines.reduce((n, l) => n + Number(l.price) * l.quantity, 0) + shipping.reduce((n, x) => n + Number(x.price), 0) - discount).toFixed(2);
+        const paid = ((input.transactions ?? []) as Array<{ amountSet: { shopMoney: { amount: string } } }>).reduce((n, t) => n + Number(t.amountSet.shopMoney.amount), 0).toFixed(2);
+        const a = input.shippingAddress ?? {};
+        this.orders.set(id, {
+          id, name: input.name ?? `#${1000 + this.orders.size + 1}`, createdAt: now, updatedAt: now, cancelledAt: null, displayFinancialStatus: input.financialStatus ?? "PENDING",
+          paymentGatewayNames: Number(paid) > 0 ? ["Mizan"] : ["manual"], received: paid, refunded: "0.00", tags: input.tags ?? [], currencyCode: input.currency ?? "EGP", email: null, phone: input.phone ?? null, total,
+          shippingAddress: { name: `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim(), firstName: a.firstName, lastName: a.lastName, phone: a.phone ?? null, address1: a.address1, address2: a.address2 ?? null, city: a.city, province: a.provinceCode ?? null, zip: null, countryCodeV2: a.countryCode },
+          customer: null as unknown as Record<string, unknown>,
+          lines, shippingLines: shipping, fulfillmentOrders: [{ id: this.nextId("FulfillmentOrder"), status: "OPEN" }], fulfillments: [],
+          sourceIdentifier: input.sourceIdentifier ?? null, metafields: mf,
+        });
+        this.orderCreates++;
+        return { orderCreate: { order: { id, name: this.orders.get(id)!.name }, userErrors: [] } };
+      }
       case "MizanShopCurrency":
         return { shop: { currencyCode: this.currency } };
       case "MizanProductByHandle": {
@@ -632,6 +685,12 @@ export class FakeShopify {
         }
         this.idempotency.set(v.idempotencyKey, result);
         return result;
+      }
+      case "MizanFulfillmentCancel": {
+        const f = [...this.orders.values()].flatMap((o) => o.fulfillments).find((x) => x.id === v.id);
+        if (!f) return { fulfillmentCancel: { fulfillment: null, userErrors: [{ field: ["id"], message: "Fulfillment does not exist" }] } };
+        f.status = "CANCELLED";
+        return { fulfillmentCancel: { fulfillment: { id: f.id, status: f.status }, userErrors: [] } };
       }
       case "MizanFulfillmentCreate": {
         const foIds = v.fulfillment.lineItemsByFulfillmentOrder.map((x: { fulfillmentOrderId: string }) => x.fulfillmentOrderId);

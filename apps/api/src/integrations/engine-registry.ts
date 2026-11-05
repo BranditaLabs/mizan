@@ -2,7 +2,7 @@ import { engineSyncOptions, storeSyncOf } from "./store-sync-options.js";
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
-import { CANCEL_RESULTS, ORDER_EDITS, PRODUCT_PUBLISH, type OrderEditSink, type ProductPublishSink } from "../modules/orders/ports.js";
+import { CANCEL_RESULTS, ORDER_EDITS, PRODUCT_PUBLISH, STORE_ORDERS, type OrderEditSink, type ProductPublishSink, type StoreOrderSink } from "../modules/orders/ports.js";
 import { SHIPMENT_RESULTS, type ShipmentResultSink } from "../modules/shipping/ports.js";
 import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
@@ -99,6 +99,10 @@ export class EngineRegistry {
     try { return this.moduleRef.get<OrderEditSink>(ORDER_EDITS, { strict: false }); } catch { return undefined; }
   }
 
+  private get storeOrders(): StoreOrderSink | undefined {
+    try { return this.moduleRef.get<StoreOrderSink>(STORE_ORDERS, { strict: false }); } catch { return undefined; }
+  }
+
   private get offerResults(): OfferResultSink | undefined {
     try { return this.moduleRef.get<OfferResultSink>(OFFER_RESULTS, { strict: false }); } catch { return undefined; }
   }
@@ -181,6 +185,9 @@ export class EngineRegistry {
       },
       // What Mizan writes back to the store as the courier reports (E7-7, Settings → Integrations).
       ...engineSyncOptions(storeSyncOf(c.store.config)),
+      // The courier is booked only through Mizan's shipping (one shipment row per booking): never because a
+      // store order carries a tag (the standalone engine's shortcut would book outside it, unseen by Mizan).
+      autoShipTag: this.config.ENGINE_AUTO_SHIP_TAG ?? null,
       learned: {
         ...(c.shopify ? { shopify: c.shopify.learned } : {}),
         ...(c.woocommerce ? { woocommerce: c.woocommerce.learned } : {}),
@@ -222,6 +229,15 @@ export class EngineRegistry {
         onProductPublished: async (productId, result) => {
           await this.productPublish?.recordPublished(tenantId, productId, result);
         },
+        // Two-way orders: an order made in Mizan, read when its store-copy job runs; and the store's answer.
+        loadStoreOrderDraft: async (orderId) => this.storeOrders?.loadDraft(tenantId, orderId),
+        onStoreOrderCreated: async (orderId, result) => {
+          await this.storeOrders?.recordCreated(tenantId, orderId, result);
+        },
+        loadStoreCopy: async (orderId) => this.storeOrders?.loadCopy(tenantId, orderId),
+        onStoreCopySynced: async (orderId, result) => {
+          await this.storeOrders?.recordSynced(tenantId, orderId, result);
+        },
         // O3: an order edit read when its job runs (the address stays out of the job), and the store's answer.
         loadOrderEdit: async (editId) => this.orderEdits?.loadPlan(tenantId, editId),
         onOrderEditResult: async (editId, result) => {
@@ -233,6 +249,10 @@ export class EngineRegistry {
         },
         // M3 (E7-1): the order a ship job books, read with its delivery contact; and the courier's answer.
         loadOrder: async (orderId) => this.shipmentResults?.loadOrder(tenantId, orderId),
+        // A delivery cancelled at the courier (a person asked), or refused: the shipment and the order follow.
+        onShipmentCancelled: async (shipmentId, result) => {
+          await this.shipmentResults?.recordCancelled(tenantId, shipmentId, result);
+        },
         onShipment: async (shipmentId, result) => {
           await this.shipmentResults?.recordResult(tenantId, shipmentId, result);
         },

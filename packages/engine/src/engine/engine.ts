@@ -1,3 +1,4 @@
+import type { StoreOrderDraft, StoreOrderOutcome } from "../core/store-order.js";
 import type { OrderEditOutcome, OrderEditPlan } from "../core/order-edit.js";
 import type { CreatedProduct, ProductDraft, ProductPublishOutcome } from "../core/product-draft.js";
 import type { PaymentLinkOutcome, PaymentLinkRequest } from "../core/payment-link.js";
@@ -107,6 +108,14 @@ export interface EngineOptions {
      * engine records what it saw, so a failing hook retries the same lines. Must be idempotent.
      */
     onGatewayTransaction?: (update: GatewayTransactionUpdate) => Promise<void>;
+    /** An order made in Mizan, to create in the store (read when the job runs). Undefined when it is gone, cancelled before, or in the store already. */
+    loadStoreOrderDraft?: (orderId: string) => Promise<StoreOrderDraft | undefined>;
+    /** An order made in Mizan whose store copy must follow an edit: the copy's id and the order as it is now. Undefined when there is nothing to follow. */
+    loadStoreCopy?: (orderId: string) => Promise<{ copyId: string; draft: StoreOrderDraft } | undefined>;
+    /** The copy follows the edit (now, or already did), or the store refused (final: the team changes it in Shopify). Must be idempotent. */
+    onStoreCopySynced?: (orderId: string, result: OrderEditOutcome) => Promise<void>;
+    /** The store has the order (now, or from an earlier attempt), or refused it (final). Before it is read back, so the copy is linked, never imported. Must be idempotent. */
+    onStoreOrderCreated?: (orderId: string, result: StoreOrderOutcome) => Promise<void>;
     /** A product made in Mizan, to publish (P3), read when the job runs. Undefined when it is gone or published already. */
     loadProductDraft?: (productId: string) => Promise<ProductDraft | undefined>;
     /**
@@ -126,6 +135,8 @@ export interface EngineOptions {
     loadOrder?: (orderId: string) => Promise<CanonicalOrder | undefined>;
     /** A ship job booked the delivery (now, or found it booked by an earlier attempt), or could not (final). Must be idempotent. */
     onShipment?: (shipmentId: string, result: ShipOutcome) => Promise<void>;
+    /** A booked delivery cancelled at the courier (terminated), or refused (already picked up, delivered…). Must be idempotent. */
+    onShipmentCancelled?: (shipmentId: string, result: { ok: true } | { ok: false; reason: "validation" | "not_found" | "permission" | "failed"; message: string }) => Promise<void>;
     /**
      * The courier reported a shipment's status (E7-3): applied (`needsReview` false, before the
      * engine records it, so a failing hook retries the job), one it could not map (`needsReview`
@@ -541,6 +552,12 @@ export class MizanEngine {
   }
 
   /** Book the courier for a Mizan order (E7-1): one job per shipment row, whatever happens. */
+  /** Cancel a booked delivery at Bosta (terminate): one per shipment. */
+  static bostaCancelJob(p: { shipmentId: string; trackingNumber: string }, attempt = 0): NewJob<{ shipmentId: string; trackingNumber: string }> {
+    // Asked again after a refusal or a failure: a new job (Bosta is read before anything is reported).
+    return { kind: "bosta.cancel", connection: "bosta", payload: p, idempotencyKey: `bosta:cancel:${p.shipmentId}${attempt ? `:${attempt}` : ""}` };
+  }
+
   static bostaShipJob(p: ShipJob): NewJob<ShipJob> {
     return { kind: "bosta.ship", connection: "bosta", payload: p, idempotencyKey: `bosta:ship:${p.shipmentId}` };
   }
@@ -606,6 +623,22 @@ export class MizanEngine {
 
   static shopifyMarkPaidJob(orderId: string): NewJob<{ orderId: string }> {
     return { kind: "shopify.markPaid", connection: "shopify", payload: { orderId }, idempotencyKey: `paid:${orderId}` };
+  }
+
+  /** An order made in Mizan, created in the Shopify store (once: found by Mizan's id first). */
+  static shopifyCreateOrderJob(orderId: string, retry: string | number = 0): NewJob<{ orderId: string }> {
+    // A retry after a refusal (the team fixed the order) is a new job; the store still holds one order at most (Mizan's unique id).
+    return { kind: "shopify.createOrder", connection: "shopify", payload: { orderId }, idempotencyKey: `shopify:create-order:${orderId}${retry ? `:${retry}` : ""}` };
+  }
+
+  /** A delivery cancelled at the courier: its fulfillment in the Shopify order is cancelled too. One per tracking number. */
+  static shopifyCancelFulfillmentJob(orderId: string, trackingNumber: string): NewJob<{ orderId: string; trackingNumber: string }> {
+    return { kind: "shopify.cancelFulfillment", connection: "shopify", payload: { orderId, trackingNumber }, idempotencyKey: `shopify:fulfillment-cancel:${orderId}:${trackingNumber}` };
+  }
+
+  /** An order made in Mizan was edited (`editId`): its store copy follows. One job per edit. */
+  static shopifyCopyEditJob(orderId: string, editId: string): NewJob<{ orderId: string; editId: string }> {
+    return { kind: "shopify.syncCopy", connection: "shopify", payload: { orderId, editId }, idempotencyKey: `shopify:copy-edit:${orderId}:${editId}` };
   }
 
   static shopifyCancelJob(p: CancelJob): NewJob<CancelJob> {
@@ -785,6 +818,7 @@ export class MizanEngine {
       "bosta.pollActive": () => this.pollActiveShipments(),
       "bosta.createShipment": (j) => this.createShipment(j.payload.orderId, j.attempts),
       "bosta.ship": (j) => this.ship(j.payload as ShipJob, j.attempts),
+      "bosta.cancel": (j) => this.cancelDelivery(j.payload as { shipmentId: string; trackingNumber: string }),
       "shopify.fulfill": (j) => this.fulfill(j.payload.orderId, j.payload.trackingNumber, j.payload.company, j.payload.url),
       "bosta.ingestStatus": (j) => this.ingestShipmentStatus(j.payload.trackingNumber, j.payload.hint ? "webhook" : "poll"),
       "shopify.markPaid": (j) => this.markPaid(j.payload.orderId),
@@ -801,6 +835,9 @@ export class MizanEngine {
       "shopify.addOffer": (j) => this.addOffer(j.payload),
       "shopify.editOrder": (j) => this.editOrder(j.payload.editId, "shopify"),
       "shopify.createProduct": (j) => this.publishProduct(j.payload.productId, "shopify"),
+      "shopify.createOrder": (j) => this.createStoreOrder(j.payload.orderId),
+      "shopify.syncCopy": (j) => this.syncStoreCopy(j.payload.orderId, j.payload.editId),
+      "shopify.cancelFulfillment": async (j) => { this.emit("store_fulfillment.cancelled", { orderId: j.payload.orderId, outcome: await this.shopify.cancelFulfillment(j.payload.orderId, j.payload.trackingNumber) }); },
       "paymob.createLink": (j) => this.createPaymentLink(j.payload.linkId),
       "paymob.ingestTransaction": (j) => this.ingestPaymobTransaction(j.payload.transactionId),
       "paymob.inquire": (j) => this.inquirePaymob(j.payload.reference),
@@ -962,6 +999,88 @@ export class MizanEngine {
   }
 
   /** P3: the product into the store, its ids to the platform, then the product read back like any store change. */
+  /** An order made in Mizan, created in the store once (found by Mizan's id first), then read back as the store has it. */
+  private async createStoreOrder(orderId: string) {
+    const draft = await this.opts.hooks?.loadStoreOrderDraft?.(orderId);
+    if (!draft) return;
+    let created: { externalId: string; name: string; outcome: "created" | "already_created" };
+    try {
+      created = await this.shopify.createOrder(draft);
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" ? "validation" : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onStoreOrderCreated?.(orderId, { ok: false, reason, message: e.message }));
+      this.emit("store_order.failed", { orderId, reason });
+      if (reason === "permission") throw e;
+      return;
+    }
+    await this.runHook(() => this.opts.hooks?.onStoreOrderCreated?.(orderId, { ok: true, ...created }));
+    // Read back as its own job: linked already, so the copy updates Mizan's order instead of making a second one.
+    await this.enqueue("shopify.ingestOrder", { orderId: created.externalId }, `shopify:order:${created.externalId}:created:${orderId}`);
+    this.emit("store_order.created", { orderId, externalId: created.externalId, outcome: created.outcome });
+  }
+
+  /**
+   * An order made in Mizan was edited: its copy in the store follows. The copy is read (fat fetch) and the
+   * difference applied as one order edit — quantities, items from the catalogue, the delivery fee and the
+   * address. Shopify keeps a line's price and has no way to add an item outside the catalogue by edit: those
+   * are refused (the team makes them in Shopify), never guessed.
+   */
+  private async syncStoreCopy(orderId: string, editId: string) {
+    const target = await this.opts.hooks?.loadStoreCopy?.(orderId);
+    if (!target) return;
+    const { copyId, draft } = target;
+    let outcome: OrderEditOutcome;
+    try {
+      const copy = await this.shopify.getOrder(copyId);
+      const remaining = [...copy.lines];
+      const lines: OrderEditPlan["lines"] = [];
+      const add: OrderEditPlan["add"] = [];
+      // One target line per variant (two Mizan lines of one variant are one line in the store).
+      const wanted: StoreOrderDraft["lines"] = [];
+      for (const l of draft.lines) {
+        const same = l.variantExternalId ? wanted.find((w) => w.variantExternalId === l.variantExternalId) : undefined;
+        if (same && same.unitPrice === l.unitPrice) same.quantity += l.quantity; else wanted.push({ ...l });
+      }
+      for (const want of wanted) {
+        const i = remaining.findIndex((l) => (want.variantExternalId ? l.variantExternalId === want.variantExternalId : !l.variantExternalId && l.title === want.title && (l.sku ?? "") === (want.sku ?? "")));
+        if (i >= 0) {
+          const have = remaining.splice(i, 1)[0]!;
+          if (Math.abs(Number(have.unitPrice.amount) - Number(want.unitPrice)) >= 0.005) {
+            throw new IntegrationError({ kind: "validation", connector: "shopify", message: `${want.title}: Shopify keeps an item's price when an order is edited: change it in Shopify` });
+          }
+          lines.push({ lineId: have.externalLineId, variantId: have.variantExternalId, quantity: want.quantity });
+        } else if (want.variantExternalId) {
+          // Added by an edit, the store charges its catalogue price: a different price typed in Mizan is made in Shopify.
+          if (want.listPrice !== undefined && Math.abs(Number(want.listPrice) - Number(want.unitPrice)) >= 0.005) {
+            throw new IntegrationError({ kind: "validation", connector: "shopify", message: `${want.title}: added at ${want.unitPrice}, the store charges ${want.listPrice}: add it in Shopify at that price` });
+          }
+          add.push({ variantId: want.variantExternalId, quantity: want.quantity });
+        } else {
+          throw new IntegrationError({ kind: "validation", connector: "shopify", message: `${want.title}: an item outside the store's catalogue cannot be added by an edit: add it in Shopify` });
+        }
+      }
+      for (const gone of remaining) lines.push({ lineId: gone.externalLineId, variantId: gone.variantExternalId, quantity: 0 });
+      const a = draft.address;
+      const have = copy.shippingAddress;
+      // The address only when it changed (the team may have corrected it in Shopify; an edit of the items leaves it).
+      const moved = !have || (have.line1 ?? "") !== a.line1 || (have.line2 ?? "") !== (a.line2 ?? "") || (have.city ?? "") !== a.city;
+      const plan: OrderEditPlan = {
+        editId: `copy-${editId}`, orderId: copyId, currency: draft.currency, lines, add, shipping: draft.shipping,
+        ...(moved ? { address: { name: `${a.firstName} ${a.lastName === "-" ? "" : a.lastName}`.trim(), ...(a.phone ? { phone: a.phone } : {}), line1: a.line1, ...(a.line2 ? { line2: a.line2 } : {}), city: a.city, ...(a.provinceCode ? { province: a.provinceCode } : {}), countryCode: a.countryCode } } : {}),
+      };
+      outcome = { ok: true, outcome: await this.shopify.editOrder(plan) };
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onStoreCopySynced?.(orderId, { ok: false, reason, message: e.message }));
+      if (reason === "permission") throw e;
+      return;
+    }
+    await this.runHook(() => this.opts.hooks?.onStoreCopySynced?.(orderId, outcome));
+    this.emit("store_order.synced", { orderId, copyId });
+  }
+
   private async publishProduct(productId: string, provider: "shopify" | "woocommerce") {
     const draft = await this.opts.hooks?.loadProductDraft?.(productId);
     if (!draft) return; // published already, or gone
@@ -1116,6 +1235,8 @@ export class MizanEngine {
     if (order.cancelled) throw new IntegrationError({ kind: "validation", connector: "engine", message: `order ${order.number} is cancelled` });
     cashToCollect(order); // fail fast with a clear reason (awaiting_payment, payment_mode_unknown …) before calling the courier
 
+    // The standalone flow's reference is the store's order id, which two stores can share: looked up on a retry only.
+    // (The platform books through ship(), whose reference is Mizan's own shipment id, always looked up first.)
     const { shipment, adopted } = await this.bosta.createShipmentOnce(order, orderId, attempt > 1);
     await this.saveLearned();
     await this.store.put<OrderRecord>("order", orderId, { ...(rec ?? {}), order: withoutPersonalData({ ...order, raw: undefined }), trackingNumber: shipment.trackingNumber }, this.now());
@@ -1146,7 +1267,11 @@ export class MizanEngine {
 
     let booked: { shipment: CanonicalShipment; adopted: boolean };
     try {
-      booked = await this.bosta.createShipmentOnce(order, p.shipmentId, attempt > 1);
+      // Looked up first whenever a create was ever tried for this shipment: the mark is kept in the engine's store,
+      // so a job revived or replayed (its count reset) or run twice still finds the delivery Bosta has.
+      const tried = await this.store.get<{ at: number }>("ship-attempt", p.shipmentId);
+      if (!tried) await this.store.put("ship-attempt", p.shipmentId, { at: this.now() }, this.now());
+      booked = await this.bosta.createShipmentOnce(order, p.shipmentId, Boolean(tried) || attempt > 1);
     } catch (e) {
       if (e instanceof ShipBlockedError) return fail("blocked", e.message, e.reason);
       // Retryable trouble is retried by the worker; the rest is final.
@@ -1168,6 +1293,31 @@ export class MizanEngine {
     await this.runHook(() => this.opts.hooks?.onShipment?.(p.shipmentId, { ok: true, shipment, adopted: booked.adopted }));
     this.emit("shipment.created", { shipmentId: p.shipmentId, orderId: p.orderId, trackingNumber: tn, adopted: booked.adopted, cod: shipment.cod.amount });
     if (p.storeOrderId) await this.enqueue("shopify.fulfill", { orderId: p.storeOrderId, trackingNumber: tn }, `fulfill:${p.storeOrderId}:${tn}`);
+  }
+
+  /** Terminate a booked delivery at the courier (a person asked, after a cancel): once; a refusal is final and said. */
+  private async cancelDelivery(p: { shipmentId: string; trackingNumber: string }) {
+    try {
+      await this.bosta.cancelShipment(p.trackingNumber);
+    } catch (e) {
+      // A lost answer, or a refusal: what does Bosta say about the delivery now? Terminated already is done.
+      if (e instanceof IntegrationError && (e.kind === "timeout" || !e.retryable)) {
+        const now = await this.bosta.getShipment(p.trackingNumber).catch(() => undefined);
+        if (now?.status === "cancelled") {
+          await this.runHook(() => this.opts.hooks?.onShipmentCancelled?.(p.shipmentId, { ok: true }));
+          this.emit("shipment.cancelled", { shipmentId: p.shipmentId, trackingNumber: p.trackingNumber });
+          return;
+        }
+      }
+      if (!(e instanceof IntegrationError) || e.retryable) throw e;
+      const reason = e.kind === "validation" || e.kind === "not_found" ? e.kind : e.kind === "auth" || e.kind === "permission" ? "permission" : "failed";
+      await this.runHook(() => this.opts.hooks?.onShipmentCancelled?.(p.shipmentId, { ok: false, reason, message: e.message }));
+      this.emit("shipment.cancel_refused", { shipmentId: p.shipmentId, reason });
+      if (reason === "permission") throw e;
+      return;
+    }
+    await this.runHook(() => this.opts.hooks?.onShipmentCancelled?.(p.shipmentId, { ok: true }));
+    this.emit("shipment.cancelled", { shipmentId: p.shipmentId, trackingNumber: p.trackingNumber });
   }
 
   private async fulfill(orderId: string, trackingNumber: string, company?: string, url?: string) {
@@ -1529,6 +1679,24 @@ export class MizanEngine {
         const p = o.job.payload as { linkId: string };
         this.runHook(() => this.opts.hooks?.onPaymentLink?.(p.linkId, { ok: false, reason: "failed", message: o.error.message }))
           .catch((e) => this.rt.logger.log("error", "payment link hook failed", { linkId: p.linkId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // An order made in Mizan that never reached the store: marked failed for the team (a revived job that succeeds marks it created).
+      if (o.job.kind === "shopify.createOrder" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as { orderId: string };
+        this.runHook(() => this.opts.hooks?.onStoreOrderCreated?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "store order hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // A cancel at the courier that never got an answer: the shipment waits for a person (who can ask again).
+      if (o.job.kind === "bosta.cancel" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as { shipmentId: string };
+        this.runHook(() => this.opts.hooks?.onShipmentCancelled?.(p.shipmentId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "cancel hook failed", { shipmentId: p.shipmentId, error: e instanceof Error ? e.message : String(e) }));
+      }
+      // A copy that never followed its order's edit: said on the order.
+      if (o.job.kind === "shopify.syncCopy" && kind !== "auth" && kind !== "permission") {
+        const p = o.job.payload as { orderId: string };
+        this.runHook(() => this.opts.hooks?.onStoreCopySynced?.(p.orderId, { ok: false, reason: "failed", message: o.error.message }))
+          .catch((e) => this.rt.logger.log("error", "copy sync hook failed", { orderId: p.orderId, error: e instanceof Error ? e.message : String(e) }));
       }
       // A product that never reached the store (P3): the team can publish it again.
       if ((o.job.kind === "shopify.createProduct" || o.job.kind === "woocommerce.createProduct") && kind !== "auth" && kind !== "permission") {

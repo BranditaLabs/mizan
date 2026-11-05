@@ -19,6 +19,15 @@ export interface OrderEditSink {
   loadPlan(tenantId: string, editId: string): Promise<import("@mizan/engine").OrderEditPlan | undefined>;
   recordResult(tenantId: string, editId: string, result: import("@mizan/engine").OrderEditOutcome): Promise<void>;
 }
+/** Orders made in Mizan, copied to the store: the engine reads the draft when its job runs and reports the store's answer. */
+export const STORE_ORDERS = Symbol("STORE_ORDERS");
+export interface StoreOrderSink {
+  queue(trx: import("kysely").Transaction<import("@mizan/db").DB>, tenantId: string, orderId: string): Promise<boolean>;
+  loadDraft(tenantId: string, orderId: string): Promise<import("@mizan/engine").StoreOrderDraft | undefined>;
+  recordCreated(tenantId: string, orderId: string, result: import("@mizan/engine").StoreOrderOutcome): Promise<void>;
+  loadCopy(tenantId: string, orderId: string): Promise<{ copyId: string; draft: import("@mizan/engine").StoreOrderDraft } | undefined>;
+  recordSynced(tenantId: string, orderId: string, result: import("@mizan/engine").OrderEditOutcome): Promise<void>;
+}
 /** Confirmation's answer for an order (E5-4 bulk confirm), provided by the confirmation module. */
 export const ORDER_ANSWERS = Symbol("ORDER_ANSWERS");
 export type OrderAnswers = Pick<ConfirmationService, "liveRun" | "applyAnswer">;

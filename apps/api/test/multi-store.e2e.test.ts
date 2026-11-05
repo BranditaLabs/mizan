@@ -42,7 +42,7 @@ const send = (connectionId: string, wh: { headers: Record<string, string>; body:
   http().post(`/webhooks/shopify/${connectionId}`).set(wh.headers).set("Content-Type", "application/json").send(wh.body).expect(200);
 
 beforeAll(async () => {
-  const config = loadConfig({ NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "https://app.mizan.test", SHOPIFY_API_SECRET: nile.secret, BOSTA_BASE_URL: bosta.baseUrl });
+  const config = loadConfig({ ENGINE_AUTO_SHIP_TAG: "mizan-confirmed", NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "https://app.mizan.test", SHOPIFY_API_SECRET: nile.secret, BOSTA_BASE_URL: bosta.baseUrl });
   app = await createApp(config, {
     logDestination: new Writable({ write: (_c, _e, d) => d() }), tokenVerifier: fake,
     engineRuntime: () => testRuntime(clock, { [nile.host]: nile.handler, [delta.host]: delta.handler, [bosta.host]: bosta.handler }, seeded(94)),

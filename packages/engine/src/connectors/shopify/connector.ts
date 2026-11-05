@@ -1,3 +1,4 @@
+import { mizanOrderRef, type StoreOrderDraft } from "../../core/store-order.js";
 import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
 import type { CreatedProduct, ProductDraft } from "../../core/product-draft.js";
 import { IntegrationError } from "../../core/errors.js";
@@ -11,6 +12,8 @@ import { mapOrder, mapProduct } from "./mapper.js";
 import * as Q from "./queries.js";
 
 type UserErrors = Array<{ field?: string[] | null; message: string; code?: string | null }>;
+
+const MIZAN_ID = { namespace: "$app:mizan", key: "order_id" } as const;
 
 export interface Tracking {
   company: string;
@@ -219,6 +222,16 @@ export class ShopifyConnector {
    * checks whether a fulfillment with this tracking number already exists
    * (a previous attempt may have succeeded before a timeout).
    */
+  /** Cancel the order's fulfillment carrying this tracking number (safe to repeat: a cancelled or missing one is done). */
+  async cancelFulfillment(orderId: string, trackingNumber: string): Promise<"cancelled" | "already_cancelled"> {
+    const order = await this.getOrder(orderId);
+    const f = (order.storeFulfillments ?? []).find((x) => x.trackingNumber === trackingNumber && x.status !== "CANCELLED");
+    if (!f) return "already_cancelled";
+    const r = await this.gql.run<{ fulfillmentCancel: { userErrors: UserErrors } }>(Q.FULFILLMENT_CANCEL, { id: f.externalId }, { idempotent: true });
+    assertNoUserErrors("fulfillmentCancel", r.fulfillmentCancel?.userErrors);
+    return "cancelled";
+  }
+
   async fulfillWithTracking(orderId: string, tracking: Tracking, notifyCustomer = true): Promise<"created" | "already_fulfilled"> {
     const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: orderId }, { idempotent: true });
     if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${orderId} not found` });
@@ -361,6 +374,68 @@ export class ShopifyConnector {
    * create mutations are not idempotent: each is preceded by a read, and a lost answer is read again.
    * Returns the store's product, variant (by Mizan id) and picture ids (by Mizan id, in order).
    */
+  /**
+   * An order made in Mizan, created in the store once. Mizan's id goes in a unique order metafield:
+   * the order is found by it first (a direct read), a second create with it is refused by the store,
+   * and a refusal or a lost answer is read again, so a retry adopts the first order. Named like
+   * Mizan's (M-1001), no emails to the customer, stock taken whatever the store's oversell setting.
+   */
+  async createOrder(d: StoreOrderDraft): Promise<{ externalId: string; name: string; outcome: "created" | "already_created" }> {
+    await this.ensureOrderIdDefinition();
+    const read = async () => (await this.gql.run<{ order: { id: string; name: string } | null }>(Q.ORDER_BY_MIZAN_ID, { value: d.orderId }, { idempotent: true })).order;
+    const found = await read();
+    if (found) return { externalId: found.id, name: found.name, outcome: "already_created" };
+    const money = (amount: string) => ({ shopMoney: { amount, currencyCode: d.currency } });
+    const a = d.address;
+    const order = {
+      name: d.number, currency: d.currency, sourceIdentifier: mizanOrderRef(d.orderId), tags: d.tags,
+      ...(d.note ? { note: d.note } : {}), ...(d.phone ? { phone: d.phone } : {}),
+      metafields: [{ ...MIZAN_ID, type: "single_line_text_field", value: d.orderId }],
+      lineItems: d.lines.map((l) => (l.variantExternalId
+        ? { variantId: l.variantExternalId, quantity: l.quantity, priceSet: money(l.unitPrice) }
+        : { title: l.title, quantity: l.quantity, priceSet: money(l.unitPrice), requiresShipping: true, ...(l.sku ? { sku: l.sku } : {}) })),
+      ...(Number(d.shipping) > 0 ? { shippingLines: [{ title: "Delivery", priceSet: money(d.shipping) }] } : {}),
+      ...(Number(d.discount) > 0 ? { discountCode: { itemFixedDiscountCode: { code: "MIZAN", amountSet: money(d.discount) } } } : {}),
+      shippingAddress: {
+        firstName: a.firstName, lastName: a.lastName, address1: a.line1, ...(a.line2 ? { address2: a.line2 } : {}), city: a.city, countryCode: a.countryCode,
+        ...(a.provinceCode ? { provinceCode: a.provinceCode } : {}), ...(a.phone ? { phone: a.phone } : {}),
+      },
+      financialStatus: d.financialStatus,
+      ...(Number(d.paid) > 0 ? { transactions: [{ kind: "SALE", status: "SUCCESS", gateway: "Mizan", amountSet: money(d.paid) }] } : {}),
+    };
+    try {
+      const c = await this.gql.run<{ orderCreate: { order: { id: string; name: string } | null; userErrors: UserErrors } }>(Q.ORDER_CREATE, {
+        order, options: { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: "DECREMENT_IGNORING_POLICY" },
+      }, { idempotent: false });
+      if (c.orderCreate?.userErrors?.length) {
+        const again = await read(); // refused because it exists already (the unique id): adopt it
+        if (again) return { externalId: again.id, name: again.name, outcome: "already_created" };
+        assertNoUserErrors("orderCreate", c.orderCreate.userErrors);
+      }
+      const o = c.orderCreate?.order;
+      if (!o) throw new IntegrationError({ kind: "schema_drift", connector: "shopify", message: "orderCreate returned no order" });
+      return { externalId: o.id, name: o.name, outcome: "created" };
+    } catch (err) {
+      // No answer, a 5xx, a dropped connection: the order may exist. Read it by Mizan's id before anyone tries again.
+      if (!(err instanceof IntegrationError) || !["timeout", "transient", "conflict"].includes(err.kind)) throw err;
+      const again = await read();
+      if (again) return { externalId: again.id, name: again.name, outcome: "already_created" };
+      throw new IntegrationError({ kind: "transient", connector: "shopify", message: "orderCreate had no clear answer and no order has Mizan's id: will try again", cause: err });
+    }
+  }
+
+  private orderIdDefined = false;
+  /** The unique "Mizan order id" field on orders, once per store (already there is fine). */
+  private async ensureOrderIdDefinition() {
+    if (this.orderIdDefined) return;
+    const r = await this.gql.run<{ metafieldDefinitionCreate: { userErrors: Array<{ field?: string[] | null; message: string; code?: string | null }> } }>(Q.ORDER_ID_DEFINITION, {
+      definition: { name: "Mizan order", ...MIZAN_ID, type: "single_line_text_field", ownerType: "ORDER", capabilities: { uniqueValues: { enabled: true } }, access: { admin: "MERCHANT_READ" } },
+    }, { idempotent: true });
+    const errors = (r.metafieldDefinitionCreate?.userErrors ?? []).filter((e) => e.code !== "TAKEN" && !/taken|already exists|in use/i.test(e.message));
+    assertNoUserErrors("metafieldDefinitionCreate", errors);
+    this.orderIdDefined = true;
+  }
+
   async createProduct(d: ProductDraft): Promise<CreatedProduct> {
     const shop = (await this.gql.run<{ shop?: { currencyCode?: string } }>(Q.SHOP_CURRENCY, {}, { idempotent: true })).shop?.currencyCode;
     if (shop && shop.toUpperCase() !== d.currency.toUpperCase()) {

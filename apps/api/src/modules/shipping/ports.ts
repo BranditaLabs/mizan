@@ -10,4 +10,5 @@ export interface ShipmentResultSink {
   loadOrder(tenantId: string, orderId: string): Promise<CanonicalOrder | undefined>;
   recordResult(tenantId: string, shipmentId: string, result: ShipOutcome): Promise<void>;
   recordStatus(tenantId: string, connectionId: string, update: ShipmentStatusUpdate): Promise<void>;
+  recordCancelled(tenantId: string, shipmentId: string, result: { ok: true } | { ok: false; reason: string; message: string }): Promise<void>;
 }

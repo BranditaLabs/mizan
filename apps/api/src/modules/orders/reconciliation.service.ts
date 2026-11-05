@@ -108,8 +108,10 @@ export class ReconciliationService implements OnApplicationBootstrap, OnApplicat
   /** The engine's answer for a store day (hook onReconciled): count Mizan's own orders, record, alert on a gap. */
   async record(tenantId: string, connectionId: string, r: ReconcileResult, now = new Date()): Promise<{ gap: number }> {
     return this.db.tenant(tenantId, async (trx) => {
+      // The store's day holds its own orders and the copies of orders made in Mizan (created there that day too).
       const mine = await trx.selectFrom("orders").select(sql<string>`count(*)`.as("n"))
-        .where("connection_id", "=", connectionId).where("placed_at", ">=", new Date(r.from)).where("placed_at", "<", new Date(r.to)).executeTakeFirstOrThrow();
+        .where((w) => w.or([w("connection_id", "=", connectionId), w.and([w("store_copy_connection_id", "=", connectionId), w("store_copy_id", "is not", null)])]))
+        .where("placed_at", ">=", new Date(r.from)).where("placed_at", "<", new Date(r.to)).executeTakeFirstOrThrow();
       const row = { store_orders: r.seen, recovered: r.recovered, mizan_orders: Number(mine.n), checked_at: now };
       await trx.insertInto("order_reconciliations").values({ tenant_id: tenantId, connection_id: connectionId, day: sql<Date>`${r.day}::date`, ...row })
         .onConflict((oc) => oc.columns(["connection_id", "day"]).doUpdateSet(row)).execute();
