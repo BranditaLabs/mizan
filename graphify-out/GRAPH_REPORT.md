@@ -1,17 +1,17 @@
 # Graph Report - mizan  (2026-11-05)
 
 ## Corpus Check
-- 1631 files · ~2,188,469 words
+- 1633 files · ~2,191,031 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 112 file(s) not represented in the graph (top: .ttf 30, .woff2 15, .css 14)
 
 ## Summary
-- 16146 nodes · 42879 edges · 789 communities (563 shown, 226 thin omitted)
-- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 1952 edges (avg confidence: 0.87)
+- 16157 nodes · 42915 edges · 781 communities (555 shown, 226 thin omitted)
+- Extraction: 95% EXTRACTED · 5% INFERRED · 0% AMBIGUOUS · INFERRED: 1954 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d1c1fd41`
+- Built from commit: `980b60a1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,18 +20,18 @@
 - engine/src/index.ts
 - ApiJson
 - ref_next_intl
-- openapi.e2e.test.ts
+- web/src/lib/api/query.tsx
 - useSession
-- Values.tsx
+- ReportsScreen.tsx
 - conversion.controller.ts
 - order-projector.ts
-- members.service.ts
+- members.controller.ts
 - Icon
 - NewOrder.tsx
 - Icon
 - .agents/skills/impeccable/scripts/live-browser.js
 - .claude/skills/impeccable/scripts/live-browser.js
-- woocommerce.test.ts
+- FakeShopify
 - WhatsAppCloudConnector
 - mizan_tokens.dart
 - op_store.dart
@@ -46,53 +46,53 @@
 - .agents/skills/taste-skill/scripts/assets.mjs
 - .claude/skills/taste-skill/scripts/assets.mjs
 - FeedbackScreen.tsx
-- fromMinor
+- money.ts
 - payments.dto.ts
 - app_localizations.dart
 - secrets.e2e.test.ts
 - ref_playwright_test
-- products.service.ts
+- admin/src/lib/api/query.tsx
 - IntegrationError
 - purchasing.controller.ts
 - .agents/skills/impeccable/scripts/modern-screenshot.umd.js
 - .claude/skills/impeccable/scripts/modern-screenshot.umd.js
 - app_localizations_ar.dart
-- purchasing.service.ts
+- stock.controller.ts
 - automations.controller.ts
 - resumeSession
 - logger.module.ts
 - app_localizations_en.dart
 - resumeSession
-- shopify-install.e2e.test.ts
+- RefundsService
 - landing/page.tsx
 - .agents/skills/taste-skill/scripts/lib/app-draw.mjs
 - admin/src/app/[locale]/layout.tsx
 - WebhooksController
 - pick_flow_test.dart
 - orders.dto.ts
-- .emit
+- SqlStore
 - receive_screen.dart
 - attribution.dto.ts
 - el
 - initPageChat
 - el
 - initPageChat
-- MediaService
-- dashboards.service.ts
-- web/src/components/auth/SignIn.tsx
+- media.service.ts
+- xlsx.ts
+- StockService
 - CostsScreen.tsx
 - BostaConnector
-- tickets.service.ts
+- tickets.rules.ts
 - auth.types.ts
 - initGlobalBar
 - main.dart
-- scorecard.service.ts
+- .get
 - .claude/skills/impeccable/reference/new-work.md
 - initGlobalBar
 - Button
 - schemas.ts
 - .claude/skills/impeccable/reference/live.md
-- web/src/lib/session.tsx
+- ref_react
 - sync_api.dart
 - .agents/skills/impeccable/SKILL.md
 - env
@@ -106,7 +106,7 @@
 - Disputes.tsx
 - sync_engine.dart
 - 09 — Infrastructure, environments and operations
-- plans.ts
+- tenants.service.ts
 - pack_screen.dart
 - breakdown.ts
 - pick_list.dart
@@ -125,17 +125,17 @@
 - attribution.ts
 - disputes.controller.ts
 - .agents/skills/impeccable/reference/animate.md
-- ProbeController
+- recommend.ts
 - HealthController
 - dependencies
 - db/package.json
-- Database
+- app.module.ts
 - legal.controller.ts
 - note
-- catalog.ts
+- ShopifyInstallService
 - ledger.service.ts
 - .agents/skills/taste-skill/scripts/scenes.mjs
-- web/test/messages.test.ts
+- problem.filter.ts
 - React View Transitions
 - dependencies
 - React View Transitions
@@ -155,9 +155,9 @@
 - React View Transitions
 - wordmark.py
 - actOnAgentTarget
-- AutomationRuntime
-- Automations.tsx
-- shopify-oauth.test.ts
+- PrintDocuments.tsx
+- api/package.json
+- 06 — Integrations and API access
 - actOnAgentTarget
 - updatePendingCounter
 - admin/e2e/stack.ts
@@ -176,19 +176,19 @@
 - orders
 - queries.ts
 - shared/package.json
-- admin/scripts/gen-api.mjs
+- PrivacyService
 - .agents/skills/impeccable/reference/onboard.md
 - 3. Heal
 - campaigns.ts
 - api/package.json
-- ref_node_url
+- pnl.ts
 - .claude/skills/impeccable/reference/onboard.md
 - 3. Heal
 - run
 - paymob-callbacks.test.ts
 - confirmation/routing.ts
 - ref_node_fs
-- .export
+- dashboards.service.ts
 - Mizan integration engine
 - M6 — Returns, exchanges and tickets · المرتجعات والاستبدال والتذاكر
 - platform_staff
@@ -197,7 +197,7 @@
 - The Toolkit
 - CLAUDE.md — Mizan
 - analytics.ts
-- FastifyReady
+- Decision
 - AGENTS.md — Mizan
 - M13 — Automation Studio · استوديو الأتمتة
 - The Toolkit
@@ -269,18 +269,18 @@
 - M21 — Developer platform and app integrations · منصة المطورين والتكاملات
 - M22 — Retail POS · نقاط البيع للمحلات
 - tickets
-- .open
+- tickets.controller.ts
 - Handle `generate`
 - 5. Re-render Optimization
 - The study
-- tickets.rules.ts
+- cost-csv.ts
 - compilerOptions
-- hardening.ts
+- purchasing.module.ts
 - Handle `generate`
 - 5. Re-render Optimization
 - The study
 - 14 — Growth hub plan: attribution, CRM and performance marketing
-- .agents/skills/taste-skill/scripts/lint.mjs
+- status-csv.ts
 - M3 — Shipping and couriers · الشحن وشركات الشحن
 - What Mizan needs from you · المطلوب منك
 - jobs
@@ -311,7 +311,7 @@
 - View Transitions in Next.js
 - View Transitions in Next.js
 - Patterns and Guidelines
-- Scan mode (approach C: auto-extract, then confirm descriptive language)
+- refunds.rules.ts
 - FakeClock
 - permissions.ts
 - New visual work
@@ -327,7 +327,7 @@
 - Running Custom Playwright Code
 - Imagery
 - Layout
-- Operate mode depth (and Read notes)
+- .agents/skills/impeccable/SKILL.md
 - Shape
 - Running Custom Playwright Code
 - Imagery
@@ -372,7 +372,7 @@
 - App screens
 - Tells — the dated registry
 - Type
-- Extract Flow
+- ProfitCard.tsx
 - HealthController
 - plan.ts
 - web/package.json
@@ -406,12 +406,12 @@
 - Sections
 - 7. Tables and lists
 - Words
-- .start
+- 02-product.md
 - compilerOptions
 - Impeccable Manual Edit Applier
 - Common Cognitive Load Violations
-- Impeccable Documenter
-- @mizan/design-system
+- iOS platform
+- orders
 - Cookies
 - .agents/skills/react-view-transitions/AGENTS.md
 - 2. The run for an app screen
@@ -421,10 +421,10 @@
 - order-filters.ts
 - BlobStore
 - Generate Report
-- Diagnostic Scan
+- Operate mode depth (and Read notes)
 - compilerOptions
 - analysis_options.yaml
-- conditions.ts
+- .agents/skills/impeccable/reference/colorize.md
 - Common Cognitive Load Violations
 - iOS platform
 - docs/README.md
@@ -457,11 +457,11 @@
 - Implementation Workflow
 - db
 - worker
-- ConfirmPage.tsx
+- plainDecimal
 - 21st-magic
 - AuditLogController
 - Cognitive Load Assessment
-- .claude/skills/impeccable/reference/colorize.md
+- DatabaseModule
 - .agents/skills/impeccable/scripts/live-browser-ignores.js
 - 1. Eliminating Waterfalls
 - 2. Bundle Size Optimization
@@ -469,7 +469,7 @@
 - admin/test/messages.test.ts
 - admin/src/lib/api/schema.d.ts
 - web/src/lib/api/schema.d.ts
-- apps/admin — Mizan back office
+- reorder.ts
 - Cognitive Load Assessment
 - .claude/skills/impeccable/scripts/live-browser-ignores.js
 - 1. Eliminating Waterfalls
@@ -485,7 +485,7 @@
 - React View Transitions Skill
 - .agents/skills/taste-skill/library/app.json
 - 9. Type and colour
-- auth.service.ts
+- ProbeController
 - AppLocalizations
 - Sections
 - adr/README.md
@@ -505,9 +505,9 @@
 - confirmation.runner.ts
 - Impeccable Asset Producer
 - payments
-- admin/src/lib/format.ts
+- Visualize: Direction Comps & Asset Production
 - ProbeController
-- Diagnostic Scan
+- PrivacyController
 - .claude/skills/impeccable/reference/bolder.md
 - String get
 - apps/ops — Mizan ops app (Flutter)
@@ -521,19 +521,18 @@
 - Web Interface Guidelines
 - smoke.sh
 - healthcheck
-- ADR-0004: Next.js App Router + Tailwind for the web app
-- Read
-- Visualize: Direction Comps & Asset Production
-- manual-order.ts
+- ADR-0012: Kysely for database access
+- unplugin-swc
+- @mizan/api — Mizan API
+- pino
 - ReorderService
 - logo.test.mjs
-- app.module.ts
+- MetricsController
 - bulk_action_items
 - Adaptation Strategies
 - feedback
 - ADR-NNNN: Title
 - Runbook — restore the database (E13-1)
-- Impeccable Documenter
 - ADR-0002: Postgres outbox for jobs, no Redis in the MVP
 - manifest.json
 - peerDependenciesMeta
@@ -558,7 +557,6 @@
 - wallet
 - workspace
 - 8. Forms and settings
-- .agents/skills/impeccable/reference/bolder.md
 - ADR-0008: Field ownership for product sync
 - Heuristics Scoring Guide
 - .claude/skills/react-best-practices/rules/async-cheap-condition-before-await.md
@@ -589,7 +587,7 @@
 - margin
 - .echo
 - MainActivity.kt
-- .put
+- integrations-admin.controller.ts
 - idempotency_keys
 - .agents/skills/composition-patterns/rules/architecture-avoid-boolean-props.md
 - .agents/skills/composition-patterns/rules/architecture-compound-components.md
@@ -677,8 +675,7 @@
 - web/AGENTS.md
 - @mizan/design-system@1.0.0
 - next-intl@4.14.9
-- BillingController
-- Command guidance
+- billing.controller.ts
 - react-dom@19.3.1
 - web/postcss.config.mjs
 - .claude/skills/composition-patterns/rules/architecture-avoid-boolean-props.md
@@ -757,14 +754,8 @@
 - .claude/skills/react-best-practices/rules/server-serialization.md
 - .claude/skills/react-best-practices/rules/_template.md
 - @tanstack/react-query@5.104.5
-- connect/page.tsx
-- ExchangesController
 - typescript@^5.6.3
-- ADR-0007: Label-first courier status mapping with learned codes
-- .probe
 - ADR-0010: Firebase Authentication for users
-- ADR-0011: Collect only what is owed; never guess the payment method
-- Operate
 - home.spec.ts
 - order_sources
 - order_edits
@@ -773,9 +764,8 @@
 - duplicates.spec.ts
 - profit-breakdown.spec.ts
 - purchasing.spec.ts
-- Read
 - Command guidance
-- FlagsModule
+- flags.controller.ts
 
 ## God Nodes (most connected - your core abstractions)
 1. `AuthContext` - 520 edges
@@ -786,7 +776,7 @@
 6. `useSession()` - 265 edges
 7. `Auth` - 263 edges
 8. `ok()` - 243 edges
-9. `DB` - 217 edges
+9. `DB` - 218 edges
 10. `ApiProblems()` - 216 edges
 
 ## Surprising Connections (you probably didn't know these)
@@ -804,59 +794,59 @@
 ## Import Cycles
 - None detected.
 
-## Communities (789 total, 226 thin omitted)
+## Communities (781 total, 226 thin omitted)
 
 ### Community 0 - "ref_vitest"
 Cohesion: 0.01
-Nodes (343): createApp(), DEFAULT_CONFIRMATION, MessagingRegistry, StoreChannels, ConfigSchema, loadConfig(), LOG_LEVELS, optionalString (+335 more)
+Nodes (370): createApp(), main(), DEFAULT_CONFIRMATION, MessagingRegistry, StoreChannels, REDACTED_ORDER, ConfigError, ConfigSchema (+362 more)
 
 ### Community 1 - "engine/src/index.ts"
-Cohesion: 0.03
-Nodes (80): How it stays correct when providers misbehave, What the tests prove, BostaConfig, BostaLearned, CancelReason, FulfillmentEventStatus, ShopifyLearned, WooLearned (+72 more)
+Cohesion: 0.02
+Nodes (89): TERMINAL_FOR_STORE, Shopify specifics (already handled by the engine), BostaConfig, BostaLearned, CancelReason, FulfillmentEventStatus, ShopifyLearned, gidFromWebhook() (+81 more)
 
 ### Community 2 - "ApiJson"
 Cohesion: 0.02
-Nodes (29): AttributionController, AutomationsController, CatalogController, NotificationsController, ProductsController, OffersController, ConnectionsController, PlatformFlagsController (+21 more)
+Nodes (21): autoRetryAt(), ProductsController, OffersController, MembersController, OrdersController, OrderSettingsController, PickingController, ProfitController (+13 more)
 
 ### Community 3 - "ref_next_intl"
 Cohesion: 0.02
-Nodes (159): config, csp, config, csp, AppLayout(), OrderPage(), Props, PaymentsPage() (+151 more)
+Nodes (168): config, csp, config, csp, AutomationsPage(), Props, one(), Props (+160 more)
 
-### Community 4 - "openapi.e2e.test.ts"
-Cohesion: 0.16
-Nodes (14): registeredSchema(), registeredSchemas(), toJsonSchema(), ProblemDetailsSchema, buildOpenApi(), COMPONENT_SCHEMAS, mountOpenApi(), checked (+6 more)
+### Community 4 - "web/src/lib/api/query.tsx"
+Cohesion: 0.09
+Nodes (29): Props, UsagePage(), LocaleLayout(), Props, OutageScreen(), subscribeOnline(), Meter(), READERS (+21 more)
 
 ### Community 5 - "useSession"
-Cohesion: 0.04
-Nodes (195): TryIt(), EditProduct(), PublishCard(), Body, ERRORS, NewProduct(), Option, part() (+187 more)
+Cohesion: 0.06
+Nodes (153): TryIt(), EditProduct(), PublishCard(), NewProduct(), EditVariant(), ImportCosts(), ConfirmPage(), FEEDBACK_MAX (+145 more)
 
-### Community 6 - "Values.tsx"
-Cohesion: 0.05
-Nodes (58): ConfirmationPage(), Props, Page(), Props, ProfitPage(), Props, Props, ReportsPage() (+50 more)
+### Community 6 - "ReportsScreen.tsx"
+Cohesion: 0.16
+Nodes (17): Props, ReportsPage(), Dashboard, DashboardId, DashboardView(), Downloads(), MetricsView(), MODULES (+9 more)
 
 ### Community 7 - "conversion.controller.ts"
-Cohesion: 0.08
-Nodes (17): ConversionSettingsController, OrderConversionController, Amount, Conversion, CONVERSION_METHODS, ConversionMethod, ConversionSchema, conversionSettings (+9 more)
+Cohesion: 0.10
+Nodes (12): ConversionSettingsController, OrderConversionController, Amount, CONVERSION_METHODS, ConversionMethod, ConversionSchema, conversionSettings, ConversionSettingsSchema (+4 more)
 
 ### Community 8 - "order-projector.ts"
-Cohesion: 0.05
-Nodes (38): DuplicatesService, CANCELLABLE, customerLabel(), FULFILLABLE, lastFour(), ledgerMethod, LIVE, money() (+30 more)
+Cohesion: 0.07
+Nodes (33): CANCELLABLE, CopySnapshot, customerLabel(), FULFILLABLE, lastFour(), ledgerMethod, LIVE, money() (+25 more)
 
-### Community 9 - "members.service.ts"
-Cohesion: 0.04
-Nodes (36): MembersController, AcceptedInvitationSchema, AssignableSchema, InvitationStatus, InvitationView, InvitationViewSchema, InviteBody, InviteSchema (+28 more)
+### Community 9 - "members.controller.ts"
+Cohesion: 0.12
+Nodes (18): AcceptedInvitationSchema, AssignableSchema, InvitationStatus, InvitationViewSchema, InviteBody, InviteSchema, MemberRoleSchema, MemberStatus (+10 more)
 
 ### Community 10 - "Icon"
-Cohesion: 0.05
-Nodes (71): Layout, OnboardingPage(), Props, Home(), ActivityLog(), AUDIT, ICON, order() (+63 more)
+Cohesion: 0.04
+Nodes (96): Layout, OnboardingPage(), Props, Home(), ProfitPage(), Props, ActivityLog(), AUDIT (+88 more)
 
 ### Community 11 - "NewOrder.tsx"
-Cohesion: 0.08
-Nodes (38): NewOrderPage(), Props, decimal(), decimal(), addressBody(), AddressErrors, AddressFields(), addressLine() (+30 more)
+Cohesion: 0.03
+Nodes (79): NewOrderPage(), Props, ProductPage(), Props, NewProductPage(), Props, ProductsPage(), Props (+71 more)
 
 ### Community 12 - "Icon"
-Cohesion: 0.03
-Nodes (115): Props, SettingsPage(), PrivacySettingsPage(), Props, AnnouncementsBanner(), key(), TONE, BrandPanel() (+107 more)
+Cohesion: 0.04
+Nodes (88): Props, SettingsPage(), AnnouncementsBanner(), key(), TONE, openFeedback(), MobileNav(), NavLinks() (+80 more)
 
 ### Community 13 - ".agents/skills/impeccable/scripts/live-browser.js"
 Cohesion: 0.03
@@ -866,13 +856,13 @@ Nodes (123): applyGlobalBarLabelState(), applyLiveBarPreference(), applyPlacehol
 Cohesion: 0.03
 Nodes (123): applyGlobalBarLabelState(), applyLiveBarPreference(), applyPlaceholderSizingStyles(), averageRgb01(), bindEditBadgeProxy(), bufferToBase64(), buildCollapsible(), buildColorModels() (+115 more)
 
-### Community 15 - "woocommerce.test.ts"
-Cohesion: 0.08
-Nodes (18): wooOrderIdFromWebhook(), decodeEntities(), isWooPing(), readWooHeaders(), signWoo(), verifyWooSignature(), WooWebhookMeta, METHODS (+10 more)
+### Community 15 - "FakeShopify"
+Cohesion: 0.10
+Nodes (11): drain(), fromShop(), idOf(), manual(), settle(), webhook(), storeOrder(), Creating a payment (Intention API) (+3 more)
 
 ### Community 16 - "WhatsAppCloudConnector"
-Cohesion: 0.05
-Nodes (46): StoreMessaging, 9. Messaging channels (M2, M9, M17), Shopify compliance webhooks (required for the App Store), LogMessaging, maskNumber(), MessagingChannel, MessagingProvider, Sms (+38 more)
+Cohesion: 0.07
+Nodes (25): StoreMessaging, 9. Messaging channels (M2, M9, M17), LogMessaging, maskNumber(), MessagingChannel, MessagingProvider, Sms, unreachableNumber() (+17 more)
 
 ### Community 17 - "mizan_tokens.dart"
 Cohesion: 0.02
@@ -883,28 +873,28 @@ Cohesion: 0.03
 Nodes (86): countWhere, at, attempts, code, fetchedAt, id, json, message (+78 more)
 
 ### Community 19 - "confirmation.service.ts"
-Cohesion: 0.02
-Nodes (83): OFFER_RESULTS, actionId(), CHAT_ACTIONS, ChatAction, chatKey(), DEV_KEY, keyOf(), linkToken() (+75 more)
+Cohesion: 0.03
+Nodes (67): OFFER_RESULTS, ConfirmationAnalytics, actionId(), CHAT_ACTIONS, ChatAction, chatKey(), DEV_KEY, keyOf() (+59 more)
 
 ### Community 20 - "MizanEngine"
-Cohesion: 0.06
-Nodes (17): Safe Areas: Handle the Notch, Safe Areas: Handle the Notch, gidFromWebhook(), iso(), MizanEngine, orderFingerprint(), withoutPersonalData(), env() (+9 more)
+Cohesion: 0.05
+Nodes (18): Safe Areas: Handle the Notch, Safe Areas: Handle the Notch, MizanEngine, orderFingerprint(), withoutPersonalData(), env(), main(), makeStore() (+10 more)
 
 ### Community 21 - "@nestjs/common"
-Cohesion: 0.02
-Nodes (126): ConnectionNoticesConsumer, ShopifyConnectedConsumer, COLLECTS_ON_DELIVERY, SHOPIFY_REASON, StoreWritebackConsumer, AutomationsConsumer, LimitsConsumer, NewProduct (+118 more)
+Cohesion: 0.01
+Nodes (188): ConnectionNoticesConsumer, WEBHOOKS_REFUSED, BACKFILL_DAYS, ShopifyConnectedConsumer, COLLECTS_ON_DELIVERY, SHOPIFY_REASON, StoreWritebackConsumer, REFUSED (+180 more)
 
 ### Community 22 - "schema.ts"
 Cohesion: 0.02
 Nodes (100): AccountingPeriods, Announcements, ApiKeys, ArrayType, AuditLog, AutomationRuns, Automations, BulkActionItems (+92 more)
 
 ### Community 23 - "clients.ts"
-Cohesion: 0.05
-Nodes (48): DatabaseModule, openDatabase(), ADR-0012, @mizan/db, client, out, [command], createPgDb() (+40 more)
+Cohesion: 0.06
+Nodes (45): 2. Wrap the element, openDatabase(), 2. Wrap the element, ADR-0012, @mizan/db, client, out, [command] (+37 more)
 
 ### Community 24 - "flags.controller.ts"
-Cohesion: 0.03
-Nodes (33): FeedbackQuerySchema, FeedbackService, view(), StoreFlagsController, Announcement, AnnouncementSchema, AnnouncementsQuerySchema, AnnouncementsSchema (+25 more)
+Cohesion: 0.04
+Nodes (17): FeedbackQuerySchema, FeedbackService, view(), PUBLIC_DOMAINS, SsoService, view(), StaffController, AddStaffSchema (+9 more)
 
 ### Community 25 - "connectSSE"
 Cohesion: 0.07
@@ -923,40 +913,40 @@ Cohesion: 0.07
 Nodes (85): AIC_FIELDS, AIC_HEADERS, applyThumb(), ARCHIVE_LICENCE, args, argv, base(), clock() (+77 more)
 
 ### Community 29 - "FeedbackScreen.tsx"
-Cohesion: 0.09
-Nodes (28): FeedbackPage(), Feedback, FeedbackScreen(), KIND_TONE, Status, STATUSES, BadgeTone, PAYMENT_ICONS (+20 more)
+Cohesion: 0.10
+Nodes (23): FeedbackPage(), Feedback, FeedbackScreen(), KIND_TONE, Status, STATUSES, RiskMeter(), ButtonGroup() (+15 more)
 
-### Community 30 - "fromMinor"
-Cohesion: 0.03
-Nodes (101): BACKFILL_DAYS, MOVING, Decimal, marginBand(), discounted(), isOfferable(), buildManualOrder(), AdSpendService (+93 more)
+### Community 30 - "money.ts"
+Cohesion: 0.14
+Nodes (25): Digits, formatDate(), formatDuration(), formatMoney(), formatNumber(), formatRelative(), formatWhen(), tag() (+17 more)
 
 ### Community 31 - "payments.dto.ts"
-Cohesion: 0.04
-Nodes (60): decimal(), PaymentsController, PaymentsListController, CompleteRefund, CompleteRefundSchema, LedgerSchema, ListPaymentsQuery, ListPaymentsQuerySchema (+52 more)
+Cohesion: 0.06
+Nodes (31): PaymentsController, PaymentsListController, CompleteRefund, CompleteRefundSchema, LedgerSchema, ListPaymentsQuery, ListPaymentsQuerySchema, ListRefundsQuery (+23 more)
 
 ### Community 32 - "app_localizations.dart"
 Cohesion: 0.03
 Nodes (72): add, appTitle, countTitle, damagedCount, damagedMode, damagedModeHint, delegate, deliverySaved (+64 more)
 
 ### Community 33 - "secrets.e2e.test.ts"
-Cohesion: 0.05
-Nodes (30): DEV_KEY, keyOf(), readWooAuthToken(), WOO_AUTH_TTL_MS, WooAuthClaim, wooAuthToken(), AuditEntry, Fetch (+22 more)
+Cohesion: 0.04
+Nodes (33): STORE_PROVIDERS, CONNECTION_COLUMNS, token(), DEV_KEY, keyOf(), readWooAuthToken(), WOO_AUTH_TTL_MS, WooAuthClaim (+25 more)
 
 ### Community 34 - "ref_playwright_test"
-Cohesion: 0.19
-Nodes (5): shippedOrder(), mizan(), ownerWithStore(), phoneUser(), signInOwner()
+Cohesion: 0.20
+Nodes (4): shippedOrder(), mizan(), ownerWithStore(), signInOwner()
 
-### Community 35 - "products.service.ts"
-Cohesion: 0.12
-Nodes (17): decode(), encode(), ENTITIES, htmlToText(), imageView(), inOptionOrder(), like(), optionsOf() (+9 more)
+### Community 35 - "admin/src/lib/api/query.tsx"
+Cohesion: 0.15
+Nodes (21): OutageScreen(), subscribeOnline(), buttonClass(), IconButton(), useToast(), API_URL, makeQueryClient(), problemText() (+13 more)
 
 ### Community 36 - "IntegrationError"
 Cohesion: 0.05
-Nodes (51): Warehouse (M4), E5 · M1 Orders, Decision, getPath(), isEmpty(), Path, Resolver, SchemaDriftError (+43 more)
+Nodes (52): Decision, getPath(), isEmpty(), Path, Resolver, SchemaDriftError, trimSample(), unwrap() (+44 more)
 
 ### Community 37 - "purchasing.controller.ts"
 Cohesion: 0.09
-Nodes (33): SettingsViewSchema, Amount, Currency, DEFAULT_PURCHASING, DraftFromSuggestions, DraftFromSuggestionsSchema, LANDED_KINDS, Money (+25 more)
+Nodes (32): SettingsViewSchema, Amount, Currency, DEFAULT_PURCHASING, DraftFromSuggestionsSchema, LANDED_KINDS, Money, NewLandedCost (+24 more)
 
 ### Community 38 - ".agents/skills/impeccable/scripts/modern-screenshot.umd.js"
 Cohesion: 0.07
@@ -970,13 +960,13 @@ Nodes (54): ae(), be(), bt(), Ce(), Ct(), de(), dt(), _e() (+46 more)
 Cohesion: 0.03
 Nodes (64): add, appTitle, countTitle, damagedCount, damagedMode, damagedModeHint, deliverySaved, fetchedAt (+56 more)
 
-### Community 41 - "purchasing.service.ts"
-Cohesion: 0.04
-Nodes (44): LinePicture, LinePictureSchema, OpsController, OP_STATUSES, OP_TYPES, OpsSyncBody, OpsSyncResultSchema, OpsSyncSchema (+36 more)
+### Community 41 - "stock.controller.ts"
+Cohesion: 0.06
+Nodes (27): OpsController, OP_STATUSES, OP_TYPES, OpsSyncBody, OpsSyncResultSchema, OpsSyncSchema, ReturnInspectPayloadSchema, StockOpPayloadSchema (+19 more)
 
 ### Community 42 - "automations.controller.ts"
-Cohesion: 0.17
-Nodes (19): AutomationDetailSchema, AutomationInputSchema, AutomationListSchema, AutomationPatchSchema, AutomationRunSchema, AutomationSchema, CatalogSchema, ConditionsOut (+11 more)
+Cohesion: 0.07
+Nodes (25): AutomationsController, CatalogController, NotificationsController, AutomationDetailSchema, AutomationInputSchema, AutomationListSchema, AutomationPatchSchema, AutomationRunSchema (+17 more)
 
 ### Community 43 - "resumeSession"
 Cohesion: 0.06
@@ -994,9 +984,9 @@ Nodes (64): add, appTitle, countTitle, damagedCount, damagedMode, damagedModeHin
 Cohesion: 0.06
 Nodes (65): applyParamDefaults(), applyParamValue(), applySavedParamValues(), applySavedSessionMeta(), buildParamsPanel(), checkpointPayload(), clampVariantIndex(), clearHandled() (+57 more)
 
-### Community 47 - "shopify-install.e2e.test.ts"
-Cohesion: 0.11
-Nodes (13): EngineJobRunner, SHOPIFY_DEFAULT_SCOPES, as(), clock, fake, http(), installFlow(), qs() (+5 more)
+### Community 47 - "RefundsService"
+Cohesion: 0.20
+Nodes (5): Refund, APPROVERS, label(), RefundsService, refundSettings
 
 ### Community 48 - "landing/page.tsx"
 Cohesion: 0.06
@@ -1007,32 +997,32 @@ Cohesion: 0.12
 Nodes (22): argv, deal(), dealScreen(), dealShell(), dealStyle(), fontLink(), HERE, kebab() (+14 more)
 
 ### Community 50 - "admin/src/app/[locale]/layout.tsx"
-Cohesion: 0.06
-Nodes (43): LocaleLayout(), Props, OutageScreen(), subscribeOnline(), buttonClass(), IconButton(), Ctx, TOAST_MS (+35 more)
+Cohesion: 0.09
+Nodes (22): LocaleLayout(), Props, Ctx, TOAST_MS, ToastInput, ToastItem, ToastProvider(), dirOf() (+14 more)
 
 ### Community 51 - "WebhooksController"
 Cohesion: 0.26
-Nodes (3): headersOf(), rawBody(), WebhooksController
+Nodes (4): headersOf(), rawBody(), WebhooksController, HttpRequest
 
 ### Community 52 - "pick_flow_test.dart"
 Cohesion: 0.05
 Nodes (34): cameraScanner, OpStore, SyncEngine, main, order, fetches, list, lists (+26 more)
 
 ### Community 53 - "orders.dto.ts"
-Cohesion: 0.07
-Nodes (46): BULK_ACTIONS, CANCEL_REASONS, orderSettings, OrderSettingsSchema, AddressInputSchema, Amount, BulkActionSchema, BulkRequestSchema (+38 more)
+Cohesion: 0.04
+Nodes (64): BULK_ACTIONS, CANCEL_REASONS, orderSettings, OrderSettingsSchema, GATEWAY, MANUAL_PAYMENT_MODES, ManualOrderError, ManualOrderInput (+56 more)
 
-### Community 54 - ".emit"
-Cohesion: 0.02
-Nodes (49): CancelResultSink, OfferResultSink, engineSyncOptions(), storeSyncOf(), SyncGuardian, TERMINAL_FOR_STORE, ProductProjector, Skip (+41 more)
+### Community 54 - "SqlStore"
+Cohesion: 0.08
+Nodes (16): SyncGuardian, storeDayBounds(), as(), bosta, clock, detail(), drainEvents(), fake (+8 more)
 
 ### Community 55 - "receive_screen.dart"
 Cohesion: 0.04
 Nodes (47): HomeScreen, _HomeScreenState, QueueScreen, _QueueScreenState, api, build, createState, engine (+39 more)
 
 ### Community 56 - "attribution.dto.ts"
-Cohesion: 0.10
-Nodes (21): BackfillSourcesSchema, CampaignQuerySchema, CampaignResults, CampaignResultsSchema, Multiple, Named, OrderSources, OrderSourceSchema (+13 more)
+Cohesion: 0.09
+Nodes (19): AttributionController, BackfillSourcesSchema, CampaignQuery, CampaignQuerySchema, CampaignResults, CampaignResultsSchema, Multiple, Named (+11 more)
 
 ### Community 57 - "el"
 Cohesion: 0.07
@@ -1050,29 +1040,33 @@ Nodes (55): actionLabel(), applyConfigureBarChrome(), bindConfigureCountPillTool
 Cohesion: 0.07
 Nodes (55): armPageChatForTyping(), attachSteerFocusDebug(), attachSteerFocusGuard(), buildSteerProcessingDots(), buildSteerQueueHint(), clearSteerAwaitTimer(), clearSteerFocusRecoverTimer(), collapsePageChat() (+47 more)
 
-### Community 62 - "dashboards.service.ts"
-Cohesion: 0.10
-Nodes (27): DASHBOARD_IDS, dashboardById, DashboardDefinition, DashboardId, DASHBOARDS, Dashboard, DashboardListSchema, DashboardQuerySchema (+19 more)
+### Community 61 - "media.service.ts"
+Cohesion: 0.08
+Nodes (9): Fetch, MediaController, MediaModule, BLOB_STORE, MediaService, PreparedPicture, SavedPicture, SIGNATURES (+1 more)
 
-### Community 63 - "web/src/components/auth/SignIn.tsx"
-Cohesion: 0.15
-Nodes (30): AuthHeading(), BackLink(), CodeField(), Done(), FieldProps, GlassField(), PasswordField(), Step() (+22 more)
+### Community 62 - "xlsx.ts"
+Cohesion: 0.26
+Nodes (12): Cell, columnName(), crc32(), CRC_TABLE, csv(), esc(), parts(), sheetXml() (+4 more)
+
+### Community 63 - "StockService"
+Cohesion: 0.16
+Nodes (5): RecordMovementsBody, decode(), encode(), like(), StockService
 
 ### Community 64 - "CostsScreen.tsx"
 Cohesion: 0.18
 Nodes (21): CostsPage(), Props, AmountRule(), CostsScreen(), CourierForm(), COURIERS, decimal(), EDITORS (+13 more)
 
 ### Community 65 - "BostaConnector"
-Cohesion: 0.08
-Nodes (14): shouldApplyStatus(), BostaCity, BostaDistrict, CityMatch, CityResolver, EG_ALIASES, lev(), matchDistrict() (+6 more)
+Cohesion: 0.07
+Nodes (25): Change, diffShapes(), ShapeDiff, shapeOf(), ShapeWatch, RANK, shouldApplyStatus(), StatusMapper (+17 more)
 
-### Community 66 - "tickets.service.ts"
-Cohesion: 0.09
-Nodes (20): TicketsController, ListTicketsQuery, ListTicketsQuerySchema, NewTicket, NewTicketSchema, OrderRef, Person, Ticket (+12 more)
+### Community 66 - "tickets.rules.ts"
+Cohesion: 0.10
+Nodes (21): Ticket, DONE, isLate(), moveRefusal(), SLA_HOURS, stamps(), TICKET_SOURCES, TICKET_STATUSES (+13 more)
 
 ### Community 67 - "auth.types.ts"
 Cohesion: 0.02
-Nodes (167): DEFAULT_SYNC, StoreSync, StoreSyncSchema, GuardRound, CampaignQuery, AuditLogEntrySchema, AuditLogEntryView, AuditLogPageSchema (+159 more)
+Nodes (115): apps/admin — Mizan back office, Commands, Sign-in, AuditLogEntrySchema, AuditLogEntryView, AuditLogPageSchema, QuerySchema, LinePictureSchema (+107 more)
 
 ### Community 68 - "initGlobalBar"
 Cohesion: 0.07
@@ -1082,33 +1076,29 @@ Nodes (48): agentHasWorkInFlight(), agentStatusText(), barPaletteForTheme(), bra
 Cohesion: 0.05
 Nodes (28): build, createState, engine, pickApi, receiveApi, scanner, store, _tab (+20 more)
 
-### Community 70 - "scorecard.service.ts"
-Cohesion: 0.13
-Nodes (9): deliveredRate(), ScorecardController, Scorecard, ScorecardQuery, ScorecardQuerySchema, ScorecardSchema, Stats, Counts (+1 more)
-
 ### Community 71 - ".claude/skills/impeccable/reference/new-work.md"
-Cohesion: 0.07
-Nodes (28): Assess Adaptation Challenge, Implement & Verify, Recommended Actions, Recommended Actions, Craft (deprecated alias), Opting out of the boot check, Step 1: Run the pass, Step 2: Act by severity (+20 more)
+Cohesion: 0.04
+Nodes (46): Assess Adaptation Challenge, Implement & Verify, Recommended Actions, Craft (deprecated alias), Impeccable Documenter, Input Contract, Output Contract, Workflow (+38 more)
 
 ### Community 72 - "initGlobalBar"
 Cohesion: 0.07
 Nodes (48): agentHasWorkInFlight(), agentStatusText(), barPaletteForTheme(), brandMarkSvg(), buildDesignHeader(), cursorForInsertAxis(), designPanelCss(), detectPageTheme() (+40 more)
 
 ### Community 73 - "Button"
-Cohesion: 0.13
-Nodes (22): AccessPage(), AuditPage(), HealthPage(), StaffLayout(), Home(), AccessScreen(), HealthScreen(), mb() (+14 more)
+Cohesion: 0.15
+Nodes (23): AccessPage(), AuditPage(), HealthPage(), StoresPage(), UsersPage(), AccessScreen(), HealthScreen(), mb() (+15 more)
 
 ### Community 74 - "schemas.ts"
 Cohesion: 0.08
-Nodes (34): OrderSourceHints, Address, CanonicalImage, CanonicalVariant, ConnectorId, FulfillmentGroup, OrderLine, PAYMENT_MODES (+26 more)
+Nodes (34): OfferFacts, MetricValue, Address, CanonicalImage, CanonicalVariant, ConnectorId, FulfillmentGroup, Money (+26 more)
 
 ### Community 75 - ".claude/skills/impeccable/reference/live.md"
-Cohesion: 0.06
-Nodes (33): Apply at system scale, Audit before choosing, Choose a strategy, Contrast and perception, Live-mode signature params, Verify, Visitor mode, Step 1: Parse the request (+25 more)
+Cohesion: 0.07
+Nodes (26): Step 1: Parse the request, Step 2: Reuse the page, then start, Step 3: Generate, Step 4: Accept and close, Cleanup, Exit, First-time setup, Handle `accept` (+18 more)
 
-### Community 76 - "web/src/lib/session.tsx"
-Cohesion: 0.04
-Nodes (91): LocaleLayout(), Props, Body, EDIT_ERRORS, PriceRow, Product, PRODUCT_EDITORS, PICTURE_ERRORS (+83 more)
+### Community 76 - "ref_react"
+Cohesion: 0.03
+Nodes (148): open(), MANAGERS, Recipe, show(), Answer, Done(), Finished(), Reason (+140 more)
 
 ### Community 77 - "sync_api.dart"
 Cohesion: 0.06
@@ -1116,7 +1106,7 @@ Nodes (29): baseUrl, _client, _get, list, openListIds, timeout, baseUrl, _client
 
 ### Community 78 - ".agents/skills/impeccable/SKILL.md"
 Cohesion: 0.05
-Nodes (39): Assess Adaptation Challenge, Implement & Verify, Recommended Actions, Craft (deprecated alias), Opting out of the boot check, Step 1: Run the pass, Step 2: Act by severity, Step 3: Deprecated fields are binding (+31 more)
+Nodes (37): 1. Accessibility (VoiceOver / TalkBack), 2. Performance, 3. Appearance & Theming, 4. Platform Conformance (CRITICAL), 5. Adaptivity, Diagnostic Scan, Recommended Actions, Craft (deprecated alias) (+29 more)
 
 ### Community 79 - "env"
 Cohesion: 0.04
@@ -1135,12 +1125,12 @@ Cohesion: 0.10
 Nodes (41): adjustments(), argv, assetQueries(), ASSETS_PATH, briefStop(), briefWords(), deal(), dealHero() (+33 more)
 
 ### Community 83 - "StoreDetail.tsx"
-Cohesion: 0.13
-Nodes (36): AnnouncementsPage(), StaffPage(), StoresPage(), StorePage(), UsersPage(), Bdi(), AnnouncementsScreen(), empty (+28 more)
+Cohesion: 0.12
+Nodes (33): AnnouncementsPage(), FlagsPage(), StaffPage(), StorePage(), Bdi(), AnnouncementsScreen(), empty, TONE (+25 more)
 
 ### Community 84 - "catalog.dto.ts"
-Cohesion: 0.06
-Nodes (30): CatalogController, CatalogProductSchema, CatalogVariantSchema, CostsImportedSchema, CostsUpdatedSchema, ImportCostsSchema, Name, NewProductSchema (+22 more)
+Cohesion: 0.07
+Nodes (26): CatalogController, CatalogProductSchema, CatalogVariantSchema, CostsImportedSchema, CostsUpdatedSchema, ImportCostsSchema, Name, NewProductSchema (+18 more)
 
 ### Community 85 - "applyEditing"
 Cohesion: 0.06
@@ -1160,11 +1150,11 @@ Nodes (33): HttpSyncApi, SyncApi, api, applied, batchSize, complete, conflicts, 
 
 ### Community 89 - "09 — Infrastructure, environments and operations"
 Cohesion: 0.09
-Nodes (25): Completion gate, Init flow, Step 1: Load current state, Step 2: Explore the project, Step 3: Interview for product truth, Step 4: Write PRODUCT.md, Step 5: Record workflow defaults, Step 6: Wrap up or resume (+17 more)
+Nodes (26): Completion gate, Init flow, Step 1: Load current state, Step 2: Explore the project, Step 3: Interview for product truth, Step 4: Write PRODUCT.md, Step 5: Record workflow defaults, Step 6: Wrap up or resume (+18 more)
 
-### Community 90 - "plans.ts"
-Cohesion: 0.12
-Nodes (18): BillingModule, LIMIT_METRICS, LimitAlert, limitAlerts(), LimitMetric, monthOf(), monthStart(), NEAR_SHARE (+10 more)
+### Community 90 - "tenants.service.ts"
+Cohesion: 0.05
+Nodes (37): LIMIT_METRICS, LimitAlert, LimitMetric, monthOf(), monthStart(), NEAR_SHARE, NEXT_PLAN, PLAN_RANK (+29 more)
 
 ### Community 91 - "pack_screen.dart"
 Cohesion: 0.05
@@ -1172,7 +1162,7 @@ Nodes (35): build, _code, createState, dispose, engine, _Feedback, _finish, _las
 
 ### Community 92 - "breakdown.ts"
 Cohesion: 0.10
-Nodes (26): Checks, in order, Disposition, Impeccable Finish Reviewer, Input Contract, Output Contract, Verdict Pass, After approval: the comp becomes a spec, Generate three compositional options (+18 more)
+Nodes (28): Checks, in order, Disposition, Impeccable Finish Reviewer, Input Contract, Output Contract, Verdict Pass, aggregate(), allocate() (+20 more)
 
 ### Community 93 - "pick_list.dart"
 Cohesion: 0.05
@@ -1191,8 +1181,8 @@ Cohesion: 0.07
 Nodes (29): allow, appMode, args, asJson, dealtFonts, fails, film, HEIGHT (+21 more)
 
 ### Community 97 - "web/e2e/stack.ts"
-Cohesion: 0.19
-Nodes (14): placeOrder(), agentIn(), codes(), confirmEmail(), newEmail(), newPhone(), ownerWithTwoStep(), PASSWORD (+6 more)
+Cohesion: 0.18
+Nodes (15): placeOrder(), agentIn(), codes(), confirmEmail(), newEmail(), newPhone(), ownerWithTwoStep(), PASSWORD (+7 more)
 
 ### Community 98 - ".claude/skills/taste-skill/scripts/inspect.mjs"
 Cohesion: 0.07
@@ -1203,12 +1193,12 @@ Cohesion: 0.05
 Nodes (38): default, description, LOAD_DURATION, LOAD_OUT, POSTGRES_PASSWORD, TEST_DATABASE_URL, duration, jobs (+30 more)
 
 ### Community 100 - "admin/src/lib/session.tsx"
-Cohesion: 0.12
-Nodes (17): FlagsPage(), FlagsScreen(), Switch(), apiClient, ApiError, contextMiddleware(), ok(), Problem (+9 more)
+Cohesion: 0.14
+Nodes (14): apiClient, ApiError, contextMiddleware(), ok(), Problem, Schemas, StaffRole, RFC-9457 (+6 more)
 
 ### Community 101 - "metrics.ts"
-Cohesion: 0.12
-Nodes (17): ALL, MANAGERS, METRIC_KEYS, metricByKey, MetricDefinition, METRICS, MetricUnit, MetricValue (+9 more)
+Cohesion: 0.10
+Nodes (22): multiple(), perUnit(), RoasFacts, roasSummary(), ALL, deliveredRate(), MANAGERS, METRIC_KEYS (+14 more)
 
 ### Community 102 - ".agents/skills/impeccable/reference/document.md"
 Cohesion: 0.15
@@ -1216,27 +1206,31 @@ Nodes (12): Pitfalls, Seed mode, Step 1: Route through new-work's workshop, Step
 
 ### Community 103 - "profit.controller.ts"
 Cohesion: 0.06
-Nodes (46): AD_PLATFORMS, AdSpendDaySchema, AdSpendDeleteQuerySchema, AdSpendImportedSchema, AdSpendListSchema, AdSpendParamsSchema, AdSpendQuerySchema, AdSpendRowSchema (+38 more)
+Nodes (44): AdSpendDaySchema, AdSpendDeleteQuerySchema, AdSpendImportedSchema, AdSpendListSchema, AdSpendParamsSchema, AdSpendQuerySchema, AdSpendRowSchema, Day (+36 more)
 
 ### Community 104 - "ProblemError"
 Cohesion: 0.02
-Nodes (54): autoRetryAt(), AutomationInput, AutomationsService, notFound(), view(), NotificationsService, Plan, variantPictures() (+46 more)
+Nodes (126): SetCostsBody, decode(), encode(), CostCsvProblem, notFound(), ProductBuilderService, decode(), encode() (+118 more)
 
 ### Community 105 - "S"
-Cohesion: 0.12
-Nodes (22): notify(), BulkAction, productId(), S, Orders (M1) and verification (M2), 10 — Roadmap and backlog, Current status (October 2026), E10 · M6 Returns and tickets (+14 more)
+Cohesion: 0.13
+Nodes (23): BulkAction, readyToShip(), productId(), S, Orders (M1) and verification (M2), 10 — Roadmap and backlog, Current status (October 2026), E10 · M6 Returns and tickets (+15 more)
 
 ### Community 106 - "attribution.ts"
-Cohesion: 0.12
-Nodes (26): Phase 3 — V2 (months 7–12), CLICK_ID_KINDS, CLICK_ID_PLATFORM, clickIdFrom(), ClickIdKind, clip(), domainOf(), fromChannel() (+18 more)
+Cohesion: 0.11
+Nodes (27): Phase 3 — V2 (months 7–12), CLICK_ID_KINDS, CLICK_ID_PLATFORM, clickIdFrom(), ClickIdKind, clip(), domainOf(), fromChannel() (+19 more)
 
 ### Community 107 - "disputes.controller.ts"
-Cohesion: 0.13
-Nodes (15): OrderDisputesController, CloseDispute, CloseDisputeSchema, DISPUTE_REASONS, DISPUTE_STATUSES, DisputeListSchema, DisputeSchema, DisputeStatus (+7 more)
+Cohesion: 0.10
+Nodes (21): DisputesController, OrderDisputesController, CloseDispute, CloseDisputeSchema, Dispute, DISPUTE_REASONS, DISPUTE_STATUSES, DisputeListSchema (+13 more)
 
 ### Community 108 - ".agents/skills/impeccable/reference/animate.md"
 Cohesion: 0.12
 Nodes (14): Accessibility and control, Choose material by meaning, Find the job, Implement to the runtime, Set the motion thesis, Timing and easing, Verify, Visitor mode (+6 more)
+
+### Community 109 - "recommend.ts"
+Cohesion: 0.15
+Nodes (15): marginBand(), better(), Candidate, discounted(), isOfferable(), MAX_SHARE_PCT, minPct(), Offer (+7 more)
 
 ### Community 110 - "HealthController"
 Cohesion: 0.11
@@ -1250,49 +1244,49 @@ Nodes (33): dependencies, drift, flutter, flutter_localizations, http, intl, mob
 Cohesion: 0.07
 Nodes (33): bin, mizan-db, dependencies, @electric-sql/pglite@0.2.17, kysely@0.29.7, pg@8.23.1, description, devDependencies (+25 more)
 
-### Community 113 - "Database"
-Cohesion: 0.02
-Nodes (69): Layout (docs/03 §3), @mizan/api — Mizan API, Rules, ConnectionLifecycle, ConnectionResolver, json(), NotConnectedError, ProviderSecretSchemas (+61 more)
+### Community 113 - "app.module.ts"
+Cohesion: 0.01
+Nodes (138): Layout (docs/03 §3), AppModule, AppOptions, ConnectionLifecycle, ConnectionResolver, json(), NotConnectedError, ProviderSecretSchemas (+130 more)
 
 ### Community 114 - "legal.controller.ts"
-Cohesion: 0.05
-Nodes (44): PublicLegalController, StoreLegalController, AcceptLegalBody, AcceptLegalSchema, LegalVersionsSchema, PublicLegal, PublicLegalSchema, Status (+36 more)
+Cohesion: 0.06
+Nodes (21): PublicLegalController, StoreLegalController, AcceptLegalBody, AcceptLegalSchema, LegalVersionsSchema, PublicLegal, PublicLegalSchema, Status (+13 more)
 
 ### Community 115 - "note"
 Cohesion: 0.06
 Nodes (34): Act on the receipt, Assemble and review, Plan and asset review, Plan, capture, serve, Containment, Painted material, Region map, What varies independently (+26 more)
 
-### Community 116 - "catalog.ts"
-Cohesion: 0.14
-Nodes (18): ACTION_NAMES, ActionName, ACTIONS, catalog(), ContextEntity, ERROR_MIN_RUNS, ERROR_RATE, FIELDS (+10 more)
+### Community 116 - "ShopifyInstallService"
+Cohesion: 0.16
+Nodes (10): keyFor(), signState(), STATE_TTL_S, StatePayload, verifyState(), label(), sha256(), ShopifyInstallService (+2 more)
 
 ### Community 117 - "ledger.service.ts"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (30): add(), check(), LEDGER_KINDS, LEDGER_SOURCES, LEDGER_STATUSES, LedgerKind, LedgerLine, LedgerSource (+22 more)
 
 ### Community 118 - ".agents/skills/taste-skill/scripts/scenes.mjs"
-Cohesion: 0.10
+Cohesion: 0.11
 Nodes (15): alive(), Browser, findChrome(), Page, sleep(), sweepProfiles(), args, go() (+7 more)
 
-### Community 119 - "web/test/messages.test.ts"
-Cohesion: 0.14
-Nodes (4): flatten(), Tree, flatten(), Tree
+### Community 119 - "problem.filter.ts"
+Cohesion: 0.15
+Nodes (16): requestIdOf(), CODE_BY_STATUS, codeForStatus(), ProblemFilter, RFC-9457, PROBLEM_CONTENT_TYPE, ProblemDetails, problemType() (+8 more)
 
 ### Community 120 - "React View Transitions"
 Cohesion: 0.06
 Nodes (31): Accessibility, Animation Triggers, Availability, Choosing Animation Style, Common Patterns, Composing Shared Elements with List Identity, Core Concepts, Critical Placement Rule (+23 more)
 
 ### Community 121 - "dependencies"
-Cohesion: 0.08
-Nodes (24): dependencies, jose@6.2.13, kysely@0.29.7, @mizan/db@0.1.0, @mizan/engine@0.1.0, @mizan/shared@0.1.0, @nestjs/common@12.2.0, @nestjs/core@12.2.0 (+16 more)
+Cohesion: 0.10
+Nodes (21): dependencies, fastify@5.12.7, @fastify/compress@9.2.2, @fastify/helmet@13.2.0, jose@6.2.13, kysely@0.29.7, @mizan/db@0.1.0, @nestjs/common@12.2.0 (+13 more)
 
 ### Community 122 - "React View Transitions"
 Cohesion: 0.06
 Nodes (31): Accessibility, Animation Triggers, Availability, Choosing Animation Style, Common Patterns, Composing Shared Elements with List Identity, Core Concepts, Critical Placement Rule (+23 more)
 
 ### Community 123 - ".claude/skills/taste-skill/scripts/scenes.mjs"
-Cohesion: 0.11
-Nodes (15): alive(), Browser, findChrome(), Page, sleep(), sweepProfiles(), args, go() (+7 more)
+Cohesion: 0.06
+Nodes (27): r, adminEnv, alive(), Browser, findChrome(), Page, sleep(), sweepProfiles() (+19 more)
 
 ### Community 124 - "01 — Business model"
 Cohesion: 0.06
@@ -1308,15 +1302,15 @@ Nodes (19): dependencies, autocannon@8.0.0, @mizan/db@0.1.0, pg@8.23.1, descript
 
 ### Community 127 - "09 — Infrastructure, environments and operations"
 Cohesion: 0.14
-Nodes (14): 09 — Infrastructure, environments and operations, 1. Environments, 2. Azure layout (production), 3. Configuration, 4. CI/CD (GitHub Actions), 5. Observability, 5a. Table hygiene (✅ H-7), 5b. Database connection budget (✅ H-8) (+6 more)
+Nodes (13): 09 — Infrastructure, environments and operations, 1. Environments, 2. Azure layout (production), 3. Configuration, 5. Observability, 5a. Table hygiene (✅ H-7), 5b. Database connection budget (✅ H-8), 6. Backups and recovery (+5 more)
 
 ### Community 128 - ".agents/skills/taste-skill/assets/charts.js"
 Cohesion: 0.21
 Nodes (24): axes(), bars(), dayHeads(), diverging(), frame(), hits(), kindStyle(), lane() (+16 more)
 
 ### Community 129 - "tracking.service.ts"
-Cohesion: 0.05
-Nodes (27): ShippingController, CourierCancelSchema, StatusSetSchema, TrackingController, ImportStatusesSchema, ListShipmentsQuery, ListShipmentsQuerySchema, ManualShipmentSchema (+19 more)
+Cohesion: 0.07
+Nodes (19): ShippingController, CourierCancelSchema, StatusSetSchema, TrackingController, ImportStatusesSchema, ListShipmentsQuery, ListShipmentsQuerySchema, ManualShipmentSchema (+11 more)
 
 ### Community 130 - ".claude/skills/taste-skill/assets/charts.js"
 Cohesion: 0.21
@@ -1331,8 +1325,8 @@ Cohesion: 0.07
 Nodes (28): Accessibility, Animation Triggers, Availability, Choosing Animation Style, Common Patterns, Composing Shared Elements with List Identity, Core Concepts, Critical Placement Rule (+20 more)
 
 ### Community 133 - "ad-spend.csv.ts"
-Cohesion: 0.08
-Nodes (33): BARCODE, CostCsvProblem, CostRow, HEADERS, MAX_COST_ROWS, parseCostCsv(), unprotect(), ALIASES (+25 more)
+Cohesion: 0.17
+Nodes (13): ALIASES, Column, CsvProblem, dayOf(), daysBetween(), HEADERS, MAX_AGE_DAYS, MAX_ROWS (+5 more)
 
 ### Community 134 - "queue_screen.dart"
 Cohesion: 0.09
@@ -1354,13 +1348,17 @@ Nodes (10): build(), monogram(), outline(), place(), svg(), contours(), load(), 
 Cohesion: 0.14
 Nodes (27): actOnAgentTarget(), agentTargetBusyReason(), agentTargetOverlayGone(), agentTargetTaken(), buildPlaceholderResizeHandles(), claimAgentTarget(), claimAndActOnAgentTarget(), cursorForPlaceholderEdge() (+19 more)
 
-### Community 140 - "Automations.tsx"
-Cohesion: 0.15
-Nodes (14): AutomationsPage(), Props, InventorySettingsPage(), Props, Automations(), KNOWN_ACTIONS, KNOWN_TRIGGERS, MANAGERS (+6 more)
+### Community 139 - "PrintDocuments.tsx"
+Cohesion: 0.22
+Nodes (13): one(), PrintOrdersPage(), Props, Customer(), Doc, DocOrder, DocumentKind, Head() (+5 more)
 
-### Community 141 - "shopify-oauth.test.ts"
-Cohesion: 0.05
-Nodes (50): keyFor(), signState(), STATE_TTL_S, StatePayload, verifyState(), label(), sha256(), ShopifyInstallService (+42 more)
+### Community 140 - "api/package.json"
+Cohesion: 0.13
+Nodes (14): @mizan/engine@0.1.0, @mizan/shared@0.1.0, prom-client@15.1.3, rxjs@7.8.2, description, @mizan/shared, license, name (+6 more)
+
+### Community 141 - "06 — Integrations and API access"
+Cohesion: 0.09
+Nodes (23): 06 — Integrations and API access, 10. Accounting tools (M19), 11. Tax compliance (per merchant), 12. Infrastructure services, 13. Access playbook — apply in this order, 14. Sources (checked October 2026), 1. Four access routes, 3. Storefronts (+15 more)
 
 ### Community 142 - "actOnAgentTarget"
 Cohesion: 0.14
@@ -1371,8 +1369,8 @@ Cohesion: 0.17
 Nodes (26): clearStoredManualApplyState(), dismissToast(), fetchPendingCount(), handleManualEditActivity(), hidePendingApplyDock(), manualApplyLoadingText(), manualApplyStateKey(), manualEditEventForCurrentPage() (+18 more)
 
 ### Community 144 - "admin/e2e/stack.ts"
-Cohesion: 0.15
-Nodes (20): boss, owner, r, ADMIN, adminEnv, API, apiEnv, BOSS (+12 more)
+Cohesion: 0.18
+Nodes (18): boss, owner, ADMIN, API, apiEnv, BOSS, EMULATOR, PROJECT (+10 more)
 
 ### Community 145 - "op.dart"
 Cohesion: 0.08
@@ -1391,7 +1389,7 @@ Cohesion: 0.08
 Nodes (24): Assess Adaptation Challenge, Breakpoints: Content-Driven, Content Adaptation, Desktop Adaptation (Mobile → Desktop), Detect Input Method, Not Just Screen Size, Email Adaptation (Web → Email), Implement Adaptations, Layout Adaptation Patterns (+16 more)
 
 ### Community 149 - "offers.controller.ts"
-Cohesion: 0.19
+Cohesion: 0.18
 Nodes (16): DEFAULT_OFFERS, offerSettings, OfferSettingsSchema, Pct, IdSchema, OfferDecidedSchema, OfferDecisionSchema, OfferProductsQuerySchema (+8 more)
 
 ### Community 150 - "mountSvelteComponentVariant"
@@ -1399,8 +1397,8 @@ Cohesion: 0.12
 Nodes (25): acceptedDomAlreadyClean(), applyOriginalAttrsToSvelteAnchor(), clearHandledWrapperReloadStamp(), commitAcceptedSvelteComponentToDom(), componentModuleCandidates(), deferredRecoverySuperseded(), describeMountFailure(), detectDevServerBase() (+17 more)
 
 ### Community 151 - "stores.dto.ts"
-Cohesion: 0.08
-Nodes (21): StoresController, AddNoteSchema, ChangePlanSchema, NoteSchema, Plan, ReactivateStoreSchema, Status, StoreDetailSchema (+13 more)
+Cohesion: 0.07
+Nodes (18): StoresController, AddNoteSchema, ChangePlanSchema, NoteSchema, Plan, ReactivateStoreSchema, Status, StoreDetailSchema (+10 more)
 
 ### Community 152 - "Responsive Design"
 Cohesion: 0.08
@@ -1434,9 +1432,9 @@ Nodes (38): FULFILLMENT_CANCEL, FULFILLMENT_CREATE, FULFILLMENT_EVENT_CREATE, FU
 Cohesion: 0.10
 Nodes (23): dependencies, zod@4.6.7, description, devDependencies, @types/node@^22.10.2, typescript@^5.6.3, vitest@^2.1.8, @vitest/coverage-v8@2.1.9 (+15 more)
 
-### Community 160 - "admin/scripts/gen-api.mjs"
-Cohesion: 0.24
-Nodes (6): generate(), OUT, SPEC, generate(), OUT, SPEC
+### Community 160 - "PrivacyService"
+Cohesion: 0.17
+Nodes (4): PrivacyConsumer, PrivacyModule, json(), PrivacyService
 
 ### Community 161 - ".agents/skills/impeccable/reference/onboard.md"
 Cohesion: 0.09
@@ -1451,12 +1449,12 @@ Cohesion: 0.18
 Nodes (17): AD_CODES, add(), campaignResults(), CampaignRow, idents(), Level, LEVELS, Measures (+9 more)
 
 ### Community 164 - "api/package.json"
-Cohesion: 0.10
-Nodes (26): description, devDependencies, concurrently@10.0.6, @nestjs/testing@12.2.0, pino-pretty@13.2.0, supertest@7.3.1, @swc/core@1.16.18, @types/node@^22.10.2 (+18 more)
+Cohesion: 0.11
+Nodes (18): devDependencies, concurrently@10.0.6, @nestjs/testing@12.2.0, pino-pretty@13.2.0, supertest@7.3.1, @swc/core@1.16.18, @types/node@^22.10.2, @types/supertest@7.2.1 (+10 more)
 
-### Community 165 - "ref_node_url"
-Cohesion: 0.12
-Nodes (12): main, valid, admin, dbUrl, DURATION, Gate, INSTANCES, Row (+4 more)
+### Community 165 - "pnl.ts"
+Cohesion: 0.18
+Nodes (11): COLLECTS, computePnl(), MONEY_IN, OrderStage, PnlInput, PREPAID_IN, SHIPPED, egp() (+3 more)
 
 ### Community 166 - ".claude/skills/impeccable/reference/onboard.md"
 Cohesion: 0.09
@@ -1471,24 +1469,24 @@ Cohesion: 0.15
 Nodes (23): name, runs-on, steps, timeout-minutes, steps, CI, steps, steps (+15 more)
 
 ### Community 169 - "paymob-callbacks.test.ts"
-Cohesion: 0.05
-Nodes (45): E14 · M15 Payments and refunds, classify(), errorText(), PAYMOB_CHECKOUT, PaymobRest, INTENTION_PATH, PaymobConnector, intentionBody() (+37 more)
+Cohesion: 0.09
+Nodes (33): E14 · M15 Payments and refunds, INTENTION_PATH, PaymobConnector, intentionBody(), mapIntention(), METHODS, PaymobIntention, PaymobMapCtx (+25 more)
 
 ### Community 170 - "confirmation/routing.ts"
 Cohesion: 0.31
 Nodes (8): CASH, DEFAULT_ROUTING, PAID_ONLINE, Route, routeFor(), RoutingSettings, on, r()
 
 ### Community 171 - "ref_node_fs"
-Cohesion: 0.10
-Nodes (18): APP_LEVEL, appMode, args, asJson, byId, EXT, files, findings (+10 more)
+Cohesion: 0.05
+Nodes (39): APP_LEVEL, appMode, args, asJson, byId, EXT, files, findings (+31 more)
 
-### Community 172 - ".export"
-Cohesion: 0.09
-Nodes (5): DashboardsController, DashboardQuery, ExportQuery, DashboardsService, ReportsController
+### Community 172 - "dashboards.service.ts"
+Cohesion: 0.05
+Nodes (29): AttributionModule, ProfitModule, DashboardsController, DASHBOARD_IDS, dashboardById, DashboardDefinition, DashboardId, DASHBOARDS (+21 more)
 
 ### Community 173 - "Mizan integration engine"
-Cohesion: 0.18
-Nodes (10): 1. Shopify, 2. Bosta, 3. Run, Adding the next connector (J&T, Aramex, Salla, Zid …), Going live, Hooks (platform), Mizan integration engine, Operating it (+2 more)
+Cohesion: 0.15
+Nodes (12): 1. Shopify, 2. Bosta, 3. Run, Adding the next connector (J&T, Aramex, Salla, Zid …), Going live, Hooks (platform), How it stays correct when providers misbehave, Mizan integration engine (+4 more)
 
 ### Community 174 - "M6 — Returns, exchanges and tickets · المرتجعات والاستبدال والتذاكر"
 Cohesion: 0.09
@@ -1500,7 +1498,7 @@ Nodes (17): platform_audit, platform_audit_recent, platform_audit_staff, platfor
 
 ### Community 176 - "IntegrationError"
 Cohesion: 0.03
-Nodes (74): FxQuote, OpenErApiResponse, OpenErApiSource, rateText(), Non-negotiable rules, DriftSink, diffShapes(), ShapeDiff (+66 more)
+Nodes (116): grantedMissing(), FakeFxSource, FxQuote, FxSource, OpenErApiResponse, OpenErApiSource, rateText(), Platform (+108 more)
 
 ### Community 177 - "mizan"
 Cohesion: 0.12
@@ -1511,12 +1509,16 @@ Cohesion: 0.10
 Nodes (20): Animate complex properties, Assess What "Extraordinary" Means Here, For data-heavy interfaces, For functional UI, For performance-critical UI, For visual/marketing surfaces, Implement with Discipline, Interact with the device (+12 more)
 
 ### Community 179 - "CLAUDE.md — Mizan"
-Cohesion: 0.18
-Nodes (10): Agent tools, CLAUDE.md — Mizan, Commands, Definition of done (any task), Doc map, Facts to confirm before production (do not hard-code assumptions), How to work here, Repository map (+2 more)
+Cohesion: 0.17
+Nodes (11): Agent tools, CLAUDE.md — Mizan, Commands, Definition of done (any task), Doc map, Facts to confirm before production (do not hard-code assumptions), How to work here, Non-negotiable rules (+3 more)
 
 ### Community 180 - "analytics.ts"
-Cohesion: 0.17
+Cohesion: 0.16
 Nodes (18): ANSWER_CHANNELS, AnswerChannelKey, channelOf(), ChannelRow, ConfirmationFact, ConfirmationSummary, CONFIRMED, median() (+10 more)
+
+### Community 181 - "Decision"
+Cohesion: 0.20
+Nodes (5): FastifyReady, ADR-0013: Fastify as the API's HTTP adapter, Consequences, Context, Decision
 
 ### Community 182 - "AGENTS.md — Mizan"
 Cohesion: 0.25
@@ -1531,12 +1533,12 @@ Cohesion: 0.10
 Nodes (20): Animate complex properties, Assess What "Extraordinary" Means Here, For data-heavy interfaces, For functional UI, For performance-critical UI, For visual/marketing surfaces, Implement with Discipline, Interact with the device (+12 more)
 
 ### Community 185 - "2. Endpoints (MVP)"
-Cohesion: 0.09
-Nodes (22): Shipment, 2. Endpoints (MVP), Admin / integration ops, Automation (M13) and scripts (M14), Back office (Mizan staff, E17), Billing (E12), Channels (M18), finance (M19), reports (M20), developers (M21), POS (M22), Connections (+14 more)
+Cohesion: 0.10
+Nodes (19): 05 — API conventions and endpoints, 2. Endpoints (MVP), Admin / integration ops, Automation (M13) and scripts (M14), Back office (Mizan staff, E17), Billing (E12), Channels (M18), finance (M19), reports (M20), developers (M21), POS (M22), Connections (+11 more)
 
 ### Community 186 - "code"
-Cohesion: 0.09
-Nodes (19): Monorepo notes, code(), apps/web — Mizan dashboard, Calling the API (E4-4), Rules (lint-enforced), Sign-in and the store gate (E4-2), Monorepo notes, 05 — API conventions and endpoints (+11 more)
+Cohesion: 0.10
+Nodes (18): Monorepo notes, code(), apps/web — Mizan dashboard, Calling the API (E4-4), Rules (lint-enforced), Sign-in and the store gate (E4-2), Monorepo notes, 1. Conventions (+10 more)
 
 ### Community 187 - "createLiveBrowserDomHelpers"
 Cohesion: 0.16
@@ -1559,8 +1561,8 @@ Cohesion: 0.10
 Nodes (19): compilerOptions, allowJs, customConditions, esModuleInterop, incremental, isolatedModules, jsx, lib (+11 more)
 
 ### Community 192 - "admin/src/components/auth/SignIn.tsx"
-Cohesion: 0.21
-Nodes (11): SignInPage(), Mfa, SignIn(), run(), Wordmark(), authErrorCode(), authErrorKey, BY_CODE (+3 more)
+Cohesion: 0.13
+Nodes (21): SignInPage(), StaffLayout(), Home(), Mfa, SignIn(), run(), NAV, Shell() (+13 more)
 
 ### Community 193 - "receive_session.dart"
 Cohesion: 0.10
@@ -1603,8 +1605,8 @@ Cohesion: 0.11
 Nodes (6): config, db, ids, secrets, tenants, verifier
 
 ### Community 203 - "ReturnsService"
-Cohesion: 0.15
-Nodes (6): ReturnsController, InspectBody, ReturnState, ELIGIBLE, INSPECTORS, ReturnsService
+Cohesion: 0.12
+Nodes (10): ReturnsController, InspectBody, INSPECTION_OUTCOMES, InspectionOutcome, InspectSchema, ReturnState, ReturnStateSchema, ELIGIBLE (+2 more)
 
 ### Community 204 - "M19 — Finance and accounting · المالية والحسابات"
 Cohesion: 0.11
@@ -1651,8 +1653,8 @@ Cohesion: 0.11
 Nodes (17): 10. Report, 1. Read the brief and the project, 2. Write the argument, 3. Draw the direction, 4. Find the idea, 5. Write the words, 6. Build it, still, 7. Gate (+9 more)
 
 ### Community 215 - ".claude/skills/impeccable/reference/document.md"
-Cohesion: 0.09
-Nodes (21): Component translation rules, Narrative mapping, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Seed mode, Step 1: Find the design assets, Step 1: Route through new-work's workshop, Step 2: Auto-extract what can be auto-extracted (+13 more)
+Cohesion: 0.17
+Nodes (12): Component translation rules, Narrative mapping, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Step 1: Find the design assets, Step 2: Auto-extract what can be auto-extracted, Step 3: Ask the user for qualitative language, Step 4: Write DESIGN.md (+4 more)
 
 ### Community 216 - "M16 — Purchasing and suppliers · المشتريات والموردين"
 Cohesion: 0.08
@@ -1703,7 +1705,7 @@ Cohesion: 0.11
 Nodes (18): Acceptance criteria, Actions exposed (for Automation Studio), API, Edge cases, Entities, Events emitted, Field ownership with the store (E8-1), Flow — Reserve, pick, scan, pack — **with or without signal**. (+10 more)
 
 ### Community 228 - "M5 — Profit engine · محرك الربح"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (17): Acceptance criteria, Actions exposed (for Automation Studio), API, Edge cases, Entities, Events emitted, Flow — Every event updates the order's P&L — **no month-end surprise**., M5 — Profit engine · محرك الربح (+9 more)
 
 ### Community 229 - "M8 — Cash and payment reconciliation · تسوية الكاش والمدفوعات"
@@ -1802,9 +1804,13 @@ Nodes (16): Acceptance criteria, Actions exposed (for Automation Studio), API, E
 Cohesion: 0.18
 Nodes (14): tickets, refunds, ticket_events, ticket_events_ticket, tickets_assignee, tickets_number, tickets_order, tickets_queue (+6 more)
 
+### Community 253 - "tickets.controller.ts"
+Cohesion: 0.23
+Nodes (11): ListTicketsQuery, ListTicketsQuerySchema, NewTicket, NewTicketSchema, OrderRef, Person, TicketPageSchema, TicketSchema (+3 more)
+
 ### Community 254 - "Handle `generate`"
-Cohesion: 0.12
-Nodes (16): 1. Read the screenshot (if present), 2. Wrap the element, 3. Load the action's reference, 4. Plan three variants: identity first, then mode, then axes, 5. Apply the freeform prompt (if present), 6. Deliver variants, 7. Parameters (composition-sized, 0-4 per variant), 8. Signal done (+8 more)
+Cohesion: 0.13
+Nodes (15): 1. Read the screenshot (if present), 3. Load the action's reference, 4. Plan three variants: identity first, then mode, then axes, 5. Apply the freeform prompt (if present), 6. Deliver variants, 7. Parameters (composition-sized, 0-4 per variant), 8. Signal done, Aborting an in-flight session (+7 more)
 
 ### Community 255 - "5. Re-render Optimization"
 Cohesion: 0.12
@@ -1814,21 +1820,21 @@ Nodes (16): 5.10 Subscribe to Derived State, 5.11 Use Functional setState Update
 Cohesion: 0.12
 Nodes (15): 10. The 25 highest-scored sites and their ideas, 11. How the skill was tested, 12. The October 2026 study: 100 Sites of the Day, 13. The app-screen study, 1. Method and its limits, 2. Scores, 3. Where the idea comes from, 4. Headlines (+7 more)
 
-### Community 257 - "tickets.rules.ts"
-Cohesion: 0.17
-Nodes (14): DONE, isLate(), moveRefusal(), SLA_HOURS, stamps(), TICKET_SOURCES, TICKET_STATUSES, TICKET_TYPES (+6 more)
+### Community 257 - "cost-csv.ts"
+Cohesion: 0.26
+Nodes (10): BARCODE, CostRow, HEADERS, MAX_COST_ROWS, parseCostCsv(), unprotect(), CsvLine, fields() (+2 more)
 
 ### Community 258 - "compilerOptions"
 Cohesion: 0.12
 Nodes (15): compilerOptions, customConditions, emitDecoratorMetadata, esModuleInterop, experimentalDecorators, module, moduleResolution, outDir (+7 more)
 
-### Community 259 - "hardening.ts"
-Cohesion: 0.15
-Nodes (13): fastify@5.12.7, @fastify/compress@9.2.2, @fastify/helmet@13.2.0, @nestjs/platform-fastify@12.2.0, ALLOWED_HEADERS, EXPOSED_HEADERS, hardenHttp(), isPictureUpload() (+5 more)
+### Community 259 - "purchasing.module.ts"
+Cohesion: 0.27
+Nodes (4): LandedCostsController, PurchasingSettingsController, ReorderController, SuppliersController
 
 ### Community 260 - "Handle `generate`"
-Cohesion: 0.12
-Nodes (16): 1. Read the screenshot (if present), 2. Wrap the element, 3. Load the action's reference, 4. Plan three variants: identity first, then mode, then axes, 5. Apply the freeform prompt (if present), 6. Deliver variants, 7. Parameters (composition-sized, 0-4 per variant), 8. Signal done (+8 more)
+Cohesion: 0.13
+Nodes (15): 1. Read the screenshot (if present), 3. Load the action's reference, 4. Plan three variants: identity first, then mode, then axes, 5. Apply the freeform prompt (if present), 6. Deliver variants, 7. Parameters (composition-sized, 0-4 per variant), 8. Signal done, Aborting an in-flight session (+7 more)
 
 ### Community 261 - "5. Re-render Optimization"
 Cohesion: 0.12
@@ -1842,13 +1848,13 @@ Nodes (15): 10. The 25 highest-scored sites and their ideas, 11. How the skill w
 Cohesion: 0.09
 Nodes (22): 10. Decisions for the owner, 14 — Growth hub plan: attribution, CRM and performance marketing, 1. The idea in one loop, 2. Where we start (built), 3.1 New data (migrations, all with RLS), 3.2 Events and actions (catalogue, `docs/13`), 3.3 Rules that don't change, 3. Architecture (+14 more)
 
-### Community 264 - ".agents/skills/taste-skill/scripts/lint.mjs"
-Cohesion: 0.14
-Nodes (13): APP_LEVEL, appMode, args, asJson, byId, EXT, files, findings (+5 more)
+### Community 264 - "status-csv.ts"
+Cohesion: 0.25
+Nodes (9): dateOf(), HEADERS, MAX_STATUS_ROWS, parseStatusCsv(), StatusCsvProblem, statusOf(), StatusRow, WORDS (+1 more)
 
 ### Community 265 - "M3 — Shipping and couriers · الشحن وشركات الشحن"
-Cohesion: 0.10
-Nodes (16): Acceptance criteria, Actions exposed (for Automation Studio), API, Edge cases, Flow — From packed parcel to delivered — **tracked at every step**., M3 — Shipping and couriers · الشحن وشركات الشحن, Main screen — Shipments, Open questions (+8 more)
+Cohesion: 0.11
+Nodes (18): Shipment, Shipping (M3), Acceptance criteria, Actions exposed (for Automation Studio), API, Edge cases, Entities, Flow — From packed parcel to delivered — **tracked at every step**. (+10 more)
 
 ### Community 266 - "What Mizan needs from you · المطلوب منك"
 Cohesion: 0.12
@@ -1864,7 +1870,7 @@ Nodes (13): confirmation_runs, confirmation_runs_live, confirmation_runs_order, 
 
 ### Community 269 - "Link"
 Cohesion: 0.03
-Nodes (205): Page(), Props, IntegrationsPage(), Props, CITIES, ORDERS, OrderStatus, PROFIT_TREND (+197 more)
+Nodes (183): ConfirmationPage(), Props, PaymentsPage(), Props, Page(), Props, AdSpendPage(), Props (+175 more)
 
 ### Community 270 - "Generate Report"
 Cohesion: 0.13
@@ -1903,8 +1909,8 @@ Cohesion: 0.21
 Nodes (8): r, API, apiEnv, EMULATOR, PROJECT, WEB, webEnv, emulatorConfig
 
 ### Community 279 - "Generate Report"
-Cohesion: 0.29
-Nodes (7): Audit Health Score, Detailed Findings by Severity, Executive Summary, Generate Report, Implementation Integrity Verdict, Patterns & Systemic Issues, Positive Findings
+Cohesion: 0.13
+Nodes (14): 1. Accessibility (A11y), 2. Performance, 3. Theming, 4. Responsive Design, 5. Implementation Integrity (CRITICAL), Audit Health Score, Detailed Findings by Severity, Diagnostic Scan (+6 more)
 
 ### Community 280 - "Browser Automation with playwright-cli"
 Cohesion: 0.13
@@ -1919,8 +1925,8 @@ Cohesion: 0.13
 Nodes (14): 1. Eliminating Waterfalls (CRITICAL), 2. Bundle Size Optimization (CRITICAL), 3. Server-Side Performance (HIGH), 4. Client-Side Data Fetching (MEDIUM-HIGH), 5. Re-render Optimization (MEDIUM), 6. Rendering Performance (MEDIUM), 7. JavaScript Performance (LOW-MEDIUM), 8. Advanced Patterns (LOW) (+6 more)
 
 ### Community 283 - "12 — Payments"
-Cohesion: 0.14
-Nodes (13): 12 — Payments, 1. Payment methods, 2. Payment status, 4. The cash rule (engine), 5.1 COD to prepaid conversion, 5.2 Bank transfer, 5.3 Refunds, 5.3b Courier cash and exchanges (E10-2) (+5 more)
+Cohesion: 0.13
+Nodes (14): 12 — Payments, 1. Payment methods, 2. Payment status, 3. The ledger, 4. The cash rule (engine), 5.1 COD to prepaid conversion, 5.2 Bank transfer, 5.3 Refunds (+6 more)
 
 ### Community 284 - "package.json"
 Cohesion: 0.13
@@ -1966,17 +1972,17 @@ Nodes (14): Layout-Level ViewTransition, `loading.tsx` as Suspense Boundary, Nex
 Cohesion: 0.14
 Nodes (14): Animation Timing, Card Expand/Collapse with `startTransition`, Composing with Activity, Cross-Fade Without Remount, Exclude Elements with `useOptimistic`, Isolate Elements from Parent Animations, Layout Displacement Morph, Patterns and Guidelines (+6 more)
 
-### Community 295 - "Scan mode (approach C: auto-extract, then confirm descriptive language)"
-Cohesion: 0.17
-Nodes (12): Component translation rules, Narrative mapping, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Step 1: Find the design assets, Step 2: Auto-extract what can be auto-extracted, Step 3: Ask the user for qualitative language, Step 4: Write DESIGN.md (+4 more)
+### Community 295 - "refunds.rules.ts"
+Cohesion: 0.33
+Nodes (8): destinationsFor(), ledgerMethodFor(), needsApproval(), ONLINE_METHODS, REFUND_DESTINATIONS, REFUND_STATUSES, RefundDestination, RefundStatus
 
 ### Community 296 - "FakeClock"
 Cohesion: 0.03
-Nodes (56): fromShop(), idOf(), webhook(), storeOrder(), 5. WhatsApp Business Platform (Meta), Creating a payment (Intention API), DriftEvent, DriftKind (+48 more)
+Nodes (57): runtime(), 5. WhatsApp Business Platform (Meta), DriftKind, DriftMonitor, afterUnknownSend(), KNOWN_STATUS, parseWhatsAppWebhook(), signMeta() (+49 more)
 
 ### Community 297 - "permissions.ts"
-Cohesion: 0.11
-Nodes (19): files(), O, OA, OAF, OAM, OAMA, OAMAW, OAMF (+11 more)
+Cohesion: 0.06
+Nodes (26): files(), flatten(), Tree, flatten(), Tree, O, OA, OAF (+18 more)
 
 ### Community 298 - "New visual work"
 Cohesion: 0.14
@@ -2030,9 +2036,9 @@ Nodes (21): 10. Markup and credits, 11. Video, 12. Where pictures and footage go
 Cohesion: 0.15
 Nodes (12): 10. How pages fail, 1. What strong pages do, 2. Margins and the grid, 3. Where text sits, 4. Empty space, 5. The frame: margins, balance and titles, 6. Sections: carry the idea, vary the arrangement, 7. Navigation (+4 more)
 
-### Community 311 - "Operate mode depth (and Read notes)"
-Cohesion: 0.10
-Nodes (18): Craft floor, Refuse, Verify, Constraints, Failure modes, Flow, /impeccable hooks, Routing (+10 more)
+### Community 311 - ".agents/skills/impeccable/SKILL.md"
+Cohesion: 0.06
+Nodes (28): Before you finish, Scope is sovereign, The amplification, The skeleton test, Why it reads flat, Craft floor, Refuse, Verify (+20 more)
 
 ### Community 312 - "Shape"
 Cohesion: 0.22
@@ -2079,8 +2085,8 @@ Cohesion: 0.17
 Nodes (11): Assess Current State, Code Simplification, Content Simplification, Document Removed Complexity, Information Architecture, Interaction Simplification, Layout Simplification, Plan Simplification (+3 more)
 
 ### Community 323 - "automations.service.ts"
-Cohesion: 0.19
-Nodes (16): flatten(), read(), Row, validate(), contextOf(), parseStep(), Step, Conditions (+8 more)
+Cohesion: 0.04
+Nodes (60): AutomationInput, AutomationsModule, AutomationsService, flatten(), notFound(), read(), Row, validate() (+52 more)
 
 ### Community 324 - "Hardening Dimensions"
 Cohesion: 0.17
@@ -2111,8 +2117,8 @@ Cohesion: 0.27
 Nodes (8): bandOf(), BANDS, COLLECTS_CASH, RiskFacts, RiskReason, scoreOrder(), base, Verification by payment method
 
 ### Community 331 - "files"
-Cohesion: 0.07
-Nodes (26): Step 1: Parse the request, Step 2: Reuse the page, then start, Step 3: Generate, Step 4: Accept and close, Cleanup, Exit, First-time setup, Handle `accept` (+18 more)
+Cohesion: 0.06
+Nodes (33): Apply at system scale, Audit before choosing, Choose a strategy, Contrast and perception, Live-mode signature params, Verify, Visitor mode, Step 1: Parse the request (+25 more)
 
 ### Community 332 - "Android platform"
 Cohesion: 0.25
@@ -2176,7 +2182,7 @@ Nodes (10): Actions and navigation, Audit the language, Errors and permissions, 
 
 ### Community 347 - "confirmation.controller.ts"
 Cohesion: 0.07
-Nodes (27): ConfirmationAnalytics, CallQueueService, ConfirmationController, PublicConfirmationController, AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema (+19 more)
+Nodes (25): CallQueueService, ConfirmationController, PublicConfirmationController, AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ChannelsSchema (+17 more)
 
 ### Community 348 - "Nielsen's 10 Heuristics"
 Cohesion: 0.18
@@ -2210,9 +2216,9 @@ Nodes (10): 1. First wave (2023–2024), 2. Second wave (2025), 3. Third wave (2
 Cohesion: 0.18
 Nodes (10): 1. What the study measured, 2. The scale: few sizes, far apart, 3. Setting display type, 4. Setting text, 5. Loading the fonts properly, 6. One family or two, 7. Details that separate set type from typed text, 8. Mistakes the inspector cannot see (+2 more)
 
-### Community 356 - "Extract Flow"
-Cohesion: 0.25
-Nodes (7): Extract Flow, Step 1: Discover the Design System, Step 2: Identify Patterns, Step 3: Plan Extraction, Step 4: Extract & Enrich, Step 5: Migrate, Step 6: Document
+### Community 356 - "ProfitCard.tsx"
+Cohesion: 0.29
+Nodes (9): COSTS, isZero(), MISSING, Money, negate(), pct(), Pnl, ProfitCard() (+1 more)
 
 ### Community 359 - "plan.ts"
 Cohesion: 0.25
@@ -2263,8 +2269,8 @@ Cohesion: 0.18
 Nodes (11): depends_on, migrate, condition, depends_on, x-app, cap_drop, depends_on, image (+3 more)
 
 ### Community 371 - "Adaptation Strategies"
-Cohesion: 0.40
-Nodes (5): Adaptation Strategies, Orientation & foldables, Phone → Tablet (iPad / large screens), Platform → platform (iOS ↔ Android), Web → native (porting a website or web app)
+Cohesion: 0.25
+Nodes (7): Adaptation Strategies, Assess Adaptation Challenge, Implement & Verify, Orientation & foldables, Phone → Tablet (iPad / large screens), Platform → platform (iOS ↔ Android), Web → native (porting a website or web app)
 
 ### Community 372 - "compilerOptions"
 Cohesion: 0.18
@@ -2354,13 +2360,13 @@ Nodes (6): Checks, Entry Atomicity, Impeccable Manual Edit Applier, Input Contra
 Cohesion: 0.22
 Nodes (9): 1. The Wall of Options, 2. The Memory Bridge, 3. The Hidden Navigation, 4. The Jargon Barrier, 5. The Visual Noise Floor, 6. The Inconsistent Pattern, 7. The Multi-Task Demand, 8. The Context Switch (+1 more)
 
-### Community 397 - "Impeccable Documenter"
-Cohesion: 0.40
-Nodes (4): Impeccable Documenter, Input Contract, Output Contract, Workflow
-
-### Community 398 - "@mizan/design-system"
+### Community 397 - "iOS platform"
 Cohesion: 0.22
-Nodes (8): Brand in one minute, Changing the system, Icons, Logo, @mizan/design-system, Use in Flutter (`apps/ops`), Use in the Next.js web app (`apps/web`), What's inside
+Nodes (9): Color & materials, Components & controls, iOS platform, Layout & structure, Motion, The iOS slop test, Touch targets, Typography (+1 more)
+
+### Community 398 - "orders"
+Cohesion: 0.10
+Nodes (19): storeUrl(), runs(), orders(), rule(), 04 — Data model, 1. Conventions, 2. Entity map, 3. Tables by module (+11 more)
 
 ### Community 399 - "Cookies"
 Cohesion: 0.22
@@ -2375,7 +2381,7 @@ Cohesion: 0.22
 Nodes (8): 1. How to look, 2. The score, 3. Caps, 4. Writing the critique, 5. What to fix first, 6. When to stop, Contents, Critique — judging the render
 
 ### Community 403 - "phone.ts"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (10): COUNTRY_CODES, COUNTRY_DEFAULTS, CountryCode, CountryDefaults, isCountryCode(), CountryRule, NormalizedPhone, PHONE_COUNTRIES (+2 more)
 
 ### Community 404 - "admin/package.json"
@@ -2383,16 +2389,16 @@ Cohesion: 0.22
 Nodes (8): description, eslint@9.39.5, eslint, license, name, private, type, version
 
 ### Community 405 - "order-filters.ts"
-Cohesion: 0.13
-Nodes (26): one(), OrdersPage(), Props, BULK_ROLES, dayOf(), dayStart(), FILTER_KEYS, filterQuery() (+18 more)
+Cohesion: 0.11
+Nodes (29): one(), OrdersPage(), Props, BULK_ROLES, dayOf(), dayStart(), FILTER_KEYS, filterQuery() (+21 more)
 
 ### Community 407 - "Generate Report"
 Cohesion: 0.29
 Nodes (7): Audit Health Score, Detailed Findings by Severity, Executive Summary, Generate Report, Patterns & Systemic Issues, Platform Conformance Verdict, Positive Findings
 
-### Community 408 - "Diagnostic Scan"
-Cohesion: 0.33
-Nodes (6): 1. Accessibility (VoiceOver / TalkBack), 2. Performance, 3. Appearance & Theming, 4. Platform Conformance (CRITICAL), 5. Adaptivity, Diagnostic Scan
+### Community 408 - "Operate mode depth (and Read notes)"
+Cohesion: 0.22
+Nodes (9): Color, Components, Layout, Motion, Operate mode depth (and Read notes), Product constraints, Product permissions, The product slop test (+1 more)
 
 ### Community 409 - "compilerOptions"
 Cohesion: 0.22
@@ -2402,9 +2408,9 @@ Nodes (8): compilerOptions, customConditions, outDir, rootDir, sourceMap, extend
 Cohesion: 0.22
 Nodes (8): analyzer, exclude, language, include, strict-casts, strict-raw-types, linter, rules
 
-### Community 411 - "conditions.ts"
-Cohesion: 0.21
-Nodes (12): check(), Group1, NO_CONDITIONS, Node, num(), Operator, OPERATORS, Rule (+4 more)
+### Community 411 - ".agents/skills/impeccable/reference/colorize.md"
+Cohesion: 0.25
+Nodes (7): Apply at system scale, Audit before choosing, Choose a strategy, Contrast and perception, Live-mode signature params, Verify, Visitor mode
 
 ### Community 412 - "Common Cognitive Load Violations"
 Cohesion: 0.22
@@ -2416,10 +2422,10 @@ Nodes (9): Color & materials, Components & controls, iOS platform, Layout & stru
 
 ### Community 414 - "docs/README.md"
 Cohesion: 0.08
-Nodes (19): 03 — Architecture, 1. System context, 2. Deployables, 3. Modular monolith layout (`apps/api`), 4. Event flow, 5. Domain events (initial catalogue), 7. Multi-tenancy, 8. Data residency (+11 more)
+Nodes (20): 03 — Architecture, 1. System context, 2. Deployables, 3. Modular monolith layout (`apps/api`), 4. Event flow, 5. Domain events (initial catalogue), 7. Multi-tenancy, 8. Data residency (+12 more)
 
 ### Community 415 - "Shape"
-Cohesion: 0.25
+Cohesion: 0.22
 Nodes (8): Cadence, Confirm and stop, Phase 1: Discovery interview, Phase 2: Resolve the design direction, Phase 3: Write the brief, Round 1: purpose, people, and outcome, Round 2: material, behavior, and boundaries, Shape
 
 ### Community 416 - "Cookies"
@@ -2451,8 +2457,8 @@ Cohesion: 0.22
 Nodes (8): Components, Flutter (ops app), Loaders, Mizan Glass — the premium layer, Motion, Setup, Surfaces, What stays from the core system
 
 ### Community 424 - ".agents/skills/impeccable/reference/polish.md"
-Cohesion: 0.08
-Nodes (23): Step 2b: Stage the frontmatter, 1. Establish the system, 2. Gather the evidence, 3. Triage, 4. Polish the whole path, 5. Verify and finish, Color, imagery, and icons, Content and code (+15 more)
+Cohesion: 0.05
+Nodes (35): Component translation rules, Narrative mapping, Scan mode (approach C: auto-extract, then confirm descriptive language), Schema, Step 1: Find the design assets, Step 2: Auto-extract what can be auto-extracted, Step 2b: Stage the frontmatter, Step 3: Ask the user for qualitative language (+27 more)
 
 ### Community 425 - "compilerOptions"
 Cohesion: 0.22
@@ -2471,8 +2477,8 @@ Cohesion: 0.25
 Nodes (8): 1. Impatient Power User: "Alex", 2. Confused First-Timer: "Jordan", 3. Accessibility-Dependent User: "Sam", 4. Deliberate Stress Tester: "Riley", 5. Distracted Mobile User: "Casey", Persona-Based Design Testing, Project-Specific Personas, Selecting Personas
 
 ### Community 429 - "build-icons.mjs"
-Cohesion: 0.15
-Nodes (11): APP_VERSION, pkg, lucideDir, lucideNames, M, meta, pascal(), require (+3 more)
+Cohesion: 0.22
+Nodes (9): lucideDir, lucideNames, M, meta, pascal(), require, root, svgDir (+1 more)
 
 ### Community 430 - "Advanced Mocking with run-code"
 Cohesion: 0.25
@@ -2526,9 +2532,9 @@ Nodes (8): command, environment, image, ports, volumes, POSTGRES_DB, POSTGRES_PA
 Cohesion: 0.25
 Nodes (8): worker, cap_drop, command, image, ports, read_only, restart, security_opt
 
-### Community 444 - "ConfirmPage.tsx"
-Cohesion: 0.36
-Nodes (7): Answer, ConfirmPage(), Done(), Finished(), Reason, REASONS, View
+### Community 444 - "plainDecimal"
+Cohesion: 0.29
+Nodes (7): decimal(), RecordPaymentSchema, RefundAmount, DEFAULT_REFUNDS, RefundSettingsSchema, RefundSettingsViewSchema, plainDecimal()
 
 ### Community 445 - "21st-magic"
 Cohesion: 0.29
@@ -2537,10 +2543,6 @@ Nodes (7): API_KEY_21ST, CONTEXT7_API_KEY, npx, 21st-magic, context7, @21st-dev/
 ### Community 447 - "Cognitive Load Assessment"
 Cohesion: 0.29
 Nodes (7): Cognitive Load Assessment, Cognitive Load Checklist, Extraneous Load: Bad Design, Germane Load: Learning Effort, Intrinsic Load: The Task Itself, The Working Memory Rule, Three Types of Cognitive Load
-
-### Community 448 - ".claude/skills/impeccable/reference/colorize.md"
-Cohesion: 0.25
-Nodes (7): Apply at system scale, Audit before choosing, Choose a strategy, Contrast and perception, Live-mode signature params, Verify, Visitor mode
 
 ### Community 449 - ".agents/skills/impeccable/scripts/live-browser-ignores.js"
 Cohesion: 0.52
@@ -2566,9 +2568,9 @@ Nodes (6): components, $defs, operations, paths, RFC-9457, webhooks
 Cohesion: 0.29
 Nodes (6): components, $defs, operations, paths, RFC-9457, webhooks
 
-### Community 456 - "apps/admin — Mizan back office"
-Cohesion: 0.50
-Nodes (3): apps/admin — Mizan back office, Commands, Sign-in
+### Community 456 - "reorder.ts"
+Cohesion: 0.38
+Nodes (5): leadTime(), reorder(), ReorderInput, ReorderResult, base
 
 ### Community 457 - "Cognitive Load Assessment"
 Cohesion: 0.29
@@ -2626,10 +2628,6 @@ Nodes (5): about, patterns, shells, styles, version
 Cohesion: 0.33
 Nodes (6): 9.1 Type, 9.2 Colour on light screens, 9.3 Colour on dark screens, 9.4 Surfaces, radius, icons, spacing, 9.5 Default tokens, 9. Type and colour
 
-### Community 473 - "auth.service.ts"
-Cohesion: 0.03
-Nodes (37): RemoveSsoDomainSchema, PUBLIC_DOMAINS, Row, SsoService, view(), AuthGuard, READ_METHODS, AuthModule (+29 more)
-
 ### Community 474 - "AppLocalizations"
 Cohesion: 0.33
 Nodes (5): AppLocalizations, _AppLocalizationsDelegate, AppLocalizationsAr, AppLocalizationsEn, of
@@ -2639,8 +2637,8 @@ Cohesion: 0.33
 Nodes (5): 1. Component Architecture (architecture), 2. State Management (state), 3. Implementation Patterns (patterns), 4. React 19 APIs (react19), Sections
 
 ### Community 476 - "adr/README.md"
-Cohesion: 0.06
-Nodes (27): ADR-0001: TypeScript monorepo with npm workspaces, Consequences, Context, Decision, ADR-0003: NestJS modular monolith for the API, Consequences, Context, Decision (+19 more)
+Cohesion: 0.05
+Nodes (32): ADR-0001: TypeScript monorepo with npm workspaces, Consequences, Context, Decision, ADR-0003: NestJS modular monolith for the API, Consequences, Context, Decision (+24 more)
 
 ### Community 477 - "React View Transitions Skill"
 Cohesion: 0.33
@@ -2706,13 +2704,9 @@ Nodes (7): Core Rule, Decision Comps, Impeccable Asset Producer, Input Contract,
 Cohesion: 0.27
 Nodes (8): disputes, payments, payments_order, payments_ref, disputes_due, disputes_external, disputes_number, disputes_order
 
-### Community 493 - "admin/src/lib/format.ts"
-Cohesion: 0.39
-Nodes (8): Digits, formatDate(), formatDuration(), formatMoney(), formatNumber(), formatRelative(), formatWhen(), tag()
-
-### Community 495 - "Diagnostic Scan"
+### Community 493 - "Visualize: Direction Comps & Asset Production"
 Cohesion: 0.33
-Nodes (6): 1. Accessibility (A11y), 2. Performance, 3. Theming, 4. Responsive Design, 5. Implementation Integrity (CRITICAL), Diagnostic Scan
+Nodes (5): After approval: the comp becomes a spec, Generate three compositional options, One approval point, Plates and provenance, Visualize: Direction Comps & Asset Production
 
 ### Community 496 - ".claude/skills/impeccable/reference/bolder.md"
 Cohesion: 0.33
@@ -2766,33 +2760,17 @@ Nodes (3): dc(), fail(), smoke.sh script
 Cohesion: 0.60
 Nodes (5): healthcheck, healthcheck, interval, retries, test
 
-### Community 509 - "ADR-0004: Next.js App Router + Tailwind for the web app"
+### Community 509 - "ADR-0012: Kysely for database access"
 Cohesion: 0.40
-Nodes (4): ADR-0004: Next.js App Router + Tailwind for the web app, Consequences, Context, Decision
-
-### Community 510 - "Read"
-Cohesion: 0.50
-Nodes (3): Comps, Directions, Read
-
-### Community 511 - "Visualize: Direction Comps & Asset Production"
-Cohesion: 0.33
-Nodes (5): After approval: the comp becomes a spec, Generate three compositional options, One approval point, Plates and provenance, Visualize: Direction Comps & Asset Production
-
-### Community 512 - "manual-order.ts"
-Cohesion: 0.15
-Nodes (10): GATEWAY, MANUAL_PAYMENT_MODES, ManualOrderError, ManualOrderInput, MONEY_IN_METHODS, ORDER_SOURCES, SOURCE_HINTS, abaya (+2 more)
+Nodes (4): ADR-0012: Kysely for database access, Consequences, Context, Decision
 
 ### Community 513 - "ReorderService"
-Cohesion: 0.16
-Nodes (7): ReorderSuggestion, leadTime(), reorder(), ReorderInput, ReorderResult, ReorderService, base
+Cohesion: 0.23
+Nodes (3): DraftFromSuggestions, ReorderSuggestion, ReorderService
 
 ### Community 514 - "logo.test.mjs"
 Cohesion: 0.36
 Nodes (5): sharp@0.35.5, logo, PNGS, render(), sharp
-
-### Community 515 - "app.module.ts"
-Cohesion: 0.02
-Nodes (39): AppModule, AppOptions, main(), AttributionModule, AuditLogModule, AutomationsModule, CatalogModule, ConfirmationModule (+31 more)
 
 ### Community 516 - "bulk_action_items"
 Cohesion: 0.70
@@ -2813,10 +2791,6 @@ Nodes (4): ADR-NNNN: Title, Consequences, Context, Decision
 ### Community 520 - "Runbook — restore the database (E13-1)"
 Cohesion: 0.40
 Nodes (4): Drill (every quarter, on staging), Runbook — restore the database (E13-1), Steps (Azure Cloud Shell, as an Owner of the environment's subscription), When
-
-### Community 521 - "Impeccable Documenter"
-Cohesion: 0.40
-Nodes (4): Impeccable Documenter, Input Contract, Output Contract, Workflow
 
 ### Community 522 - "ADR-0002: Postgres outbox for jobs, no Redis in the MVP"
 Cohesion: 0.40
@@ -2901,10 +2875,6 @@ Nodes (4): workspace, note, screens, styles
 ### Community 545 - "8. Forms and settings"
 Cohesion: 0.50
 Nodes (4): 8.1 Fields, 8.2 Settings layout, 8.3 Buttons, 8. Forms and settings
-
-### Community 546 - ".agents/skills/impeccable/reference/bolder.md"
-Cohesion: 0.33
-Nodes (5): Before you finish, Scope is sovereign, The amplification, The skeleton test, Why it reads flat
 
 ### Community 547 - "ADR-0008: Field ownership for product sync"
 Cohesion: 0.40
@@ -3006,33 +2976,21 @@ Nodes (3): Comps, Directions, Persuade and Experience
 Cohesion: 0.67
 Nodes (3): 8. Reduced motion and performance, margin(), 8. Reduced motion and performance
 
+### Community 578 - "integrations-admin.controller.ts"
+Cohesion: 0.03
+Nodes (36): DEFAULT_SYNC, engineSyncOptions(), PutStoreSyncSchema, StoreSync, StoreSyncSchema, GuardRound, ConnectionsController, BostaKeySchema (+28 more)
+
 ### Community 662 - "Diagnostic Scan"
 Cohesion: 0.33
 Nodes (6): 1. Accessibility (VoiceOver / TalkBack), 2. Performance, 3. Appearance & Theming, 4. Platform Conformance (CRITICAL), 5. Adaptivity, Diagnostic Scan
 
-### Community 669 - "Command guidance"
-Cohesion: 0.50
-Nodes (3): Command guidance, No-argument routing: the context-aware menu, Workflow questions
-
-### Community 769 - "connect/page.tsx"
-Cohesion: 0.67
-Nodes (3): one(), Props, ShopifyConnectPage()
-
-### Community 772 - "ADR-0007: Label-first courier status mapping with learned codes"
-Cohesion: 0.40
-Nodes (4): ADR-0007: Label-first courier status mapping with learned codes, Consequences, Context, Decision
+### Community 668 - "billing.controller.ts"
+Cohesion: 0.19
+Nodes (8): BillingController, PLANS, Limit, Metrics, UpgradeRequestedSchema, UpgradeRequestSchema, UsageQuerySchema, UsageSchema
 
 ### Community 774 - "ADR-0010: Firebase Authentication for users"
 Cohesion: 0.40
 Nodes (4): ADR-0010: Firebase Authentication for users, Consequences, Context, Decision
-
-### Community 775 - "ADR-0011: Collect only what is owed; never guess the payment method"
-Cohesion: 0.40
-Nodes (4): ADR-0011: Collect only what is owed; never guess the payment method, Consequences, Context, Decision
-
-### Community 776 - "Operate"
-Cohesion: 0.50
-Nodes (3): Comps, Directions, Operate
 
 ### Community 777 - "home.spec.ts"
 Cohesion: 0.67
@@ -3050,33 +3008,33 @@ Nodes (3): order_edits, order_edits_one_sending, order_edits_order
 Cohesion: 0.50
 Nodes (3): Comps, Directions, Persuade and Experience
 
-### Community 785 - "Read"
-Cohesion: 0.50
-Nodes (3): Comps, Directions, Read
-
 ### Community 786 - "Command guidance"
 Cohesion: 0.50
 Nodes (3): Command guidance, No-argument routing: the context-aware menu, Workflow questions
 
+### Community 787 - "flags.controller.ts"
+Cohesion: 0.06
+Nodes (22): PlatformFlagsController, StoreFlagsController, Announcement, AnnouncementSchema, AnnouncementsQuerySchema, AnnouncementsSchema, CreateAnnouncementSchema, Flag (+14 more)
+
 ## Knowledge Gaps
 - **620 isolated node(s):** `@upstash/context7-mcp`, `CONTEXT7_API_KEY`, `@21st-dev/magic`, `API_KEY_21ST`, `RFC-9457` (+615 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 7122 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 7125 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **226 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Me` connect `web/src/lib/session.tsx` to `.agents/skills/impeccable/scripts/modern-screenshot.umd.js`, `.claude/skills/impeccable/scripts/modern-screenshot.umd.js`?**
-  _High betweenness centrality (0.161) - this node is a cross-community bridge._
+- **Why does `Me` connect `ref_react` to `.agents/skills/impeccable/scripts/modern-screenshot.umd.js`, `.claude/skills/impeccable/scripts/modern-screenshot.umd.js`?**
+  _High betweenness centrality (0.160) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `ProblemError` (e.g. with `Layout (docs/03 §3)` and `Error format`) actually correct?**
   _`ProblemError` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@upstash/context7-mcp`, `CONTEXT7_API_KEY`, `@21st-dev/magic` to the rest of the system?**
   _620 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `ref_vitest` be split into smaller, more focused modules?**
-  _Cohesion score 0.010236256454782251 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.00906658572504581 - nodes in this community are weakly interconnected._
 - **Are the 2 inferred relationships involving `Database` (e.g. with `Layout (docs/03 §3)` and `E1 · Foundations`) actually correct?**
   _`Database` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `engine/src/index.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.029286726499763816 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.02409097710609008 - nodes in this community are weakly interconnected._
 - **Should `ApiJson` be split into smaller, more focused modules?**
-  _Cohesion score 0.019182206682206684 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.02462230793956927 - nodes in this community are weakly interconnected._

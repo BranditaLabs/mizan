@@ -797,6 +797,7 @@ export interface Orders {
   store_copy_status: string | null;
   store_copy_error: string | null;
   store_cancelled_at: Timestamp | null;
+  store_copy_snapshot: Json | null;
 }
 
 export interface PaymentLinks {

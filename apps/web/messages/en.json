@@ -3737,7 +3737,7 @@
     },
     "sync": {
       "title": "Sync health",
-      "subtitle": "Every 5 minutes Mizan checks Shopify and the courier for anything a webhook dropped, retries what failed for a passing reason, and sends again what a store should have.",
+      "subtitle": "Every 2 minutes Mizan checks Shopify and the courier for anything a webhook dropped, retries what failed for a passing reason, and sends again what a store should have.",
       "loading": "Loading sync health",
       "checked": "Last check",
       "never": "Not yet",
