@@ -261,7 +261,7 @@ export class OrderProjector {
    * The order stays Mizan's in how it is paid and numbered; money counts beyond what Mizan sent with the copy.
    */
   private async applyCopy(trx: Transaction<DB>, tenantId: string, connectionId: string, order: CanonicalOrder, orderId: string): Promise<ProjectResult> {
-    const o = await trx.selectFrom("orders").select(["id", "number", "status", "tags", "currency", "payment_mode", "payment_status", "paid_minor", "refunded_minor", "cod_minor", "total_minor", "pii_redacted_at", "store_copy_snapshot"])
+    const o = await trx.selectFrom("orders").select(["id", "number", "status", "tags", "currency", "payment_mode", "payment_status", "paid_minor", "refunded_minor", "cod_minor", "total_minor", "pii_redacted_at", "store_copy_snapshot", "store_copy_status"])
       .where("id", "=", orderId).forUpdate().executeTakeFirstOrThrow();
     const prev = (o.store_copy_snapshot ?? {}) as Partial<CopySnapshot>;
     const now = copySnapshot(order);
@@ -269,7 +269,12 @@ export class OrderProjector {
     const changed: string[] = [];
     const set: Record<string, unknown> = {};
 
-    if (prev.lines) {
+    // No baseline yet (the first read since copies were read three-way): the copy is taken as it is, since Mizan
+    // pushes its own edits to it; unless a Mizan edit is still on its way there, or the store refused one.
+    const baseline = Boolean(prev.lines);
+    const editPending = !baseline && Boolean(await trx.selectFrom("mz_outbox").select("id").where("idempotency_key", "like", `shopify:copy-edit:${o.id}:%`)
+      .where("status", "in", ["pending", "running"]).executeTakeFirst());
+    if (baseline || (!editPending && o.store_copy_status !== "failed")) {
       // Items, quantities, prices or the delivery fee changed in the store: the order takes the copy's lines and money.
       if (stable(prev.lines) !== stable(now.lines) || prev.shipping !== now.shipping || prev.total !== now.total) {
         await this.syncLines(trx, tenantId, o.id, order, undefined, connectionId);
@@ -345,7 +350,9 @@ export class OrderProjector {
     // Tracking numbers Mizan knows: every one it booked (a delivery cancelled at the courier stays known: its old
     // fulfillment in the store is not a new parcel), except a store's own fulfillment that was cancelled there.
     const known = new Set(mine.filter((m) => m.tracking_number && !(m.status === "cancelled" && m.external_id?.startsWith("gid://shopify/Fulfillment/"))).map((m) => m.tracking_number));
-    const fresh = all.filter((f) => f.status === "SUCCESS" && f.trackingNumber && !known.has(f.trackingNumber));
+    // Shipped in the store: with a tracking number Mizan does not know, or marked fulfilled with none (known by its id).
+    const knownIds = new Set(mine.map((m) => m.external_id).filter(Boolean));
+    const fresh = all.filter((f) => f.status === "SUCCESS" && (f.trackingNumber ? !known.has(f.trackingNumber) : !knownIds.has(f.externalId)));
     // A fulfillment made in the store and then cancelled there: Mizan's record of it is cancelled too, and a
     // replacement made in the same change is recorded after it, in one step (never in the wrong order).
     // The store cancelled the fulfillment of a delivery Mizan booked (the courier still has the parcel): a person decides.
@@ -357,14 +364,14 @@ export class OrderProjector {
     if (gone) {
       const r = fresh[0];
       await this.events.emit(trx, { type: "order.store_fulfillment_cancelled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
-        data: { number: order.number, fulfillmentId: gone.externalId, ...(r ? { replacement: { fulfillmentId: r.externalId, company: r.company ?? null, trackingNumber: r.trackingNumber!, trackingUrl: r.trackingUrl ?? null } } : {}) } });
+        data: { number: order.number, fulfillmentId: gone.externalId, ...(r ? { replacement: { fulfillmentId: r.externalId, company: r.company ?? null, trackingNumber: r.trackingNumber ?? null, trackingUrl: r.trackingUrl ?? null } } : {}) } });
       return;
     }
     const f = fresh[0];
     if (!f) return;
     await this.events.emit(trx, {
       type: "order.store_fulfilled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
-      data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber!, trackingUrl: f.trackingUrl ?? null },
+      data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber ?? null, trackingUrl: f.trackingUrl ?? null },
     });
   }
 

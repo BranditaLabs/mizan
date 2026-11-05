@@ -133,15 +133,16 @@ export class ShippingService implements ShipmentResultSink {
    * courier (a courier without an API, statuses by a person or a report), the order is shipped
    * (out of confirmation), and `shipment.created` says it came from the store, so nothing is sent back.
    */
-  async recordStoreFulfillment(trx: Trx, tenantId: string, orderId: string, f: { company: string | null; trackingNumber: string; trackingUrl: string | null; fulfillmentId?: string | null }, now = new Date()): Promise<"recorded" | "skipped"> {
+  async recordStoreFulfillment(trx: Trx, tenantId: string, orderId: string, f: { company: string | null; trackingNumber: string | null; trackingUrl: string | null; fulfillmentId?: string | null }, now = new Date()): Promise<"recorded" | "skipped"> {
     const o = await trx.selectFrom("orders").select(["id", "number", "status", "currency", "total_minor", "paid_minor", "refunded_minor", "payment_mode", "payment_status"])
       .where("id", "=", orderId).forUpdate().executeTakeFirst();
     if (!o || !["new", "pending_confirmation", "confirmed", "shipped"].includes(o.status)) return "skipped";
-    const live = await trx.selectFrom("shipments").select(["id", "tracking_number"]).where("order_id", "=", orderId).where("is_return_leg", "=", false)
+    const live = await trx.selectFrom("shipments").select(["id", "tracking_number", "external_id"]).where("order_id", "=", orderId).where("is_return_leg", "=", false)
       .where("booking", "!=", "failed").where("status", "!=", "cancelled").executeTakeFirst();
     if (live) {
       // Shipped twice: Mizan has a delivery and the store recorded another. A person decides which goes.
-      if (live.tracking_number !== f.trackingNumber) await this.tracking.flag(trx, tenantId, live.id, `Also shipped in the store: ${f.company ?? "another courier"} ${f.trackingNumber}`);
+      const same = f.trackingNumber ? live.tracking_number === f.trackingNumber : live.external_id === f.fulfillmentId;
+      if (!same) await this.tracking.flag(trx, tenantId, live.id, `Also shipped in the store: ${f.company ?? "another courier"} ${f.trackingNumber ?? "(no tracking number)"}`);
       return "skipped";
     }
     const name = f.company?.trim() || "Store courier";
@@ -149,7 +150,10 @@ export class ShippingService implements ShipmentResultSink {
     let courier = await trx.selectFrom("connections").select(["id", "display_name"]).where("kind", "=", "courier").where("provider", "=", "manual").where("external_account", "=", key).executeTakeFirst();
     courier ??= await trx.insertInto("connections").values({ tenant_id: tenantId, kind: "courier", provider: "manual", external_account: key, display_name: name, status: "active" })
       .returning(["id", "display_name"]).executeTakeFirstOrThrow();
-    const taken = await trx.selectFrom("shipments").select("id").where("connection_id", "=", courier.id).where("tracking_number", "=", f.trackingNumber).executeTakeFirst();
+    // Marked fulfilled in the store with no tracking number: known by the store's fulfillment id.
+    const taken = f.trackingNumber
+      ? await trx.selectFrom("shipments").select("id").where("connection_id", "=", courier.id).where("tracking_number", "=", f.trackingNumber).executeTakeFirst()
+      : await trx.selectFrom("shipments").select("id").where("order_id", "=", orderId).where("external_id", "=", f.fulfillmentId ?? "-").executeTakeFirst();
     if (taken) return "skipped";
     let cod = 0n;
     try { cod = toMinor(cashToCollect(paymentView(o))); } catch { /* the store shipped it anyway: nothing Mizan can collect */ }
@@ -249,8 +253,8 @@ export class ShippingService implements ShipmentResultSink {
       if (!s || s.status === "cancelled") return;
       await this.tracking.courierCancelled(trx, tenantId, s.id); // the order follows (shipped → confirmed)
       // The replacement made in the same change in the store, recorded after the cancel (never before it).
-      const r = d.replacement as { company?: string | null; trackingNumber?: string; trackingUrl?: string | null; fulfillmentId?: string } | undefined;
-      if (r?.trackingNumber) await this.recordStoreFulfillment(trx, tenantId, orderId, { company: r.company ?? null, trackingNumber: r.trackingNumber, trackingUrl: r.trackingUrl ?? null, fulfillmentId: r.fulfillmentId ?? null });
+      const r = d.replacement as { company?: string | null; trackingNumber?: string | null; trackingUrl?: string | null; fulfillmentId?: string } | undefined;
+      if (r?.trackingNumber || r?.fulfillmentId) await this.recordStoreFulfillment(trx, tenantId, orderId, { company: r.company ?? null, trackingNumber: r.trackingNumber ?? null, trackingUrl: r.trackingUrl ?? null, fulfillmentId: r.fulfillmentId ?? null });
       return;
     }
     if (!live) return;

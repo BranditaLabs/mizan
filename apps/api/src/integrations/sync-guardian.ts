@@ -227,6 +227,15 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
     }
 
     await engineQueue({}).put<GuardRound>("guardian", "round", { at: new Date(now).toISOString() }, clock);
+    // Copies Mizan has no baseline for: read now (the read takes the copy as it is; webhooks may never come).
+    if (provider === "shopify") {
+      const unread = await trx.selectFrom("orders").select("store_copy_id").where("store_copy_connection_id", "=", storeId).where("store_copy_id", "is not", null)
+        .where(sql<boolean>`store_copy_snapshot -> 'lines' is null`).limit(50).execute();
+      for (const u of unread) {
+        count(await engineQueue({ shopify: storeId }).enqueue({ kind: "shopify.ingestOrder", connection: "shopify", payload: { orderId: u.store_copy_id! }, idempotencyKey: `shopify:order:${u.store_copy_id}:baseline` }, clock));
+      }
+    }
+
     // Orders made in Mizan with no copy in the store yet (the job lost, or made before the switch): queued (a no-op when queued).
     if (provider === "shopify") {
       const first = await trx.selectFrom("connections").select("id").where("kind", "=", "store").where("provider", "=", "shopify").where("status", "=", "active").orderBy("created_at").executeTakeFirst();

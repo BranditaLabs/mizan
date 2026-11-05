@@ -823,5 +823,30 @@ describe("copies read three-way: only what changed in Shopify since the last rea
     expect(row).toMatchObject({ needsReview: true, reviewReason: expect.stringMatching(/Fulfillment cancelled in Shopify/) });
     expect((await detail(id)).shipments[0]).toMatchObject({ booking: "booked" });
   });
+
+  it("a copy read for the first time (no baseline) takes the change made in Shopify", async () => {
+    const id = await typed({});
+    await db.tenant(store, (trx) => trx.updateTable("orders").set({ store_copy_snapshot: JSON.stringify({ sentPaid: "0" }) }).where("id", "=", id).execute());
+    const c = copyOf(id);
+    c.lines[0]!.quantity = 3;
+    c.total = (3 * Number(c.lines[0]!.price) + 50).toFixed(2);
+    c.tags = [...c.tags, "from-shopify"];
+    await read(c);
+    const d = await detail(id);
+    expect(d.lines[0].quantity).toBe(3);
+    expect(d.tags).toContain("from-shopify");
+    expect(d.total.amount).toBe(c.total);
+  });
+
+  it("marked fulfilled in Shopify with no tracking number: Mizan records it shipped (store courier), once", async () => {
+    const id = await typed({});
+    const c = copyOf(id);
+    c.fulfillments.push({ id: "gid://shopify/Fulfillment/996001", status: "SUCCESS", trackingInfo: [] });
+    await read(c);
+    await read(c);
+    const d = await detail(id);
+    expect(d.status).toBe("shipped");
+    expect(d.shipments).toEqual([expect.objectContaining({ booking: "booked", trackingNumber: null })]);
+  });
 });
 
