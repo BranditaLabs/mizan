@@ -12,9 +12,9 @@ export class StoreFulfilledConsumer implements EventHandler {
   constructor(@Inject(ShippingService) private readonly shipping: ShippingService) {}
 
   async handle(event: DomainEvent, trx: Transaction<DB>): Promise<void> {
-    const d = event.data as { company?: string | null; trackingNumber?: string; trackingUrl?: string | null; fulfillmentId?: string };
-    if (!d.trackingNumber) return;
-    await this.shipping.recordStoreFulfillment(trx, event.tenantId, event.entity.id, { company: d.company ?? null, trackingNumber: d.trackingNumber, trackingUrl: d.trackingUrl ?? null, fulfillmentId: d.fulfillmentId ?? null });
+    const d = event.data as { company?: string | null; trackingNumber?: string | null; trackingUrl?: string | null; fulfillmentId?: string };
+    if (!d.trackingNumber && !d.fulfillmentId) return;
+    await this.shipping.recordStoreFulfillment(trx, event.tenantId, event.entity.id, { company: d.company ?? null, trackingNumber: d.trackingNumber ?? null, trackingUrl: d.trackingUrl ?? null, fulfillmentId: d.fulfillmentId ?? null });
   }
 }
 

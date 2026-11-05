@@ -350,7 +350,9 @@ export class OrderProjector {
     // Tracking numbers Mizan knows: every one it booked (a delivery cancelled at the courier stays known: its old
     // fulfillment in the store is not a new parcel), except a store's own fulfillment that was cancelled there.
     const known = new Set(mine.filter((m) => m.tracking_number && !(m.status === "cancelled" && m.external_id?.startsWith("gid://shopify/Fulfillment/"))).map((m) => m.tracking_number));
-    const fresh = all.filter((f) => f.status === "SUCCESS" && f.trackingNumber && !known.has(f.trackingNumber));
+    // Shipped in the store: with a tracking number Mizan does not know, or marked fulfilled with none (known by its id).
+    const knownIds = new Set(mine.map((m) => m.external_id).filter(Boolean));
+    const fresh = all.filter((f) => f.status === "SUCCESS" && (f.trackingNumber ? !known.has(f.trackingNumber) : !knownIds.has(f.externalId)));
     // A fulfillment made in the store and then cancelled there: Mizan's record of it is cancelled too, and a
     // replacement made in the same change is recorded after it, in one step (never in the wrong order).
     // The store cancelled the fulfillment of a delivery Mizan booked (the courier still has the parcel): a person decides.
@@ -362,14 +364,14 @@ export class OrderProjector {
     if (gone) {
       const r = fresh[0];
       await this.events.emit(trx, { type: "order.store_fulfillment_cancelled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
-        data: { number: order.number, fulfillmentId: gone.externalId, ...(r ? { replacement: { fulfillmentId: r.externalId, company: r.company ?? null, trackingNumber: r.trackingNumber!, trackingUrl: r.trackingUrl ?? null } } : {}) } });
+        data: { number: order.number, fulfillmentId: gone.externalId, ...(r ? { replacement: { fulfillmentId: r.externalId, company: r.company ?? null, trackingNumber: r.trackingNumber ?? null, trackingUrl: r.trackingUrl ?? null } } : {}) } });
       return;
     }
     const f = fresh[0];
     if (!f) return;
     await this.events.emit(trx, {
       type: "order.store_fulfilled", tenantId, entity: { type: "order", id: orderId }, actor: { type: "engine" },
-      data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber!, trackingUrl: f.trackingUrl ?? null },
+      data: { number: order.number, fulfillmentId: f.externalId, company: f.company ?? null, trackingNumber: f.trackingNumber ?? null, trackingUrl: f.trackingUrl ?? null },
     });
   }
 

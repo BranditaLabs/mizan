@@ -837,5 +837,16 @@ describe("copies read three-way: only what changed in Shopify since the last rea
     expect(d.tags).toContain("from-shopify");
     expect(d.total.amount).toBe(c.total);
   });
+
+  it("marked fulfilled in Shopify with no tracking number: Mizan records it shipped (store courier), once", async () => {
+    const id = await typed({});
+    const c = copyOf(id);
+    c.fulfillments.push({ id: "gid://shopify/Fulfillment/996001", status: "SUCCESS", trackingInfo: [] });
+    await read(c);
+    await read(c);
+    const d = await detail(id);
+    expect(d.status).toBe("shipped");
+    expect(d.shipments).toEqual([expect.objectContaining({ booking: "booked", trackingNumber: null })]);
+  });
 });
 
