@@ -7,6 +7,7 @@ import { APP_CONFIG, runsWorkerInProcess, type AppConfig } from "../platform/con
 import { Database } from "../platform/db/database.js";
 import { EventsService } from "../platform/events/events.service.js";
 import { ModuleRef } from "@nestjs/core";
+import { COPY_SNAPSHOT_VERSION } from "../modules/orders/order-projector.js";
 import { STORE_ORDERS, type StoreOrderSink } from "../modules/orders/ports.js";
 import { NotConnectedError } from "./connection-resolver.js";
 import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "./engine-registry.js";
@@ -230,9 +231,9 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
     // Copies Mizan has no baseline for: read now (the read takes the copy as it is; webhooks may never come).
     if (provider === "shopify") {
       const unread = await trx.selectFrom("orders").select("store_copy_id").where("store_copy_connection_id", "=", storeId).where("store_copy_id", "is not", null)
-        .where(sql<boolean>`store_copy_snapshot -> 'lines' is null`).limit(50).execute();
+        .where(sql<boolean>`(store_copy_snapshot ->> 'v') is distinct from ${String(COPY_SNAPSHOT_VERSION)}`).limit(50).execute();
       for (const u of unread) {
-        count(await engineQueue({ shopify: storeId }).enqueue({ kind: "shopify.ingestOrder", connection: "shopify", payload: { orderId: u.store_copy_id! }, idempotencyKey: `shopify:order:${u.store_copy_id}:baseline` }, clock));
+        count(await engineQueue({ shopify: storeId }).enqueue({ kind: "shopify.ingestOrder", connection: "shopify", payload: { orderId: u.store_copy_id! }, idempotencyKey: `shopify:order:${u.store_copy_id}:baseline:v${COPY_SNAPSHOT_VERSION}` }, clock));
       }
     }
 
