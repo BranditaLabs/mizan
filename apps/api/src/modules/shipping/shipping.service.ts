@@ -237,6 +237,12 @@ export class ShippingService implements ShipmentResultSink {
       .where("order_id", "=", orderId).where("is_return_leg", "=", false).where("booking", "in", ["booked", "pending"])
       .where("status", "not in", ["delivered", "returned", "lost", "cancelled"]).orderBy("created_at", "desc").executeTakeFirst();
     const d = event.data as Record<string, unknown>;
+    if (event.type === "order.store_fulfillment_cancelled" && d.mizanBooked) {
+      // Mizan's own delivery: Bosta still has the parcel. Never guessed: cancel at Bosta, or keep it.
+      const s = await trx.selectFrom("shipments").select("id").where("order_id", "=", orderId).where("tracking_number", "=", String(d.trackingNumber ?? "")).where("status", "!=", "cancelled").executeTakeFirst();
+      if (s) await this.tracking.flag(trx, tenantId, s.id, "Fulfillment cancelled in Shopify: cancel at Bosta, or keep the delivery");
+      return;
+    }
     if (event.type === "order.store_fulfillment_cancelled") {
       // Shipped in the store with another courier, and that fulfillment was cancelled there: so is Mizan's record of it.
       const s = await trx.selectFrom("shipments").select(["id", "status"]).where("order_id", "=", orderId).where("external_id", "=", String(d.fulfillmentId ?? "")).executeTakeFirst();
