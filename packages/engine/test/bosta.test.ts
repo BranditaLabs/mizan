@@ -228,5 +228,19 @@ describe("Bosta connector", () => {
     expect(ctx.bosta.deliveries.get(tn!)!.state.code).toBe(48);
     expect(results).toEqual([{ ok: true }]);
   });
+
+  it("a delivery the courier no longer finds is said once and not polled again (no dead job every round)", async () => {
+    const reviews: string[] = [];
+    const ctx = setup({ hooks: { onShipmentStatus: async (u) => { if (u.needsReview) reviews.push(String((u.raw as { label?: string }).label)); } } });
+    const { tn } = await shippedOrder(ctx);
+    ctx.bosta.deliveries.delete(tn!); // terminated and gone at Bosta
+    for (let i = 0; i < 3; i++) {
+      ctx.clock.advance(6 * 60_000);
+      await ctx.engine.scheduleReconcile();
+      await settle(ctx.engine, ctx.store, ctx.clock);
+    }
+    expect(reviews).toEqual(["not found at the courier"]);
+    expect(await ctx.store.jobs({ status: "dead" })).toEqual([]);
+  });
 });
 

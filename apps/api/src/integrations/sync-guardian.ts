@@ -15,7 +15,8 @@ import { storeSyncOf } from "./store-sync-options.js";
 const MIN = 60_000;
 const HOUR = 60 * MIN;
 export const GUARD = {
-  tickMs: 5 * MIN,
+  // Without the store's order webhooks (until the app's customer data access is approved) this is how fast a change in Shopify arrives.
+  tickMs: 2 * MIN,
   /** Brought back at most this many times, this long after it died each time. */
   revivalDelays: [HOUR, 6 * HOUR, 24 * HOUR] as const,
   /** Older than this is left alone: done jobs are kept 7 days, so a re-asserted write never repeats one already made. */
@@ -40,7 +41,7 @@ export interface GuardRound { at: string }
 export interface GuardStats { stores: number; polled: number; revivedJobs: number; revivedEvents: number; rebooked: number; reasserted: number; failed: number }
 
 /**
- * The sync guardian (two-way delivery, recovery). Every 5 minutes, in the worker:
+ * The sync guardian (two-way delivery, recovery). Every 2 minutes, in the worker:
  * 1. Polls: each store's engine looks again at what webhooks may have dropped — Shopify or
  *    WooCommerce orders changed since its last look, every Bosta shipment still moving, and
  *    (hourly) the webhook subscriptions themselves.

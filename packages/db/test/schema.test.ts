@@ -557,6 +557,11 @@ describe("schema", () => {
     expect(cols.rows).toEqual([{ table_name: "orders", column_name: "store_cancelled_at" }, { table_name: "shipments", column_name: "review_reason" }]);
   });
 
+  it("keeps the store copy as Mizan last saw it (0070)", async () => {
+    const cols = await db.query<{ data_type: string }>(`SELECT data_type FROM information_schema.columns WHERE table_name = 'orders' AND column_name = 'store_copy_snapshot'`);
+    expect(cols.rows).toEqual([{ data_type: "jsonb" }]);
+  });
+
   it("keeps a barcode on one variant per store (E8-1)", async () => {
     const product = (t: string) => asTenant(t, () => db.query<{ id: string }>(`INSERT INTO products (tenant_id, title) VALUES ($1, 'Abaya') RETURNING id`, [t])).then((r) => r.rows[0]!.id);
     const variant = (t: string, p: string, sku: string, barcode: string | null) =>

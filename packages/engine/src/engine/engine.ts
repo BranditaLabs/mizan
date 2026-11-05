@@ -236,6 +236,8 @@ interface ShipmentRecord {
   shipment: CanonicalShipment;
   orderId: string;
   statusAt: number;
+  /** The courier no longer finds it (terminated, removed): no more polls; a person was told once. */
+  missing?: boolean;
 }
 
 /** Product fields the team edits in Mizan (P2): the latest wins, whatever order the jobs run in. */
@@ -1304,6 +1306,7 @@ export class MizanEngine {
       if (e instanceof IntegrationError && (e.kind === "timeout" || !e.retryable)) {
         const now = await this.bosta.getShipment(p.trackingNumber).catch(() => undefined);
         if (now?.status === "cancelled") {
+          await this.markCancelled(p.trackingNumber);
           await this.runHook(() => this.opts.hooks?.onShipmentCancelled?.(p.shipmentId, { ok: true }));
           this.emit("shipment.cancelled", { shipmentId: p.shipmentId, trackingNumber: p.trackingNumber });
           return;
@@ -1316,8 +1319,15 @@ export class MizanEngine {
       if (reason === "permission") throw e;
       return;
     }
+    await this.markCancelled(p.trackingNumber);
     await this.runHook(() => this.opts.hooks?.onShipmentCancelled?.(p.shipmentId, { ok: true }));
     this.emit("shipment.cancelled", { shipmentId: p.shipmentId, trackingNumber: p.trackingNumber });
+  }
+
+  /** The engine's record of a delivery cancelled at the courier: final, no more polls. */
+  private async markCancelled(trackingNumber: string) {
+    const rec = await this.store.get<ShipmentRecord>("shipment", trackingNumber);
+    if (rec) await this.store.put<ShipmentRecord>("shipment", trackingNumber, { ...rec, shipment: { ...rec.shipment, status: "cancelled" }, statusAt: this.now() }, this.now());
   }
 
   private async fulfill(orderId: string, trackingNumber: string, company?: string, url?: string) {
@@ -1331,7 +1341,21 @@ export class MizanEngine {
 
   private async ingestShipmentStatus(trackingNumber: string, source: "webhook" | "poll" = "poll") {
     const rec = await this.store.get<ShipmentRecord>("shipment", trackingNumber);
-    const fresh = await this.bosta.getShipment(trackingNumber); // fat fetch: never trust the webhook body alone
+    let fresh: CanonicalShipment;
+    try {
+      fresh = await this.bosta.getShipment(trackingNumber); // fat fetch: never trust the webhook body alone
+    } catch (e) {
+      // The courier no longer has it (terminated, removed): said once, for a person; never polled again, never a dead job per round.
+      if (rec && e instanceof IntegrationError && !e.retryable && /not found/i.test(e.message)) {
+        if (!rec.missing) {
+          await this.runHook(() => this.opts.hooks?.onShipmentStatus?.({ trackingNumber, status: rec.shipment.status, previous: rec.shipment.status, raw: { label: "not found at the courier" }, at: new Date(this.now()).toISOString(), needsReview: true, source }));
+          await this.store.put<ShipmentRecord>("shipment", trackingNumber, { ...rec, missing: true }, this.now());
+          this.emit("shipment.missing", { trackingNumber, orderId: rec.orderId });
+        }
+        return;
+      }
+      throw e;
+    }
     await this.saveLearned();
     const freshAt = Date.parse(fresh.updatedAt) || this.now();
     const orderId = rec?.orderId ?? fresh.orderRef;
@@ -1621,7 +1645,7 @@ export class MizanEngine {
   private async pollActiveShipments() {
     const slot = Math.floor(this.now() / 60_000);
     for (const { key, value } of await this.store.list<ShipmentRecord>("shipment")) {
-      if (TERMINAL_STATUSES.has(value.shipment.status)) continue;
+      if (TERMINAL_STATUSES.has(value.shipment.status) || value.missing) continue;
       if (this.now() - value.statusAt > 45 * 86_400_000) continue; // settled outside the courier's feed (by a person) or abandoned
       await this.enqueue("bosta.ingestStatus", { trackingNumber: key }, `bosta:poll:${key}:${slot}`);
     }

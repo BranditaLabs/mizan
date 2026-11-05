@@ -694,3 +694,120 @@ describe("review fixes: one record, whatever fails or repeats", () => {
     expect((await detail(id)).storeCopy).toMatchObject({ status: "created" });
   });
 });
+
+describe("Shopify → Mizan for orders made in Mizan: what changes in the copy updates the order", () => {
+  const shopifyId = async () => (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "shopify").executeTakeFirstOrThrow())).id;
+  const settle = async () => { await drainEvents(); await runJobs(); await drainEvents(); await runJobs(); await drainEvents(); };
+  const copyOf = (id: string) => [...shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`)!;
+  const updated = async (o: ReturnType<typeof copyOf>) => {
+    o.updatedAt = new Date(clock.now() + 1000).toISOString();
+    const wh = shop.webhook("orders/updated", o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+  };
+
+  it("items, quantities, delivery fee and address edited in Shopify reach Mizan; the line keeps its identity; still cash on delivery", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    const before = await detail(id);
+    const c = copyOf(id);
+    c.lines[0]!.quantity = 2;
+    c.shippingLines = [{ id: "gid://shopify/ShippingLine/77", title: "Delivery", price: "40.00" }];
+    c.total = (2 * Number(c.lines[0]!.price) + 40).toFixed(2);
+    (c.shippingAddress as Record<string, unknown>).address1 = "9 Nile St";
+    (c.shippingAddress as Record<string, unknown>).city = "Dokki";
+    await updated(c);
+    const d = await detail(id);
+    expect(d.lines).toEqual([expect.objectContaining({ id: before.lines[0].id, quantity: 2 })]);
+    expect(d).toMatchObject({ total: { amount: c.total }, paymentMode: "cod", paymentStatus: "unpaid", cod: { amount: c.total } });
+    expect(d.area).toMatchObject({ city: "Dokki" });
+    expect(copyOf(id).lines).toHaveLength(1); // nothing echoed back as a second edit
+  });
+
+  it("paid in Shopify: Mizan records it once", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    const c = copyOf(id);
+    shop.paid(c.id);
+    await updated(c);
+    await updated(c); // again: no second line
+    expect(await detail(id)).toMatchObject({ paymentStatus: "paid", paid: { amount: c.total } });
+  });
+});
+
+describe("copies read three-way: only what changed in Shopify since the last read updates Mizan", () => {
+  const shopifyId = async () => (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "shopify").executeTakeFirstOrThrow())).id;
+  const settle = async () => { await drainEvents(); await runJobs(); await drainEvents(); await runJobs(); await drainEvents(); };
+  const copyOf = (id: string) => [...shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`)!;
+  const read = async (o: ReturnType<typeof copyOf>) => {
+    o.updatedAt = new Date(clock.now() + 1000).toISOString();
+    const wh = shop.webhook("orders/updated", o);
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+  };
+  async function typed(body: Record<string, unknown>) {
+    const r = await http().post("/v1/orders").set(as("owner")).send({
+      source: "phone", customer: { name: "Mona Adel", phone: "01001234821" }, address: { line1: "12 Abbas El Akkad St", city: "Cairo" },
+      lines: [{ title: "Abaya", quantity: 1, unitPrice: "1000" }], shipping: "50", payment: { mode: "cod" }, ...body,
+    }).expect(201);
+    await settle();
+    return r.body.id as string;
+  }
+
+  it("a deposit Mizan sent with the copy is not counted again; the courier still collects the rest", async () => {
+    const id = await typed({ payment: { mode: "partial", method: "instapay", paid: "200" } });
+    await read(copyOf(id));
+    await read(copyOf(id));
+    expect(await detail(id)).toMatchObject({ paid: { amount: "200.00" }, cod: { amount: "850.00" } });
+  });
+
+  it("the discount reaches the copy: both totals the same", async () => {
+    const id = await typed({ discount: "100" });
+    expect(copyOf(id).total).toBe((await detail(id)).total.amount);
+  });
+
+  it("a Mizan edit the copy does not have yet is not undone by a read of the old copy", async () => {
+    const id = await typed({});
+    const lines = (await detail(id)).lines;
+    await http().patch(`/v1/orders/${id}`).set(as("owner")).send({ lines: [{ lineId: lines[0].id, quantity: 4 }], add: [] }).expect(200);
+    await drainEvents(); // the copy edit is queued, not run yet
+    const c = copyOf(id);
+    c.tags = [...c.tags, "vip"]; // something else changed in the store meanwhile
+    const wh = shop.webhook("orders/updated", { ...c, updatedAt: new Date(clock.now() + 500).toISOString() });
+    await http().post(`/webhooks/shopify/${await shopifyId()}`).set(wh.headers).send(wh.body).expect(200);
+    await settle();
+    const d = await detail(id);
+    expect(d.lines[0].quantity).toBe(4);
+    expect(d.tags).toContain("vip");
+    expect(copyOf(id).lines[0]!.quantity).toBe(4); // and the copy got it
+  });
+
+  it("an edit Shopify refuses (a new price) stays in Mizan; the copy is said to be out of date", async () => {
+    const id = await typed({});
+    const lines = (await detail(id)).lines;
+    await http().patch(`/v1/orders/${id}`).set(as("owner")).send({ lines: [{ lineId: lines[0].id, quantity: 1, unitPrice: "1200" }], add: [] }).expect(200);
+    await settle();
+    await read(copyOf(id)); // the copy is read again (a tag, a fulfillment…)
+    const d = await detail(id);
+    expect(d.lines[0].unitPrice.amount).toBe("1200.00");
+    expect(d.storeCopy).toMatchObject({ status: "failed", error: expect.stringMatching(/Out of date in Shopify/) });
+  });
+
+  it("a one-word name is not changed by Shopify's last-name placeholder", async () => {
+    const id = await typed({ customer: { name: "Mona", phone: "01001234821" } });
+    const c = copyOf(id);
+    c.tags = [...c.tags, "x"];
+    await read(c);
+    const r = (await http().post(`/v1/orders/${id}/reveal`).set(as("owner")).send({ fields: ["name"] }).expect(200)).body;
+    expect(JSON.stringify(r)).not.toMatch(/Mona -/);
+  });
+
+  it("a refund recorded in Mizan and also made on the copy is one refund", async () => {
+    const id = await typed({ payment: { mode: "prepaid", method: "card" } });
+    await http().post(`/v1/orders/${id}/payments`).set(as("owner")).send({ type: "refunded", method: "instapay", amount: "300" }).expect(201);
+    const c = copyOf(id);
+    c.refunded = "300.00";
+    await read(c);
+    expect(await detail(id)).toMatchObject({ refunded: { amount: "300.00" } });
+  });
+});

@@ -100,7 +100,7 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
       // Optional: a line whose product was deleted has no variant; it then stays unlinked.
       variantExternalId: lr.str("variantExternalId", ["variant.id", "variant_id", "variantId"]),
       title: lr.str("title", ["title", "name"]) ?? "Item",
-      quantity: lr.num("quantity", ["quantity", "currentQuantity"]) ?? 1,
+      quantity: lr.num("quantity", ["currentQuantity", "quantity"]) ?? 1, // after an order edit, what the order holds now
       unitPrice: money(lr, "unitPrice", ["originalUnitPriceSet", "discountedUnitPriceSet", "price"], currency) ?? { amount: "0", currency },
     };
   });

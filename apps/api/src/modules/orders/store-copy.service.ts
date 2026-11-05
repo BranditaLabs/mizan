@@ -10,6 +10,8 @@ import { EventConsumer, type EventHandler } from "../../platform/events/consumer
 import { EventsService } from "../../platform/events/events.service.js";
 import { PiiCipher } from "../../platform/pii/pii-cipher.js";
 
+const maxZero = (x: bigint) => (x > 0n ? x : 0n);
+
 /** Countries whose region codes in the shared list are the store's province codes (ISO 3166-2). */
 const PROVINCE_CODES = new Set(["EG", "AE"]);
 
@@ -119,7 +121,8 @@ export class StoreCopyService {
           ...(l.store_variant ? { variantExternalId: l.store_variant } : {}), title: l.title, sku: l.sku, quantity: l.quantity, unitPrice: money(l.unit_price_minor),
           ...(l.store_variant && l.list_minor !== null && l.list_currency?.trim() === o.currency.trim() ? { listPrice: money(l.list_minor) } : {}),
         })),
-        shipping: money(o.shipping_minor), discount: money(o.discount_minor), paid: money(paid),
+        // A manual order keeps its discount in the total: what lowers it is the discount (so the copy totals the same).
+        shipping: money(o.shipping_minor), discount: money(maxZero(BigInt(o.subtotal_minor) + BigInt(o.shipping_minor) - total)), paid: money(paid),
         financialStatus: paid >= total && total > 0n ? "PAID" : paid > 0n ? "PARTIALLY_PAID" : "PENDING",
         address: {
           firstName: name[0] || "Customer", lastName: name.slice(1).join(" ") || "-", ...(phone ? { phone } : {}),
@@ -143,6 +146,8 @@ export class StoreCopyService {
           return;
         }
         await trx.updateTable("orders").set({ store_copy_id: r.externalId, store_copy_name: r.name, store_copy_status: "created", store_copy_error: null }).where("id", "=", orderId).execute();
+        // The money sent with the copy is Mizan's own: the copy's received total counts only beyond it (the projector).
+        await trx.updateTable("orders").set({ store_copy_snapshot: sql`jsonb_build_object('sentPaid', paid_minor::text)` }).where("id", "=", orderId).where("store_copy_snapshot", "is", null).execute();
         await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "store_copy_created", actor_type: "system", data: JSON.stringify({ name: r.name, outcome: r.outcome }) }).execute();
         return;
       }
