@@ -1,6 +1,7 @@
 import { COUNTRY_CODES, MEMBER_ROLES } from "@mizan/shared";
 import { z } from "zod";
 import { LegalVersionsSchema } from "../legal/legal.dto.js";
+import { SIGNUP_PLANS } from "../billing/trial.service.js";
 
 export const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
@@ -13,6 +14,9 @@ export const CreateTenantSchema = z.strictObject({
   language: z.enum(["ar", "en"]).default("ar"),
   /** The terms and DPA versions the owner ticked; recorded with the store (L1-3). */
   acceptLegal: LegalVersionsSchema.optional().describe("The terms of service and DPA versions the owner accepted; 409 legal_version_changed when not current"),
+  /** The tier to try (E12-2a2), e.g. from the landing's ?plan=; Growth when absent. Enterprise leads try Scale. Free only when sold publicly. */
+  plan: z.enum(SIGNUP_PLANS).optional().describe("The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly)"),
+  interval: z.enum(["month", "year"]).optional().describe("Monthly or yearly billing after the trial (the landing's ?billing=); monthly when absent"),
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantSchema>;
 

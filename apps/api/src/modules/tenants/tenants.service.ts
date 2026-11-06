@@ -9,6 +9,8 @@ import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { assertCurrentLegal, recordAcceptance } from "../legal/legal.store.js";
 import type { CreateTenantBody, TenantView, UpdateTenantBody } from "./tenants.dto.js";
+import { TrialService } from "../billing/trial.service.js";
+import type { TrialIdentity } from "../billing/trial-keys.js";
 
 /** A user can own this many stores (abuse guard; raise per account on request). */
 export const MAX_OWNED_TENANTS = 10;
@@ -59,6 +61,7 @@ export class TenantsService {
     @Inject(Database) private readonly db: Database,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(TrialService) private readonly trials: TrialService,
   ) {}
 
   /**
@@ -66,7 +69,7 @@ export class TenantsService {
    * transaction scoped to the new tenant (RLS applies from the first row). The owner's acceptance
    * of the terms and DPA, when sent, is recorded in the same transaction; a stale version creates nothing.
    */
-  async create(userId: string, body: CreateTenantBody, ip?: string): Promise<TenantView> {
+  async create(userId: string, body: CreateTenantBody, ip?: string, who: TrialIdentity = { userId }): Promise<TenantView> {
     if (body.acceptLegal) assertCurrentLegal(body.acceptLegal);
     const owned = await this.db.platform(async (trx) => {
       await setActingUser(trx, userId);
@@ -102,13 +105,16 @@ export class TenantsService {
           await trx.insertInto("memberships").values({ tenant_id: id, user_id: userId, role: "owner", status: "active" }).execute();
           await trx.insertInto("warehouses").values({ tenant_id: id, name: DEFAULT_WAREHOUSE[body.language], is_default: true }).execute();
           if (body.acceptLegal) await recordAcceptance(trx, id, userId, body.language);
+          // The subscription opens with the store (E12-2a2): a trial in the store's time zone, or Free when the trial was used.
+          const start = await this.trials.startForSignup(trx, id, { plan: body.plan, interval: body.interval, timezone: tenant.timezone, who, actor: { type: "user", id: userId } });
+          const plan = (await trx.selectFrom("tenants").select("plan").where("id", "=", id).executeTakeFirstOrThrow()).plan;
           await this.events.emit(trx, {
             type: "tenant.created", tenantId: id, entity: { type: "tenant", id },
-            actor: { type: "user", id: userId }, data: { country, plan: tenant.plan },
+            actor: { type: "user", id: userId }, data: { country, plan, trial: start.trial },
           });
           await this.audit.record(trx, {
             action: "tenant.created", tenantId: id, actor: { type: "user", id: userId }, ip,
-            entity: { type: "tenant", id }, after: { slug, country, currency: defaults.currency },
+            entity: { type: "tenant", id }, after: { slug, country, currency: defaults.currency, plan, subscription: start.subscription.status, ...(start.refused ? { trialRefused: start.refused } : {}) },
           });
           if (body.acceptLegal) {
             await this.audit.record(trx, {
@@ -116,7 +122,7 @@ export class TenantsService {
               entity: { type: "tenant", id }, after: { ...body.acceptLegal, language: body.language },
             });
           }
-          return toView(tenant, "owner");
+          return toView({ ...tenant, plan }, "owner");
         });
       } catch (err) {
         if (!isUniqueViolation(err)) throw err;

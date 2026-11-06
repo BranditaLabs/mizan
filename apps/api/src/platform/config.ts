@@ -53,6 +53,8 @@ export const ConfigSchema = z.object({
   RETENTION_EVENTS_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
   /** Signs customer confirmation links (E6-7): base64 of 32 random bytes. Required in production; a fixed dev key elsewhere. */
   LINK_SIGNING_KEY: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
+  /** One trial per owner, phone and shop domain (E12-2a2): the platform pepper of the trial keys' HMAC, base64 of 32 random bytes, from Key Vault. Required in production; a fixed dev pepper elsewhere. Rotating it forgets which trials were used. */
+  TRIAL_KEY_PEPPER: z.string().refine((v) => Buffer.from(v, "base64").length === 32, "must be base64 of exactly 32 bytes").optional(),
   /** Customer messaging for confirmation (E6-7): none = links are sent by hand; log = development, pretends every channel is connected. */
   MESSAGING_PROVIDER: z.enum(["none", "log"], { error: "must be none or log" }).default("none"),
   /** WhatsApp Cloud API (E6-10): the Meta app's secret signs webhooks; the verify token answers Meta's subscription check. Unset = WhatsApp webhooks refused. */
@@ -136,6 +138,9 @@ export const ConfigSchema = z.object({
   }
   if (env.NODE_ENV === "production" && !env.LINK_SIGNING_KEY) {
     ctx.addIssue({ code: "custom", path: ["LINK_SIGNING_KEY"], message: "is required in production" });
+  }
+  if (env.NODE_ENV === "production" && !env.TRIAL_KEY_PEPPER) {
+    ctx.addIssue({ code: "custom", path: ["TRIAL_KEY_PEPPER"], message: "is required in production" });
   }
   if (env.NODE_ENV === "production" && env.MESSAGING_PROVIDER === "log") {
     ctx.addIssue({ code: "custom", path: ["MESSAGING_PROVIDER"], message: "log is for development only" });

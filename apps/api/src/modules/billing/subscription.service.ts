@@ -131,9 +131,9 @@ export class SubscriptionService {
    * The trial is over (the scheduler, at trial_ends_at): with `end_of_trial = downgrade_free` (D3)
    * the trial expires and a Free subscription opens. Orders, webhooks and courier sync never stop.
    */
-  async endTrial(trx: Trx, tenantId: string, sub: SubscriptionRow, actor: SubscriptionActor = { type: "system" }): Promise<SubscriptionRow> {
+  async endTrial(trx: Trx, tenantId: string, sub: SubscriptionRow, actor: SubscriptionActor = { type: "system" }, why?: "trial_already_used"): Promise<SubscriptionRow> {
     const { endOfTrial } = await this.settings(trx);
-    await this.transition(trx, tenantId, sub.id, "trial_end", { actor, expectedVersion: sub.version, reason: "trial ended", data: { outcome: endOfTrial } });
+    await this.transition(trx, tenantId, sub.id, "trial_end", { actor, expectedVersion: sub.version, reason: why ?? "trial ended", data: { outcome: endOfTrial, ...(why ? { why } : {}) } });
     return this.open(trx, tenantId, { event: "start", plan: "free", actor, reason: "trial ended without payment", data: { after: sub.id } });
   }
 

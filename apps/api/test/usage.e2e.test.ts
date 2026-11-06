@@ -40,6 +40,8 @@ beforeAll(async () => {
   fake.add("owner", { uid: "fb-owner-usage", email: "owner@usage.test", emailVerified: true, secondFactor: "phone" });
   store = (await http().post("/v1/tenants").set({ Authorization: "Bearer owner" }).send({ name: "Riyadh Usage", country: "SA" }).expect(201)).body.id;
   await db.tenant(store, (trx) => trx.updateTable("tenants").set({ timezone: "Asia/Riyadh" }).where("id", "=", store).execute());
+  // Measured against Free's limits: the store leaves its signup trial (E12-2a2) for Free.
+  await db.tenant(store, (trx) => app.get(SubscriptionService).override(trx, store, "free", { actor: { type: "system" } }));
   for (const [token, role, phone] of [["finance", "finance", "+966501110001"], ["ops", "ops_manager", "+966501110002"]] as const) {
     const inv = await http().post("/v1/members/invite").set(as("owner")).send({ phone, role }).expect(201);
     fake.add(token, { uid: `fb-${token}-usage`, phone: inv.body.phone });
