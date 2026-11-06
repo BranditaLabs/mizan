@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { JobStatus, NewJob, OutboxJob, Store } from "./store.js";
+import type { IntakeResult, JobStatus, NewJob, OutboxJob, Store } from "./store.js";
 
 /**
  * PostgreSQL store. Works with any client exposing `query(text, params)`
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS mz_outbox (
   connection      TEXT NOT NULL,
   payload         JSONB NOT NULL,
   idempotency_key TEXT NOT NULL,
-  status          TEXT NOT NULL CHECK (status IN ('pending','running','done','dead')),
+  status          TEXT NOT NULL CHECK (status IN ('pending','running','done','dead','dropped')),
   attempts        INT NOT NULL DEFAULT 0,
   next_attempt_at BIGINT NOT NULL,
   locked_until    BIGINT,
@@ -62,6 +62,8 @@ CREATE TABLE IF NOT EXISTS mz_outbox (
 );
 CREATE INDEX IF NOT EXISTS mz_outbox_due ON mz_outbox (next_attempt_at) WHERE status IN ('pending','running');
 CREATE INDEX IF NOT EXISTS mz_outbox_dead ON mz_outbox (updated_at) WHERE status = 'dead';
+ALTER TABLE mz_outbox DROP CONSTRAINT IF EXISTS mz_outbox_status_check;
+ALTER TABLE mz_outbox ADD CONSTRAINT mz_outbox_status_check CHECK (status IN ('pending','running','done','dead','dropped'));
 
 CREATE TABLE IF NOT EXISTS mz_records (
   tenant_id  UUID NOT NULL,
@@ -73,6 +75,14 @@ CREATE TABLE IF NOT EXISTS mz_records (
   PRIMARY KEY (tenant_id, scope, type, key)
 );
 `;
+
+/**
+ * A job dropped with its connection (FX-3a) and asked for again under the same key, after a
+ * reconnect, runs again from scratch; any other existing job is left as it is (idempotency).
+ */
+const REVIVE_DROPPED = `SET status = 'pending', attempts = 0, locked_until = NULL, last_error = NULL,
+  payload = EXCLUDED.payload, connection_id = EXCLUDED.connection_id, next_attempt_at = EXCLUDED.next_attempt_at, updated_at = EXCLUDED.updated_at
+  WHERE mz_outbox.status = 'dropped'`;
 
 type JobRow = {
   id: string; tenant_id: string; connection_id: string | null; kind: string; connection: string; payload: unknown; idempotency_key: string; status: JobStatus;
@@ -109,12 +119,54 @@ export class SqlStore implements Store {
     return r.rows.length === 1;
   }
 
+  /**
+   * W1: one statement, so one transaction whatever client runs it (the platform's tenant client
+   * opens a transaction per statement): the inbound key and its jobs are saved together or not
+   * at all. Jobs go in only when the key is new.
+   */
+  async markAndEnqueue(key: string, at: number, jobs: NewJob[], now: number): Promise<IntakeResult> {
+    const seen = new Set<string>();
+    const input = jobs.filter((j) => !seen.has(j.idempotencyKey) && seen.add(j.idempotencyKey)).map((j) => ({
+      id: randomUUID(), connection_id: this.scope.connections?.[j.connection] ?? null, kind: j.kind, connection: j.connection,
+      payload: j.payload, idempotency_key: j.idempotencyKey, next_attempt_at: j.runAt ?? now,
+    }));
+    const r = await this.db.query<{ marked: number; jobs: unknown }>(
+      `WITH mark AS (
+         INSERT INTO mz_inbound_events (tenant_id, scope, key, received_at) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (tenant_id, scope, key) DO NOTHING RETURNING key
+       ), input AS (
+         SELECT * FROM jsonb_to_recordset($5::jsonb)
+           AS x(id uuid, connection_id uuid, kind text, connection text, payload jsonb, idempotency_key text, next_attempt_at bigint)
+       ), ins AS (
+         INSERT INTO mz_outbox (id, tenant_id, scope, connection_id, kind, connection, payload, idempotency_key, status, attempts, next_attempt_at, created_at, updated_at)
+         SELECT id, $1, $2, connection_id, kind, connection, payload, idempotency_key, 'pending', 0, next_attempt_at, $6, $6 FROM input
+         WHERE EXISTS (SELECT 1 FROM mark)
+         ON CONFLICT (tenant_id, scope, idempotency_key) DO UPDATE ${REVIVE_DROPPED}
+         RETURNING *
+       )
+       SELECT (SELECT count(*) FROM mark)::int AS marked, (SELECT coalesce(json_agg(ins), '[]'::json) FROM ins) AS jobs`,
+      [this.tenant, this.store, key, at, JSON.stringify(input), now],
+    );
+    if (!Number(r.rows[0]?.marked)) return { marked: false, jobs: [] };
+    const raw = r.rows[0].jobs;
+    const created = (typeof raw === "string" ? JSON.parse(raw) : raw) as JobRow[];
+    const byKey = new Map(created.map((row) => [row.idempotency_key, toJob(row)]));
+    const out: IntakeResult["jobs"] = [];
+    for (const j of input) {
+      const hit = byKey.get(j.idempotency_key);
+      if (hit) { out.push({ job: hit, created: true }); continue; }
+      const ex = await this.db.query<JobRow>(`SELECT * FROM mz_outbox WHERE tenant_id = $1 AND scope = $3 AND idempotency_key = $2`, [this.tenant, j.idempotency_key, this.store]);
+      if (ex.rows[0]) out.push({ job: toJob(ex.rows[0]), created: false });
+    }
+    return { marked: true, jobs: out };
+  }
+
   async enqueue<P>(j: NewJob<P>, now: number) {
     const id = randomUUID();
     const ins = await this.db.query<JobRow>(
       `INSERT INTO mz_outbox (id, tenant_id, scope, connection_id, kind, connection, payload, idempotency_key, status, attempts, next_attempt_at, created_at, updated_at)
        VALUES ($1,$2,$10,$3,$4,$5,$6,$7,'pending',0,$8,$9,$9)
-       ON CONFLICT (tenant_id, scope, idempotency_key) DO NOTHING RETURNING *`,
+       ON CONFLICT (tenant_id, scope, idempotency_key) DO UPDATE ${REVIVE_DROPPED} RETURNING *`,
       [id, this.tenant, this.scope.connections?.[j.connection] ?? null, j.kind, j.connection, JSON.stringify(j.payload), j.idempotencyKey, j.runAt ?? now, now, this.store],
     );
     if (ins.rows.length) return { job: toJob(ins.rows[0]) as OutboxJob<P>, created: true };
@@ -144,11 +196,12 @@ export class SqlStore implements Store {
   }
 
   async retryLater(id: string, error: string, at: number, now: number) {
-    await this.db.query(`UPDATE mz_outbox SET status='pending', locked_until=NULL, last_error=$2, next_attempt_at=$3, updated_at=$4 WHERE id=$1 AND tenant_id=$5`, [id, error, at, now, this.tenant]);
+    // A dropped job stays dropped: its connection ended while it ran.
+    await this.db.query(`UPDATE mz_outbox SET status='pending', locked_until=NULL, last_error=$2, next_attempt_at=$3, updated_at=$4 WHERE id=$1 AND tenant_id=$5 AND status <> 'dropped'`, [id, error, at, now, this.tenant]);
   }
 
   async bury(id: string, error: string, now: number) {
-    await this.db.query(`UPDATE mz_outbox SET status='dead', locked_until=NULL, last_error=$2, updated_at=$3 WHERE id=$1 AND tenant_id=$4`, [id, error, now, this.tenant]);
+    await this.db.query(`UPDATE mz_outbox SET status='dead', locked_until=NULL, last_error=$2, updated_at=$3 WHERE id=$1 AND tenant_id=$4 AND status <> 'dropped'`, [id, error, now, this.tenant]);
   }
 
   async replay(id: string, now: number) {

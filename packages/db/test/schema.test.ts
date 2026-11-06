@@ -651,5 +651,21 @@ describe("schema", () => {
       await expect(db.query(`SELECT idempotency_key FROM order_followups`)).rejects.toThrow(/permission denied/);
     } finally { await db.exec("ROLLBACK;"); }
   });
+  it("keeps a disconnected store's waiting jobs as dropped, and runs one again when it is asked for again (0078, FX-3a)", async () => {
+    const insert = (key: string, status: string) => asTenant(T1, () => db.query(`INSERT INTO mz_outbox (id, tenant_id, scope, kind, connection, payload, idempotency_key, status, next_attempt_at, created_at, updated_at)
+      VALUES (gen_random_uuid(), $1, 'store-drop', 'bosta.createShipment', 'bosta', '{}', $2, $3, 1, 1, 1)`, [T1, key, status]));
+    await insert("ship:1", "pending");
+    await expect(insert("ship:x", "gone")).rejects.toThrow(/mz_outbox_status_check/);
+    // The disconnect (ConnectionLifecycle, as the app role): kept, not deleted.
+    const dropped = await asTenant(T1, () => db.query(`UPDATE mz_outbox SET status = 'dropped', last_error = 'connection disconnected (by_team)' WHERE scope = 'store-drop' AND status IN ('pending','running') RETURNING id`));
+    expect(dropped.rows).toHaveLength(1);
+    // A reconnect enqueues the same key: the engine's upsert revives only a dropped job.
+    const revive = () => asTenant(T1, () => db.query<{ status: string; last_error: string | null }>(`INSERT INTO mz_outbox (id, tenant_id, scope, kind, connection, payload, idempotency_key, status, next_attempt_at, created_at, updated_at)
+      VALUES (gen_random_uuid(), $1, 'store-drop', 'bosta.createShipment', 'bosta', '{}', 'ship:1', 'pending', 2, 2, 2)
+      ON CONFLICT (tenant_id, scope, idempotency_key) DO UPDATE SET status = 'pending', last_error = NULL WHERE mz_outbox.status = 'dropped' RETURNING status, last_error`, [T1]));
+    expect((await revive()).rows).toEqual([{ status: "pending", last_error: null }]);
+    expect((await revive()).rows).toEqual([]); // not dropped any more: left as it is
+    const idx = await db.query(`SELECT indexname FROM pg_indexes WHERE tablename = 'mz_outbox' AND indexname = 'mz_outbox_dropped'`);
+    expect(idx.rows).toHaveLength(1);
+  });
 });
-

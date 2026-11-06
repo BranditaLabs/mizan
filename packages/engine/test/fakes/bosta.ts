@@ -73,11 +73,11 @@ export class FakeBosta {
   }
 
   /** Webhook body: Bosta sends a minimal payload; the engine re-reads the delivery. */
-  webhook(tn: string, opts: { withLabel?: boolean } = {}) {
+  webhook(tn: string, opts: { withLabel?: boolean; noTime?: boolean } = {}) {
     const d = this.deliveries.get(tn)!;
     return JSON.stringify({
       _id: d._id, trackingNumber: tn, state: opts.withLabel ? { code: d.state.code, value: d.state.value } : d.state.code,
-      type: "SEND", timeStamp: this.clock.now(), cod: d.cod, businessReference: d.businessReference,
+      type: "SEND", ...(opts.noTime ? {} : { timeStamp: this.clock.now() }), cod: d.cod, businessReference: d.businessReference,
     });
   }
 

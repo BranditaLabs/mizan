@@ -101,4 +101,28 @@ describe("webhook ingress", () => {
     await db.kysely.updateTable("connections").set({ provider: "shopify" }).where("id", "=", conn.shopify!).execute();
     router.forget(conn.shopify!);
   });
+
+  it("W3/W4: a reconnect in another process during a burst loses nothing (no cached 'no route')", async () => {
+    const router = app.get(WebhookRouter);
+    const status = (s: "active" | "disconnected") => db.kysely.updateTable("connections").set({ status: s }).where("id", "=", conn.shopify!).execute();
+    await status("disconnected");
+    router.forget(conn.shopify!); // this process saw the disconnect
+    const answers: unknown[] = [];
+    for (let i = 0; i < 6; i++) {
+      if (i === 3) await status("active"); // reconnected by another API process: nobody told this one
+      const wh = shop.webhook("orders/create", shop.addOrder({ tags: [] }));
+      answers.push((await send(`/webhooks/shopify/${conn.shopify}`, wh).expect(200)).body);
+    }
+    expect(answers).toEqual([
+      { ignored: "disconnected" }, { ignored: "disconnected" }, { ignored: "disconnected" },
+      { accepted: true }, { accepted: true }, { accepted: true },
+    ]);
+    // A connection that does not exist yet, then does: the first answer is not remembered either.
+    const id = crypto.randomUUID();
+    const wh = shop.webhook("orders/create", shop.addOrder({ tags: [] }));
+    await send(`/webhooks/shopify/${id}`, wh).expect(404);
+    await db.tenant(T, (trx) => trx.insertInto("connections").values({ id, tenant_id: T, kind: "store", provider: "shopify", external_account: "new.myshopify.com", status: "disconnected" }).execute());
+    expect((await send(`/webhooks/shopify/${id}`, wh).expect(200)).body).toEqual({ ignored: "disconnected" });
+    await db.tenant(T, (trx) => trx.deleteFrom("connections").where("id", "=", id).execute());
+  });
 });
