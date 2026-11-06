@@ -537,6 +537,13 @@
       "callDetail": "By Heba, 1 min 40 s",
       "risk": "Risk checked",
       "created": "Order placed on Shopify"
+    },
+    "phone": {
+      "title": "WhatsApp phone",
+      "body": "The confirmation studio's phone: the buyer's chat as WhatsApp draws it, in the buyer's language, light and dark with the app.",
+      "ar": "Arabic chat",
+      "en": "English chat",
+      "label": "Sample chat: {lang}"
     }
   },
   "problems": {
@@ -1608,7 +1615,8 @@
       "orders": "Orders",
       "privacy": "Privacy",
       "inventory": "Inventory",
-      "afterConfirmation": "After confirmation"
+      "afterConfirmation": "After confirmation",
+      "studio": "Studio"
     },
     "subtitle": "How your brand, its stores and its team work in Mizan.",
     "none": "There are no settings for your role.",
@@ -1636,14 +1644,15 @@
       "integrations": "Stores, couriers and WhatsApp: their state and what to fix.",
       "storeSync": "What Mizan writes back to your Shopify store.",
       "orders": "How new orders are numbered and handled.",
-      "confirmation": "How orders are confirmed: WhatsApp, calls and the script.",
+      "confirmation": "Turn confirmation on, connect WhatsApp, route by risk.",
       "offers": "Upsell offers during confirmation.",
       "costs": "Product and order costs behind real profit.",
       "payments": "Turning cash on delivery into prepaid, and the methods you take.",
       "refunds": "Who approves refunds, and the limits.",
       "inventory": "Whether Mizan sends its stock count to your store, so it never sells what's reserved or gone.",
       "purchasing": "Defaults for purchase orders and receiving.",
-      "afterConfirmation": "What happens once an order is confirmed, changed, cancelled or unanswered."
+      "afterConfirmation": "What happens once an order is confirmed, changed, cancelled or unanswered.",
+      "studio": "The buyer's WhatsApp chat, drag and drop, with a live phone preview."
     }
   },
   "confirmationSettings": {
@@ -1672,32 +1681,10 @@
       "always": "always available",
       "none": "WhatsApp isn't connected yet, so new orders go straight to your team to call. Connect the store's WhatsApp number below."
     },
-    "steps": {
-      "title": "Order of steps",
-      "body": "Mizan tries each step in order and waits for an answer before the next. A channel that isn't connected is skipped. The team call is always the last step.",
-      "channel": "Channel",
-      "wait": "Wait (minutes)",
-      "remove": "Remove step",
-      "add": "Add a step",
-      "agent": "If nobody answers: the order goes on the \"Needs a call\" list",
-      "teamLast": "The team call must be the last step."
-    },
-    "hours": {
-      "title": "Calling hours",
-      "body": "Calls (automated and by your team) only in these hours, store time. WhatsApp messages go out any time.",
-      "start": "From",
-      "end": "Until",
-      "invalid": "Start must be before end"
-    },
     "link": {
       "hours": "Hand-sent link works for (hours)",
-      "hint": "For the link your team sends by hand when WhatsApp isn't connected."
-    },
-    "team": {
-      "title": "Team calls",
-      "body": "When your team calls and nobody answers, the order leaves the list and comes back after this time, up to the number of tries.",
-      "attempts": "Tries",
-      "retry": "Back after (minutes)"
+      "hint": "For the link your team sends by hand when WhatsApp isn't connected.",
+      "title": "Hand-sent link"
     },
     "whatsapp": {
       "title": "The store's WhatsApp number",
@@ -1790,37 +1777,444 @@
       "channelCounts": "{confirmed} confirmed · {cancelled} cancelled",
       "channelShare": "{pct}% confirmed"
     },
-    "script": {
-      "title": "Script",
-      "body": "Your own words for what the customer reads after each button, and for the team's call. Leave a box empty to keep the pack's wording. The WhatsApp template itself stays the one Meta approved.",
-      "pack": "Language pack",
-      "packs": {
-        "egyptian": "Egyptian Arabic",
-        "formal": "Formal Arabic"
+    "studio": {
+      "title": "Design the buyer's chat",
+      "body": "The steps, every message the buyer reads on WhatsApp and the team's call, with a live phone preview.",
+      "open": "Open the studio",
+      "stepsLabel": "The steps, in order"
+    }
+  },
+  "confirmationStudio": {
+    "title": "Confirmation studio",
+    "subtitle": "Design what the buyer gets on WhatsApp: the steps, every message and the team's call. The phone shows the result as the buyer will see it.",
+    "back": "Confirmation",
+    "loading": "Loading the studio",
+    "loadFailed": "Couldn't load the studio.",
+    "retry": "Try again",
+    "saved": "Saved. New orders get this chat.",
+    "saveFailed": "Couldn't save. Your changes are still here.",
+    "notAllowed": {
+      "title": "For owners, admins and ops managers",
+      "body": "Ask the store owner to change the confirmation chat."
+    },
+    "refused": {
+      "title": "Some texts need a fix before saving",
+      "body": "{count, plural, one {# problem is marked} other {# problems are marked}} next to the text. Nothing was lost."
+    },
+    "toolbar": {
+      "label": "Studio tools",
+      "pack": "Wording style",
+      "language": "Buyer's language",
+      "ar": "العربي",
+      "en": "English",
+      "issues": "{count, plural, one {# problem} other {# problems}}",
+      "noIssues": "All good",
+      "restore": "Restore the style's wording"
+    },
+    "packs": {
+      "egyptian": "Egyptian",
+      "formal": "Formal Arabic",
+      "gulf": "Gulf"
+    },
+    "restore": {
+      "title": "Restore the style's wording?",
+      "body": "Your own texts in {lang} are removed and the chat goes back to the style's wording. The other language stays as it is.",
+      "confirm": "Restore"
+    },
+    "after": {
+      "book": "ready to ship after {minutes} min, booked with the courier",
+      "wait": "ready to ship after {minutes} min",
+      "ready": "ready to ship right away"
+    },
+    "flow": {
+      "label": "The confirmation flow",
+      "trigger": "A new order arrives",
+      "triggerHint": "Cash-on-delivery orders start here",
+      "on": "Confirmation on",
+      "off": "Confirmation off",
+      "change": "Change",
+      "palette": "Drag a step into the flow, or tap to add it",
+      "addChip": "Add a step: {channel}",
+      "cannot": {
+        "full": "Six steps at most",
+        "team_exists": "The team call is already the last step"
       },
-      "language": "Language",
-      "lang": {
-        "ar": "Arabic",
-        "en": "English"
+      "channel": {
+        "whatsapp": "WhatsApp message",
+        "call_auto": "Automated call",
+        "call_team": "Team call"
       },
-      "variables": "Variables:",
-      "keepPack": "Empty: the pack's wording",
-      "preview": "Preview",
-      "previewTitle": "With a sample order",
-      "branch": {
-        "confirm": "When they tap Confirm",
-        "change": "When they tap Change",
-        "cancel": "When they tap Cancel",
-        "call": "The team's call script"
+      "handle": "Move step {n}: {channel}",
+      "pinned": "The team call always stays last",
+      "more": "More for step {n}",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "remove": "Remove step",
+      "notConnected": "Not connected",
+      "skipped": {
+        "whatsapp": "Until WhatsApp is connected, this step is skipped.",
+        "call_auto": "Until a calling service is connected, this step is skipped."
       },
-      "keys": {
-        "confirmed": "Confirmed",
-        "change_prompt": "Ask for the change",
-        "change_received": "Change received",
-        "cancel_prompt": "Ask why (reasons follow)",
-        "cancelled": "Cancelled",
-        "call": "Lines to read, one per line"
+      "wait": "If no answer in <input></input> minutes → next step",
+      "waitLast": "If no answer in <input></input> minutes → the \"Needs a call\" list",
+      "waitLabel": "Minutes to wait at step {n}",
+      "teamBody": "Your team calls from the \"Needs a call\" list. Tries, retry time and calling hours are in the call's settings.",
+      "editCall": "The call",
+      "noWhatsApp": "Add a WhatsApp message to design the chat the buyer gets.",
+      "addWhatsApp": "Add WhatsApp",
+      "endTeam": "Unreachable after every try: stays on the list for your team",
+      "endList": "Nobody answered: the order goes on the \"Needs a call\" list",
+      "invalid": "Each wait is 10 to 1440 minutes, and the team call must be the last step.",
+      "refused": "The steps were refused. Check each wait and the team call's place.",
+      "dnd": {
+        "instructions": "To move a step, press Space or Enter. Use the arrow keys to move it, Space or Enter to drop it, Escape to cancel.",
+        "step": "step {n}, {channel}",
+        "picked": "Picked up {item}.",
+        "over": "{item} is at position {n}.",
+        "outside": "{item} is outside the flow.",
+        "dropped": "{item} dropped at position {n}.",
+        "cancelled": "Move cancelled. {item} is back."
       }
+    },
+    "branches": {
+      "label": "What the buyer can do in the chat",
+      "edited": "Your words",
+      "hasIssue": "Needs a fix",
+      "offer": "Then: an offer, if one applies",
+      "after": "After confirmation: {summary}",
+      "afterNone": "After confirmation"
+    },
+    "nodes": {
+      "trigger": {
+        "title": "A new order arrives",
+        "body": "Where the flow starts."
+      },
+      "steps": {
+        "title": "Steps",
+        "body": "The order of the steps."
+      },
+      "confirms": {
+        "title": "Confirms",
+        "body": "What the buyer reads after tapping Confirm, and the order summary lines."
+      },
+      "offer": {
+        "title": "The offer after confirming",
+        "body": "When one of your offers applies, it comes right after the thank-you. Offers themselves are in Settings → Offers."
+      },
+      "change": {
+        "title": "Asks for a change",
+        "body": "The buyer writes what to change; your team follows up."
+      },
+      "cancel": {
+        "title": "Cancels",
+        "body": "The buyer picks a reason from a list, or keeps the order."
+      },
+      "message": {
+        "title": "Writes a message",
+        "body": "When the buyer writes instead of tapping."
+      },
+      "again": {
+        "title": "Answers again",
+        "body": "When the buyer taps a button after already answering."
+      },
+      "stop": {
+        "title": "Says STOP or START",
+        "body": "STOP pauses WhatsApp for this buyer; START turns it back on."
+      },
+      "every": {
+        "title": "Every message",
+        "body": "The small print, the words inside the template and the link your team sends by hand."
+      },
+      "team": {
+        "title": "The team call",
+        "body": "What your team says on the call, how often they try and when they may call."
+      }
+    },
+    "inspector": {
+      "close": "Close",
+      "pick": "Pick a step or a branch above to edit its words.",
+      "counter": "{n} / {limit}",
+      "composed": "Mizan writes this from the order",
+      "optional": "Leave empty to leave it out",
+      "vars": "Drag into the text, or tap to add at the cursor",
+      "insert": "Add {name}",
+      "missing": "Keep {names} in this text.",
+      "usePack": "Use the style's wording"
+    },
+    "team": {
+      "attempts": "Tries",
+      "attemptsHint": "1 to 10",
+      "retry": "Back on the list after (minutes)",
+      "retryHint": "After \"no answer\"",
+      "hours": "Calling hours",
+      "hoursHint": "Calls only in these hours, store time. WhatsApp messages go out any time.",
+      "from": "From",
+      "until": "Until",
+      "hoursInvalid": "Start must be before end"
+    },
+    "reasons": {
+      "title": "Cancel reasons",
+      "body": "The choices in the list, in this order. Each one counts under a reason in your reports.",
+      "customise": "Customise the reasons",
+      "add": "Add a reason",
+      "usePack": "Use the style's reasons",
+      "max": "{n} reasons at most",
+      "untitled": "reason {n}",
+      "titleLabel": "Reason {n}",
+      "descLabel": "Small print (optional)",
+      "chars": "{n} / {max}",
+      "code": "Counts as",
+      "handle": "Move reason {n}",
+      "moveUp": "Move reason {n} up",
+      "moveDown": "Move reason {n} down",
+      "remove": "Remove reason {n}",
+      "dnd": {
+        "instructions": "To move a reason, press Space or Enter. Use the arrow keys to move it, Space or Enter to drop it, Escape to cancel.",
+        "picked": "Picked up {item}.",
+        "over": "{item} is at position {n}.",
+        "dropped": "{item} dropped at position {n}.",
+        "cancelled": "Move cancelled. {item} is back."
+      }
+    },
+    "codes": {
+      "changed_mind": "Changed their mind",
+      "ordered_by_mistake": "Ordered by mistake",
+      "found_cheaper": "Found it cheaper",
+      "delivery_too_late": "Delivery too late",
+      "other": "Other"
+    },
+    "issue": {
+      "too_long": "Too long: about {length} of {limit} characters.",
+      "unknown_variable": "{variable} isn't a variable Mizan knows.",
+      "variable_not_here": "{variable} can't be used in this message.",
+      "missing_variable": "Keep {variable} in this text.",
+      "only_variables": "Write some words, not only variables.",
+      "no_variables_in_titles": "Buttons and titles can't have variables.",
+      "no_new_lines": "Keep it on one line.",
+      "no_links": "No links here.",
+      "template_safe": "Inside the approved template: no links, long numbers, emoji or extra spaces.",
+      "duplicate_title": "Two choices read the same. Make each one different.",
+      "duplicate_id": "Two reasons are the same reason. Remove one.",
+      "reason_title_required": "Write a title for this reason.",
+      "not_a_key": "This text isn't used any more.",
+      "invalid_text": "This text can't be read. Write it again.",
+      "invalid_pack": "Choose a wording style.",
+      "invalid_reasons": "The reasons can't be read. Customise them again.",
+      "invalid_script": "The saved wording can't be read. Restore the style's wording.",
+      "other": "This needs a fix."
+    },
+    "phone": {
+      "aside": "Preview on WhatsApp",
+      "label": "The buyer's WhatsApp chat",
+      "open": "Preview on WhatsApp",
+      "title": "The buyer's WhatsApp",
+      "withOffer": "With an offer",
+      "jump": "Go to a chat",
+      "start": "From the start",
+      "restart": "Start the chat again",
+      "failed": "Couldn't refresh the preview. Showing the last one.",
+      "nowhere": "In the real chat this keeps the order as it is.",
+      "sendSample": "Send the sample answer",
+      "reply": {
+        "message": "Write a question",
+        "opt_out": "Send STOP",
+        "opt_in": "Send START"
+      },
+      "scenario": {
+        "confirm": "Confirms",
+        "confirm_offer": "Confirms, takes the offer",
+        "offer_no": "Confirms, says no to the offer",
+        "change": "Asks for a change",
+        "cancel": "Cancels",
+        "message": "Writes a message",
+        "already": "Answers again",
+        "opt_out": "Says STOP",
+        "opt_in": "Says START"
+      }
+    },
+    "keys": {
+      "confirmed": {
+        "label": "Thank-you after confirming",
+        "hint": "What the buyer reads right after tapping Confirm."
+      },
+      "confirmed_offer_top": {
+        "label": "Thank-you above an offer",
+        "hint": "When an offer follows, this opens the offer message."
+      },
+      "change_prompt": {
+        "label": "Ask what to change",
+        "hint": "After they tap the change button."
+      },
+      "change_received": {
+        "label": "Change received",
+        "hint": "After they write what to change. Your team takes it from there."
+      },
+      "cancel_prompt": {
+        "label": "Ask why they cancel",
+        "hint": "The message that opens the list of reasons."
+      },
+      "cancel_button": {
+        "label": "The list's button",
+        "hint": "The button that opens the reasons. Short, no variables."
+      },
+      "cancel_header": {
+        "label": "Title above the question",
+        "hint": "A bold line on top of the message. Optional."
+      },
+      "cancel_section": {
+        "label": "Heading of the reasons",
+        "hint": "Shown above the reasons inside the list. Optional."
+      },
+      "keep_title": {
+        "label": "\"Keep my order\" choice",
+        "hint": "The last row: the buyer changes their mind and keeps the order."
+      },
+      "keep_description": {
+        "label": "\"Keep my order\": small print",
+        "hint": "A grey line under that row. Optional."
+      },
+      "cancelled": {
+        "label": "Order cancelled",
+        "hint": "After they choose a reason."
+      },
+      "offer_pitch": {
+        "label": "The offer line",
+        "hint": "Presents the offer; Mizan adds the product and the price."
+      },
+      "offer_question": {
+        "label": "The offer question",
+        "hint": "Asks whether to add it to the same order."
+      },
+      "btn_offer_yes": {
+        "label": "\"Yes\" button",
+        "hint": "Short, no variables."
+      },
+      "btn_offer_no": {
+        "label": "\"No\" button",
+        "hint": "Short, no variables. Must read differently from Yes."
+      },
+      "offer_added": {
+        "label": "Offer added",
+        "hint": "With the product and the new total."
+      },
+      "offer_added_generic": {
+        "label": "Offer added (short)",
+        "hint": "When the product or the total can't be shown."
+      },
+      "offer_failed": {
+        "label": "Couldn't add the offer",
+        "hint": "When it ran out, with the product's name."
+      },
+      "offer_failed_generic": {
+        "label": "Couldn't add it (short)",
+        "hint": "When the product's name can't be shown."
+      },
+      "offer_declined": {
+        "label": "Said no to the offer",
+        "hint": "The order stays as it is."
+      },
+      "offer_expired": {
+        "label": "The offer ended",
+        "hint": "They tapped yes after the offer ended."
+      },
+      "summary_pay": {
+        "label": "Summary: amount to pay",
+        "hint": "A line of the order summary. Keep the amount in it."
+      },
+      "summary_paid": {
+        "label": "Summary: already paid",
+        "hint": "For orders paid before delivery."
+      },
+      "summary_more": {
+        "label": "Summary: more items",
+        "hint": "When the order has more items than the summary shows."
+      },
+      "summary_area": {
+        "label": "Summary: delivery area",
+        "hint": "Keep the city in it."
+      },
+      "noted": {
+        "label": "Reply to a written message",
+        "hint": "When the buyer writes instead of tapping a button."
+      },
+      "already": {
+        "label": "Already answered",
+        "hint": "When they tap again after answering."
+      },
+      "opted_out": {
+        "label": "After STOP",
+        "hint": "Must say the word that starts messages again."
+      },
+      "opted_in": {
+        "label": "After START",
+        "hint": "Messages are back on."
+      },
+      "on_delivery": {
+        "label": "\"On delivery\" in the template",
+        "hint": "Short words placed inside the approved template, after the amount."
+      },
+      "footer": {
+        "label": "Small print under messages",
+        "hint": "A grey line under messages with buttons or a list. Optional."
+      },
+      "link_text": {
+        "label": "The link your team sends by hand",
+        "hint": "When WhatsApp isn't connected, your team sends this with the confirm link."
+      },
+      "call": {
+        "label": "The team's call script",
+        "hint": "One line per line. Empty: Mizan writes it from the order."
+      }
+    },
+    "vars": {
+      "customer": {
+        "first_name": "Customer's first name",
+        "greeting": "Greeting with the name"
+      },
+      "order": {
+        "number": "Order number",
+        "total": "Order total",
+        "due": "Amount due",
+        "cod": "Cash on delivery line",
+        "items": "Items",
+        "city": "Delivery city"
+      },
+      "store": {
+        "name": "Store name"
+      },
+      "offer": {
+        "title": "Offer product",
+        "line": "Offer line",
+        "new_total": "New total"
+      },
+      "summary": {
+        "due": "Amount to pay",
+        "more": "Number of other items"
+      },
+      "link": "The confirm link",
+      "start_keyword": "Word to start again"
+    }
+  },
+  "whatsappPhone": {
+    "loading": "Updating the preview",
+    "chat": "Messages",
+    "callScript": "What your team says on the call",
+    "replies": "Sample replies",
+    "write": "Reply as the buyer",
+    "closeList": "Close the list",
+    "template": "Approved template",
+    "templateTip": "Approved by Meta: it can't be edited here.",
+    "edit": "Edit this message: {text}",
+    "tapHint": "Tap a button to see what the buyer gets",
+    "chrome": {
+      "today": "Today",
+      "business": "Business account",
+      "typing": "typing…",
+      "message": "Message",
+      "send": "Send",
+      "notice": "This business uses a secure service from Meta to manage this chat.",
+      "customer": "Mona",
+      "calling": "Calling about order #1001"
     }
   },
   "offersSettings": {
