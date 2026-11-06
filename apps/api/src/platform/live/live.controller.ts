@@ -11,7 +11,7 @@ import { Database } from "../db/database.js";
 import { ApiJson, ApiJsonBody, ApiProblems, ApiQueryZod, schemaRef } from "../http/api-schema.js";
 import type { HttpReply } from "../http/http.types.js";
 import { ProblemError } from "../http/problem.js";
-import { TokenBuckets } from "../http/rate-limit.js";
+import { RateLimiter, TokenBuckets } from "../http/rate-limit.js";
 import { ZodPipe } from "../http/zod.pipe.js";
 import { LiveChangeSchema, LiveEndSchema, LiveQuerySchema, LiveReadySchema, LiveTokenRequestSchema, LiveTokenSchema } from "./live.dto.js";
 import { LiveHub, type LiveSubscriber } from "./live.hub.js";
@@ -43,6 +43,7 @@ export class LiveController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(Database) private readonly db: Database,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    @Inject(RateLimiter) private readonly limits: RateLimiter,
   ) {}
 
   @Post("token")
@@ -72,18 +73,47 @@ export class LiveController {
   })
   @ApiProblems(401, 403, 422, 429)
   async stream(@Query(new ZodPipe(LiveQuerySchema)) q: z.output<typeof LiveQuerySchema>, @Res() reply: HttpReply): Promise<void> {
-    const claims = await this.tokens.consume(q.token);
-    const topics = this.narrow(claims, q.topics);
-    const key = `${claims.tenantId}:${claims.userId}`;
-    const held = this.perUser.get(key) ?? 0;
-    if (held >= LIVE_STREAMS_PER_USER) throw new ProblemError(429, "too_many_streams", `at most ${LIVE_STREAMS_PER_USER} live streams per person`);
-    if (!(await this.stillAllowed(claims))) throw new ProblemError(403, "not_a_member", "you are not an active member of this store");
-    this.perUser.set(key, held + 1);
-    this.open(reply, claims, topics, () => {
-      const n = (this.perUser.get(key) ?? 1) - 1;
-      if (n > 0) this.perUser.set(key, n);
-      else this.perUser.delete(key);
-    });
+    // @Public skips the guard's per-IP check; every token costs a DB round trip, so take it here first.
+    this.limits.checkIp(reply.request.ip, reply);
+    // A client may leave while the token is checked: notice it now, because 'close' never fires twice.
+    const raw = reply.raw;
+    let left = false;
+    const onLeave = () => { left = true; };
+    raw.once("close", onLeave);
+    const gone = () => left || raw.destroyed || raw.socket?.destroyed !== false;
+    const abandon = () => { reply.hijack(); raw.destroy(); };
+    try {
+      const claims = await this.tokens.consume(q.token);
+      const topics = this.narrow(claims, q.topics);
+      if (gone()) return abandon();
+      // Check and take the slot with no await in between, so streams opened at once cannot pass the cap together.
+      const key = `${claims.tenantId}:${claims.userId}`;
+      const held = this.perUser.get(key) ?? 0;
+      if (held >= LIVE_STREAMS_PER_USER) throw new ProblemError(429, "too_many_streams", `at most ${LIVE_STREAMS_PER_USER} live streams per person`);
+      this.perUser.set(key, held + 1);
+      const release = () => {
+        const n = (this.perUser.get(key) ?? 1) - 1;
+        if (n > 0) this.perUser.set(key, n);
+        else this.perUser.delete(key);
+      };
+      let opened = false;
+      try {
+        const access = await this.stillAllowed(claims);
+        if (!access) throw new ProblemError(403, "not_a_member", "you are not an active member of this store");
+        if (gone()) return abandon();
+        opened = true;
+        this.open(reply, claims, topics, access.until, release);
+      } finally {
+        if (!opened) release();
+      }
+    } finally {
+      raw.off("close", onLeave);
+    }
+  }
+
+  /** Streams this person holds open in this store on this replica (tests). */
+  held(tenantId: string, userId: string): number {
+    return this.perUser.get(`${tenantId}:${userId}`) ?? 0;
   }
 
   /** `?topics=` may narrow the token's topics, never widen them. */
@@ -98,25 +128,31 @@ export class LiveController {
     return asked;
   }
 
-  /** The person may still be here: an active member of an active store, or staff with the same support grant still open. */
-  private async stillAllowed(claims: LiveClaims): Promise<boolean> {
+  /**
+   * The person may still be here: an active member of an active store, or staff with the same
+   * support grant still open. `until` is when that access ends by itself (the grant's expiry).
+   */
+  private async stillAllowed(claims: LiveClaims): Promise<{ until: Date | null } | null> {
     const user = await this.db.platform((trx) => trx.selectFrom("users").select("disabled_at").where("id", "=", claims.userId).executeTakeFirst());
-    if (!user || user.disabled_at) return false;
+    if (!user || user.disabled_at) return null;
     if (claims.supportGrantId) {
       const grant = await this.auth.supportGrant(claims.tenantId, claims.userId);
-      return grant?.grantId === claims.supportGrantId && grant.tenantStatus !== "deleted";
+      return grant?.grantId === claims.supportGrantId && grant.tenantStatus !== "deleted" ? { until: new Date(grant.expiresAt) } : null;
     }
     const m = await this.auth.membership(claims.tenantId, claims.userId);
-    return Boolean(m && m.status === "active" && m.role === claims.role && m.tenantStatus !== "suspended" && m.tenantStatus !== "deleted");
+    return m && m.status === "active" && m.role === claims.role && m.tenantStatus !== "suspended" && m.tenantStatus !== "deleted" ? { until: null } : null;
   }
 
   /**
    * Take the socket from Fastify (no onSend hooks: compression never sees the stream) and write
    * SSE frames straight to it. The headers set so far (CORS, security headers, X-Request-Id) are kept.
    */
-  private open(reply: HttpReply, claims: LiveClaims, topics: LiveTopic[], released: () => void): void {
+  private open(reply: HttpReply, claims: LiveClaims, topics: LiveTopic[], accessUntil: Date | null, released: () => void): void {
     const raw = reply.raw;
-    const endsAt = new Date(Date.now() + this.config.LIVE_MAX_STREAM_MS);
+    // A support stream ends with its grant (`revoked`), never later; any stream ends after LIVE_MAX_STREAM_MS (`expired`).
+    const maxEnd = Date.now() + this.config.LIVE_MAX_STREAM_MS;
+    const grantEnds = accessUntil !== null && accessUntil.getTime() < maxEnd;
+    const endsAt = new Date(grantEnds ? accessUntil.getTime() : maxEnd);
     const headers: OutgoingHttpHeaders = {};
     for (const [k, v] of Object.entries(reply.getHeaders())) if (v !== undefined) headers[k] = v as OutgoingHttpHeaders[string];
     delete headers["content-length"];
@@ -151,6 +187,11 @@ export class LiveController {
       raw.end();
     };
     raw.on("close", () => finish());
+    // The client left between the last check and the hijack: 'close' already fired and will not again.
+    if (raw.destroyed || raw.socket?.destroyed !== false) {
+      finish();
+      return;
+    }
 
     // Changes start after `ready` (the client refetches once on ready, so nothing before it is lost).
     let ready = false;
@@ -162,7 +203,7 @@ export class LiveController {
       end: (reason) => finish(reason),
     };
     timers.push(setInterval(() => write(":\n\n"), this.config.LIVE_HEARTBEAT_MS));
-    timers.push(setTimeout(() => finish("expired"), this.config.LIVE_MAX_STREAM_MS));
+    timers.push(setTimeout(() => finish(grantEnds ? "revoked" : "expired"), Math.max(0, endsAt.getTime() - Date.now())));
     let checking = false;
     timers.push(setInterval(() => {
       if (checking || closed) return;

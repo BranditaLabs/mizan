@@ -4,12 +4,15 @@ import { Writable } from "node:stream";
 import type { INestApplication } from "@nestjs/common";
 import type { DomainEventType } from "@mizan/shared";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/bootstrap.js";
+import { AuthService } from "../src/platform/auth/auth.service.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { EventsService } from "../src/platform/events/events.service.js";
-import { LiveHub } from "../src/platform/live/live.hub.js";
+import { LIVE_STREAMS_PER_USER, LiveController } from "../src/platform/live/live.controller.js";
+import { LIVE_POLL_LIMIT, LiveHub } from "../src/platform/live/live.hub.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
 /**
@@ -100,6 +103,21 @@ async function mint(token: string, tenant: string, topics: string[]) {
 
 async function emit(tenant: string, type: DomainEventType, entity: { type: string; id: string }, data: Record<string, unknown> = {}) {
   return app.get(Database).tenant(tenant, (trx) => app.get(EventsService).emit(trx, { type, tenantId: tenant, entity, data }));
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const userId = async (uid: string) => (await app.get(Database).platform((trx) => trx.selectFrom("users").select("id").where("firebase_uid", "=", uid).executeTakeFirstOrThrow())).id;
+
+/** Hold every membership check (the stream's access check) until `letGo`; `inCheck` resolves on the first one. */
+function holdAccessChecks() {
+  const auth = app.get(AuthService);
+  const orig = auth.membership.bind(auth);
+  let letGo!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>((r) => { letGo = r; });
+  const inCheck = new Promise<void>((r) => { entered = r; });
+  vi.spyOn(auth, "membership").mockImplementation(async (t, u) => { entered(); await gate; return orig(t, u); });
+  return { letGo, inCheck };
 }
 
 const until = async (ok: () => boolean, ms = 5000) => {
@@ -302,7 +320,123 @@ describe("live stream (LV-1a)", () => {
   });
 });
 
+describe("live stream limits and recovery (LV-1a)", () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it("caps streams per person even when they all open at once", async () => {
+    const rivalId = await userId("fb-rival-lv1");
+    const urls: string[] = [];
+    for (let i = 0; i < LIVE_STREAMS_PER_USER + 2; i++) urls.push((await mint("rival", other, ["orders"])).url);
+    const { letGo } = holdAccessChecks();
+    const opening = Promise.all(urls.map((u) => open(u)));
+    await sleep(300);
+    letGo();
+    const streams = await opening;
+    const refused = streams.filter((s) => s.status === 429);
+    expect(streams.filter((s) => s.status === 200)).toHaveLength(LIVE_STREAMS_PER_USER);
+    expect(refused).toHaveLength(2);
+    await until(() => refused.every((s) => s.closed));
+    for (const s of refused) expect(JSON.parse(s.body).code).toBe("too_many_streams");
+    expect(app.get(LiveController).held(other, rivalId)).toBe(LIVE_STREAMS_PER_USER);
+    for (const s of streams) s.close();
+    await until(() => app.get(LiveHub).open === 0 && app.get(LiveController).held(other, rivalId) === 0);
+  });
+
+  it("gives the slot back when the client leaves while its access is checked", async () => {
+    const ownerId = await userId("fb-owner-lv1");
+    const t = await mint("owner", shop, ["orders"]);
+    const { letGo, inCheck } = holdAccessChecks();
+    const req = httpRequest(`${base}${t.url}`, { headers: { Accept: "text/event-stream" } });
+    req.on("error", () => {});
+    req.end();
+    await inCheck;
+    expect(app.get(LiveController).held(shop, ownerId)).toBe(1);
+    req.destroy();
+    await sleep(100);
+    letGo();
+    await until(() => app.get(LiveController).held(shop, ownerId) === 0);
+    await sleep(300);
+    expect(app.get(LiveHub).open).toBe(0);
+    vi.restoreAllMocks();
+    // The person can still open a stream.
+    const s = await open((await mint("owner", shop, ["orders"])).url);
+    await s.next("ready");
+    s.close();
+    await until(() => app.get(LiveHub).open === 0);
+  });
+
+  it("ends a support stream when its grant expires, and says so in ready", async () => {
+    const g = (await http().post(`/v1/platform/stores/${shop}/access`).set(as("help")).send({ reason: "watch the sync again", minutes: 30 }).expect(201)).body;
+    const expiresAt = new Date(Date.now() + 1500);
+    await app.get(Database).kysely.updateTable("support_access").set({ expires_at: expiresAt }).where("id", "=", g.id).execute();
+    const s = await open((await mint("help", shop, ["orders"])).url);
+    const ready = await s.next("ready");
+    expect((ready.data as { endsAt: string }).endsAt).toBe(expiresAt.toISOString());
+    expect((await s.next("end", undefined, 3000)).data).toEqual({ reason: "revoked" });
+    expect(Date.now()).toBeGreaterThanOrEqual(expiresAt.getTime() - 50);
+    await until(() => s.closed);
+  });
+
+  it("tells streams to refetch when their feed could not start", async () => {
+    await until(() => app.get(LiveHub).open === 0);
+    const db = app.get(Database);
+    const hub = app.get(LiveHub);
+    const tenant = db.tenant.bind(db);
+    const subscribe = hub.subscribe.bind(hub);
+    let fail = false;
+    vi.spyOn(db, "tenant").mockImplementation(((id: string, fn: never) => {
+      if (fail && id === shop) { fail = false; return Promise.reject(new Error("database away")); }
+      return tenant(id, fn);
+    }) as typeof db.tenant);
+    vi.spyOn(hub, "subscribe").mockImplementation((sub) => { fail = true; return subscribe(sub); });
+    const s = await open((await mint("owner", shop, ["orders"])).url);
+    await s.next("ready");
+    expect(fail).toBe(false);
+    expect((await s.next("change", (d) => d.type === "resync", 3000)).data).toMatchObject({ type: "resync", topics: ["orders"] });
+    s.close();
+    await until(() => app.get(LiveHub).open === 0);
+  });
+
+  it("still finds a late commit when the overlap window holds more rows than one poll reads", async () => {
+    const s = await open((await mint("owner", shop, ["orders"])).url);
+    await s.next("ready");
+    const db = app.get(Database);
+    await db.tenant(shop, (trx) => trx.insertInto("domain_events").values(Array.from({ length: LIVE_POLL_LIMIT + 1 }, () => ({
+      tenant_id: shop, type: "order.updated", entity_type: "order", entity_id: ORDER, data: "{}", dispatched_at: new Date(),
+    }))).execute());
+    await s.next("change", (d) => d.type === "resync", 5000);
+    const late = await db.tenant(shop, (trx) => trx.insertInto("domain_events").values({
+      tenant_id: shop, type: "order.cancelled", entity_type: "order", entity_id: ORDER, data: "{}", dispatched_at: new Date(), occurred_at: new Date(Date.now() - 30_000),
+    }).returning("id").executeTakeFirstOrThrow());
+    expect((await s.next("change", (d) => d.id === late.id, 5000)).data).toMatchObject({ type: "order.cancelled", topics: ["orders"] });
+    s.close();
+    await until(() => app.get(LiveHub).open === 0);
+  });
+});
+
 describe("live stream lifetime (LV-1a)", () => {
+  it("is rate limited per IP before a forged token costs a database read", async () => {
+    const limited = await createApp(loadConfig({ NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "https://app.mizan.test", RATE_LIMIT_IP_PER_MIN: "5" }), {
+      logDestination: new Writable({ write: (_c, _e, d) => d() }), tokenVerifier: fake,
+    });
+    await limited.init();
+    await limited.getHttpAdapter().getInstance().ready();
+    try {
+      const store = randomUUID();
+      const tenant = vi.spyOn(limited.get(Database), "tenant");
+      const statuses: number[] = [];
+      for (let i = 0; i < 8; i++) {
+        const forged = [store, "A".repeat(43)].join(".");
+        statuses.push((await request(limited.getHttpServer()).get(`/v1/live?token=${forged}`)).status);
+      }
+      expect(statuses).toEqual([401, 401, 401, 401, 401, 429, 429, 429]);
+      expect(tenant.mock.calls.filter(([id]) => id === store)).toHaveLength(5);
+    } finally {
+      vi.restoreAllMocks();
+      await limited.close();
+    }
+  });
+
   it("ends with `expired` after LIVE_MAX_STREAM_MS, and with `shutdown` when the API stops", async () => {
     const short = await createApp(loadConfig({ NODE_ENV: "test", PUBLIC_URL: "https://api.mizan.test", WEB_URL: "https://app.mizan.test", LIVE_POLL_MS: "100", LIVE_MAX_STREAM_MS: "1000" }), {
       logDestination: new Writable({ write: (_c, _e, d) => d() }), tokenVerifier: fake,

@@ -18,8 +18,10 @@ export interface LiveSubscriber {
  * every read looks this far back and skips what it already sent.
  */
 export const LIVE_OVERLAP_MS = 60_000;
-/** Rows read per poll; a fuller window than this sends `resync` instead of guessing what was missed. */
+/** Unsent rows read per poll; a poll that fills it sends `resync` instead of guessing what was missed. */
 export const LIVE_POLL_LIMIT = 500;
+/** Rows the first read marks as already there; more than this in the overlap window and the next poll may send `resync`. */
+export const LIVE_PRIME_LIMIT = 10_000;
 
 interface EventRow { id: string; type: string; entity_type: string; entity_id: string; order_id: string | null; occurred_at: Date }
 interface NoteRow { id: string; created_at: Date; roles: string[]; entity_type: string | null; entity_id: string | null }
@@ -59,17 +61,42 @@ class TenantFeed {
     this.timer.unref();
   }
 
-  /** Read what is new since the last read. The first read only marks what exists as seen. */
+  /** Tell every stream to refetch: changes may have been missed. */
+  private resync(now: Date): void {
+    for (const s of this.subscribers) {
+      s.change({ id: `resync-${now.getTime()}`, type: "resync", topics: [...s.topics], entity: null, orderId: null, at: now.toISOString() });
+    }
+  }
+
+  /**
+   * Read what is new since the last read: every row of the overlap window not sent yet, oldest
+   * first, so a late commit stamped well inside the window is found however busy the store is.
+   * The first successful read only marks what exists as seen; if it is not the first try (the
+   * feed could not start, and its streams were told `ready` already), it sends `resync` too.
+   */
   private async poll(first: boolean): Promise<void> {
-    const prime = first || this.cursor === null;
+    const prime = this.cursor === null;
+    const seenIds = [...this.seen.keys()];
     const { now, events, notes } = await this.db.tenant(this.tenantId, async (trx) => {
       const now = (await sql<{ now: Date }>`SELECT now() AS now`.execute(trx)).rows[0]!.now;
       const since = new Date((this.cursor ?? now).getTime() - LIVE_OVERLAP_MS);
-      const events: EventRow[] = await trx.selectFrom("domain_events")
+      let ev = trx.selectFrom("domain_events")
         .select(["id", "type", "entity_type", "entity_id", "occurred_at", sql<string | null>`data->>'orderId'`.as("order_id")])
-        .where("occurred_at", ">", since).orderBy("occurred_at", "desc").orderBy("id", "desc").limit(LIVE_POLL_LIMIT).execute();
-      const notes: NoteRow[] = await trx.selectFrom("notifications").select(["id", "created_at", "roles", "entity_type", "entity_id"])
-        .where("created_at", ">", since).orderBy("created_at", "desc").limit(LIVE_POLL_LIMIT).execute();
+        .where("occurred_at", ">", since);
+      let nt = trx.selectFrom("notifications").select(["id", "created_at", "roles", "entity_type", "entity_id"]).where("created_at", ">", since);
+      if (prime) {
+        ev = ev.orderBy("occurred_at", "desc").orderBy("id", "desc").limit(LIVE_PRIME_LIMIT);
+        nt = nt.orderBy("created_at", "desc").orderBy("id", "desc").limit(LIVE_PRIME_LIMIT);
+      } else {
+        if (seenIds.length) {
+          ev = ev.where("id", "not in", seenIds);
+          nt = nt.where("id", "not in", seenIds);
+        }
+        ev = ev.orderBy("occurred_at", "asc").orderBy("id", "asc").limit(LIVE_POLL_LIMIT);
+        nt = nt.orderBy("created_at", "asc").orderBy("id", "asc").limit(LIVE_POLL_LIMIT);
+      }
+      const events: EventRow[] = await ev.execute();
+      const notes: NoteRow[] = await nt.execute();
       return { now: new Date(now), events, notes };
     });
     if (this.stopped) return;
@@ -78,22 +105,18 @@ class TenantFeed {
     for (const [id, at] of this.seen) if (at <= since) this.seen.delete(id);
 
     const fresh = <R extends { id: string }>(rows: R[], at: (r: R) => Date) => {
-      const out = rows.filter((r) => !this.seen.has(r.id)).reverse();
+      const out = rows.filter((r) => !this.seen.has(r.id));
       for (const r of rows) this.seen.set(r.id, at(r).getTime());
-      // A full window whose oldest row is new may have more new rows behind it.
-      const overflow = rows.length === LIVE_POLL_LIMIT && out.length > 0 && out[0] === rows.at(-1);
-      return { out, overflow };
+      // A full read may have more unsent rows behind it.
+      return { out, overflow: rows.length === LIVE_POLL_LIMIT };
     };
     const ev = fresh(events, (r) => r.occurred_at);
     const nt = fresh(notes, (r) => r.created_at);
-    if (prime) return;
-
-    if (ev.overflow || nt.overflow) {
-      for (const s of this.subscribers) {
-        s.change({ id: `resync-${now.getTime()}`, type: "resync", topics: [...s.topics], entity: null, orderId: null, at: now.toISOString() });
-      }
+    if (prime) {
+      if (!first) this.resync(now);
       return;
     }
+    if (ev.overflow || nt.overflow) return this.resync(now);
     for (const e of ev.out) {
       const topics = liveTopicsFor({ type: e.type, entity: { type: e.entity_type, id: e.entity_id }, orderId: e.order_id });
       if (!topics.length) continue;
