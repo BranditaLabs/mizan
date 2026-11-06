@@ -118,15 +118,21 @@ export class StoreCopyService {
       const c = o.customer_id ? await trx.selectFrom("customers").select("email").where("id", "=", o.customer_id).executeTakeFirst() : undefined;
       const email = c ? pii.decrypt(c.email, "customers.email") ?? undefined : undefined;
       const given = name[0] || undefined;
-      // An old copy's buyer may be created in Shopify by the repair (U27) unless the store asked for an erasure: of this order, this phone, or the whole shop.
-      const erased = forEdit && o.store_copy_connection_id ? await trx.selectFrom("privacy_requests").select("id").where("connection_id", "=", o.store_copy_connection_id)
+      // An old copy's buyer may be created in Shopify by the repair (U27) only when nothing says they asked to be erased:
+      // the whole shop; a request naming this copy, this phone or this email; a request that cannot be matched (no phone or
+      // email hash, or one from before email hashes when the buyer has an email); or the buyer's own record already erased.
+      const e164 = phone ? normalizePhone(phone, country as "EG")?.e164 ?? phone : null;
+      const ownErased = o.customer_id ? Boolean((await trx.selectFrom("customers").select("redacted_at").where("id", "=", o.customer_id).executeTakeFirst())?.redacted_at) : false;
+      const erased = !forEdit || !o.store_copy_connection_id ? undefined : ownErased || await trx.selectFrom("privacy_requests").select("id").where("connection_id", "=", o.store_copy_connection_id)
         .where((eb) => eb.or([
           eb("source", "=", "shopify_shop_redact"),
           eb.and([eb("source", "=", "shopify_customers_redact"), eb.or([
-            ...(phone ? [eb(sql<string>`payload->>'phoneHash'`, "=", pii.phoneHash(normalizePhone(phone, country as "EG")?.e164 ?? phone))] : []),
+            ...(e164 ? [eb(sql<string>`payload->>'phoneHash'`, "=", pii.phoneHash(e164))] : []),
+            ...(email ? [eb(sql<string>`payload->>'emailHash'`, "=", pii.emailHash(email)), eb(sql`payload->'emailHash'`, "is", null)] : []),
             eb(sql`payload->'orderIds'`, "@>", sql`jsonb_build_array(${o.store_copy_id}::text)`),
+            eb.and([eb(sql`payload->'phoneHash'`, "is", null), eb(sql`payload->'emailHash'`, "is", null)]),
           ])]),
-        ])).executeTakeFirst() : undefined;
+        ])).executeTakeFirst();
       const firstName = given ?? "Customer";
       const lastName = name.slice(1).join(" ") || undefined;
       return {

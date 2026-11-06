@@ -532,6 +532,14 @@ describe("orders made in Mizan reach Shopify: one record in Mizan, Shopify and t
     expect(a.copy.customer).toMatchObject({ phone: "+201001239001" });
     expect(b.copy.customer).toBeNull();
     expect(b.copy.shippingAddress).toMatchObject({ provinceCode: "C" }); // the governorate is still put right
+
+    // A request Mizan cannot match to anyone (no phone, no email hash): nobody is created for this store from now on.
+    const c = await legacy("01001239003");
+    shop.customers.length = 0;
+    await db.tenant(store, (trx) => trx.insertInto("privacy_requests").values({ tenant_id: store, connection_id: shopId, source: "shopify_customers_redact", payload: JSON.stringify({ shop: "x", orderIds: [], customerId: "77" }), due_at: new Date() }).execute());
+    await db.tenant(store, (trx) => trx.deleteFrom("mz_records").where("type", "=", "guardian").where("key", "like", "copy-repair:%").execute());
+    for (let i = 0; i < 4; i++) { await app.get(SyncGuardian).round(Date.now(), clock.now()); await settle(); }
+    expect(c.copy.customer).toBeNull();
   });
 
   it("shipped with Bosta: the copy in Shopify is fulfilled with the tracking number", async () => {

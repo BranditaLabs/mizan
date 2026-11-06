@@ -23,12 +23,14 @@ const SOURCES: Record<ComplianceTopic, "shopify_customers_data_request" | "shopi
   "shop/redact": "shopify_shop_redact",
 };
 
-/** What a request keeps: ids and a phone hash, never the email or phone Shopify sent. */
+/** What a request keeps: ids and keyed hashes of the phone and email, never the email or phone Shopify sent. */
 interface StoredPayload {
   shop: string;
   orderIds: string[];
   customerId?: string;
   phoneHash?: string;
+  /** Since U27: lets a later repair recognise the erased buyer by email (requests before it have none). */
+  emailHash?: string;
   dataRequestId?: string;
 }
 
@@ -101,9 +103,10 @@ export class PrivacyService {
         const e164 = normalizePhone(req.customer.phone, await phoneCountryOf(trx, tenantId))?.e164;
         if (e164) phoneHash = (await this.cipher.forTenant(trx, tenantId)).phoneHash(e164);
       }
+      const emailHash = req.customer?.email ? (await this.cipher.forTenant(trx, tenantId)).emailHash(req.customer.email) : undefined;
       const payload: StoredPayload = {
         shop: req.shop, orderIds: req.orderIds,
-        ...(req.customer?.id ? { customerId: req.customer.id } : {}), ...(phoneHash ? { phoneHash } : {}),
+        ...(req.customer?.id ? { customerId: req.customer.id } : {}), ...(phoneHash ? { phoneHash } : {}), ...(emailHash ? { emailHash } : {}),
         ...(req.dataRequestId ? { dataRequestId: req.dataRequestId } : {}),
       };
       const row = await trx.insertInto("privacy_requests").values({
