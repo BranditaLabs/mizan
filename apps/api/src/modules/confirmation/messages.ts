@@ -1,11 +1,14 @@
-import type { Money } from "@mizan/shared";
-import { render, scriptText, type Script, type ScriptKey } from "./script.js";
+import { BUYER_CANCEL_REASONS, type Money } from "@mizan/shared";
+import { PACK_REASONS, packReasonTitle, type ReasonItem, type Script } from "./script.js";
+import { firstName, greeting, money, offerLine, packOf, payNote, say, templateParam } from "./script/render.js";
+
+export { money, offerLine };
 
 /**
- * What the customer receives (E6-7, E6-10), in Egyptian Arabic or English (the store's language).
- * Only the store's name, the first name, the order number, the items and the amount: never the
- * address or phone. The WhatsApp templates must be approved by Meta with the wording in
- * docs/modules/M02 §Templates; the replies inside the chat are free-form (no approval needed).
+ * What the customer receives (E6-7, E6-10), in the store's language. Only the store's name, the
+ * first name, the order number, the items, the amount and the city: never the address or phone.
+ * The WhatsApp templates must be approved by Meta with the wording in docs/modules/M02 §Templates;
+ * every reply inside the chat is the store's script (E6-16a) and only the composition is here.
  */
 export interface MessageFacts {
   lang: "ar" | "en";
@@ -21,7 +24,7 @@ export interface MessageFacts {
   city?: string | null;
   /** The run's offer while it is open (E6-11). */
   offer?: OfferFacts | null;
-  /** The store's script (E6-5): its wording wins over the built-in messages. */
+  /** The store's script (E6-5): its wording wins over the pack's. */
   script?: Script;
   /**
    * E6-23a: the thank-you after a tap carries the order summary (items, what the courier collects,
@@ -44,53 +47,55 @@ export interface OfferFacts {
   newTotal: Money;
 }
 
-/** "1,250 ج.م." / "EGP 1,250": plain text (no direction marks, Western digits). */
-export function money(m: Money, lang: "ar" | "en"): string {
-  const [int = "0", frac = ""] = m.amount.replace(/^-/, "").split(".");
-  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  const n = /^0*$/.test(frac) ? grouped : `${grouped}.${frac}`;
-  if (lang === "en") return `${m.currency} ${n}`;
-  return m.currency === "EGP" ? `${n} ج.م.` : `${n} ${m.currency}`;
-}
-
-const hello = (f: Pick<MessageFacts, "lang" | "firstName">) => (f.lang === "ar" ? (f.firstName ? `أهلاً ${f.firstName}` : "أهلاً بيك") : f.firstName ? `Hi ${f.firstName}` : "Hi");
 const due = (f: MessageFacts) => (Number(f.cod.amount) > 0 ? f.cod : f.total);
-const payNote = (f: MessageFacts) => (Number(f.cod.amount) > 0 ? (f.lang === "ar" ? " عند الاستلام" : " on delivery") : "");
+/** The IVR keeps the Egyptian greeting: its prompts are fixed until a voice vendor exists (E6-8). */
+const hello = (f: Pick<MessageFacts, "lang" | "firstName">) => (f.lang === "ar" ? (f.firstName ? `أهلاً ${f.firstName}` : "أهلاً بيك") : f.firstName ? `Hi ${f.firstName}` : "Hi");
 
 /** Approved per language in the store's WhatsApp account (E6-10). */
 export const templateName = (lang: "ar" | "en") => `mizan_order_confirm_${lang}`;
 export const TEMPLATES = [templateName("ar"), templateName("en")] as const;
 /** Quick replies in template button order. */
 export const TEMPLATE_ACTIONS = ["confirm", "change", "cancel"] as const;
-
-/** Template body parameters, in order: greeting, store, order number, amount (+ "on delivery"). */
-export const whatsappParams = (f: MessageFacts) => [hello(f), f.store, f.number, `${money(due(f), f.lang)}${payNote(f)}`];
-
-export const CANCEL_REASONS = ["changed_mind", "ordered_by_mistake", "found_cheaper", "delivery_too_late", "other"] as const;
-export type CancelReason = (typeof CANCEL_REASONS)[number];
-
-const REASON_TITLE: Record<"ar" | "en", Record<CancelReason | "keep", string>> = {
-  ar: { changed_mind: "غيّرت رأيي", ordered_by_mistake: "طلبته بالغلط", found_cheaper: "لقيته أرخص", delivery_too_late: "التوصيل هيتأخر عليّا", other: "سبب تاني", keep: "لا، كمّل الأوردر" },
-  en: { changed_mind: "Changed my mind", ordered_by_mistake: "Ordered by mistake", found_cheaper: "Found it cheaper", delivery_too_late: "Delivery is too late", other: "Another reason", keep: "No, keep my order" },
+/** The approved templates as Meta shows them (M02 §Templates): read-only in the editor and the preview. */
+export const TEMPLATE_TEXT: Record<"ar" | "en", { body: string; buttons: readonly [string, string, string] }> = {
+  ar: { body: "{{1}} 👋\nأوردرك رقم {{3}} من {{2}} وصلنا.\nالإجمالي {{4}}.\nأكّد الأوردر عشان نجهّزه ونشحنه لك.", buttons: ["أكّد الأوردر", "عايز أعدّل", "ألغي الأوردر"] },
+  en: { body: "{{1}} 👋\nWe received your order {{3}} from {{2}}.\nTotal: {{4}}.\nPlease confirm so we can prepare and ship it.", buttons: ["Confirm order", "I want a change", "Cancel order"] },
 };
+
+/** Template body parameters, in order: greeting, store, order number, amount (+ "on delivery"). Only the pack's greeting and the checked on_delivery flow in. */
+export const whatsappParams = (f: MessageFacts) => [greeting(f), f.store, f.number, `${money(due(f), f.lang)}${payNote(f)}`].map(templateParam);
+
+/** The canonical codes a store's reasons map onto (shared with the dashboard). */
+export const CANCEL_REASONS = BUYER_CANCEL_REASONS;
+export type CancelReason = (typeof CANCEL_REASONS)[number];
 
 /** Follow-up messages inside the chat, after the customer taps (free-form, no template). */
 export type ChatMessage = "confirmed" | "confirmed_offer" | "offer_added" | "offer_declined" | "offer_expired" | "offer_failed" | "change_prompt" | "change_received" | "cancel_reasons" | "cancelled" | "noted" | "already" | "opted_out" | "opted_in";
 export const CHAT_MESSAGES: readonly ChatMessage[] = ["confirmed", "confirmed_offer", "offer_added", "offer_declined", "offer_expired", "offer_failed", "change_prompt", "change_received", "cancel_reasons", "cancelled", "noted", "already", "opted_out", "opted_in"];
 
+/** A text header (media headers later, E6-17). */
+export interface ChatHeader { type: "text"; text: string }
 export type ChatContent =
   | { type: "text"; text: string }
-  | { type: "buttons"; body: string; buttons: Array<{ action: "offer_yes" | "offer_no"; arg: string; title: string }> }
-  | { type: "list"; body: string; button: string; rows: Array<{ action: "reason" | "keep"; arg?: CancelReason; title: string }> };
+  | { type: "buttons"; body: string; buttons: Array<{ action: "offer_yes" | "offer_no"; arg: string; title: string }>; header?: ChatHeader; footer?: string }
+  | { type: "list"; body: string; button: string; rows: Array<{ action: "reason" | "keep"; arg?: string; title: string; description?: string }>; header?: ChatHeader; footer?: string; section?: string };
 
 /** Ends a sentence with one full stop ("1,250 ج.م." already has one). */
 const stop = (s: string) => (s.endsWith(".") ? s : `${s}.`);
 
-/** "طرحة مطابقة بـ 135 ج.م. بدل 150 ج.م." / "a matching scarf for EGP 135 instead of EGP 150". */
-export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
-  const qty = o.qty > 1 ? ` × ${o.qty}` : "";
-  if (lang === "ar") return `${o.title}${qty} بـ ${money(o.price, lang)}${o.was ? ` بدل ${money(o.was, lang)}` : ""}`;
-  return `${o.title}${qty} for ${money(o.price, lang)}${o.was ? ` instead of ${money(o.was, lang)}` : ""}`;
+/**
+ * The signed argument of a reason row: the canonical code's index and the store's id
+ * ("4-wrong_size"), so a reason renamed or deleted after the send still cancels with its code.
+ * A pack reason (id = its code) is sent as the bare code, as before E6-16a.
+ */
+export const reasonArg = (r: ReasonItem) => (r.id === r.code ? r.code : `${BUYER_CANCEL_REASONS.indexOf(r.code)}-${r.id}`);
+
+/** The code and the store's id behind a tapped reason; anything unknown is "other". */
+export function reasonOf(arg: string | undefined): { code: CancelReason; id: string | null } {
+  const m = /^(\d)-([a-z0-9_]{1,32})$/.exec(arg ?? "");
+  if (m) { const code = BUYER_CANCEL_REASONS[Number(m[1])]; return code ? { code, id: m[2]! } : { code: "other", id: null }; }
+  if ((BUYER_CANCEL_REASONS as readonly string[]).includes(arg ?? "")) return { code: arg as CancelReason, id: arg! };
+  return { code: "other", id: null };
 }
 
 /**
@@ -100,18 +105,17 @@ export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
  */
 export function summaryBlock(f: MessageFacts, budget = 3000): string {
   if (!f.summary) return "";
-  const ar = f.lang === "ar";
   const due = f.summary.due;
   const tail: string[] = [];
-  if (due) tail.push(Number(due.amount) > 0 ? (ar ? `💵 هتدفع للمندوب: ${money(due, "ar")}` : `💵 Pay the courier: ${money(due, "en")}`) : (ar ? "💳 مدفوع" : "💳 Paid"));
-  if (f.city) tail.push(`📍 ${f.city}`);
+  if (due) tail.push(Number(due.amount) > 0 ? say(f, "summary_pay", { extra: { "summary.due": money(due, f.lang) } })! : say(f, "summary_paid")!);
+  if (f.city) tail.push(say(f, "summary_area")!);
   const items = f.items ?? [];
   const extra = f.summary.more ?? 0;
   const build = (n: number, width: number) => {
     const cut = (t: string) => (t.length > width ? `${t.slice(0, width - 1)}…` : t);
     const lines = items.slice(0, n).map((i) => `• ${i.quantity}× ${cut(i.title)}`);
     const left = items.length - n + extra;
-    if (left > 0) lines.push(ar ? `• و${left} منتج كمان` : `• and ${left} more`);
+    if (left > 0) lines.push(`• ${say(f, "summary_more", { extra: { "summary.more": String(left) } })}`);
     return `\n\n${[...lines, ...tail].join("\n")}`;
   };
   for (const width of [80, 40, 24]) {
@@ -121,60 +125,77 @@ export function summaryBlock(f: MessageFacts, budget = 3000): string {
   return tail.length && bare.length <= budget ? bare : "";
 }
 
+const header = (text: string | null) => (text ? { header: { type: "text" as const, text } } : {});
+const part = <K extends string>(k: K, v: string | null) => (v ? { [k]: v } as Record<K, string> : {});
+
 export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
-  const ar = f.lang === "ar";
-  const own = (key: ScriptKey) => { const t = scriptText(f.script, f.lang, key); return t ? render(t, f) : null; };
+  const t = (key: Parameters<typeof say>[1]) => say(f, key)!;
+  const footer = part("footer", say(f, "footer"));
   switch (m) {
     case "confirmed":
-      return { type: "text", text: (own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!`)) + summaryBlock(f) };
+      return { type: "text", text: t("confirmed") + summaryBlock(f) };
     case "confirmed_offer": {
       const o = f.offer;
       if (!o) return chatContent("confirmed", f);
-      const pitch = o.message ?? (ar ? `🎁 عرض ليك: ${stop(offerLine(o, "ar"))}` : `🎁 An offer for you: ${stop(offerLine(o, "en"))}`);
-      const top = own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`);
-      const ask = ar ? `\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `\n\n${pitch}\nShall we add it to the same order?`;
+      const pitch = o.message ?? t("offer_pitch");
+      const ask = `\n\n${pitch}\n${t("offer_question")}`;
+      // The owner's own "confirmed" still opens it when they wrote no top of their own (as before
+      // E6-16a), at any length that fits beside the offer; else the pack's top, never its "confirmed".
+      const top = say(f, "confirmed_offer_top", { ownerOnly: true })
+        ?? say(f, "confirmed", { ownerOnly: true, ownOrNull: true, limit: 1024 - ask.length })
+        ?? t("confirmed_offer_top");
       // WhatsApp refuses an interactive body over 1024 characters: the summary gets what is left.
       const head = top + summaryBlock(f, 1024 - top.length - ask.length);
       return {
         type: "buttons",
         body: `${head}${ask}`,
-        buttons: [{ action: "offer_yes", arg: o.id, title: ar ? "ضيفه" : "Add it" }, { action: "offer_no", arg: o.id, title: ar ? "لا شكراً" : "No, thanks" }],
+        buttons: [{ action: "offer_yes", arg: o.id, title: t("btn_offer_yes") }, { action: "offer_no", arg: o.id, title: t("btn_offer_no") }],
+        ...footer,
       };
     }
     case "offer_added":
-      return { type: "text", text: f.offer
-        ? (ar ? `تمام ✅ هنضيف ${f.offer.title} لأوردرك، والإجمالي الجديد ${stop(money(f.offer.newTotal, "ar"))}` : `Done ✅ we'll add ${f.offer.title} to your order; the new total is ${stop(money(f.offer.newTotal, "en"))}`)
-        : (ar ? "تمام ✅ هنضيفه لأوردرك." : "Done ✅ we'll add it to your order.") };
+      return { type: "text", text: t(f.offer ? "offer_added" : "offer_added_generic") };
     case "offer_declined":
-      return { type: "text", text: ar ? "ولا يهمك 🙏 أوردرك ماشي زي ما هو." : "No problem 🙏 your order stays as it is." };
+      return { type: "text", text: t("offer_declined") };
     case "offer_failed":
-      return { type: "text", text: f.offer
-        ? (ar ? `معلش، مقدرناش نضيف ${f.offer.title} لأوردرك دلوقتي. فريق ${f.store} هيكلّمك يظبطها معاك.` : `Sorry, we couldn't add ${f.offer.title} to your order just now. The ${f.store} team will call you to sort it out.`)
-        : (ar ? `معلش، مقدرناش نضيف العرض دلوقتي. فريق ${f.store} هيكلّمك.` : `Sorry, we couldn't add the offer just now. The ${f.store} team will call you.`) };
+      return { type: "text", text: t(f.offer ? "offer_failed" : "offer_failed_generic") };
     case "offer_expired":
-      return { type: "text", text: ar ? "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏" : "This offer has ended, but your order goes ahead as it is 🙏" };
+      return { type: "text", text: t("offer_expired") };
     case "change_prompt":
-      return { type: "text", text: own("change_prompt") ?? (ar ? "اكتب لنا التعديل اللي عايزه في رسالة (المقاس، اللون، العنوان أو المعاد)، وفريقنا هيكلّمك." : "Write the change you need in a message (size, colour, address or time) and our team will call you.") };
+      return { type: "text", text: t("change_prompt") };
     case "change_received":
+      return { type: "text", text: t("change_received") };
     case "noted":
-      return { type: "text", text: own("change_received") ?? (ar ? `وصلنا ✍️ فريق ${f.store} هيكلّمك قريب.` : `Got it ✍️ the ${f.store} team will call you shortly.`) };
-    case "cancel_reasons":
+      // Until the owner writes "noted", a typed message gets their own "change received" (as before E6-16a).
+      return { type: "text", text: say(f, "noted", { ownerOnly: true }) ?? say(f, "change_received", { ownerOnly: true }) ?? t("noted") };
+    case "cancel_reasons": {
+      const pack = packOf(f.script);
+      const reasons = f.script?.cancelReasons ?? PACK_REASONS[pack];
+      const keepDescription = say(f, "keep_description");
       return {
-        type: "list", body: own("cancel_prompt") ?? (ar ? "خسارة 😔 ممكن تقولنا ليه عايز تلغي؟" : "Sorry to hear that 😔 why do you want to cancel?"), button: ar ? "اختار السبب" : "Choose a reason",
-        rows: [...CANCEL_REASONS.map((r) => ({ action: "reason" as const, arg: r, title: REASON_TITLE[f.lang][r] })), { action: "keep" as const, title: REASON_TITLE[f.lang].keep }],
+        type: "list", body: t("cancel_prompt"), button: t("cancel_button"),
+        rows: [
+          ...reasons.map((r) => {
+            const description = r.description?.[f.lang]?.trim();
+            return { action: "reason" as const, arg: reasonArg(r), title: r.title[f.lang] ?? packReasonTitle(pack, f.lang, r.code), ...(description ? { description } : {}) };
+          }),
+          { action: "keep" as const, title: t("keep_title"), ...part("description", keepDescription) },
+        ],
+        ...header(say(f, "cancel_header")), ...part("section", say(f, "cancel_section")), ...footer,
       };
+    }
     case "cancelled":
-      return { type: "text", text: own("cancelled") ?? (ar ? `اتلغى أوردرك ${f.number}. لو غيّرت رأيك ابعتلنا في أي وقت.` : `Your order ${f.number} is cancelled. If you change your mind, message us anytime.`) };
+      return { type: "text", text: t("cancelled") };
     case "opted_out":
-      return { type: "text", text: ar ? `تمام، مش هنبعتلك رسايل تاني هنا من ${f.store}. لو حبيت ترجع اكتب «ابدأ».` : `Done, ${f.store} won't message you here again. To start again, write START.` };
+      return { type: "text", text: t("opted_out") };
     case "opted_in":
-      return { type: "text", text: ar ? `أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من ${f.store} هنا.` : `Welcome back 👋 ${f.store} will send your order updates here.` };
+      return { type: "text", text: t("opted_in") };
     case "already":
-      return { type: "text", text: ar ? `أوردرك ${f.number} متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.` : `Your order ${f.number} is already recorded. If you need anything, write to us here and our team will help.` };
+      return { type: "text", text: t("already") };
   }
 }
 
-/** The automated call (IVR): a greeting, the order, then the choices. */
+/** The automated call (IVR): a greeting, the order, then the choices. Fixed until a voice vendor exists (E6-8). */
 export function callPrompts(f: MessageFacts): string[] {
   return f.lang === "ar"
     ? [`${hello(f)}، معاك ${f.store}.`, `بنأكّد أوردرك رقم ${f.number.replace(/^#/, "")} بـ ${money(due(f), f.lang)}.`, "لو عايز تأكّد اضغط واحد. لو عايز تعدّل اضغط اتنين. لو عايز تلغي اضغط تلاتة."]
@@ -182,34 +203,38 @@ export function callPrompts(f: MessageFacts): string[] {
 }
 export const CALL_DIGITS = { "1": "confirm", "2": "change", "3": "cancel" } as const;
 
+/** The call script's fixed words per pack; the items and the city stay optional lines. */
+const CALL_AR = {
+  egyptian: { team: "معاك فريق", confirming: "بنأكّد أوردرك رقم", city: "التوصيل لـ", right: "صح؟", ask: "نأكّد الأوردر ونشحنه لك؟" },
+  formal: { hi: "مرحباً", team: "معك فريق", confirming: "نتصل لتأكيد طلبك رقم", city: "التوصيل إلى", right: "أليس كذلك؟", ask: "هل نؤكد الطلب ونشحنه لك؟" },
+  gulf: { team: "معك فريق", confirming: "نتصل عشان نأكد طلبك رقم", city: "التوصيل لـ", right: "صح؟", ask: "نأكد الطلب ونشحنه لك؟" },
+} as const;
+
 /** What the store's team says on the phone (E6-10): the same facts, as lines to read. */
 export function callScript(f: MessageFacts): string[] {
-  const own = scriptText(f.script, f.lang, "call");
-  if (own) {
-    const offer = f.offer ? [f.lang === "ar" ? `🎁 وبعد ما يأكّد اعرض عليه: ${stop(offerLine(f.offer, "ar"))} تحب نضيفه لنفس الأوردر؟` : `🎁 Once confirmed, offer: ${stop(offerLine(f.offer, "en"))} Shall we add it to the same order?`] : [];
-    return [...render(own, f).split("\n").map((l) => l.trim()).filter(Boolean), ...offer];
-  }
+  const own = say(f, "call");
+  const offer = f.offer ? [f.lang === "ar" ? `🎁 وبعد ما يأكّد اعرض عليه: ${stop(offerLine(f.offer, "ar"))} تحب نضيفه لنفس الأوردر؟` : `🎁 Once confirmed, offer: ${stop(offerLine(f.offer, "en"))} Shall we add it to the same order?`] : [];
+  if (own) return [...own.split("\n").map((l) => l.trim()).filter(Boolean), ...offer];
   const items = (f.items ?? []).map((i) => (f.lang === "ar" ? `${i.title} × ${i.quantity}` : `${i.quantity} × ${i.title}`)).join(f.lang === "ar" ? "، " : ", ");
   const amount = `${money(due(f), f.lang)}${payNote(f)}`;
-  return f.lang === "ar"
-    ? [`${hello(f)}، معاك فريق ${f.store}.`, `بنأكّد أوردرك رقم ${f.number}${items ? `: ${items}` : ""}.`, `الإجمالي ${amount}.`, ...(f.city ? [`التوصيل لـ ${f.city}، صح؟`] : []), "نأكّد الأوردر ونشحنه لك؟",
-      ...(f.offer ? [`🎁 وبعد ما يأكّد اعرض عليه: ${stop(offerLine(f.offer, "ar"))} تحب نضيفه لنفس الأوردر؟`] : [])]
-    : [`${hello(f)}, this is the ${f.store} team.`, `We're confirming your order ${f.number}${items ? `: ${items}` : ""}.`, `The total is ${amount}.`, ...(f.city ? [`Delivery to ${f.city}, right?`] : []), "Shall we confirm and ship it?",
-      ...(f.offer ? [`🎁 Once confirmed, offer: ${stop(offerLine(f.offer, "en"))} Shall we add it to the same order?`] : [])];
+  if (f.lang === "ar") {
+    const w = CALL_AR[packOf(f.script)];
+    const name = firstName(f);
+    return [`${"hi" in w && name ? `${w.hi} ${name}` : greeting(f)}، ${w.team} ${f.store}.`, `${w.confirming} ${f.number}${items ? `: ${items}` : ""}.`, stop(`الإجمالي ${amount}`), ...(f.city ? [`${w.city} ${f.city}، ${w.right}`] : []), w.ask, ...offer];
+  }
+  return [`${greeting(f)}, this is the ${f.store} team.`, `We're confirming your order ${f.number}${items ? `: ${items}` : ""}.`, `The total is ${amount}.`, ...(f.city ? [`Delivery to ${f.city}, right?`] : []), "Shall we confirm and ship it?", ...offer];
 }
 
 /** The message a team member sends by hand on WhatsApp (wa.me) with the confirm link, when no WhatsApp number is connected. */
 export function linkText(f: MessageFacts): string {
-  return f.lang === "ar"
-    ? `${hello(f)}، أوردرك ${f.number} من ${f.store} بـ ${money(due(f), f.lang)}. أكّده أو عدّله من هنا: ${f.link}`
-    : `${hello(f)}, your order ${f.number} from ${f.store} is ${money(due(f), f.lang)}. Confirm or change it here: ${f.link}`;
+  return say(f, "link_text")!;
 }
 
 /** STOP / START typed alone in the chat (Meta's policy: honour an opt-out). Anything longer is a message to the team. */
 const OPT_OUT = new Set(["stop", "unsubscribe", "ايقاف", "وقف", "وقف الرسايل", "وقف الرسائل", "الغاء الاشتراك", "متبعتليش تاني"]);
 const OPT_IN = new Set(["start", "subscribe", "ابدا"]);
 export function consentKeyword(text: string): "opt_out" | "opt_in" | null {
-  const t = text.normalize("NFKC").replace(/[\u064B-\u0652\u0640]/g, "").replace(/[إأآ]/g, "ا").replace(/[.!؟?\s]+$/u, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const t = text.normalize("NFKC").replace(/[ً-ْـ]/g, "").replace(/[إأآ]/g, "ا").replace(/[.!؟?\s]+$/u, "").replace(/\s+/g, " ").trim().toLowerCase();
   if (OPT_OUT.has(t)) return "opt_out";
   if (OPT_IN.has(t)) return "opt_in";
   return null;

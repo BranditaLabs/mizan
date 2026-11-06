@@ -8,7 +8,7 @@ import { ProblemError } from "../../platform/http/problem.js";
 import { PiiCipher, type TenantPii } from "../../platform/pii/pii-cipher.js";
 import { parseActionId, type ChatAction } from "./confirmation-link.js";
 import { ConfirmationService, type RunRow } from "./confirmation.service.js";
-import { CANCEL_REASONS, consentKeyword, type CancelReason, type ChatMessage } from "./messages.js";
+import { consentKeyword, reasonOf, type CancelReason, type ChatMessage } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
 import { AfterConfirmationService } from "./after/after.service.js";
@@ -204,9 +204,11 @@ export class WhatsAppChat {
   private async onTap(trx: Transaction<DB>, tenantId: string, run: RunRow, action: ChatAction, arg: string | undefined, inbound: string, now: Date): Promise<string> {
     const order = await trx.selectFrom("orders").select("status").where("id", "=", run.order_id).executeTakeFirstOrThrow();
     const open = LIVE.includes(run.status) && OPEN.includes(order.status) && run.outcome !== "changed";
-    const answer = async (a: "confirm" | "cancel" | "change", reason?: CancelReason) => {
+    const answer = async (a: "confirm" | "cancel" | "change", reason?: { code: CancelReason; id: string | null }) => {
       try {
-        await this.confirmations.applyAnswer(trx, tenantId, run.order_id, run, { answer: a, channel: "whatsapp", actor: { type: "customer" }, ...(reason ? { reason } : {}) }, now);
+        await this.confirmations.applyAnswer(trx, tenantId, run.order_id, run, {
+          answer: a, channel: "whatsapp", actor: { type: "customer" }, ...(reason ? { reason: reason.code, ...(reason.id ? { reasonId: reason.id } : {}) } : {}),
+        }, now);
         return true;
       } catch (err) {
         if (err instanceof ProblemError && err.status === 409) return false;
@@ -245,8 +247,8 @@ export class WhatsAppChat {
         if (run.outcome !== "cancelled") await this.reply(trx, tenantId, run, "already", inbound, now);
         return "late";
       case "reason": {
-        const reason = (CANCEL_REASONS as readonly string[]).includes(arg ?? "") ? (arg as CancelReason) : "other";
-        if (open && (await answer("cancel", reason))) { await this.reply(trx, tenantId, run, "cancelled", inbound, now); return "reason"; }
+        // The code travels in the signed argument: a reason renamed or deleted since the send still cancels with it.
+        if (open && (await answer("cancel", reasonOf(arg)))) { await this.reply(trx, tenantId, run, "cancelled", inbound, now); return "reason"; }
         if (run.outcome !== "cancelled") await this.reply(trx, tenantId, run, "already", inbound, now);
         return "late";
       }

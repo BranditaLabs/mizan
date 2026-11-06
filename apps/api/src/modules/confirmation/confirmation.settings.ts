@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DEFAULT_ROUTING } from "./routing.js";
-import { ScriptSchema } from "./script.js";
+import { readScript, ScriptSchema } from "./script.js";
 
 /**
  * whatsapp: the customer answers with buttons in the chat. call_auto: an automated call (needs a
@@ -67,13 +67,17 @@ export function normalizeSteps(steps: unknown): Array<{ channel: AutomatedChanne
   return out.length ? (team >= 0 ? out.slice(0, team + 1) : out) : null;
 }
 
-/** Stored settings over the defaults; a broken stored value never stops orders (defaults win). */
+/**
+ * Stored settings over the defaults; a broken stored value never stops orders (defaults win). The
+ * script is read on its own (tolerant reader), so a bad text never resets the steps or hours.
+ */
 export function confirmationSettings(settings: unknown): ConfirmationSettings {
   const stored = (settings as { confirmation?: Record<string, unknown> } | null)?.confirmation ?? {};
-  const { steps: raw, ...rest } = stored;
+  const { steps: raw, script: rawScript, ...rest } = stored;
   const steps = normalizeSteps(raw);
   const parsed = ConfirmationSettingsSchema.partial().safeParse(steps ? { ...rest, steps } : rest);
-  return { ...DEFAULT_CONFIRMATION, ...(parsed.success ? parsed.data : {}) };
+  const { script } = readScript(rawScript);
+  return { ...DEFAULT_CONFIRMATION, ...(parsed.success ? parsed.data : {}), ...(script ? { script } : {}) };
 }
 
 /** Minutes since local midnight in a time zone. */

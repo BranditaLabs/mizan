@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import { asWorker, type DB } from "@mizan/db";
-import { fromMinor, type Money } from "@mizan/shared";
+import { fromMinor, toMinor, type Money } from "@mizan/shared";
 import { AuditService, auditActor } from "../../platform/audit/audit.service.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
 import { APP_CONFIG, type AppConfig } from "../../platform/config.js";
@@ -15,8 +15,9 @@ import { cashToCollect } from "@mizan/engine";
 import { linkToken, runIdOf } from "./confirmation-link.js";
 import { routeFor } from "./routing.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
-import { callScript, chatContent, linkText, type MessageFacts } from "./messages.js";
-import type { Script } from "./script.js";
+import { callScript, chatContent, linkText, type MessageFacts, type OfferFacts } from "./messages.js";
+import { scriptIssues, validateScript, type Script } from "./script.js";
+import { previewConversations } from "./script/preview.js";
 import type { ScriptPreview } from "./confirmation.dto.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
@@ -180,6 +181,8 @@ export class ConfirmationService {
    */
   async applyAnswer(trx: Transaction<DB>, tenantId: string, orderId: string, run: RunRow | null, a: {
     answer: Answer; channel: AnswerChannel; actor: { type: "customer" } | { type: "system" } | { type: "user"; id: string }; reason?: string; note?: string; location?: { lat: number; lng: number };
+    /** The store's own reason behind the canonical code (E6-16a): recorded for reports, never decides anything. */
+    reasonId?: string;
   }, now = new Date()): Promise<{ outcome: string }> {
     if (run && run.outcome && run.status !== "needs_agent") throw new ProblemError(409, "already_answered", `this order was already ${run.outcome}`);
     // Locked: two answers at once (an agent's confirm, Mizan's automatic cancel) cannot both pass this check.
@@ -208,9 +211,10 @@ export class ConfirmationService {
       // What the store chose for after confirmation (E6-23a): the hold and its follow-up, in this transaction.
       await this.after.onConfirmed(trx, tenantId, orderId, run?.id ?? null, a.channel, now);
     } else if (a.answer === "cancel") {
-      await this.setOrderStatus(trx, tenantId, orderId, order.status, "cancelled", "cancelled", actor, { ...data, reason: a.reason ?? "customer_cancelled" }, { cancelled_at: now });
-      await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: a.reason ?? "customer_cancelled", channel: a.channel } });
-      await this.events.emit(trx, { type: "order.confirmation_failed", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: "cancelled", cancelReason: a.reason ?? "customer_cancelled", channel: a.channel } });
+      const reasonId: Record<string, string> = a.reasonId ? { cancelReasonId: a.reasonId } : {};
+      await this.setOrderStatus(trx, tenantId, orderId, order.status, "cancelled", "cancelled", actor, { ...data, reason: a.reason ?? "customer_cancelled", ...reasonId }, { cancelled_at: now });
+      await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: a.reason ?? "customer_cancelled", channel: a.channel, ...reasonId } });
+      await this.events.emit(trx, { type: "order.confirmation_failed", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: "cancelled", cancelReason: a.reason ?? "customer_cancelled", channel: a.channel, ...reasonId } });
     } else {
       await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "change_requested", actor_type: actor.type, actor_id: actor.type === "user" ? actor.id : null, data: JSON.stringify(data) }).execute();
       await this.events.emit(trx, { type: "confirmation.escalated", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: "change_requested", channel: a.channel } });
@@ -235,14 +239,7 @@ export class ConfirmationService {
     const label = pii.decrypt(o.customer_label, "orders.customer_label");
     const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("position").orderBy("id").limit(10).execute();
     const due = BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor);
-    const f = await this.offers.forRun(trx, run.id);
-    const offer = f && !["declined", "expired"].includes(f.status) ? (() => {
-      const v = this.offers.view(f);
-      return {
-        id: f.id, title: v.title, qty: v.qty, price: v.offerPrice, was: Number(v.discountPct) > 0 ? v.unitPrice : null,
-        message: lang === "ar" ? f.message_ar : f.message_en, newTotal: fromMinor(due + BigInt(f.offer_price_minor) * BigInt(f.qty), o.currency),
-      };
-    })() : null;
+    const offer = await this.offerFacts(trx, run.id, lang, due, o.currency);
     // E6-23a: the summary after confirming, when the store chose it; the money from cashToCollect (rule 13).
     const wantsSummary = (await this.after.settingsOf(trx, tenantId)).settings.confirmed.message === "summary";
     let pay: Money | null = null;
@@ -258,32 +255,62 @@ export class ConfirmationService {
     };
   }
 
+  /** The run's offer as the messages show it, unless the customer declined it or it expired. */
+  private async offerFacts(trx: Transaction<DB>, runId: string, lang: "ar" | "en", dueMinor: bigint, currency: string): Promise<OfferFacts | null> {
+    const f = await this.offers.forRun(trx, runId);
+    if (!f || ["declined", "expired"].includes(f.status)) return null;
+    const v = this.offers.view(f);
+    return {
+      id: f.id, title: v.title, qty: v.qty, price: v.offerPrice, was: Number(v.discountPct) > 0 ? v.unitPrice : null,
+      message: lang === "ar" ? f.message_ar : f.message_en, newTotal: fromMinor(dueMinor + BigInt(f.offer_price_minor) * BigInt(f.qty), currency),
+    };
+  }
+
   /**
-   * E6-5: what a script says, filled from one of the store's orders (or a sample one): each chat
-   * reply by the button it answers, and the team's call script. Only the first name, number, items,
-   * amounts and city — what the messages show anyway.
+   * E6-5, E6-16a: a draft script (problems and all) filled from one of the store's orders or a
+   * sample: one chat per scenario with the approved template first, the team's call script, the
+   * hand-sent message, and what saving would refuse. Only the first name, number, items, amounts
+   * and city — what the messages show anyway. The link is a placeholder: a real one is a bearer key.
    */
-  async previewScript(tenantId: string, script: Script, orderId?: string): Promise<ScriptPreview> {
+  async previewScript(tenantId: string, script: Script, orderId?: string, langAsked?: "ar" | "en"): Promise<ScriptPreview> {
     return this.db.tenant(tenantId, async (trx) => {
-      const { name, lang } = await this.store(trx, tenantId);
+      const { name, lang: storeLang } = await this.store(trx, tenantId);
+      const lang = langAsked ?? storeLang;
+      const link = `${this.config.WEB_URL.replace(/\/$/, "")}/${lang}/c/xxxxxxxx`;
       let f: MessageFacts;
+      let real: OfferFacts | null = null;
       if (orderId) {
         const o = await trx.selectFrom("orders").select(["number", "customer_label", "currency", "total_minor", "cod_minor", "ship_city"]).where("id", "=", orderId).executeTakeFirst();
         if (!o) throw new ProblemError(404, "not_found", "order not found");
         const label = (await this.cipher.forTenant(trx, tenantId)).decrypt(o.customer_label, "orders.customer_label");
         const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", orderId).orderBy("position").orderBy("id").limit(10).execute();
-        f = { lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number, total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: "", items, city: o.ship_city };
+        f = { lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number, total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link, items, city: o.ship_city };
+        // The order's own offer when it has one; the sample only otherwise.
+        const run = await trx.selectFrom("confirmation_runs").select("id").where("order_id", "=", orderId).orderBy("started_at", "desc").executeTakeFirst();
+        if (run) real = await this.offerFacts(trx, run.id, lang, BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor), o.currency);
       } else {
         const t = await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow();
         const cur = t.base_currency.trim();
         f = lang === "ar"
-          ? { lang, store: name, firstName: "منى", number: "#1001", total: fromMinor(125000n, cur), cod: fromMinor(125000n, cur), link: "", items: [{ title: "عباية سادة", quantity: 1 }], city: "مدينة نصر" }
-          : { lang, store: name, firstName: "Mona", number: "#1001", total: fromMinor(125000n, cur), cod: fromMinor(125000n, cur), link: "", items: [{ title: "Plain abaya", quantity: 1 }], city: "Nasr City" };
+          ? { lang, store: name, firstName: "منى", number: "#1001", total: fromMinor(125000n, cur), cod: fromMinor(125000n, cur), link, items: [{ title: "عباية سادة", quantity: 1 }], city: "مدينة نصر" }
+          : { lang, store: name, firstName: "Mona", number: "#1001", total: fromMinor(125000n, cur), cod: fromMinor(125000n, cur), link, items: [{ title: "Plain abaya", quantity: 1 }], city: "Nasr City" };
       }
       f.script = script;
+      // The thank-you carries the summary when the store chose it (E6-23a).
+      const withSummary = (await this.after.settingsOf(trx, tenantId)).settings.confirmed.message === "summary" ? { ...f, summary: { due: f.cod, more: 0 } } : f;
+      const cur = f.total.currency;
+      const dueMinor = toMinor(Number(f.cod.amount) > 0 ? f.cod : f.total);
+      const offer: OfferFacts = real ?? {
+        id: "00000000-0000-4000-8000-000000000000", title: lang === "ar" ? "طرحة مطابقة" : "Matching scarf", qty: 1,
+        price: fromMinor(13500n, cur), was: fromMinor(15000n, cur), message: null, newTotal: fromMinor(dueMinor + 13500n, cur),
+      };
       const text = (c: ReturnType<typeof chatContent>) => (c.type === "text" ? c.text : c.body);
       return {
         lang, sample: !orderId,
+        issues: validateScript(script, { storeName: name, storeLang }),
+        conversations: previewConversations(withSummary, offer),
+        call: callScript(f),
+        link: linkText(f),
         replies: [
           { branch: "confirm", key: "confirmed", text: text(chatContent("confirmed", f)) },
           { branch: "change", key: "change_prompt", text: text(chatContent("change_prompt", f)) },
@@ -291,7 +318,6 @@ export class ConfirmationService {
           { branch: "cancel", key: "cancel_prompt", text: text(chatContent("cancel_reasons", f)) },
           { branch: "cancel", key: "cancelled", text: text(chatContent("cancelled", f)) },
         ],
-        call: callScript(f),
       };
     });
   }
@@ -460,18 +486,34 @@ export class ConfirmationService {
   // ───────────── settings ─────────────
 
   async getSettings(tenantId: string) {
-    return this.db.tenant(tenantId, async (trx) => ({ settings: (await this.store(trx, tenantId)).settings, channels: await this.messaging.channels(tenantId, trx) }));
+    return this.db.tenant(tenantId, async (trx) => {
+      const t = await trx.selectFrom("tenants").select(["settings", "name", "locale"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
+      const raw = (t.settings as { confirmation?: { script?: unknown } } | null)?.confirmation?.script;
+      // What in the saved script no longer passes (renamed store, tighter limit): shown, never dropped.
+      const issues = scriptIssues(raw, { storeName: t.name, storeLang: t.locale?.startsWith("en") ? "en" : "ar" });
+      return { settings: confirmationSettings(t.settings), channels: await this.messaging.channels(tenantId, trx), scriptIssues: issues };
+    });
   }
 
   async putSettings(auth: AuthContext, body: ConfirmationSettings) {
     const tenantId = auth.tenant!.id;
-    const next = ConfirmationSettingsSchema.parse(body);
+    const parsed = ConfirmationSettingsSchema.parse(body);
     return this.db.tenant(tenantId, async (trx) => {
-      const t = await trx.selectFrom("tenants").select("settings").where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
+      const t = await trx.selectFrom("tenants").select(["settings", "name", "locale"]).where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
+      // The script's rules again, with the store's real name and language (E6-16a).
+      // What was already stored and only breaks a rule since (a v1 text v2 counts or reads stricter, a
+      // renamed store, a new language) never blocks saving the rest: it stays in scriptIssues, the
+      // reader and `fit` handle it when sending. New and edited texts are checked in full.
+      const storeLang = t.locale?.startsWith("en") ? "en" as const : "ar" as const;
+      const stored = (t.settings as { confirmation?: { script?: unknown } } | null)?.confirmation?.script;
+      const issues = (parsed.script ? validateScript(parsed.script, { storeName: t.name, storeLang }) : [])
+        .filter((i) => !unchanged(stored, parsed.script, i.path));
+      if (issues.length) throw new ProblemError(422, "validation_failed", "the script breaks a rule", issues.map((i) => ({ path: ["script", ...i.path].join("."), code: i.code, ...(i.limit !== undefined ? { limit: i.limit, length: i.length } : {}), ...(i.variable ? { variable: i.variable } : {}) })));
+      const next: ConfirmationSettings = parsed.script ? { ...parsed, script: { ...parsed.script, version: 2 } } : parsed;
       const before = confirmationSettings(t.settings);
       await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...(t.settings as object), confirmation: next }) }).where("id", "=", tenantId).execute();
       await this.audit.record(trx, { action: "confirmation.settings_updated", tenantId, ...auditActor(auth), entity: { type: "tenant", id: tenantId }, before, after: next });
-      return { settings: next, channels: await this.messaging.channels(tenantId, trx) };
+      return { settings: next, channels: await this.messaging.channels(tenantId, trx), scriptIssues: next.script ? scriptIssues(next.script, { storeName: t.name, storeLang }) : [] };
     });
   }
 
@@ -534,4 +576,15 @@ export class ConfirmationService {
     const t = await trx.selectFrom("tenants").select(["settings", "timezone", "name", "locale"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
     return { settings: confirmationSettings(t.settings), timezone: t.timezone, name: t.name, lang: t.locale?.startsWith("en") ? "en" : "ar" };
   }
+}
+
+/** The same at a rule's path in the stored and the sent script: a text by its trimmed string, the reasons as a whole list. */
+function unchanged(stored: unknown, sent: unknown, path: Array<string | number>): boolean {
+  const at = (root: unknown, p: Array<string | number>) => p.reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as Record<string | number, unknown>)[k] : undefined), root);
+  if (path[0] === "cancelReasons") {
+    const a = at(stored, ["cancelReasons"]);
+    return a !== undefined && JSON.stringify(a) === JSON.stringify(at(sent, ["cancelReasons"]));
+  }
+  const a = at(stored, path), b = at(sent, path);
+  return typeof a === "string" && typeof b === "string" && a.trim() === b.trim();
 }

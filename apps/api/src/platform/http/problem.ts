@@ -7,7 +7,7 @@ export interface ProblemDetails {
   status: number;
   code: string;
   detail?: string;
-  errors?: Array<{ path: string; code: string; message?: string }>;
+  errors?: Array<{ path: string; code: string; message?: string; limit?: number; length?: number; variable?: string }>;
   requestId?: string;
 }
 
@@ -17,7 +17,7 @@ export const ProblemDetailsSchema = z.object({
   status: z.number().int(),
   code: z.string(),
   detail: z.string().optional(),
-  errors: z.array(z.object({ path: z.string(), code: z.string(), message: z.string().optional() })).optional(),
+  errors: z.array(z.object({ path: z.string(), code: z.string(), message: z.string().optional(), limit: z.number().int().optional(), length: z.number().int().optional(), variable: z.string().optional() })).optional(),
   requestId: z.string().optional(),
 }) satisfies z.ZodType<ProblemDetails>;
 

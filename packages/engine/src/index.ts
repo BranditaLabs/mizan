@@ -26,7 +26,7 @@ export { CircuitBreaker } from "./resilience/circuit.js";
 export { LogMessaging, maskNumber, unreachableNumber, type MessagingChannel, type MessagingProvider, type Sms, type VoiceCall, type WhatsAppTemplate } from "./connectors/messaging/provider.js";
 export {
   LIMITS as WHATSAPP_LIMITS, WHATSAPP_GRAPH_VERSION, WhatsAppCloudConnector,
-  type ButtonsMessage, type ListMessage, type SendResult, type TemplateInfo, type TemplateMessage, type TextMessage, type WhatsAppChat, type WhatsAppCloudConfig,
+  type ButtonsMessage, type ListMessage, type MessageHeader, type SendResult, type TemplateInfo, type TemplateMessage, type TextMessage, type WhatsAppChat, type WhatsAppCloudConfig,
 } from "./connectors/whatsapp/connector.js";
 export { classifyGraphError, kindOfCode, RECIPIENT_CODES, WINDOW_CLOSED } from "./connectors/whatsapp/errors.js";
 export {

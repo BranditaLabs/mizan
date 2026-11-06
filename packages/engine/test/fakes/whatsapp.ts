@@ -140,6 +140,16 @@ export class FakeWhatsApp {
         const it = body.interactive;
         const buttons = it?.action?.buttons ?? [];
         if (it?.type === "button" && (buttons.length < 1 || buttons.length > 3 || buttons.some((b: any) => [...(b.reply?.title ?? "")].length > 20))) return this.err(400, 131009);
+        // Meta refuses a header or footer over 60, a section title over 24 and more than 10 rows in all (131009).
+        const len = (v: unknown) => [...String(v ?? "")].length;
+        if (it?.header && (it.header.type !== "text" || len(it.header.text) < 1 || len(it.header.text) > 60)) return this.err(400, 131009);
+        if (it?.footer && (len(it.footer.text) < 1 || len(it.footer.text) > 60)) return this.err(400, 131009);
+        if (it?.type === "list") {
+          const sections: any[] = it.action?.sections ?? [];
+          const rows = sections.flatMap((s) => s.rows ?? []);
+          if (rows.length < 1 || rows.length > 10 || sections.some((s) => s.title !== undefined && len(s.title) > 24)
+            || rows.some((r: any) => len(r.title) > 24 || (r.description !== undefined && len(r.description) > 72))) return this.err(400, 131009);
+        }
       } else if (body.type !== "text") return this.err(400, 131051);
       const m: FakeWaMessage = { id: `wamid.OUT${++this.seq}`, to, key: body.biz_opaque_callback_data, type: body.type, body, at: this.clock.now() };
       this.accepted.push(m);

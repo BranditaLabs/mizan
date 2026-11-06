@@ -589,6 +589,84 @@ describe("Claude picks and words the offer (E6-12)", () => {
   });
 });
 
+describe("the store's script in the chat (E6-16a)", () => {
+  const save = (script: unknown) => http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" }, ...(script ? { script } : {}) }).expect(200);
+  const reasons = [
+    { id: "wrong_size", code: "changed_mind", title: { ar: "المقاس مش مظبوط", en: "Wrong size" }, description: { ar: "هنبدّله لك لو حبيت" } },
+    { id: "price", code: "found_cheaper", title: { ar: "السعر عالي" } },
+  ];
+  const script = { pack: "egyptian", cancelReasons: reasons, texts: { ar: { cancel_header: "أوردر {{order.number}}", cancel_section: "الأسباب", footer: "مع {{store.name}}", keep_description: "هنكمّله عادي" }, en: {} } };
+  const cancelList = async (id: string) => {
+    await run();
+    const t = await templateFor(id);
+    const before = wa.accepted.length;
+    wa.tapQuickReply(CUSTOMER, t.cancel, t.message.id);
+    await deliver();
+    await run();
+    return sentAfter(before)[0]!.body.interactive;
+  };
+
+  it("the store's reasons reach WhatsApp with header, section, footer and descriptions; a tap cancels with the code and the store's id, even after the reason was deleted", async () => {
+    await save(script);
+    try {
+      const id = await newOrder();
+      const list = await cancelList(id);
+      expect(list).toMatchObject({ type: "list", header: { type: "text", text: `أوردر #${9100 + n}` }, footer: { text: "مع Nile Abayas" } });
+      const section = list.action.sections[0];
+      expect(section.title).toBe("الأسباب");
+      expect(section.rows.map((r: { title: string; description?: string }) => [r.title, r.description])).toEqual([
+        ["المقاس مش مظبوط", "هنبدّله لك لو حبيت"], ["السعر عالي", undefined], ["لا، كمّل الأوردر", "هنكمّله عادي"],
+      ]);
+      expect(parseActionId(undefined, section.rows[0].id)).toMatchObject({ action: "reason", arg: "0-wrong_size" });
+      await save({ ...script, cancelReasons: [reasons[1]] }); // the owner deletes it before the tap
+      wa.tapReply(CUSTOMER, section.rows[0].id, "list_reply");
+      await deliver();
+      expect(await runOf(id)).toMatchObject({ status: "cancelled", reason: "changed_mind" });
+      const ev = await db.tenant(store, (trx) => trx.selectFrom("order_events").select("data").where("order_id", "=", id).where("type", "=", "cancelled").executeTakeFirstOrThrow());
+      expect(ev.data).toMatchObject({ reason: "changed_mind", cancelReasonId: "wrong_size" });
+      const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("entity_id", "=", id).where("type", "in", ["order.cancelled", "order.confirmation_failed"]).execute());
+      expect(events.map((e) => (e.data as { cancelReasonId?: string }).cancelReasonId)).toEqual(["wrong_size", "wrong_size"]);
+      const out = (await http().get(`/v1/orders/${id}/confirmation`).set(as("owner")).expect(200)).body.whatsapp.filter((m: { direction: string }) => m.direction === "out");
+      expect(out.map((m: { kind: string; action: string }) => `${m.kind}:${m.action}`).sort()).toEqual(["list:cancel_reasons", "template:ask"]); // the kind of what was sent
+    } finally { await save(null); }
+  });
+
+  it("a reason list sent before E6-16a (a bare code) still cancels with that code", async () => {
+    const id = await newOrder();
+    await run();
+    const r = await runOf(id);
+    const t = await templateFor(id);
+    wa.tapQuickReply(CUSTOMER, t.cancel, t.message.id);
+    await deliver();
+    wa.tapReply(CUSTOMER, actionId(undefined, r.id, "reason", "found_cheaper"), "list_reply");
+    await deliver();
+    expect(await runOf(id)).toMatchObject({ status: "cancelled", reason: "found_cheaper" });
+  });
+
+  it("the gulf pack is what the customer reads, and the owner's 'noted' answers a typed message", async () => {
+    await save({ pack: "gulf", texts: { ar: { noted: "وصلتنا رسالتك يا {{customer.first_name}}، بنرد عليك قريب." }, en: {} } });
+    try {
+      const a = await newOrder();
+      await run();
+      const ta = await templateFor(a);
+      expect(ta.message.body.template.components[0].parameters[0].text).toBe("هلا Mona");
+      let before = wa.accepted.length;
+      wa.tapQuickReply(CUSTOMER, ta.confirm, ta.message.id);
+      await deliver();
+      await run();
+      expect(sentAfter(before)[0]!.body.text.body).toBe(`تم ✅ طلبك #${9100 + n} تأكّد وبنشحنه لك قريب. شكراً لأنك اخترت Nile Abayas!`);
+
+      await newOrder();
+      await run();
+      before = wa.accepted.length;
+      wa.writes(CUSTOMER, "متى يوصل الطلب؟");
+      await deliver();
+      await run();
+      expect(sentAfter(before)[0]!.body.text.body).toBe("وصلتنا رسالتك يا Mona، بنرد عليك قريب.");
+    } finally { await save(null); }
+  });
+});
+
 // Last: it moves the test clock hours ahead.
 describe("after Mizan stopped waiting (E6-23a)", () => {
   it("a customer who writes after Mizan stopped waiting is never cancelled for not answering (E6-23a)", async () => {

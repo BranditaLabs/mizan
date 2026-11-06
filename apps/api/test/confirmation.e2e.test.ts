@@ -339,8 +339,8 @@ describe("the store's script (E6-5)", () => {
   it("is saved with the settings, previewed with a real order or a sample, and refuses unknown variables", async () => {
     const script = { pack: "egyptian", texts: { ar: { confirmed: "تمام يا {{customer.first_name}} ✅ {{order.number}} اتأكّد" }, en: { confirmed: "All set {{customer.first_name}} ✅ {{order.number}} is confirmed", call: "Hi {{customer.first_name}}\nConfirming {{order.number}} for {{order.cod}}" } } };
     const saved = (await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" }, script }).expect(200)).body;
-    expect(saved.settings.script).toEqual(script);
-    expect((await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body.settings.script).toEqual(script);
+    expect(saved.settings.script).toMatchObject({ ...script, version: 2 });
+    expect((await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body.settings.script).toMatchObject({ ...script, version: 2 });
 
     const sample = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script }).expect(200)).body;
     expect(sample.sample).toBe(true);
@@ -357,12 +357,126 @@ describe("the store's script (E6-5)", () => {
     expect(confirmed).toBe(lang === "ar" ? `تمام يا Mona ✅ ${o.body.number} اتأكّد` : `All set Mona ✅ ${o.body.number} is confirmed`);
     expect(JSON.stringify(real)).not.toMatch(/0100|Abbas/); // the first name, never the phone or address
 
-    const bad = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: { ...script, texts: { ar: { confirmed: "{{customer.phone}}" }, en: {} } } }).expect(422)).body;
-    expect(JSON.stringify(bad)).toContain("customer.phone");
+    // E6-16a: a draft's problems come back as issues (200); saving it is what refuses (422).
+    const badScript = { ...script, texts: { ar: { confirmed: "{{customer.phone}}" }, en: {} } };
+    const bad = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: badScript }).expect(200)).body;
+    expect(bad.issues).toContainEqual({ path: ["texts", "ar", "confirmed"], code: "unknown_variable", variable: "customer.phone" });
+    const refused = (await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, script: badScript }).expect(422)).body;
+    expect(refused.errors[0]).toMatchObject({ path: "script.texts.ar.confirmed", code: "unknown_variable", variable: "customer.phone" });
     await http().post("/v1/settings/confirmation/preview").set(as("finance")).send({ script }).expect(403);
     await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: "00000000-0000-4000-8000-000000000000" }).expect(404);
     // Back to the built-in wording for the other tests.
     await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+  });
+});
+
+describe("every chat word editable (E6-16a)", () => {
+  const reset = () => http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
+  const storedScript = () => db.tenant(store, async (trx) => ((await trx.selectFrom("tenants").select("settings").where("id", "=", store).executeTakeFirstOrThrow()).settings as { confirmation?: { script?: Record<string, unknown> } }).confirmation?.script);
+  const writeRaw = (script: unknown) => db.tenant(store, async (trx) => {
+    const t = await trx.selectFrom("tenants").select("settings").where("id", "=", store).executeTakeFirstOrThrow();
+    const s = t.settings as { confirmation?: Record<string, unknown> };
+    await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...s, confirmation: { ...s.confirmation, script } }) }).where("id", "=", store).execute();
+  });
+
+  it("the catalogue: for those who manage confirmation, cached until the next deploy", async () => {
+    const res = await http().get("/v1/settings/confirmation/script-catalogue").set(as("owner")).expect(200);
+    expect(res.headers["cache-control"]).toBe("private, max-age=3600");
+    expect(res.body.packs).toEqual(["egyptian", "formal", "gulf"]);
+    expect(res.body.keys.find((k: { key: string }) => k.key === "btn_offer_yes")).toMatchObject({ kind: "button", limit: 20, vars: [] });
+    expect(res.body.packTexts.gulf.ar.confirmed).toContain("{{order.number}}");
+    expect(res.body.templateText.ar.buttons).toEqual(["أكّد الأوردر", "عايز أعدّل", "ألغي الأوردر"]);
+    await http().get("/v1/settings/confirmation/script-catalogue").set({ ...as("owner"), "If-None-Match": res.headers.etag }).expect(304);
+    await http().get("/v1/settings/confirmation/script-catalogue").set({ ...as("owner"), "If-None-Match": `"x", W/${res.headers.etag}` }).expect(304);
+    await http().get("/v1/settings/confirmation/script-catalogue").set(as("finance")).expect(403);
+  });
+
+  it("a text saved before that now counts too long never blocks saving the rest; editing it does", async () => {
+    const long = `${"و".repeat(850)} {{order.items}}`; // v1 counted the raw text; v2 counts the items at their width
+    await writeRaw({ pack: "egyptian", texts: { ar: { change_received: long }, en: {} } });
+    const got = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
+    expect(got.scriptIssues).toContainEqual(expect.objectContaining({ path: ["texts", "ar", "change_received"], code: "too_long" }));
+    const saved = (await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...got.settings, callingHours: { start: "08:00", end: "23:00" } }).expect(200)).body;
+    expect(saved.scriptIssues).toEqual(got.scriptIssues); // the save answers what GET would
+    // A v1 text that v2 reads stricter (only variables) is kept the same way, and a new one is refused.
+    await writeRaw({ pack: "egyptian", texts: { ar: { cancelled: "{{order.number}}." }, en: {} } });
+    const v1 = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
+    expect(v1.scriptIssues).toContainEqual(expect.objectContaining({ path: ["texts", "ar", "cancelled"], code: "only_variables" }));
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...v1.settings, callingHours: { start: "09:00", end: "23:00" } }).expect(200);
+    const fresh = { ...v1.settings, script: { ...v1.settings.script, texts: { ar: { cancelled: "{{order.number}}" }, en: {} } } };
+    expect((await http().put("/v1/settings/confirmation").set(as("owner")).send(fresh).expect(422)).body.errors[0]).toMatchObject({ path: "script.texts.ar.cancelled", code: "only_variables" });
+    const edited = { ...got.settings, script: { ...got.settings.script, texts: { ar: { change_received: `${long}!` }, en: {} } } };
+    const refused = (await http().put("/v1/settings/confirmation").set(as("owner")).send(edited).expect(422)).body;
+    expect(refused.errors[0]).toMatchObject({ path: "script.texts.ar.change_received", code: "too_long", limit: 1000 });
+    expect(refused.errors[0].length).toBeGreaterThan(1000);
+    await reset();
+  });
+
+  it("preview v2: a chat per scenario, the template first and not editable, the store's reasons, a placeholder link", async () => {
+    const script = {
+      version: 2, pack: "gulf",
+      texts: { ar: { cancel_header: "طلب {{order.number}} من {{store.name}}", footer: "مع {{store.name}}" }, en: {} },
+      cancelReasons: [{ id: "wrong_size", code: "changed_mind", title: { ar: "المقاس مو مضبوط" }, description: { ar: "نبدّله لك" } }, { id: "late", code: "delivery_too_late", title: { ar: "التوصيل متأخر" } }],
+    };
+    const o = await http().post("/v1/orders").set(as("owner")).send({
+      source: "phone", customer: { name: "Mona Adel", phone: "01001234821" }, address: { line1: "12 Abbas El Akkad St", city: "Nasr City" },
+      lines: [{ title: "Abaya", quantity: 1, unitPrice: "1250" }], shipping: "0", payment: { mode: "cod" },
+    }).expect(201);
+    const p = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: o.body.id }).expect(200)).body;
+    expect(p.lang).toBe("ar");
+    expect(p.issues).toEqual([]);
+    expect(p.conversations.map((c: { scenario: string }) => c.scenario)).toEqual(["confirm", "confirm_offer", "change", "cancel", "message", "already", "opt_out", "opt_in"]);
+    for (const c of p.conversations) expect(c.turns[0]).toMatchObject({ from: "business", kind: "template", editable: false });
+    expect(p.conversations[0].turns[0].body).toContain(`أوردرك رقم ${o.body.number} من Nile Abayas وصلنا.`);
+    const cancel = p.conversations.find((c: { scenario: string }) => c.scenario === "cancel").turns.find((t: { kind: string }) => t.kind === "list");
+    expect(cancel).toMatchObject({ key: "cancel_prompt", editable: true, header: `طلب ${o.body.number} من Nile Abayas`, footer: "مع Nile Abayas" });
+    expect(cancel.list.rows).toEqual([{ title: "المقاس مو مضبوط", description: "نبدّله لك" }, { title: "التوصيل متأخر" }, { title: "لا، كمّل الطلب" }]);
+    expect(p.conversations[0].turns.at(-1).text).toContain("تم ✅ طلبك");
+    const offered = p.conversations.find((c: { scenario: string }) => c.scenario === "confirm_offer").turns.find((t: { kind: string }) => t.kind === "buttons");
+    expect(offered.buttons).toEqual(["أضفه", "لا، شكراً"]); // a sample offer when the store has none
+    expect(p.link).toContain("https://app.mizan.test/ar/c/xxxxxxxx");
+    expect(JSON.stringify(p)).not.toMatch(/0100|1234821|Abbas/); // the first name, never the phone or address
+    const en = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, lang: "en" }).expect(200)).body;
+    expect(en.lang).toBe("en");
+    expect(en.link).toContain("https://app.mizan.test/en/c/xxxxxxxx");
+    expect(en.replies).toHaveLength(5); // the v1 shape, until E6-16b
+  });
+
+  it("saving refuses with the exact paths, in Arabic and English texts", async () => {
+    const send = (script: unknown) => http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, script });
+    const long = (await send({ pack: "egyptian", texts: { ar: {}, en: { btn_offer_yes: "Yes please, add it now" } } }).expect(422)).body;
+    expect(long.errors).toEqual([{ path: "script.texts.en.btn_offer_yes", code: "too_long", limit: 20, length: 22 }]);
+    const ar = (await send({ pack: "egyptian", texts: { ar: { link_text: "أكّد أوردرك" }, en: {} } }).expect(422)).body;
+    expect(ar.errors).toEqual([expect.objectContaining({ path: "script.texts.ar.link_text", code: "missing_variable" })]);
+    // Known only with the store's language: an Arabic store's reason needs an Arabic title.
+    const reasons = (await send({ pack: "egyptian", texts: { ar: {}, en: {} }, cancelReasons: [{ id: "late", code: "other", title: { en: "Late" } }] }).expect(422)).body;
+    expect(reasons.errors).toEqual([{ path: "script.cancelReasons.0.title.ar", code: "reason_title_required" }]);
+    expect(await storedScript()).toBeUndefined();
+  });
+
+  it("a script saved before E6-16a reads as v2, previews, and the next save writes version 2", async () => {
+    await writeRaw({ pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}" }, en: {} } });
+    const got = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
+    expect(got.settings.script).toEqual({ version: 2, pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}" }, en: {} } });
+    expect(got.scriptIssues).toEqual([]);
+    const p = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: got.settings.script }).expect(200)).body;
+    expect(p.conversations.find((c: { scenario: string }) => c.scenario === "message").turns.at(-1).text).toBe("وصلنا يا منى");
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...got.settings, script: { pack: "egyptian", texts: got.settings.script.texts } }).expect(200);
+    expect(await storedScript()).toMatchObject({ version: 2, pack: "egyptian" });
+    await reset();
+  });
+
+  it("scriptIssues: renaming the store can push a saved text over its limit; the text is kept", async () => {
+    const header = `${"x".repeat(45)} {{store.name}}`;
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, script: { pack: "egyptian", texts: { ar: { cancel_header: header }, en: {} } } }).expect(200);
+    expect((await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body.scriptIssues).toEqual([]);
+    const name = await db.tenant(store, async (trx) => (await trx.selectFrom("tenants").select("name").where("id", "=", store).executeTakeFirstOrThrow()).name);
+    await db.tenant(store, (trx) => trx.updateTable("tenants").set({ name: "Nile Abayas and Scarves of Cairo" }).where("id", "=", store).execute());
+    const after = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
+    expect(after.scriptIssues).toEqual([{ path: ["texts", "ar", "cancel_header"], code: "too_long", limit: 60, length: 78 }]);
+    expect(after.settings.script.texts.ar.cancel_header).toBe(header);
+    await db.tenant(store, (trx) => trx.updateTable("tenants").set({ name }).where("id", "=", store).execute());
+    await reset();
   });
 });
 

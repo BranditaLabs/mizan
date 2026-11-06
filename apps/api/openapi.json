@@ -16049,11 +16049,75 @@
         },
         "responses": {
           "200": {
-            "description": "Saved; applies to orders that start confirmation from now on",
+            "description": "Saved; applies to orders that start confirmation from now on. A script is checked with the store's name and language and saved as version 2",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConfirmationSettingsView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/settings/confirmation/script-catalogue": {
+      "get": {
+        "operationId": "ConfirmationController_catalogue",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "E6-16a: every editable key (group, kind, limit, variables), the packs' wording and reasons, and the read-only templates; the same until the next deploy (ETag, 304)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScriptCatalogue"
                 }
               }
             }
@@ -16113,7 +16177,7 @@
         },
         "responses": {
           "200": {
-            "description": "E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script",
+            "description": "E6-5, E6-16a: a draft filled from an order (or a sample): a chat per scenario with the template first, the call script, the hand-sent message, and the draft's issues (200, not 422)",
             "content": {
               "application/json": {
                 "schema": {
@@ -16124,16 +16188,6 @@
           },
           "404": {
             "description": "Not found",
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Understood but refused (a business rule)",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -23885,13 +23939,21 @@
             "description": "The store's own wording for the chat replies and the call script (E6-5)",
             "type": "object",
             "properties": {
+              "version": {
+                "description": "2 since E6-16a; absent on scripts saved before",
+                "type": "number",
+                "enum": [
+                  2
+                ]
+              },
               "pack": {
                 "type": "string",
                 "enum": [
                   "egyptian",
-                  "formal"
+                  "formal",
+                  "gulf"
                 ],
-                "description": "The starting wording: egyptian (default) or formal Arabic"
+                "description": "The starting wording: egyptian (default), formal Arabic or gulf"
               },
               "texts": {
                 "type": "object",
@@ -23902,34 +23964,170 @@
                       "confirmed": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "confirmed_offer_top": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "change_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "change_received": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "cancel_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "cancel_button": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_header": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_section": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "cancelled": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "offer_pitch": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_question": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_yes": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_no": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_declined": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_expired": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_pay": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_paid": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_more": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_area": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "noted": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "already": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_out": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_in": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "on_delivery": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "footer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "link_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "call": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 2000
+                        "maxLength": 5000
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "en": {
                     "type": "object",
@@ -23937,47 +24135,246 @@
                       "confirmed": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "confirmed_offer_top": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "change_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "change_received": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "cancel_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "cancel_button": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_header": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_section": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "cancelled": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "offer_pitch": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_question": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_yes": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_no": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_declined": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_expired": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_pay": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_paid": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_more": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_area": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "noted": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "already": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_out": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_in": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "on_delivery": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "footer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "link_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "call": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 2000
+                        "maxLength": 5000
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": [
                   "ar",
                   "en"
                 ],
-                "description": "The owner's own wording per message and language; empty = the pack's"
+                "additionalProperties": false,
+                "description": "The owner's own wording per key and language; absent = the pack's"
+              },
+              "cancelReasons": {
+                "description": "The store's cancel reasons; absent = the pack's five",
+                "minItems": 1,
+                "maxItems": 9,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9_]{1,32}$",
+                      "description": "Stable slug; no '-' (it separates the signed argument)"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "changed_mind",
+                        "ordered_by_mistake",
+                        "found_cheaper",
+                        "delivery_too_late",
+                        "other"
+                      ],
+                      "description": "The canonical code reports and events use"
+                    },
+                    "title": {
+                      "type": "object",
+                      "properties": {
+                        "ar": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 24
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 24
+                        }
+                      }
+                    },
+                    "description": {
+                      "type": "object",
+                      "properties": {
+                        "ar": {
+                          "type": "string",
+                          "maxLength": 72
+                        },
+                        "en": {
+                          "type": "string",
+                          "maxLength": 72
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                }
               }
             },
             "required": [
               "pack",
               "texts"
-            ]
+            ],
+            "additionalProperties": false
           },
           "routing": {
             "type": "object",
@@ -24111,13 +24508,21 @@
                 "description": "The store's own wording for the chat replies and the call script (E6-5)",
                 "type": "object",
                 "properties": {
+                  "version": {
+                    "description": "2 since E6-16a; absent on scripts saved before",
+                    "type": "number",
+                    "enum": [
+                      2
+                    ]
+                  },
                   "pack": {
                     "type": "string",
                     "enum": [
                       "egyptian",
-                      "formal"
+                      "formal",
+                      "gulf"
                     ],
-                    "description": "The starting wording: egyptian (default) or formal Arabic"
+                    "description": "The starting wording: egyptian (default), formal Arabic or gulf"
                   },
                   "texts": {
                     "type": "object",
@@ -24128,32 +24533,167 @@
                           "confirmed": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
+                          },
+                          "confirmed_offer_top": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
                           },
                           "change_prompt": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
                           },
                           "change_received": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
                           },
                           "cancel_prompt": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
+                          },
+                          "cancel_button": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "cancel_header": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "cancel_section": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "keep_title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "keep_description": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
                           },
                           "cancelled": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
+                          },
+                          "offer_pitch": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_question": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "btn_offer_yes": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "btn_offer_no": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_added": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_added_generic": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_failed": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_failed_generic": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_declined": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_expired": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_pay": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_paid": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_more": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_area": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "noted": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "already": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "opted_out": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "opted_in": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "on_delivery": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "footer": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "link_text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
                           },
                           "call": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 2000
+                            "maxLength": 5000
                           }
                         },
                         "additionalProperties": false
@@ -24164,32 +24704,167 @@
                           "confirmed": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
+                          },
+                          "confirmed_offer_top": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
                           },
                           "change_prompt": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
                           },
                           "change_received": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
                           },
                           "cancel_prompt": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
+                          },
+                          "cancel_button": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "cancel_header": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "cancel_section": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "keep_title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "keep_description": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
                           },
                           "cancelled": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 1000
+                            "maxLength": 5000
+                          },
+                          "offer_pitch": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_question": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "btn_offer_yes": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "btn_offer_no": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_added": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_added_generic": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_failed": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_failed_generic": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_declined": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "offer_expired": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_pay": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_paid": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_more": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "summary_area": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "noted": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "already": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "opted_out": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "opted_in": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "on_delivery": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "footer": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "link_text": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
                           },
                           "call": {
                             "type": "string",
                             "minLength": 1,
-                            "maxLength": 2000
+                            "maxLength": 5000
                           }
                         },
                         "additionalProperties": false
@@ -24200,7 +24875,70 @@
                       "en"
                     ],
                     "additionalProperties": false,
-                    "description": "The owner's own wording per message and language; empty = the pack's"
+                    "description": "The owner's own wording per key and language; absent = the pack's"
+                  },
+                  "cancelReasons": {
+                    "description": "The store's cancel reasons; absent = the pack's five",
+                    "minItems": 1,
+                    "maxItems": 9,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[a-z0-9_]{1,32}$",
+                          "description": "Stable slug; no '-' (it separates the signed argument)"
+                        },
+                        "code": {
+                          "type": "string",
+                          "enum": [
+                            "changed_mind",
+                            "ordered_by_mistake",
+                            "found_cheaper",
+                            "delivery_too_late",
+                            "other"
+                          ],
+                          "description": "The canonical code reports and events use"
+                        },
+                        "title": {
+                          "type": "object",
+                          "properties": {
+                            "ar": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 24
+                            },
+                            "en": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 24
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "description": {
+                          "type": "object",
+                          "properties": {
+                            "ar": {
+                              "type": "string",
+                              "maxLength": 72
+                            },
+                            "en": {
+                              "type": "string",
+                              "maxLength": 72
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "code",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
@@ -24280,6 +25018,71 @@
             ],
             "additionalProperties": false,
             "description": "Channels the store can use for confirmation"
+          },
+          "scriptIssues": {
+            "description": "E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    ]
+                  },
+                  "description": "e.g. [\"texts\", \"en\", \"btn_offer_yes\"] or [\"cancelReasons\", 3, \"title\", \"ar\"]"
+                },
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "too_long",
+                    "unknown_variable",
+                    "variable_not_here",
+                    "missing_variable",
+                    "only_variables",
+                    "no_variables_in_titles",
+                    "no_new_lines",
+                    "no_links",
+                    "template_safe",
+                    "duplicate_title",
+                    "duplicate_id",
+                    "reason_title_required",
+                    "not_a_key",
+                    "invalid_text",
+                    "invalid_pack",
+                    "invalid_reasons",
+                    "invalid_script"
+                  ]
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "length": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "variable": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "code"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
@@ -37148,6 +37951,19 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "length": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "variable": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -42155,6 +42971,401 @@
         ],
         "additionalProperties": false
       },
+      "ScriptCatalogue": {
+        "type": "object",
+        "properties": {
+          "packs": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "egyptian",
+                "formal",
+                "gulf"
+              ]
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "confirmation",
+                "change",
+                "cancel",
+                "offer",
+                "summary",
+                "system",
+                "calls"
+              ]
+            }
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "confirmed",
+                    "confirmed_offer_top",
+                    "change_prompt",
+                    "change_received",
+                    "cancel_prompt",
+                    "cancel_button",
+                    "cancel_header",
+                    "cancel_section",
+                    "keep_title",
+                    "keep_description",
+                    "cancelled",
+                    "offer_pitch",
+                    "offer_question",
+                    "btn_offer_yes",
+                    "btn_offer_no",
+                    "offer_added",
+                    "offer_added_generic",
+                    "offer_failed",
+                    "offer_failed_generic",
+                    "offer_declined",
+                    "offer_expired",
+                    "summary_pay",
+                    "summary_paid",
+                    "summary_more",
+                    "summary_area",
+                    "noted",
+                    "already",
+                    "opted_out",
+                    "opted_in",
+                    "on_delivery",
+                    "footer",
+                    "link_text",
+                    "call"
+                  ]
+                },
+                "group": {
+                  "type": "string",
+                  "enum": [
+                    "confirmation",
+                    "change",
+                    "cancel",
+                    "offer",
+                    "summary",
+                    "system",
+                    "calls"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "text",
+                    "body",
+                    "body_fragment",
+                    "fragment",
+                    "button",
+                    "list_button",
+                    "header",
+                    "section",
+                    "row",
+                    "row_description",
+                    "footer",
+                    "template_fragment",
+                    "composed"
+                  ]
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "vars": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "customer.first_name",
+                      "customer.greeting",
+                      "order.number",
+                      "order.total",
+                      "order.due",
+                      "order.cod",
+                      "order.items",
+                      "order.city",
+                      "store.name",
+                      "offer.title",
+                      "offer.line",
+                      "offer.new_total",
+                      "summary.due",
+                      "summary.more",
+                      "link",
+                      "start_keyword"
+                    ]
+                  }
+                },
+                "required": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "customer.first_name",
+                      "customer.greeting",
+                      "order.number",
+                      "order.total",
+                      "order.due",
+                      "order.cod",
+                      "order.items",
+                      "order.city",
+                      "store.name",
+                      "offer.title",
+                      "offer.line",
+                      "offer.new_total",
+                      "summary.due",
+                      "summary.more",
+                      "link",
+                      "start_keyword"
+                    ]
+                  }
+                },
+                "optional": {
+                  "type": "boolean"
+                },
+                "composed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "key",
+                "group",
+                "kind",
+                "limit",
+                "vars",
+                "required",
+                "optional",
+                "composed"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "enum": [
+                    "customer.first_name",
+                    "customer.greeting",
+                    "order.number",
+                    "order.total",
+                    "order.due",
+                    "order.cod",
+                    "order.items",
+                    "order.city",
+                    "store.name",
+                    "offer.title",
+                    "offer.line",
+                    "offer.new_total",
+                    "summary.due",
+                    "summary.more",
+                    "link",
+                    "start_keyword"
+                  ]
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Counted at this length when checking a limit"
+                }
+              },
+              "required": [
+                "name",
+                "width"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "cancelCodes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "changed_mind",
+                "ordered_by_mistake",
+                "found_cheaper",
+                "delivery_too_late",
+                "other"
+              ]
+            }
+          },
+          "maxReasons": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "packTexts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "ar": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "en": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "ar",
+                "en"
+              ],
+              "additionalProperties": false
+            },
+            "required": [
+              "egyptian",
+              "formal",
+              "gulf"
+            ],
+            "description": "Each pack's wording per language and key; a key absent is composed in code or optional"
+          },
+          "packReasons": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9_]{1,32}$",
+                    "description": "Stable slug; no '-' (it separates the signed argument)"
+                  },
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "changed_mind",
+                      "ordered_by_mistake",
+                      "found_cheaper",
+                      "delivery_too_late",
+                      "other"
+                    ],
+                    "description": "The canonical code reports and events use"
+                  },
+                  "title": {
+                    "type": "object",
+                    "properties": {
+                      "ar": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 24
+                      },
+                      "en": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 24
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "description": {
+                    "type": "object",
+                    "properties": {
+                      "ar": {
+                        "type": "string",
+                        "maxLength": 72
+                      },
+                      "en": {
+                        "type": "string",
+                        "maxLength": 72
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "id",
+                  "code",
+                  "title"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "egyptian",
+              "formal",
+              "gulf"
+            ]
+          },
+          "templateText": {
+            "type": "object",
+            "properties": {
+              "ar": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  },
+                  "buttons": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "body",
+                  "buttons"
+                ],
+                "additionalProperties": false
+              },
+              "en": {
+                "type": "object",
+                "properties": {
+                  "body": {
+                    "type": "string"
+                  },
+                  "buttons": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "body",
+                  "buttons"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "ar",
+              "en"
+            ],
+            "additionalProperties": false,
+            "description": "The Meta-approved templates: read-only"
+          }
+        },
+        "required": [
+          "packs",
+          "groups",
+          "keys",
+          "variables",
+          "cancelCodes",
+          "maxReasons",
+          "packTexts",
+          "packReasons",
+          "templateText"
+        ],
+        "additionalProperties": false
+      },
       "ScriptPreview": {
         "type": "object",
         "properties": {
@@ -42167,6 +43378,242 @@
           },
           "sample": {
             "type": "boolean"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    ]
+                  },
+                  "description": "e.g. [\"texts\", \"en\", \"btn_offer_yes\"] or [\"cancelReasons\", 3, \"title\", \"ar\"]"
+                },
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "too_long",
+                    "unknown_variable",
+                    "variable_not_here",
+                    "missing_variable",
+                    "only_variables",
+                    "no_variables_in_titles",
+                    "no_new_lines",
+                    "no_links",
+                    "template_safe",
+                    "duplicate_title",
+                    "duplicate_id",
+                    "reason_title_required",
+                    "not_a_key",
+                    "invalid_text",
+                    "invalid_pack",
+                    "invalid_reasons",
+                    "invalid_script"
+                  ]
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "length": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "variable": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "code"
+              ],
+              "additionalProperties": false
+            },
+            "description": "What the draft breaks; saving refuses these (422)"
+          },
+          "conversations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "scenario": {
+                  "type": "string",
+                  "enum": [
+                    "confirm",
+                    "confirm_offer",
+                    "change",
+                    "cancel",
+                    "message",
+                    "already",
+                    "opt_out",
+                    "opt_in"
+                  ]
+                },
+                "turns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "from": {
+                        "type": "string",
+                        "enum": [
+                          "business",
+                          "customer"
+                        ]
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "template",
+                          "text",
+                          "buttons",
+                          "list",
+                          "tap",
+                          "typed"
+                        ]
+                      },
+                      "key": {
+                        "description": "The script key behind the main text",
+                        "type": "string",
+                        "enum": [
+                          "confirmed",
+                          "confirmed_offer_top",
+                          "change_prompt",
+                          "change_received",
+                          "cancel_prompt",
+                          "cancel_button",
+                          "cancel_header",
+                          "cancel_section",
+                          "keep_title",
+                          "keep_description",
+                          "cancelled",
+                          "offer_pitch",
+                          "offer_question",
+                          "btn_offer_yes",
+                          "btn_offer_no",
+                          "offer_added",
+                          "offer_added_generic",
+                          "offer_failed",
+                          "offer_failed_generic",
+                          "offer_declined",
+                          "offer_expired",
+                          "summary_pay",
+                          "summary_paid",
+                          "summary_more",
+                          "summary_area",
+                          "noted",
+                          "already",
+                          "opted_out",
+                          "opted_in",
+                          "on_delivery",
+                          "footer",
+                          "link_text",
+                          "call"
+                        ]
+                      },
+                      "editable": {
+                        "type": "boolean",
+                        "description": "False for the Meta-approved template and the customer's own turns"
+                      },
+                      "header": {
+                        "type": "string"
+                      },
+                      "body": {
+                        "type": "string"
+                      },
+                      "text": {
+                        "type": "string"
+                      },
+                      "footer": {
+                        "type": "string"
+                      },
+                      "buttons": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "list": {
+                        "type": "object",
+                        "properties": {
+                          "button": {
+                            "type": "string"
+                          },
+                          "section": {
+                            "type": "string"
+                          },
+                          "rows": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "title": {
+                                  "type": "string"
+                                },
+                                "description": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "button",
+                          "rows"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "length": {
+                        "description": "Characters in the body or text",
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "from",
+                      "kind",
+                      "editable"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "scenario",
+                "turns"
+              ],
+              "additionalProperties": false
+            },
+            "description": "One chat per scenario, the template first"
+          },
+          "call": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The team's call script, line by line"
+          },
+          "link": {
+            "type": "string",
+            "description": "The hand-sent WhatsApp message, with a placeholder link (never a real one)"
           },
           "replies": {
             "type": "array",
@@ -42185,10 +43632,37 @@
                   "type": "string",
                   "enum": [
                     "confirmed",
+                    "confirmed_offer_top",
                     "change_prompt",
                     "change_received",
                     "cancel_prompt",
+                    "cancel_button",
+                    "cancel_header",
+                    "cancel_section",
+                    "keep_title",
+                    "keep_description",
                     "cancelled",
+                    "offer_pitch",
+                    "offer_question",
+                    "btn_offer_yes",
+                    "btn_offer_no",
+                    "offer_added",
+                    "offer_added_generic",
+                    "offer_failed",
+                    "offer_failed_generic",
+                    "offer_declined",
+                    "offer_expired",
+                    "summary_pay",
+                    "summary_paid",
+                    "summary_more",
+                    "summary_area",
+                    "noted",
+                    "already",
+                    "opted_out",
+                    "opted_in",
+                    "on_delivery",
+                    "footer",
+                    "link_text",
                     "call"
                   ]
                 },
@@ -42203,21 +43677,17 @@
               ],
               "additionalProperties": false
             },
-            "description": "What the customer reads after each button"
-          },
-          "call": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "The team's call script, line by line"
+            "description": "Deprecated, removed in E6-16b: what the customer reads after each button"
           }
         },
         "required": [
           "lang",
           "sample",
-          "replies",
-          "call"
+          "issues",
+          "conversations",
+          "call",
+          "link",
+          "replies"
         ],
         "additionalProperties": false
       },
@@ -42227,13 +43697,21 @@
           "script": {
             "type": "object",
             "properties": {
+              "version": {
+                "description": "2 since E6-16a; absent on scripts saved before",
+                "type": "number",
+                "enum": [
+                  2
+                ]
+              },
               "pack": {
                 "type": "string",
                 "enum": [
                   "egyptian",
-                  "formal"
+                  "formal",
+                  "gulf"
                 ],
-                "description": "The starting wording: egyptian (default) or formal Arabic"
+                "description": "The starting wording: egyptian (default), formal Arabic or gulf"
               },
               "texts": {
                 "type": "object",
@@ -42244,34 +43722,170 @@
                       "confirmed": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "confirmed_offer_top": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "change_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "change_received": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "cancel_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "cancel_button": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_header": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_section": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "cancelled": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "offer_pitch": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_question": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_yes": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_no": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_declined": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_expired": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_pay": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_paid": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_more": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_area": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "noted": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "already": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_out": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_in": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "on_delivery": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "footer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "link_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "call": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 2000
+                        "maxLength": 5000
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "en": {
                     "type": "object",
@@ -42279,53 +43893,260 @@
                       "confirmed": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "confirmed_offer_top": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "change_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "change_received": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
                       },
                       "cancel_prompt": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "cancel_button": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_header": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "cancel_section": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "keep_description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "cancelled": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 1000
+                        "maxLength": 5000
+                      },
+                      "offer_pitch": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_question": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_yes": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "btn_offer_no": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_added_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_failed_generic": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_declined": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "offer_expired": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_pay": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_paid": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_more": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "summary_area": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "noted": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "already": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_out": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "opted_in": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "on_delivery": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "footer": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "link_text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
                       },
                       "call": {
                         "type": "string",
                         "minLength": 1,
-                        "maxLength": 2000
+                        "maxLength": 5000
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   }
                 },
                 "required": [
                   "ar",
                   "en"
                 ],
-                "description": "The owner's own wording per message and language; empty = the pack's"
+                "additionalProperties": false,
+                "description": "The owner's own wording per key and language; absent = the pack's"
+              },
+              "cancelReasons": {
+                "description": "The store's cancel reasons; absent = the pack's five",
+                "minItems": 1,
+                "maxItems": 9,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-z0-9_]{1,32}$",
+                      "description": "Stable slug; no '-' (it separates the signed argument)"
+                    },
+                    "code": {
+                      "type": "string",
+                      "enum": [
+                        "changed_mind",
+                        "ordered_by_mistake",
+                        "found_cheaper",
+                        "delivery_too_late",
+                        "other"
+                      ],
+                      "description": "The canonical code reports and events use"
+                    },
+                    "title": {
+                      "type": "object",
+                      "properties": {
+                        "ar": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 24
+                        },
+                        "en": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 24
+                        }
+                      }
+                    },
+                    "description": {
+                      "type": "object",
+                      "properties": {
+                        "ar": {
+                          "type": "string",
+                          "maxLength": 72
+                        },
+                        "en": {
+                          "type": "string",
+                          "maxLength": 72
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "code",
+                    "title"
+                  ],
+                  "additionalProperties": false
+                }
               }
             },
             "required": [
               "pack",
               "texts"
-            ]
+            ],
+            "additionalProperties": false
           },
           "orderId": {
             "description": "One of the store's orders; a sample order when absent",
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "lang": {
+            "description": "The buyer's language to preview; the store's when absent",
+            "type": "string",
+            "enum": [
+              "ar",
+              "en"
+            ]
           }
         },
         "required": [
