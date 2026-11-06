@@ -15,7 +15,7 @@ import { cashToCollect } from "@mizan/engine";
 import { linkToken, runIdOf } from "./confirmation-link.js";
 import { routeFor } from "./routing.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
-import { callScript, chatContent, linkText, type MessageFacts, type OfferFacts } from "./messages.js";
+import { callScript, linkText, type MessageFacts, type OfferFacts } from "./messages.js";
 import { scriptIssues, validateScript, type Script } from "./script.js";
 import { previewConversations } from "./script/preview.js";
 import type { ScriptPreview } from "./confirmation.dto.js";
@@ -306,7 +306,6 @@ export class ConfirmationService {
         id: "00000000-0000-4000-8000-000000000000", title: lang === "ar" ? "طرحة مطابقة" : "Matching scarf", qty: 1,
         price: fromMinor(13500n, cur), was: fromMinor(15000n, cur), message: null, newTotal: fromMinor(dueMinor + 13500n, cur),
       };
-      const text = (c: ReturnType<typeof chatContent>) => (c.type === "text" ? c.text : c.body);
       // E6-16d: the first message the store would send now with this draft's choice: the chosen one, or the approved fallback.
       const { statuses } = await templateStates(trx, tenantId);
       const sent = effectiveTemplate(chosenTemplate(lang, script), lang, statuses).variant;
@@ -317,13 +316,6 @@ export class ConfirmationService {
         template: { variant: sent, name: TEMPLATE_SPECS[sent].name, status: statusOf(statuses, sent) },
         call: callScript(f),
         link: linkText(f),
-        replies: [
-          { branch: "confirm", key: "confirmed", text: text(chatContent("confirmed", f)) },
-          { branch: "change", key: "change_prompt", text: text(chatContent("change_prompt", f)) },
-          { branch: "change", key: "change_received", text: text(chatContent("change_received", f)) },
-          { branch: "cancel", key: "cancel_prompt", text: text(chatContent("cancel_reasons", f)) },
-          { branch: "cancel", key: "cancelled", text: text(chatContent("cancelled", f)) },
-        ],
       };
     });
   }

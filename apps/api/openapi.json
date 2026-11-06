@@ -43667,6 +43667,7 @@
                   "enum": [
                     "confirm",
                     "confirm_offer",
+                    "offer_no",
                     "change",
                     "cancel",
                     "message",
@@ -43815,7 +43816,7 @@
               ],
               "additionalProperties": false
             },
-            "description": "One chat per scenario, the template first"
+            "description": "One chat per scenario, the template first; offer_no: the buyer says no to the offer (E6-16b)"
           },
           "call": {
             "type": "array",
@@ -43827,70 +43828,6 @@
           "link": {
             "type": "string",
             "description": "The hand-sent WhatsApp message, with a placeholder link (never a real one)"
-          },
-          "replies": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "branch": {
-                  "type": "string",
-                  "enum": [
-                    "confirm",
-                    "change",
-                    "cancel"
-                  ]
-                },
-                "key": {
-                  "type": "string",
-                  "enum": [
-                    "confirmed",
-                    "confirmed_offer_top",
-                    "change_prompt",
-                    "change_received",
-                    "cancel_prompt",
-                    "cancel_button",
-                    "cancel_header",
-                    "cancel_section",
-                    "keep_title",
-                    "keep_description",
-                    "cancelled",
-                    "offer_pitch",
-                    "offer_question",
-                    "btn_offer_yes",
-                    "btn_offer_no",
-                    "offer_added",
-                    "offer_added_generic",
-                    "offer_failed",
-                    "offer_failed_generic",
-                    "offer_declined",
-                    "offer_expired",
-                    "summary_pay",
-                    "summary_paid",
-                    "summary_more",
-                    "summary_area",
-                    "noted",
-                    "already",
-                    "opted_out",
-                    "opted_in",
-                    "on_delivery",
-                    "footer",
-                    "link_text",
-                    "call"
-                  ]
-                },
-                "text": {
-                  "type": "string"
-                }
-              },
-              "required": [
-                "branch",
-                "key",
-                "text"
-              ],
-              "additionalProperties": false
-            },
-            "description": "Deprecated, removed in E6-16b: what the customer reads after each button"
           },
           "template": {
             "description": "E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback)",
@@ -43935,8 +43872,7 @@
           "issues",
           "conversations",
           "call",
-          "link",
-          "replies"
+          "link"
         ],
         "additionalProperties": false
       },

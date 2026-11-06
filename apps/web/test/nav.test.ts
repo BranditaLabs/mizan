@@ -2,6 +2,7 @@ import { MEMBER_ROLES } from "@mizan/shared";
 import { describe, expect, it } from "vitest";
 import { can } from "@mizan/shared";
 import { activeKey, NAV, navFor, primaryFor } from "../src/lib/nav";
+import { activeSetting, settingsFor } from "../src/lib/settings-nav";
 
 describe("navigation follows the role (U3)", () => {
   it("every role has a home and only sections it can open; owners see everything", () => {
@@ -39,5 +40,21 @@ describe("navigation follows the role (U3)", () => {
     expect(activeKey(owner, "/settings/team")).toBe("settings");
     expect(activeKey(owner, "/stock")).toBe("warehouse");
     expect(activeKey(owner, "/ordersx")).toBeNull();
+  });
+});
+
+describe("settings menu (U4, E6-16b)", () => {
+  it("the studio sits right after Confirmation, for those who manage confirmation", () => {
+    const keys = settingsFor("owner").map((p) => p.key);
+    expect(keys.indexOf("studio")).toBe(keys.indexOf("confirmation") + 1);
+    expect(settingsFor("agent").map((p) => p.key)).not.toContain("studio");
+  });
+
+  it("marks one page: the longest path that matches", () => {
+    const pages = settingsFor("owner");
+    expect(activeSetting(pages, "/settings/confirmation")).toBe("confirmation");
+    expect(activeSetting(pages, "/settings/confirmation/studio")).toBe("studio");
+    expect(activeSetting(pages, "/settings/after-confirmation")).toBe("afterConfirmation");
+    expect(activeSetting(pages, "/settings")).toBeNull();
   });
 });

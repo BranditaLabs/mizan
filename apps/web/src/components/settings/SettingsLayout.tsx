@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { Link, usePathname } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { SETTINGS_GROUPS, settingsFor } from "@/lib/settings-nav";
+import { activeSetting, SETTINGS_GROUPS, settingsFor } from "@/lib/settings-nav";
 import { cx } from "@/components/ui/logic";
 
 /**
@@ -45,6 +45,7 @@ export function SettingsNav() {
   const pathname = usePathname();
   const { store } = useSession();
   const pages = settingsFor(store?.role);
+  const active = activeSetting(pages, pathname);
   return (
     <nav aria-label={t("label")} className="flex flex-col gap-4">
       {SETTINGS_GROUPS.map((g) => {
@@ -54,7 +55,7 @@ export function SettingsNav() {
           <div key={g} className="flex flex-col gap-0.5">
             <h2 className="px-2.5 pb-1 text-overline uppercase text-text-3">{t(`groups.${g}`)}</h2>
             {mine.map((p) => {
-              const on = pathname === p.href || pathname.startsWith(`${p.href}/`);
+              const on = p.key === active;
               return (
                 <Link key={p.key} href={p.href} aria-current={on ? "page" : undefined}
                   className={cx("flex items-center gap-2.5 rounded-md px-2.5 py-2 text-body-sm", on ? "bg-surface-hover font-medium text-text" : "text-text-2 hover:bg-surface-hover hover:text-text")}>

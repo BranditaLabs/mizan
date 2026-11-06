@@ -9281,10 +9281,10 @@ export interface components {
                 length?: number;
                 variable?: string;
             }[];
-            /** @description One chat per scenario, the template first */
+            /** @description One chat per scenario, the template first; offer_no: the buyer says no to the offer (E6-16b) */
             conversations: {
                 /** @enum {string} */
-                scenario: "confirm" | "confirm_offer" | "change" | "cancel" | "message" | "already" | "opt_out" | "opt_in";
+                scenario: "confirm" | "confirm_offer" | "offer_no" | "change" | "cancel" | "message" | "already" | "opt_out" | "opt_in";
                 turns: {
                     /** @enum {string} */
                     from: "business" | "customer";
@@ -9318,14 +9318,6 @@ export interface components {
             call: string[];
             /** @description The hand-sent WhatsApp message, with a placeholder link (never a real one) */
             link: string;
-            /** @description Deprecated, removed in E6-16b: what the customer reads after each button */
-            replies: {
-                /** @enum {string} */
-                branch: "confirm" | "change" | "cancel";
-                /** @enum {string} */
-                key: "confirmed" | "confirmed_offer_top" | "change_prompt" | "change_received" | "cancel_prompt" | "cancel_button" | "cancel_header" | "cancel_section" | "keep_title" | "keep_description" | "cancelled" | "offer_pitch" | "offer_question" | "btn_offer_yes" | "btn_offer_no" | "offer_added" | "offer_added_generic" | "offer_failed" | "offer_failed_generic" | "offer_declined" | "offer_expired" | "summary_pay" | "summary_paid" | "summary_more" | "summary_area" | "noted" | "already" | "opted_out" | "opted_in" | "on_delivery" | "footer" | "link_text" | "call";
-                text: string;
-            }[];
             /** @description E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback) */
             template?: {
                 /** @enum {string} */

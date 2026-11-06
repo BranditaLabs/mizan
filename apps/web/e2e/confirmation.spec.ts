@@ -82,6 +82,10 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   const wa = main.getByTestId("whatsapp-connect");
   await expect(wa.getByLabel("معرّف الرقم (Phone number ID)")).toBeVisible();
   await expect(wa.getByLabel("التوكن الدائم")).toHaveAttribute("type", "password");
+  // The steps, the team's calls and the chat's words live in the studio now (E6-16b).
+  await expect(main.getByTestId("studio-card")).toContainText("صمّم شات العميل");
+  await expect(main.getByTestId("steps-summary")).toContainText("واتساب");
+  await expect(main.getByTestId("studio-card").getByRole("link", { name: "افتح الاستوديو" })).toHaveAttribute("href", "/ar/settings/confirmation/studio");
   const toggle = main.getByRole("switch", { name: /أكّد الأوردرات الجديدة/ });
   await expect(toggle).toBeChecked();
   await toggle.uncheck();

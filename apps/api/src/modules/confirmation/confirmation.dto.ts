@@ -169,7 +169,7 @@ export const ScriptPreviewRequestSchema = z.strictObject({
   lang: z.enum(["ar", "en"]).optional().describe("The buyer's language to preview; the store's when absent"),
 });
 
-export const PREVIEW_SCENARIOS = ["confirm", "confirm_offer", "change", "cancel", "message", "already", "opt_out", "opt_in"] as const;
+export const PREVIEW_SCENARIOS = ["confirm", "confirm_offer", "offer_no", "change", "cancel", "message", "already", "opt_out", "opt_in"] as const;
 const TurnSchema = z.object({
   from: z.enum(["business", "customer"]),
   kind: z.enum(["template", "text", "buttons", "list", "tap", "typed"]),
@@ -188,10 +188,9 @@ export const ScriptPreviewSchema = z.object({
   lang: z.enum(["ar", "en"]),
   sample: z.boolean(),
   issues: z.array(IssueSchema).describe("What the draft breaks; saving refuses these (422)"),
-  conversations: z.array(z.object({ scenario: z.enum(PREVIEW_SCENARIOS), turns: z.array(TurnSchema) })).describe("One chat per scenario, the template first"),
+  conversations: z.array(z.object({ scenario: z.enum(PREVIEW_SCENARIOS), turns: z.array(TurnSchema) })).describe("One chat per scenario, the template first; offer_no: the buyer says no to the offer (E6-16b)"),
   call: z.array(z.string()).describe("The team's call script, line by line"),
   link: z.string().describe("The hand-sent WhatsApp message, with a placeholder link (never a real one)"),
-  replies: z.array(z.object({ branch: z.enum(["confirm", "change", "cancel"]), key: z.enum(SCRIPT_KEYS), text: z.string() })).describe("Deprecated, removed in E6-16b: what the customer reads after each button"),
   template: z.object({
     variant: z.enum(TEMPLATE_VARIANTS), name: z.string(), status: z.enum(TEMPLATE_STATUSES),
   }).optional().describe("E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback)"),
