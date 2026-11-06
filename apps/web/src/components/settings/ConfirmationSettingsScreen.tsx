@@ -7,28 +7,24 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
-import { Button, ButtonGroup, IconButton } from "@/components/ui/Button";
+import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { SaveBar } from "@/components/ui/SaveBar";
 import { Switch } from "@/components/ui/Choice";
-import { Field, Select } from "@/components/ui/Field";
+import { Field } from "@/components/ui/Field";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ErrorState } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
-import { ScriptEditor } from "./ScriptEditor";
+import { Link } from "@/i18n/navigation";
 
 type Settings = Schemas["ConfirmationSettings"];
-type Step = Settings["steps"][number];
-type Channel = Step["channel"];
-const CHANNELS: readonly Channel[] = ["whatsapp", "call_auto", "call_team"];
 const EDITORS = rolesWith("confirmation.manage");
-const MAX_STEPS = 6;
 
 /**
  * Settings → Confirmation (M2, E6-7, E6-10): turn automatic confirmation on or off, the store's
- * WhatsApp number, the order of the channels (WhatsApp, automated call, our team calls) and how long
- * to wait for each, team-call retries, calling hours, how long a hand-sent link works, and the results (E6-6).
+ * WhatsApp number, routing by risk and how long a hand-sent link works. The steps, the team's calls,
+ * calling hours and every word of the chat are designed in the studio (E6-16b), linked from here.
  */
 export function ConfirmationSettingsScreen() {
   const t = useTranslations("confirmationSettings");
@@ -63,19 +59,11 @@ export function ConfirmationSettingsScreen() {
   const { channels } = query.data;
   const s = draft ?? query.data.settings;
   const edit = (next: Partial<Settings>) => setDraft({ ...s, ...next });
-  const setStep = (i: number, next: Partial<Step>) => edit({ steps: s.steps.map((st, j) => (j === i ? { ...st, ...next } : st)) });
-  const hoursValid = s.callingHours.start < s.callingHours.end;
-  const teamLast = s.steps.findIndex((x) => x.channel === "call_team");
-  const stepsValid = s.steps.length > 0 && (teamLast === -1 || teamLast === s.steps.length - 1);
+  const linkValid = Number.isInteger(s.linkHours) && s.linkHours >= 6 && s.linkHours <= 168;
   const rt = s.routing;
   const routingValid = rt.autoMax <= rt.botMax && rt.botMax <= rt.agentMax;
   const setRouting = (next: Partial<Settings["routing"]>) => edit({ routing: { ...rt, ...next } });
   const threshold = (v: string) => Math.max(0, Math.min(100, Math.round(Number(v) || 0)));
-  /** A new step goes before the team call, which stays last. */
-  const addStep = () => {
-    const step: Step = { channel: channels.call_auto ? "call_auto" : "whatsapp", waitMinutes: 60 };
-    edit({ steps: teamLast === -1 ? [...s.steps, step] : [...s.steps.slice(0, teamLast), step, ...s.steps.slice(teamLast)] });
-  };
 
   return frame(
     <>
@@ -96,31 +84,24 @@ export function ConfirmationSettingsScreen() {
 
       <WhatsAppConnect />
 
-      <Card title={t("steps.title")}>
-        <p className="mb-3 text-body-sm text-text-2">{t("steps.body")}</p>
-        <ol className="flex flex-col gap-3">
-          {s.steps.map((st, i) => (
-            <li key={i} className="flex flex-wrap items-end gap-2">
-              <span className="mb-2 w-6 text-center font-medium text-text-2" aria-hidden="true">{i + 1}</span>
-              <Select label={t("steps.channel")} value={st.channel} onChange={(e) => setStep(i, { channel: e.target.value as Channel })} className="w-48">
-                {CHANNELS.map((c) => <option key={c} value={c}>{t(`channel.${c}`)}</option>)}
-              </Select>
-              <Field label={t("steps.wait")} type="number" ltr min={10} max={1440} step={10} value={st.waitMinutes} className="w-32"
-                onChange={(e) => setStep(i, { waitMinutes: Number(e.target.value) })} />
-              <IconButton icon="delete" label={t("steps.remove")} onClick={() => edit({ steps: s.steps.filter((_, j) => j !== i) })} />
-            </li>
-          ))}
-          {teamLast === -1 ? (
-            <li className="flex items-center gap-2 text-body-sm text-text-2">
-              <Icon name="customer" size={16} />{t("steps.agent")}
-            </li>
-          ) : null}
-        </ol>
-        {!stepsValid ? <p className="mt-2 text-body-sm text-danger" role="alert">{t("steps.teamLast")}</p> : null}
-        {s.steps.length < MAX_STEPS ? (
-          <div className="mt-3"><Button variant="secondary" size="sm" icon="add" onClick={addStep}>{t("steps.add")}</Button></div>
-        ) : null}
-      </Card>
+      <section className="mz-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center" data-testid="studio-card">
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-sunk"><Icon name="scripts" size={20} /></span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h2 className="text-heading-sm">{t("studio.title")}</h2>
+          <p className="text-body-sm text-text-2">{t("studio.body")}</p>
+          <p className="flex flex-wrap items-center gap-1.5 text-caption text-text-3" data-testid="steps-summary" aria-label={t("studio.stepsLabel")}>
+            {s.steps.map((st, i) => (
+              <span key={i} className="inline-flex items-center gap-1.5">
+                {i > 0 ? <Icon name="forward" size={12} /> : null}
+                <span className="rounded-full bg-surface-sunk px-2 py-0.5 text-text-2">{t(`channel.${st.channel}`)}</span>
+              </span>
+            ))}
+          </p>
+        </div>
+        <Link href="/settings/confirmation/studio" className={buttonClass("primary", "md", "shrink-0")}>
+          <Icon name="scripts" size={16} />{t("studio.open")}
+        </Link>
+      </section>
 
       <Card title={t("routing.title")}>
         <div className="flex flex-col gap-3" data-testid="routing">
@@ -139,29 +120,12 @@ export function ConfirmationSettingsScreen() {
         </div>
       </Card>
 
-      <ScriptEditor value={s.script} onChange={(script) => edit({ script })} />
-
-      <Card title={t("team.title")}>
-        <p className="mb-3 text-body-sm text-text-2">{t("team.body")}</p>
-        <div className="flex flex-wrap gap-3">
-          <Field label={t("team.attempts")} type="number" ltr min={1} max={10} value={s.teamCalls.attempts} className="w-36"
-            onChange={(e) => edit({ teamCalls: { ...s.teamCalls, attempts: Number(e.target.value) } })} />
-          <Field label={t("team.retry")} type="number" ltr min={10} max={1440} step={10} value={s.teamCalls.retryMinutes} className="w-44"
-            onChange={(e) => edit({ teamCalls: { ...s.teamCalls, retryMinutes: Number(e.target.value) } })} />
-        </div>
+      <Card title={t("link.title")}>
+        <Field label={t("link.hours")} hint={t("link.hint")} type="number" ltr min={6} max={168} value={s.linkHours} style={{ inlineSize: "9rem" }}
+          onChange={(e) => edit({ linkHours: Number(e.target.value) })} />
       </Card>
 
-      <Card title={t("hours.title")}>
-        <p className="mb-3 text-body-sm text-text-2">{t("hours.body")}</p>
-        <div className="flex flex-wrap gap-3">
-          <Field label={t("hours.start")} type="time" ltr value={s.callingHours.start} onChange={(e) => edit({ callingHours: { ...s.callingHours, start: e.target.value } })} className="w-36"
-            error={hoursValid ? null : t("hours.invalid")} />
-          <Field label={t("hours.end")} type="time" ltr value={s.callingHours.end} onChange={(e) => edit({ callingHours: { ...s.callingHours, end: e.target.value } })} className="w-36" />
-          <Field label={t("link.hours")} hint={t("link.hint")} type="number" ltr min={6} max={168} value={s.linkHours} onChange={(e) => edit({ linkHours: Number(e.target.value) })} className="w-36" />
-        </div>
-      </Card>
-
-      <SaveBar dirty={draft !== null} busy={save.isPending} canSave={hoursValid && stepsValid && routingValid} onSave={() => save.mutate(s)} onDiscard={() => setDraft(null)} />
+      <SaveBar dirty={draft !== null} busy={save.isPending} canSave={routingValid && linkValid} onSave={() => save.mutate(s)} onDiscard={() => setDraft(null)} />
     </>,
   );
 }

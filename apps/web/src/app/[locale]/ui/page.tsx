@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { LocaleSwitch } from "@/components/LocaleSwitch";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
 import { ThemedWordmark } from "@/components/Wordmark";
+import { phoneChrome } from "@/components/studio/chrome";
 import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 import { UiGallery } from "./UiGallery";
 
@@ -28,7 +29,7 @@ export default async function UiPage({ params }: Props) {
         <LocaleSwitch />
         <span className="hidden sm:contents"><ThemeSwitch initial={theme} /></span>
       </header>
-      <main id="main"><UiGallery /></main>
+      <main id="main"><UiGallery chrome={await phoneChrome()} /></main>
     </div>
   );
 }
