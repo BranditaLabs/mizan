@@ -23,7 +23,8 @@ const https = (u: string | undefined) => (u && /^https:\/\//i.test(u) ? u.slice(
 /**
  * The store's name and logo come from Shopify, not from typing (onboarding): read on connect and
  * daily, so a rename or a new logo in Shopify reaches Mizan. The name follows Shopify's until
- * someone renames the store in Mizan (then Mizan's stays). A disconnected store changes nothing.
+ * someone renames the store in Mizan (then Mizan's stays). With several Shopify stores, the first
+ * one connected names it; the others change nothing. A disconnected store changes nothing.
  * Idempotent: the same profile is a no-op (compared field by field: jsonb reorders keys).
  */
 @Injectable()
@@ -37,6 +38,11 @@ export class StoreProfile {
     await this.db.tenant(tenantId, async (trx) => {
       const c = await trx.selectFrom("connections").select("status").where("id", "=", connectionId).executeTakeFirst();
       if (!c || c.status === "disconnected") return;
+      // One store names the brand: the first Shopify store connected (still connected). With two stores,
+      // each daily read would otherwise rename it to the other's name.
+      const primary = await trx.selectFrom("connections").select("id").where("kind", "=", "store").where("provider", "=", "shopify")
+        .where("status", "!=", "disconnected").orderBy("created_at").orderBy("id").limit(1).executeTakeFirst();
+      if (primary?.id !== connectionId) return;
       const t = await trx.selectFrom("tenants").select(["name", "settings"]).where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
       const settings = (t.settings ?? {}) as Record<string, unknown>;
       const before = settings.brand as Partial<StoreBrand> | undefined;
