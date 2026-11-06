@@ -19,7 +19,8 @@ import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DateText, MoneyText, PhoneText } from "@/components/ui/Values";
 import { formatMoney } from "@/lib/format";
-import { CITIES, ORDERS, PROFIT_TREND, RTO_TREND, type OrderStatus, type SampleOrder } from "./sample";
+import { WhatsAppPhone, type PhoneChrome } from "@/components/studio/WhatsAppPhone";
+import { CITIES, ORDERS, PHONE_CHATS, PROFIT_TREND, RTO_TREND, type OrderStatus, type SampleOrder } from "./sample";
 
 const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   new: "neutral", pending: "warning", confirmed: "success", shipped: "info", delivered: "success", refused: "danger",
@@ -43,7 +44,7 @@ function Section({ id, title, body, children }: { id: string; title: string; bod
  * Every UI kit component in the current language and theme (E4-3): the review page for design,
  * and the page the end-to-end tests drive (keyboard, RTL, dialogs, table selection).
  */
-export function UiGallery() {
+export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome> }) {
   const t = useTranslations("gallery");
   const tp = useTranslations("payments.method");
   const locale = useLocale() as "ar" | "en";
@@ -227,6 +228,17 @@ export function UiGallery() {
         <Card bodyClassName="p-0">
           <EmptyState icon="returns" title={t("empty.returnsTitle")} body={t("empty.returnsBody")} action={<Button variant="secondary">{t("empty.returnsAction")}</Button>} />
         </Card>
+      </Section>
+
+      <Section id="phone" title={t("phone.title")} body={t("phone.body")}>
+        <div className="grid gap-8 md:grid-cols-2" data-testid="gallery-phones">
+          {(["ar", "en"] as const).map((l) => (
+            <div key={l} className="flex flex-col gap-2">
+              <p className="text-caption text-text-3">{t(`phone.${l}`)}</p>
+              <WhatsAppPhone lang={l} chrome={chrome[l]} storeName={PHONE_CHATS[l].store} turns={PHONE_CHATS[l].turns} label={t("phone.label", { lang: t(`phone.${l}`) })} />
+            </div>
+          ))}
+        </div>
       </Section>
 
       <ConfirmDialog open={confirming} onClose={() => setConfirming(false)}

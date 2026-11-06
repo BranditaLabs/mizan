@@ -11,8 +11,8 @@ export interface SimTurn {
   kind: "template" | "text" | "buttons" | "list" | "tap" | "typed";
   key?: string;
   text?: string;
-  buttons?: string[];
-  list?: { button: string; rows: Array<{ title: string }> };
+  buttons?: readonly string[];
+  list?: { button: string; rows: ReadonlyArray<{ title: string }> };
 }
 export interface SimConversation { scenario: Scenario; turns: SimTurn[] }
 

@@ -1,4 +1,5 @@
 import type { PaymentMethod } from "@/components/ui/Badge";
+import type { PhoneTurn } from "@/components/studio/WhatsAppPhone";
 
 /**
  * Sample data for the UI gallery (fictional people and orders, never real customers). Names and
@@ -39,3 +40,27 @@ export const CITIES: ReadonlyArray<{ value: string } & Text> = [
 /** Net profit per day, last 14 days (EGP). */
 export const PROFIT_TREND = [8200, 9100, 7600, 10400, 9800, 11200, 10900, 12100, 11400, 12800, 13300, 12600, 14100, 14820];
 export const RTO_TREND = [24, 23, 25, 22, 21, 21, 20, 19, 19, 18, 18, 17, 17, 16.4];
+
+/** A sample WhatsApp confirmation for the studio's phone (E6-16b): the template, a tap, the reply. */
+export const PHONE_CHATS: Record<"ar" | "en", { store: string; turns: PhoneTurn[] }> = {
+  ar: {
+    store: "متجر النيل",
+    turns: [
+      { from: "business", kind: "template", editable: false, body: "أهلاً منى 👋\nأوردرك رقم #1001 من متجر النيل وصلنا.\nالإجمالي 1,250 ج.م عند الاستلام.\nأكّد الأوردر عشان نجهّزه ونشحنه لك.", buttons: ["أكّد الأوردر", "عايز أعدّل", "ألغي الأوردر"] },
+      { from: "customer", kind: "tap", editable: false, text: "أكّد الأوردر" },
+      { from: "business", kind: "buttons", key: "offer_pitch", editable: true, body: "*تمام ✅* أوردرك #1001 اتأكّد.\n🎁 عرض ليك: طرحة مطابقة بـ 135 ج.م بدل ~150 ج.م~.\nتحب نضيفه لنفس الأوردر؟", footer: "متجر النيل", buttons: ["أضفه", "لا شكراً"] },
+      { from: "customer", kind: "tap", editable: false, text: "أضفه" },
+      { from: "business", kind: "text", key: "offer_added", editable: true, text: "اتضافت _طرحة مطابقة_ ✨ الإجمالي الجديد 1,385 ج.م. تابع أوردرك: https://app.mizan.test/ar/c/xxxxxxxx" },
+    ],
+  },
+  en: {
+    store: "Nile Store",
+    turns: [
+      { from: "business", kind: "template", editable: false, body: "Hi Mona 👋\nWe received your order #1001 from Nile Store.\nTotal: EGP 1,250 on delivery.\nPlease confirm so we can prepare and ship it.", buttons: ["Confirm order", "I want a change", "Cancel order"] },
+      { from: "customer", kind: "tap", editable: false, text: "Cancel order" },
+      { from: "business", kind: "list", key: "cancel_prompt", editable: true, header: "Order #1001", body: "Sorry to hear that 😔 Could you tell us why you want to cancel?", footer: "Nile Store", list: { button: "Choose a reason", section: "Reasons", rows: [{ title: "Ordered by mistake" }, { title: "Found it cheaper", description: "We may match the price" }, { title: "No, keep the order" }] } },
+      { from: "customer", kind: "tap", editable: false, text: "Ordered by mistake" },
+      { from: "business", kind: "text", key: "cancelled", editable: true, text: "Done. Order #1001 is *cancelled*. We hope to see you again soon." },
+    ],
+  },
+};
