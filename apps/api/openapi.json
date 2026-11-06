@@ -16006,6 +16006,88 @@
         ]
       }
     },
+    "/v1/settings/confirmation/templates/{variant}/submit": {
+      "post": {
+        "operationId": "ConfirmationController_submitTemplate",
+        "parameters": [
+          {
+            "name": "variant",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "E6-16d: send a first-message template (ar_egyptian, ar_formal, ar_gulf, en) to Meta for review, in the store's WhatsApp account: queued (an outbox job, never twice for one name); the status shows in GET /v1/settings/confirmation once Meta answers. A rejected one goes back to review. Audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateSubmit"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
     "/v1/confirmation/queue": {
       "get": {
         "operationId": "ConfirmationController_queueSummary",
@@ -24591,6 +24673,15 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "template": {
+                "description": "E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one",
+                "type": "string",
+                "enum": [
+                  "ar_egyptian",
+                  "ar_formal",
+                  "ar_gulf"
+                ]
               }
             },
             "required": [
@@ -25162,6 +25253,15 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "template": {
+                    "description": "E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one",
+                    "type": "string",
+                    "enum": [
+                      "ar_egyptian",
+                      "ar_formal",
+                      "ar_gulf"
+                    ]
                   }
                 },
                 "required": [
@@ -25242,6 +25342,70 @@
             "additionalProperties": false,
             "description": "Channels the store can use for confirmation"
           },
+          "templates": {
+            "description": "E6-16d: the first-message templates and their review state",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant": {
+                  "type": "string",
+                  "enum": [
+                    "ar_egyptian",
+                    "ar_formal",
+                    "ar_gulf",
+                    "en"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name in the store's WhatsApp account"
+                },
+                "lang": {
+                  "type": "string",
+                  "enum": [
+                    "ar",
+                    "en"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "APPROVED",
+                    "PENDING",
+                    "REJECTED",
+                    "PAUSED",
+                    "DISABLED",
+                    "MISSING",
+                    "UNKNOWN"
+                  ],
+                  "description": "Meta's review state; MISSING: not in the account; UNKNOWN: no number connected or not checked yet"
+                },
+                "effective": {
+                  "type": "boolean",
+                  "description": "What the store's orders get now (the chosen one, or the approved fallback)"
+                },
+                "submittable": {
+                  "type": "boolean",
+                  "description": "Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way)"
+                },
+                "submitting": {
+                  "type": "boolean",
+                  "description": "A submission is queued or retrying (its job is pending or running); Meta has not answered it yet"
+                }
+              },
+              "required": [
+                "variant",
+                "name",
+                "lang",
+                "status",
+                "effective",
+                "submittable",
+                "submitting"
+              ],
+              "additionalProperties": false
+            }
+          },
           "scriptIssues": {
             "description": "E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it.",
             "type": "array",
@@ -25283,7 +25447,8 @@
                     "invalid_text",
                     "invalid_pack",
                     "invalid_reasons",
-                    "invalid_script"
+                    "invalid_script",
+                    "invalid_template"
                   ]
                 },
                 "limit": {
@@ -43588,7 +43753,53 @@
               "en"
             ],
             "additionalProperties": false,
-            "description": "The Meta-approved templates: read-only"
+            "description": "Deprecated (E6-16d): the default templates (Egyptian Arabic, English); read `templates`"
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant": {
+                  "type": "string",
+                  "enum": [
+                    "ar_egyptian",
+                    "ar_formal",
+                    "ar_gulf",
+                    "en"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name in the store's WhatsApp account"
+                },
+                "lang": {
+                  "type": "string",
+                  "enum": [
+                    "ar",
+                    "en"
+                  ]
+                },
+                "body": {
+                  "type": "string"
+                },
+                "buttons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "variant",
+                "name",
+                "lang",
+                "body",
+                "buttons"
+              ],
+              "additionalProperties": false
+            },
+            "description": "E6-16d: every first-message template, read-only (Meta approves the wording)"
           }
         },
         "required": [
@@ -43600,7 +43811,8 @@
           "maxReasons",
           "packTexts",
           "packReasons",
-          "templateText"
+          "templateText",
+          "templates"
         ],
         "additionalProperties": false
       },
@@ -43657,7 +43869,8 @@
                     "invalid_text",
                     "invalid_pack",
                     "invalid_reasons",
-                    "invalid_script"
+                    "invalid_script",
+                    "invalid_template"
                   ]
                 },
                 "limit": {
@@ -43853,6 +44066,42 @@
           "link": {
             "type": "string",
             "description": "The hand-sent WhatsApp message, with a placeholder link (never a real one)"
+          },
+          "template": {
+            "description": "E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback)",
+            "type": "object",
+            "properties": {
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "ar_egyptian",
+                  "ar_formal",
+                  "ar_gulf",
+                  "en"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "APPROVED",
+                  "PENDING",
+                  "REJECTED",
+                  "PAUSED",
+                  "DISABLED",
+                  "MISSING",
+                  "UNKNOWN"
+                ]
+              }
+            },
+            "required": [
+              "variant",
+              "name",
+              "status"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -44300,6 +44549,15 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "template": {
+                "description": "E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one",
+                "type": "string",
+                "enum": [
+                  "ar_egyptian",
+                  "ar_formal",
+                  "ar_gulf"
+                ]
               }
             },
             "required": [
@@ -47041,6 +47299,33 @@
         "required": [
           "members",
           "invitations"
+        ],
+        "additionalProperties": false
+      },
+      "TemplateSubmit": {
+        "type": "object",
+        "properties": {
+          "variant": {
+            "type": "string",
+            "enum": [
+              "ar_egyptian",
+              "ar_formal",
+              "ar_gulf",
+              "en"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "queued": {
+            "type": "boolean",
+            "description": "False when the same submission is already waiting (pressed twice)"
+          }
+        },
+        "required": [
+          "variant",
+          "name",
+          "queued"
         ],
         "additionalProperties": false
       },

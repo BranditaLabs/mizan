@@ -42,6 +42,11 @@ export interface InboundMessage {
   at: number;
   kind: InboundKind;
   reply?: string;
+  /**
+   * A template quick reply's own payload, only when Meta sent one (`reply` falls back to the
+   * button's text without it). Lets a consumer tell "no payload" from "a payload we cannot verify".
+   */
+  payload?: string;
   /** Button or row title as the customer saw it; free text for `text`. Personal data: never log it. */
   text?: string;
   /** The message this one answers (our `wamid`), when Meta says. */
@@ -108,7 +113,9 @@ export function parseWhatsAppWebhook(body: unknown, drift: DriftSink, now: () =>
           msg.kind = "quick_reply";
           const reply = mr.str("reply", ["button.payload", "button.text"]);
           const text = mr.str("title", ["button.text"]);
+          const payload = mr.str("payload", ["button.payload"]);
           if (reply) msg.reply = reply;
+          if (payload) msg.payload = payload;
           if (text) msg.text = text;
         } else if (type === "interactive") {
           const it = mr.str("interactiveType", ["interactive.type"]);

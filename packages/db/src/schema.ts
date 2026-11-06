@@ -234,6 +234,7 @@ export interface Connections {
   country: string | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  check_after: Timestamp | null;
 }
 
 export interface Conversations {
@@ -1620,6 +1621,7 @@ export interface WhatsappMessages {
   customer_hash: string | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  template: string | null;
 }
 
 export interface DB {

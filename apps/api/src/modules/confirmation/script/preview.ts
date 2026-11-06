@@ -1,4 +1,5 @@
-import { chatContent, TEMPLATE_TEXT, whatsappParams, type ChatMessage, type MessageFacts, type OfferFacts } from "../messages.js";
+import { chatContent, whatsappParams, type ChatMessage, type MessageFacts, type OfferFacts } from "../messages.js";
+import { chosenTemplate, TEMPLATE_SPECS, type TemplateVariant } from "../templates.js";
 import type { PREVIEW_SCENARIOS, PreviewTurn } from "../confirmation.dto.js";
 import type { ScriptKey } from "./catalogue.js";
 
@@ -14,8 +15,8 @@ const TYPED = {
  * The phone preview (E6-16a): one chat per scenario, the Meta-approved template first (not
  * editable), the buyer's taps and words, then the store's replies as WhatsApp would show them.
  */
-export function previewConversations(f: MessageFacts, sampleOffer: OfferFacts): Array<{ scenario: Scenario; turns: PreviewTurn[] }> {
-  const tpl = TEMPLATE_TEXT[f.lang];
+export function previewConversations(f: MessageFacts, sampleOffer: OfferFacts, variant: TemplateVariant = chosenTemplate(f.lang, f.script)): Array<{ scenario: Scenario; turns: PreviewTurn[] }> {
+  const tpl = TEMPLATE_SPECS[variant]; // E6-16d: the one the store would send
   const params = whatsappParams(f);
   const template: PreviewTurn = { from: "business", kind: "template", editable: false, body: tpl.body.replace(/\{\{(\d)\}\}/g, (_, i: string) => params[Number(i) - 1] ?? ""), buttons: [...tpl.buttons] };
   const tap = (text: string): PreviewTurn => ({ from: "customer", kind: "tap", editable: false, text });
