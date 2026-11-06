@@ -5,10 +5,11 @@ import {
 } from "./catalogue.js";
 import { MAX_BUYER_REASONS } from "@mizan/shared";
 import { PACK_REASONS, PACK_TEXTS, packReasonTitle } from "./packs.js";
+import { AR_VARIANTS, type ArabicVariant } from "../templates.js";
 
 export const ISSUE_CODES = [
   "too_long", "unknown_variable", "variable_not_here", "missing_variable", "only_variables", "no_variables_in_titles", "no_new_lines", "no_links",
-  "template_safe", "duplicate_title", "duplicate_id", "reason_title_required", "not_a_key", "invalid_text", "invalid_pack", "invalid_reasons", "invalid_script",
+  "template_safe", "duplicate_title", "duplicate_id", "reason_title_required", "not_a_key", "invalid_text", "invalid_pack", "invalid_reasons", "invalid_script", "invalid_template",
 ] as const;
 export type IssueCode = (typeof ISSUE_CODES)[number];
 /** Where and what, never the owner's text. */
@@ -135,7 +136,7 @@ export function readScript(raw: unknown): { script: Script | undefined; issues: 
 
 function parse(raw: unknown): { script: Script; issues: Issue[] } {
   if (typeof raw !== "object" || Array.isArray(raw)) return { script: DEFAULT_SCRIPT, issues: [{ path: [], code: "invalid_script" }] };
-  const r = raw as { version?: unknown; pack?: unknown; texts?: Record<string, unknown>; cancelReasons?: unknown };
+  const r = raw as { version?: unknown; pack?: unknown; texts?: Record<string, unknown>; cancelReasons?: unknown; template?: unknown };
   const issues: Issue[] = [];
   const pack: Pack = (PACKS as readonly unknown[]).includes(r.pack) ? (r.pack as Pack) : "egyptian";
   if (pack !== r.pack) issues.push({ path: ["pack"], code: "invalid_pack" });
@@ -162,7 +163,10 @@ function parse(raw: unknown): { script: Script; issues: Issue[] } {
     if (p.success && ids!.size === p.data.length) cancelReasons = p.data;
     else issues.push({ path: ["cancelReasons"], code: "invalid_reasons" });
   }
-  const script: Script = { version: 2, pack, texts, ...(cancelReasons ? { cancelReasons } : {}) };
+  // E6-16d: an unknown choice follows the pack, as if none was made.
+  const template = (AR_VARIANTS as readonly unknown[]).includes(r.template) ? (r.template as ArabicVariant) : undefined;
+  if (r.template !== undefined && !template) issues.push({ path: ["template"], code: "invalid_template" });
+  const script: Script = { version: 2, pack, texts, ...(cancelReasons ? { cancelReasons } : {}), ...(template ? { template } : {}) };
   // What no longer fits or breaks a rule is reported (the editor shows it), never dropped.
   for (const i of validateScript(script, { storeName: null, storeLang: null })) if (!issues.some((x) => same(x.path.join(".")) === same(i.path.join(".")) && x.code === i.code)) issues.push(i);
   return { script, issues };

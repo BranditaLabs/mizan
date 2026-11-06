@@ -43,6 +43,12 @@ describe("script catalogue", () => {
     expect(a.body.keys.find((k) => k.key === "call")).toMatchObject({ composed: true, group: "calls" });
     expect(a.body.maxReasons).toBe(MAX_BUYER_REASONS);
     expect(a.body.templateText.ar.buttons).toHaveLength(3);
+    // E6-16d: every variant; the deprecated templateText keeps the store-independent defaults.
+    expect(a.body.templates.map((t) => `${t.variant}:${t.name}:${t.lang}`)).toEqual([
+      "ar_egyptian:mizan_order_confirm_ar:ar", "ar_formal:mizan_order_confirm_ar_formal:ar", "ar_gulf:mizan_order_confirm_ar_gulf:ar", "en:mizan_order_confirm_en:en",
+    ]);
+    expect(a.body.templateText.ar.body).toBe(a.body.templates[0]!.body);
+    expect(a.body.templateText.en.body).toBe(a.body.templates[3]!.body);
   });
 });
 

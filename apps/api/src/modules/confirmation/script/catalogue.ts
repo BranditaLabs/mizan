@@ -1,5 +1,6 @@
 import { BUYER_CANCEL_REASONS, MAX_BUYER_REASONS } from "@mizan/shared";
 import { z } from "zod";
+import { AR_VARIANTS } from "../templates.js";
 
 /**
  * Every word the buyer reads in the chat after the template (M2, E6-16a), as keys the store can
@@ -120,6 +121,7 @@ export const ScriptDraftSchema = z.strictObject({
   pack: z.enum(PACKS).describe("The starting wording: egyptian (default), formal Arabic or gulf"),
   texts: z.strictObject({ ar: Texts, en: Texts }).describe("The owner's own wording per key and language; absent = the pack's"),
   cancelReasons: z.array(ReasonItemSchema).min(1).max(MAX_BUYER_REASONS).optional().describe("The store's cancel reasons; absent = the pack's five"),
+  template: z.enum(AR_VARIANTS).optional().describe("E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one"),
 });
 export type Script = z.output<typeof ScriptDraftSchema>;
 export const DEFAULT_SCRIPT: Script = { pack: "egyptian", texts: { ar: {}, en: {} } };

@@ -10,10 +10,18 @@ import { hang, json, type FakeClock } from "./clock.js";
  * - webhooks signed with the app secret, batched, duplicated and out of order, statuses that can
  *   arrive before the send's response; an alternative shape (ms timestamps, nested error codes,
  *   a send response without `contacts`);
- * - templates listed in small pages with cursors.
+ * - templates listed in small pages with cursors; a `name` filter that matches part of a name;
+ * - templates created (E6-16d): a name already taken in that language is refused (code 100,
+ *   subcode 2388024), a body that starts or ends with a variable is refused, a new one is PENDING
+ *   and reviewed after a few listings (APPROVED, or REJECTED with a reason), Meta may answer with
+ *   another category, and a create can be accepted and its response lost.
  */
 type Fault = "500" | "429" | "timeout" | "network" | "lost";
 export type WaShape = "standard" | "alt";
+
+export interface FakeTemplate { id?: string; name: string; language: string; status: string; category: string; rejected_reason?: string; components?: unknown[]; reviewIn?: number }
+/** Meta's subcode for "content in this language already exists" (code 100); unconfirmed, see docs/06. */
+export const TEMPLATE_EXISTS_SUBCODE = 2388024;
 
 export interface FakeWaMessage { id: string; to: string; key: string | undefined; type: string; body: Record<string, any>; at: number }
 
@@ -36,13 +44,23 @@ export class FakeWhatsApp {
   /** Probability that a webhook delivery is sent twice; batches are shuffled when > 0. */
   duplicateRate = 0;
   shuffle = false;
-  templates: Array<{ name: string; language: string; status: string; category: string }> = [
+  templates: FakeTemplate[] = [
     { name: "mizan_order_confirm_ar", language: "ar", status: "APPROVED", category: "UTILITY" },
     { name: "mizan_order_confirm_en", language: "en", status: "APPROVED", category: "UTILITY" },
     { name: "mizan_order_confirm_promo", language: "ar", status: "REJECTED", category: "MARKETING" },
     { name: "old_template", language: "en", status: "PAUSED", category: "UTILITY" },
     { name: "pending_one", language: "ar", status: "PENDING", category: "UTILITY" },
   ];
+  /** Every template Meta created (a duplicate is a test failure). */
+  readonly createdTemplates: FakeTemplate[] = [];
+  /** Template ids edited (sent back to review). */
+  readonly editedTemplates: string[] = [];
+  /** Listings before a new template is reviewed. */
+  reviewAfter = 2;
+  /** Names Meta will reject on review, with the reason it gives. */
+  readonly rejectOnReview = new Map<string, string>();
+  /** Names Meta files under another category than asked (it may recategorize). */
+  readonly recategorize = new Map<string, string>();
   /** Numbers not on WhatsApp: Meta accepts the send, then fails it by webhook (131026). */
   readonly undeliverable = new Set<string>();
   /** Last time each customer wrote to the business: opens the 24-hour window. */
@@ -72,8 +90,12 @@ export class FakeWhatsApp {
   }
 
   /** The customer taps a template's quick reply (type "button"). */
-  tapQuickReply(from: string, payload: string, context?: string) {
-    return this.inbound(from, { type: "button", button: { payload, text: "أكّد" }, ...(context ? { context: { from: "201000000000", id: context } } : {}) });
+  tapQuickReply(from: string, payload: string, context?: string, text = "أكّد") {
+    return this.inbound(from, { type: "button", button: { payload, text }, ...(context ? { context: { from: "201000000000", id: context } } : {}) });
+  }
+  /** A quick-reply tap that comes back with the button's text and no payload (seen on some clients). */
+  tapQuickReplyText(from: string, text: string, context?: string) {
+    return this.inbound(from, { type: "button", button: { text }, ...(context ? { context: { from: "201000000000", id: context } } : {}) });
   }
   /** The customer taps an interactive reply button or list row. */
   tapReply(from: string, id: string, kind: "button_reply" | "list_reply" = "button_reply", context?: string) {
@@ -104,6 +126,45 @@ export class FakeWhatsApp {
   /** Meta's delivery receipts for everything accepted so far that is still `sent`. */
   deliverAll() { for (const m of this.accepted) if (!(m as { done?: boolean }).done) { (m as { done?: boolean }).done = true; this.status(m, "delivered"); } }
 
+  /** Meta reviews templates waiting for it (counted per listing). */
+  private review() {
+    for (const t of this.templates) {
+      if (t.status !== "PENDING" || t.reviewIn === undefined) continue;
+      if (--t.reviewIn > 0) continue;
+      delete t.reviewIn;
+      const reason = this.rejectOnReview.get(t.name);
+      if (reason) { t.status = "REJECTED"; t.rejected_reason = reason; } else t.status = "APPROVED";
+    }
+  }
+
+  /** A test decides the review now. */
+  decide(name: string, status: "APPROVED" | "REJECTED" | "PAUSED", reason?: string) {
+    for (const t of this.templates) if (t.name === name) { t.status = status; delete t.reviewIn; if (reason) t.rejected_reason = reason; }
+  }
+
+  private async createTemplate(init: RequestInit, fault: Fault | undefined): Promise<Response> {
+    const body = JSON.parse(String(init.body ?? "{}"));
+    const len = (v: unknown) => [...String(v ?? "")].length;
+    if (!/^[a-z0-9_]{1,512}$/.test(body.name ?? "") || typeof body.language !== "string" || !["UTILITY", "MARKETING", "AUTHENTICATION"].includes(body.category)) return this.err(400, 100);
+    const comps: any[] = Array.isArray(body.components) ? body.components : [];
+    const main = comps.find((c) => c.type === "BODY");
+    const text = String(main?.text ?? "");
+    if (!text || len(text) > 1024) return this.err(400, 100);
+    const vars = [...text.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1]));
+    // Meta refuses a body that starts or ends with a variable, and needs an example per variable.
+    if (/^\s*\{\{\d+\}\}/.test(text) || /\{\{\d+\}\}\s*$/.test(text)) return this.err(400, 100, "OAuthException", { error_subcode: 2388299 });
+    const example = main?.example?.body_text?.[0];
+    if (vars.length && (!Array.isArray(example) || example.length !== new Set(vars).size)) return this.err(400, 100, "OAuthException", { error_subcode: 2388043 });
+    const buttons: any[] = comps.find((c) => c.type === "BUTTONS")?.buttons ?? [];
+    if (buttons.length > 10 || buttons.some((b) => b.type !== "QUICK_REPLY" || len(b.text) < 1 || len(b.text) > 25)) return this.err(400, 100);
+    if (this.templates.some((t) => t.name === body.name && t.language === body.language)) return this.err(400, 100, "OAuthException", { error_subcode: TEMPLATE_EXISTS_SUBCODE });
+    const t: FakeTemplate = { id: String(9_000_000 + ++this.seq), name: body.name, language: body.language, status: "PENDING", category: this.recategorize.get(body.name) ?? body.category, components: comps, reviewIn: this.reviewAfter };
+    this.templates.push(t);
+    this.createdTemplates.push(t);
+    if (fault === "lost") return hang(init); // created; the caller never hears back
+    return json(200, { id: t.id, status: t.status, category: t.category });
+  }
+
   sentWithKey(key: string) { return this.accepted.filter((m) => m.key === key); }
 
   handler = async (url: URL, init: RequestInit): Promise<Response> => {
@@ -122,10 +183,29 @@ export class FakeWhatsApp {
     this.calls.push({ method, path });
 
     if (method === "GET" && path === `${this.wabaId}/message_templates`) {
+      if (!url.searchParams.get("after")) this.review(); // one listing, however many pages
+      const name = url.searchParams.get("name");
+      // Meta's name filter matches part of a name: the caller keeps only the exact one.
+      const listed = (name ? this.templates.filter((t) => t.name.includes(name)) : this.templates).map(({ reviewIn: _r, components: _c, ...t }) => t);
       const at = Number(url.searchParams.get("after") ?? 0);
-      const page = this.templates.slice(at, at + 2); // Meta pages; small pages exercise the cursor
-      const next = at + 2 < this.templates.length;
+      const page = listed.slice(at, at + 2); // Meta pages; small pages exercise the cursor
+      const next = at + 2 < listed.length;
       return json(200, { data: page, paging: { cursors: { before: String(at), after: String(at + 2) }, ...(next ? { next: `${this.baseUrl}/next` } : {}) } });
+    }
+
+    if (method === "POST" && path === `${this.wabaId}/message_templates`) return this.createTemplate(init, fault);
+    // Editing a template (POST /{id}) sends it back to review; only an approved, rejected or paused one.
+    const edited = method === "POST" && /^\d+$/.test(path) ? this.templates.find((t) => t.id === path) : undefined;
+    if (method === "POST" && /^\d+$/.test(path)) {
+      if (!edited) return this.err(400, 100, "GraphMethodException");
+      if (!["APPROVED", "REJECTED", "PAUSED"].includes(edited.status)) return this.err(400, 100, "OAuthException", { error_subcode: 2388084 });
+      const body = JSON.parse(String(init.body ?? "{}"));
+      if (Array.isArray(body.components)) edited.components = body.components;
+      edited.status = "PENDING";
+      delete edited.rejected_reason;
+      edited.reviewIn = this.reviewAfter;
+      this.editedTemplates.push(path);
+      return json(200, { success: true });
     }
 
     if (method === "POST" && path === `${this.phoneNumberId}/messages`) {

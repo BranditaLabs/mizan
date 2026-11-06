@@ -1,6 +1,7 @@
 import { BUYER_CANCEL_REASONS, type Money } from "@mizan/shared";
 import { PACK_REASONS, packReasonTitle, type ReasonItem, type Script } from "./script.js";
 import { firstName, greeting, money, offerLine, packOf, payNote, say, templateParam } from "./script/render.js";
+import { TEMPLATE_SPECS } from "./templates.js";
 
 export { money, offerLine };
 
@@ -51,15 +52,12 @@ const due = (f: MessageFacts) => (Number(f.cod.amount) > 0 ? f.cod : f.total);
 /** The IVR keeps the Egyptian greeting: its prompts are fixed until a voice vendor exists (E6-8). */
 const hello = (f: Pick<MessageFacts, "lang" | "firstName">) => (f.lang === "ar" ? (f.firstName ? `أهلاً ${f.firstName}` : "أهلاً بيك") : f.firstName ? `Hi ${f.firstName}` : "Hi");
 
-/** Approved per language in the store's WhatsApp account (E6-10). */
-export const templateName = (lang: "ar" | "en") => `mizan_order_confirm_${lang}`;
-export const TEMPLATES = [templateName("ar"), templateName("en")] as const;
-/** Quick replies in template button order. */
-export const TEMPLATE_ACTIONS = ["confirm", "change", "cancel"] as const;
-/** The approved templates as Meta shows them (M02 §Templates): read-only in the editor and the preview. */
+/** The first message's templates (E6-10, E6-16d): one catalogue in templates.ts. */
+export { TEMPLATE_ACTIONS, TEMPLATE_SPECS, TEMPLATE_VARIANTS, type TemplateVariant } from "./templates.js";
+/** Deprecated (E6-16d): the store-independent defaults (Egyptian Arabic, English); read TEMPLATE_SPECS per variant. */
 export const TEMPLATE_TEXT: Record<"ar" | "en", { body: string; buttons: readonly [string, string, string] }> = {
-  ar: { body: "{{1}} 👋\nأوردرك رقم {{3}} من {{2}} وصلنا.\nالإجمالي {{4}}.\nأكّد الأوردر عشان نجهّزه ونشحنه لك.", buttons: ["أكّد الأوردر", "عايز أعدّل", "ألغي الأوردر"] },
-  en: { body: "{{1}} 👋\nWe received your order {{3}} from {{2}}.\nTotal: {{4}}.\nPlease confirm so we can prepare and ship it.", buttons: ["Confirm order", "I want a change", "Cancel order"] },
+  ar: { body: TEMPLATE_SPECS.ar_egyptian.body, buttons: TEMPLATE_SPECS.ar_egyptian.buttons },
+  en: { body: TEMPLATE_SPECS.en.body, buttons: TEMPLATE_SPECS.en.buttons },
 };
 
 /** Template body parameters, in order: greeting, store, order number, amount (+ "on delivery"). Only the pack's greeting and the checked on_delivery flow in. */

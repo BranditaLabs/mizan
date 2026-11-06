@@ -15,6 +15,8 @@ export interface StoreMessaging {
   whatsapp: (MessagingProvider & Partial<WhatsAppChat>) | null;
   /** Its connection, for the transcript. */
   whatsappConnectionId: string | null;
+  /** E6-16d: the first-message templates' review states in its account (`config.templates`, name to Meta status); null when not checked. */
+  whatsappTemplates: Record<string, string> | null;
   /** Automated calls (E6-8): none until a voice vendor is chosen. */
   voice: MessagingProvider | null;
 }
@@ -24,6 +26,13 @@ export const canChat = (p: unknown): p is MessagingProvider & WhatsAppChat =>
   Boolean(p && typeof (p as WhatsAppChat).sendTemplate === "function" && typeof (p as WhatsAppChat).sendText === "function");
 
 const TTL_MS = 5 * 60_000;
+
+/** The stored review states (`config.templates`): name to Meta's status; null when never checked. */
+export function templatesOf(config: unknown): Record<string, string> | null {
+  const t = (config as { templates?: unknown } | null)?.templates;
+  if (!t || typeof t !== "object" || Array.isArray(t)) return null;
+  return Object.fromEntries(Object.entries(t as Record<string, unknown>).filter((e): e is [string, string] => typeof e[1] === "string"));
+}
 
 /**
  * Which messaging each store can use (E6-7, E6-10). WhatsApp comes from the store's own WhatsApp
@@ -68,19 +77,21 @@ export class MessagingRegistry {
       if (!c?.secret_ref || !c.external_account) return null;
       const key = `${c.id}:${c.updated_at.getTime()}`;
       const hit = this.cache.get(tenantId);
-      if (hit && hit.key === key && Date.now() - hit.at < TTL_MS) return { id: c.id, whatsapp: hit.whatsapp };
+      const templates = templatesOf(c.config);
+      if (hit && hit.key === key && Date.now() - hit.at < TTL_MS) return { id: c.id, whatsapp: hit.whatsapp, templates };
       const secret = JSON.parse((await this.secrets.read(t, tenantId, c.secret_ref)).reveal()) as { accessToken?: string };
       const wabaId = (c.config as { wabaId?: unknown } | null)?.wabaId;
       if (!secret.accessToken || typeof wabaId !== "string") return null;
       const whatsapp = this.connector(tenantId, { phoneNumberId: c.external_account, wabaId, accessToken: secret.accessToken });
       this.cache.set(tenantId, { at: Date.now(), key, whatsapp });
-      return { id: c.id, whatsapp };
+      return { id: c.id, whatsapp, templates };
     };
     const wa = trx ? await read(trx) : await this.db.tenant(tenantId, read);
     const vendor = this.vendor;
     return {
       whatsapp: wa?.whatsapp ?? (vendor?.channels.has("whatsapp") ? vendor : null),
       whatsappConnectionId: wa?.id ?? null,
+      whatsappTemplates: wa?.templates ?? null,
       voice: vendor?.channels.has("voice") ? vendor : null,
     };
   }
