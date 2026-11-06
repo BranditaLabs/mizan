@@ -6,10 +6,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { ConfirmDialog, Dialog } from "@/components/ui/Dialog";
-import { Field } from "@/components/ui/Field";
+import { Field, Select } from "@/components/ui/Field";
 import { SaveBar } from "@/components/ui/SaveBar";
 import { EmptyState, Skeleton, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
@@ -31,6 +32,8 @@ type Settings = Schemas["ConfirmationSettings"];
 interface Draft { settings: Settings; steps: FlowStep[] }
 const EDITORS = rolesWith("confirmation.manage");
 const PACKS = ["egyptian", "formal", "gulf"] as const;
+type ArabicTemplate = NonNullable<Script["template"]>;
+const AR_TEMPLATES: readonly ArabicTemplate[] = ["ar_egyptian", "ar_formal", "ar_gulf"];
 const DEFAULT_SCRIPT: Script = { pack: "egyptian", texts: { ar: {}, en: {} } };
 const DEBOUNCE_MS = 350;
 const WIDE = "(min-width: 1280px)";
@@ -62,6 +65,7 @@ export function cleanScript(s: Script): Script {
  */
 export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrome> }) {
   const t = useTranslations("confirmationStudio");
+  const tt = useTranslations("confirmationSettings.whatsapp.templates");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -303,6 +307,28 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
           <span className="mz-label" id="studio-pack">{t("toolbar.pack")}</span>
           <Segmented label={t("toolbar.pack")} value={script.pack} onChange={(pack) => setScript((s) => ({ ...s, pack }))}
             options={PACKS.map((p) => ({ value: p, label: t(`packs.${p}`) }))} />
+          {script.pack === "gulf" ? <p className="mz-hint max-w-80" data-testid="gulf-hint">{t("toolbar.gulfHint")}</p> : null}
+        </div>
+        <div className="flex flex-col gap-1.5" data-testid="studio-template">
+          {/* E6-16d: the Arabic first message is the owner's choice; unset follows the wording style. */}
+          <Select label={tt("choice")} value={script.template ?? ""} style={{ inlineSize: "13rem" }}
+            onChange={(e) => {
+              const v = e.target.value;
+              setScript((cur) => {
+                const next = { ...cur };
+                delete next.template;
+                return (AR_TEMPLATES as readonly string[]).includes(v) ? { ...next, template: v as ArabicTemplate } : next;
+              });
+            }}>
+            <option value="">{tt("follow")}</option>
+            {AR_TEMPLATES.map((v) => <option key={v} value={v}>{tt(`variant.${v}`)}</option>)}
+          </Select>
+          {preview.data?.template ? (
+            <span className="flex flex-wrap items-center gap-1.5 text-caption text-text-3">
+              <bdi dir="ltr" className="mz-num">{preview.data.template.name}</bdi>
+              <Badge tone={preview.data.template.status === "APPROVED" ? "success" : preview.data.template.status === "PENDING" ? "info" : "warning"}>{tt(`status.${preview.data.template.status}`)}</Badge>
+            </span>
+          ) : null}
         </div>
         <div className="flex flex-col gap-1.5">
           <span className="mz-label">{t("toolbar.language")}</span>

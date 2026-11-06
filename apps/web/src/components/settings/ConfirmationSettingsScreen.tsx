@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { SaveBar } from "@/components/ui/SaveBar";
 import { Switch } from "@/components/ui/Choice";
-import { Field } from "@/components/ui/Field";
+import { Field, Select } from "@/components/ui/Field";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ErrorState } from "@/components/ui/QueryState";
 import { useToast } from "@/components/ui/Toast";
@@ -19,6 +19,11 @@ import { useSession } from "@/lib/session";
 import { Link } from "@/i18n/navigation";
 
 type Settings = Schemas["ConfirmationSettings"];
+type Script = NonNullable<Settings["script"]>;
+type Template = NonNullable<Schemas["ConfirmationSettingsView"]["templates"]>[number];
+type ArabicChoice = NonNullable<Script["template"]>;
+const AR_CHOICES: readonly ArabicChoice[] = ["ar_egyptian", "ar_formal", "ar_gulf"];
+const DEFAULT_SCRIPT: Script = { pack: "egyptian", texts: { ar: {}, en: {} } };
 const EDITORS = rolesWith("confirmation.manage");
 
 /**
@@ -36,6 +41,8 @@ export function ConfirmationSettingsScreen() {
     queryKey: ["confirmationSettings", user?.uid ?? "", store?.tenantId ?? ""],
     queryFn: () => ok(api.GET("/v1/settings/confirmation")),
     enabled: Boolean(store) && canEdit,
+    // E6-16d: while a submission is on its way (queued or retrying), and while Meta reviews a template, its state is read again now and then.
+    refetchInterval: (q) => (q.state.data?.templates?.some((x) => x.submitting) ? 10_000 : q.state.data?.templates?.some((x) => x.status === "PENDING") ? 30_000 : false),
   });
   const [draft, setDraft] = useState<Settings | null>(null);
   const save = useMutation({
@@ -82,7 +89,11 @@ export function ConfirmationSettingsScreen() {
         {!channels.whatsapp ? <p className="mt-3 text-body-sm text-text-2">{t("channels.none")}</p> : null}
       </Card>
 
-      <WhatsAppConnect />
+      <WhatsAppConnect templates={query.data.templates ?? []} choice={s.script?.template ?? null} onChoice={(template) => {
+        const rest = { ...(s.script ?? DEFAULT_SCRIPT) };
+        delete rest.template;
+        edit({ script: template ? { ...rest, template } : rest });
+      }} />
 
       <section className="mz-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center" data-testid="studio-card">
         <span className="grid size-11 shrink-0 place-items-center rounded-full bg-surface-sunk"><Icon name="scripts" size={20} /></span>
@@ -137,7 +148,7 @@ const WA_REASONS = ["token_refused", "token_lacks_permission", "template_pending
  * the background (the token works, the confirmation template is approved). Owner and admin connect;
  * ops managers see the status and can ask for a new check.
  */
-function WhatsAppConnect() {
+function WhatsAppConnect({ templates, choice, onChoice }: { templates: Template[]; choice: ArabicChoice | null; onChoice(next: ArabicChoice | null): void }) {
   const t = useTranslations("confirmationSettings.whatsapp");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
@@ -193,7 +204,58 @@ function WhatsAppConnect() {
             {canConnect ? <Button size="sm" variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t("change")}</Button> : null}
           </ButtonGroup>
         ) : failed ? null : <p className="text-body-sm text-text-3">{t("ownerOnly")}</p>}
+        {wa ? <FirstMessage templates={templates} choice={choice} onChoice={onChoice} canSubmit={canConnect} /> : null}
       </div>
     </Card>
+  );
+}
+
+const TEMPLATE_TONE: Record<Template["status"], "success" | "info" | "danger" | "warning" | "neutral"> = {
+  APPROVED: "success", PENDING: "info", REJECTED: "danger", PAUSED: "warning", DISABLED: "warning", MISSING: "neutral", UNKNOWN: "neutral",
+};
+
+/**
+ * E6-16d: the first message's templates in the store's WhatsApp account, each with Meta's review
+ * state; the one orders get now is marked; owners and admins send one to Meta (MISSING or
+ * REJECTED). The Arabic choice is saved with the settings (script.template).
+ */
+function FirstMessage({ templates, choice, onChoice, canSubmit }: { templates: Template[]; choice: ArabicChoice | null; onChoice(next: ArabicChoice | null): void; canSubmit: boolean }) {
+  const t = useTranslations("confirmationSettings.whatsapp.templates");
+  const { api } = useSession();
+  const qc = useQueryClient();
+  const toast = useToast();
+  const refresh = () => { void qc.invalidateQueries({ queryKey: ["confirmationSettings"] }); };
+  const submit = useMutation({
+    mutationFn: (variant: Template["variant"]) => ok(api.POST("/v1/settings/confirmation/templates/{variant}/submit", { params: { path: { variant } } })),
+    onSuccess: (r) => {
+      toast({ message: t(r.queued ? "submitted" : "already") });
+      refresh(); // the job runs in the background: the row shows it on its way, polled until Meta answers
+    },
+  });
+  return (
+    <section className="flex flex-col gap-3 border-t border-line pt-4" data-testid="whatsapp-templates" aria-labelledby="wa-templates-title">
+      <h3 id="wa-templates-title" className="text-label">{t("title")}</h3>
+      <p className="text-body-sm text-text-2">{t("body")}</p>
+      <Select label={t("choice")} hint={t("choiceHint")} value={choice ?? ""} className="w-72"
+        onChange={(e) => onChoice((AR_CHOICES as readonly string[]).includes(e.target.value) ? (e.target.value as ArabicChoice) : null)}>
+        <option value="">{t("follow")}</option>
+        {AR_CHOICES.map((v) => <option key={v} value={v}>{t(`variant.${v}`)}</option>)}
+      </Select>
+      <ul className="flex flex-col divide-y divide-line">
+        {templates.map((x) => (
+          <li key={x.variant} className="flex flex-wrap items-center gap-2 py-2.5" data-testid={`template-${x.variant}`}>
+            <span className="min-w-0 flex-1">
+              <span className="block font-medium">{t(`variant.${x.variant}`)}</span>
+              <bdi dir="ltr" className="mz-num text-caption text-text-3">{x.name}</bdi>
+            </span>
+            {x.submitting ? <Badge tone="info">{t("submitting")}</Badge> : <Badge tone={TEMPLATE_TONE[x.status]}>{t(`status.${x.status}`)}</Badge>}
+            {x.effective ? <Badge tone="ink">{t("inUse")}</Badge> : null}
+            {x.submittable && canSubmit ? (
+              <Button size="sm" variant="secondary" icon="send" busy={submit.isPending && submit.variables === x.variant} onClick={() => submit.mutate(x.variant)}>{t("submit")}</Button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

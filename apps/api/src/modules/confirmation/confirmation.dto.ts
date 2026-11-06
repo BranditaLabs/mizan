@@ -3,6 +3,7 @@ import { z } from "zod";
 import { OfferViewSchema } from "./offers/offers.dto.js";
 import { AUTOMATED_CHANNELS, ConfirmationSettingsSchema } from "./confirmation.settings.js";
 import { ANSWER_CHANNELS, ROUTES } from "./analytics.js";
+import { TEMPLATE_STATUSES, TEMPLATE_VARIANTS } from "./templates.js";
 import { IssueSchema, KEY_KINDS, PACKS, ReasonItemSchema, SCRIPT_GROUPS, SCRIPT_KEYS, ScriptDraftSchema, VARIABLES } from "./script.js";
 
 export const ChannelsSchema = z.object({
@@ -10,9 +11,20 @@ export const ChannelsSchema = z.object({
   call_auto: z.boolean().describe("A vendor for automated calls is connected"),
   call_team: z.literal(true).describe("The store's team can always call"),
 }).describe("Channels the store can use for confirmation");
+/** E6-16d: each first-message template in the store's WhatsApp account, as Meta last reported it. */
+export const TemplateStateSchema = z.object({
+  variant: z.enum(TEMPLATE_VARIANTS),
+  name: z.string().describe("The name in the store's WhatsApp account"),
+  lang: z.enum(["ar", "en"]),
+  status: z.enum(TEMPLATE_STATUSES).describe("Meta's review state; MISSING: not in the account; UNKNOWN: no number connected or not checked yet"),
+  effective: z.boolean().describe("What the store's orders get now (the chosen one, or the approved fallback)"),
+  submittable: z.boolean().describe("Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way)"),
+  submitting: z.boolean().describe("A submission is queued or retrying (its job is pending or running); Meta has not answered it yet"),
+});
 export const ConfirmationSettingsViewSchema = z.object({
   settings: ConfirmationSettingsSchema,
   channels: ChannelsSchema,
+  templates: z.array(TemplateStateSchema).optional().describe("E6-16d: the first-message templates and their review state"),
   scriptIssues: z.array(IssueSchema).optional().describe("E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it."),
 });
 
@@ -179,6 +191,16 @@ export const ScriptPreviewSchema = z.object({
   conversations: z.array(z.object({ scenario: z.enum(PREVIEW_SCENARIOS), turns: z.array(TurnSchema) })).describe("One chat per scenario, the template first; offer_no: the buyer says no to the offer (E6-16b)"),
   call: z.array(z.string()).describe("The team's call script, line by line"),
   link: z.string().describe("The hand-sent WhatsApp message, with a placeholder link (never a real one)"),
+  template: z.object({
+    variant: z.enum(TEMPLATE_VARIANTS), name: z.string(), status: z.enum(TEMPLATE_STATUSES),
+  }).optional().describe("E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback)"),
+});
+
+/** E6-16d: a template sent to Meta for review. */
+export const TemplateSubmitSchema = z.object({
+  variant: z.enum(TEMPLATE_VARIANTS),
+  name: z.string(),
+  queued: z.boolean().describe("False when the same submission is already waiting (pressed twice)"),
 });
 export type ScriptPreview = z.output<typeof ScriptPreviewSchema>;
 
@@ -197,6 +219,9 @@ export const ScriptCatalogueSchema = z.object({
   maxReasons: z.number().int(),
   packTexts: z.record(z.enum(PACKS), PackTextsSchema).describe("Each pack's wording per language and key; a key absent is composed in code or optional"),
   packReasons: z.record(z.enum(PACKS), z.array(ReasonItemSchema)),
-  templateText: z.object({ ar: TemplateTextSchema, en: TemplateTextSchema }).describe("The Meta-approved templates: read-only"),
+  templateText: z.object({ ar: TemplateTextSchema, en: TemplateTextSchema }).describe("Deprecated (E6-16d): the default templates (Egyptian Arabic, English); read `templates`"),
+  templates: z.array(z.object({
+    variant: z.enum(TEMPLATE_VARIANTS), name: z.string().describe("The name in the store's WhatsApp account"), lang: z.enum(["ar", "en"]), body: z.string(), buttons: z.array(z.string()),
+  })).describe("E6-16d: every first-message template, read-only (Meta approves the wording)"),
 });
 export type ScriptCatalogue = z.output<typeof ScriptCatalogueSchema>;
