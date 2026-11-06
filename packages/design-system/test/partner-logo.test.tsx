@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { PartnerLogo } from "../logos/partners/react";
+
+const css = readFileSync(join(__dirname, "../css/components.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+const tokens = readFileSync(join(__dirname, "../dist/tokens.css"), "utf8").replace(/\r\n/g, "\n");
+/** The custom properties a theme scope in tokens.css sets for the partner faces. */
+const faces = (scope: string) => {
+  const at = tokens.indexOf(`${scope} {`);
+  const body = at < 0 ? "" : tokens.slice(at, tokens.indexOf("}", at));
+  return [...body.matchAll(/(--mz-partner-face-(?:light|dark)):\s*([a-z-]+);/g)].map((m) => `${m[1]}: ${m[2]}`);
+};
+/** The declarations of the first rule whose selector list is exactly `selector`. */
+const rule = (selector: string) => {
+  const esc = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s*");
+  return new RegExp(`(?:^|[}\\s])${esc}\\s*\\{([^}]*)\\}`).exec(css)?.[1]?.trim();
+};
 
 describe("<PartnerLogo>", () => {
   it("labels the mark with the brand's name, or hides it when the name is written next to it", () => {
@@ -22,10 +38,59 @@ describe("<PartnerLogo>", () => {
     expect(html).toContain('fill="#FFFFFF"');
   });
 
+  it("mono adds the colour mark on its tile for hover and focus (D8), colour does not", () => {
+    const mono = renderToStaticMarkup(<PartnerLogo slug="woocommerce" size={32} variant="mono" />);
+    expect(mono).toContain('data-scheme="hover"');
+    expect(mono).toContain('data-hover=""');
+    expect(mono).toContain('fill="#873EFF"');
+    const colour = renderToStaticMarkup(<PartnerLogo slug="woocommerce" size={32} />);
+    expect(colour).not.toContain('data-scheme="hover"');
+    expect(colour).not.toContain("data-hover");
+  });
+
+  it("an id the manifest does not know is named by the caller's label, not its raw id", () => {
+    const html = renderToStaticMarkup(<PartnerLogo slug="new_courier_x" size={32} locale="ar" label="شركة جديدة" />);
+    expect(html).toContain('aria-label="شركة جديدة"');
+    expect(html).not.toContain('aria-label="new_courier_x"');
+    // Manifest entries keep their own names whatever the label says.
+    expect(renderToStaticMarkup(<PartnerLogo slug="manual" size={32} locale="ar" label="x" />)).toContain('aria-label="يدوي"');
+  });
+
   it("a brand without a usable mark is a monogram tile, never a guessed glyph", () => {
     const html = renderToStaticMarkup(<PartnerLogo slug="bosta" size={32} />);
     expect(html).toContain("mz-partner-monogram");
     expect(html).toContain('aria-label="Bosta"');
     expect(html).not.toContain("<svg");
+  });
+});
+
+/**
+ * The face switch must follow the nearest data-theme, as the tokens do (a light pick list, label or
+ * dispute page inside a dark app): it is a custom property set on every theme scope, never a
+ * descendant-of-dark selector, which would show the white file on a light island.
+ */
+describe("partner face CSS", () => {
+  it("faces read a per-scope custom property, so a light island inside a dark root shows the light file", () => {
+    expect(rule('.mz-partner [data-scheme="light"]')).toBe("display: var(--mz-partner-face-light, inline-flex);");
+    expect(rule('.mz-partner [data-scheme="dark"]')).toBe("display: var(--mz-partner-face-dark, none);");
+    // Every scope that redefines the tokens also sets the faces: the island's own value wins by inheritance.
+    const light = ["--mz-partner-face-light: inline-flex", "--mz-partner-face-dark: none"];
+    const dark = ["--mz-partner-face-light: none", "--mz-partner-face-dark: inline-flex"];
+    expect(faces(':root, [data-theme="light"]')).toEqual(light);
+    expect(faces('[data-theme="dark"]')).toEqual(dark);
+    expect(faces(':root:not([data-theme="light"])')).toEqual(dark); // the system's dark, unless light was chosen
+    // No rule picks a face by a dark ancestor anywhere up the tree.
+    expect(css).not.toMatch(/\[data-theme="dark"\][^{}]*\.mz-partner[^{}]*\{/);
+    expect(css).not.toMatch(/:root:not\(\[data-theme="light"\]\)[^{}]*\.mz-partner[^{}]*\{/);
+  });
+
+  it("the hover face swaps in only on hover and focus, and never under reduced motion", () => {
+    expect(rule('.mz-partner [data-scheme="hover"]')).toBe("display: none;");
+    const block = /@media \(prefers-reduced-motion: no-preference\)\s*\{([\s\S]*?\})\s*\}/.exec(css)?.[1] ?? "";
+    expect(block).toContain('.mz-partner:is(:hover, :focus-within) > [data-scheme="hover"]');
+    expect(block).toContain('.mz-partner[data-hover]:is(:hover, :focus-within) > .mz-partner-face:not([data-scheme="hover"])');
+    expect(block).not.toMatch(/transition|animation|transform/);
+    const outside = css.replace(block, "");
+    expect(outside).not.toMatch(/:hover[^{}]*data-scheme="hover"/);
   });
 });

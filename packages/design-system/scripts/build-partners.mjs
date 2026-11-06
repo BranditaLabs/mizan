@@ -26,8 +26,8 @@ for (const e of manifest.partners) {
   }
 }
 
-const partners = manifest.partners.map(({ slug, kind, nameEn, nameAr, source, guideUrl, allowedVariants, minPx, clearSpace, hasDark, monogram, monogramText, textOnly, aliases, guideCheckedAt }) =>
-  ({ slug, kind, nameEn, nameAr, source, guideUrl, allowedVariants, minPx, clearSpace, hasDark, monogram, ...(monogramText ? { monogramText } : {}), ...(textOnly ? { textOnly } : {}), ...(aliases ? { aliases } : {}), guideCheckedAt }));
+const partners = manifest.partners.map(({ slug, kind, nameEn, nameAr, source, guideUrl, allowedVariants, minPx, clearSpace, hasDark, monogram, monogramText, textOnly, aliases, guideCheckedAt, permission }) =>
+  ({ slug, kind, nameEn, nameAr, source, guideUrl, allowedVariants, minPx, clearSpace, hasDark, monogram, ...(monogramText ? { monogramText } : {}), ...(textOnly ? { textOnly } : {}), ...(aliases ? { aliases } : {}), guideCheckedAt, ...(permission ? { permission } : {}) }));
 
 writeFileSync(join(dir, "data.ts"), `/* Generated from logos/partners/partners.json and its SVG files by scripts/build-partners.mjs. Do not edit. */
 import type { PartnerEntry, PartnerMark } from "./types";

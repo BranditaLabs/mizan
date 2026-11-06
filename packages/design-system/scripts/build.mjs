@@ -47,6 +47,9 @@ function colorVars(theme) {
 const isThemed = (s) => s.includes("var(");
 const themedShadows = () => entries(T.shadow).filter(([, s]) => isThemed(s)).map(([k, s]) => `\n  --mz-shadow-${k}: ${s};`).join("");
 const vizVars = (theme) => T.viz[theme].map((c, i) => `  --mz-viz-${i + 1}: ${c};`).join("\n");
+// Which one-colour partner logo face shows (css/components.css .mz-partner): set with each theme, so
+// the nearest data-theme wins and a light island inside a dark page shows the light file.
+const partnerFaceVars = (theme) => `  --mz-partner-face-light: ${theme === "light" ? "inline-flex" : "none"};\n  --mz-partner-face-dark: ${theme === "light" ? "none" : "inline-flex"};`;
 
 const staticVars = [
   ...entries(T.brand).map(([k, o]) => `  --mz-brand-${kebab(k)}: ${v(o)};`),
@@ -88,6 +91,7 @@ ${staticVars}
   color-scheme: light;
 ${colorVars("light")}
 ${vizVars("light")}
+${partnerFaceVars("light")}
 }
 
 /* Dark theme: explicit */
@@ -95,6 +99,7 @@ ${vizVars("light")}
   color-scheme: dark;
 ${colorVars("dark")}
 ${vizVars("dark")}
+${partnerFaceVars("dark")}
 }
 
 /* Dark theme: follow the system unless the user chose light */
@@ -103,6 +108,7 @@ ${vizVars("dark")}
     color-scheme: dark;
 ${colorVars("dark").replace(/^/gm, "  ")}
 ${vizVars("dark").replace(/^/gm, "  ")}
+${partnerFaceVars("dark").replace(/^/gm, "  ")}
   }
 }
 

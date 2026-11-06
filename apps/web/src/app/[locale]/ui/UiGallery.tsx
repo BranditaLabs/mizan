@@ -258,7 +258,7 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
 
 /**
  * Every partner in the manifest, by kind: colour at 96px, or at the smallest size its guide allows
- * the mark (Shopify: 80px mark + ½ S each side = 160px), then one colour and small, which may be monograms.
+ * the mark (partnerMarkMinSize), then one colour (colour on hover and focus) and small, which may be monograms.
  */
 function PartnerLogos() {
   const t = useTranslations("partnerLogos");

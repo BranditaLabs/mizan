@@ -22,7 +22,7 @@ const VARIANT_FILE = { color: (s) => `${s}.svg`, black: (s) => `${s}-black.svg`,
 const CATALOGUE = [
   "shopify", "woocommerce", "wordpress", "salla", "zid", "youcan", "easyorders", "lightfunnels",
   "amazon", "noon", "jumia",
-  "bosta", "jt", "mylerz", "aramex", "smsa", "spl", "aymakan", "r2s", "dhl", "fedex", "ups",
+  "bosta", "jt", "mylerz", "aramex", "smsa", "spl", "aymakan", "r2s", "dhl", "fedex", "ups", "manual", "other",
   "paymob", "kashier", "fawry", "geidea", "moyasar", "tap", "hyperpay", "valu", "tabby", "tamara", "checkoutcom",
   "instapay", "vodafonecash", "stripe", "paypal", "visa", "mastercard", "applepay", "googlepay",
   "whatsapp", "whatsapp_cloud", "meta_whatsapp", "meta", "facebook", "instagram", "tiktok", "snapchat", "google", "googleads", "microsoft", "x",
@@ -76,8 +76,21 @@ describe("partner manifest", () => {
   });
 
   it("brands whose guide asks for their own artwork never ship a simple-icons path", () => {
-    for (const slug of ["whatsapp", "applepay", "meta", "facebook", "instagram"]) expect(partnerBySlug(slug).monogram, slug).toBe(true);
-    expect(partnerBySlug("stripe").allowedVariants).not.toContain("black"); // Stripe: slate/blurple or white only
+    // Stripe's guide covers its wordmark (and a checkout badge), not simple-icons' S glyph.
+    for (const slug of ["whatsapp", "applepay", "meta", "facebook", "instagram", "stripe"]) {
+      expect(partnerBySlug(slug).monogram, slug).toBe(true);
+      for (const s of [16, 48, 320]) expect(planPartnerLogo(slug, s, "mono").kind, slug).toBe("monogram");
+    }
+    expect(partnerBySlug("stripe").guideCheckedAt).toBeNull();
+    expect(svgs.filter((f) => f.startsWith("stripe"))).toEqual([]);
+  });
+
+  it("a guide that asks for written permission keeps the brand a monogram until it is granted", () => {
+    for (const e of P.filter((p) => !p.monogram)) expect(e.permission, e.slug).toMatch(/^(not-required|required|granted:\d{4}-\d{2}-\d{2})$/);
+    expect(partnerBySlug("shopify").permission).toBe("required"); // "use must be authorized in writing"
+    for (const e of P.filter((p) => p.permission !== "not-required" && !/^granted:/.test(p.permission ?? ""))) {
+      for (const s of [16, 48, 96, 160, 320, 640]) for (const v of ["color", "mono"]) expect(planPartnerLogo(e.slug, s, v).kind, `${e.slug} ${s} ${v}`).not.toBe("mark");
+    }
   });
 
   it("no mark is drawn before someone has read the brand's guide (guideCheckedAt)", () => {
@@ -97,11 +110,7 @@ describe("partner manifest", () => {
     // simple-icons draws Shopify's bag as one green path; the real full-colour mark is two greens with a white S.
     expect(partnerBySlug("shopify").allowedVariants).not.toContain("color");
     expect(existsSync(join(dir, "shopify.svg"))).toBe(false);
-    const p = planPartnerLogo("shopify", 160);
-    // Colour asked for: the black file on the light tile in both themes. Mono: black, then white by theme.
-    expect([p.kind, p.light.variant, p.light.tile, p.dark.variant, p.dark.tile]).toEqual(["mark", "black", true, "black", true]);
-    const m = planPartnerLogo("shopify", 160, "mono");
-    expect([m.light.variant, m.light.tile, m.dark.variant, m.dark.tile]).toEqual(["black", false, "white", false]);
+    expect(partnerBySlug("shopify").allowedVariants).toEqual(["black", "white"]);
   });
 
   it("monograms are distinct within a kind, so a picker or a table can tell them apart", () => {
@@ -146,21 +155,22 @@ describe("planPartnerLogo", () => {
     const m = planPartnerLogo("woocommerce", 40, "mono");
     expect([m.light.variant, m.light.tile, m.dark.variant, m.dark.tile]).toEqual(["black", false, "white", false]);
   });
-  it("mono falls back to colour on a tile where the guide allows no black (Stripe)", () => {
-    const m = planPartnerLogo("stripe", 40, "mono");
-    expect([m.light.variant, m.light.tile, m.dark.variant]).toEqual(["color", true, "white"]);
+  it("mono at rest shows the colour mark on its tile on hover and focus, where a colour file exists (D8)", () => {
+    const m = planPartnerLogo("woocommerce", 40, "mono");
+    expect([m.hover.variant, m.hover.tile]).toEqual(["color", true]);
+    expect(planPartnerLogo("woocommerce", 40).hover).toBeUndefined(); // colour already
   });
   it("keeps the guide's minimum size: below it, a monogram", () => {
-    expect(planPartnerLogo("shopify", 40).kind).toBe("monogram"); // Shopify: not below 80px
-    const big = planPartnerLogo("shopify", 160);
-    expect(big.kind).toBe("mark");
-    expect(big.markPx).toBeGreaterThanOrEqual(80);
-    expect(big.markPx + 2 * big.padPx).toBe(160);
-    expect(big.padPx).toBe(Math.round(160 * 0.5 / 2)); // ½ S of clear space on each side
+    const woo = partnerBySlug("woocommerce");
+    expect(planPartnerLogo("woocommerce", 23).kind).toBe("monogram"); // mark under its 16px minimum
+    const p = planPartnerLogo("woocommerce", 24);
+    expect(p.kind).toBe("mark");
+    expect(p.markPx).toBeGreaterThanOrEqual(woo.minPx);
+    expect(p.markPx + 2 * p.padPx).toBe(24);
+    expect(p.padPx).toBe(Math.round(24 * woo.clearSpace / (1 + 2 * woo.clearSpace)));
   });
   it("partnerMarkMinSize is the first size that draws the mark (the /ui gallery uses it)", () => {
-    expect(partnerMarkMinSize("shopify")).toBe(160);
-    expect(planPartnerLogo("shopify", 159).kind).toBe("monogram");
+    expect(partnerMarkMinSize("shopify")).toBeUndefined(); // written permission pending
     expect(partnerMarkMinSize("woocommerce")).toBe(24);
     expect(partnerMarkMinSize("bosta")).toBeUndefined();
     expect(partnerMarkMinSize("wordpress")).toBeUndefined();
@@ -175,5 +185,14 @@ describe("planPartnerLogo", () => {
     expect(planPartnerLogo("whatsapp_cloud", 32)).toMatchObject({ kind: "monogram", name: "WhatsApp" });
     expect(planPartnerLogo("unheard-of", 32)).toMatchObject({ kind: "monogram", text: "U", name: "unheard-of" });
     expect(planPartnerLogo("zatca", 32, "color", "ar")).toMatchObject({ kind: "text" });
+    // An id the manifest does not know takes the caller's localized label, not the raw id.
+    expect(planPartnerLogo("unheard-of", 32, "mono", "ar", "شركة جديدة")).toMatchObject({ kind: "monogram", name: "شركة جديدة" });
+  });
+  it("couriers without an API and other couriers have their own names and monograms, not Mylerz's M", () => {
+    expect(planPartnerLogo("manual", 32, "color", "ar")).toMatchObject({ kind: "monogram", name: "يدوي" });
+    expect(planPartnerLogo("other", 32, "color", "ar")).toMatchObject({ kind: "monogram", name: "شركة تانية" });
+    expect(planPartnerLogo("other", 32)).toMatchObject({ name: "Other courier" });
+    const m = planPartnerLogo("mylerz", 32).text;
+    expect([planPartnerLogo("manual", 32).text, planPartnerLogo("other", 32).text]).not.toContain(m);
   });
 });

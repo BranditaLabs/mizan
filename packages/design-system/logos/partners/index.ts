@@ -6,7 +6,7 @@ import { MARKS, PARTNERS, SIMPLE_ICONS_VERSION } from "./data";
 import type { PartnerEntry, PartnerMark, PartnerVariant } from "./types";
 
 export { MARKS, PARTNERS, SIMPLE_ICONS_VERSION };
-export type { PartnerEntry, PartnerKind, PartnerMark, PartnerVariant } from "./types";
+export type { PartnerEntry, PartnerKind, PartnerMark, PartnerPermission, PartnerVariant } from "./types";
 
 const BY_SLUG = new Map<string, PartnerEntry>();
 for (const p of PARTNERS) {
@@ -21,29 +21,40 @@ export const partnerBySlug = (slug: string): PartnerEntry | undefined => BY_SLUG
 export type PartnerFace = { mark: PartnerMark; variant: PartnerVariant; tile: boolean };
 
 export type PartnerLogoPlan =
-  | { kind: "mark"; entry: PartnerEntry; name: string; light: PartnerFace; dark: PartnerFace; markPx: number; padPx: number }
+  /** hover: mono only, the colour mark on its tile shown on hover and focus (owner decision D8). */
+  | { kind: "mark"; entry: PartnerEntry; name: string; light: PartnerFace; dark: PartnerFace; hover?: PartnerFace; markPx: number; padPx: number }
   | { kind: "monogram"; entry: PartnerEntry | undefined; text: string; name: string }
   | { kind: "text"; entry: PartnerEntry; name: string };
 
 /** "color" (default): full colour on a neutral tile, where recognition matters (owner decision D8). "mono": dense tables, chips and the landing. */
 export type PartnerLogoVariant = "color" | "mono";
 
-const nameOf = (entry: PartnerEntry | undefined, slug: string, locale: "ar" | "en") => entry ? (locale === "ar" ? entry.nameAr : entry.nameEn) : slug;
-const initial = (entry: PartnerEntry | undefined, slug: string) => entry?.monogramText ?? (entry?.nameEn ?? slug).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase();
+/** An id missing from the manifest is named by the caller's localized label; the raw id is the last resort. */
+const nameOf = (entry: PartnerEntry | undefined, slug: string, locale: "ar" | "en", label?: string) =>
+  entry ? (locale === "ar" ? entry.nameAr : entry.nameEn) : (label?.trim() || slug);
+const latinInitial = (s: string) => s.replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase();
+const initial = (entry: PartnerEntry | undefined, slug: string, label?: string) =>
+  entry?.monogramText ?? (entry ? latinInitial(entry.nameEn) : (label?.trim().charAt(0) || latinInitial(slug)).toUpperCase());
+
+/** The guide's written-permission demand is met: not asked for, or granted on a recorded date. */
+export const partnerPermissionMet = (entry: PartnerEntry): boolean =>
+  entry.permission === "not-required" || /^granted:\d{4}-\d{2}-\d{2}$/.test(entry.permission ?? "");
 
 /**
  * Decides what PartnerLogo draws. A mark ships only when the entry has a guide link that someone
- * has read (guideCheckedAt), allowed variants and a minimum size, and only if the mark (size minus clear space) is at least that
+ * has read (guideCheckedAt), the written permission the guide asks for (permission), allowed
+ * variants and a minimum size, and only if the mark (size minus clear space) is at least that
  * minimum; otherwise a monogram tile. Marks are never recoloured: "mono" picks the brand's own
  * black/white file only where allowedVariants lists it, else the colour mark on a light tile.
+ * label names an id the manifest does not know (in the reader's language).
  */
-export function planPartnerLogo(slug: string, size: number, variant: PartnerLogoVariant = "color", locale: "ar" | "en" = "en"): PartnerLogoPlan {
+export function planPartnerLogo(slug: string, size: number, variant: PartnerLogoVariant = "color", locale: "ar" | "en" = "en", label?: string): PartnerLogoPlan {
   const entry = partnerBySlug(slug);
-  const name = nameOf(entry, slug, locale);
+  const name = nameOf(entry, slug, locale, label);
   if (entry?.textOnly) return { kind: "text", entry, name };
-  const monogram = (): PartnerLogoPlan => ({ kind: "monogram", entry, text: initial(entry, slug), name });
+  const monogram = (): PartnerLogoPlan => ({ kind: "monogram", entry, text: initial(entry, slug, label), name });
   const marks = entry ? MARKS[entry.slug] : undefined;
-  if (!entry || entry.monogram || !marks || !entry.guideUrl || !entry.guideCheckedAt || entry.allowedVariants.length === 0 || !entry.minPx) return monogram();
+  if (!entry || entry.monogram || !marks || !entry.guideUrl || !entry.guideCheckedAt || !partnerPermissionMet(entry) || entry.allowedVariants.length === 0 || !entry.minPx) return monogram();
 
   const padPx = Math.round(size * entry.clearSpace / (1 + 2 * entry.clearSpace));
   const markPx = size - 2 * padPx;
@@ -57,7 +68,10 @@ export function planPartnerLogo(slug: string, size: number, variant: PartnerLogo
   if (variant === "color") return { kind: "mark", entry, name, light: onTile, dark: face("on-dark", false) ?? onTile, markPx, padPx };
   const light = face("black", false) ?? onTile;
   const dark = face("on-dark", false) ?? face("white", false) ?? onTile;
-  return { kind: "mark", entry, name, light, dark, markPx, padPx };
+  // One colour at rest, the colour mark on its tile on hover and focus (D8), where a colour file exists.
+  const colour = face("color", true);
+  const hover = colour && (light !== onTile || dark !== onTile) ? colour : undefined;
+  return { kind: "mark", entry, name, light, dark, ...(hover ? { hover } : {}), markPx, padPx };
 }
 
 /**

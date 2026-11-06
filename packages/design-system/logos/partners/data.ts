@@ -20,7 +20,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "hasDark": true,
     "monogram": false,
     "monogramText": "Sh",
-    "guideCheckedAt": "2026-11-06"
+    "guideCheckedAt": "2026-11-06",
+    "permission": "required"
   },
   {
     "slug": "woocommerce",
@@ -39,7 +40,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "hasDark": true,
     "monogram": false,
     "monogramText": "Wo",
-    "guideCheckedAt": "2026-11-06"
+    "guideCheckedAt": "2026-11-06",
+    "permission": "not-required"
   },
   {
     "slug": "wordpress",
@@ -58,7 +60,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "hasDark": true,
     "monogram": false,
     "monogramText": "WP",
-    "guideCheckedAt": null
+    "guideCheckedAt": null,
+    "permission": "required"
   },
   {
     "slug": "salla",
@@ -340,6 +343,36 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "guideCheckedAt": null
   },
   {
+    "slug": "manual",
+    "kind": "courier",
+    "nameEn": "Manual",
+    "nameAr": "يدوي",
+    "source": "monogram",
+    "guideUrl": null,
+    "allowedVariants": [],
+    "minPx": 16,
+    "clearSpace": 0.25,
+    "hasDark": false,
+    "monogram": true,
+    "monogramText": "Ma",
+    "guideCheckedAt": null
+  },
+  {
+    "slug": "other",
+    "kind": "courier",
+    "nameEn": "Other courier",
+    "nameAr": "شركة تانية",
+    "source": "monogram",
+    "guideUrl": null,
+    "allowedVariants": [],
+    "minPx": 16,
+    "clearSpace": 0.25,
+    "hasDark": false,
+    "monogram": true,
+    "monogramText": "…",
+    "guideCheckedAt": null
+  },
+  {
     "slug": "paymob",
     "kind": "payment",
     "nameEn": "Paymob",
@@ -537,15 +570,13 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "nameAr": "سترايب",
     "source": "simple-icons@16.35.0",
     "guideUrl": "https://stripe.com/newsroom/brand-assets",
-    "allowedVariants": [
-      "color",
-      "white"
-    ],
+    "allowedVariants": [],
     "minPx": 16,
     "clearSpace": 0.25,
-    "hasDark": true,
-    "monogram": false,
-    "guideCheckedAt": "2026-11-06"
+    "hasDark": false,
+    "monogram": true,
+    "monogramText": "St",
+    "guideCheckedAt": null
   },
   {
     "slug": "paypal",
@@ -769,7 +800,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": true,
     "monogram": false,
-    "guideCheckedAt": null
+    "guideCheckedAt": null,
+    "permission": "required"
   },
   {
     "slug": "zatca",
@@ -862,26 +894,6 @@ export const MARKS: Readonly<Record<string, Partial<Record<"color" | "black" | "
       "paths": [
         {
           "d": "M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.026-.78-.07-1.11m-7.981.105c.647-.03 1.232-.105 1.232-.105.582-.075.514-.93-.067-.899 0 0-1.755.135-2.88.135-1.064 0-2.85-.15-2.85-.15-.585-.03-.661.855-.075.885 0 0 .54.061 1.125.09l1.68 4.605-2.37 7.08L5.354 6.9c.649-.03 1.234-.1 1.234-.1.585-.075.516-.93-.065-.896 0 0-1.746.138-2.874.138-.2 0-.438-.008-.69-.015C4.911 3.15 8.235 1.215 12 1.215c2.809 0 5.365 1.072 7.286 2.833-.046-.003-.091-.009-.141-.009-1.06 0-1.812.923-1.812 1.914 0 .89.513 1.643 1.06 2.531.411.72.89 1.643.89 2.977 0 .915-.354 1.994-.821 3.479l-1.075 3.585-3.9-11.61.001.014zM12 22.784c-1.059 0-2.081-.153-3.048-.437l3.237-9.406 3.315 9.087c.024.053.05.101.078.149-1.12.393-2.325.609-3.582.609M1.211 12c0-1.564.336-3.05.935-4.39L7.29 21.709C3.694 19.96 1.212 16.271 1.211 12M12 0C5.385 0 0 5.385 0 12s5.385 12 12 12 12-5.385 12-12S18.615 0 12 0",
-          "fill": "#FFFFFF"
-        }
-      ]
-    }
-  },
-  "stripe": {
-    "color": {
-      "viewBox": "0 0 24 24",
-      "paths": [
-        {
-          "d": "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z",
-          "fill": "#635BFF"
-        }
-      ]
-    },
-    "white": {
-      "viewBox": "0 0 24 24",
-      "paths": [
-        {
-          "d": "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z",
           "fill": "#FFFFFF"
         }
       ]

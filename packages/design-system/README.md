@@ -117,7 +117,7 @@ import { PartnerLogo } from "@mizan/design-system/partners/react"; // in apps/we
 <PartnerLogo slug="bosta" size={32} />                       // no usable mark yet: a monogram tile
 ```
 
-Marks are copied, never drawn: simple-icons paths at the version pinned in `partners.json`, or a partner's press-kit file. An entry ships a mark only with `guideUrl`, `guideCheckedAt` (the date someone read the guide), `allowedVariants` and `minPx`; a size under the guide's minimum falls back to the monogram (`partnerMarkMinSize(slug)` gives the smallest size that draws the mark). Monograms are distinct within a kind (`monogramText`: Tp/Tb/Tm, Pm/PP …). To refresh: `npm pack simple-icons@<version>` in a scratch folder, `npm run import:partners -w @mizan/design-system -- <folder>/package`, `npm run check:partners -w @mizan/design-system` (network, or pass the folder), then build.
+Marks are copied, never drawn: simple-icons paths at the version pinned in `partners.json`, or a partner's press-kit file. An entry ships a mark only with `guideUrl`, `guideCheckedAt` (the date someone read the guide), `permission` (`"not-required"` or `"granted:<date>"`; `"required"` while a guide's written OK is pending, as for Shopify), `allowedVariants` and `minPx`; a size under the guide's minimum falls back to the monogram (`partnerMarkMinSize(slug)` gives the smallest size that draws the mark). Monograms are distinct within a kind (`monogramText`: Tp/Tb/Tm, Pm/PP …). To refresh: `npm pack simple-icons@<version>` in a scratch folder, `npm run import:partners -w @mizan/design-system -- <folder>/package`, `npm run check:partners -w @mizan/design-system` (network, or pass the folder), then build.
 
 ## Changing the system
 
