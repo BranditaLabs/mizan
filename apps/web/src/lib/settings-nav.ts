@@ -5,7 +5,7 @@ import { can, type Permission } from "@mizan/shared";
  * The settings pages (U4), grouped the way people look for them, each with the roles that can
  * open it, as a permission (U6; the same as the page and its API). The side menu and the /settings overview read it.
  */
-export type SettingsKey = "store" | "team" | "usage" | "audit" | "privacy" | "integrations" | "storeSync" | "orders" | "confirmation" | "offers"
+export type SettingsKey = "store" | "team" | "usage" | "audit" | "privacy" | "integrations" | "storeSync" | "orders" | "confirmation" | "afterConfirmation" | "offers"
   | "costs" | "payments" | "refunds" | "inventory" | "purchasing";
 export type SettingsGroup = "brand" | "connections" | "orders" | "money" | "stock";
 
@@ -21,6 +21,7 @@ export const SETTINGS: readonly SettingsPage[] = [
   { key: "storeSync", href: "/settings/store-sync", group: "connections", icon: "sync", can: "connections.manage" },
   { key: "orders", href: "/settings/orders", group: "orders", icon: "orders", can: "orders.settings" },
   { key: "confirmation", href: "/settings/confirmation", group: "orders", icon: "verification", can: "confirmation.manage" },
+  { key: "afterConfirmation", href: "/settings/after-confirmation", group: "orders", icon: "shipping", can: "confirmation.manage" },
   { key: "offers", href: "/settings/offers", group: "orders", icon: "discount", can: "offers.manage" },
   { key: "costs", href: "/settings/costs", group: "money", icon: "profit", can: "profit.read" },
   { key: "payments", href: "/settings/payments", group: "money", icon: "payments", can: "payments.settings.read" },

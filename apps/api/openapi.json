@@ -31101,6 +31101,78 @@
             ],
             "additionalProperties": false
           },
+          "after": {
+            "type": "object",
+            "properties": {
+              "heldUntil": {
+                "nullable": true,
+                "description": "Off packing and ready-to-ship until then (a customer's message: until a person releases it)",
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "holdReason": {
+                "nullable": true,
+                "type": "string",
+                "enum": [
+                  "grace",
+                  "customer_message"
+                ]
+              },
+              "followups": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "release",
+                        "no_answer_cancel"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "done",
+                        "skipped",
+                        "blocked",
+                        "dead"
+                      ]
+                    },
+                    "at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    },
+                    "result": {
+                      "nullable": true,
+                      "description": "A code: ready, released, by_team, setting_off, a blocked reason, cancelled…",
+                      "type": "string"
+                    },
+                    "autoBook": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "status",
+                    "at",
+                    "result",
+                    "autoBook"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "heldUntil",
+              "holdReason",
+              "followups"
+            ],
+            "additionalProperties": false
+          },
           "channels": {
             "type": "object",
             "properties": {
@@ -31137,6 +31209,7 @@
           "optedOut",
           "script",
           "offer",
+          "after",
           "channels"
         ],
         "additionalProperties": false

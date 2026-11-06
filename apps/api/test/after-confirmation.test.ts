@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { chatContent } from "../src/modules/confirmation/messages.js";
 import { afterConfirmationSettings, AfterConfirmationSchema, DEFAULT_AFTER, type AfterConfirmation } from "@mizan/shared";
 import { autoBookIntent, decideNoAnswerCancel, decideRelease, MAX_DEFERRALS } from "../src/modules/confirmation/after/decide.js";
 
@@ -82,5 +83,24 @@ describe("cancelling an order nobody answered", () => {
     // After the team's own last call the caller is the one assigned: not someone holding it.
     expect(decideNoAnswerCancel({ settings: cancelling, stage: "team_calls", run: waiting, order: { ...fresh, assignedTo: "u-1" } })).toEqual({ cancel: true });
     expect(decideNoAnswerCancel({ settings: on((s) => { s.noAnswer.autoCancel.enabled = true; s.noAnswer.autoCancel.cancelIfAssigned = true; }), run: waiting, order: { ...fresh, assignedTo: "u-1" } })).toEqual({ cancel: true });
+  });
+});
+
+describe("the order summary after confirming (E6-23a)", () => {
+  const base = { lang: "en" as const, store: "Nile", firstName: "Mona", number: "#1042", cod: { amount: "1250.00", currency: "EGP" }, total: { amount: "1250.00", currency: "EGP" }, link: "", items: [{ title: "Abaya", quantity: 2 }], city: "Nasr City" };
+  it("lists the items, what the courier collects (from cashToCollect), the area and what comes next; never a phone or address", () => {
+    const text = (chatContent("confirmed", { ...base, summary: { due: { amount: "1000.00", currency: "EGP" } } }) as { text: string }).text;
+    expect(text).toContain("• 2× Abaya");
+    expect(text).toMatch(/Pay the courier: .*1,000/);
+    expect(text).toContain("📍 Nasr City");
+    expect(text).toContain("tracking number");
+    expect(text).not.toMatch(/\+?20\d{9,}|Abbas/);
+  });
+  it("paid says paid; unknown leaves the money out; no summary unless chosen; Arabic too", () => {
+    expect((chatContent("confirmed", { ...base, summary: { due: { amount: "0.00", currency: "EGP" } } }) as { text: string }).text).toContain("💳 Paid");
+    const unknown = (chatContent("confirmed", { ...base, summary: { due: null } }) as { text: string }).text;
+    expect(unknown).not.toMatch(/Pay the courier|Paid/);
+    expect((chatContent("confirmed", base) as { text: string }).text).not.toContain("•");
+    expect((chatContent("confirmed", { ...base, lang: "ar", summary: { due: { amount: "1000.00", currency: "EGP" } } }) as { text: string }).text).toContain("هتدفع للمندوب");
   });
 });

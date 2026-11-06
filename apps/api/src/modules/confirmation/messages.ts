@@ -23,6 +23,11 @@ export interface MessageFacts {
   offer?: OfferFacts | null;
   /** The store's script (E6-5): its wording wins over the built-in messages. */
   script?: Script;
+  /**
+   * E6-23a: the thank-you after a tap carries the order summary (items, what the courier collects,
+   * the area). `due`: from cashToCollect; zero is "paid"; null leaves the money line out. Never an address or phone.
+   */
+  summary?: { due: Money | null } | null;
 }
 
 export interface OfferFacts {
@@ -88,17 +93,29 @@ export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
   return `${o.title}${qty} for ${money(o.price, lang)}${o.was ? ` instead of ${money(o.was, lang)}` : ""}`;
 }
 
+/** The order summary after confirming (E6-23a): up to ten items, the money, the area, what comes next. */
+export function summaryBlock(f: MessageFacts): string {
+  if (!f.summary) return "";
+  const ar = f.lang === "ar";
+  const lines = (f.items ?? []).slice(0, 10).map((i) => `• ${i.quantity}× ${i.title}`);
+  const due = f.summary.due;
+  if (due) lines.push(Number(due.amount) > 0 ? (ar ? `💵 هتدفع للمندوب: ${money(due, "ar")}` : `💵 Pay the courier: ${money(due, "en")}`) : (ar ? "💳 مدفوع" : "💳 Paid"));
+  if (f.city) lines.push(ar ? `📍 ${f.city}` : `📍 ${f.city}`);
+  lines.push(ar ? "هنبعتلك رقم الشحنة أول ما يطلع." : "We'll send you the tracking number once it ships.");
+  return `\n\n${lines.join("\n")}`;
+}
+
 export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
   const ar = f.lang === "ar";
   const own = (key: ScriptKey) => { const t = scriptText(f.script, f.lang, key); return t ? render(t, f) : null; };
   switch (m) {
     case "confirmed":
-      return { type: "text", text: own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!`) };
+      return { type: "text", text: (own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!`)) + summaryBlock(f) };
     case "confirmed_offer": {
       const o = f.offer;
       if (!o) return chatContent("confirmed", f);
       const pitch = o.message ?? (ar ? `🎁 عرض ليك: ${stop(offerLine(o, "ar"))}` : `🎁 An offer for you: ${stop(offerLine(o, "en"))}`);
-      const head = own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`);
+      const head = (own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`)) + summaryBlock(f);
       return {
         type: "buttons",
         body: ar ? `${head}\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `${head}\n\n${pitch}\nShall we add it to the same order?`,

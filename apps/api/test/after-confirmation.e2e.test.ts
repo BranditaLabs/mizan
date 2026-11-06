@@ -114,6 +114,8 @@ describe("confirmed", () => {
     const row = await orderRow(id);
     expect(row).toMatchObject({ status: "confirmed", hold_reason: "grace", tags: ["mizan-ok"] });
     expect((await http().get("/v1/orders?shipping=ready").set(as("owner")).expect(200)).body.data.map((o: { id: string }) => o.id)).not.toContain(id);
+    const card = (await http().get(`/v1/orders/${id}/confirmation`).set(as("owner")).expect(200)).body.after;
+    expect(card).toMatchObject({ holdReason: "grace", heldUntil: expect.any(String), followups: [expect.objectContaining({ kind: "release", status: "pending", autoBook: true })] });
 
     const t0 = row.held_until!.getTime() - 30 * MIN;
     await runAt(new Date(t0 + 29 * MIN));
