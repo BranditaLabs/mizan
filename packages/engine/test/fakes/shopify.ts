@@ -1,7 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { signShopifyQuery } from "../../src/connectors/shopify/oauth.js";
 import { signShopify } from "../../src/connectors/shopify/webhooks.js";
+import { regionsOf } from "@mizan/shared";
 import { hang, json, type FakeClock } from "./clock.js";
+
+const gqlErrors = (graphqlErrors: unknown[]) => Object.assign(new Error("graphql errors"), { graphqlErrors });
+
+/** Shopify reads back a province's name, whatever code was written ("C" → "Cairo"). */
+const provinceName = (country: unknown, code: unknown) =>
+  typeof code === "string" ? regionsOf(String(country ?? "EG")).find((r) => r.code === code)?.en ?? code : null;
 
 /**
  * In-memory Shopify Admin GraphQL. Routes by operationName, keeps real
@@ -87,6 +94,17 @@ export class FakeShopify {
   creates = 0;
   /** orderCreate calls that made an order (a refused or adopted one is not counted). */
   orderCreates = 0;
+  /** The last orderCreate input (what Mizan sent), to check the customer and attributes. */
+  lastOrderCreate: Record<string, any> | undefined;
+  /** The app may create Storefront tokens and read the brand (unauthenticated_read_product_listings granted). */
+  storefrontScope = true;
+  /** Shopify refuses the customer upsert on orderCreate (as when the app may not write customers). */
+  refuseCustomerUpsert = false;
+  shop = { name: "Nile Abayas", myshopifyDomain: "nile-abayas.myshopify.com", ianaTimezone: "Africa/Cairo", country: "EG", url: "https://nileabayas.com" };
+  brand: { logo?: string; squareLogo?: string; color?: string } = { logo: "https://cdn.shopify.com/s/files/logo.png", squareLogo: "https://cdn.shopify.com/s/files/square.png", color: "#0a0a0a" };
+  readonly storefrontTokens: Array<{ id: string; title: string; accessToken: string }> = [];
+  storefrontTokenCreates = 0;
+  trackingUpdates = 0;
   /** Order metafields with a unique-values definition ("namespace.key"). */
   uniqueOrderFields = new Set<string>();
   variantCreates = 0;
@@ -373,6 +391,7 @@ export class FakeShopify {
 
   handler = async (url: URL, init: RequestInit): Promise<Response> => {
     if (url.pathname === "/admin/oauth/access_token") return this.oauth(init);
+    if (/^\/api\/[^/]+\/graphql\.json$/.test(url.pathname)) return this.storefront(init);
     const token = new Headers(init.headers).get("X-Shopify-Access-Token");
     if (token && this.revoked.has(token)) return json(401, { errors: "[API] Invalid API key or access token (unrecognized login or wrong password)" });
     if (token && this.nonExpiring.has(token)) {
@@ -425,6 +444,19 @@ export class FakeShopify {
     }
     return json(200, { data: this.drop(data), extensions: this.cost() }, headers);
   };
+
+  /** The Storefront API: the shop's brand, for a token this app made. */
+  private storefront(init: RequestInit): Response {
+    const token = new Headers(init.headers).get("X-Shopify-Storefront-Access-Token");
+    if (!token || !this.storefrontTokens.some((t) => t.accessToken === token)) return json(401, { errors: [{ message: "Unauthorized", extensions: { code: "UNAUTHORIZED" } }] });
+    const { query } = JSON.parse(String(init.body)) as { query: string };
+    const b = this.brand;
+    const brand = {
+      logo: b.logo ? { image: { url: b.logo } } : null, squareLogo: b.squareLogo ? { image: { url: b.squareLogo } } : null,
+      ...(query.includes("colors") ? { colors: { primary: b.color ? [{ background: b.color }] : [] } } : {}),
+    };
+    return json(200, { data: { shop: { brand } } });
+  }
 
   private nullFields(data: unknown, fields: Set<string>, remove = false): unknown {
     const clone = structuredClone(data);
@@ -587,6 +619,9 @@ export class FakeShopify {
         const known = new Set([...this.products.values()].flatMap((p) => p.variants.map((x) => x.id)));
         const missing = ((input.lineItems ?? []) as Array<{ variantId?: string }>).find((l) => l.variantId && !known.has(l.variantId));
         if (missing) return { orderCreate: { order: null, userErrors: [{ field: ["order", "lineItems", "0", "variantId"], message: `Variant ${missing.variantId} does not exist` }] } };
+        if (input.customer && this.refuseCustomerUpsert) {
+          return { orderCreate: { order: null, userErrors: [{ field: ["order", "customer", "toUpsert"], message: "Access denied to create customers" }] } };
+        }
         const id = this.nextId("Order");
         const now = this.touch();
         const lines = (input.lineItems as Array<{ variantId?: string; title?: string; sku?: string; quantity: number; priceSet: { shopMoney: { amount: string } } }>).map((l) => {
@@ -600,14 +635,34 @@ export class FakeShopify {
         const a = input.shippingAddress ?? {};
         this.orders.set(id, {
           id, name: input.name ?? `#${1000 + this.orders.size + 1}`, createdAt: now, updatedAt: now, cancelledAt: null, displayFinancialStatus: input.financialStatus ?? "PENDING",
-          paymentGatewayNames: Number(paid) > 0 ? ["Mizan"] : ["manual"], received: paid, refunded: "0.00", tags: input.tags ?? [], currencyCode: input.currency ?? "EGP", email: null, phone: input.phone ?? null, total,
-          shippingAddress: { name: `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim(), firstName: a.firstName, lastName: a.lastName, phone: a.phone ?? null, address1: a.address1, address2: a.address2 ?? null, city: a.city, province: a.provinceCode ?? null, zip: null, countryCodeV2: a.countryCode },
-          customer: null as unknown as Record<string, unknown>,
+          paymentGatewayNames: Number(paid) > 0 ? ["Mizan"] : ["manual"], received: paid, refunded: "0.00", tags: input.tags ?? [], currencyCode: input.currency ?? "EGP", email: input.email ?? null, phone: input.phone ?? null, total,
+          shippingAddress: { name: `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim(), firstName: a.firstName, lastName: a.lastName, phone: a.phone ?? null, address1: a.address1, address2: a.address2 ?? null, city: a.city, province: provinceName(a.countryCode, a.provinceCode), zip: null, countryCodeV2: a.countryCode },
+          customer: (input.customer?.toUpsert ? { id: this.nextId("Customer"), displayName: `${input.customer.toUpsert.firstName ?? ""} ${input.customer.toUpsert.lastName ?? ""}`.trim(), ...input.customer.toUpsert } : null) as unknown as Record<string, unknown>,
           lines, shippingLines: shipping, fulfillmentOrders: [{ id: this.nextId("FulfillmentOrder"), status: "OPEN" }], fulfillments: [],
           sourceIdentifier: input.sourceIdentifier ?? null, metafields: mf,
         });
         this.orderCreates++;
+        this.lastOrderCreate = input;
         return { orderCreate: { order: { id, name: this.orders.get(id)!.name }, userErrors: [] } };
+      }
+      case "MizanShopProfile":
+        return { shop: { name: this.shop.name, myshopifyDomain: this.shop.myshopifyDomain, currencyCode: this.currency, ianaTimezone: this.shop.ianaTimezone, billingAddress: { countryCodeV2: this.shop.country }, primaryDomain: { url: this.shop.url } } };
+      case "MizanStorefrontTokens":
+        if (!this.storefrontScope) throw gqlErrors([{ message: "Access denied for storefrontAccessTokens field. Required access: `unauthenticated_read_product_listings` access scope.", path: ["shop", "storefrontAccessTokens"], extensions: { code: "ACCESS_DENIED" } }]);
+        return { shop: { storefrontAccessTokens: { nodes: this.storefrontTokens } } };
+      case "MizanStorefrontTokenCreate": {
+        if (!this.storefrontScope) throw gqlErrors([{ message: "Access denied for storefrontAccessTokenCreate field.", extensions: { code: "ACCESS_DENIED" } }]);
+        const t = { id: this.nextId("StorefrontAccessToken"), title: v.input.title, accessToken: `sf_${randomBytes(8).toString("hex")}` };
+        this.storefrontTokens.push(t);
+        this.storefrontTokenCreates++;
+        return { storefrontAccessTokenCreate: { storefrontAccessToken: t, userErrors: [] } };
+      }
+      case "MizanFulfillmentTrackingUpdate": {
+        const f = [...this.orders.values()].flatMap((o) => o.fulfillments).find((x) => x.id === v.fulfillmentId);
+        if (!f) return { fulfillmentTrackingInfoUpdate: { fulfillment: null, userErrors: [{ field: ["fulfillmentId"], message: "Fulfillment does not exist" }] } };
+        f.trackingInfo = [{ company: v.trackingInfoInput.company, number: v.trackingInfoInput.number, url: v.trackingInfoInput.url }];
+        this.trackingUpdates++;
+        return { fulfillmentTrackingInfoUpdate: { fulfillment: { id: f.id, trackingInfo: f.trackingInfo }, userErrors: [] } };
       }
       case "MizanShopCurrency":
         return { shop: { currencyCode: this.currency } };
@@ -808,7 +863,11 @@ export class FakeShopify {
       case "MizanOrderUpdate": {
         const o = this.orders.get(v.input.id);
         if (!o) return { orderUpdate: { order: null, userErrors: [{ field: ["id"], message: "Order does not exist" }] } };
-        o.shippingAddress = { ...(o.shippingAddress ?? {}), ...v.input.shippingAddress, countryCodeV2: v.input.shippingAddress.countryCode ?? (o.shippingAddress?.countryCodeV2 as string) };
+        // MailingAddressInput has provinceCode, not province (a variable error, as Shopify answers).
+        if ("province" in v.input.shippingAddress) throw gqlErrors([{ message: "Variable $input of type OrderInput! was provided invalid value for shippingAddress.province (Field is not defined on MailingAddressInput)", extensions: { code: "argumentNotAccepted" } }]);
+        const { provinceCode, ...rest } = v.input.shippingAddress as Record<string, unknown>;
+        const country = v.input.shippingAddress.countryCode ?? (o.shippingAddress?.countryCodeV2 as string);
+        o.shippingAddress = { ...(o.shippingAddress ?? {}), ...rest, ...(provinceCode !== undefined ? { province: provinceName(country, provinceCode) } : {}), countryCodeV2: country };
         this.addressUpdates++;
         o.updatedAt = this.touch();
         return { orderUpdate: { order: { id: o.id }, userErrors: [] } };

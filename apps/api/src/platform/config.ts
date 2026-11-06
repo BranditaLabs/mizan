@@ -21,6 +21,8 @@ export const SHOPIFY_DEFAULT_SCOPES = [
   // P3: a product published from Mizan goes on the Online Store.
   "read_publications", "write_publications",
 ].join(",");
+// Not required (shopify.app.*.toml asks for it): unauthenticated_read_product_listings, the Storefront
+// API for the store's logo (U26). A store without it connects, is not flagged, and gets its logo once approved.
 
 const url = z.url({ protocol: /^https?$/, error: "must be an http(s) URL" });
 const optionalString = z.string().trim().min(1).optional();

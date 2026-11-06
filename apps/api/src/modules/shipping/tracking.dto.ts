@@ -58,4 +58,6 @@ export const StatusesImportedSchema = z.object({
 export const ManualShipmentSchema = z.strictObject({
   courier: z.string().trim().min(2).max(60).describe("The courier's name as the team calls it (J&T, Aramex, our own driver…)"),
   trackingNumber: z.string().trim().regex(/^[\w-]{3,64}$/, "letters, digits, - or _").describe("The courier's tracking or waybill number"),
+  trackingUrl: z.url({ protocol: /^https$/ }).max(500).optional()
+    .describe("The courier's tracking page for this parcel (https). Remembered for the courier: its next parcels get their link without it"),
 });

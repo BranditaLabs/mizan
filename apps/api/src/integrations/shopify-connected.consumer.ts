@@ -10,7 +10,8 @@ import { ENGINE_RUNTIME, type RuntimeFactory } from "./engine-registry.js";
 export const BACKFILL_DAYS = 60;
 
 /**
- * A Shopify store was connected or reconnected: queue its webhook registration (E3-2) and
+ * A Shopify store was connected or reconnected: queue its webhook registration (E3-2), its profile
+ * (name and logo, onboarding) and
  * history import (E3-5) as engine jobs (rule 3), in the consumer's transaction, so the jobs
  * and the delivery mark commit together. Keyed by the event: every connect runs both once
  * (a store that recovered after a refusal only re-registers its webhooks).
@@ -25,6 +26,8 @@ export class ShopifyConnectedConsumer implements EventHandler {
     const store = new SqlStore(trxQueryClient(trx), { tenantId: event.tenantId, connections: { shopify: event.entity.id } });
     const now = this.runtime(event.tenantId).clock.now();
     await store.enqueue(MizanEngine.shopifyWebhooksJob(event.id), now);
+    // The store's name and logo, from Shopify (the merchant never types them): every connect reads them again.
+    await store.enqueue(MizanEngine.shopifyShopProfileJob(event.id), now);
     // Recovered after a refusal (SyncResults): the import that proved it just finished, only the webhooks are owed.
     if (event.data.recovered) return;
     await store.enqueue(MizanEngine.shopifyBackfillJob(event.id, now - BACKFILL_DAYS * 86_400_000, now), now);

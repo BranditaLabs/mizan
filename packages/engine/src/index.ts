@@ -15,7 +15,7 @@ export { PAYMOB_CHECKOUT, PAYMOB_HOSTS, type PaymobCredentials, type PaymobRegio
 export { mizanOrderIdOf, mizanOrderRef, type StoreOrderDraft, type StoreOrderOutcome } from "./core/store-order.js";
 export { draftHandle, type CreatedProduct, type ProductDraft, type ProductPublishOutcome } from "./core/product-draft.js";
 export type { BostaConfig, BostaLearned, LearnedStatus } from "./connectors/bosta/connector.js";
-export type { ShopifyLearned } from "./connectors/shopify/connector.js";
+export type { ShopifyLearned, ShopProfile } from "./connectors/shopify/connector.js";
 export type { ShopifyCredentials } from "./connectors/shopify/client.js";
 export type { WooCommerceCredentials } from "./connectors/woocommerce/client.js";
 export { WooCommerceConnector, WOO_WEBHOOK_TOPICS, type WooLearned } from "./connectors/woocommerce/connector.js";

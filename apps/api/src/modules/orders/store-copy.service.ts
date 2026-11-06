@@ -115,6 +115,10 @@ export class StoreCopyService {
       const region = PROVINCE_CODES.has(country) ? findRegion(country, o.ship_province, o.ship_city) : null;
       const total = BigInt(o.total_minor);
       const paid = BigInt(o.paid_minor);
+      const c = o.customer_id ? await trx.selectFrom("customers").select("email").where("id", "=", o.customer_id).executeTakeFirst() : undefined;
+      const email = c ? pii.decrypt(c.email, "customers.email") ?? undefined : undefined;
+      const firstName = name[0] || "Customer";
+      const lastName = name.slice(1).join(" ") || undefined;
       return {
         orderId, number: o.number, currency: o.currency.trim(),
         lines: lines.map((l) => ({
@@ -124,13 +128,15 @@ export class StoreCopyService {
         // A manual order keeps its discount in the total: what lowers it is the discount (so the copy totals the same).
         shipping: money(o.shipping_minor), discount: money(maxZero(BigInt(o.subtotal_minor) + BigInt(o.shipping_minor) - total)), paid: money(paid),
         financialStatus: paid >= total && total > 0n ? "PAID" : paid > 0n ? "PARTIALLY_PAID" : "PENDING",
+        ...(phone || email ? { customer: { firstName, ...(lastName ? { lastName } : {}), ...(phone ? { phone } : {}), ...(email ? { email } : {}) } } : {}),
         address: {
-          firstName: name[0] || "Customer", lastName: name.slice(1).join(" ") || "-", ...(phone ? { phone } : {}),
+          firstName, ...(lastName ? { lastName } : {}), ...(phone ? { phone } : {}),
           line1: pii.decrypt(o.ship_line1, "orders.ship_line1") ?? "", ...(line2 ? { line2 } : {}), city: o.ship_city ?? "",
           ...(region ? { provinceCode: region.code } : {}), countryCode: country,
         },
         ...(phone ? { phone } : {}),
         tags: ["mizan"], note: `Made in Mizan (${o.number})`,
+        ...(o.ship_lat !== null && o.ship_lng !== null ? { attributes: [{ key: "Location", value: `https://www.google.com/maps?q=${o.ship_lat},${o.ship_lng}` }] } : {}),
       };
     });
   }

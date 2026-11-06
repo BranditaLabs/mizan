@@ -26,6 +26,8 @@ export interface Address {
   province?: string;
   zip?: string;
   countryCode: string;
+  /** The customer's map pin, when they shared one (WhatsApp location, the order form). */
+  location?: { lat: number; lng: number };
 }
 
 export interface OrderLine {

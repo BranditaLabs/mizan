@@ -107,7 +107,9 @@ export function findRegion(country: string | null | undefined, ...texts: Array<s
   for (const text of texts) {
     const k = placeKey(text);
     if (!k) continue;
-    const exact = regions.find((r) => keysOf(r).includes(k)) ?? regions.find((r) => r.areas.some((x) => keysOf(x).includes(k)));
+    // Shopify and the order form carry the ISO code ("C", "GZ"); a code is matched whole, never as a fragment.
+    const code = text!.trim().toUpperCase();
+    const exact = regions.find((r) => r.code === code) ?? regions.find((r) => keysOf(r).includes(k)) ?? regions.find((r) => r.areas.some((x) => keysOf(x).includes(k)));
     if (exact) return exact;
   }
   return null;

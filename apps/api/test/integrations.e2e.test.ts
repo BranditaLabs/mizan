@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { Writable } from "node:stream";
 import type { INestApplication } from "@nestjs/common";
+import { MizanEngine } from "@mizan/engine";
 import { FakeBosta, FakeClock, FakeShopify, seeded, testRuntime } from "@mizan/engine/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
@@ -213,5 +214,33 @@ describe("EngineJobRunner scheduling", () => {
     await r.idle();
     expect(await r.dueTenants(10, 1)).toEqual([A]); // NONE is skipped in the query, not in the slot
     await db.kysely.deleteFrom("mz_outbox").where("idempotency_key", "like", "starve-test:%").execute();
+  });
+});
+
+describe("the store's profile from Shopify (onboarding)", () => {
+  const brandOf = async (t: string) => db.kysely.selectFrom("tenants").select(["name", "settings"]).where("id", "=", t).executeTakeFirstOrThrow();
+
+  it("names the store and keeps its logo as Shopify has them; a read without the storefront scope keeps the logo", async () => {
+    const b = fakes.get(B)!;
+    b.shop.shop.name = "Delta Perfumes";
+    const { store } = await registry.get(B);
+    await store.enqueue(MizanEngine.shopifyShopProfileJob("test-1"), b.clock.now());
+    await runUntilQuiet();
+    let t = await brandOf(B);
+    expect(t.name).toBe("Delta Perfumes");
+    expect((t.settings as { brand?: Record<string, unknown> }).brand).toMatchObject({
+      source: "shopify", logoUrl: "https://cdn.shopify.com/s/files/logo.png", squareLogoUrl: "https://cdn.shopify.com/s/files/square.png", color: "#0a0a0a", access: "read",
+    });
+
+    // Renamed in Shopify, and the logo unreadable this time: the name follows, the logo stays.
+    b.shop.shop.name = "Delta Perfumes EG";
+    b.shop.storefrontScope = false;
+    await store.enqueue(MizanEngine.shopifyShopProfileJob("test-2"), b.clock.now());
+    await runUntilQuiet();
+    t = await brandOf(B);
+    expect(t.name).toBe("Delta Perfumes EG");
+    expect((t.settings as { brand?: Record<string, unknown> }).brand).toMatchObject({ logoUrl: "https://cdn.shopify.com/s/files/logo.png", access: "no_access" });
+    const audit = await db.kysely.selectFrom("audit_log").select(["action", "after"]).where("tenant_id", "=", B).where("action", "=", "tenant.updated").execute();
+    expect(audit.length).toBeGreaterThanOrEqual(2);
   });
 });

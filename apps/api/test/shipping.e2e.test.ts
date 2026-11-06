@@ -851,3 +851,17 @@ describe("copies read three-way: only what changed in Shopify since the last rea
   });
 });
 
+describe("tracking links for couriers recorded by hand (U26)", () => {
+  it("a courier by hand gets its tracking link: the one typed, then the courier's page remembered for its next parcels", async () => {
+    const record = (id: string, body: object) => http().post(`/v1/orders/${id}/ship/manual`).set(as("wh")).send(body);
+    const a = await manual({ mode: "cod" });
+    const b = await manual({ mode: "cod" });
+    const c = await manual({ mode: "cod" });
+    for (const id of [a, b, c]) await confirm(id);
+    const first = (await record(a, { courier: "Aramex Link", trackingNumber: "AX-501", trackingUrl: "https://track.aramex.example/?n=AX-501" }).expect(201)).body;
+    expect(first.trackingUrl).toBe("https://track.aramex.example/?n=AX-501");
+    const next = (await record(b, { courier: "aramex link", trackingNumber: "AX-502" }).expect(201)).body;
+    expect(next.trackingUrl).toBe("https://track.aramex.example/?n=AX-502");
+    await record(c, { courier: "Aramex Link", trackingNumber: "AX-503", trackingUrl: "http://insecure.example/AX-503" }).expect(422);
+  });
+});

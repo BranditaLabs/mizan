@@ -44,7 +44,7 @@ describe("an order made in Mizan, created in Shopify", () => {
     const [o] = w.copies();
     expect(o).toMatchObject({ name: "M-1001", total: "2250.00", received: "300.00", displayFinancialStatus: "PARTIALLY_PAID", tags: ["mizan"] });
     expect(o!.lines).toEqual([expect.objectContaining({ title: "Abaya, plain", sku: "ABY-1", quantity: 2, price: "1150.00" })]);
-    expect(o!.shippingAddress).toMatchObject({ firstName: "Mona", address1: "12 Abbas El Akkad St", city: "Sheraton", province: "C", countryCodeV2: "EG" });
+    expect(o!.shippingAddress).toMatchObject({ firstName: "Mona", address1: "12 Abbas El Akkad St", city: "Sheraton", province: "Cairo", countryCodeV2: "EG" });
     expect(w.results).toEqual([{ ok: true, externalId: o!.id, name: "M-1001", outcome: "created" }]);
     expect(w.ingested.at(-1)).toMatchObject({ externalId: o!.id, mizanOrderId: OID });
   });
@@ -115,6 +115,86 @@ describe("an order made in Mizan, created in Shopify", () => {
     await settle(w.engine, w.store, w.clock);
     expect(synced.at(-1)).toMatchObject({ ok: false, reason: "validation" });
     expect(copy().lines).toHaveLength(1);
+  });
+
+  it("the buyer is a Shopify customer (phone and email), the pin rides along, and a one-word name has no placeholder surname", async () => {
+    const w = world();
+    await w.push(draft({
+      customer: { firstName: "Mona", phone: "+201001234821", email: "mona@example.com" },
+      address: { firstName: "Mona", phone: "+201001234821", line1: "12 Abbas El Akkad St", city: "Sheraton", provinceCode: "C", countryCode: "EG" },
+      attributes: [{ key: "Location", value: "https://www.google.com/maps?q=30.07,31.34" }],
+    }));
+    const sent = w.shop.lastOrderCreate!;
+    expect(sent.customer).toEqual({ toUpsert: { firstName: "Mona", phone: "+201001234821", email: "mona@example.com" } });
+    expect(sent.email).toBe("mona@example.com");
+    expect(sent.customAttributes).toEqual([{ key: "Location", value: "https://www.google.com/maps?q=30.07,31.34" }]);
+    expect(sent.shippingAddress).not.toHaveProperty("lastName");
+    expect(w.copies()[0]!.customer).toMatchObject({ phone: "+201001234821", email: "mona@example.com" });
+  });
+
+  it("a store that refuses the customer record still gets the order, as a guest (said as drift)", async () => {
+    const w = world();
+    w.shop.refuseCustomerUpsert = true;
+    await w.push(draft({ customer: { firstName: "Mona", lastName: "Adel", phone: "+201001234821" } }));
+    expect(w.copies()).toHaveLength(1);
+    expect(w.results).toEqual([expect.objectContaining({ ok: true, outcome: "created" })]);
+    expect(w.shop.lastOrderCreate!.customer).toBeUndefined();
+  });
+
+  it("a governorate corrected in Mizan reaches the copy as Shopify's provinceCode (never a `province` field)", async () => {
+    const synced: Array<{ ok: boolean; reason?: string }> = [];
+    const drafts = new Map<string, StoreOrderDraft>();
+    const w = setup({ hooks: {
+      loadStoreOrderDraft: async (id) => drafts.get(id),
+      onStoreOrderCreated: async () => {},
+      loadStoreCopy: async (id) => { const d = drafts.get(id); const c = [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`); return d && c ? { copyId: c.id, draft: d } : undefined; },
+      onStoreCopySynced: async (_id, r) => { synced.push(r as { ok: boolean; reason?: string }); },
+    } });
+    drafts.set(OID, draft());
+    await w.store.enqueue(MizanEngine.shopifyCreateOrderJob(OID), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    const copy = () => [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${OID}`)!;
+    expect(copy().shippingAddress).toMatchObject({ province: "Cairo" });
+    // Only the governorate changes (Cairo → Giza): the address is sent again, with the code.
+    drafts.set(OID, draft({ address: { ...draft().address, provinceCode: "GZ" } }));
+    await w.store.enqueue(MizanEngine.shopifyCopyEditJob(OID, "gov"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(synced.at(-1)).toMatchObject({ ok: true });
+    expect(copy().shippingAddress).toMatchObject({ province: "Giza", city: "Sheraton" });
+    // The same again: Shopify's "Giza" is the code GZ, nothing to send.
+    const updates = w.shop.addressUpdates;
+    await w.store.enqueue(MizanEngine.shopifyCopyEditJob(OID, "same"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(w.shop.addressUpdates).toBe(updates);
+  });
+});
+
+describe("the store's profile from Shopify (onboarding)", () => {
+  const profiles = (w: ReturnType<typeof setup>) => w;
+  it("name, currency, timezone, country, logo and colour; the storefront token is made once and reused", async () => {
+    const got: unknown[] = [];
+    const w = profiles(setup({ hooks: { onShopProfile: async (p) => { got.push(p); } } }));
+    await w.store.enqueue(MizanEngine.shopifyShopProfileJob("connect-1"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    await w.store.enqueue(MizanEngine.shopifyShopProfileJob("connect-2"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(got).toHaveLength(2);
+    expect(got[0]).toEqual({
+      name: "Nile Abayas", domain: "nile-abayas.myshopify.com", url: "https://nileabayas.com", currency: "EGP", timezone: "Africa/Cairo", country: "EG",
+      logoUrl: "https://cdn.shopify.com/s/files/logo.png", squareLogoUrl: "https://cdn.shopify.com/s/files/square.png", brandColor: "#0a0a0a", brand: "read",
+    });
+    expect(w.shop.storefrontTokenCreates).toBe(1);
+  });
+
+  it("without the storefront scope the profile still comes, with no logo (brand: no_access); nothing dead", async () => {
+    const got: Array<{ name: string; brand: string; logoUrl?: string }> = [];
+    const w = profiles(setup({ hooks: { onShopProfile: async (p) => { got.push(p); } } }));
+    w.shop.storefrontScope = false;
+    await w.store.enqueue(MizanEngine.shopifyShopProfileJob("connect-1"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(got).toEqual([expect.objectContaining({ name: "Nile Abayas", brand: "no_access" })]);
+    expect(got[0]!.logoUrl).toBeUndefined();
+    expect(await w.store.jobs({ status: "dead" })).toEqual([]);
   });
 });
 

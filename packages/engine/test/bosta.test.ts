@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { matchDistrict } from "../src/connectors/bosta/cities.js";
 import { DISTRICTS } from "./fakes/bosta.js";
 import { MizanEngine } from "../src/engine/engine.js";
+import { BostaConnector, DEFAULT_TRACKING_URL } from "../src/connectors/bosta/connector.js";
+import { ShapeWatch } from "../src/adapt/shape.js";
 import { settle, setup } from "./fakes/setup.js";
 
 async function shippedOrder(ctx: ReturnType<typeof setup>, opts: Parameters<ReturnType<typeof setup>["shop"]["addOrder"]>[0] = {}) {
@@ -15,6 +17,49 @@ async function shippedOrder(ctx: ReturnType<typeof setup>, opts: Parameters<Retu
 }
 
 describe("Bosta connector", () => {
+  it("links every tracking number to Bosta's public page, even with no template configured", () => {
+    const ctx = setup();
+    const bare = new BostaConnector({ apiKey: "k", webhookSecret: "s" }, ctx.rt, { record: () => {} }, new ShapeWatch());
+    expect(DEFAULT_TRACKING_URL).toContain("{tn}");
+    expect(bare.trackingUrl("12345678")).toBe("https://bosta.co/tracking-shipments?shipment-number=12345678");
+  });
+
+  it("a Shopify fulfillment made without the link gets it (once); a cancelled one is left as the merchant left it", async () => {
+    const ctx = setup();
+    const o = ctx.shop.addOrder({});
+    const shopify = ctx.engine.shopify;
+    expect(await shopify.fulfillWithTracking(o.id, { company: "Bosta", number: "777" }, false)).toBe("created");
+    const url = "https://bosta.co/tracking-shipments?shipment-number=777";
+    expect(await shopify.fulfillWithTracking(o.id, { company: "Bosta", number: "777", url })).toBe("link_updated");
+    expect(ctx.shop.orders.get(o.id)!.fulfillments[0]!.trackingInfo[0]).toMatchObject({ number: "777", url });
+    expect(await shopify.fulfillWithTracking(o.id, { company: "Bosta", number: "777", url })).toBe("already_fulfilled");
+    expect(ctx.shop.trackingUpdates).toBe(1);
+    ctx.shop.orders.get(o.id)!.fulfillments[0]!.status = "CANCELLED";
+    expect(await shopify.fulfillWithTracking(o.id, { company: "Bosta", number: "777", url: url + "&x" })).toBe("already_fulfilled");
+  });
+
+  it("a read-back without a COD keeps what was booked (never 0), and says so as drift", async () => {
+    const ctx = setup();
+    ctx.bosta.omitCod = true;
+    const { tn } = await shippedOrder(ctx);
+    const rec = await ctx.store.get<{ shipment: { cod: { amount: string } } }>("shipment", tn!);
+    expect(Number(rec!.shipment.cod.amount)).toBe(1150);
+    expect(ctx.events.find((e) => e.event === "shipment.created")?.data.cod).toBe("1150");
+  });
+
+  it("the courier gets the customer's pin and email; a governorate given by its code ('C') is Cairo, and its district comes from the address", async () => {
+    const ctx = setup();
+    const { order } = await shippedOrder(ctx);
+    const rec = await ctx.store.get<{ order: Parameters<BostaConnector["buildDeliveryPayload"]>[0] }>("order", order.id);
+    const base = rec!.order;
+    const o = { ...base, customer: { ...base.customer, email: "mona@example.com" }, shippingAddress: { ...base.shippingAddress!, city: "C", province: "C", line1: "5 Street", line2: "Sheraton", phone: "+201001234821", location: { lat: 30.1, lng: 31.37 } } };
+    const p = await ctx.engine.bosta.buildDeliveryPayload(o, "ref-pin") as { notes: string; receiver: { email?: string }; dropOffAddress: Record<string, unknown> };
+    expect(p.notes).toContain("https://www.google.com/maps?q=30.1,31.37");
+    expect(p.notes.startsWith(`Mizan order ${o.number}`)).toBe(true);
+    expect(p.receiver.email).toBe("mona@example.com");
+    expect(p.dropOffAddress).toMatchObject({ city: "Cairo", districtId: "d-sheraton" });
+  });
+
   it("creates one delivery and fulfils the Shopify order with tracking", async () => {
     const ctx = setup();
     const { order, tn } = await shippedOrder(ctx);

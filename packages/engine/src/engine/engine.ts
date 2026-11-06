@@ -11,14 +11,14 @@ import { createHash } from "node:crypto";
 import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
 import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "@mizan/shared";
-import { TERMINAL_STATUSES } from "@mizan/shared";
+import { findRegion, TERMINAL_STATUSES } from "@mizan/shared";
 import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
 import { fulfillmentEventFor } from "./progress.js";
 import { ShapeWatch } from "../adapt/shape.js";
 import { shouldApplyStatus } from "../adapt/status.js";
 import { BostaConnector, type BostaConfig, type BostaLearned } from "../connectors/bosta/connector.js";
-import { ShopifyConnector, type CancelReason, type FulfillmentEventStatus, type ShopifyLearned } from "../connectors/shopify/connector.js";
+import { ShopifyConnector, type CancelReason, type FulfillmentEventStatus, type ShopifyLearned, type ShopProfile } from "../connectors/shopify/connector.js";
 import type { ShopifyCredentials } from "../connectors/shopify/client.js";
 import { gidFromWebhook } from "../connectors/shopify/mapper.js";
 import { readShopifyHeaders, verifyShopifyHmac } from "../connectors/shopify/webhooks.js";
@@ -80,6 +80,8 @@ export interface EngineOptions {
      * approved). Without webhooks new orders only arrive with the nightly reconciliation, so the store is told.
      */
     onWebhooksChecked?: (provider: "shopify", result: { ok: true } | { ok: false; message: string }) => Promise<void>;
+    /** The store's profile from Shopify (name, logo, currency…), read on connect and daily. Must be idempotent. */
+    onShopProfile?: (profile: ShopProfile) => Promise<void>;
     /** The history import finished or failed (A2). Must be idempotent. */
     onBackfill?: (progress: BackfillProgress) => Promise<void>;
     /** An accepted offer was added to the store's order (E6-13), or could not be. Must be idempotent. */
@@ -657,6 +659,11 @@ export class MizanEngine {
     return { kind: "shopify.removeTags", connection: "shopify", payload: { id: orderId, tags }, idempotencyKey: `untag:${orderId}:${tags.join(",")}:${key}` };
   }
 
+  /** Read the store's name, logo, currency and timezone (onboarding fills the store's profile from it). */
+  static shopifyShopProfileJob(runKey: string): NewJob<Record<string, never>> {
+    return { kind: "shopify.shopProfile", connection: "shopify", payload: {}, idempotencyKey: `shopify:profile:${runKey}` };
+  }
+
   static shopifyWebhooksJob(runKey: string): NewJob<Record<string, never>> {
     return { kind: "shopify.syncWebhooks", connection: "shopify", payload: {}, idempotencyKey: `shopify:webhooks:${runKey}` };
   }
@@ -739,6 +746,8 @@ export class MizanEngine {
       await this.enqueue("shopify.pollOrders", {}, `poll:orders:${slot}`);
       // Hourly: topics refused before the app's customer data approval register once it comes; otherwise a no-op read.
       if (this.shopify.creds.webhookUrl) await this.enqueue("shopify.syncWebhooks", {}, `shopify:webhooks:hourly:${Math.floor(this.now() / 3_600_000)}`);
+      // Daily: a name or logo changed in Shopify (or the storefront scope approved since) reaches Mizan.
+      if (this.opts.hooks?.onShopProfile) await this.enqueue("shopify.shopProfile", {}, `shopify:profile:daily:${Math.floor(this.now() / 86_400_000)}`);
     }
     if (this.woo) {
       await this.enqueue("woocommerce.pollOrders", {}, `poll:woocommerce:${slot}`);
@@ -830,6 +839,10 @@ export class MizanEngine {
       "shopify.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey),
       "woocommerce.pushProduct": (j) => this.pushProduct(j.payload.patch, j.idempotencyKey, "woocommerce"),
       "shopify.syncWebhooks": () => this.syncShopifyWebhooks(),
+      "shopify.shopProfile": async () => {
+        const profile = await this.shopify.shopProfile();
+        await this.runHook(() => this.opts.hooks?.onShopProfile?.(profile));
+      },
       "shopify.backfill": (j) => this.backfillPage(j.payload),
       "shopify.catalogRefresh": (j) => this.catalogRefresh("shopify", j.payload.cursor),
       "woocommerce.catalogRefresh": (j) => this.catalogRefresh("woocommerce", j.payload.cursor),
@@ -1066,10 +1079,13 @@ export class MizanEngine {
       const a = draft.address;
       const have = copy.shippingAddress;
       // The address only when it changed (the team may have corrected it in Shopify; an edit of the items leaves it).
-      const moved = !have || (have.line1 ?? "") !== a.line1 || (have.line2 ?? "") !== (a.line2 ?? "") || (have.city ?? "") !== a.city;
+      // The governorate counts too: Shopify reads back the name ("Cairo"), Mizan holds the code ("C").
+      const haveCode = have?.province ? findRegion(have.countryCode ?? a.countryCode, have.province)?.code ?? have.province : undefined;
+      const moved = !have || (have.line1 ?? "") !== a.line1 || (have.line2 ?? "") !== (a.line2 ?? "") || (have.city ?? "") !== a.city
+        || (a.provinceCode !== undefined && haveCode !== a.provinceCode) || (have.countryCode ?? a.countryCode) !== a.countryCode;
       const plan: OrderEditPlan = {
         editId: `copy-${editId}`, orderId: copyId, currency: draft.currency, lines, add, shipping: draft.shipping,
-        ...(moved ? { address: { name: `${a.firstName} ${a.lastName === "-" ? "" : a.lastName}`.trim(), ...(a.phone ? { phone: a.phone } : {}), line1: a.line1, ...(a.line2 ? { line2: a.line2 } : {}), city: a.city, ...(a.provinceCode ? { province: a.provinceCode } : {}), countryCode: a.countryCode } } : {}),
+        ...(moved ? { address: { name: `${a.firstName} ${a.lastName ?? ""}`.trim(), ...(a.phone ? { phone: a.phone } : {}), line1: a.line1, ...(a.line2 ? { line2: a.line2 } : {}), city: a.city, ...(a.provinceCode ? { provinceCode: a.provinceCode } : {}), countryCode: a.countryCode } } : {}),
       };
       outcome = { ok: true, outcome: await this.shopify.editOrder(plan) };
     } catch (e) {

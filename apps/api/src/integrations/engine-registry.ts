@@ -4,7 +4,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { CANCEL_RESULTS, ORDER_EDITS, PRODUCT_PUBLISH, STORE_ORDERS, type OrderEditSink, type ProductPublishSink, type StoreOrderSink } from "../modules/orders/ports.js";
 import { SHIPMENT_RESULTS, type ShipmentResultSink } from "../modules/shipping/ports.js";
-import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime } from "@mizan/engine";
+import { defaultRuntime, MizanEngine, SqlStore, type CancelOutcome, type EngineOptions, type OfferOutcome, type Runtime, type ShopProfile } from "@mizan/engine";
 import { tenantQueryClient } from "@mizan/db";
 import { APP_CONFIG, type AppConfig } from "../platform/config.js";
 import { Database } from "../platform/db/database.js";
@@ -17,6 +17,7 @@ import { ReconciliationService } from "../modules/orders/reconciliation.service.
 
 import { ENGINE_RUNTIME, type RuntimeFactory } from "./engine-runtime.js";
 import { ShopifyTokens } from "./shopify-tokens.js";
+import { StoreProfile } from "./store-profile.js";
 export { ENGINE_RUNTIME, type RuntimeFactory } from "./engine-runtime.js";
 
 /** Listener for engine events (order.ingested, shipment.status …); E2-3 maps them to domain events. */
@@ -80,6 +81,7 @@ export class EngineRegistry {
     @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
     @Inject(ReconciliationService) private readonly reconciliation: ReconciliationService,
     @Inject(ShopifyTokens) private readonly shopifyTokens: ShopifyTokens,
+    @Inject(StoreProfile) private readonly storeProfile: StoreProfile,
   ) {}
 
   /** M2 depends on the engine and the engine reports back to M2: resolved when first needed. */
@@ -202,6 +204,8 @@ export class EngineRegistry {
         onProduct: async (product) => {
           await this.products.project(tenantId, storeConnection, product);
         },
+        // Onboarding: the store's name and logo from Shopify (on connect and daily), never typed.
+        ...(c.shopify ? { onShopProfile: async (profile: ShopProfile) => { await this.storeProfile.record(tenantId, c.shopify!.connectionId, profile); } } : {}),
         onWebhooksChecked: async (_provider, result) => {
           if (c.shopify) await this.courierAccess.webhooks(tenantId, c.shopify.connectionId, result);
         },

@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { cashToCollect } from "../../core/payments.js";
 import { IntegrationError } from "../../core/errors.js";
 import type { CanonicalOrder, CanonicalShipment, ShipmentStatus } from "@mizan/shared";
-import { normalizePhone, TERMINAL_STATUSES, toAsciiDigits } from "@mizan/shared";
+import { findRegion, normalizePhone, TERMINAL_STATUSES, toAsciiDigits, type Address } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
@@ -31,9 +31,15 @@ export interface BostaConfig {
   cityField?: "city" | "cityCode" | "cityId";
   packageSize?: "SMALL" | "MEDIUM" | "LARGE";
   allowToOpenPackage?: boolean;
-  /** e.g. "https://bosta.co/tracking-shipments?shipment-number={tn}" — confirm the public tracking URL with Bosta. */
+  /** Default DEFAULT_TRACKING_URL; override when Bosta gives the business another public tracking page. */
   trackingUrlTemplate?: string;
 }
+
+/** Bosta's public tracking page: the link the customer gets in Shopify's shipping email and Mizan shows. */
+export const DEFAULT_TRACKING_URL = "https://bosta.co/tracking-shipments?shipment-number={tn}";
+
+/** A Google Maps link to the customer's pin, for the courier's notes and the store's order. */
+export const mapLink = (p: { lat: number; lng: number }) => `https://www.google.com/maps?q=${p.lat},${p.lng}`;
 
 /** Learned code → status pairs with how often each was confirmed by a label. */
 export interface LearnedStatus {
@@ -200,7 +206,14 @@ export class BostaConnector {
     const cityValue = cityField === "cityId" ? match.city.id : cityField === "cityCode" ? match.city.code ?? match.city.name : match.city.name;
     // Bosta needs the district too: the area typed ("Sheraton", "مدينة نصر") found in the city's list,
     // or the area by name when it is not there (Bosta then says what it makes of it).
-    const area = [a.city, a.province].map((x) => x?.trim()).find((x) => x && normalize(x) !== normalize(match.city.name) && normalize(x) !== normalize(match.city.nameAr)) ?? a.city?.trim() ?? "";
+    // The area: a text that is not the governorate itself (its name or ISO code), else the address's
+    // second line; Bosta requires one, so the city's own name is the last resort.
+    const notCity = (x: string | undefined) => {
+      if (!x) return false;
+      const n = normalize(x);
+      return n !== normalize(match.city.name) && n !== normalize(match.city.nameAr) && findRegion("EG", x)?.code !== x.trim().toUpperCase();
+    };
+    const area = [a.city, a.province].map((x) => x?.trim()).find(notCity) ?? a.line2?.trim() ?? match.city.name;
     const district = matchDistrict(await this.districts(match.city.id), area, a.line2, a.line1);
     const where = district ? { districtId: district.id } : area ? { districtName: area } : {};
     const [firstName, ...rest] = (a.name ?? order.customer.name ?? "Customer").trim().split(/\s+/);
@@ -217,7 +230,7 @@ export class BostaConnector {
       dropOffAddress: { [cityField]: cityValue, ...where, firstLine: a.line1, ...(a.line2 ? { secondLine: a.line2 } : {}) },
       receiver: { firstName: firstName || "Customer", lastName: rest.join(" ") || "-", phone, ...(order.customer.email ? { email: order.customer.email } : {}) },
       businessReference: reference,
-      notes: `Mizan order ${order.number}`,
+      notes: deliveryNotes(order, a),
       allowToOpenPackage: this.cfg.allowToOpenPackage ?? false,
       ...(this.cfg.webhookUrl ? { webhookUrl: `${this.cfg.webhookUrl}${this.cfg.webhookUrl.includes("?") ? "&" : "?"}token=${encodeURIComponent(this.cfg.webhookSecret)}` } : {}),
     };
@@ -230,7 +243,7 @@ export class BostaConnector {
   async createShipmentOnce(order: CanonicalOrder, reference: string, verifyFirst: boolean): Promise<{ shipment: CanonicalShipment; adopted: boolean }> {
     if (verifyFirst) {
       // Unsure whether a delivery exists and unable to look: wait and look again, never create blind.
-      const existing = await this.findByReference(reference).catch((e: unknown) => {
+      const existing = await this.findByReference(reference, bookedCod(order)).catch((e: unknown) => {
         if (e instanceof IntegrationError && !e.retryable) throw new IntegrationError({ kind: "transient", connector: "bosta", message: `could not check for an earlier delivery: ${e.message}`, cause: e });
         throw e;
       });
@@ -242,7 +255,7 @@ export class BostaConnector {
       const r = this.resolver(data, "delivery");
       const tn = r.str("trackingNumber", ["trackingNumber", "tracking_number", "delivery.trackingNumber"], { required: true })!;
       // Read it back: the create response is minimal and its shape is not guaranteed.
-      const full = await this.getShipment(tn).catch(() => undefined);
+      const full = await this.getShipment(tn, Number(payload.cod)).catch(() => undefined);
       return {
         shipment: full ?? {
           connector: "bosta", externalId: r.str("id", ["_id", "id"]) ?? tn, trackingNumber: tn, orderRef: reference, status: "created",
@@ -253,24 +266,25 @@ export class BostaConnector {
     } catch (e) {
       // Outcome unknown (timeout, connection dropped): check before anyone retries.
       if (e instanceof IntegrationError && (e.kind === "timeout" || e.kind === "transient")) {
-        const existing = await this.findByReference(reference).catch(() => undefined);
+        const existing = await this.findByReference(reference, Number(payload.cod)).catch(() => undefined);
         if (existing) return { shipment: existing, adopted: true };
       }
       throw e;
     }
   }
 
-  async findByReference(reference: string): Promise<CanonicalShipment | undefined> {
+  /** `codBooked`: what Mizan asked Bosta to collect, kept when Bosta's answer has no COD (never read as 0). */
+  async findByReference(reference: string, codBooked?: number): Promise<CanonicalShipment | undefined> {
     const data = await this.call("searchDeliveries", "POST", "deliveries/search", { businessReference: reference }, true);
     const r = this.resolver(data, "search");
     const list = Array.isArray(data) ? data : r.arr("deliveries", ["deliveries", "list", "data", "results"]);
     const hit = list.find((d) => this.resolver(d, "delivery").str("businessReference", ["businessReference", "business_reference"]) === reference);
-    return hit ? this.toShipment(hit, reference) : undefined;
+    return hit ? this.toShipment(hit, reference, codBooked) : undefined;
   }
 
-  async getShipment(trackingNumber: string): Promise<CanonicalShipment> {
+  async getShipment(trackingNumber: string, codBooked?: number): Promise<CanonicalShipment> {
     const data = await this.call("getDelivery", "GET", `deliveries/business/${encodeURIComponent(trackingNumber)}`, undefined, true);
-    return this.toShipment(data);
+    return this.toShipment(data, undefined, codBooked);
   }
 
   async cancelShipment(trackingNumber: string): Promise<void> {
@@ -278,12 +292,20 @@ export class BostaConnector {
     await this.call("terminateDelivery", "DELETE", `deliveries/business/${encodeURIComponent(trackingNumber)}/terminate`, undefined, false);
   }
 
+  /** The COD Bosta reports; missing, the COD Mizan booked (never 0 by default: that would read as "nothing to collect"). */
+  private codOf(r: Resolver, tn: string, codBooked: number | undefined): number {
+    const cod = r.num("cod", ["cod", "codAmount", "cashOnDelivery", "specs.cod"]);
+    if (cod !== undefined) return cod;
+    this.drift.record({ connector: "bosta", entity: "delivery", kind: "missing_field", detail: `delivery ${tn} came back without a COD amount${codBooked !== undefined ? "; kept the booked amount" : ""}`, at: this.rt.clock.now() });
+    return codBooked ?? 0;
+  }
+
   trackingUrl(tn: string) {
-    return this.cfg.trackingUrlTemplate?.replace("{tn}", encodeURIComponent(tn));
+    return (this.cfg.trackingUrlTemplate || DEFAULT_TRACKING_URL).replace("{tn}", encodeURIComponent(tn));
   }
 
   /** Normalize a Bosta delivery, whatever shape it arrives in. */
-  toShipment(raw: unknown, referenceHint?: string): CanonicalShipment {
+  toShipment(raw: unknown, referenceHint?: string, codBooked?: number): CanonicalShipment {
     const r = this.resolver(raw, "delivery");
     const tn = r.str("trackingNumber", ["trackingNumber", "tracking_number", "trackingNo"], { required: true })!;
     const { code: codeVal, label } = readState(r);
@@ -297,7 +319,7 @@ export class BostaConnector {
       orderRef: r.str("businessReference", ["businessReference", "business_reference"]) ?? referenceHint ?? "",
       status,
       rawStatus: { code: codeVal, label },
-      cod: { amount: String(r.num("cod", ["cod", "codAmount", "cashOnDelivery"]) ?? 0), currency: "EGP" },
+      cod: { amount: String(this.codOf(r, tn, codBooked)), currency: "EGP" },
       trackingUrl: this.trackingUrl(tn),
       updatedAt,
       raw,
@@ -382,4 +404,16 @@ export function normalizeEgPhone(p: string | undefined): string | undefined {
   if (eg?.country === "EG") return eg.national;
   const digits = toAsciiDigits(p).replace(/[^\d+]/g, "");
   return digits.length >= 8 ? digits : undefined;
+}
+
+/** What Mizan asks the courier to collect, or nothing when the order may not ship (the payload build then refuses it). */
+function bookedCod(order: CanonicalOrder): number | undefined {
+  try { return Number(cashToCollect(order).amount); } catch { return undefined; }
+}
+
+/** The courier's notes: the order number first, then the customer's pin, within Bosta's limit. */
+function deliveryNotes(order: CanonicalOrder, a: Address): string {
+  const parts = [`Mizan order ${order.number}`];
+  if (a.location) parts.push(`Location: ${mapLink(a.location)}`);
+  return parts.join(" | ").slice(0, 500);
 }
