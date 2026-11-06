@@ -24,6 +24,9 @@ type Notify = After["confirmed"]["notify"];
 type Role = Notify["roles"][number];
 const OUTCOMES: readonly Outcome[] = ["confirmed", "changed", "cancelled", "noAnswer", "optedOut"];
 const EDITORS = rolesWith("confirmation.manage");
+// .mz-input is full width at the medium height: a number inside a sentence and the tag box are smaller.
+const INLINE_NUM = { width: "4.5rem", height: "var(--mz-control-sm)", paddingInline: "6px" } as const;
+const TAG_INPUT = { width: "16rem", maxWidth: "100%", height: "var(--mz-control-sm)" } as const;
 
 /**
  * Settings → After confirmation (E6-23a/b): what happens after each outcome, read as sentences
@@ -82,7 +85,7 @@ export function AfterConfirmationScreen() {
                 <Row icon="pending">
                   <Sentence text={t.rich("confirmed.grace", { n: () => (
                     <Num value={s.confirmed.graceMinutes} min={0} max={120} label={t("confirmed.graceLabel")} onChange={(graceMinutes) => set("confirmed", { graceMinutes })}
-                      className="mz-input mz-num mx-1 inline-block h-8 w-20 text-center" />
+                      className="mz-input mz-num mx-1.5 inline-block text-center" style={INLINE_NUM} />
                   ) })} />
                   <Hint>{t(s.confirmed.graceMinutes ? "confirmed.graceOn" : "confirmed.graceOff")}</Hint>
                 </Row>
@@ -207,7 +210,7 @@ function Row({ icon, children }: { icon: Parameters<typeof Icon>[0]["name"]; chi
 }
 
 function Sentence({ text }: { text: ReactNode }) {
-  return <p className="flex flex-wrap items-center text-body-sm leading-8">{text}</p>;
+  return <p className="text-body-sm leading-9">{text}</p>; // inline: the sentence flows around its control
 }
 
 function Hint({ children }: { children: ReactNode }) {
@@ -253,7 +256,7 @@ function Tags({ value, onChange, sentence }: { value: string[]; onChange(next: s
             <button type="button" className="text-text-3 hover:text-text" aria-label={t("removeTag", { tag })} onClick={() => onChange(value.filter((x) => x !== tag))}><Icon name="close" size={12} /></button>
           </span>
         ))}
-        <input id={id} aria-describedby={error ? errId : undefined} aria-invalid={error || undefined} className="mz-input h-8 w-44" value={text} placeholder={t("tagPlaceholder")} dir="auto"
+        <input id={id} aria-describedby={error ? errId : undefined} aria-invalid={error || undefined} className="mz-input" style={TAG_INPUT} value={text} placeholder={t("tagPlaceholder")} dir="auto"
           onChange={(e) => { setText(e.target.value); setError(false); }} onKeyDown={onKey} onBlur={add} />
       </div>
       {error ? <p id={errId} className="text-caption text-danger" role="alert">{t("tagInvalid")}</p> : null}
@@ -293,11 +296,11 @@ function Choices({ legend, options, value, onChange, labelOf }: { legend: string
  * A whole number that keeps what is typed (an emptied field stays empty while typing) and settles
  * into its range when the field is left; the setting holds the last valid number meanwhile.
  */
-function Num({ value, min, max, label, className, onChange }: { value: number; min: number; max: number; label: string; className?: string; onChange(next: number): void }) {
+function Num({ value, min, max, label, className, style, onChange }: { value: number; min: number; max: number; label: string; className?: string; style?: React.CSSProperties; onChange(next: number): void }) {
   const [text, setText] = useState<string | null>(null);
   const settle = (raw: string) => Math.max(min, Math.min(max, Math.round(Number(raw))));
   return (
-    <input type="number" inputMode="numeric" dir="ltr" min={min} max={max} aria-label={label} className={className}
+    <input type="number" inputMode="numeric" dir="ltr" min={min} max={max} aria-label={label} className={className} style={style}
       value={text ?? String(value)}
       onChange={(e) => { setText(e.target.value); if (e.target.value !== "" && Number.isFinite(Number(e.target.value))) onChange(settle(e.target.value)); }}
       onBlur={() => { if (text !== null) { onChange(text === "" || !Number.isFinite(Number(text)) ? value : settle(text)); setText(null); } }} />
