@@ -5287,7 +5287,7 @@
   },
   "trial": {
     "title": "Your plan: {plan}",
-    "daysLeft": "{days, plural, =1 {1 day} other {<n>#</n> days}} left in your {plan} trial. After that the store moves to Free, and orders keep coming in as usual.",
+    "daysLeft": "{days, plural, =1 {<n>1</n> day} other {<n>#</n> days}} left in your {plan} trial. After that the store moves to Free, and orders keep coming in as usual.",
     "lastDay": "Today is the last day of your {plan} trial. Tomorrow the store moves to Free, and orders keep coming in as usual.",
     "endsOn": "The trial ends:",
     "after": "No card needed. Payment and subscriptions are coming soon; until then, talk to us to stay on this plan.",
