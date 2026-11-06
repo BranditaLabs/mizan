@@ -16870,6 +16870,276 @@
         ]
       }
     },
+    "/v1/settings/after-confirmation": {
+      "get": {
+        "operationId": "AfterConfirmationController_view",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "What happens after each outcome (confirmed, changed, cancelled, no answer, opted out), the couriers and team to choose from, and a recommended starting point",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterConfirmationView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      },
+      "put": {
+        "operationId": "AfterConfirmationController_save",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AfterConfirmation"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved and audited; applies to orders reaching each outcome from now on (a setting turned off also stops follow-ups already waiting)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterConfirmationView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/orders/{id}/after-confirmation/release": {
+      "post": {
+        "operationId": "AfterConfirmationController_release",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Release now: the change window ends (or a hold because the customer wrote), and an automatic booking runs at once with all its checks; audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterRelease"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
+    "/v1/orders/{id}/after-confirmation/skip": {
+      "post": {
+        "operationId": "AfterConfirmationController_skip",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Book by hand: this order will not be booked automatically; audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AfterSkip"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "operationId": "HealthController_live",
@@ -19933,6 +20203,1234 @@
           "platform",
           "spend",
           "connectionId"
+        ],
+        "additionalProperties": false
+      },
+      "AfterConfirmation": {
+        "type": "object",
+        "properties": {
+          "confirmed": {
+            "type": "object",
+            "properties": {
+              "graceMinutes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 120,
+                "description": "Keep the order off pick lists and ready-to-ship, and do not auto-book, so the customer can still change or cancel"
+              },
+              "tags": {
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                },
+                "description": "In Mizan and, for Shopify orders, in the store"
+              },
+              "message": {
+                "type": "string",
+                "enum": [
+                  "short",
+                  "summary"
+                ],
+                "description": "The WhatsApp thank-you after a tap: the short text, or with the items, the cash to collect and the area"
+              },
+              "notify": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "ops_manager",
+                        "agent",
+                        "warehouse",
+                        "finance",
+                        "media_buyer"
+                      ]
+                    },
+                    "description": "Who is told, by role (a notice in Mizan)"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "roles"
+                ],
+                "additionalProperties": false
+              },
+              "autoBook": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "courierConnectionId": {
+                    "nullable": true,
+                    "description": "A Bosta connection; null: the first one connected",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "paymentModes": {
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "cod",
+                        "prepaid",
+                        "partial",
+                        "bnpl",
+                        "bank_transfer"
+                      ]
+                    }
+                  },
+                  "channels": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "whatsapp",
+                        "link",
+                        "call_team",
+                        "agent",
+                        "auto",
+                        "voice_ivr",
+                        "voice_ai"
+                      ]
+                    },
+                    "description": "Confirmations that may book by themselves"
+                  },
+                  "afterChange": {
+                    "type": "boolean",
+                    "description": "Also auto-book orders whose customer asked for a change before the team confirmed"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "courierConnectionId",
+                  "paymentModes",
+                  "channels",
+                  "afterChange"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "graceMinutes",
+              "tags",
+              "message",
+              "notify",
+              "autoBook"
+            ],
+            "additionalProperties": false
+          },
+          "changed": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                }
+              },
+              "notify": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "ops_manager",
+                        "agent",
+                        "warehouse",
+                        "finance",
+                        "media_buyer"
+                      ]
+                    },
+                    "description": "Who is told, by role (a notice in Mizan)"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "roles"
+                ],
+                "additionalProperties": false
+              },
+              "assignTo": {
+                "nullable": true,
+                "description": "A team member who takes the call back",
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": [
+              "tags",
+              "notify",
+              "assignTo"
+            ],
+            "additionalProperties": false
+          },
+          "cancelled": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                }
+              },
+              "notify": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "ops_manager",
+                        "agent",
+                        "warehouse",
+                        "finance",
+                        "media_buyer"
+                      ]
+                    },
+                    "description": "Who is told, by role (a notice in Mizan)"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "roles"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "tags",
+              "notify"
+            ],
+            "additionalProperties": false
+          },
+          "noAnswer": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                }
+              },
+              "notify": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "ops_manager",
+                        "agent",
+                        "warehouse",
+                        "finance",
+                        "media_buyer"
+                      ]
+                    },
+                    "description": "Who is told, by role (a notice in Mizan)"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "roles"
+                ],
+                "additionalProperties": false
+              },
+              "autoCancel": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "after": {
+                    "type": "string",
+                    "enum": [
+                      "messages",
+                      "team_calls"
+                    ],
+                    "description": "messages: the automatic messages went unanswered; team_calls: the team's last call went unanswered"
+                  },
+                  "afterHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 72
+                  },
+                  "cancelIfAssigned": {
+                    "type": "boolean",
+                    "description": "Also cancel when a team member has taken the order"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "after",
+                  "afterHours",
+                  "cancelIfAssigned"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "tags",
+              "notify",
+              "autoCancel"
+            ],
+            "additionalProperties": false
+          },
+          "optedOut": {
+            "type": "object",
+            "properties": {
+              "tags": {
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                }
+              },
+              "notify": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "roles": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "ops_manager",
+                        "agent",
+                        "warehouse",
+                        "finance",
+                        "media_buyer"
+                      ]
+                    },
+                    "description": "Who is told, by role (a notice in Mizan)"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "roles"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "tags",
+              "notify"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "confirmed",
+          "changed",
+          "cancelled",
+          "noAnswer",
+          "optedOut"
+        ],
+        "additionalProperties": false
+      },
+      "AfterConfirmationView": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "properties": {
+              "confirmed": {
+                "type": "object",
+                "properties": {
+                  "graceMinutes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "description": "Keep the order off pick lists and ready-to-ship, and do not auto-book, so the customer can still change or cancel"
+                  },
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    },
+                    "description": "In Mizan and, for Shopify orders, in the store"
+                  },
+                  "message": {
+                    "type": "string",
+                    "enum": [
+                      "short",
+                      "summary"
+                    ],
+                    "description": "The WhatsApp thank-you after a tap: the short text, or with the items, the cash to collect and the area"
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "autoBook": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "courierConnectionId": {
+                        "nullable": true,
+                        "description": "A Bosta connection; null: the first one connected",
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "paymentModes": {
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "cod",
+                            "prepaid",
+                            "partial",
+                            "bnpl",
+                            "bank_transfer"
+                          ]
+                        }
+                      },
+                      "channels": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "whatsapp",
+                            "link",
+                            "call_team",
+                            "agent",
+                            "auto",
+                            "voice_ivr",
+                            "voice_ai"
+                          ]
+                        },
+                        "description": "Confirmations that may book by themselves"
+                      },
+                      "afterChange": {
+                        "type": "boolean",
+                        "description": "Also auto-book orders whose customer asked for a change before the team confirmed"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "courierConnectionId",
+                      "paymentModes",
+                      "channels",
+                      "afterChange"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "graceMinutes",
+                  "tags",
+                  "message",
+                  "notify",
+                  "autoBook"
+                ],
+                "additionalProperties": false
+              },
+              "changed": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "assignTo": {
+                    "nullable": true,
+                    "description": "A team member who takes the call back",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify",
+                  "assignTo"
+                ],
+                "additionalProperties": false
+              },
+              "cancelled": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify"
+                ],
+                "additionalProperties": false
+              },
+              "noAnswer": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "autoCancel": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "after": {
+                        "type": "string",
+                        "enum": [
+                          "messages",
+                          "team_calls"
+                        ],
+                        "description": "messages: the automatic messages went unanswered; team_calls: the team's last call went unanswered"
+                      },
+                      "afterHours": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 72
+                      },
+                      "cancelIfAssigned": {
+                        "type": "boolean",
+                        "description": "Also cancel when a team member has taken the order"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "after",
+                      "afterHours",
+                      "cancelIfAssigned"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify",
+                  "autoCancel"
+                ],
+                "additionalProperties": false
+              },
+              "optedOut": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "confirmed",
+              "changed",
+              "cancelled",
+              "noAnswer",
+              "optedOut"
+            ],
+            "additionalProperties": false
+          },
+          "couriers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "provider",
+                "name",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Bosta connections a store can book with"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "role"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Active team members (for who takes a change request)"
+          },
+          "recommended": {
+            "type": "object",
+            "properties": {
+              "confirmed": {
+                "type": "object",
+                "properties": {
+                  "graceMinutes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "description": "Keep the order off pick lists and ready-to-ship, and do not auto-book, so the customer can still change or cancel"
+                  },
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    },
+                    "description": "In Mizan and, for Shopify orders, in the store"
+                  },
+                  "message": {
+                    "type": "string",
+                    "enum": [
+                      "short",
+                      "summary"
+                    ],
+                    "description": "The WhatsApp thank-you after a tap: the short text, or with the items, the cash to collect and the area"
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "autoBook": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "courierConnectionId": {
+                        "nullable": true,
+                        "description": "A Bosta connection; null: the first one connected",
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "paymentModes": {
+                        "minItems": 1,
+                        "maxItems": 5,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "cod",
+                            "prepaid",
+                            "partial",
+                            "bnpl",
+                            "bank_transfer"
+                          ]
+                        }
+                      },
+                      "channels": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "whatsapp",
+                            "link",
+                            "call_team",
+                            "agent",
+                            "auto",
+                            "voice_ivr",
+                            "voice_ai"
+                          ]
+                        },
+                        "description": "Confirmations that may book by themselves"
+                      },
+                      "afterChange": {
+                        "type": "boolean",
+                        "description": "Also auto-book orders whose customer asked for a change before the team confirmed"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "courierConnectionId",
+                      "paymentModes",
+                      "channels",
+                      "afterChange"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "graceMinutes",
+                  "tags",
+                  "message",
+                  "notify",
+                  "autoBook"
+                ],
+                "additionalProperties": false
+              },
+              "changed": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "assignTo": {
+                    "nullable": true,
+                    "description": "A team member who takes the call back",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify",
+                  "assignTo"
+                ],
+                "additionalProperties": false
+              },
+              "cancelled": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify"
+                ],
+                "additionalProperties": false
+              },
+              "noAnswer": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "autoCancel": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "after": {
+                        "type": "string",
+                        "enum": [
+                          "messages",
+                          "team_calls"
+                        ],
+                        "description": "messages: the automatic messages went unanswered; team_calls: the team's last call went unanswered"
+                      },
+                      "afterHours": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 72
+                      },
+                      "cancelIfAssigned": {
+                        "type": "boolean",
+                        "description": "Also cancel when a team member has taken the order"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "after",
+                      "afterHours",
+                      "cancelIfAssigned"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify",
+                  "autoCancel"
+                ],
+                "additionalProperties": false
+              },
+              "optedOut": {
+                "type": "object",
+                "properties": {
+                  "tags": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} _-]{0,39}$"
+                    }
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "roles": {
+                        "minItems": 1,
+                        "maxItems": 7,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "ops_manager",
+                            "agent",
+                            "warehouse",
+                            "finance",
+                            "media_buyer"
+                          ]
+                        },
+                        "description": "Who is told, by role (a notice in Mizan)"
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "roles"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "tags",
+                  "notify"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "confirmed",
+              "changed",
+              "cancelled",
+              "noAnswer",
+              "optedOut"
+            ],
+            "additionalProperties": false,
+            "description": "A starting point the screen can fill in; never applied by itself"
+          }
+        },
+        "required": [
+          "settings",
+          "couriers",
+          "members",
+          "recommended"
+        ],
+        "additionalProperties": false
+      },
+      "AfterRelease": {
+        "type": "object",
+        "properties": {
+          "released": {
+            "type": "boolean"
+          },
+          "autoBook": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "released",
+          "autoBook"
+        ],
+        "additionalProperties": false
+      },
+      "AfterSkip": {
+        "type": "object",
+        "properties": {
+          "autoBook": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          }
+        },
+        "required": [
+          "autoBook"
         ],
         "additionalProperties": false
       },

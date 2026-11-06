@@ -241,6 +241,33 @@ describe("the conversation", () => {
     expect((await orderRow(id)).ship_lat).toBe(30.0561);
   });
 
+  it("written after confirming, inside the store's change window: held for the team, who read it before packing (E6-23a)", async () => {
+    const after = (await http().get("/v1/settings/after-confirmation").set(as("owner")).expect(200)).body.settings;
+    await http().put("/v1/settings/after-confirmation").set(as("owner")).send({ ...after, confirmed: { ...after.confirmed, graceMinutes: 30 } }).expect(200);
+    try {
+      const id = await newOrder();
+      await run();
+      const t = await templateFor(id);
+      wa.tapQuickReply(CUSTOMER, t.confirm, t.message.id);
+      await deliver();
+      const held = () => db.tenant(store, (trx) => trx.selectFrom("orders").select(["status", "hold_reason"]).where("id", "=", id).executeTakeFirstOrThrow());
+      expect(await held()).toEqual({ status: "confirmed", hold_reason: "grace" });
+      const before = wa.accepted.length;
+      wa.writes(CUSTOMER, "معلش عايزة أغيّر المقاس");
+      await deliver();
+      expect(await held()).toEqual({ status: "confirmed", hold_reason: "customer_message" });
+      const f = await db.tenant(store, (trx) => trx.selectFrom("order_followups").select(["status", "result"]).where("order_id", "=", id).executeTakeFirstOrThrow());
+      expect(f).toEqual({ status: "blocked", result: "customer_message" });
+      await run();
+      expect(sentAfter(before).map((m) => m.body.text?.body)).toContain("وصلنا ✍️ فريق Nile Abayas هيكلّمك قريب.");
+      const notes = await db.tenant(store, (trx) => trx.selectFrom("notifications").select("text").where("entity_id", "=", id).execute());
+      expect(notes.map((x) => x.text)).toEqual([expect.stringMatching(/^customer_message\|#\d+\|$/)]);
+      expect(JSON.stringify(notes)).not.toMatch(/المقاس|Mona|1001234821/); // never what they wrote, never who
+    } finally {
+      await http().put("/v1/settings/after-confirmation").set(as("owner")).send(after).expect(200);
+    }
+  });
+
   it("STOP: the customer is opted out, the team calls instead, and later orders skip WhatsApp until START (E6-4b)", async () => {
     const PHONE = "201001239999";
     const mine = () => newOrder({ customer: { name: "Sara Nabil", phone: `+${PHONE}` }, shippingAddress: { name: "Sara Nabil", phone: `+${PHONE}`, line1: "5 Makram Ebeid St", city: "Nasr City", countryCode: "EG" } });
@@ -559,5 +586,29 @@ describe("Claude picks and words the offer (E6-12)", () => {
     expect(await aiStep(id)).toMatchObject({ status: "done", last_error: "late" });
     expect(await offerOf(id)).toMatchObject({ source: "auto", message_ar: null });
     await settings({ enabled: false, ai: false });
+  });
+});
+
+// Last: it moves the test clock hours ahead.
+describe("after Mizan stopped waiting (E6-23a)", () => {
+  it("a customer who writes after Mizan stopped waiting is never cancelled for not answering (E6-23a)", async () => {
+    const after = (await http().get("/v1/settings/after-confirmation").set(as("owner")).expect(200)).body.settings;
+    await http().put("/v1/settings/after-confirmation").set(as("owner")).send({ ...after, noAnswer: { ...after.noAnswer, autoCancel: { enabled: true, after: "messages", afterHours: 1, cancelIfAssigned: false } } }).expect(200);
+    try {
+      const id = await newOrder();
+      await run();
+      await deliver(); // Meta's statuses for the template
+      await run(130); // nobody tapped: the team's calls, and a cancel scheduled for an hour later
+      await drain();
+      const followup = () => db.tenant(store, (trx) => trx.selectFrom("order_followups").select(["status", "result"]).where("order_id", "=", id).where("kind", "=", "no_answer_cancel").executeTakeFirst());
+      expect(await followup()).toMatchObject({ status: "pending" });
+      wa.writes(CUSTOMER, "أيوه عايزاه، كنت مشغولة");
+      await deliver();
+      expect(await followup()).toEqual({ status: "skipped", result: "customer_message" });
+      await run(70);
+      expect((await orderRow(id)).status).not.toBe("cancelled");
+    } finally {
+      await http().put("/v1/settings/after-confirmation").set(as("owner")).send(after).expect(200);
+    }
   });
 });

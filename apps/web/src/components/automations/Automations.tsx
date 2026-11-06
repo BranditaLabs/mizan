@@ -24,6 +24,7 @@ type Automation = Schemas["AutomationList"]["data"][number];
 type Recipe = Schemas["RecipeList"]["data"][number];
 const MANAGERS = rolesWith("automations.manage");
 const KNOWN_TRIGGERS = new Set(["order.created", "order.scored", "order.duplicate_found", "order.store_cancel_failed", "order.assigned", "order.tagged", "order.confirmed", "order.cancelled",
+  "confirmation.no_answer", "order.ready_to_ship", "order.auto_ship_blocked",
   "stock.short", "stock.low", "stock.out", "connection.needs_attention", "offer.accepted", "payment.received", "ticket.created", "ticket.status_changed", "ticket.assigned"]);
 const KNOWN_ACTIONS = new Set(["order.add_tag", "order.assign", "order.convert_to_prepaid", "notify.team"]);
 

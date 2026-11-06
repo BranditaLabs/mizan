@@ -180,3 +180,5 @@ Conventions: `docs/05-api.md`.
 - Which couriers sign API access first?
 - Do we print labels from the browser or a local print agent?
 - Customer tracking page under the merchant's subdomain?
+
+**Automatic booking after confirmation (E6-23a).** `AutoBookConsumer` books on `order.ready_to_ship` through `ShippingService.book()` (the store's chosen Bosta connection, `courierConnectionId`, else the first connected), checking status, payment method, stock, duplicates and offers or edits still applying in the booking's transaction; a refusal is `order.auto_ship_blocked`. Orders held after confirmation (`orders.held_until`) are off the ready-to-ship list and pick lists; the Ship button still works and books. `ENGINE_AUTO_SHIP_TAG` is for engine tests only and ignored in production.
