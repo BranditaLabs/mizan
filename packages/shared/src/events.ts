@@ -15,7 +15,7 @@ export const DOMAIN_EVENT_TYPES = [
   "order.assigned", "order.tagged", "order.untagged", "order.note_added", "order.edited", "order.edit_failed", "product.updated", "product.created", "product.published", "product.publish_failed", "order.store_cancel_failed", "order.store_fulfilled", "order.cancelled_after_shipping", "order.store_fulfillment_cancelled", "order.store_copy_failed", "sync.recovered", "orders.bulk_requested", "orders.bulk_continue", "orders.bulk_finished",
   // M2 Confirmation
   "order.scored", "order.confirmed", "order.confirmation_failed",
-  "confirmation.started", "confirmation.routed", "confirmation.sent", "confirmation.escalated",
+  "confirmation.started", "confirmation.routed", "confirmation.sent", "confirmation.escalated", "confirmation.no_answer", "order.ready_to_ship", "order.auto_ship_blocked",
   "offer.proposed", "offer.accepted", "offer.declined", "offer.expired", "offer.applied", "offer.failed",
   // M3 Shipping
   "shipment.created", "shipment.booking_failed", "shipment.status_changed", "shipment.needs_review", "shipment.delivered", "shipment.returned",

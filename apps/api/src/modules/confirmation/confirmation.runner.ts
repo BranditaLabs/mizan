@@ -8,6 +8,7 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { MetricsService } from "../../platform/metrics/metrics.service.js";
 import { actionId } from "./confirmation-link.js";
 import { ConfirmationService, type RunRow } from "./confirmation.service.js";
+import { FollowupsRunner } from "./after/followups.runner.js";
 import { CALL_DIGITS, callPrompts, chatContent, CHAT_MESSAGES, TEMPLATE_ACTIONS, templateName, whatsappParams, type ChatMessage, type MessageFacts } from "./messages.js";
 import { canChat, MessagingRegistry } from "./messaging.registry.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
@@ -47,6 +48,7 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
     @Inject(WhatsAppConnections) private readonly whatsappConnections: WhatsAppConnections,
     @Inject(EventsService) private readonly events: EventsService,
     @Inject(MetricsService) private readonly metrics: MetricsService,
+    @Inject(FollowupsRunner) private readonly followups: FollowupsRunner,
     @Inject(OfferAi) private readonly offerAi: OfferAi,
   ) {}
 
@@ -87,6 +89,8 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
         if (!ran) break;
       }
     }
+    // What the store chose for after confirmation (E6-23a): releases and automatic cancels that are due. Not counted as steps.
+    await this.followups.runOnce(now).catch((err: unknown) => this.logger.error({ err }, "after-confirmation follow-ups failed"));
     return n;
   }
 

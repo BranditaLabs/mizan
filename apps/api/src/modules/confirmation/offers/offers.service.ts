@@ -173,6 +173,25 @@ export class OffersService {
     return { status, changed: true };
   }
 
+  /**
+   * The order is released to packing (E6-23a) while its offer still waits for an answer: the offer
+   * ends, so the parcel the courier takes is the order as it is. Safe to repeat.
+   */
+  async expire(trx: Transaction<DB>, tenantId: string, orderId: string, now = new Date()): Promise<number> {
+    const open = await trx.updateTable("order_offers").set({ status: "expired", decided_at: now, updated_at: now })
+      .where("order_id", "=", orderId).where("status", "=", "proposed").returning(["id", "variant_id", "qty", "offer_price_minor", "currency"]).execute();
+    if (!open.length) return 0;
+    const order = await trx.selectFrom("orders").select("number").where("id", "=", orderId).executeTakeFirstOrThrow();
+    for (const f of open) {
+      await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "offer_expired", actor_type: "system", data: JSON.stringify({ reason: "released" }) }).execute();
+      await this.events.emit(trx, {
+        type: "offer.expired", tenantId, entity: { type: "order", id: orderId }, actor: { type: "system" },
+        data: { number: order.number, offerId: f.id, variantId: f.variant_id, qty: f.qty, offerPriceMinor: String(f.offer_price_minor), currency: f.currency.trim(), channel: "auto" },
+      });
+    }
+    return open.length;
+  }
+
   /** The team records the customer's answer to the offer on the call. */
   async decideByTeam(auth: AuthContext, orderId: string, decision: OfferDecision, now = new Date()) {
     const tenantId = auth.tenant!.id;

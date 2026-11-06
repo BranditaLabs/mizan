@@ -66,13 +66,13 @@ export class ShippingService implements ShipmentResultSink {
    * shipping screen, E7-2): the shipment row and the courier job commit together. Refusals are
    * ProblemErrors with a code (not_confirmed, address_missing, payment_blocks_shipping, no_courier…).
    */
-  async book(trx: Trx, tenantId: string, orderId: string, userId: string | null, now = new Date(), data: Record<string, unknown> = {}): Promise<{ created: boolean; shipment: ShipmentView }> {
+  async book(trx: Trx, tenantId: string, orderId: string, userId: string | null, now = new Date(), data: Record<string, unknown> = {}, opts: { courierConnectionId?: string | null } = {}): Promise<{ created: boolean; shipment: ShipmentView }> {
     const ready = await this.shippable(trx, orderId, true);
     if (ready.kind === "live") return { created: false, shipment: ready.live };
     const { o, cod } = ready;
 
     // Couriers Mizan books through an API (Bosta for now); others are recorded by hand (shipManual).
-    const courier = await apiCourier(trx);
+    const courier = await apiCourier(trx, opts.courierConnectionId);
     if (!courier) throw new ProblemError(409, "no_courier", "connect a courier first");
     if (courier.status === "needs_attention") throw new ProblemError(409, "courier_needs_attention", "the courier connection needs attention (key refused)");
     // Jobs run in a store's engine: the order's own store, else the tenant's first (a courier is only connected after a store).
@@ -403,9 +403,10 @@ function view(r: Row): ShipmentView {
   };
 }
 
-function apiCourier(trx: Trx) {
-  return trx.selectFrom("connections").select(["id", "provider", "status"]).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected")
-    .orderBy("created_at").executeTakeFirst();
+/** The courier booked through an API: the one asked for (when it is still connected), else the first connected. */
+async function apiCourier(trx: Trx, id?: string | null) {
+  const q = trx.selectFrom("connections").select(["id", "provider", "status"]).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected");
+  return (id ? await q.where("id", "=", id).executeTakeFirst() : undefined) ?? q.orderBy("created_at").executeTakeFirst();
 }
 
 function timeline(trx: Trx, tenantId: string, orderId: string, type: string, data: Record<string, unknown>, userId?: string) {

@@ -620,6 +620,25 @@ export interface OrderEvents {
   created_at: Generated<Timestamp>;
 }
 
+export interface OrderFollowups {
+  id: Generated<string>;
+  tenant_id: string;
+  order_id: string;
+  run_id: string | null;
+  kind: string;
+  channel: string | null;
+  changed: Generated<boolean>;
+  auto_book: Generated<boolean>;
+  run_at: Timestamp;
+  status: Generated<string>;
+  attempts: Generated<number>;
+  deferrals: Generated<number>;
+  result: string | null;
+  idempotency_key: string;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface OrderLines {
   id: Generated<string>;
   tenant_id: string;
@@ -798,6 +817,8 @@ export interface Orders {
   store_copy_error: string | null;
   store_cancelled_at: Timestamp | null;
   store_copy_snapshot: Json | null;
+  held_until: Timestamp | null;
+  hold_reason: string | null;
 }
 
 export interface PaymentLinks {
@@ -1508,6 +1529,7 @@ export interface DB {
   ops_operations: OpsOperations;
   order_edits: OrderEdits;
   order_events: OrderEvents;
+  order_followups: OrderFollowups;
   order_lines: OrderLines;
   order_notes: OrderNotes;
   order_offers: OrderOffers;

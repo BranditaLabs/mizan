@@ -2746,6 +2746,9 @@
       "order_assigned": "أوردر يتسلّم لحد",
       "order_tagged": "أوردر ياخد تاج",
       "order_confirmed": "أوردر يتأكد",
+      "confirmation_no_answer": "محدش يردّ على التأكيد",
+      "order_ready_to_ship": "أوردر متأكد يبقى جاهز للحجز التلقائي",
+      "order_auto_ship_blocked": "الحجز التلقائي لأوردر يتوقّف",
       "order_cancelled": "أوردر يتلغي",
       "stock_short": "أوردر متأكد يستنى مخزون",
       "stock_low": "منتج يقرب يخلص",
@@ -2827,6 +2830,31 @@
       "bosta": "بوسطة",
       "whatsapp_cloud": "واتساب",
       "other": "ربط"
+    },
+    "after": {
+      "confirmed": "الأوردر {n} اتأكّد",
+      "changed": "العميل طلب تعديل في الأوردر {n}",
+      "cancelled": "الأوردر {n} اتلغى",
+      "no_answer": "محدش ردّ على تأكيد الأوردر {n}",
+      "opted_out": "عميل الأوردر {n} طلب ما يوصلوش رسايل، كلّموه",
+      "customer_message": "العميل كتب رسالة بعد تأكيد الأوردر {n}، اتوقّف لحد ما تشوفوه",
+      "auto_cancelled": "الأوردر {n} اتلغى لوحده عشان محدش ردّ",
+      "followup_dead": "خطوة بعد التأكيد للأوردر {n} وقفت، محتاجة حد يشوفها",
+      "blocked": "الحجز التلقائي للأوردر {n} اتوقّف: {why}",
+      "why": {
+        "payment_blocks_shipping": "الدفع لسه ما وصلش",
+        "payment_mode_not_allowed": "طريقة الدفع مش من اللي بتتحجز لوحدها",
+        "address_missing": "العنوان أو الموبايل ناقص",
+        "no_courier": "مفيش شركة شحن متوصّلة",
+        "courier_needs_attention": "حساب شركة الشحن محتاج مراجعة",
+        "store_not_connected": "المتجر مش متوصّل",
+        "stock_short": "المخزون مش مكفّي",
+        "stock_settling": "المخزون لسه ما اتحجزش",
+        "duplicate_suspected": "ممكن يكون أوردر مكرّر",
+        "offer_settling": "عرض أو تعديل لسه بيتسجّل",
+        "order_moved": "حالة الأوردر اتغيّرت",
+        "other": "حاجة وقّفته"
+      }
     }
   },
   "tickets": {

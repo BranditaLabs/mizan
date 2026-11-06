@@ -11,6 +11,8 @@ import { ConfirmationService, type RunRow } from "./confirmation.service.js";
 import { CANCEL_REASONS, consentKeyword, type CancelReason, type ChatMessage } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
+import { AfterConfirmationService } from "./after/after.service.js";
+import { notice } from "./after/notices.js";
 
 /** Delivery order; a late "delivered" never overwrites "read", "failed" is final. */
 const RANK: Record<string, number> = { accepted: 0, received: 0, sent: 1, delivered: 2, read: 3, failed: 4 };
@@ -43,6 +45,7 @@ export class WhatsAppChat {
     @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
     @Inject(MessagingRegistry) private readonly registry: MessagingRegistry,
     @Inject(OffersService) private readonly offers: OffersService,
+    @Inject(AfterConfirmationService) private readonly after: AfterConfirmationService,
   ) {}
 
   /** Meta's subscription check (GET). */
@@ -165,9 +168,37 @@ export class WhatsAppChat {
     // Anything else they type goes to the team, who call back.
     if (LIVE.includes(run.status)) {
       if (run.status === "running") await this.confirmations.escalate(trx, tenantId, run, "customer_message", now);
+      await this.engaged(trx, run.order_id, "customer_message", now);
+      await this.reply(trx, tenantId, run, "noted", m.id, now);
+    } else if (await this.heldAfterConfirming(trx, tenantId, run.order_id, now)) {
+      // Confirmed, still in the store's change window (E6-23a): held for the team, who read it before packing.
       await this.reply(trx, tenantId, run, "noted", m.id, now);
     }
     return { run, action: "message" };
+  }
+
+  /**
+   * A message after confirming, inside the grace window: the order stays off packing and booking
+   * until a person looks (Release now), and the team is told. Nothing else changes.
+   */
+  /** The customer answered after Mizan stopped waiting (or said STOP): an automatic cancel for no answer no longer applies. */
+  private async engaged(trx: Transaction<DB>, orderId: string, why: string, now: Date): Promise<void> {
+    await trx.updateTable("order_followups").set({ status: "skipped", result: why, updated_at: now })
+      .where("order_id", "=", orderId).where("kind", "=", "no_answer_cancel").where("status", "=", "pending").execute();
+  }
+
+  private async heldAfterConfirming(trx: Transaction<DB>, tenantId: string, orderId: string, now: Date): Promise<boolean> {
+    // The follow-up before the order: the runner's lock order (no deadlock).
+    await trx.selectFrom("order_followups").select("id").where("order_id", "=", orderId).where("kind", "=", "release").forUpdate().execute();
+    const held = await trx.updateTable("orders").set({ hold_reason: "customer_message", held_until: new Date("9999-12-31T00:00:00Z") })
+      .where("id", "=", orderId).where("status", "=", "confirmed").where("hold_reason", "=", "grace").where("held_until", ">", now)
+      .returning("number").executeTakeFirst();
+    if (!held) return false;
+    await trx.updateTable("order_followups").set({ status: "blocked", result: "customer_message", updated_at: now })
+      .where("order_id", "=", orderId).where("kind", "=", "release").where("status", "=", "pending").execute();
+    await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "change_after_confirm", actor_type: "customer", data: JSON.stringify({ channel: "whatsapp" }) }).execute();
+    await this.after.notify(trx, tenantId, ["owner", "admin", "ops_manager"], notice("customer_message", held.number), orderId, `after:customer_message:${orderId}`);
+    return true;
   }
 
   private async onTap(trx: Transaction<DB>, tenantId: string, run: RunRow, action: ChatAction, arg: string | undefined, inbound: string, now: Date): Promise<string> {
@@ -200,6 +231,7 @@ export class WhatsAppChat {
           await this.reply(trx, tenantId, run, "change_prompt", inbound, now);
           return "change";
         }
+        if (run.outcome === "confirmed" && (await this.heldAfterConfirming(trx, tenantId, run.order_id, now))) { await this.reply(trx, tenantId, run, "noted", inbound, now); return "held"; }
         if (run.outcome !== "changed") await this.reply(trx, tenantId, run, "already", inbound, now);
         return "late";
       case "cancel":
@@ -208,6 +240,8 @@ export class WhatsAppChat {
           await this.reply(trx, tenantId, run, "cancel_reasons", inbound, now);
           return "cancel";
         }
+        // Confirmed, then Cancel inside the change window: held for a person, who calls before anything is packed or booked.
+        if (run.outcome === "confirmed" && (await this.heldAfterConfirming(trx, tenantId, run.order_id, now))) { await this.reply(trx, tenantId, run, "noted", inbound, now); return "held"; }
         if (run.outcome !== "cancelled") await this.reply(trx, tenantId, run, "already", inbound, now);
         return "late";
       case "reason": {
@@ -244,6 +278,7 @@ export class WhatsAppChat {
     if (!run) return { run: null, action: consent };
     await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: run.order_id, type: out ? "whatsapp_opted_out" : "whatsapp_opted_in", actor_type: "customer", data: JSON.stringify({ channel: "whatsapp" }) }).execute();
     if (out && run.status === "running") await this.confirmations.escalate(trx, tenantId, run, "opted_out", now);
+    if (out) await this.engaged(trx, run.order_id, "opted_out", now);
     await this.reply(trx, tenantId, run, out ? "opted_out" : "opted_in", m.id, now);
     return { run, action: consent };
   }
