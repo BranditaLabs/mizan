@@ -1753,6 +1753,7 @@
         "inUse": "In use",
         "submit": "Submit to Meta",
         "submitted": "Sent to Meta. We'll show their answer here.",
+        "submitting": "Sent, waiting for Meta",
         "already": "Already sent; waiting for Meta.",
         "notConnected": "Connect a WhatsApp number first to send the messages to Meta."
       }

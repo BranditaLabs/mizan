@@ -34,7 +34,12 @@ describe("WhatsApp Cloud API connector (E6-4)", () => {
     wa.tapQuickReply("201001234821", "c1.run.confirm.sig", r.ref);
     const [status, tap] = parse();
     expect(status!.statuses[0]).toMatchObject({ id: r.ref, status: "sent", key: "step-1", recipient: "201001234821", phoneNumberId: wa.phoneNumberId });
-    expect(tap!.messages[0]).toMatchObject({ kind: "quick_reply", reply: "c1.run.confirm.sig", from: "201001234821", contextId: r.ref });
+    expect(tap!.messages[0]).toMatchObject({ kind: "quick_reply", reply: "c1.run.confirm.sig", payload: "c1.run.confirm.sig", from: "201001234821", contextId: r.ref });
+    // Without a payload the text stands in as `reply`, and `payload` stays unset (E6-16d).
+    wa.tapQuickReplyText("201001234821", "تأكيد الطلب", r.ref);
+    const [bare] = parse();
+    expect(bare!.messages[0]).toMatchObject({ kind: "quick_reply", reply: "تأكيد الطلب", text: "تأكيد الطلب" });
+    expect(bare!.messages[0]!.payload).toBeUndefined();
   });
 
   it("buttons, a list and text inside the window; the replies carry our ids", async () => {

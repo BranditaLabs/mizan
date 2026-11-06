@@ -138,11 +138,14 @@ export class WhatsAppChat {
     if (m.reply) {
       const tap = parseActionId(this.config.LINK_SIGNING_KEY, m.reply);
       if (!tap) {
-        // A template's quick reply that came back with its text and no payload: the action from any
-        // variant's buttons (E6-16d), the order from the message it answers, else the customer's latest run.
-        const action = m.kind === "quick_reply" ? templateActionOf(m.text ?? m.reply) : null;
+        // A template's quick reply that came back with its text and no payload at all (E6-16d): the action
+        // from any variant's buttons, the order from the template of ours it answers. A payload Mizan did
+        // not sign (another app's template on the same number, a rotated key, a tampered one) is never read
+        // by its text, and a tap with no template of ours behind it is never put on the latest run.
+        const payloadless = m.kind === "quick_reply" && !m.payload && (m.text === undefined || m.reply === m.text);
+        const action = payloadless ? templateActionOf(m.text ?? m.reply) : null;
         if (!action) return { run: null, action: "ignored" };
-        const answered = await this.runAnswered(trx, m.contextId) ?? await this.recentRun(trx, hash, now);
+        const answered = await this.runAnswered(trx, m.contextId);
         if (!answered) return { run: null, action: "ignored" };
         return { run: answered, action: await this.onTap(trx, tenantId, answered, action, undefined, m.id, now) };
       }
@@ -298,10 +301,11 @@ export class WhatsAppChat {
     return this.confirmations.queueReply(trx, tenantId, run, message, inbound, now);
   }
 
-  /** The run of the template a tap answers (Meta's `context.id` is our message's id). */
+  /** The run of the template a tap answers (Meta's `context.id` is our message's id); only a template of ours counts. */
   private async runAnswered(trx: Transaction<DB>, contextId: string | undefined): Promise<RunRow | null> {
     if (!contextId) return null;
-    const row = await trx.selectFrom("whatsapp_messages").select("run_id").where("wamid", "=", contextId).where("direction", "=", "out").executeTakeFirst();
+    const row = await trx.selectFrom("whatsapp_messages").select("run_id").where("wamid", "=", contextId)
+      .where("direction", "=", "out").where("kind", "=", "template").executeTakeFirst();
     return row?.run_id ? this.confirmations.runById(trx, row.run_id, true) : null;
   }
 

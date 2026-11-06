@@ -3,7 +3,7 @@ import { readScript, ScriptDraftSchema } from "../src/modules/confirmation/scrip
 import {
   AR_VARIANTS, chosenTemplate, effectiveTemplate, statusOf, submittable, TEMPLATE_ACTIONS, TEMPLATE_NAMES, TEMPLATE_SPECS, TEMPLATE_VARIANTS, templateActionOf,
 } from "../src/modules/confirmation/templates.js";
-import { judge } from "../src/modules/confirmation/whatsapp-connections.service.js";
+import { judge, nextTemplateKey } from "../src/modules/confirmation/whatsapp-connections.service.js";
 
 /** E6-16d: the first message's templates, the owner's choice, what is sent, and how the number is judged. */
 describe("the template catalogue", () => {
@@ -98,5 +98,19 @@ describe("judging the number", () => {
     expect(judge([t("mizan_order_confirm_ar", "APPROVED"), t("old_template", "PAUSED"), t("mizan_order_confirm_ar_gulf", "PENDING")], "ar", "ar_egyptian").templates)
       .toEqual({ mizan_order_confirm_ar: "APPROVED", mizan_order_confirm_ar_gulf: "PENDING" });
     expect(AR_VARIANTS).toEqual(["ar_egyptian", "ar_formal", "ar_gulf"]);
+  });
+});
+
+describe("a submission's outbox key", () => {
+  const base = "wa-template:c1:mizan_order_confirm_ar_gulf";
+  it("is the base the first time, then one past the highest still kept, so a purged older job never hands back a key a kept one holds", () => {
+    expect(nextTemplateKey(base, [])).toBe(base);
+    expect(nextTemplateKey(base, [base])).toBe(`${base}:2`);
+    expect(nextTemplateKey(base, [base, `${base}:2`])).toBe(`${base}:3`);
+    // Retention purged the base (done after 7 days): the count would say :2 again, which a kept job holds.
+    expect(nextTemplateKey(base, [`${base}:2`])).toBe(`${base}:3`);
+    expect(nextTemplateKey(base, [`${base}:3`, `${base}:7`])).toBe(`${base}:8`);
+    // Another template's keys (a longer name sharing the prefix) and odd endings are not counted.
+    expect(nextTemplateKey("wa-template:c1:mizan_order_confirm_ar", ["wa-template:c1:mizan_order_confirm_ar_gulf", "wa-template:c1:mizan_order_confirm_ar:x"])).toBe("wa-template:c1:mizan_order_confirm_ar");
   });
 });

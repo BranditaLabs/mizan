@@ -90,8 +90,8 @@ export class FakeWhatsApp {
   }
 
   /** The customer taps a template's quick reply (type "button"). */
-  tapQuickReply(from: string, payload: string, context?: string) {
-    return this.inbound(from, { type: "button", button: { payload, text: "أكّد" }, ...(context ? { context: { from: "201000000000", id: context } } : {}) });
+  tapQuickReply(from: string, payload: string, context?: string, text = "أكّد") {
+    return this.inbound(from, { type: "button", button: { payload, text }, ...(context ? { context: { from: "201000000000", id: context } } : {}) });
   }
   /** A quick-reply tap that comes back with the button's text and no payload (seen on some clients). */
   tapQuickReplyText(from: string, text: string, context?: string) {

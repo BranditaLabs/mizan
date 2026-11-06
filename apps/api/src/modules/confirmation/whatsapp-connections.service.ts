@@ -169,8 +169,9 @@ export class WhatsAppConnections {
 
   /**
    * The owner sends a template to Meta for review (E6-16d): an outbox job (rule 3) keyed
-   * `wa-template:<connection>:<name>`, so pressing twice is one job; a template submitted again after
-   * a rejection gets a key of its own. Audited; `whatsapp.template_submitted`.
+   * `wa-template:<connection>:<name>`, so pressing twice is one job (a pending or running one answers
+   * queued: false); a template submitted again after a rejection gets a key of its own, one past the
+   * highest still kept (`nextTemplateKey`). Audited; `whatsapp.template_submitted`.
    */
   async submit(auth: AuthContext, variant: string, now = Date.now()): Promise<{ variant: TemplateVariant; name: string; queued: boolean }> {
     if (!(TEMPLATE_VARIANTS as readonly string[]).includes(variant)) throw new ProblemError(422, "validation_failed", "unknown template", [{ path: "variant", code: "invalid_enum_value" }]);
@@ -184,7 +185,7 @@ export class WhatsAppConnections {
       const base = `wa-template:${c.id}:${name}`;
       const earlier = (await store.jobs({ kind: TEMPLATE_JOB })).filter((j) => j.idempotencyKey === base || j.idempotencyKey.startsWith(`${base}:`));
       if (earlier.some((j) => j.status === "pending" || j.status === "running")) return { variant: v, name, queued: false };
-      const key = earlier.length ? `${base}:${earlier.length + 1}` : base;
+      const key = nextTemplateKey(base, earlier.map((j) => j.idempotencyKey));
       const { created } = await store.enqueue({ kind: TEMPLATE_JOB, connection: "whatsapp", payload: { variant: v, name }, idempotencyKey: key }, now);
       if (created) {
         const entity = { type: "connection", id: c.id };
@@ -251,17 +252,39 @@ export class WhatsAppConnections {
   }
 }
 
+/**
+ * The key of a template's next submission: `base` the first time, then `base:<n>` one past the highest
+ * still kept (the base counts as 1). Taken from the highest, not the count: retention purges old done
+ * jobs, and a count would then hand back a key a surviving job holds (enqueue would do nothing).
+ */
+export function nextTemplateKey(base: string, keys: readonly string[]): string {
+  let top = 0;
+  for (const k of keys) {
+    if (k === base) top = Math.max(top, 1);
+    else if (k.startsWith(`${base}:`)) {
+      const n = Number(k.slice(base.length + 1));
+      if (Number.isSafeInteger(n) && n > 0) top = Math.max(top, n);
+    }
+  }
+  return top ? `${base}:${top + 1}` : base;
+}
+
 /** The store's WhatsApp number, whatever its state (not disconnected). */
 async function currentNumber(trx: Transaction<DB>) {
   return (await trx.selectFrom("connections").select(["id", "status", "config"]).where("kind", "=", "whatsapp").where("provider", "=", "whatsapp_cloud")
     .where("status", "!=", "disconnected").orderBy("created_at", "desc").executeTakeFirst()) ?? null;
 }
 
-export interface TemplateState { variant: TemplateVariant; name: string; lang: "ar" | "en"; status: TemplateStatus; effective: boolean; submittable: boolean }
+export interface TemplateState {
+  variant: TemplateVariant; name: string; lang: "ar" | "en"; status: TemplateStatus; effective: boolean; submittable: boolean;
+  /** A submission is queued or retrying (its outbox job is pending or running): Meta has not answered it yet. */
+  submitting: boolean;
+}
 
 /**
  * E6-16d: each first-message template as Meta last reported it (UNKNOWN without a number), the one
- * the store's orders get now (the chosen one, or the approved fallback), and which can be submitted.
+ * the store's orders get now (the chosen one, or the approved fallback), which are being submitted
+ * (a pending or running job) and which can be submitted (not while one is on its way).
  */
 export async function templateStates(trx: Transaction<DB>, tenantId: string): Promise<{ templates: TemplateState[]; lang: "ar" | "en"; statuses: Record<string, string> | null }> {
   const c = await currentNumber(trx);
@@ -269,9 +292,21 @@ export async function templateStates(trx: Transaction<DB>, tenantId: string): Pr
   const lang = (t.locale?.startsWith("en") ? "en" : "ar") as "ar" | "en";
   const statuses = c ? templatesOf(c.config) : null;
   const effective = effectiveTemplate(chosenTemplate(lang, confirmationSettings(t.settings).script), lang, statuses).variant;
+  const inFlight = new Set<string>();
+  if (c) {
+    const store = new SqlStore(trxQueryClient(trx), { tenantId, store: `${WHATSAPP_SCOPE}${c.id}`, connections: { whatsapp: c.id } });
+    for (const j of await store.jobs({ kind: TEMPLATE_JOB })) {
+      const variant = (j.payload as { variant?: unknown } | null)?.variant;
+      if ((j.status === "pending" || j.status === "running") && typeof variant === "string") inFlight.add(variant);
+    }
+  }
   const templates = TEMPLATE_VARIANTS.map((variant) => {
     const status: TemplateStatus = c ? statusOf(statuses, variant) : "UNKNOWN";
-    return { variant, name: TEMPLATE_SPECS[variant].name, lang: TEMPLATE_SPECS[variant].lang, status, effective: variant === effective, submittable: Boolean(c) && submittable(status) };
+    const submitting = inFlight.has(variant);
+    return {
+      variant, name: TEMPLATE_SPECS[variant].name, lang: TEMPLATE_SPECS[variant].lang, status, effective: variant === effective,
+      submittable: Boolean(c) && !submitting && submittable(status), submitting,
+    };
   });
   return { templates, lang, statuses: c ? statuses ?? {} : null };
 }

@@ -669,8 +669,8 @@ describe("the store's script in the chat (E6-16a)", () => {
 
 describe("the owner chooses the first message and submits it to Meta (E6-16d)", () => {
   const save = (script: unknown) => http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" }, ...(script ? { script } : {}) }).expect(200);
-  const states = async () => Object.fromEntries(((await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body.templates as Array<{ variant: string; status: string; effective: boolean; submittable: boolean }>)
-    .map((t) => [t.variant, `${t.status}${t.effective ? ":in_use" : ""}${t.submittable ? ":submittable" : ""}`]));
+  const states = async () => Object.fromEntries(((await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body.templates as Array<{ variant: string; status: string; effective: boolean; submittable: boolean; submitting: boolean }>)
+    .map((t) => [t.variant, `${t.status}${t.effective ? ":in_use" : ""}${t.submittable ? ":submittable" : ""}${t.submitting ? ":submitting" : ""}`]));
   const fallbacks = () => db.tenant(store, (trx) => trx.selectFrom("notifications").select(["text", "roles", "entity_type"]).where("source", "=", "whatsapp.template_fallback").execute());
 
   it("lists the four templates; a choice not approved yet falls back to an approved one, the owner told once a day; submitted once, then sent when Meta approves", async () => {
@@ -699,6 +699,8 @@ describe("the owner chooses the first message and submits it to Meta (E6-16d)", 
       expect((await http().post("/v1/settings/confirmation/templates/ar_gulf/submit").set(as("owner")).expect(202)).body.queued).toBe(false);
       await http().post("/v1/settings/confirmation/templates/ar_shami/submit").set(as("owner")).expect(422);
       expect(wa.createdTemplates).toHaveLength(created); // nothing called Meta from the request (rule 3)
+      // Queued, Meta not asked yet: shown as on its way, and not submittable again meanwhile.
+      expect((await states()).ar_gulf).toBe("MISSING:submitting");
       const audit = await db.tenant(store, (trx) => trx.selectFrom("audit_log").select(["action", "after"]).where("action", "=", "whatsapp.template_submitted").execute());
       expect(audit.map((r) => r.after)).toEqual([{ variant: "ar_gulf", template: "mizan_order_confirm_ar_gulf" }]);
       const events = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select("data").where("type", "=", "whatsapp.template_submitted").execute());
@@ -728,6 +730,33 @@ describe("the owner chooses the first message and submits it to Meta (E6-16d)", 
     } finally { await save(null); }
   });
 
+  it("a button text is read only when Meta sent no payload, and only on a template of ours: another app's tap, a payload Mizan cannot verify or an unknown message is ignored", async () => {
+    const id = await newOrder();
+    await run();
+    const t = await templateFor(id);
+    const inbound = (wamid: string) => db.tenant(store, (trx) => trx.selectFrom("whatsapp_messages").select(["action", "run_id"]).where("wamid", "=", wamid).executeTakeFirstOrThrow());
+    const taps = [
+      // Another app's template on the same number, with the formal and English button texts and its own payload.
+      wa.tapQuickReply(CUSTOMER, "OTHERAPP|confirm|7781", "wamid.OTHER-APP-1", "تأكيد الطلب"),
+      wa.tapQuickReply(CUSTOMER, "OTHERAPP|cancel|7781", "wamid.OTHER-APP-1", "Cancel order"),
+      wa.tapQuickReply(CUSTOMER, "OTHERAPP|cancel|7781", undefined, "إلغاء الطلب"),
+      // Our own message, but a payload Mizan did not sign (a rotated key, tampering): still not read by its text.
+      wa.tapQuickReply(CUSTOMER, `${t.confirm.slice(0, -4)}XXXX`, t.message.id, "أكّد الأوردر"),
+      // No payload, but the message it answers is not one of ours (or Meta did not say which).
+      wa.tapQuickReplyText(CUSTOMER, "ألغي الأوردر", "wamid.OTHER-APP-2"),
+      wa.tapQuickReplyText(CUSTOMER, "ألغي الأوردر"),
+    ];
+    await deliver();
+    for (const w of taps) expect(await inbound(w)).toEqual({ action: "ignored", run_id: null });
+    expect(await runOf(id)).toMatchObject({ status: "running", outcome: null });
+    expect((await orderRow(id)).status).not.toBe("cancelled");
+
+    // The same text with no payload on our template: the order it answers.
+    wa.tapQuickReplyText(CUSTOMER, "عايز أعدّل", t.message.id);
+    await deliver();
+    expect(await runOf(id)).toMatchObject({ status: "needs_agent", outcome: "changed" });
+  });
+
   it("a rejected template can be submitted again (edited back into review); with no number connected there is nothing to submit to", async () => {
     wa.decide("mizan_order_confirm_ar_formal", "REJECTED", "INVALID_FORMAT");
     const before = wa.createdTemplates.length;
@@ -740,6 +769,21 @@ describe("the owner chooses the first message and submits it to Meta (E6-16d)", 
     await run();
     expect(wa.createdTemplates).toHaveLength(before);
     expect(wa.editedTemplates).toContain("5550001");
+    expect((await states()).ar_formal).toBe("PENDING");
+
+    // Rejected again and again, while retention purges the oldest done job: each submission still gets a key no job holds.
+    const formalJobs = () => db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select(["status", "idempotency_key"])
+      .where("kind", "=", "whatsapp.createTemplate").where("idempotency_key", "like", "%:mizan_order_confirm_ar_formal%").orderBy("idempotency_key").execute());
+    const resubmit = async () => {
+      wa.decide("mizan_order_confirm_ar_formal", "REJECTED", "INVALID_FORMAT");
+      expect((await http().post("/v1/settings/confirmation/templates/ar_formal/submit").set(as("owner")).expect(202)).body.queued).toBe(true);
+      await run();
+    };
+    await resubmit();
+    const [first] = await formalJobs();
+    await db.tenant(store, (trx) => trx.deleteFrom("mz_outbox").where("idempotency_key", "=", first!.idempotency_key).execute()); // purged after 7 days
+    await resubmit();
+    expect((await formalJobs()).map((j) => [j.status, j.idempotency_key.replace(/^.*mizan_order_confirm_ar_formal/, "")])).toEqual([["done", ":2"], ["done", ":3"]]);
     expect((await states()).ar_formal).toBe("PENDING");
 
     const other = (await http().post("/v1/tenants").set({ Authorization: "Bearer owner" }).send({ name: "Second Store", country: "EG" }).expect(201)).body.id;

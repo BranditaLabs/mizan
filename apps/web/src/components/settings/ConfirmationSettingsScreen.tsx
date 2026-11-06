@@ -43,8 +43,8 @@ export function ConfirmationSettingsScreen() {
     queryKey: ["confirmationSettings", user?.uid ?? "", store?.tenantId ?? ""],
     queryFn: () => ok(api.GET("/v1/settings/confirmation")),
     enabled: Boolean(store) && canEdit,
-    // E6-16d: while Meta reviews a template, its state is read again now and then.
-    refetchInterval: (q) => (q.state.data?.templates?.some((x) => x.status === "PENDING") ? 30_000 : false),
+    // E6-16d: while a submission is on its way (queued or retrying), and while Meta reviews a template, its state is read again now and then.
+    refetchInterval: (q) => (q.state.data?.templates?.some((x) => x.submitting) ? 10_000 : q.state.data?.templates?.some((x) => x.status === "PENDING") ? 30_000 : false),
   });
   const [draft, setDraft] = useState<Settings | null>(null);
   const save = useMutation({
@@ -263,8 +263,7 @@ function FirstMessage({ templates, choice, onChoice, canSubmit }: { templates: T
     mutationFn: (variant: Template["variant"]) => ok(api.POST("/v1/settings/confirmation/templates/{variant}/submit", { params: { path: { variant } } })),
     onSuccess: (r) => {
       toast({ message: t(r.queued ? "submitted" : "already") });
-      refresh();
-      setTimeout(refresh, 20_000); // the job runs in the background: Meta's first answer
+      refresh(); // the job runs in the background: the row shows it on its way, polled until Meta answers
     },
   });
   return (
@@ -283,7 +282,7 @@ function FirstMessage({ templates, choice, onChoice, canSubmit }: { templates: T
               <span className="block font-medium">{t(`variant.${x.variant}`)}</span>
               <bdi dir="ltr" className="mz-num text-caption text-text-3">{x.name}</bdi>
             </span>
-            <Badge tone={TEMPLATE_TONE[x.status]}>{t(`status.${x.status}`)}</Badge>
+            {x.submitting ? <Badge tone="info">{t("submitting")}</Badge> : <Badge tone={TEMPLATE_TONE[x.status]}>{t(`status.${x.status}`)}</Badge>}
             {x.effective ? <Badge tone="ink">{t("inUse")}</Badge> : null}
             {x.submittable && canSubmit ? (
               <Button size="sm" variant="secondary" icon="send" busy={submit.isPending && submit.variables === x.variant} onClick={() => submit.mutate(x.variant)}>{t("submit")}</Button>

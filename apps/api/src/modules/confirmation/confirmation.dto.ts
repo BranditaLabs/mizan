@@ -18,7 +18,8 @@ export const TemplateStateSchema = z.object({
   lang: z.enum(["ar", "en"]),
   status: z.enum(TEMPLATE_STATUSES).describe("Meta's review state; MISSING: not in the account; UNKNOWN: no number connected or not checked yet"),
   effective: z.boolean().describe("What the store's orders get now (the chosen one, or the approved fallback)"),
-  submittable: z.boolean().describe("Can be sent to Meta for review (MISSING or REJECTED, with a number connected)"),
+  submittable: z.boolean().describe("Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way)"),
+  submitting: z.boolean().describe("A submission is queued or retrying (its job is pending or running); Meta has not answered it yet"),
 });
 export const ConfirmationSettingsViewSchema = z.object({
   settings: ConfirmationSettingsSchema,

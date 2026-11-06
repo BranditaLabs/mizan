@@ -25164,7 +25164,11 @@
                 },
                 "submittable": {
                   "type": "boolean",
-                  "description": "Can be sent to Meta for review (MISSING or REJECTED, with a number connected)"
+                  "description": "Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way)"
+                },
+                "submitting": {
+                  "type": "boolean",
+                  "description": "A submission is queued or retrying (its job is pending or running); Meta has not answered it yet"
                 }
               },
               "required": [
@@ -25173,7 +25177,8 @@
                 "lang",
                 "status",
                 "effective",
-                "submittable"
+                "submittable",
+                "submitting"
               ],
               "additionalProperties": false
             }

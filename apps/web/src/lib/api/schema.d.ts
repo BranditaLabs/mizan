@@ -4439,8 +4439,10 @@ export interface components {
                 status: "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED" | "MISSING" | "UNKNOWN";
                 /** @description What the store's orders get now (the chosen one, or the approved fallback) */
                 effective: boolean;
-                /** @description Can be sent to Meta for review (MISSING or REJECTED, with a number connected) */
+                /** @description Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way) */
                 submittable: boolean;
+                /** @description A submission is queued or retrying (its job is pending or running); Meta has not answered it yet */
+                submitting: boolean;
             }[];
             /** @description E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it. */
             scriptIssues?: {

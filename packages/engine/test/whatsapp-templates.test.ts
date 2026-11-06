@@ -63,6 +63,31 @@ describe("creating the confirmation template in the store's account (E6-16d)", (
     expect(wa.createdTemplates).toHaveLength(0);
   });
 
+  it("a duplicate-name refusal whose verifying lookup fails is retried later, never a dead letter for a template Meta has", async () => {
+    let refused = false;
+    const { wa, c } = setup((url, init) => {
+      if (isCreate(url, init)) {
+        refused = true; // created meanwhile in WhatsApp Manager: Meta refuses ours as a duplicate
+        wa.templates.push({ id: "78", name: "mizan_order_confirm_ar_gulf", language: "ar", status: "APPROVED", category: "UTILITY" });
+        return metaError(400, 100, 2388024);
+      }
+      return refused && init.method !== "POST" && url.pathname.endsWith("/message_templates") ? metaError(503, 131000) : null; // the lookup after it fails
+    });
+    const err = await c.createTemplate(draft()).catch((e: unknown) => e);
+    expect(err).toMatchObject({ retryable: true });
+    expect((err as { kind: string }).kind).not.toBe("validation");
+    expect(wa.createdTemplates).toHaveLength(0);
+    // The job's next attempt looks up first and finds it.
+    refused = false;
+    expect(await c.createTemplate(draft())).toMatchObject({ id: "78", status: "APPROVED", existed: true });
+  });
+
+  it("a duplicate-name refusal the listing does not show yet is retried later, not read as created", async () => {
+    const { wa, c } = setup((url, init) => (isCreate(url, init) ? metaError(400, 100, 2388024) : null));
+    expect(await c.createTemplate(draft()).catch((e: unknown) => e)).toMatchObject({ kind: "transient", retryable: true });
+    expect(wa.createdTemplates).toHaveLength(0);
+  });
+
   it("a duplicate-name refusal with nothing found (the name is being deleted) is ours to fix, not retried", async () => {
     const { c } = setup((url, init) => (isCreate(url, init) ? metaError(400, 100, 2388023) : null));
     expect(await c.createTemplate(draft()).catch((e: unknown) => e)).toMatchObject({ kind: "validation", retryable: false });

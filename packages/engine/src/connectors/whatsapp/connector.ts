@@ -235,7 +235,8 @@ export class WhatsAppCloudConnector implements MessagingProvider, WhatsAppChat {
    * key for creates, so the name is looked up first and an existing one is returned. A create whose
    * outcome is unclear (no answer, a dropped connection, a 5xx) or refused as a duplicate name is
    * verified by lookup; when nothing is found the error is thrown as it is (the outbox job retries
-   * later, and looks up first again). Never re-sent blindly inside the call.
+   * later, and looks up first again). A duplicate refusal that the lookup cannot confirm (the lookup
+   * failed, or found nothing yet) is retryable, never a dead letter. Never re-sent blindly inside the call.
    */
   async createTemplate(t: TemplateDraft, opts: { resubmitRejected?: boolean } = {}): Promise<CreatedTemplate> {
     const op = "createTemplate";
@@ -273,8 +274,25 @@ export class WhatsAppCloudConnector implements MessagingProvider, WhatsAppChat {
       const duplicate = err.kind === "validation" && subcode !== undefined && TEMPLATE_EXISTS_SUBCODES.has(subcode);
       const unclear = err.retryable && err.kind !== "rate_limited" && err.kind !== "circuit_open";
       if (!duplicate && !unclear) throw err;
-      const after = await this.findTemplate(t.name, t.language).catch(() => null);
+      let after: TemplateInfo | null;
+      try {
+        after = await this.findTemplate(t.name, t.language);
+      } catch (lookupErr) {
+        // An unclear create keeps its own (retryable) error. A duplicate-name refusal is final only
+        // once a lookup has looked: when the lookup itself failed, its error (retryable) is thrown
+        // so the job comes back and verifies, instead of a dead letter for a template Meta has.
+        if (duplicate) throw lookupErr;
+        throw err;
+      }
       if (after) return { ...after, existed: true };
+      if (duplicate) {
+        // Meta says the name exists, but the listing does not show it yet (eventual consistency):
+        // retry later and look again; never read as created, never re-sent inside this call.
+        throw new IntegrationError({
+          kind: "transient", connector: "whatsapp", details: err.details, cause: err,
+          message: "whatsapp.createTemplate: Meta reports the name exists but the lookup did not find it yet",
+        });
+      }
       throw err;
     }
     const r = new Resolver(res.json, { connector: "whatsapp", entity: "template", drift: this.drift, now: () => this.rt.clock.now() });
