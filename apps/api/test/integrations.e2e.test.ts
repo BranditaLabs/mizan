@@ -240,7 +240,25 @@ describe("the store's profile from Shopify (onboarding)", () => {
     t = await brandOf(B);
     expect(t.name).toBe("Delta Perfumes EG");
     expect((t.settings as { brand?: Record<string, unknown> }).brand).toMatchObject({ logoUrl: "https://cdn.shopify.com/s/files/logo.png", access: "no_access" });
-    const audit = await db.kysely.selectFrom("audit_log").select(["action", "after"]).where("tenant_id", "=", B).where("action", "=", "tenant.updated").execute();
-    expect(audit.length).toBeGreaterThanOrEqual(2);
+    const audits = () => db.kysely.selectFrom("audit_log").select(["after"]).where("tenant_id", "=", B).where("action", "=", "tenant.updated").execute();
+    const after2 = await audits();
+    expect(after2).toHaveLength(2);
+    expect(after2.map((x) => (x.after as { storeName?: string }).storeName)).toEqual(expect.arrayContaining(["Delta Perfumes", "Delta Perfumes EG"]));
+
+    // The same profile again (the daily read): nothing written, nothing audited.
+    await store.enqueue(MizanEngine.shopifyShopProfileJob("test-3"), b.clock.now());
+    await runUntilQuiet();
+    expect(await audits()).toHaveLength(2);
+
+    // Renamed in Mizan: Shopify's next name does not undo it (the logo still follows).
+    await db.kysely.updateTable("tenants").set({ name: "دلتا للعطور" }).where("id", "=", B).execute();
+    b.shop.shop.name = "Delta Perfumes Egypt";
+    b.shop.storefrontScope = true;
+    b.shop.brand = { ...b.shop.brand, logo: "https://cdn.shopify.com/s/files/logo-2.png" };
+    await store.enqueue(MizanEngine.shopifyShopProfileJob("test-4"), b.clock.now());
+    await runUntilQuiet();
+    t = await brandOf(B);
+    expect(t.name).toBe("دلتا للعطور");
+    expect((t.settings as { brand?: Record<string, unknown> }).brand).toMatchObject({ logoUrl: "https://cdn.shopify.com/s/files/logo-2.png", shopName: "Delta Perfumes Egypt" });
   });
 });

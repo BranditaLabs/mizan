@@ -115,10 +115,10 @@ export class ShippingService implements ShipmentResultSink {
         .returning(["id", "display_name", "config"]).executeTakeFirstOrThrow();
       // The tracking link: the one typed, else the courier's page learned from an earlier parcel ({tn} for the number).
       const config = (courier.config ?? {}) as { trackingUrlTemplate?: string };
-      const trackingUrl = body.trackingUrl ?? config.trackingUrlTemplate?.replace("{tn}", encodeURIComponent(body.trackingNumber)) ?? null;
-      if (body.trackingUrl?.includes(body.trackingNumber)) {
-        const template = body.trackingUrl.replace(body.trackingNumber, "{tn}");
-        if (template !== config.trackingUrlTemplate) await trx.updateTable("connections").set({ config: JSON.stringify({ ...config, trackingUrlTemplate: template }), updated_at: now }).where("id", "=", courier.id).execute();
+      const trackingUrl = body.trackingUrl ?? config.trackingUrlTemplate?.replaceAll("{tn}", encodeURIComponent(body.trackingNumber)) ?? null;
+      const template = body.trackingUrl ? trackingTemplate(body.trackingUrl, body.trackingNumber) : null;
+      if (template && template !== config.trackingUrlTemplate) {
+        await trx.updateTable("connections").set({ config: JSON.stringify({ ...config, trackingUrlTemplate: template }), updated_at: now }).where("id", "=", courier.id).execute();
       }
       const taken = await trx.selectFrom("shipments").select("id").where("connection_id", "=", courier.id).where("tracking_number", "=", body.trackingNumber).executeTakeFirst();
       if (taken) throw new ProblemError(409, "tracking_taken", "this courier's tracking number is already on another shipment");
@@ -412,4 +412,26 @@ function timeline(trx: Trx, tenantId: string, orderId: string, type: string, dat
   return trx.insertInto("order_events").values({
     tenant_id: tenantId, order_id: orderId, type, actor_type: userId ? "user" : "system", actor_id: userId ?? null, data: JSON.stringify(data),
   }).execute();
+}
+
+/**
+ * A courier's tracking page as a template ({tn} for the number), learned from one parcel's link: only
+ * when the number stands whole in the path or a query value, every time it appears, and nowhere
+ * else (never in the host). Otherwise nothing is learned: a wrong template would show the next
+ * customers someone else's parcel.
+ */
+export function trackingTemplate(link: string, trackingNumber: string): string | null {
+  let url: URL;
+  try { url = new URL(link); } catch { return null; }
+  if (url.protocol !== "https:" || url.host.toLowerCase().includes(trackingNumber.toLowerCase())) return null;
+  const origin = `${url.protocol}//${url.host}`;
+  if (!link.startsWith(origin)) return null;
+  const rest = link.slice(origin.length);
+  // Letters, digits, - and _ only (the schema's rule), so the number is safe inside a pattern as it is.
+  if (!/^[\w-]{3,64}$/.test(trackingNumber)) return null;
+  const escaped = trackingNumber;
+  const whole = () => new RegExp(`(?<=[/?=&#])${escaped}(?=$|[/?&#])`, "g");
+  if (!whole().test(rest)) return null;
+  const path = rest.replace(whole(), "{tn}");
+  return path.includes(trackingNumber) ? null : origin + path;
 }

@@ -1080,7 +1080,8 @@ export class MizanEngine {
       const have = copy.shippingAddress;
       // The address only when it changed (the team may have corrected it in Shopify; an edit of the items leaves it).
       // The governorate counts too: Shopify reads back the name ("Cairo"), Mizan holds the code ("C").
-      const haveCode = have?.province ? findRegion(have.countryCode ?? a.countryCode, have.province)?.code ?? have.province : undefined;
+      // Shopify's own code first; else its name, resolved (Shopify spells some governorates its own way: "Monufia").
+      const haveCode = have?.provinceCode ?? (have?.province ? findRegion(have.countryCode ?? a.countryCode, have.province)?.code ?? have.province : undefined);
       const moved = !have || (have.line1 ?? "") !== a.line1 || (have.line2 ?? "") !== (a.line2 ?? "") || (have.city ?? "") !== a.city
         || (a.provinceCode !== undefined && haveCode !== a.provinceCode) || (have.countryCode ?? a.countryCode) !== a.countryCode;
       const plan: OrderEditPlan = {

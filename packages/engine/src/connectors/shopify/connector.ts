@@ -300,6 +300,7 @@ export class ShopifyConnector {
   /**
    * Already there (this number on a fulfillment) is done; a live one without the link, or with another,
    * gets the link (absolute, so safe to repeat). A cancelled one stays cancelled: the merchant undid it.
+   * A fulfillment carrying other parcels' numbers too is left alone (the update would drop them).
    */
   async fulfillWithTracking(orderId: string, tracking: Tracking, notifyCustomer = true): Promise<"created" | "already_fulfilled" | "link_updated"> {
     const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: orderId }, { idempotent: true });
@@ -310,8 +311,14 @@ export class ShopifyConnector {
     if (same) {
       const info = (same.trackingInfo ?? []).find((t) => t.number === tracking.number);
       if (!tracking.url || same.status === "CANCELLED" || !same.id || info?.url === tracking.url) return "already_fulfilled";
+      // The update replaces the fulfillment's whole tracking: one with other parcels' numbers is left as it is.
+      if ((same.trackingInfo ?? []).length > 1) {
+        this.drift.record({ connector: "shopify", entity: "fulfillment", kind: "missing_field", detail: `order ${orderId}: ${tracking.number} has no link, but its fulfillment carries other numbers too; left as it is`, at: this.rt.clock.now() });
+        return "already_fulfilled";
+      }
+      // notifyCustomer also decides the fulfillment's later updates: kept as the caller wants them (on, by default).
       const u = await this.gql.run<{ fulfillmentTrackingInfoUpdate: { userErrors: UserErrors } }>(Q.FULFILLMENT_TRACKING_UPDATE, {
-        fulfillmentId: same.id, trackingInfoInput: { company: info?.company || tracking.company, number: tracking.number, url: tracking.url }, notifyCustomer: false,
+        fulfillmentId: same.id, trackingInfoInput: { company: info?.company || tracking.company, number: tracking.number, url: tracking.url }, notifyCustomer,
       }, { idempotent: true });
       assertNoUserErrors("fulfillmentTrackingInfoUpdate", u.fulfillmentTrackingInfoUpdate?.userErrors);
       return "link_updated";
@@ -464,15 +471,13 @@ export class ShopifyConnector {
     const found = await read();
     if (found) return { externalId: found.id, name: found.name, outcome: "already_created" };
     const money = (amount: string) => ({ shopMoney: { amount, currencyCode: d.currency } });
+    const buyer = d.customer ? await this.customerFor(d.number, d.customer) : undefined;
     const a = d.address;
     const order = {
       name: d.number, currency: d.currency, sourceIdentifier: mizanOrderRef(d.orderId), tags: d.tags,
       ...(d.note ? { note: d.note } : {}), ...(d.phone ? { phone: d.phone } : {}),
-      // A customer record, not a guest order: matched by phone or email (Shopify upserts), so history and messages follow the buyer.
-      ...(d.customer && (d.customer.phone || d.customer.email) ? { customer: { toUpsert: {
-        firstName: d.customer.firstName, ...(d.customer.lastName ? { lastName: d.customer.lastName } : {}),
-        ...(d.customer.phone ? { phone: d.customer.phone } : {}), ...(d.customer.email ? { email: d.customer.email } : {}),
-      } } } : {}),
+      // A customer record, not a guest order, so history and messages follow the buyer.
+      ...(buyer ? { customer: buyer } : {}),
       ...(d.customer?.email ? { email: d.customer.email } : {}),
       ...(d.attributes?.length ? { customAttributes: d.attributes } : {}),
       metafields: [{ ...MIZAN_ID, type: "single_line_text_field", value: d.orderId }],
@@ -522,6 +527,33 @@ export class ShopifyConnector {
 
   private orderIdDefined = false;
   /** The unique "Mizan order id" field on orders, once per store (already there is fine). */
+  /**
+   * The store's customer for this buyer: one it has (phone first, then email) is attached by id and
+   * left untouched (toUpsert would rename it to whoever this parcel is for); none, a new one. A store
+   * whose customers the app may not read: a guest order (said as drift).
+   */
+  private async customerFor(number: string, c: NonNullable<StoreOrderDraft["customer"]>): Promise<Record<string, unknown> | undefined> {
+    if (!c.phone && !c.email) return undefined;
+    const quote = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
+    try {
+      for (const q of [c.phone ? `phone:${quote(c.phone)}` : null, c.email ? `email:${quote(c.email)}` : null]) {
+        if (!q) continue;
+        const r = await this.gql.run<{ customers?: unknown }>(Q.CUSTOMER_FIND, { query: q }, { idempotent: true });
+        const id = new Resolver(r, { connector: "shopify", entity: "customer", drift: this.drift, now: () => this.rt.clock.now() })
+          .arr<{ id?: string }>("customers", ["customers.nodes"])[0]?.id;
+        if (id) return { toAssociate: { id } };
+      }
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.kind !== "permission") throw e;
+      this.drift.record({ connector: "shopify", entity: "customer", kind: "missing_field", detail: `order ${number}: the store's customers could not be read; created as a guest order`, at: this.rt.clock.now() });
+      return undefined;
+    }
+    return { toUpsert: {
+      ...(c.firstName ? { firstName: c.firstName } : {}), ...(c.lastName ? { lastName: c.lastName } : {}),
+      ...(c.phone ? { phone: c.phone } : {}), ...(c.email ? { email: c.email } : {}),
+    } };
+  }
+
   private async ensureOrderIdDefinition() {
     if (this.orderIdDefined) return;
     const r = await this.gql.run<{ metafieldDefinitionCreate: { userErrors: Array<{ field?: string[] | null; message: string; code?: string | null }> } }>(Q.ORDER_ID_DEFINITION, {

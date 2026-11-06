@@ -158,6 +158,7 @@ export function mapOrder(raw: unknown, ctx: MapCtx): CanonicalOrder {
       line2: addr.str("line2", ["address2", "line2"]),
       city: addr.str("city", ["city"]) ?? "",
       province: addr.str("province", ["province", "provinceCode"]),
+      provinceCode: addr.str("provinceCode", ["provinceCode"]),
       zip: addr.str("zip", ["zip"]),
       countryCode: addr.str("countryCode", ["countryCodeV2", "countryCode", "country_code"]) ?? "EG",
     },

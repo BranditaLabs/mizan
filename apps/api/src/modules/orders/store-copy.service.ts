@@ -117,7 +117,8 @@ export class StoreCopyService {
       const paid = BigInt(o.paid_minor);
       const c = o.customer_id ? await trx.selectFrom("customers").select("email").where("id", "=", o.customer_id).executeTakeFirst() : undefined;
       const email = c ? pii.decrypt(c.email, "customers.email") ?? undefined : undefined;
-      const firstName = name[0] || "Customer";
+      const given = name[0] || undefined;
+      const firstName = given ?? "Customer";
       const lastName = name.slice(1).join(" ") || undefined;
       return {
         orderId, number: o.number, currency: o.currency.trim(),
@@ -128,7 +129,8 @@ export class StoreCopyService {
         // A manual order keeps its discount in the total: what lowers it is the discount (so the copy totals the same).
         shipping: money(o.shipping_minor), discount: money(maxZero(BigInt(o.subtotal_minor) + BigInt(o.shipping_minor) - total)), paid: money(paid),
         financialStatus: paid >= total && total > 0n ? "PAID" : paid > 0n ? "PARTIALLY_PAID" : "PENDING",
-        ...(phone || email ? { customer: { firstName, ...(lastName ? { lastName } : {}), ...(phone ? { phone } : {}), ...(email ? { email } : {}) } } : {}),
+        // The buyer by name only when one was typed: never a "Customer" placeholder on a store customer.
+        ...(phone || email ? { customer: { ...(given ? { firstName: given } : {}), ...(lastName ? { lastName } : {}), ...(phone ? { phone } : {}), ...(email ? { email } : {}) } } : {}),
         address: {
           firstName, ...(lastName ? { lastName } : {}), ...(phone ? { phone } : {}),
           line1: pii.decrypt(o.ship_line1, "orders.ship_line1") ?? "", ...(line2 ? { line2 } : {}), city: o.ship_city ?? "",

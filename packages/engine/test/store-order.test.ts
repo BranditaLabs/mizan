@@ -125,11 +125,28 @@ describe("an order made in Mizan, created in Shopify", () => {
       attributes: [{ key: "Location", value: "https://www.google.com/maps?q=30.07,31.34" }],
     }));
     const sent = w.shop.lastOrderCreate!;
-    expect(sent.customer).toEqual({ toUpsert: { firstName: "Mona", phone: "+201001234821", email: "mona@example.com" } });
+    expect(sent.customer).toEqual({ toUpsert: { firstName: "Mona", phone: "+201001234821", email: "mona@example.com" } }); // none in the store yet
     expect(sent.email).toBe("mona@example.com");
     expect(sent.customAttributes).toEqual([{ key: "Location", value: "https://www.google.com/maps?q=30.07,31.34" }]);
     expect(sent.shippingAddress).not.toHaveProperty("lastName");
     expect(w.copies()[0]!.customer).toMatchObject({ phone: "+201001234821", email: "mona@example.com" });
+  });
+
+  it("a customer the store has (same phone) is attached as they are: never renamed to whoever the parcel is for", async () => {
+    const w = world();
+    w.shop.customers.push({ id: "gid://shopify/Customer/77", firstName: "Mona", lastName: "Hassan", phone: "+201001234821", email: "mona.h@example.com" });
+    await w.push(draft({ customer: { firstName: "Ali", phone: "+201001234821", email: "other@example.com" } }));
+    expect(w.shop.lastOrderCreate!.customer).toEqual({ toAssociate: { id: "gid://shopify/Customer/77" } });
+    expect(w.shop.customers).toEqual([{ id: "gid://shopify/Customer/77", firstName: "Mona", lastName: "Hassan", phone: "+201001234821", email: "mona.h@example.com" }]);
+    expect(w.copies()[0]!.customer).toMatchObject({ id: "gid://shopify/Customer/77", firstName: "Mona" });
+  });
+
+  it("a store whose customers the app may not read: a guest order, no blind upsert", async () => {
+    const w = world();
+    w.shop.customersDenied = true;
+    await w.push(draft({ customer: { firstName: "Mona", phone: "+201001234821" } }));
+    expect(w.copies()).toHaveLength(1);
+    expect(w.shop.lastOrderCreate!.customer).toBeUndefined();
   });
 
   it("a store that refuses the customer record still gets the order, as a guest (said as drift)", async () => {

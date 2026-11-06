@@ -28,7 +28,7 @@ const ORDER_BASE = `
   totalPriceSet { ${MONEY} }
   subtotalPriceSet { ${MONEY} }
   totalShippingPriceSet { ${MONEY} }
-  shippingAddress { name firstName lastName phone address1 address2 city province zip countryCodeV2 }
+  shippingAddress { name firstName lastName phone address1 address2 city province provinceCode zip countryCodeV2 }
   billingAddress { phone }
   lineItems(first: 100) { nodes { id title sku quantity currentQuantity variant { id } originalUnitPriceSet { ${MONEY} } } }
   fulfillmentOrders(first: 10) { nodes { id status lineItems(first: 100) { nodes { id lineItem { id } } } } }
@@ -512,6 +512,13 @@ export const PUBLISHABLE_PUBLISH: GqlOperation = {
       publishablePublish(id: $id, input: $input) { userErrors { field message } }
     }`,
   ],
+};
+
+/** A store customer by phone or email (read_customers): an order is attached to it, the record left as it is. */
+export const CUSTOMER_FIND: GqlOperation = {
+  name: "MizanCustomerFind",
+  cost: 2,
+  variants: [`query MizanCustomerFind($query: String!) { customers(first: 1, query: $query) { nodes { id } } }`],
 };
 
 /** Onboarding: the store's own name, currency, timezone and country, so the merchant does not type them. */

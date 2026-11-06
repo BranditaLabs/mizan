@@ -104,6 +104,10 @@ export class FakeShopify {
   brand: { logo?: string; squareLogo?: string; color?: string } = { logo: "https://cdn.shopify.com/s/files/logo.png", squareLogo: "https://cdn.shopify.com/s/files/square.png", color: "#0a0a0a" };
   readonly storefrontTokens: Array<{ id: string; title: string; accessToken: string }> = [];
   storefrontTokenCreates = 0;
+  /** The store's customers (found by phone or email; orderCreate's toUpsert adds one, toAssociate links one). */
+  readonly customers: Array<{ id: string; firstName?: string; lastName?: string; phone?: string; email?: string }> = [];
+  /** The app may not read customers (protected customer data not approved). */
+  customersDenied = false;
   trackingUpdates = 0;
   /** Order metafields with a unique-values definition ("namespace.key"). */
   uniqueOrderFields = new Set<string>();
@@ -445,6 +449,18 @@ export class FakeShopify {
     return json(200, { data: this.drop(data), extensions: this.cost() }, headers);
   };
 
+  /** orderCreate's customer: an existing one linked as it is, or a new one (Shopify's toUpsert on no match). */
+  private orderCustomer(c: { toAssociate?: { id: string }; toUpsert?: Record<string, string> } | undefined) {
+    if (c?.toAssociate) {
+      const found = this.customers.find((x) => x.id === c.toAssociate!.id);
+      return found ? { ...found, displayName: `${found.firstName ?? ""} ${found.lastName ?? ""}`.trim() } : null;
+    }
+    if (!c?.toUpsert) return null;
+    const created: FakeShopify["customers"][number] = { id: this.nextId("Customer"), ...c.toUpsert };
+    this.customers.push(created);
+    return { ...created, displayName: `${created.firstName ?? ""} ${created.lastName ?? ""}`.trim() };
+  }
+
   /** The Storefront API: the shop's brand, for a token this app made. */
   private storefront(init: RequestInit): Response {
     const token = new Headers(init.headers).get("X-Shopify-Storefront-Access-Token");
@@ -636,14 +652,20 @@ export class FakeShopify {
         this.orders.set(id, {
           id, name: input.name ?? `#${1000 + this.orders.size + 1}`, createdAt: now, updatedAt: now, cancelledAt: null, displayFinancialStatus: input.financialStatus ?? "PENDING",
           paymentGatewayNames: Number(paid) > 0 ? ["Mizan"] : ["manual"], received: paid, refunded: "0.00", tags: input.tags ?? [], currencyCode: input.currency ?? "EGP", email: input.email ?? null, phone: input.phone ?? null, total,
-          shippingAddress: { name: `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim(), firstName: a.firstName, lastName: a.lastName, phone: a.phone ?? null, address1: a.address1, address2: a.address2 ?? null, city: a.city, province: provinceName(a.countryCode, a.provinceCode), zip: null, countryCodeV2: a.countryCode },
-          customer: (input.customer?.toUpsert ? { id: this.nextId("Customer"), displayName: `${input.customer.toUpsert.firstName ?? ""} ${input.customer.toUpsert.lastName ?? ""}`.trim(), ...input.customer.toUpsert } : null) as unknown as Record<string, unknown>,
+          shippingAddress: { name: `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim(), firstName: a.firstName, lastName: a.lastName, phone: a.phone ?? null, address1: a.address1, address2: a.address2 ?? null, city: a.city, province: provinceName(a.countryCode, a.provinceCode), provinceCode: a.provinceCode ?? null, zip: null, countryCodeV2: a.countryCode },
+          customer: this.orderCustomer(input.customer) as unknown as Record<string, unknown>,
           lines, shippingLines: shipping, fulfillmentOrders: [{ id: this.nextId("FulfillmentOrder"), status: "OPEN" }], fulfillments: [],
           sourceIdentifier: input.sourceIdentifier ?? null, metafields: mf,
         });
         this.orderCreates++;
         this.lastOrderCreate = input;
         return { orderCreate: { order: { id, name: this.orders.get(id)!.name }, userErrors: [] } };
+      }
+      case "MizanCustomerFind": {
+        if (this.customersDenied) throw gqlErrors([{ message: "Access denied for customers field.", path: ["customers"], extensions: { code: "ACCESS_DENIED" } }]);
+        const m = /^(phone|email):"(.*)"$/.exec(String(v.query));
+        const hit = m ? this.customers.find((c) => (m[1] === "phone" ? c.phone : c.email) === m[2]) : undefined;
+        return { customers: { nodes: hit ? [{ id: hit.id }] : [] } };
       }
       case "MizanShopProfile":
         return { shop: { name: this.shop.name, myshopifyDomain: this.shop.myshopifyDomain, currencyCode: this.currency, ianaTimezone: this.shop.ianaTimezone, billingAddress: { countryCodeV2: this.shop.country }, primaryDomain: { url: this.shop.url } } };
@@ -867,7 +889,7 @@ export class FakeShopify {
         if ("province" in v.input.shippingAddress) throw gqlErrors([{ message: "Variable $input of type OrderInput! was provided invalid value for shippingAddress.province (Field is not defined on MailingAddressInput)", extensions: { code: "argumentNotAccepted" } }]);
         const { provinceCode, ...rest } = v.input.shippingAddress as Record<string, unknown>;
         const country = v.input.shippingAddress.countryCode ?? (o.shippingAddress?.countryCodeV2 as string);
-        o.shippingAddress = { ...(o.shippingAddress ?? {}), ...rest, ...(provinceCode !== undefined ? { province: provinceName(country, provinceCode) } : {}), countryCodeV2: country };
+        o.shippingAddress = { ...(o.shippingAddress ?? {}), ...rest, ...(provinceCode !== undefined ? { province: provinceName(country, provinceCode), provinceCode } : {}), countryCodeV2: country };
         this.addressUpdates++;
         o.updatedAt = this.touch();
         return { orderUpdate: { order: { id: o.id }, userErrors: [] } };

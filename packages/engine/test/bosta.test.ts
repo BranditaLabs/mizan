@@ -34,6 +34,12 @@ describe("Bosta connector", () => {
     expect(ctx.shop.orders.get(o.id)!.fulfillments[0]!.trackingInfo[0]).toMatchObject({ number: "777", url });
     expect(await shopify.fulfillWithTracking(o.id, { company: "Bosta", number: "777", url })).toBe("already_fulfilled");
     expect(ctx.shop.trackingUpdates).toBe(1);
+    // Another parcel's number on the same fulfillment: the update would drop it, so it is left alone.
+    const o2 = ctx.shop.addOrder({});
+    expect(await shopify.fulfillWithTracking(o2.id, { company: "Bosta", number: "888" }, false)).toBe("created");
+    ctx.shop.orders.get(o2.id)!.fulfillments[0]!.trackingInfo.push({ company: "Bosta", number: "889" });
+    expect(await shopify.fulfillWithTracking(o2.id, { company: "Bosta", number: "888", url })).toBe("already_fulfilled");
+    expect(ctx.shop.orders.get(o2.id)!.fulfillments[0]!.trackingInfo.map((t) => t.number)).toEqual(["888", "889"]);
     ctx.shop.orders.get(o.id)!.fulfillments[0]!.status = "CANCELLED";
     expect(await shopify.fulfillWithTracking(o.id, { company: "Bosta", number: "777", url: url + "&x" })).toBe("already_fulfilled");
   });

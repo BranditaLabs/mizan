@@ -24,6 +24,8 @@ export interface Address {
   line2?: string;
   city: string;
   province?: string;
+  /** The ISO subdivision code the store gave ("C"), next to the name: compared by code, never by spelling. */
+  provinceCode?: string;
   zip?: string;
   countryCode: string;
   /** The customer's map pin, when they shared one (WhatsApp location, the order form). */
