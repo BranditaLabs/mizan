@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/QueryState";
 import { ApiError, idempotency, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 import { PRODUCT_EDITORS } from "./EditProduct";
 import { ProductImage } from "./ProductImage";
 
@@ -27,7 +28,7 @@ export function PicturesCard({ product: p }: { product: Product }) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const keys = useRef(new WeakMap<File, string>());
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReactNode>(null);
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
@@ -44,7 +45,7 @@ export function PicturesCard({ product: p }: { product: Product }) {
     },
     retry: false,
     onSettled: async () => { if (input.current) input.current.value = ""; await refresh(); },
-    onError: (e) => setError(e instanceof ApiError && PICTURE_ERRORS.has(e.code) ? t(`errors.${e.code as "picture_type"}`) : problemText(e, tpr)),
+    onError: (e) => setError(e instanceof ApiError && PICTURE_ERRORS.has(e.code) ? t.rich(`errors.${e.code as "picture_type"}`, latin) : problemText(e, tpr)),
     meta: { toast: false },
   });
   const remove = useMutation({
@@ -62,7 +63,7 @@ export function PicturesCard({ product: p }: { product: Product }) {
       </>
     ) : null}>
       <div className="flex flex-col gap-3" data-testid="pictures-card">
-        <p className="text-caption text-text-3">{t("hint")}</p>
+        <p className="text-caption text-text-3">{t.rich("hint", latin)}</p>
         {error ? <Alert tone="danger">{error}</Alert> : null}
         {p.images.length === 0 ? <p className="text-body-sm text-text-2">{t("none")}</p> : (
           <ul className="flex flex-wrap gap-3">

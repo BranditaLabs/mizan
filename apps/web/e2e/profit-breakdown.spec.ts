@@ -10,7 +10,7 @@ import { ownerWithStore, signInOwner } from "./stack";
 const egp = (amount: string) => ({ amount, currency: "EGP" });
 const row = (key: string, label: string, net: string, special = false) => ({
   key, label, special, orders: 4, delivered: 1, returned: 1, revenue: egp("1000.00"), productCost: egp("800.00"), shippingAndCod: egp("190.00"), ads: egp("300.00"),
-  returns: egp("30.00"), team: egp("0.00"), fees: egp("0.00"), net: egp(net), expectedNet: egp("670.00"), margin: net.startsWith("-") ? "-32.0" : "12.5",
+  returns: egp("30.00"), team: egp("0.00"), fees: egp("0.00"), net: egp(net), expectedNet: egp("670.00"), margin: net.startsWith("-") ? "-32.0" : "12.5", costsMissing: 0,
 });
 
 test("owner in Arabic: profit by product, then by courier, and the CSV for the accountant", async ({ page }) => {

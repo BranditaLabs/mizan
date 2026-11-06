@@ -13,6 +13,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 type S = Schemas["ConversionSettings"];
 const READERS = rolesWith("payments.settings.read");
@@ -23,7 +24,7 @@ const METHODS = ["instapay", "wallet", "bank_transfer", "link"] as const;
 export function ConversionSettingsScreen() {
   const t = useTranslations("conversionSettings");
   const tc = useTranslations("conversion");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -49,7 +50,7 @@ export function ConversionSettingsScreen() {
         <h2 className="text-heading-sm">{t("methodsTitle")}</h2>
         <p className="text-body-sm text-text-2">{t("methodsHint")}</p>
         {METHODS.map((m) => (
-          <Field key={m} label={tc(`method.${m}`)} hint={t(`hints.${m}`)} ltr={m !== "bank_transfer"} disabled={!editor} value={v(m)} onChange={(e) => setDraft({ ...draft, [m]: e.target.value })} />
+          <Field key={m} label={tc(`method.${m}`)} hint={t.rich(`hints.${m}`, latin)} ltr={m !== "bank_transfer"} disabled={!editor} value={v(m)} onChange={(e) => setDraft({ ...draft, [m]: e.target.value })} />
         ))}
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t("depositPct")} inputMode="numeric" ltr disabled={!editor} value={v("depositPct")} onChange={(e) => setDraft({ ...draft, depositPct: e.target.value.trim() })} />

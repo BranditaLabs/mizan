@@ -3,7 +3,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import { trxQueryClient, type DB } from "@mizan/db";
 import { cashToCollect, MizanEngine, ShipBlockedError, SqlStore, type ShipmentStatusUpdate, type ShipOutcome } from "@mizan/engine";
-import { fromMinor, SHIPMENT_STATUSES, toMinor, type CanonicalOrder, type EventActor, type PaymentMode, type PaymentStatus } from "@mizan/shared";
+import { fromMinor, SHIPMENT_STATUSES, STORE_COURIER, toMinor, type CanonicalOrder, type EventActor, type PaymentMode, type PaymentStatus } from "@mizan/shared";
 import { ENGINE_RUNTIME, type RuntimeFactory } from "../../integrations/engine-registry.js";
 import { auditActor, AuditService } from "../../platform/audit/audit.service.js";
 import type { AuthContext } from "../../platform/auth/auth.types.js";
@@ -152,7 +152,8 @@ export class ShippingService implements ShipmentResultSink {
       if (!same) await this.tracking.flag(trx, tenantId, live.id, `Also shipped in the store: ${f.company ?? "another courier"} ${f.trackingNumber ?? "(no tracking number)"}`);
       return "skipped";
     }
-    const name = f.company?.trim() || "Store courier";
+    // No courier name from the store: a code the screens translate ("Store courier" / "شحن المتجر").
+    const name = f.company?.trim() || STORE_COURIER;
     const key = name.toLowerCase().replace(/\s+/g, " ");
     let courier = await trx.selectFrom("connections").select(["id", "display_name"]).where("kind", "=", "courier").where("provider", "=", "manual").where("external_account", "=", key).executeTakeFirst();
     courier ??= await trx.insertInto("connections").values({ tenant_id: tenantId, kind: "courier", provider: "manual", external_account: key, display_name: name, status: "active" })

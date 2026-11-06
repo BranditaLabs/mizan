@@ -26669,6 +26669,42 @@
           "currency": {
             "type": "string"
           },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "costsComplete": {
+                "type": "boolean",
+                "description": "No order of the period misses a cost (product cost, courier rate, fee, FX rate)"
+              },
+              "delivered": {
+                "type": "boolean",
+                "description": "At least one order of the period was delivered"
+              },
+              "provisional": {
+                "type": "boolean",
+                "description": "Costs missing or nothing delivered: show \"Provisional profit\", never a margin"
+              },
+              "ordersMissingCosts": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "productsMissingCost": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct products in those orders with no cost yet"
+              }
+            },
+            "required": [
+              "costsComplete",
+              "delivered",
+              "provisional",
+              "ordersMissingCosts",
+              "productsMissingCost"
+            ],
+            "additionalProperties": false
+          },
           "tiles": {
             "type": "array",
             "items": {
@@ -26713,6 +26749,10 @@
                     "currency"
                   ],
                   "additionalProperties": false
+                },
+                "provisional": {
+                  "type": "boolean",
+                  "description": "A profit figure whose inputs are not all there yet: shown as provisional"
                 }
               },
               "required": [
@@ -26720,7 +26760,8 @@
                 "name",
                 "definition",
                 "unit",
-                "value"
+                "value",
+                "provisional"
               ],
               "additionalProperties": false
             },
@@ -26787,6 +26828,7 @@
           "from",
           "to",
           "currency",
+          "quality",
           "tiles",
           "series"
         ],
@@ -29468,6 +29510,42 @@
             "type": "string",
             "description": "The store's base currency, for money metrics"
           },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "costsComplete": {
+                "type": "boolean",
+                "description": "No order of the period misses a cost (product cost, courier rate, fee, FX rate)"
+              },
+              "delivered": {
+                "type": "boolean",
+                "description": "At least one order of the period was delivered"
+              },
+              "provisional": {
+                "type": "boolean",
+                "description": "Costs missing or nothing delivered: show \"Provisional profit\", never a margin"
+              },
+              "ordersMissingCosts": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "productsMissingCost": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct products in those orders with no cost yet"
+              }
+            },
+            "required": [
+              "costsComplete",
+              "delivered",
+              "provisional",
+              "ordersMissingCosts",
+              "productsMissingCost"
+            ],
+            "additionalProperties": false
+          },
           "data": {
             "type": "array",
             "items": {
@@ -29513,6 +29591,10 @@
                   ],
                   "additionalProperties": false
                 },
+                "provisional": {
+                  "type": "boolean",
+                  "description": "A profit figure whose inputs are not all there yet (quality.provisional): never shown as final"
+                },
                 "numerator": {
                   "type": "string"
                 },
@@ -29524,7 +29606,8 @@
                 "key",
                 "version",
                 "unit",
-                "value"
+                "value",
+                "provisional"
               ],
               "additionalProperties": false
             }
@@ -29534,6 +29617,7 @@
           "from",
           "to",
           "currency",
+          "quality",
           "data"
         ],
         "additionalProperties": false
@@ -39100,8 +39184,14 @@
                 },
                 "margin": {
                   "nullable": true,
-                  "description": "Net ÷ revenue, percent with one decimal",
+                  "description": "Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2)",
                   "type": "string"
+                },
+                "costsMissing": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row \"ناقص\""
                 }
               },
               "required": [
@@ -39120,7 +39210,8 @@
                 "fees",
                 "net",
                 "expectedNet",
-                "margin"
+                "margin",
+                "costsMissing"
               ],
               "additionalProperties": false
             },
@@ -39307,8 +39398,14 @@
               },
               "margin": {
                 "nullable": true,
-                "description": "Net ÷ revenue, percent with one decimal",
+                "description": "Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2)",
                 "type": "string"
+              },
+              "costsMissing": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row \"ناقص\""
               }
             },
             "required": [
@@ -39327,7 +39424,8 @@
               "fees",
               "net",
               "expectedNet",
-              "margin"
+              "margin",
+              "costsMissing"
             ],
             "additionalProperties": false
           }
@@ -39567,7 +39665,7 @@
               },
               "margin": {
                 "nullable": true,
-                "description": "kept ÷ revenue",
+                "description": "kept ÷ revenue; null while costs are missing (FX-2)",
                 "type": "string"
               },
               "keptPer100": {
@@ -39658,6 +39756,43 @@
                   "currency"
                 ],
                 "additionalProperties": false
+              },
+              "quality": {
+                "type": "object",
+                "properties": {
+                  "costsComplete": {
+                    "type": "boolean",
+                    "description": "No order of the period misses a cost (product cost, courier rate, fee, FX rate)"
+                  },
+                  "delivered": {
+                    "type": "boolean",
+                    "description": "At least one order of the period was delivered"
+                  },
+                  "provisional": {
+                    "type": "boolean",
+                    "description": "Costs missing or nothing delivered: show \"Provisional profit\", never a margin"
+                  },
+                  "ordersMissingCosts": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "productsMissingCost": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Distinct products in those orders with no cost yet"
+                  }
+                },
+                "required": [
+                  "costsComplete",
+                  "delivered",
+                  "provisional",
+                  "ordersMissingCosts",
+                  "productsMissingCost"
+                ],
+                "additionalProperties": false,
+                "description": "FX-2: provisional while costs are missing or nothing is delivered; the screens say \"Provisional profit\""
               },
               "breakdown": {
                 "type": "object",
@@ -39841,6 +39976,7 @@
               "deliveryRate",
               "refusalLoss",
               "adSpend",
+              "quality",
               "breakdown"
             ],
             "additionalProperties": false

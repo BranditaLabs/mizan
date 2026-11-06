@@ -120,6 +120,7 @@ _Sample data. Full visual in `design/prototype.html`._
 | Metric definition changes | Versioned; old reports keep the old definition until updated |
 | Schedule recipient leaves the team | Removed from schedule automatically |
 | Data still syncing | Report shows 'data up to HH:MM' |
+| Costs missing or nothing delivered | `quality.provisional` (FX-2): profit tiles and values carry `provisional`, the dashboard says "Provisional profit" with a link to add the costs, the export carries a provisional line |
 
 ## Acceptance criteria
 

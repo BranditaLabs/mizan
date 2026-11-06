@@ -101,7 +101,7 @@ export function TicketDetail({ id }: { id: string }) {
 
 function WorkOn({ ticket }: { ticket: Ticket }) {
   const t = useTranslations("tickets");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -148,7 +148,7 @@ function WorkOn({ ticket }: { ticket: Ticket }) {
 
 function AddNote({ id }: { id: string }) {
   const t = useTranslations("tickets");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const [note, setNote] = useState("");

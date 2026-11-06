@@ -9,13 +9,13 @@ import { Cell, DataTable, type Column } from "@/components/ui/DataTable";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Pending } from "@/components/ui/QueryState";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 
 type Courier = Schemas["CourierScorecard"]["couriers"][number];
 type Zone = Courier["zones"][number];
 const PERIODS = [30, 90, 180] as const;
 const READERS = rolesWith("couriers.scorecard");
-const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * Couriers by zone (M3, E7-4): which courier delivers where — delivered rate (the metric layer's
@@ -23,6 +23,7 @@ const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 export function Scorecard() {
   const t = useTranslations("shipments.scorecard");
+  const providerName = useProviderName();
   const { api, user, store } = useSession();
   const [days, setDays] = useState<(typeof PERIODS)[number]>(90);
   const allowed = READERS.has(store?.role ?? "");

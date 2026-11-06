@@ -1,5 +1,6 @@
 "use client";
 
+import { PROVIDER_SLUGS } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -14,7 +15,8 @@ import { useSession } from "@/lib/session";
 type Note = Schemas["NotificationList"]["data"][number];
 
 /** Where a notification leads: its order, the stock screen, or the automation. */
-const PROVIDERS: ReadonlySet<string> = new Set(["shopify", "woocommerce", "bosta", "whatsapp_cloud"]);
+/** Provider names come from the shared catalogue (X9); test/catalogue.test.ts keeps a message per slug. */
+const PROVIDERS: ReadonlySet<string> = new Set(PROVIDER_SLUGS);
 
 function hrefOf(n: Note): string | null {
   if (!n.entity) return null;

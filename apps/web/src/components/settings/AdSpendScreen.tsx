@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 type List = Schemas["AdSpendList"];
 type Platform = Schemas["SetAdSpend"]["platform"];
@@ -142,7 +143,7 @@ function ImportCsv() {
           <span className="font-medium">{t("file")}</span>
           <input type="file" accept=".csv,text/csv" className="text-body-sm" onChange={(e) => void readFile(e.target.files?.[0])} />
         </label>
-        <TextArea label={t("paste")} hint={t("pasteHint")} rows={4} dir="ltr" value={csv} onChange={(e) => setCsv(e.target.value)} />
+        <TextArea label={t("paste")} hint={t.rich("pasteHint", latin)} rows={4} dir="ltr" value={csv} onChange={(e) => setCsv(e.target.value)} />
         <Select label={t("platform")} value={platform} onChange={(e) => setPlatform(e.target.value as Platform | "")} className="max-w-xs">
           <option value="">{t("platformFromFile")}</option>
           {PLATFORMS.map((p) => <option key={p} value={p}>{tp(p)}</option>)}

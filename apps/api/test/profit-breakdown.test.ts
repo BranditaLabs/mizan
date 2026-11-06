@@ -57,3 +57,57 @@ describe("profit breakdown", () => {
     }
   });
 });
+
+describe("profit breakdown honesty (FX-2)", () => {
+  it("a row with a missing cost has no margin (never 100%) and counts the orders to fix", () => {
+    const complete = order("o1", { revenue: 100000n, cogs: 40000n });
+    const noCost = order("o2", { revenue: 100000n }, { costsMissing: true });
+    const { rows, total } = aggregate([
+      { key: "v1", label: "Abaya", ...complete },
+      { key: "v2", label: "Scarf", ...noCost },
+    ], "product");
+    const abaya = rows.find((r) => r.key === "v1")!;
+    const scarf = rows.find((r) => r.key === "v2")!;
+    expect(abaya).toMatchObject({ margin: "60.0", costsMissing: 0 });
+    expect(scarf).toMatchObject({ margin: null, costsMissing: 1 });
+    expect(total).toMatchObject({ margin: null, costsMissing: 1 });
+  });
+
+  it("by product, only the line without a cost is marked; a missing rate marks every line", () => {
+    const lines = [
+      { key: "v-abaya", label: "Abaya", valueMinor: 100000n, costMinor: 40000n },
+      { key: "v-scarf", label: "Scarf", valueMinor: 25000n, costMinor: 0n, costMissing: true },
+    ];
+    const [abaya, scarf] = splitByLines(order("o1", { revenue: 125000n, cogs: 40000n }, { costsMissing: true }), lines, { key: "no_products", label: "no_products" });
+    expect([abaya!.costsMissing, scarf!.costsMissing]).toEqual([false, true]);
+    const rate = splitByLines(order("o2", { revenue: 125000n, cogs: 50000n }, { costsMissing: true }), lines.map((l) => ({ ...l, costMissing: false })), { key: "no_products", label: "no_products" });
+    expect(rate.map((s) => s.costsMissing)).toEqual([true, true]);
+  });
+
+  const lines = [
+    { key: "v-abaya", label: "Abaya", valueMinor: 100000n, costMinor: 40000n },
+    { key: "v-scarf", label: "Scarf", valueMinor: 25000n, costMinor: 0n, costMissing: true },
+  ];
+  const none = { key: "no_products", label: "no_products" };
+
+  it("an order that misses nothing (cancelled, returned with nothing lost) marks no line, even one without a cost", () => {
+    const clean = splitByLines(order("o1", { revenue: 0n }, { costsMissing: false, productCostMissing: false, otherMissing: false }), lines, none);
+    expect(clean.map((s) => s.costsMissing)).toEqual([false, false]);
+    expect(aggregate(clean, "product").total).toMatchObject({ costsMissing: 0 });
+  });
+
+  it("a missing product cost and a missing rate together mark every line", () => {
+    const both = splitByLines(order("o1", { revenue: 125000n, cogs: 40000n }, { costsMissing: true, productCostMissing: true, otherMissing: true }), lines, none);
+    expect(both.map((s) => s.costsMissing)).toEqual([true, true]);
+  });
+
+  it("only a product cost missing: the costed line stays final", () => {
+    const only = splitByLines(order("o1", { revenue: 125000n, cogs: 40000n }, { costsMissing: true, productCostMissing: true, otherMissing: false }), lines, none);
+    expect(only.map((s) => s.costsMissing)).toEqual([false, true]);
+  });
+
+  it("only a rate missing: every line is marked", () => {
+    const rate = splitByLines(order("o1", { revenue: 125000n, cogs: 40000n }, { costsMissing: true, productCostMissing: false, otherMissing: true }), lines, none);
+    expect(rate.map((s) => s.costsMissing)).toEqual([true, true]);
+  });
+});

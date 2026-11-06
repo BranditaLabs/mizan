@@ -29,7 +29,7 @@ const TONE: Record<NonNullable<Conversion["current"]>["status"], BadgeTone> = { 
  */
 export function ConversionCard({ orderId }: { orderId: string }) {
   const t = useTranslations("conversion");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const locale = useLocale();
   const qc = useQueryClient();

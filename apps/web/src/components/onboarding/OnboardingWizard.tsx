@@ -82,8 +82,8 @@ export function OnboardingWizard() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
-        <nav aria-label={t("stepsLabel")} className="flex flex-col gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
+        <nav aria-label={t("stepsLabel")} className="flex min-w-0 flex-col gap-4">
           <ol className="flex gap-2 overflow-x-auto md:flex-col">{STEP_ORDER.map((s, i) => item(s, i + 1))}</ol>
           <div className="flex flex-col gap-2">
             <h2 className="px-1 text-caption font-semibold text-text-2">
@@ -93,7 +93,7 @@ export function OnboardingWizard() {
           </div>
         </nav>
 
-        <section aria-labelledby="step-title" className="mz-card p-5 sm:p-6">
+        <section aria-labelledby="step-title" className="mz-card min-w-0 p-5 sm:p-6">
           <h2 id="step-title" className="text-heading-sm">{t(STEP_TITLES[step])}</h2>
           {BODY[step] ? <p className="mt-1 mb-5 max-w-[60ch] text-body-sm text-text-2">{t(BODY[step])}</p> : <div className="mb-4" />}
           {step === "store" ? <StoreStep o={o} /> : step === "courier" ? <CourierStep o={o} /> : step === "costs" ? <CostsStep o={o} />

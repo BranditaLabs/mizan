@@ -95,7 +95,7 @@ export function LedgerCard({ orderId, fallback }: { orderId: string; fallback: R
 function RecordPayment({ orderId, ledger, onClose }: { orderId: string; ledger: Ledger; onClose(): void }) {
   const t = useTranslations("orders.ledger");
   const td = useTranslations("orders.detail");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

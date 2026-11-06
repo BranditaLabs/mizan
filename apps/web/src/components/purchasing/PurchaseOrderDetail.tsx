@@ -121,7 +121,7 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
 /** The one thing to do next, for whoever may do it. */
 function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): void }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -179,7 +179,7 @@ function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): 
 /** Take a delivery in: good and damaged units per line; more than ordered only with a manager's tick. */
 function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onClose(): void }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -241,7 +241,7 @@ const LANDED_EDITORS = rolesWith("purchasing.plan");
 /** Freight, customs and fees (M16-4a): spread into the unit cost of the units received after them. */
 function LandedCosts({ po, role }: { po: Po; role: string }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

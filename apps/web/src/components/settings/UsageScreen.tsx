@@ -41,7 +41,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 /** The next plan's limits and a way to ask for it (E12-1); payment comes with E12-2. */
 function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
   const t = useTranslations("usage");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

@@ -169,7 +169,7 @@ const show = (v: unknown) => (v === null || v === undefined ? "—" : typeof v =
  */
 function TryIt({ automation, action, onClose }: { automation: Automation; action(a: string): string; onClose(): void }) {
   const t = useTranslations("automations.try");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const [number, setNumber] = useState("");
   const run = useMutation({

@@ -12,6 +12,7 @@ import { Pending } from "@/components/ui/QueryState";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { DateText } from "@/components/ui/Values";
 import { ok } from "@/lib/api/client";
+import { auditActionLabel, auditActorLabel } from "@/lib/audit";
 import { useSession } from "@/lib/session";
 
 const READERS = rolesWith("audit.read");
@@ -35,8 +36,7 @@ export function AuditLogScreen() {
     enabled: READERS.has(role),
   });
   const rows = q.data?.pages.flatMap((p) => p.data) ?? [];
-  const who = (a: { type: string; displayName: string | null }) =>
-    a.type === "mizan_staff" ? t("actor.mizan") : a.type === "user" ? (a.displayName ?? t("actor.someone")) : t.has(`actor.${a.type}`) ? t(`actor.${a.type}` as "actor.system") : a.type;
+  const who = (a: { type: string; displayName: string | null }) => auditActorLabel(t, a);
 
   return (
     <div className="flex min-w-0 flex-col gap-5" data-testid="audit-log">
@@ -63,8 +63,8 @@ export function AuditLogScreen() {
                 {rows.map((r) => (
                   <tr key={r.id}>
                     <td><DateText value={r.createdAt} relative /></td>
-                    <td>{r.actor.type === "mizan_staff" ? <Badge tone="ink">{who(r.actor)}</Badge> : who(r.actor)}</td>
-                    <td>{t.has(`actions.${r.action}`) ? t(`actions.${r.action}` as "actions.member.invited") : <Bdi code>{r.action}</Bdi>}</td>
+                    <td>{r.actor.type === "mizan_staff" ? <Badge tone="ink">{who(r.actor)}</Badge> : <bdi dir="auto">{who(r.actor)}</bdi>}</td>
+                    <td>{auditActionLabel(t, r.action)}</td>
                     <td>{r.entity ? <Bdi code>{r.entity.type}</Bdi> : "—"}</td>
                   </tr>
                 ))}

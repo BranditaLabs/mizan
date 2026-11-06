@@ -21,6 +21,7 @@ import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { downloadText, toCsv } from "@/lib/csv";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 import { ProductImage } from "./ProductImage";
 import { PRODUCT_EDITORS } from "./EditProduct";
 import { Icon } from "@mizan/design-system/icons/react";
@@ -30,7 +31,7 @@ type Variant = Schemas["CatalogVariant"];
 type Row = { product: Product; variant: Variant };
 /** What the variant editor needs to know about the product (the list row or the product page). */
 type EditRow = { product: Pick<Product, "title">; variant: Variant };
-type Filter = "all" | "cost" | "barcode";
+export type Filter = "all" | "cost" | "barcode";
 const FILTERS: readonly Filter[] = ["all", "cost", "barcode"];
 const EDITORS = rolesWith("products.read");
 const PROBLEMS = new Set(["header", "columns", "sku", "cost", "barcode", "duplicate", "too_many", "empty", "unknown_sku", "barcode_taken"]);
@@ -43,11 +44,11 @@ const DECIMAL = /^\d{1,12}(\.\d{1,3})?$/;
  * store and are changed there. Costs can be typed one by one or imported from a sheet: download
  * the list, fill the cost column, import it back.
  */
-export function Products() {
+export function Products({ initialFilter = "all" }: { initialFilter?: Filter } = {}) {
   const t = useTranslations("products");
   const { api, user, store } = useSession();
   const allowed = EDITORS.has(store?.role ?? "");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(initialFilter);
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | null>(null);
@@ -254,7 +255,7 @@ function ImportCosts({ open, onClose }: { open: boolean; onClose(): void }) {
           {t("file")}
           <input type="file" accept=".csv,text/csv" className="text-body-sm" onChange={(e) => void readFile(e.target.files?.[0])} />
         </label>
-        <TextArea label={t("paste")} hint={t("pasteHint")} rows={4} dir="ltr" value={csv} onChange={(e) => { setCsv(e.target.value); run.reset(); }} />
+        <TextArea label={t("paste")} hint={t.rich("pasteHint", latin)} rows={4} dir="ltr" value={csv} onChange={(e) => { setCsv(e.target.value); run.reset(); }} />
         {lines.length ? (
           <Alert tone="danger" title={t("invalid", { count: lines.length })}>
             <ul className="mt-1 flex flex-col gap-0.5" data-testid="cost-import-errors">

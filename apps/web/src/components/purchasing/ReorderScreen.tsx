@@ -62,7 +62,7 @@ export function ReorderScreen() {
 
 function SupplierGroup({ supplier, rows, canDraft }: { supplier: Row["supplier"]; rows: Row[]; canDraft: boolean }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const router = useRouter();
