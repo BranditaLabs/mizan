@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  cannotAdd, idMaker, insertStep, lastMovable, MAX_STEPS, moveStep, normalize, removeStep, setWait, stepsValid, withIds, withoutIds, type Channel, type FlowStep,
+  cannotAdd, idMaker, insertStep, LANE_SLACK, laneIndex, lastMovable, MAX_STEPS, moveStep, normalize, removeStep, setWait, stepsValid, withIds, withoutIds, type Channel, type FlowStep,
 } from "../src/components/studio/flow";
-import { forReason, forText, knownCode, targetOf, toIssues } from "../src/components/studio/issues";
+import { forReason, forText, knownCode, mergeIssues, refusedTexts, targetOf, textUnchanged, toIssues } from "../src/components/studio/issues";
 import { estimateLength, insertAt, missingRequired, notAllowed, variablesIn } from "../src/components/studio/length";
 import { keysOf, nodeOf } from "../src/components/studio/nodes";
-import { keep, nextStep, simulate, START, visibleTurns, type SimConversation, type SimState } from "../src/components/studio/simulation";
+import { keep, nextStep, reveal, simulate, START, visibleTurns, type SimConversation, type SimState } from "../src/components/studio/simulation";
 import { parseWhatsApp, plainText } from "../src/components/studio/whatsapp-format";
 
 const ids = idMaker("s");
@@ -171,9 +171,44 @@ describe("the phone's simulation", () => {
 
   it("Cancel after confirming answers 'already'; jump shows a whole chat; restart", () => {
     const s = go(START, { type: "template", index: 0, offer: false });
-    expect(go(s, { type: "template", index: 2, offer: false })).toEqual({ scenario: "already", shown: 5 });
+    const late = go(s, { type: "template", index: 2, offer: false });
+    expect(late).toEqual({ scenario: "confirm", shown: 3, late: [{ label: "Cancel", reply: true }] });
+    expect(visibleTurns(convs, late).map((x) => [x.from, x.key ?? x.text])).toEqual([
+      ["business", undefined], ["customer", "Confirm"], ["business", "confirmed"], ["customer", "Cancel"], ["business", "already"],
+    ]);
     expect(simulate(convs, START, { type: "jump", scenario: "cancel" })).toEqual({ state: { scenario: "cancel", shown: 5 }, animate: false });
     expect(go(s, { type: "restart" })).toEqual(START);
+  });
+
+  it("after an answer the template never replays a scenario: another answer gets 'already', the same one nothing (whatsapp-chat.service onTap)", () => {
+    const confirmed = go(START, { type: "template", index: 0, offer: false });
+    // Change after Confirm: "already", never the change prompt.
+    const change = simulate(convs, confirmed, { type: "template", index: 1, offer: false });
+    expect(change).toEqual({ state: { scenario: "confirm", shown: 3, late: [{ label: "Change", reply: true }] }, animate: true });
+    expect(visibleTurns(convs, change.state).at(-1)?.key).toBe("already");
+    expect(nextStep(convs, change.state)).toBeNull();
+    // Confirm again: the buyer's tap, no reply.
+    const again = simulate(convs, confirmed, { type: "template", index: 0, offer: false });
+    expect(again).toEqual({ state: { scenario: "confirm", shown: 3, late: [{ label: "Confirm", reply: false }] }, animate: false });
+    expect(visibleTurns(convs, again.state).map((x) => x.from)).toEqual(["business", "customer", "business", "customer"]);
+    // Confirm after a change, and after a cancel with its reason: "already".
+    const changed = go(START, { type: "template", index: 1, offer: false });
+    expect(go(changed, { type: "template", index: 0, offer: false }).late).toEqual([{ label: "Confirm", reply: true }]);
+    expect(go(changed, { type: "template", index: 1, offer: false }).late).toEqual([{ label: "Change", reply: false }]);
+    const cancelled = go(go(START, { type: "template", index: 2, offer: false }), { type: "list", turn: 2, title: "Too pricey" });
+    expect(go(cancelled, { type: "template", index: 0, offer: false }).late).toEqual([{ label: "Confirm", reply: true }]);
+    // Cancel opens the list only: the run is still open, Confirm there confirms.
+    expect(go(go(START, { type: "template", index: 2, offer: false }), { type: "template", index: 0, offer: false })).toEqual({ scenario: "confirm", shown: 3 });
+    // The late taps survive a new preview.
+    expect(keep(convs, change.state)).toEqual(change.state);
+  });
+
+  it("reveal: a key not in the chat moves the phone to the sample that has it, up to its bubble", () => {
+    expect(reveal(convs, START, ["cancelled"])).toEqual({ scenario: "cancel", shown: 5 });
+    expect(reveal(convs, START, ["offer_pitch"])).toEqual({ scenario: "confirm_offer", shown: 3 });
+    expect(reveal(convs, { scenario: "cancel", shown: 5 }, ["cancelled"])).toBeNull(); // on screen
+    expect(reveal(convs, START, ["summary_pay"], "confirm")).toEqual({ scenario: "confirm", shown: 3 }); // no bubble of its own
+    expect(reveal(convs, START, ["link_text"])).toBeNull();
   });
 
   it("keeps the position on a new preview, clamped", () => {
@@ -209,6 +244,56 @@ describe("issues land on their field", () => {
     expect(forReason(issues, 1, "en").map((i) => i.code)).toEqual(["reason_title_required", "duplicate_title"]);
     expect(knownCode("too_long")).toBe("too_long");
     expect(knownCode("too_big")).toBe("other");
+  });
+
+  it("a refused save and the live preview report the same problem once", () => {
+    const saved = toIssues([{ path: "script.texts.ar.confirmed", code: "no_links" }, { path: "steps.0.waitMinutes", code: "too_small" }], false);
+    const live = toIssues([{ path: ["texts", "ar", "confirmed"], code: "no_links" }, { path: ["texts", "en", "confirmed"], code: "no_links" }], true);
+    const merged = mergeIssues(saved, live);
+    expect(merged).toHaveLength(3);
+    expect(forText(merged, "ar", "confirmed")).toHaveLength(1);
+    expect(mergeIssues(toIssues([{ path: "script.texts.ar.cancelled", code: "variable_not_here", variable: "order.items" }, { path: "script.texts.ar.cancelled", code: "variable_not_here", variable: "order.total" }], false))).toHaveLength(2);
+  });
+});
+
+describe("what blocks Save: only texts the draft changed, like the API (confirmation.service unchanged)", () => {
+  const keys = [{ key: "confirmed", limit: 20, required: ["order.number"] }, { key: "cancelled", limit: 20, required: [] }];
+  const widths = { "order.number": 6 };
+  const long = "{{order.number}} at {{store.name}}"; // 6 + 4 + store name
+  const stored = { ar: { confirmed: long } };
+
+  it("a stored text that no longer fits (the store was renamed) never blocks saving the rest", () => {
+    expect(refusedTexts({ draft: stored, stored, keys, widths, storeName: "A much longer store name" })).toEqual([]);
+    expect(refusedTexts({ draft: { ar: { confirmed: ` ${long} ` } }, stored, keys, widths, storeName: "A much longer store name" })).toEqual([]); // trimmed, as the API
+    expect(textUnchanged(stored, stored, "ar", "confirmed")).toBe(true);
+  });
+
+  it("a changed text over its limit, missing a required variable, or flagged by the preview blocks", () => {
+    const storeName = "A much longer store name";
+    expect(refusedTexts({ draft: { ar: { confirmed: `${long}!` } }, stored, keys, widths, storeName })).toEqual([{ lang: "ar", key: "confirmed" }]);
+    expect(refusedTexts({ draft: { ar: { confirmed: long }, en: { confirmed: "Thanks" } }, stored, keys, widths, storeName })).toEqual([{ lang: "en", key: "confirmed" }]);
+    const flagged = toIssues([{ path: ["texts", "ar", "cancelled"], code: "no_links" }, { path: ["texts", "ar", "confirmed"], code: "too_long" }], true);
+    expect(refusedTexts({ draft: { ar: { confirmed: long, cancelled: "see x.com" } }, stored, keys, widths, storeName, issues: flagged })).toEqual([{ lang: "ar", key: "cancelled" }]);
+  });
+});
+
+describe("dropping a palette chip into the lane", () => {
+  // A WhatsApp card (0-60) with its tall branch grid under it (to 700), then the team call card (720-780).
+  const cards = [{ top: 0, bottom: 60 }, { top: 720, bottom: 780 }];
+  const lane = { top: 0, bottom: 800 };
+
+  it("lands by the step cards' middles, never the branch grid's", () => {
+    expect(laneIndex(10, cards, lane, 1)).toBe(0);
+    expect(laneIndex(70, cards, lane, 1)).toBe(1); // just under the WhatsApp card: after it
+    expect(laneIndex(400, cards, lane, 1)).toBe(1);
+  });
+
+  it("never after the team call; outside the lane, nowhere; a lone team call still takes a drop", () => {
+    expect(laneIndex(790, cards, lane, 1)).toBe(1);
+    expect(laneIndex(lane.bottom + LANE_SLACK + 1, cards, lane, 1)).toBeNull();
+    expect(laneIndex(-LANE_SLACK - 1, cards, lane, 1)).toBeNull();
+    expect(laneIndex(50, [{ top: 0, bottom: 60 }], { top: 0, bottom: 80 }, 0)).toBe(0);
+    expect(laneIndex(50, [{ top: 0, bottom: 60 }], { top: 0, bottom: 80 }, 1)).toBe(1);
   });
 });
 

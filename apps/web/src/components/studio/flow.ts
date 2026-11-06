@@ -78,6 +78,20 @@ export function stepsValid(steps: readonly FlowStep[]): boolean {
   return steps.every((s) => waitValid(s.waitMinutes));
 }
 
+/** How far above the first step or below the last one a chip still drops into the lane (px). */
+export const LANE_SLACK = 32;
+
+/**
+ * Where a palette chip lands among the steps, from the step cards only (never the tall branch grid
+ * under the WhatsApp step): before the first card whose middle is below the chip's middle, clamped
+ * to `max` (before the team call). null when the chip is outside the lane (`lane`: the steps' box).
+ */
+export function laneIndex(chipMiddle: number, cards: ReadonlyArray<{ top: number; bottom: number }>, lane: { top: number; bottom: number }, max: number): number | null {
+  if (!cards.length || chipMiddle < lane.top - LANE_SLACK || chipMiddle > lane.bottom + LANE_SLACK) return null;
+  const i = cards.findIndex((c) => chipMiddle < (c.top + c.bottom) / 2);
+  return Math.min(i < 0 ? cards.length : i, max);
+}
+
 /** Stable ids for the sortable list: `s1`, `s2`… never reused within a draft. */
 export function withIds(steps: ReadonlyArray<{ channel: Channel; waitMinutes: number }>, next: () => string): FlowStep[] {
   return steps.map((s) => ({ id: next(), channel: s.channel, waitMinutes: s.waitMinutes }));

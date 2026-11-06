@@ -18,6 +18,14 @@
   --wa-out: #d9fdd3;
   --wa-text: #111b21;
   --wa-meta: #667781;
+  /* The time on the buyer's green bubble, and Mizan's own hint on the wallpaper: darker, 4.5:1 or more. */
+  --wa-meta-out: #5b6b63;
+  --wa-hint: #54656f;
+  --wa-notice-bg: #fff5c4;
+  --wa-notice-text: #54656f;
+  /* WhatsApp's accessible green for text and the Send button (4.9:1 with white). */
+  --wa-accent: #008069;
+  --wa-on-accent: #ffffff;
   --wa-tick: #53bdeb;
   --wa-link: #027eb5;
   --wa-button: #027eb5;
@@ -49,6 +57,12 @@
   --wa-out: #005c4b;
   --wa-text: #e9edef;
   --wa-meta: #8696a0;
+  --wa-meta-out: rgba(255, 255, 255, 0.7);
+  --wa-hint: #8696a0;
+  --wa-notice-bg: #182229;
+  --wa-notice-text: #ffd279;
+  --wa-accent: #00a884;
+  --wa-on-accent: #111b21;
   --wa-link: #53bdeb;
   --wa-button: #53bdeb;
   --wa-pill: #202c33;
@@ -75,6 +89,12 @@
     --wa-out: #005c4b;
     --wa-text: #e9edef;
     --wa-meta: #8696a0;
+    --wa-meta-out: rgba(255, 255, 255, 0.7);
+    --wa-hint: #8696a0;
+    --wa-notice-bg: #182229;
+    --wa-notice-text: #ffd279;
+    --wa-accent: #00a884;
+    --wa-on-accent: #111b21;
     --wa-link: #53bdeb;
     --wa-button: #53bdeb;
     --wa-pill: #202c33;
@@ -216,7 +236,7 @@
   box-shadow: var(--wa-shadow);
   text-transform: uppercase;
 }
-.noticePill { text-transform: none; text-align: center; max-inline-size: 88%; background: color-mix(in srgb, var(--wa-pill) 85%, #ffd279 15%); line-height: 1.35; }
+.noticePill { text-transform: none; text-align: center; max-inline-size: 88%; background: var(--wa-notice-bg); color: var(--wa-notice-text); line-height: 1.35; }
 
 .turns { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .row { display: flex; flex-direction: column; margin-block-start: 2px; }
@@ -228,7 +248,8 @@
   position: relative;
   max-inline-size: 82%;
   min-inline-size: 76px;
-  padding: 6px 7px 8px 9px;
+  padding-block: 6px 8px;
+  padding-inline: 9px 7px;
   border-radius: 7.5px;
   font-size: 14.2px;
   line-height: 19px;
@@ -290,21 +311,24 @@
 .mono { font-family: var(--mz-font-mono); font-size: 13px; background: var(--wa-mono-bg); padding: 0 2px; border-radius: 3px; }
 .link { color: var(--wa-link); text-decoration: underline; cursor: pointer; }
 
+/* The bubble's text and its time: the time sits at the end corner, over the text's spacer. */
+.content { position: relative; }
 .meta {
-  float: inline-end;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-inline-start: 10px;
-  margin-block: 6px -4px;
+  position: absolute;
+  inset-block-end: -5px;
+  inset-inline-end: 0;
   font-size: 11px;
   line-height: 15px;
   color: var(--wa-meta);
-  direction: ltr;
   white-space: nowrap;
+  pointer-events: none;
 }
+.metaOut { color: var(--wa-meta-out); }
+.metaInner { display: inline-flex; align-items: center; gap: 3px; }
+/* As wide as the time (and the ticks) plus the gap to the text, so they never touch. */
+.metaSpace { display: inline-block; inline-size: 40px; block-size: 1px; }
+.metaSpaceOut { inline-size: 60px; }
 .tick { color: var(--wa-tick); }
-.clear { clear: both; }
 
 .templateTag {
   display: inline-flex;
@@ -342,9 +366,9 @@
   50% { box-shadow: var(--wa-shadow), 0 0 0 5px color-mix(in srgb, var(--wa-green) 0%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .pulse { animation: none; box-shadow: var(--wa-shadow), 0 0 0 2px color-mix(in srgb, var(--wa-green) 45%, transparent); } }
-.hint { margin-block: 8px 2px; text-align: center; font-size: 12px; color: var(--wa-meta); }
+.hint { margin-block: 8px 2px; text-align: center; font-size: 12px; color: var(--wa-hint); }
 
-.divider { block-size: 1px; background: var(--wa-divider); margin: 8px -7px 0 -9px; }
+.divider { block-size: 1px; background: var(--wa-divider); margin-block-start: 8px; margin-inline: -9px -7px; }
 .listBtn {
   display: flex;
   align-items: center;
@@ -464,7 +488,7 @@
 .sheetHead { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 4px 8px 8px; }
 .sheetTitle { text-align: center; font-size: 16px; font-weight: 600; }
 .sheetClose { display: grid; place-items: center; inline-size: 36px; block-size: 36px; border: 0; border-radius: 999px; background: none; color: var(--wa-icon); cursor: pointer; }
-.sheetSection { padding: 6px 20px; font-size: 14px; color: var(--wa-green); font-weight: 500; }
+.sheetSection { padding: 6px 20px; font-size: 14px; color: var(--wa-accent); font-weight: 500; }
 .sheetRows { list-style: none; margin: 0; padding: 0 0 4px; overflow-y: auto; }
 .sheetRow {
   display: flex;
@@ -493,8 +517,8 @@
   padding-inline: 20px;
   border: 0;
   border-radius: 999px;
-  background: var(--wa-green);
-  color: var(--wa-on-green);
+  background: var(--wa-accent);
+  color: var(--wa-on-accent);
   font: inherit;
   font-weight: 600;
   cursor: pointer;

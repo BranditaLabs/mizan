@@ -25,8 +25,10 @@ test("owner in Arabic: designs the chat in the studio, plays it on the phone and
   await expect(phone).toContainText("أوردرك رقم #1001");
   await expect(phone).toContainText("قالب معتمد");
 
-  // Confirms: own words with the customer's name dropped in from its chip.
+  // Confirms: own words with the customer's name dropped in from its chip. Picking the node plays
+  // the Confirm chat on the phone, so its reply is on screen while it is edited.
   await main.getByTestId("node-confirms").click();
+  await expect(phone.getByRole("button", { name: /عدّل الرسالة دي/ }).first()).toBeVisible();
   const confirmed = main.getByLabel("الشكر بعد التأكيد");
   await confirmed.fill("تمام يا ");
   await main.getByTestId("key-confirmed").getByRole("button", { name: "حط اسم العميل الأول" }).click();
@@ -36,9 +38,10 @@ test("owner in Arabic: designs the chat in the studio, plays it on the phone and
   await expect(confirmed).toHaveValue("تمام يا {{customer.first_name}} أوردرك اتأكّد 🎉");
   await expect(main.getByTestId("key-confirmed").getByTestId("counter")).toContainText("من 1000");
 
-  // Tap Confirm on the phone: the buyer's tap, then the store's reply with the sample name.
-  await phone.getByRole("button", { name: "أكّد الأوردر" }).click();
+  // The store's reply with the sample name, live; Confirm again on the template gets no new reply.
   await expect(phone).toContainText("تمام يا منى أوردرك اتأكّد 🎉");
+  await phone.getByRole("button", { name: "أكّد الأوردر" }).click();
+  await expect(phone.locator("li", { hasText: "تمام يا منى أوردرك اتأكّد 🎉" })).toHaveCount(1);
   // The bubble opens its text: clicking it focuses the field.
   await confirmed.blur();
   await phone.getByRole("button", { name: /عدّل الرسالة دي: تمام يا منى/ }).click();

@@ -19,10 +19,10 @@ import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { idMaker, stepsValid, withIds, withoutIds, type Channel, type FlowStep } from "./flow";
 import { fieldId, Inspector, type Catalogue, type Reason, type Script } from "./Inspector";
-import { toIssues, type Lang, type StudioIssue } from "./issues";
-import { estimateLength, missingRequired } from "./length";
-import { BRANCHES, keysOf, nodeOf, type NodeId } from "./nodes";
-import { START, type SimState } from "./simulation";
+import { mergeIssues, refusedTexts, toIssues, type Lang, type StudioIssue, type TextsByLang } from "./issues";
+import { scrollBehavior } from "./motion";
+import { BRANCHES, keysOf, nodeOf, SCENARIO_OF, type NodeId } from "./nodes";
+import { keep, reveal, START, type SimState } from "./simulation";
 import { StudioFlow, type BranchView } from "./StudioFlow";
 import { StudioPhone } from "./StudioPhone";
 import type { PhoneChrome } from "./WhatsAppPhone";
@@ -96,6 +96,8 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
   const [sim, setSim] = useState<SimState>(START);
   const [offer, setOffer] = useState(false);
   const pendingFocus = useRef<string | null>(null);
+  // The flow's button that opened the inspector: focus goes back to it when the inspector closes.
+  const opener = useRef<HTMLElement | null>(null);
 
   // The phone follows the draft, ~350 ms after the last edit; the old chat stays while the new one loads.
   const body = useMemo(() => JSON.stringify({ script: cleanScript(script), lang }), [script, lang]);
@@ -132,7 +134,7 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
     if (!el) return;
     pendingFocus.current = null;
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   });
 
   const frame = (content: React.ReactNode) => (
@@ -183,7 +185,8 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
   });
   const settings = cur.settings;
 
-  const issues = [...saveIssues, ...toIssues(preview.data?.issues, true)];
+  const previewIssues = toIssues(preview.data?.issues, true);
+  const issues = mergeIssues(saveIssues, previewIssues);
   const keyGroup = new Map(cat.keys.map((k) => [k.key as string, k.group as string]));
   const issueKeys = new Set(issues.flatMap((i) => (i.target.area === "text" && i.target.lang === lang ? [i.target.key] : [])));
   const nodeHasIssue = (node: NodeId) =>
@@ -202,12 +205,14 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
   const a = after.data?.settings.confirmed;
   const afterSummary = a ? (a.autoBook.enabled ? t("after.book", { minutes: a.graceMinutes }) : a.graceMinutes > 0 ? t("after.wait", { minutes: a.graceMinutes }) : t("after.ready")) : null;
 
-  // What the client can already tell would be refused (the server stays the judge).
+  // What the client can already tell would be refused (the server stays the judge): only texts the
+  // draft changed, as the API; a stored text that no longer fits shows its problem but never blocks.
   const widths = new Map(cat.variables.map((v) => [v.name as string, v.width]));
-  const textsOk = (["ar", "en"] as const).every((l) => cat.keys.every((k) => {
-    const v = (script.texts[l] as Record<string, string>)[k.key];
-    return !v || (estimateLength(v, widths, store?.tenantName ?? null) <= k.limit && missingRequired(v, k.required).length === 0);
-  }));
+  const previewFresh = Boolean(preview.data) && !preview.isFetching && debounced === body;
+  const textsOk = refusedTexts({
+    draft: script.texts as TextsByLang, stored: query.data!.settings.script?.texts as TextsByLang | undefined, keys: cat.keys, widths,
+    storeName: store?.tenantName ?? null, issues: previewFresh ? previewIssues : [],
+  }).length === 0;
   const hoursValid = settings.callingHours.start < settings.callingHours.end;
   const team = settings.teamCalls;
   const teamValid = Number.isInteger(team.attempts) && team.attempts >= 1 && team.attempts <= 10 && Number.isInteger(team.retryMinutes) && team.retryMinutes >= 10 && team.retryMinutes <= 1440;
@@ -215,23 +220,53 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
   const canSave = flowValid && hoursValid && teamValid && textsOk;
   const stepsError = !flowValid ? t("flow.invalid") : saveIssues.some((i) => i.target.area === "steps") ? t("flow.refused") : null;
 
-  const select = (node: NodeId) => { setSelected(node); setFocusKey(node === "team" ? "call" : null); };
-  const editKey = (key: string) => {
-    setSelected(nodeOf(key, keyGroup.get(key) ?? ""));
+  // The phone follows the editing: a node or a field whose bubble is not in the chat on screen
+  // moves the chat to the sample that has it (with the offer on for the offer's words).
+  const showInPhone = (keys: readonly string[], node: NodeId) => {
+    const convs = preview.data?.conversations ?? [];
+    const next = reveal(convs, keep(convs, sim), keys, SCENARIO_OF[node]);
+    if (!next) return;
+    if (next.scenario === "confirm_offer" || next.scenario === "offer_no") setOffer(true);
+    setSim(next);
+  };
+  const focusKeyIn = (key: string | null) => {
     setFocusKey(key);
+    if (key) showInPhone([key], nodeOf(key, keyGroup.get(key) ?? ""));
+  };
+  const select = (node: NodeId) => {
+    setSelected(node);
+    setFocusKey(node === "team" ? "call" : null);
+    if (node !== "team") showInPhone(keysOf(cat.keys, node).map((k) => k.key as string), node);
+  };
+  /** `later`: the field is not on screen yet (another language is coming), focus it after the render. */
+  const editKey = (key: string, later = false) => {
+    setSelected(nodeOf(key, keyGroup.get(key) ?? ""));
+    focusKeyIn(key);
     // Already on screen (nothing re-renders when the node and key are the same): focus it now.
-    const el = phoneOpen ? null : document.getElementById(fieldId(key));
-    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    const el = phoneOpen || later ? null : document.getElementById(fieldId(key));
+    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: "center", behavior: scrollBehavior() }); }
     else pendingFocus.current = key;
     setPhoneOpen(false);
   };
   function goTo(issue: StudioIssue) {
     const tg = issue.target;
-    if (tg.area === "text") { setLang(tg.lang); editKey(tg.key); }
+    // A field of the other language remounts when the language changes: focus it after that render.
+    if (tg.area === "text") { setLang(tg.lang); editKey(tg.key, tg.lang !== lang); }
     else if (tg.area === "reason" || tg.area === "reasons") { if (tg.area === "reason" && tg.lang) setLang(tg.lang); setSelected("cancel"); }
     else if (tg.area === "team") setSelected("team");
-    else if (tg.area === "steps") document.querySelector("[data-testid=studio-flow]")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    else if (tg.area === "steps") document.querySelector("[data-testid=studio-flow]")?.scrollIntoView({ block: "center", behavior: scrollBehavior() });
   }
+  const closeInspector = () => {
+    setSelected(null);
+    setFocusKey(null);
+    const back = opener.current;
+    (back?.isConnected ? back : document.querySelector<HTMLElement>("[data-testid=studio-flow]"))?.focus();
+  };
+  const selectFromFlow = (node: NodeId) => {
+    const el = document.activeElement;
+    opener.current = el instanceof HTMLElement && el !== document.body ? el : null;
+    select(node);
+  };
   const view = selected === "team" ? "call" : focusKey === "link_text" ? "link" : "chat";
   const langTexts = Object.keys(script.texts[lang] ?? {}).length;
 
@@ -300,11 +335,11 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
       <div className={cx("grid items-start gap-6", wide && "grid-cols-[minmax(0,1fr)_360px]")}>
         <div className="flex min-w-0 flex-col gap-5">
           <StudioFlow steps={cur.steps} channels={channels} enabled={settings.enabled} newId={nextStepId}
-            onSteps={(steps) => update((d) => ({ ...d, steps }))} selected={selected} onSelect={select}
+            onSteps={(steps) => update((d) => ({ ...d, steps }))} selected={selected} onSelect={selectFromFlow}
             branches={branches} offerSummary={{ edited: edited("offer"), issue: nodeHasIssue("offer") }} afterSummary={afterSummary} stepsError={stepsError} />
           {selected && selected !== "trigger" && selected !== "steps" ? (
             <Inspector node={selected} catalogue={cat} script={script} lang={lang} storeName={store?.tenantName ?? null} issues={issues}
-              onText={setText} onReasons={setReasons} newReasonId={newReasonId} onFocusKey={setFocusKey} onClose={() => { setSelected(null); setFocusKey(null); }}
+              onText={setText} onReasons={setReasons} newReasonId={newReasonId} onFocusKey={focusKeyIn} onClose={closeInspector}
               team={teamEditor} />
           ) : (
             <p className="text-body-sm text-text-3">{t("inspector.pick")}</p>

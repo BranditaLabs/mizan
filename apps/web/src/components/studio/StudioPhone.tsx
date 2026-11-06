@@ -6,12 +6,12 @@ import { IconButton } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Choice";
 import { useToast } from "@/components/ui/Toast";
 import type { Schemas } from "@/lib/api/client";
+import { reducedMotion } from "./motion";
 import { keep, nextStep, simulate, START, visibleTurns, type Scenario, type SimAction, type SimState } from "./simulation";
 import { WhatsAppPhone, type PhoneChrome, type PhoneReply } from "./WhatsAppPhone";
 
 type Preview = Schemas["ScriptPreview"];
 const TYPING_MS = 600;
-const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * The phone with its simulation controls (E6-16b): restart, jump to a scenario, "with an offer".
@@ -47,7 +47,7 @@ export function StudioPhone({ preview, lang, chrome, storeName, logo, loading, f
     if ("nowhere" in r) { toast({ message: t("nowhere") }); return; }
     if (timer.current) clearTimeout(timer.current);
     onSim(r.state);
-    if (r.animate && !reduced()) {
+    if (r.animate && !reducedMotion()) {
       setTyping(true);
       timer.current = setTimeout(() => setTyping(false), TYPING_MS);
     } else setTyping(false);

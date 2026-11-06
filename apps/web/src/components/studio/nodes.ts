@@ -1,4 +1,5 @@
 import type { IconProps } from "@mizan/design-system/icons/react";
+import type { Scenario } from "./simulation";
 
 /**
  * The studio's nodes: what the buyer can do in the chat, and the team's call. The catalogue's
@@ -31,7 +32,7 @@ export function keysOf<K extends { key: string; group: string }>(keys: readonly 
   return keys.filter((k) => nodeOf(k.key, k.group) === node);
 }
 
-/** The bubble that opens a node first in the phone (for scrolling the chat to it). */
-export const SCENARIO_OF: Partial<Record<NodeId, string>> = {
+/** The sample that shows a node, when none of its keys has a bubble of its own (see `reveal`). */
+export const SCENARIO_OF: Partial<Record<NodeId, Scenario>> = {
   confirms: "confirm", offer: "confirm_offer", change: "change", cancel: "cancel", message: "message", again: "already", stop: "opt_out",
 };

@@ -3,6 +3,8 @@
  * arrays, inside the script: ["texts", "ar", "confirmed"]) and a refused save's 422 `errors`
  * (paths as strings from the settings root: "script.texts.ar.confirmed", "steps.1.waitMinutes").
  */
+import { estimateLength, missingRequired, type Widths } from "./length";
+
 export type Lang = "ar" | "en";
 export interface RawIssue { path: string | ReadonlyArray<string | number>; code: string; limit?: number; length?: number; variable?: string }
 
@@ -44,7 +46,55 @@ export function toIssues(raw: readonly RawIssue[] | undefined, inScript: boolean
   }));
 }
 
-export const forText = (issues: readonly StudioIssue[], lang: Lang, key: string) =>
+/**
+ * One list of a refused save's problems and the live preview's: the same rule on the same place
+ * shows once (both come from the API's validateScript), the save's first.
+ */
+export function mergeIssues(...lists: ReadonlyArray<readonly StudioIssue[]>): StudioIssue[] {
+  const seen = new Set<string>();
+  const out: StudioIssue[] = [];
+  for (const i of lists.flat()) {
+    const id = JSON.stringify([i.target, i.code, i.variable ?? null]);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(i);
+  }
+  return out;
+}
+
+export type TextsByLang =Partial<Record<Lang, Readonly<Record<string, string | undefined>>>>;
+
+/** The API's rule (confirmation.service `unchanged`): a text the same as the stored one, trimmed. */
+export const textUnchanged = (stored: TextsByLang | undefined, draft: TextsByLang, lang: Lang, key: string) =>
+  (draft[lang]?.[key] ?? "").trim() === (stored?.[lang]?.[key] ?? "").trim();
+
+/**
+ * The texts the client can already tell a save would refuse: only texts the draft changed, like
+ * the API, which never refuses a text that is unchanged from the stored script (a stored text that
+ * no longer fits, e.g. after the store was renamed, never blocks saving the rest). `issues`: the
+ * live preview's problems, counted on changed texts only.
+ */
+export function refusedTexts(p: {
+  draft: TextsByLang;
+  stored: TextsByLang | undefined;
+  keys: ReadonlyArray<{ key: string; limit: number; required: readonly string[] }>;
+  widths: Widths;
+  storeName: string | null;
+  issues?: readonly StudioIssue[];
+}): Array<{ lang: Lang; key: string }> {
+  const out: Array<{ lang: Lang; key: string }> = [];
+  for (const lang of ["ar", "en"] as const) {
+    for (const k of p.keys) {
+      const v = p.draft[lang]?.[k.key];
+      if (!v || textUnchanged(p.stored, p.draft, lang, k.key)) continue;
+      const flagged = p.issues?.some((i) => i.target.area === "text" && i.target.lang === lang && i.target.key === k.key);
+      if (flagged || estimateLength(v, p.widths, p.storeName) > k.limit || missingRequired(v, k.required).length) out.push({ lang, key: k.key });
+    }
+  }
+  return out;
+}
+
+export const forText =(issues: readonly StudioIssue[], lang: Lang, key: string) =>
   issues.filter((i) => i.target.area === "text" && i.target.lang === lang && i.target.key === key);
 
 export const forReason = (issues: readonly StudioIssue[], index: number, lang: Lang | null = null) =>

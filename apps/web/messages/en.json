@@ -1874,6 +1874,11 @@
         "outside": "{item} is outside the flow.",
         "dropped": "{item} dropped at position {n}.",
         "cancelled": "Move cancelled. {item} is back."
+      },
+      "calls": {
+        "title": "Calls",
+        "body": "Calling hours, tries and the call script, for the automated call and the team's \"Needs a call\" list",
+        "edit": "Edit"
       }
     },
     "branches": {
@@ -1926,8 +1931,8 @@
         "body": "The small print, the words inside the template and the link your team sends by hand."
       },
       "team": {
-        "title": "The team call",
-        "body": "What your team says on the call, how often they try and when they may call."
+        "title": "Calls",
+        "body": "When calls may go out, how often your team tries and what they say. The automated call and the team's \"Needs a call\" list both use these, with or without a team-call step."
       }
     },
     "inspector": {

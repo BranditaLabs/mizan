@@ -1,11 +1,12 @@
 "use client";
 
 import { Icon } from "@mizan/design-system/icons/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cx } from "@/components/ui/logic";
-import { parseWhatsApp, type WaNode } from "./whatsapp-format";
+import { scrollBehavior } from "./motion";
+import { parseWhatsApp, plainText, type WaNode } from "./whatsapp-format";
 import s from "./WhatsAppPhone.module.css";
 
 /** One turn of a preview conversation (the API's PreviewTurn). */
@@ -106,9 +107,16 @@ function Rich({ nodes }: { nodes: readonly WaNode[] }) {
 }
 export const WaText = ({ text }: { text: string }) => <Rich nodes={parseWhatsApp(text)} />;
 
+/**
+ * The time (and the buyer's ticks) at the end of the bubble's last line, as WhatsApp draws it: the
+ * text ends with a spacer as wide as the time, and the time sits over it at the bottom corner, so it
+ * shares the last line when it fits and gets its own line when it does not. The outer span keeps
+ * the chat's direction (its corner and gap mirror in Arabic); the inner one reads left to right.
+ */
 function Meta({ out }: { out: boolean }) {
-  return <span className={s.meta}><bdi>{TIME}</bdi>{out ? <Ticks /> : null}</span>;
+  return <span className={cx(s.meta, out && s.metaOut)}><span className={s.metaInner} dir="ltr"><bdi>{TIME}</bdi>{out ? <Ticks /> : null}</span></span>;
 }
+const MetaSpace = ({ out }: { out: boolean }) => <span className={cx(s.metaSpace, out && s.metaSpaceOut)} aria-hidden="true" />;
 
 function Avatar({ name, logo, className }: { name: string; logo?: string | null; className?: string }) {
   const initial = Array.from(name.trim())[0] ?? "";
@@ -143,8 +151,16 @@ export function WhatsAppPhone(p: WhatsAppPhoneProps) {
   // The bubble being edited into view.
   useEffect(() => {
     if (!p.activeKey) return;
-    chat.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(p.activeKey)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    chat.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(p.activeKey)}"]`)?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
   }, [p.activeKey, count]);
+  // What the buyer just received, for screen readers: the store's newest reply, once, when the
+  // simulation adds it (not when a new preview rewords the chat on screen).
+  const [said, setSaid] = useState<{ count: number; text: string }>({ count, text: "" });
+  if (said.count !== count) {
+    const last = p.turns[count - 1];
+    const fresh = p.follow && count > said.count && last?.from === "business";
+    setSaid({ count, text: fresh && last ? plainText(parseWhatsApp([last.header, last.body ?? last.text, last.footer].filter(Boolean).join("\n"))) : said.text });
+  }
 
   const groupStart = (i: number) => i === 0 || p.turns[i - 1]!.from !== p.turns[i]!.from;
   const header = view === "link" ? p.chrome.customer : p.storeName;
@@ -168,13 +184,14 @@ export function WhatsAppPhone(p: WhatsAppPhoneProps) {
                 <span className={s.who}>
                   <span className={s.name}>{header}</span>
                   {view === "chat" ? (
-                    <span className={cx(s.sub, p.typing && s.subTyping)} aria-live="polite">{p.typing ? p.chrome.typing : p.chrome.business}</span>
+                    <span className={cx(s.sub, p.typing && s.subTyping)}>{p.typing ? p.chrome.typing : p.chrome.business}</span>
                   ) : null}
                 </span>
                 {p.loading ? <span className={s.spinner} role="status" aria-label={t("loading")} /> : null}
                 <Icon name="call" size={19} className={s.headerIcon} />
                 <Icon name="more-vertical" size={19} className={s.headerIcon} />
               </header>
+              {p.follow ? <p className="sr-only" aria-live="polite" aria-atomic="true" data-testid="phone-said">{said.text}</p> : null}
               <div ref={chat} className={s.chat}>
                 <div className={s.pills}>
                   <span className={s.datePill}>{p.chrome.today}</span>
@@ -184,9 +201,10 @@ export function WhatsAppPhone(p: WhatsAppPhoneProps) {
                   <ol className={s.turns} aria-label={t("chat")}>
                     <li className={cx(s.row, s.rowOut, s.rowFirst)}>
                       <div className={cx(s.bubble, s.bubbleOut, s.tailOut, s.active)} data-key="link_text">
-                        <span className={s.body} dir="auto"><WaText text={p.link ?? ""} /></span>
-                        <Meta out />
-                        <span className={s.clear} />
+                        <div className={s.content}>
+                          <span className={s.body} dir="auto"><WaText text={p.link ?? ""} /><MetaSpace out /></span>
+                          <Meta out />
+                        </div>
                       </div>
                     </li>
                   </ol>
@@ -233,6 +251,7 @@ export function WhatsAppPhone(p: WhatsAppPhoneProps) {
 
 function Turn({ turn, index, first, p, text, onOpenList }: { turn: PhoneTurn; index: number; first: boolean; p: WhatsAppPhoneProps; text?: string; onOpenList(): void }) {
   const t = useTranslations("whatsappPhone");
+  const locale = useLocale();
   const out = turn.from === "customer";
   const live = p.tapOn === index;
   const editable = turn.editable && turn.key && p.onEdit;
@@ -245,9 +264,10 @@ function Turn({ turn, index, first, p, text, onOpenList }: { turn: PhoneTurn; in
     return (
       <li className={cx(s.row, s.rowOut, first && s.rowFirst)}>
         <div className={bubble}>
-          <span className={s.body} dir="auto">{text ?? turn.text}</span>
-          <Meta out />
-          <span className={s.clear} />
+          <div className={s.content}>
+            <span className={s.body} dir="auto">{text ?? turn.text}<MetaSpace out /></span>
+            <Meta out />
+          </div>
         </div>
       </li>
     );
@@ -256,25 +276,28 @@ function Turn({ turn, index, first, p, text, onOpenList }: { turn: PhoneTurn; in
   const content: ReactNode = (
     <>
       {turn.header ? <span className={s.head} dir="auto"><WaText text={turn.header} /></span> : null}
-      <span className={s.body} dir="auto"><WaText text={turn.body ?? turn.text ?? ""} /></span>
-      {turn.footer ? <span className={s.foot} dir="auto">{turn.footer}</span> : null}
+      <span className={s.body} dir="auto"><WaText text={turn.body ?? turn.text ?? ""} />{turn.footer ? null : <MetaSpace out={false} />}</span>
+      {turn.footer ? <span className={s.foot} dir="auto">{turn.footer}<MetaSpace out={false} /></span> : null}
     </>
   );
+  // Mizan's own words inside the buyer's chat: in the dashboard's language, not the chat's.
+  const ui = { lang: locale, dir: locale === "ar" ? "rtl" : "ltr" } as const;
   const buttons = turn.kind === "template" || turn.kind === "buttons" ? turn.buttons ?? [] : [];
   return (
     <li className={cx(s.row, s.rowIn, first && s.rowFirst)}>
       <div className={bubble} data-key={turn.key}>
         {turn.kind === "template" ? (
-          <Tooltip content={t("templateTip")}>
-            <span tabIndex={0} className={s.templateTag}><Icon name="locked" size={12} />{t("template")}</span>
+          <Tooltip content={<span {...ui}>{t("templateTip")}</span>}>
+            <span tabIndex={0} className={s.templateTag} {...ui}><Icon name="locked" size={12} />{t("template")}</span>
           </Tooltip>
         ) : null}
-        {editable ? (
-          <button type="button" className={s.bubbleBtn} aria-label={t("edit", { text: (turn.body ?? turn.text ?? "").slice(0, 60) })} aria-pressed={active}
-            onClick={() => p.onEdit!(turn.key!)}>{content}</button>
-        ) : <div>{content}</div>}
-        <Meta out={false} />
-        <span className={s.clear} />
+        <div className={s.content}>
+          {editable ? (
+            <button type="button" className={s.bubbleBtn} aria-label={t("edit", { text: (turn.body ?? turn.text ?? "").slice(0, 60) })} aria-pressed={active}
+              onClick={() => p.onEdit!(turn.key!)}>{content}</button>
+          ) : <div>{content}</div>}
+          <Meta out={false} />
+        </div>
         {turn.kind === "list" && turn.list ? (
           <>
             <div className={s.divider} />
@@ -297,7 +320,7 @@ function Turn({ turn, index, first, p, text, onOpenList }: { turn: PhoneTurn; in
           })}
         </div>
       ) : null}
-      {turn.kind === "template" && p.pulse ? <p className={s.hint}>{t("tapHint")}</p> : null}
+      {turn.kind === "template" && p.pulse ? <p className={s.hint} {...ui}>{t("tapHint")}</p> : null}
     </li>
   );
 }
@@ -345,7 +368,7 @@ function ListSheet({ list, send, closeLabel, canSend, onClose, onSend, returnTo 
   const [picked, setPicked] = useState<number | null>(null);
   useEffect(() => {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    ref.current?.querySelector<HTMLElement>("[role=radio]")?.focus();
+    ref.current?.querySelector<HTMLElement>("[role=radio][tabindex='0']")?.focus();
     const back = opener.current;
     const fallback = returnTo.current;
     return () => { (back && back.isConnected ? back : fallback)?.focus?.(); };
@@ -353,12 +376,25 @@ function ListSheet({ list, send, closeLabel, canSend, onClose, onSend, returnTo 
   const onKey = (e: ReactKeyboardEvent) => {
     if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); onClose(); return; }
     if (e.key !== "Tab") return;
-    const items = [...(ref.current?.querySelectorAll<HTMLElement>("button:not([disabled])") ?? [])];
+    const items = [...(ref.current?.querySelectorAll<HTMLElement>("button:not([disabled]):not([tabindex='-1'])") ?? [])];
     if (!items.length) return;
     const first = items[0]!;
     const last = items[items.length - 1]!;
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  // A radio group: one tab stop (the chosen row, or the first), the arrow keys move and choose.
+  const current = picked ?? 0;
+  const onRowKey = (e: ReactKeyboardEvent<HTMLButtonElement>, i: number) => {
+    const n = list.rows.length;
+    const rtl = getComputedStyle(e.currentTarget).direction === "rtl";
+    const next = e.key === "ArrowDown" || e.key === (rtl ? "ArrowLeft" : "ArrowRight") ? (i + 1) % n
+      : e.key === "ArrowUp" || e.key === (rtl ? "ArrowRight" : "ArrowLeft") ? (i - 1 + n) % n
+        : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    setPicked(next);
+    ref.current?.querySelectorAll<HTMLElement>("[role=radio]")[next]?.focus();
   };
   return (
     <>
@@ -374,7 +410,8 @@ function ListSheet({ list, send, closeLabel, canSend, onClose, onSend, returnTo 
         <ul className={s.sheetRows} role="radiogroup" aria-labelledby={`${id}-t`}>
           {list.rows.map((r, i) => (
             <li key={i}>
-              <button type="button" role="radio" aria-checked={picked === i} className={s.sheetRow} onClick={() => setPicked(i)}>
+              <button type="button" role="radio" aria-checked={picked === i} tabIndex={i === current ? 0 : -1} className={s.sheetRow}
+                onClick={() => setPicked(i)} onKeyDown={(e) => onRowKey(e, i)}>
                 <span className={s.rowText}>
                   <span className={s.rowTitle} dir="auto">{r.title}</span>
                   {r.description ? <span className={s.rowDesc} dir="auto">{r.description}</span> : null}

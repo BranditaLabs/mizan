@@ -2,20 +2,20 @@
 
 import {
   closestCenter, DndContext, DragOverlay, PointerSensor, TouchSensor, useDraggable, useSensor, useSensors,
-  type Announcements, type DragEndEvent, type DragStartEvent, type Modifier, type UniqueIdentifier,
+  type Active, type Announcements, type DragEndEvent, type DragStartEvent, type Modifier, type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useTranslations } from "next-intl";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MenuButton, type MenuItem } from "@/components/ui/Menu";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { cx } from "@/components/ui/logic";
 import { Link } from "@/i18n/navigation";
-import { cannotAdd, insertStep, lastMovable, MAX_WAIT, MIN_WAIT, moveStep, removeStep, setWait, waitValid, type Channel, type FlowStep } from "./flow";
+import { cannotAdd, insertStep, laneIndex, lastMovable, MAX_WAIT, MIN_WAIT, moveStep, removeStep, setWait, waitValid, type Channel, type FlowStep } from "./flow";
 import { useKeyboardSort } from "./keyboard-sort";
 import { BRANCHES, type BranchId, type NodeId } from "./nodes";
 
@@ -25,6 +25,8 @@ const PALETTE_PREFIX = "palette:";
 
 /** Drags move up and down only (the lane is a column). */
 const vertical: Modifier = ({ transform }) => ({ ...transform, x: 0 });
+/** The connector's place: the centre of the step handles and the trigger's icon (card border 1px + padding + half of size-8). */
+const LINE = "absolute bottom-0 start-7 h-5 border-s-2 border-line-strong sm:start-8";
 
 export interface BranchView { id: BranchId; preview: string; edited: boolean; issue: boolean }
 
@@ -86,18 +88,33 @@ export function StudioFlow({ steps, channels, enabled, onSteps, newId, selected,
     },
   });
   const add = (channel: Channel, at?: number) => onSteps(insertStep(steps, { id: newId(), channel, waitMinutes: 60 }, at));
+  const lane = useRef<HTMLOListElement>(null);
+  // While a palette chip is dragged: where it would land (the line between the steps shows it).
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const landing = (active: Active): number | null => {
+    const box = active.rect.current.translated;
+    const root = lane.current;
+    if (!box || !root) return null;
+    const rect = (el: Element) => { const r = el.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; };
+    const cards = [...root.querySelectorAll("[data-step-card]")].map(rect);
+    const items = [...root.querySelectorAll("[data-testid=flow-step]")].map(rect);
+    if (!items.length) return null;
+    const team = steps.findIndex((s) => s.channel === "call_team");
+    return laneIndex(box.top + box.height / 2, cards, { top: items[0]!.top, bottom: items[items.length - 1]!.bottom }, team >= 0 ? team : steps.length);
+  };
   const onDragStart = (e: DragStartEvent) => setDragging(e.active.id);
+  const onDragMove = ({ active }: { active: Active }) => {
+    if (!String(active.id).startsWith(PALETTE_PREFIX)) return;
+    const at = landing(active);
+    if (at !== dropAt) setDropAt(at);
+  };
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setDragging(null);
+    setDropAt(null);
     const aid = String(active.id);
     if (aid.startsWith(PALETTE_PREFIX)) {
-      if (!over) return;
-      const channel = aid.slice(PALETTE_PREFIX.length) as Channel;
-      const at = steps.findIndex((s) => s.id === String(over.id));
-      // Below the middle of the card it lands on: after it.
-      const box = active.rect.current.translated;
-      const below = box ? box.top + box.height / 2 > over.rect.top + over.rect.height / 2 : false;
-      add(channel, at >= 0 ? at + (below ? 1 : 0) : undefined);
+      const at = landing(active);
+      if (at !== null) add(aid.slice(PALETTE_PREFIX.length) as Channel, at);
       return;
     }
     if (!over || over.id === active.id) return;
@@ -109,12 +126,13 @@ export function StudioFlow({ steps, channels, enabled, onSteps, newId, selected,
   const paletteDrag = String(dragging ?? "").startsWith(PALETTE_PREFIX) ? (String(dragging).slice(PALETTE_PREFIX.length) as Channel) : null;
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[vertical]} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}
+    <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[vertical]} onDragStart={onDragStart} onDragMove={onDragMove} onDragEnd={onDragEnd}
+      onDragCancel={() => { setDragging(null); setDropAt(null); }}
       accessibility={{ announcements, screenReaderInstructions: { draggable: t("dnd.instructions") } }}>
-      <ol className="flex flex-col" aria-label={t("label")} data-testid="studio-flow">
+      <ol ref={lane} className="flex flex-col outline-none" aria-label={t("label")} data-testid="studio-flow" tabIndex={-1}>
         <FlowNode connector>
-          <div className="mz-card flex flex-wrap items-center gap-3 p-4" data-testid="flow-trigger">
-            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-sunk text-text-2"><Icon name="orders" size={18} /></span>
+          <div className="mz-card flex flex-wrap items-center gap-3 p-3 sm:p-4" data-testid="flow-trigger">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-sunk text-text-2"><Icon name="orders" size={18} /></span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="text-label">{t("trigger")}</span>
               <span className="text-caption text-text-3">{t("triggerHint")}</span>
@@ -139,6 +157,7 @@ export function StudioFlow({ steps, channels, enabled, onSteps, newId, selected,
         <SortableContext items={steps.map((s) => s.id)} strategy={verticalListSortingStrategy}>
           {steps.map((s, i) => (
             <StepNode key={s.id} step={s} index={i} steps={steps} connected={channels[s.channel]} onSteps={onSteps} keyboard={keys.handleProps(s.id)} lifted={keys.lifted === s.id}
+              drop={dropAt === i ? "before" : dropAt === steps.length && i === steps.length - 1 ? "after" : null}
               selected={selected === "team" && s.channel === "call_team"} onSelectTeam={() => onSelect("team")}>
               {i === firstWhatsApp ? (
                 <Branches branches={branches} selected={selected} onSelect={onSelect} offer={offerSummary} after={afterSummary} />
@@ -155,9 +174,20 @@ export function StudioFlow({ steps, channels, enabled, onSteps, newId, selected,
             </div>
           </FlowNode>
         ) : null}
-        <FlowNode>
+        <FlowNode connector>
           <div className="flex items-center gap-2 ps-4 text-body-sm text-text-2">
             <Icon name="customer" size={16} />{t(steps.some((s) => s.channel === "call_team") ? "endTeam" : "endList")}
+          </div>
+        </FlowNode>
+        {/* The calls' settings are used with or without a team-call step (the automated call, the "Needs a call" list). */}
+        <FlowNode>
+          <div className={cx("mz-card flex flex-wrap items-center gap-3 p-3 sm:p-4", selected === "team" && "ring-2 ring-focus")} data-testid="flow-calls">
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-sunk text-text-2"><Icon name="call" size={16} /></span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="text-label">{t("calls.title")}</span>
+              <span className="text-caption text-text-3">{t("calls.body")}</span>
+            </span>
+            <Button size="sm" variant="secondary" icon="edit" onClick={() => onSelect("team")} aria-pressed={selected === "team"} data-testid="node-calls">{t("calls.edit")}</Button>
           </div>
         </FlowNode>
       </ol>
@@ -175,7 +205,7 @@ function FlowNode({ children, connector = false }: { children: ReactNode; connec
   return (
     <li className="relative flex flex-col pb-5">
       {children}
-      {connector ? <span aria-hidden="true" className="absolute bottom-0 start-7 h-5 border-s-2 border-line-strong" /> : null}
+      {connector ? <span aria-hidden="true" className={LINE} /> : null}
     </li>
   );
 }
@@ -197,8 +227,10 @@ function PaletteChip({ channel, label, disabled, reason, onAdd }: { channel: Cha
   return reason ? <Tooltip content={reason}>{chip}</Tooltip> : chip;
 }
 
-function StepNode({ step, index, steps, connected, onSteps, selected, onSelectTeam, keyboard, lifted, children }: {
+function StepNode({ step, index, steps, connected, onSteps, selected, onSelectTeam, keyboard, lifted, drop, children }: {
   keyboard: ReturnType<ReturnType<typeof useKeyboardSort<FlowStep>>["handleProps"]>; lifted: boolean;
+  /** A palette chip would land here (the insertion line). */
+  drop: "before" | "after" | null;
   step: FlowStep; index: number; steps: FlowStep[]; connected: boolean; onSteps(next: FlowStep[]): void; selected: boolean; onSelectTeam(): void; children?: ReactNode;
 }) {
   const t = useTranslations("confirmationStudio.flow");
@@ -218,11 +250,16 @@ function StepNode({ step, index, steps, connected, onSteps, selected, onSelectTe
   return (
     <li ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }} className={cx("relative flex flex-col pb-5", isDragging && "z-10")}
       data-testid="flow-step" data-channel={step.channel}>
-      <div className={cx("mz-card flex flex-col gap-3 p-3 sm:p-4", (isDragging || lifted) && "shadow-overlay ring-2 ring-focus", selected && "ring-2 ring-focus")}>
+      {drop ? (
+        <span aria-hidden="true" data-testid="drop-line"
+          className={cx("pointer-events-none absolute inset-x-0 z-20 h-1 rounded-full bg-focus", drop === "before" ? "-top-3" : "bottom-2")} />
+      ) : null}
+      <div data-step-card="" className={cx("mz-card flex flex-col gap-3 p-3 sm:p-4", (isDragging || lifted) && "shadow-overlay ring-2 ring-focus", selected && "ring-2 ring-focus")}>
         <div className="flex flex-wrap items-center gap-2">
           {team ? (
+            // Not a tab stop: an image with its name (the step's text says the same in words).
             <Tooltip content={t("pinned")}>
-              <span tabIndex={0} className="grid size-8 place-items-center rounded-md text-text-3" aria-label={t("pinned")}><Icon name="locked" size={16} /></span>
+              <span role="img" className="grid size-8 place-items-center rounded-md text-text-3" aria-label={t("pinned")}><Icon name="locked" size={16} /></span>
             </Tooltip>
           ) : (
             <button type="button" {...attributes} {...listeners} {...keyboard} ref={(el) => { setActivatorNodeRef(el); keyboard.ref(el); }}
@@ -250,7 +287,7 @@ function StepNode({ step, index, steps, connected, onSteps, selected, onSelectTe
         {!connected && !team ? <p className="text-caption text-text-3">{t(`skipped.${step.channel}`)}</p> : null}
       </div>
       {children}
-      {!last ? <span aria-hidden="true" className="absolute bottom-0 start-7 h-5 border-s-2 border-line-strong" /> : null}
+      {!last ? <span aria-hidden="true" className={LINE} /> : null}
     </li>
   );
 }

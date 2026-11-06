@@ -5,7 +5,7 @@ import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, type DragEvent, type ReactNode } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -27,6 +27,10 @@ const ONE_LINE = new Set(["button", "list_button", "row", "section", "row_descri
 const vertical: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 export const fieldId = (key: string) => `studio-field-${key}`;
 const MAX_TEXT = 5000;
+/** A dragged variable chip: its name (the text/plain beside it is the token a field takes). */
+const VAR_MIME = "application/x-mizan-var";
+/** The chip being dragged now (dragover cannot read the data, only drop can). */
+let draggedVar: string | null = null;
 
 /** An issue in words. */
 export function useIssueText() {
@@ -122,17 +126,26 @@ function KeyField({ spec, catalogue, script, lang, storeName, issues, onChange, 
     caret.current = next.caret;
     set(next.value);
   };
+  // A variable chip dropped here only when this text allows it (titles take none).
+  const allowed: readonly string[] = titles ? [] : spec.vars;
+  const refuseVar = (e: DragEvent) => {
+    const name = draggedVar ?? (e.type === "drop" ? e.dataTransfer.getData(VAR_MIME) || null : null);
+    if (name === null || allowed.includes(name)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "none";
+  };
   const common = {
     id, ref, dir: lang === "ar" ? "rtl" : "ltr", lang, value, placeholder, maxLength: MAX_TEXT,
-    "aria-invalid": issues.length || over || missing.length ? true : undefined, "aria-describedby": note,
-    onFocus, onChange: (e: { target: { value: string } }) => set(e.target.value),
+    "aria-invalid": issues.length || over || missing.length ? true : undefined, "aria-describedby": `${id}-count ${note}`,
+    onFocus, onChange: (e: { target: { value: string } }) => set(e.target.value), onDragOver: refuseVar, onDrop: refuseVar,
   } as const;
 
   return (
     <div className="mz-field" data-testid={`key-${spec.key}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <label htmlFor={id} className="mz-label">{t(`keys.${spec.key}.label`)}</label>
-        <span className={cx("text-caption mz-num", over ? "font-medium text-danger" : "text-text-3")} aria-live="polite" data-testid="counter">
+        {/* Not live: read through the field's description; "too long" is announced on its own. */}
+        <span className={cx("text-caption mz-num", over ? "font-medium text-danger" : "text-text-3")} id={`${id}-count`} data-testid="counter">
           <bdi>{t("inspector.counter", { n: length, limit: spec.limit })}</bdi>
         </span>
       </div>
@@ -148,7 +161,8 @@ function KeyField({ spec, catalogue, script, lang, storeName, issues, onChange, 
               {spec.vars.map((v) => (
                 <li key={v}>
                   <button type="button" draggable data-testid={`var-${v}`}
-                    onDragStart={(e) => { e.dataTransfer.setData("text/plain", token(v)); e.dataTransfer.effectAllowed = "copy"; }}
+                    onDragStart={(e) => { draggedVar = v; e.dataTransfer.setData("text/plain", token(v)); e.dataTransfer.setData(VAR_MIME, v); e.dataTransfer.effectAllowed = "copy"; }}
+                    onDragEnd={() => { draggedVar = null; }}
                     onClick={() => insert(v)} aria-label={t("inspector.insert", { name: tv(v) })}
                     className="inline-flex cursor-grab items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-caption hover:bg-surface-hover">
                     <Icon name="add" size={12} className="text-text-3" />
