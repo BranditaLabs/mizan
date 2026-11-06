@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
+import { SubscriptionService } from "../src/modules/billing/subscription.service.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
 import { UsageCloser } from "../src/modules/billing/usage-closer.service.js";
 import { monthOf } from "../src/modules/billing/plans.js";
@@ -130,7 +131,7 @@ describe("usage (E12-3)", () => {
     const ev = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("type", "in", ["plan.upgrade_requested", "plan.limit_reached"]).orderBy("type").execute());
     expect(ev.map((e) => e.type)).toEqual(["plan.limit_reached", "plan.limit_reached", "plan.upgrade_requested"]);
     // Once on Growth, the request is done and the limits move.
-    await db.tenant(store, (trx) => trx.updateTable("tenants").set({ plan: "growth" }).where("id", "=", store).execute());
+    await app.get(Database).tenant(store, (trx) => app.get(SubscriptionService).override(trx, store, "growth", { actor: { type: "system" } }));
     expect(await usage()).toMatchObject({ plan: "growth", upgradeRequest: null, alerts: [], nextPlan: { plan: "scale" } });
   });
 });

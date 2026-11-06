@@ -12,7 +12,8 @@ import { OPERATORS } from "./conditions.js";
 export type ContextEntity = "order" | "item" | "none";
 
 /** Events used for the platform's own plumbing: never a trigger. */
-const INTERNAL: ReadonlySet<DomainEventType> = new Set(["orders.bulk_continue", "stock.changed", "pnl.recomputed"]);
+// Subscription events feed the platform (entitlements, the bell, Brandita); only trial_ending will be a merchant trigger (docs/16 §7.8).
+const INTERNAL: ReadonlySet<DomainEventType> = new Set(["orders.bulk_continue", "stock.changed", "pnl.recomputed", "subscription.trial_started", "subscription.trial_ended", "subscription.plan_changed"]);
 
 /** The entity an event's context loads: the order (orders, confirmation, offers, payments), the stock item, or nothing. */
 export function contextOf(type: string): ContextEntity {

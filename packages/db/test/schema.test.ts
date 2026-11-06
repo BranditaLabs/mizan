@@ -267,10 +267,12 @@ describe("schema", () => {
     await expect(asRole("mizan_platform", () => db.query(`UPDATE connections SET status = 'disconnected'`))).rejects.toThrow(/permission denied/);
   });
 
-  it("lets the back office change a store's plan and status, write to its audit log as staff, and keep notes the store cannot read (A-2)", async () => {
+  it("lets the back office change a store's status, write to its audit log as staff, and keep notes the store cannot read (A-2)", async () => {
     const t = (await db.query<{ id: string }>(`INSERT INTO tenants (name, slug) VALUES ('Staff Store', 'staff-store-a2') RETURNING id`)).rows[0]!.id;
-    await asRole("mizan_platform", () => db.query(`UPDATE tenants SET status = 'suspended', plan = 'growth', updated_at = now() WHERE id = $1`, [t]));
-    expect((await db.query<{ status: string; plan: string }>(`SELECT status, plan FROM tenants WHERE id = $1`, [t])).rows[0]).toEqual({ status: "suspended", plan: "growth" });
+    await asRole("mizan_platform", () => db.query(`UPDATE tenants SET status = 'suspended', updated_at = now() WHERE id = $1`, [t]));
+    expect((await db.query<{ status: string; plan: string }>(`SELECT status, plan FROM tenants WHERE id = $1`, [t])).rows[0]).toEqual({ status: "suspended", plan: "free" });
+    // The plan is the subscription service's (E12-2a1, migration 0076): staff change it through the store's subscription.
+    await expect(asRole("mizan_platform", () => db.query(`UPDATE tenants SET plan = 'growth' WHERE id = $1`, [t]))).rejects.toThrow(/permission denied/);
     await expect(asRole("mizan_platform", () => db.query(`UPDATE tenants SET name = 'x' WHERE id = $1`, [t]))).rejects.toThrow(/permission denied/);
     await asRole("mizan_platform", () => db.query(`INSERT INTO audit_log (tenant_id, actor_type, action) VALUES ($1, 'mizan_staff', 'store.suspended')`, [t]));
     await expect(asRole("mizan_platform", () => db.query(`INSERT INTO audit_log (tenant_id, actor_type, action) VALUES ($1, 'user', 'member.removed')`, [t]))).rejects.toThrow(/row-level security/);
