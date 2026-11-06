@@ -501,17 +501,19 @@ export class ConfirmationService {
     return this.db.tenant(tenantId, async (trx) => {
       const t = await trx.selectFrom("tenants").select(["settings", "name", "locale"]).where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
       // The script's rules again, with the store's real name and language (E6-16a).
-      // A text saved before that only got too long (a v1 text counted with variable widths, a tighter
-      // limit) never blocks saving the rest: it stays in scriptIssues and `fit` shortens it when sent.
+      // What was already stored and only breaks a rule since (a v1 text v2 counts or reads stricter, a
+      // renamed store, a new language) never blocks saving the rest: it stays in scriptIssues, the
+      // reader and `fit` handle it when sending. New and edited texts are checked in full.
+      const storeLang = t.locale?.startsWith("en") ? "en" as const : "ar" as const;
       const stored = (t.settings as { confirmation?: { script?: unknown } } | null)?.confirmation?.script;
-      const issues = (parsed.script ? validateScript(parsed.script, { storeName: t.name, storeLang: t.locale?.startsWith("en") ? "en" : "ar" }) : [])
-        .filter((i) => !(i.code === "too_long" && valueAt(stored, i.path) !== undefined && valueAt(stored, i.path) === valueAt(parsed.script, i.path)));
+      const issues = (parsed.script ? validateScript(parsed.script, { storeName: t.name, storeLang }) : [])
+        .filter((i) => !unchanged(stored, parsed.script, i.path));
       if (issues.length) throw new ProblemError(422, "validation_failed", "the script breaks a rule", issues.map((i) => ({ path: ["script", ...i.path].join("."), code: i.code, ...(i.limit !== undefined ? { limit: i.limit, length: i.length } : {}), ...(i.variable ? { variable: i.variable } : {}) })));
       const next: ConfirmationSettings = parsed.script ? { ...parsed, script: { ...parsed.script, version: 2 } } : parsed;
       const before = confirmationSettings(t.settings);
       await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...(t.settings as object), confirmation: next }) }).where("id", "=", tenantId).execute();
       await this.audit.record(trx, { action: "confirmation.settings_updated", tenantId, ...auditActor(auth), entity: { type: "tenant", id: tenantId }, before, after: next });
-      return { settings: next, channels: await this.messaging.channels(tenantId, trx), scriptIssues: [] };
+      return { settings: next, channels: await this.messaging.channels(tenantId, trx), scriptIssues: next.script ? scriptIssues(next.script, { storeName: t.name, storeLang }) : [] };
     });
   }
 
@@ -576,9 +578,13 @@ export class ConfirmationService {
   }
 }
 
-/** The string at a path inside a saved or sent script (texts.ar.key, cancelReasons.0.title.ar), if any. */
-function valueAt(root: unknown, path: Array<string | number>): string | undefined {
-  let v: unknown = root;
-  for (const p of path) v = v && typeof v === "object" ? (v as Record<string | number, unknown>)[p] : undefined;
-  return typeof v === "string" ? v.trim() : undefined;
+/** The same at a rule's path in the stored and the sent script: a text by its trimmed string, the reasons as a whole list. */
+function unchanged(stored: unknown, sent: unknown, path: Array<string | number>): boolean {
+  const at = (root: unknown, p: Array<string | number>) => p.reduce<unknown>((v, k) => (v && typeof v === "object" ? (v as Record<string | number, unknown>)[k] : undefined), root);
+  if (path[0] === "cancelReasons") {
+    const a = at(stored, ["cancelReasons"]);
+    return a !== undefined && JSON.stringify(a) === JSON.stringify(at(sent, ["cancelReasons"]));
+  }
+  const a = at(stored, path), b = at(sent, path);
+  return typeof a === "string" && typeof b === "string" && a.trim() === b.trim();
 }

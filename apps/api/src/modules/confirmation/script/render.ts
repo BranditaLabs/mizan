@@ -105,9 +105,10 @@ export function fit(text: string, limit: number, fallback?: string | null): stri
 
 /**
  * One key, filled and fitted to its limit: the items are shortened first, then the pack's text
- * is used, then the text is cut. Null for an optional part nobody wrote.
+ * is used, then the text is cut. Null for an optional part nobody wrote, and with `ownOrNull`
+ * for an owner text that does not fit (the caller has its own fallback).
  */
-export function say(f: MessageFacts, key: ScriptKey, o: { extra?: RenderOptions["extra"]; ownerOnly?: boolean; limit?: number } = {}): string | null {
+export function say(f: MessageFacts, key: ScriptKey, o: { extra?: RenderOptions["extra"]; ownerOnly?: boolean; ownOrNull?: boolean; limit?: number } = {}): string | null {
   const limit = o.limit ?? KEY_SPEC[key].limit;
   const own = o.ownerOnly ? f.script?.texts[f.lang]?.[key] ?? null : scriptText(f.script, f.lang, key);
   if (own == null) return null;
@@ -123,6 +124,7 @@ export function say(f: MessageFacts, key: ScriptKey, o: { extra?: RenderOptions[
   };
   const first = attempt(own);
   if (first.fits) return first.r;
+  if (o.ownOrNull) return null;
   const second = pack !== null && pack !== own ? attempt(pack) : null;
   if (second?.fits) return second.r;
   return fit(first.r, limit, second?.r);

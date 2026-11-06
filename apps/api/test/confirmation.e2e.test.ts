@@ -362,7 +362,7 @@ describe("the store's script (E6-5)", () => {
     const bad = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: badScript }).expect(200)).body;
     expect(bad.issues).toContainEqual({ path: ["texts", "ar", "confirmed"], code: "unknown_variable", variable: "customer.phone" });
     const refused = (await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, script: badScript }).expect(422)).body;
-    expect(refused.errors[0]).toMatchObject({ path: "script.texts.ar.confirmed", message: "unknown_variable" });
+    expect(refused.errors[0]).toMatchObject({ path: "script.texts.ar.confirmed", code: "unknown_variable", variable: "customer.phone" });
     await http().post("/v1/settings/confirmation/preview").set(as("finance")).send({ script }).expect(403);
     await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: "00000000-0000-4000-8000-000000000000" }).expect(404);
     // Back to the built-in wording for the other tests.
@@ -396,7 +396,15 @@ describe("every chat word editable (E6-16a)", () => {
     await writeRaw({ pack: "egyptian", texts: { ar: { change_received: long }, en: {} } });
     const got = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
     expect(got.scriptIssues).toContainEqual(expect.objectContaining({ path: ["texts", "ar", "change_received"], code: "too_long" }));
-    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...got.settings, callingHours: { start: "08:00", end: "23:00" } }).expect(200);
+    const saved = (await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...got.settings, callingHours: { start: "08:00", end: "23:00" } }).expect(200)).body;
+    expect(saved.scriptIssues).toEqual(got.scriptIssues); // the save answers what GET would
+    // A v1 text that v2 reads stricter (only variables) is kept the same way, and a new one is refused.
+    await writeRaw({ pack: "egyptian", texts: { ar: { cancelled: "{{order.number}}." }, en: {} } });
+    const v1 = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
+    expect(v1.scriptIssues).toContainEqual(expect.objectContaining({ path: ["texts", "ar", "cancelled"], code: "only_variables" }));
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...v1.settings, callingHours: { start: "09:00", end: "23:00" } }).expect(200);
+    const fresh = { ...v1.settings, script: { ...v1.settings.script, texts: { ar: { cancelled: "{{order.number}}" }, en: {} } } };
+    expect((await http().put("/v1/settings/confirmation").set(as("owner")).send(fresh).expect(422)).body.errors[0]).toMatchObject({ path: "script.texts.ar.cancelled", code: "only_variables" });
     const edited = { ...got.settings, script: { ...got.settings.script, texts: { ar: { change_received: `${long}!` }, en: {} } } };
     const refused = (await http().put("/v1/settings/confirmation").set(as("owner")).send(edited).expect(422)).body;
     expect(refused.errors[0]).toMatchObject({ path: "script.texts.ar.change_received", code: "too_long", limit: 1000 });
@@ -439,7 +447,7 @@ describe("every chat word editable (E6-16a)", () => {
     const long = (await send({ pack: "egyptian", texts: { ar: {}, en: { btn_offer_yes: "Yes please, add it now" } } }).expect(422)).body;
     expect(long.errors).toEqual([{ path: "script.texts.en.btn_offer_yes", code: "too_long", limit: 20, length: 22 }]);
     const ar = (await send({ pack: "egyptian", texts: { ar: { link_text: "أكّد أوردرك" }, en: {} } }).expect(422)).body;
-    expect(ar.errors).toEqual([expect.objectContaining({ path: "script.texts.ar.link_text", message: "missing_variable" })]);
+    expect(ar.errors).toEqual([expect.objectContaining({ path: "script.texts.ar.link_text", code: "missing_variable" })]);
     // Known only with the store's language: an Arabic store's reason needs an Arabic title.
     const reasons = (await send({ pack: "egyptian", texts: { ar: {}, en: {} }, cancelReasons: [{ id: "late", code: "other", title: { en: "Late" } }] }).expect(422)).body;
     expect(reasons.errors).toEqual([{ path: "script.cancelReasons.0.title.ar", code: "reason_title_required" }]);

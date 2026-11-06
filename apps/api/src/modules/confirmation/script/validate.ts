@@ -106,11 +106,11 @@ export function validateScript(script: Script, ctx: { storeName: string | null; 
   return out;
 }
 
-/** A saved or previewed script: the shape, then every rule that needs no store context. */
-export const ScriptSchema = ScriptDraftSchema.superRefine((s, ctx) => {
-  // Length is checked when saving, against the stored script: a text that only got too long never blocks a save.
-  for (const i of validateScript(s, { storeName: null, storeLang: null })) if (i.code !== "too_long") ctx.addIssue({ code: "custom", path: i.path, message: i.code, params: { ...i } });
-});
+/**
+ * A saved script's shape. The rules run when saving (`putSettings`), against the stored script and
+ * the store's name and language: a text already stored never blocks saving the other settings.
+ */
+export const ScriptSchema = ScriptDraftSchema;
 
 const SCRIPT_KEY_SET = new Set<string>(SCRIPT_KEYS);
 const Reasons = z.array(ReasonItemSchema).min(1).max(MAX_BUYER_REASONS);
@@ -172,7 +172,8 @@ function parse(raw: unknown): { script: Script; issues: Issue[] } {
 export function scriptIssues(raw: unknown, ctx: { storeName: string; storeLang: "ar" | "en" }): Issue[] {
   const { script, issues } = readScript(raw);
   if (!script) return [];
-  const all = [...issues, ...validateScript(script, ctx)];
+  // With the store's real name first: its lengths are the true ones (the reader counts the name as 1).
+  const all = [...validateScript(script, ctx), ...issues];
   const seen = new Set<string>();
   return all.filter((i) => { const k = `${i.path.join(".")}|${i.code}`; if (seen.has(k)) return false; seen.add(k); return true; });
 }

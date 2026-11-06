@@ -138,9 +138,12 @@ export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
       const o = f.offer;
       if (!o) return chatContent("confirmed", f);
       const pitch = o.message ?? t("offer_pitch");
-      // The owner's own "confirmed" still opens it when they wrote no top of their own (as before E6-16a).
-      const top = say(f, "confirmed_offer_top", { ownerOnly: true }) ?? say(f, "confirmed", { ownerOnly: true, limit: 400 }) ?? t("confirmed_offer_top");
       const ask = `\n\n${pitch}\n${t("offer_question")}`;
+      // The owner's own "confirmed" still opens it when they wrote no top of their own (as before
+      // E6-16a), at any length that fits beside the offer; else the pack's top, never its "confirmed".
+      const top = say(f, "confirmed_offer_top", { ownerOnly: true })
+        ?? say(f, "confirmed", { ownerOnly: true, ownOrNull: true, limit: 1024 - ask.length })
+        ?? t("confirmed_offer_top");
       // WhatsApp refuses an interactive body over 1024 characters: the summary gets what is left.
       const head = top + summaryBlock(f, 1024 - top.length - ask.length);
       return {

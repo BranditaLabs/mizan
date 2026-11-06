@@ -26,9 +26,9 @@ describe("confirmation script (E6-5)", () => {
   });
 
   it("refuses variables it doesn't know (an address or phone is never one)", () => {
-    const bad = ScriptSchema.safeParse(draft({ confirmed: "تم {{customer.phone}}" }));
-    expect(bad.success).toBe(false);
-    expect(bad.error?.issues[0]).toMatchObject({ path: ["texts", "ar", "confirmed"], message: "unknown_variable" });
+    // The schema checks the shape; the rules run when saving, against what is stored.
+    expect(ScriptSchema.safeParse(draft({ confirmed: "تم {{customer.phone}}" })).success).toBe(true);
+    expect(validateScript(draft({ confirmed: "تم {{customer.phone}}" }), ctx)[0]).toMatchObject({ path: ["texts", "ar", "confirmed"], code: "unknown_variable", variable: "customer.phone" });
     expect(codes(validateScript(draft({}, { cancelled: "{{customer.address}} gone" }), ctx))).toEqual(["texts.en.cancelled:unknown_variable"]);
   });
 
@@ -147,6 +147,19 @@ describe("fit and the full stop", () => {
     expect(money({ amount: "99.500", currency: "KWD" }, "ar")).toBe("99.500 د.ك");
     expect(money({ amount: "10.00", currency: "USD" }, "ar")).toBe("10 USD");
     expect(money({ amount: "1250.00", currency: "SAR" }, "en")).toBe("SAR 1,250");
+  });
+});
+
+describe("the offer message's opening", () => {
+  it("an owner's long 'confirmed' still opens it; one that cannot fit gives the pack's top, not its 'confirmed'", () => {
+    const offer = { id: "o1", title: "طرحة", qty: 1, price: { amount: "135.00", currency: "EGP" }, was: null, message: null, newTotal: { amount: "1385.00", currency: "EGP" } };
+    const long = `${"شكراً ".repeat(90)}تم`; // about 545 characters: over the old 400, inside 1024 with the offer
+    const body = (c: ReturnType<typeof chatContent>) => (c.type === "buttons" ? c.body : "");
+    expect(body(chatContent("confirmed_offer", facts({ offer, script: { version: 2, pack: "egyptian", texts: { ar: { confirmed: long }, en: {} } } })))).toMatch(/^شكراً /);
+    const huge = "و".repeat(1000);
+    const b = body(chatContent("confirmed_offer", facts({ offer, script: { version: 2, pack: "egyptian", texts: { ar: { confirmed: huge }, en: {} } } })));
+    expect(b.length).toBeLessThanOrEqual(1024);
+    expect(b).not.toContain("وهنشحنه");
   });
 });
 
