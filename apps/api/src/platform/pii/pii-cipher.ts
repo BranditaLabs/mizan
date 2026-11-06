@@ -20,6 +20,8 @@ export interface TenantPii {
   decrypt(stored: string | null, column: PiiColumn): string | null;
   /** HMAC-SHA256 of an E.164 phone with the tenant's pepper: stable per tenant, useless across tenants. */
   phoneHash(e164: string): string;
+  /** The same for an email (trimmed, lower-cased): to recognise an erased buyer without keeping the address. */
+  emailHash(email: string): string;
 }
 
 interface Keys {
@@ -59,6 +61,7 @@ export class PiiCipher {
         return open(keys.enc, Buffer.from(stored.slice(PREFIX.length), "base64url"), aad(column)).toString("utf8");
       },
       phoneHash: (e164) => createHmac("sha256", keys.pepper).update(e164).digest("hex"),
+      emailHash: (email) => createHmac("sha256", keys.pepper).update(`email:${email.trim().toLowerCase()}`).digest("hex"),
     };
   }
 

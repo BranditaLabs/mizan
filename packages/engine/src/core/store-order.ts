@@ -20,7 +20,11 @@ export interface StoreOrderDraft {
    * The buyer as a store customer, so the order sits in their history: one the store has (by phone,
    * then email) is attached as it is, never renamed; otherwise created. No name when none was given.
    */
-  customer?: { firstName?: string; lastName?: string; phone?: string; email?: string };
+  customer?: {
+    firstName?: string; lastName?: string; phone?: string; email?: string;
+    /** The repair only: the buyer may be created in the store (no erasure was asked for). */
+    mayCreate?: boolean;
+  };
   address: { firstName: string; lastName?: string; phone?: string; line1: string; line2?: string; city: string; province?: string; provinceCode?: string; countryCode: string };
   phone?: string;
   tags: string[];

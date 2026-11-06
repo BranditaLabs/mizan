@@ -216,7 +216,7 @@ describe("the store's profile from Shopify (onboarding)", () => {
 });
 
 describe("store copies made before customers and governorate codes were sent (U26 repair)", () => {
-  function legacy(over: { customersDenied?: boolean } = {}) {
+  function legacy(over: { customersDenied?: boolean; mayCreate?: boolean } = {}) {
     const drafts = new Map<string, StoreOrderDraft>();
     const w = setup({ hooks: {
       loadStoreOrderDraft: async (id) => drafts.get(id),
@@ -232,7 +232,7 @@ describe("store copies made before customers and governorate codes were sent (U2
       copy.customer = null as unknown as Record<string, unknown>;
       copy.shippingAddress = { ...copy.shippingAddress, province: "C", provinceCode: null, zip: "11757", company: "Nile Abayas HQ" };
       w.shop.customersDenied = over.customersDenied ?? false;
-      drafts.set(OID, draft({ customer: { firstName: "Mona", lastName: "Adel", phone: "+201001234821" } }));
+      drafts.set(OID, draft({ customer: { firstName: "Mona", lastName: "Adel", phone: "+201001234821", ...(over.mayCreate !== undefined ? { mayCreate: over.mayCreate } : {}) } }));
       await w.store.enqueue(MizanEngine.shopifyRepairCopyJob(OID, "u26"), w.clock.now());
       await settle(w.engine, w.store, w.clock);
       return copy;
@@ -257,6 +257,21 @@ describe("store copies made before customers and governorate codes were sent (U2
     const guest = await other.run();
     expect(guest.customer).toBeNull();
     expect(other.w.shop.customers).toEqual([]);
+  });
+
+  it("with no customer in the store, one is created when no erasure was asked for, and only then", async () => {
+    const allowed = legacy({ mayCreate: true });
+    const copy = await allowed.run();
+    expect(copy.customer).toMatchObject({ firstName: "Mona", lastName: "Adel", phone: "+201001234821" });
+    expect(allowed.w.shop.customers).toHaveLength(1);
+    // Again: found by phone, never a second one.
+    await allowed.w.store.enqueue(MizanEngine.shopifyRepairCopyJob(OID, "again"), allowed.w.clock.now());
+    await settle(allowed.w.engine, allowed.w.store, allowed.w.clock);
+    expect(allowed.w.shop.customers).toHaveLength(1);
+
+    const erased = legacy({ mayCreate: false });
+    expect((await erased.run()).customer).toBeNull();
+    expect(erased.w.shop.customers).toEqual([]);
   });
 
   it("a refused customer step does not stop the governorate; nothing dead", async () => {
