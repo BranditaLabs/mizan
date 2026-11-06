@@ -5,7 +5,7 @@ import type { Pack, ReasonItem, ScriptKey } from "./catalogue.js";
  * The starting wording per pack (E6-16a). Egyptian is the chat's original wording, word for word;
  * formal is Modern Standard Arabic; gulf is Saudi and Gulf Arabic. Packs are Arabic dialects only:
  * English is the same in every pack. Optional keys (header, section, footer, a row's description)
- * have no pack text, and `call` has none in Egyptian: code composes its lines.
+ * have no pack text, and `call` has none in any pack: code composes its lines in the pack's words.
  */
 type Texts = Partial<Record<ScriptKey, string>>;
 
@@ -69,7 +69,6 @@ const FORMAL_AR: Texts = {
   opted_in: "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من {{store.name}} هنا.",
   on_delivery: "عند الاستلام",
   link_text: "{{customer.greeting}}، طلبك {{order.number}} من {{store.name}} بقيمة {{order.due}}. يمكنك تأكيده أو تعديله من هنا: {{link}}",
-  call: "مرحباً {{customer.first_name}}، معك فريق {{store.name}}.\nنتصل لتأكيد طلبك رقم {{order.number}}: {{order.items}}.\nالإجمالي {{order.cod}}.\nهل نؤكد الطلب ونشحنه لك؟",
 };
 
 const GULF_AR: Texts = {
@@ -101,7 +100,6 @@ const GULF_AR: Texts = {
   opted_in: "هلا فيك من جديد 👋 بنرسل لك تحديثات طلباتك من {{store.name}} هنا.",
   on_delivery: "عند الاستلام",
   link_text: "{{customer.greeting}}، طلبك {{order.number}} من {{store.name}} بـ {{order.due}}. أكّده أو عدّله من هنا: {{link}}",
-  call: "هلا {{customer.first_name}}، معك فريق {{store.name}}.\nنتصل عشان نأكد طلبك رقم {{order.number}}: {{order.items}}.\nالإجمالي {{order.cod}}.\nنأكد الطلب ونشحنه لك؟",
 };
 
 const EN: Texts = {

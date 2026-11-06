@@ -7764,6 +7764,9 @@ export interface components {
                 path: string;
                 code: string;
                 message?: string;
+                limit?: number;
+                length?: number;
+                variable?: string;
             }[];
             requestId?: string;
         };

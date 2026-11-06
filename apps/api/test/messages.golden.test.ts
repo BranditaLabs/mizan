@@ -89,5 +89,9 @@ describe("messages golden (E6-16a baseline)", () => {
     const long = record({ ...CASES.summary_offer_long!("ar"), script: SCRIPTS.v1_egyptian }).chat.change_prompt as { text: string };
     expect(long.text.length).toBeLessThanOrEqual(1000);
     expect(long.text).toContain("× 12");
+    // The call script: one full stop after a total in ج.م., and formal keeps its optional lines.
+    expect(callScript(CASES.paid!("ar"))).toContain("الإجمالي 1,250 ج.م.");
+    const formal = callScript({ ...CASES.plain!("ar"), items: [], script: SCRIPTS.formal });
+    expect(formal).toContain("نتصل لتأكيد طلبك رقم #1001.");
   });
 });

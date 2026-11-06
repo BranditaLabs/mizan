@@ -1,6 +1,6 @@
 import { BUYER_CANCEL_REASONS, type Money } from "@mizan/shared";
 import { PACK_REASONS, packReasonTitle, type ReasonItem, type Script } from "./script.js";
-import { greeting, money, offerLine, packOf, payNote, say, templateParam } from "./script/render.js";
+import { firstName, greeting, money, offerLine, packOf, payNote, say, templateParam } from "./script/render.js";
 
 export { money, offerLine };
 
@@ -163,8 +163,8 @@ export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
     case "change_received":
       return { type: "text", text: t("change_received") };
     case "noted":
-      // A script from before E6-16a answered typed messages with its "change received".
-      return { type: "text", text: say(f, "noted", { ownerOnly: true }) ?? (f.script?.version !== 2 ? say(f, "change_received", { ownerOnly: true }) : null) ?? t("noted") };
+      // Until the owner writes "noted", a typed message gets their own "change received" (as before E6-16a).
+      return { type: "text", text: say(f, "noted", { ownerOnly: true }) ?? say(f, "change_received", { ownerOnly: true }) ?? t("noted") };
     case "cancel_reasons": {
       const pack = packOf(f.script);
       const reasons = f.script?.cancelReasons ?? PACK_REASONS[pack];
@@ -200,6 +200,13 @@ export function callPrompts(f: MessageFacts): string[] {
 }
 export const CALL_DIGITS = { "1": "confirm", "2": "change", "3": "cancel" } as const;
 
+/** The call script's fixed words per pack; the items and the city stay optional lines. */
+const CALL_AR = {
+  egyptian: { team: "معاك فريق", confirming: "بنأكّد أوردرك رقم", city: "التوصيل لـ", right: "صح؟", ask: "نأكّد الأوردر ونشحنه لك؟" },
+  formal: { hi: "مرحباً", team: "معك فريق", confirming: "نتصل لتأكيد طلبك رقم", city: "التوصيل إلى", right: "أليس كذلك؟", ask: "هل نؤكد الطلب ونشحنه لك؟" },
+  gulf: { team: "معك فريق", confirming: "نتصل عشان نأكد طلبك رقم", city: "التوصيل لـ", right: "صح؟", ask: "نأكد الطلب ونشحنه لك؟" },
+} as const;
+
 /** What the store's team says on the phone (E6-10): the same facts, as lines to read. */
 export function callScript(f: MessageFacts): string[] {
   const own = say(f, "call");
@@ -207,9 +214,12 @@ export function callScript(f: MessageFacts): string[] {
   if (own) return [...own.split("\n").map((l) => l.trim()).filter(Boolean), ...offer];
   const items = (f.items ?? []).map((i) => (f.lang === "ar" ? `${i.title} × ${i.quantity}` : `${i.quantity} × ${i.title}`)).join(f.lang === "ar" ? "، " : ", ");
   const amount = `${money(due(f), f.lang)}${payNote(f)}`;
-  return f.lang === "ar"
-    ? [`${greeting(f)}، معاك فريق ${f.store}.`, `بنأكّد أوردرك رقم ${f.number}${items ? `: ${items}` : ""}.`, `الإجمالي ${amount}.`, ...(f.city ? [`التوصيل لـ ${f.city}، صح؟`] : []), "نأكّد الأوردر ونشحنه لك؟", ...offer]
-    : [`${greeting(f)}, this is the ${f.store} team.`, `We're confirming your order ${f.number}${items ? `: ${items}` : ""}.`, `The total is ${amount}.`, ...(f.city ? [`Delivery to ${f.city}, right?`] : []), "Shall we confirm and ship it?", ...offer];
+  if (f.lang === "ar") {
+    const w = CALL_AR[packOf(f.script)];
+    const name = firstName(f);
+    return [`${"hi" in w && name ? `${w.hi} ${name}` : greeting(f)}، ${w.team} ${f.store}.`, `${w.confirming} ${f.number}${items ? `: ${items}` : ""}.`, stop(`الإجمالي ${amount}`), ...(f.city ? [`${w.city} ${f.city}، ${w.right}`] : []), w.ask, ...offer];
+  }
+  return [`${greeting(f)}, this is the ${f.store} team.`, `We're confirming your order ${f.number}${items ? `: ${items}` : ""}.`, `The total is ${amount}.`, ...(f.city ? [`Delivery to ${f.city}, right?`] : []), "Shall we confirm and ship it?", ...offer];
 }
 
 /** The message a team member sends by hand on WhatsApp (wa.me) with the confirm link, when no WhatsApp number is connected. */

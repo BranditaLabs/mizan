@@ -124,7 +124,9 @@ export class ConfirmationController {
   catalogue(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { body, etag } = scriptCatalogue();
     void res.header("ETag", etag).header("Cache-Control", "private, max-age=3600");
-    if (req.headers["if-none-match"] === etag) { void res.code(304); return undefined; }
+    // Weak or listed validators from a proxy match too (RFC 9110 weak comparison).
+    const sent = String(req.headers["if-none-match"] ?? "").split(",").map((v) => v.trim().replace(/^W\//, ""));
+    if (sent.includes("*") || sent.includes(etag.replace(/^W\//, ""))) { void res.code(304); return undefined; }
     return body;
   }
 

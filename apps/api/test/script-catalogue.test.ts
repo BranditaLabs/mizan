@@ -12,7 +12,8 @@ describe("script catalogue", () => {
     for (const key of SCRIPT_KEYS) {
       const s = KEY_SPEC[key];
       const t = texts[key];
-      if (s.optional || (s.composed && pack === "egyptian") || (s.composed && lang === "en")) { expect(t, `${pack}.${lang}.${key}`).toBeUndefined(); continue; }
+      // Composed keys (the call script) are built in code, in each pack's words.
+      if (s.optional || s.composed) { expect(t, `${pack}.${lang}.${key}`).toBeUndefined(); continue; }
       expect(t?.trim(), `${pack}.${lang}.${key}`).toBeTruthy();
       expect(estimateLength(t!, "x".repeat(60)), `${pack}.${lang}.${key}`).toBeLessThanOrEqual(s.limit);
       for (const v of variablesIn(t!)) expect(s.vars, `${pack}.${lang}.${key}: ${v}`).toContain(v);

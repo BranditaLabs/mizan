@@ -150,14 +150,28 @@ describe("fit and the full stop", () => {
   });
 });
 
+describe("the team's call script per pack", () => {
+  it("formal and gulf keep the optional items and city lines in their own words", () => {
+    const gulf = callScript(facts({ script: { version: 2, pack: "gulf", texts: { ar: {}, en: {} } }, items: [] }));
+    expect(gulf.join(" ")).not.toContain(": .");
+    expect(gulf.some((l) => l.startsWith("نتصل عشان نأكد طلبك رقم #1001."))).toBe(true);
+    const formal = callScript(facts({ script: { version: 2, pack: "formal", texts: { ar: {}, en: {} } }, city: "جدة" }));
+    expect(formal).toContain("التوصيل إلى جدة، أليس كذلك؟");
+  });
+});
+
 describe("the tolerant reader", () => {
   it("a v1 blob keeps its texts and answers typed messages with its own 'change received'", () => {
     const v1 = { pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}" }, en: {} } };
     const { script, issues } = readScript(v1);
-    expect(script).toEqual({ version: 2, pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}", noted: "وصلنا يا {{customer.first_name}}" }, en: {} } });
+    // Nothing is copied into the stored script: a later edit of "change received" still answers typed messages.
+    expect(script).toEqual({ version: 2, pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}" }, en: {} } });
     expect(issues).toEqual([]);
-    expect(text(chatContent("noted", facts({ script: v1 as Script })))).toBe("وصلنا يا منى"); // read directly too
-    expect(readScript({ ...v1, version: 2 }).script?.texts.ar.noted).toBeUndefined();
+    expect(text(chatContent("noted", facts({ script: script! })))).toBe("وصلنا يا منى");
+    const edited = { ...script!, texts: { ar: { change_received: "تمام يا {{customer.first_name}}" }, en: {} } };
+    expect(text(chatContent("noted", facts({ script: edited })))).toBe("تمام يا منى");
+    const own = { ...edited, texts: { ar: { ...edited.texts.ar, noted: "شكراً يا {{customer.first_name}}" }, en: {} } };
+    expect(text(chatContent("noted", facts({ script: own })))).toBe("شكراً يا منى");
   });
 
   it("keeps a text that grew too long and reports it; drops a disallowed variable and reports it", () => {

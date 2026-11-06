@@ -387,7 +387,21 @@ describe("every chat word editable (E6-16a)", () => {
     expect(res.body.packTexts.gulf.ar.confirmed).toContain("{{order.number}}");
     expect(res.body.templateText.ar.buttons).toEqual(["أكّد الأوردر", "عايز أعدّل", "ألغي الأوردر"]);
     await http().get("/v1/settings/confirmation/script-catalogue").set({ ...as("owner"), "If-None-Match": res.headers.etag }).expect(304);
+    await http().get("/v1/settings/confirmation/script-catalogue").set({ ...as("owner"), "If-None-Match": `"x", W/${res.headers.etag}` }).expect(304);
     await http().get("/v1/settings/confirmation/script-catalogue").set(as("finance")).expect(403);
+  });
+
+  it("a text saved before that now counts too long never blocks saving the rest; editing it does", async () => {
+    const long = `${"و".repeat(850)} {{order.items}}`; // v1 counted the raw text; v2 counts the items at their width
+    await writeRaw({ pack: "egyptian", texts: { ar: { change_received: long }, en: {} } });
+    const got = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
+    expect(got.scriptIssues).toContainEqual(expect.objectContaining({ path: ["texts", "ar", "change_received"], code: "too_long" }));
+    await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...got.settings, callingHours: { start: "08:00", end: "23:00" } }).expect(200);
+    const edited = { ...got.settings, script: { ...got.settings.script, texts: { ar: { change_received: `${long}!` }, en: {} } } };
+    const refused = (await http().put("/v1/settings/confirmation").set(as("owner")).send(edited).expect(422)).body;
+    expect(refused.errors[0]).toMatchObject({ path: "script.texts.ar.change_received", code: "too_long", limit: 1000 });
+    expect(refused.errors[0].length).toBeGreaterThan(1000);
+    await reset();
   });
 
   it("preview v2: a chat per scenario, the template first and not editable, the store's reasons, a placeholder link", async () => {
@@ -423,7 +437,7 @@ describe("every chat word editable (E6-16a)", () => {
   it("saving refuses with the exact paths, in Arabic and English texts", async () => {
     const send = (script: unknown) => http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, script });
     const long = (await send({ pack: "egyptian", texts: { ar: {}, en: { btn_offer_yes: "Yes please, add it now" } } }).expect(422)).body;
-    expect(long.errors).toEqual([expect.objectContaining({ path: "script.texts.en.btn_offer_yes", message: "too_long" })]);
+    expect(long.errors).toEqual([{ path: "script.texts.en.btn_offer_yes", code: "too_long", limit: 20, length: 22 }]);
     const ar = (await send({ pack: "egyptian", texts: { ar: { link_text: "أكّد أوردرك" }, en: {} } }).expect(422)).body;
     expect(ar.errors).toEqual([expect.objectContaining({ path: "script.texts.ar.link_text", message: "missing_variable" })]);
     // Known only with the store's language: an Arabic store's reason needs an Arabic title.
@@ -435,7 +449,7 @@ describe("every chat word editable (E6-16a)", () => {
   it("a script saved before E6-16a reads as v2, previews, and the next save writes version 2", async () => {
     await writeRaw({ pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}" }, en: {} } });
     const got = (await http().get("/v1/settings/confirmation").set(as("owner")).expect(200)).body;
-    expect(got.settings.script).toEqual({ version: 2, pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}", noted: "وصلنا يا {{customer.first_name}}" }, en: {} } });
+    expect(got.settings.script).toEqual({ version: 2, pack: "egyptian", texts: { ar: { change_received: "وصلنا يا {{customer.first_name}}" }, en: {} } });
     expect(got.scriptIssues).toEqual([]);
     const p = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: got.settings.script }).expect(200)).body;
     expect(p.conversations.find((c: { scenario: string }) => c.scenario === "message").turns.at(-1).text).toBe("وصلنا يا منى");

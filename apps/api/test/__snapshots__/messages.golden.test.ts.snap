@@ -1483,7 +1483,7 @@ exports[`messages golden (E6-16a baseline) > default · paid · ar 1`] = `
   "callScript": [
     "أهلاً منى، معاك فريق متجر النيل.",
     "بنأكّد أوردرك رقم #1001.",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "نأكّد الأوردر ونشحنه لك؟",
   ],
   "chat": {
@@ -3016,7 +3016,7 @@ exports[`messages golden (E6-16a baseline) > default · summary_paid · ar 1`] =
   "callScript": [
     "أهلاً منى، معاك فريق متجر النيل.",
     "بنأكّد أوردرك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "نأكّد الأوردر ونشحنه لك؟",
   ],
   "chat": {
@@ -3257,7 +3257,7 @@ exports[`messages golden (E6-16a baseline) > formal · fraction · ar 1`] = `
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250.50 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -3485,6 +3485,7 @@ exports[`messages golden (E6-16a baseline) > formal · items_city · ar 1`] = `
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
@@ -3709,8 +3710,8 @@ exports[`messages golden (E6-16a baseline) > formal · no_name · ar 1`] = `
     "لو عايز تأكّد اضغط واحد. لو عايز تعدّل اضغط اتنين. لو عايز تلغي اضغط تلاتة.",
   ],
   "callScript": [
-    "مرحباً عميلنا الكريم، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "أهلاً بك، معك فريق متجر النيل.",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -3936,7 +3937,7 @@ exports[`messages golden (E6-16a baseline) > formal · offer · ar 1`] = `
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ج.م. بدل 150 ج.م. تحب نضيفه لنفس الأوردر؟",
@@ -4194,7 +4195,7 @@ exports[`messages golden (E6-16a baseline) > formal · offer_message · ar 1`] =
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf × 2 بـ 135 ج.م. تحب نضيفه لنفس الأوردر؟",
@@ -4452,7 +4453,7 @@ exports[`messages golden (E6-16a baseline) > formal · paid · ar 1`] = `
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -4678,7 +4679,7 @@ exports[`messages golden (E6-16a baseline) > formal · plain · ar 1`] = `
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -4906,6 +4907,7 @@ exports[`messages golden (E6-16a baseline) > formal · summary · ar 1`] = `
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
@@ -5155,8 +5157,9 @@ exports[`messages golden (E6-16a baseline) > formal · summary_no_due · ar 1`] 
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى الدقي، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
@@ -5392,6 +5395,7 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer · ar 1`] =
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ج.م. بدل 150 ج.م. تحب نضيفه لنفس الأوردر؟",
   ],
@@ -5671,6 +5675,7 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer_long · ar 
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: Item 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 1، Item 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 2، Item 2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 3، Item 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 4، Item 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 5، Item 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 6، Item 6 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 7، Item 7 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 8، Item 8 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 9، Item 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 10، Item 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 11، Item 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 12.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ج.م. بدل 150 ج.م. تحب نضيفه لنفس الأوردر؟",
   ],
@@ -6222,7 +6227,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · fraction · ar 1
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250.50 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -6450,6 +6455,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · items_city · ar
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
@@ -6674,8 +6680,8 @@ exports[`messages golden (E6-16a baseline) > formal_override · no_name · ar 1`
     "لو عايز تأكّد اضغط واحد. لو عايز تعدّل اضغط اتنين. لو عايز تلغي اضغط تلاتة.",
   ],
   "callScript": [
-    "مرحباً عميلنا الكريم، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "أهلاً بك، معك فريق متجر النيل.",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -6901,7 +6907,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer · ar 1`] 
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ج.م. بدل 150 ج.م. تحب نضيفه لنفس الأوردر؟",
@@ -7159,7 +7165,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer_message ·
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf × 2 بـ 135 ج.م. تحب نضيفه لنفس الأوردر؟",
@@ -7417,7 +7423,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · paid · ar 1`] =
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -7643,7 +7649,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · plain · ar 1`] 
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
@@ -7871,6 +7877,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary · ar 1`
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
@@ -8120,8 +8127,9 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_no_due �
   ],
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
-    "نتصل لتأكيد طلبك رقم #1001: .",
+    "نتصل لتأكيد طلبك رقم #1001.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى الدقي، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
@@ -8357,6 +8365,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer ·
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ج.م. بدل 150 ج.م. تحب نضيفه لنفس الأوردر؟",
   ],
@@ -8636,6 +8645,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer_lo
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: Item 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 1، Item 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 2، Item 2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 3، Item 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 4، Item 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 5، Item 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 6، Item 6 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 7، Item 7 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 8، Item 8 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 9، Item 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 10، Item 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 11، Item 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 12.",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
+    "التوصيل إلى مدينة نصر، أليس كذلك؟",
     "هل نؤكد الطلب ونشحنه لك؟",
     "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ج.م. بدل 150 ج.م. تحب نضيفه لنفس الأوردر؟",
   ],
@@ -10384,7 +10394,7 @@ exports[`messages golden (E6-16a baseline) > none · paid · ar 1`] = `
   "callScript": [
     "أهلاً منى، معاك فريق متجر النيل.",
     "بنأكّد أوردرك رقم #1001.",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "نأكّد الأوردر ونشحنه لك؟",
   ],
   "chat": {
@@ -11917,7 +11927,7 @@ exports[`messages golden (E6-16a baseline) > none · summary_paid · ar 1`] = `
   "callScript": [
     "أهلاً منى، معاك فريق متجر النيل.",
     "بنأكّد أوردرك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "نأكّد الأوردر ونشحنه لك؟",
   ],
   "chat": {

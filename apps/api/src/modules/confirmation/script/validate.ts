@@ -108,7 +108,8 @@ export function validateScript(script: Script, ctx: { storeName: string | null; 
 
 /** A saved or previewed script: the shape, then every rule that needs no store context. */
 export const ScriptSchema = ScriptDraftSchema.superRefine((s, ctx) => {
-  for (const i of validateScript(s, { storeName: null, storeLang: null })) ctx.addIssue({ code: "custom", path: i.path, message: i.code, params: { ...i } });
+  // Length is checked when saving, against the stored script: a text that only got too long never blocks a save.
+  for (const i of validateScript(s, { storeName: null, storeLang: null })) if (i.code !== "too_long") ctx.addIssue({ code: "custom", path: i.path, message: i.code, params: { ...i } });
 });
 
 const SCRIPT_KEY_SET = new Set<string>(SCRIPT_KEYS);
@@ -119,8 +120,7 @@ const cache = new Map<string, { script: Script | undefined; issues: Issue[] }>()
  * The tolerant reader for a stored script, pure and memoised (every message reads it). Nothing
  * is dropped for its length: `fit` handles that when sending, so renaming the store or a tighter
  * limit never deletes the owner's wording. Dropped: unknown keys and texts with a variable the key
- * cannot use. A script from before E6-16a (no version) keeps answering typed messages with its
- * own "change received" text. The result is shared: never mutate it.
+ * cannot use. The result is shared: never mutate it.
  */
 export function readScript(raw: unknown): { script: Script | undefined; issues: Issue[] } {
   if (raw === undefined || raw === null) return { script: undefined, issues: [] };
@@ -154,8 +154,6 @@ function parse(raw: unknown): { script: Script; issues: Issue[] } {
       if (bad) { issues.push({ path, code: isVariable(bad) ? (titles ? "no_variables_in_titles" : "variable_not_here") : "unknown_variable", variable: bad }); continue; }
       texts[lang][k] = value.trim();
     }
-    // Before E6-16a a typed message was answered with the "change received" text.
-    if (r.version === undefined && !texts[lang].noted && texts[lang].change_received) texts[lang].noted = texts[lang].change_received;
   }
   let cancelReasons: ReasonItem[] | undefined;
   if (r.cancelReasons !== undefined) {

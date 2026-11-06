@@ -37951,6 +37951,19 @@
                 },
                 "message": {
                   "type": "string"
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "length": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "variable": {
+                  "type": "string"
                 }
               },
               "required": [

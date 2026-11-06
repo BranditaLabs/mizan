@@ -239,14 +239,7 @@ export class ConfirmationService {
     const label = pii.decrypt(o.customer_label, "orders.customer_label");
     const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", run.order_id).orderBy("position").orderBy("id").limit(10).execute();
     const due = BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor);
-    const f = await this.offers.forRun(trx, run.id);
-    const offer = f && !["declined", "expired"].includes(f.status) ? (() => {
-      const v = this.offers.view(f);
-      return {
-        id: f.id, title: v.title, qty: v.qty, price: v.offerPrice, was: Number(v.discountPct) > 0 ? v.unitPrice : null,
-        message: lang === "ar" ? f.message_ar : f.message_en, newTotal: fromMinor(due + BigInt(f.offer_price_minor) * BigInt(f.qty), o.currency),
-      };
-    })() : null;
+    const offer = await this.offerFacts(trx, run.id, lang, due, o.currency);
     // E6-23a: the summary after confirming, when the store chose it; the money from cashToCollect (rule 13).
     const wantsSummary = (await this.after.settingsOf(trx, tenantId)).settings.confirmed.message === "summary";
     let pay: Money | null = null;
@@ -262,6 +255,17 @@ export class ConfirmationService {
     };
   }
 
+  /** The run's offer as the messages show it, unless the customer declined it or it expired. */
+  private async offerFacts(trx: Transaction<DB>, runId: string, lang: "ar" | "en", dueMinor: bigint, currency: string): Promise<OfferFacts | null> {
+    const f = await this.offers.forRun(trx, runId);
+    if (!f || ["declined", "expired"].includes(f.status)) return null;
+    const v = this.offers.view(f);
+    return {
+      id: f.id, title: v.title, qty: v.qty, price: v.offerPrice, was: Number(v.discountPct) > 0 ? v.unitPrice : null,
+      message: lang === "ar" ? f.message_ar : f.message_en, newTotal: fromMinor(dueMinor + BigInt(f.offer_price_minor) * BigInt(f.qty), currency),
+    };
+  }
+
   /**
    * E6-5, E6-16a: a draft script (problems and all) filled from one of the store's orders or a
    * sample: one chat per scenario with the approved template first, the team's call script, the
@@ -274,12 +278,16 @@ export class ConfirmationService {
       const lang = langAsked ?? storeLang;
       const link = `${this.config.WEB_URL.replace(/\/$/, "")}/${lang}/c/xxxxxxxx`;
       let f: MessageFacts;
+      let real: OfferFacts | null = null;
       if (orderId) {
         const o = await trx.selectFrom("orders").select(["number", "customer_label", "currency", "total_minor", "cod_minor", "ship_city"]).where("id", "=", orderId).executeTakeFirst();
         if (!o) throw new ProblemError(404, "not_found", "order not found");
         const label = (await this.cipher.forTenant(trx, tenantId)).decrypt(o.customer_label, "orders.customer_label");
         const items = await trx.selectFrom("order_lines").select(["title", "quantity"]).where("order_id", "=", orderId).orderBy("position").orderBy("id").limit(10).execute();
         f = { lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number, total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link, items, city: o.ship_city };
+        // The order's own offer when it has one; the sample only otherwise.
+        const run = await trx.selectFrom("confirmation_runs").select("id").where("order_id", "=", orderId).orderBy("started_at", "desc").executeTakeFirst();
+        if (run) real = await this.offerFacts(trx, run.id, lang, BigInt(o.cod_minor) > 0n ? BigInt(o.cod_minor) : BigInt(o.total_minor), o.currency);
       } else {
         const t = await trx.selectFrom("tenants").select("base_currency").where("id", "=", tenantId).executeTakeFirstOrThrow();
         const cur = t.base_currency.trim();
@@ -292,7 +300,7 @@ export class ConfirmationService {
       const withSummary = (await this.after.settingsOf(trx, tenantId)).settings.confirmed.message === "summary" ? { ...f, summary: { due: f.cod, more: 0 } } : f;
       const cur = f.total.currency;
       const dueMinor = toMinor(Number(f.cod.amount) > 0 ? f.cod : f.total);
-      const offer: OfferFacts = {
+      const offer: OfferFacts = real ?? {
         id: "00000000-0000-4000-8000-000000000000", title: lang === "ar" ? "طرحة مطابقة" : "Matching scarf", qty: 1,
         price: fromMinor(13500n, cur), was: fromMinor(15000n, cur), message: null, newTotal: fromMinor(dueMinor + 13500n, cur),
       };
@@ -493,8 +501,12 @@ export class ConfirmationService {
     return this.db.tenant(tenantId, async (trx) => {
       const t = await trx.selectFrom("tenants").select(["settings", "name", "locale"]).where("id", "=", tenantId).forUpdate().executeTakeFirstOrThrow();
       // The script's rules again, with the store's real name and language (E6-16a).
-      const issues = parsed.script ? validateScript(parsed.script, { storeName: t.name, storeLang: t.locale?.startsWith("en") ? "en" : "ar" }) : [];
-      if (issues.length) throw new ProblemError(422, "validation_failed", "the script breaks a rule", issues.map((i) => ({ path: ["script", ...i.path].join("."), code: i.code })));
+      // A text saved before that only got too long (a v1 text counted with variable widths, a tighter
+      // limit) never blocks saving the rest: it stays in scriptIssues and `fit` shortens it when sent.
+      const stored = (t.settings as { confirmation?: { script?: unknown } } | null)?.confirmation?.script;
+      const issues = (parsed.script ? validateScript(parsed.script, { storeName: t.name, storeLang: t.locale?.startsWith("en") ? "en" : "ar" }) : [])
+        .filter((i) => !(i.code === "too_long" && valueAt(stored, i.path) !== undefined && valueAt(stored, i.path) === valueAt(parsed.script, i.path)));
+      if (issues.length) throw new ProblemError(422, "validation_failed", "the script breaks a rule", issues.map((i) => ({ path: ["script", ...i.path].join("."), code: i.code, ...(i.limit !== undefined ? { limit: i.limit, length: i.length } : {}), ...(i.variable ? { variable: i.variable } : {}) })));
       const next: ConfirmationSettings = parsed.script ? { ...parsed, script: { ...parsed.script, version: 2 } } : parsed;
       const before = confirmationSettings(t.settings);
       await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...(t.settings as object), confirmation: next }) }).where("id", "=", tenantId).execute();
@@ -562,4 +574,11 @@ export class ConfirmationService {
     const t = await trx.selectFrom("tenants").select(["settings", "timezone", "name", "locale"]).where("id", "=", tenantId).executeTakeFirstOrThrow();
     return { settings: confirmationSettings(t.settings), timezone: t.timezone, name: t.name, lang: t.locale?.startsWith("en") ? "en" : "ar" };
   }
+}
+
+/** The string at a path inside a saved or sent script (texts.ar.key, cancelReasons.0.title.ar), if any. */
+function valueAt(root: unknown, path: Array<string | number>): string | undefined {
+  let v: unknown = root;
+  for (const p of path) v = v && typeof v === "object" ? (v as Record<string | number, unknown>)[p] : undefined;
+  return typeof v === "string" ? v.trim() : undefined;
 }
