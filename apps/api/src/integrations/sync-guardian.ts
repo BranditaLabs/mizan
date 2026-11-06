@@ -29,6 +29,8 @@ export const GUARD = {
 // "no handler for job kind": a job queued by new code and claimed by an old worker during a deploy; the next worker knows it.
 const RETRYABLE = /^(gave up after \d+ attempts — (rate_limited|transient|timeout|circuit_open|conflict)|rate_limited|transient|timeout|circuit_open|conflict|no handler for job kind)/;
 const COLLECTS_ON_DELIVERY = new Set(["cod", "partial"]);
+/** The copy repair's version: a new one walks every copy again. */
+const COPY_REPAIR = "u26";
 const TERMINAL_FOR_STORE = new Set<ShipmentStatus>(["delivered", "returned", "lost"]);
 
 /** When the guardian will bring a dead job back on its own (engine-clock ms), or null when it needs a person. */
@@ -235,6 +237,18 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
         .where(sql<boolean>`(store_copy_snapshot ->> 'v') is distinct from ${String(COPY_SNAPSHOT_VERSION)}`).limit(50).execute();
       for (const u of unread) {
         count(await engineQueue({ shopify: storeId }).enqueue({ kind: "shopify.ingestOrder", connection: "shopify", payload: { orderId: u.store_copy_id! }, idempotencyKey: `shopify:order:${u.store_copy_id}:baseline:v${COPY_SNAPSHOT_VERSION}` }, clock));
+      }
+      // U26: copies made before customers and governorate codes were sent are put right once each
+      // (a cursor walks them, a few per round; the job's key makes a repeat a no-op).
+      // The walk ends once it reaches the last copy (new copies are made right); its jobs are no recovery count.
+      const queue = engineQueue({ shopify: storeId });
+      const cursor = await queue.get<{ after?: string; done?: boolean }>("guardian", `copy-repair:${COPY_REPAIR}`);
+      if (!cursor?.done) {
+        const old = await trx.selectFrom("orders").select("id").where("store_copy_connection_id", "=", storeId).where("store_copy_id", "is not", null)
+          .where("status", "!=", "cancelled").where("pii_redacted_at", "is", null)
+          .$if(Boolean(cursor?.after), (q) => q.where("id", ">", cursor!.after!)).orderBy("id").limit(25).execute();
+        for (const o of old) await queue.enqueue(MizanEngine.shopifyRepairCopyJob(o.id, COPY_REPAIR), clock);
+        await queue.put("guardian", `copy-repair:${COPY_REPAIR}`, old.length ? { after: old.at(-1)!.id } : { ...cursor, done: true }, clock);
       }
     }
 

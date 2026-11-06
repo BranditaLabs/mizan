@@ -152,4 +152,20 @@ describe("Shopify compliance webhooks", () => {
     expect(c).toMatchObject({ name: null, phone_e164: null, phone_hash: null });
     expect(c.redacted_at).not.toBeNull();
   });
+
+  it("customers/redact naming the store's copy of an order made in Mizan erases that order's personal data in Mizan too", async () => {
+    const copyId = "gid://shopify/Order/987654";
+    const made = await db.tenant(T.sara!, (trx) => trx.insertInto("orders").values({
+      tenant_id: T.sara!, number: "M-9001", currency: "EGP", total_minor: 50000n, placed_at: new Date(), status: "confirmed",
+      ship_name: "pii:v1:test-name", ship_phone: "pii:v1:test-phone", ship_line1: "pii:v1:test-line", ship_city: "Giza",
+      store_copy_connection_id: conn.shop!, store_copy_id: copyId, store_copy_status: "created",
+    }).returning("id").executeTakeFirstOrThrow());
+    const wh = shop.complianceWebhook("customers/redact", { customer: { id: 555001, email: "other@example.com", phone: "+201009998887" }, orders_to_redact: [numeric(copyId)] });
+    await send(wh).expect(200);
+    await work();
+    const o = await db.tenant(T.sara!, (trx) => trx.selectFrom("orders").select(["ship_name", "ship_phone", "ship_line1", "ship_city", "pii_redacted_at"]).where("id", "=", made.id).executeTakeFirstOrThrow());
+    expect(o).toMatchObject({ ship_name: null, ship_phone: null, ship_line1: null, ship_city: "Giza" });
+    expect(o.pii_redacted_at).not.toBeNull();
+  });
 });
+

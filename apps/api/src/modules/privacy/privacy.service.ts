@@ -164,15 +164,23 @@ export class PrivacyService {
       customers = [...new Set([...named, ...byPhone].map((r) => r.customer_id).filter((x): x is string => Boolean(x)))];
     }
     // Orders: the whole shop, or the named orders plus every order of the matched customers from this shop.
-    let orders = trx.updateTable("orders").set({ ...REDACTED_ORDER, pii_redacted_at: sql`coalesce(pii_redacted_at, now())` }).where("connection_id", "=", connectionId);
-    if (!target.wholeShop) {
+    let orders = trx.updateTable("orders").set({ ...REDACTED_ORDER, pii_redacted_at: sql`coalesce(pii_redacted_at, now())` });
+    if (target.wholeShop) {
+      orders = orders.where("connection_id", "=", connectionId);
+    } else {
       orders = orders.where((eb) => eb.or([
-        ...(target.orderIds?.length ? [eb("external_id", "in", target.orderIds)] : []),
-        ...(customers.length ? [eb("customer_id", "in", customers)] : []),
-        eb.val(false),
+        eb.and([eb("connection_id", "=", connectionId), eb.or([
+          ...(target.orderIds?.length ? [eb("external_id", "in", target.orderIds)] : []),
+          ...(customers.length ? [eb("customer_id", "in", customers)] : []),
+          eb.val(false),
+        ])]),
+        // An order made in Mizan whose copy in this shop the request names: the buyer asked, so Mizan's order goes too.
+        // (A whole-shop erasure leaves Mizan's own orders: they are the merchant's records, not the shop's.)
+        ...(target.orderIds?.length ? [eb.and([eb("store_copy_connection_id", "=", connectionId), eb("store_copy_id", "in", target.orderIds)])] : []),
       ]));
     }
-    const redactedOrders = await orders.returning(["id", "external_id"]).execute();
+    const redactedOrders = (await orders.returning(["id", "external_id", "store_copy_id"]).execute())
+      .map((o) => ({ id: o.id, external_id: o.external_id ?? o.store_copy_id }));
     // An ad click id points at one visit by one person (M7-2): it goes with the rest.
     if (redactedOrders.length) {
       await trx.updateTable("order_sources").set({ click_id: null, click_id_kind: null }).where("order_id", "in", redactedOrders.map((o) => o.id)).execute();

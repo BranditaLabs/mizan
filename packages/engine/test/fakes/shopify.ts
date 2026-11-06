@@ -108,6 +108,8 @@ export class FakeShopify {
   readonly customers: Array<{ id: string; firstName?: string; lastName?: string; phone?: string; email?: string }> = [];
   /** The app may not read customers (protected customer data not approved). */
   customersDenied = false;
+  /** The app may not create customers (write_customers not granted). */
+  customerWriteDenied = false;
   trackingUpdates = 0;
   /** Order metafields with a unique-values definition ("namespace.key"). */
   uniqueOrderFields = new Set<string>();
@@ -661,6 +663,25 @@ export class FakeShopify {
         this.lastOrderCreate = input;
         return { orderCreate: { order: { id, name: this.orders.get(id)!.name }, userErrors: [] } };
       }
+      case "MizanOrderCustomer": {
+        const o = this.orders.get(v.id);
+        return { order: o ? { id: o.id, customer: o.customer ? { id: (o.customer as { id?: string }).id ?? null } : null, shippingAddress: o.shippingAddress } : null };
+      }
+      case "MizanCustomerCreate": {
+        if (this.customerWriteDenied) throw gqlErrors([{ message: "Access denied for customerCreate field.", extensions: { code: "ACCESS_DENIED" } }]);
+        if (v.input.phone && this.customers.some((c) => c.phone === v.input.phone)) return { customerCreate: { customer: null, userErrors: [{ field: ["phone"], message: "Phone has already been taken" }] } };
+        const c = { id: this.nextId("Customer"), ...v.input };
+        this.customers.push(c);
+        return { customerCreate: { customer: { id: c.id }, userErrors: [] } };
+      }
+      case "MizanOrderCustomerSet": {
+        const o = this.orders.get(v.orderId);
+        const c = this.customers.find((x) => x.id === v.customerId);
+        if (!o || !c) return { orderCustomerSet: { order: null, userErrors: [{ field: ["customerId"], message: "Not found" }] } };
+        o.customer = { ...c, displayName: `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim() };
+        o.updatedAt = this.touch();
+        return { orderCustomerSet: { order: { id: o.id }, userErrors: [] } };
+      }
       case "MizanCustomerFind": {
         if (this.customersDenied) throw gqlErrors([{ message: "Access denied for customers field.", path: ["customers"], extensions: { code: "ACCESS_DENIED" } }]);
         const m = /^(phone|email):"(.*)"$/.exec(String(v.query));
@@ -887,9 +908,14 @@ export class FakeShopify {
         if (!o) return { orderUpdate: { order: null, userErrors: [{ field: ["id"], message: "Order does not exist" }] } };
         // MailingAddressInput has provinceCode, not province (a variable error, as Shopify answers).
         if ("province" in v.input.shippingAddress) throw gqlErrors([{ message: "Variable $input of type OrderInput! was provided invalid value for shippingAddress.province (Field is not defined on MailingAddressInput)", extensions: { code: "argumentNotAccepted" } }]);
-        const { provinceCode, ...rest } = v.input.shippingAddress as Record<string, unknown>;
-        const country = v.input.shippingAddress.countryCode ?? (o.shippingAddress?.countryCodeV2 as string);
-        o.shippingAddress = { ...(o.shippingAddress ?? {}), ...rest, ...(provinceCode !== undefined ? { province: provinceName(country, provinceCode), provinceCode } : {}), countryCodeV2: country };
+        // The input replaces the whole address, as Shopify does: a field left out is gone.
+        const { provinceCode, countryCode, ...rest } = v.input.shippingAddress as Record<string, unknown>;
+        const country = (countryCode as string | undefined) ?? (o.shippingAddress?.countryCodeV2 as string);
+        o.shippingAddress = {
+          ...Object.fromEntries(Object.entries(rest).filter(([, x]) => x !== undefined && x !== null)),
+          name: `${rest.firstName ?? ""} ${rest.lastName ?? ""}`.trim(),
+          province: provinceCode !== undefined && provinceCode !== null ? provinceName(country, provinceCode) : null, provinceCode: provinceCode ?? null, countryCodeV2: country,
+        };
         this.addressUpdates++;
         o.updatedAt = this.touch();
         return { orderUpdate: { order: { id: o.id }, userErrors: [] } };

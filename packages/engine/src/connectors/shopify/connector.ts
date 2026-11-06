@@ -554,6 +554,53 @@ export class ShopifyConnector {
     } };
   }
 
+  /**
+   * Put right a store copy made before customers and governorate codes were sent (U26). Two
+   * independent steps, each said as drift when the store refuses it:
+   *  - the buyer: a customer the store already has (by phone, then email) is set on the order.
+   *    Never created here: an old copy's buyer may have been erased in Shopify since.
+   *  - the governorate: an address Shopify holds without a code gets it. orderUpdate replaces the
+   *    whole address, so every field Shopify has is sent back as it is.
+   * Safe to repeat; an order Shopify no longer has is left alone.
+   */
+  async repairCopy(orderId: string, d: Pick<StoreOrderDraft, "number" | "customer" | "address">): Promise<{ customer: "set" | "had" | "none"; province: boolean }> {
+    const raw = await this.gql.run<{ order?: unknown }>(Q.ORDER_CUSTOMER, { id: orderId }, { idempotent: true });
+    const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+    if (!r.str("id", ["id"])) return { customer: "none", province: false };
+    const refused = (step: string, e: unknown) => {
+      if (e instanceof IntegrationError && e.retryable) throw e; // passing trouble: the job tries again
+      this.drift.record({ connector: "shopify", entity: "order", kind: "missing_field", detail: `order ${d.number}: ${step} not repaired (${e instanceof Error ? e.message.slice(0, 200) : "refused"})`, at: this.rt.clock.now() });
+    };
+    let customer: "set" | "had" | "none" = r.str("customer", ["customer.id"]) ? "had" : "none";
+    if (customer === "none" && d.customer) {
+      try {
+        const found = await this.customerFor(d.number, d.customer);
+        const id = (found?.toAssociate as { id?: string } | undefined)?.id;
+        if (id) {
+          const s = await this.gql.run<{ orderCustomerSet: { userErrors: UserErrors } }>(Q.ORDER_CUSTOMER_SET, { orderId, customerId: id }, { idempotent: true });
+          assertNoUserErrors("orderCustomerSet", s.orderCustomerSet?.userErrors);
+          customer = "set";
+        }
+      } catch (e) { refused("the customer", e); }
+    }
+    // Only an address Shopify holds without a code (the old copies' "C" written as a name): the team's own fixes stay.
+    const code = d.address.provinceCode;
+    const have = (k: string) => r.str(k, [`shippingAddress.${k}`]) ?? null;
+    let province = false;
+    if (code && r.any("address", ["shippingAddress"]) && !have("provinceCode")) {
+      try {
+        const u = await this.gql.run<{ orderUpdate: { userErrors: UserErrors } }>(Q.ORDER_UPDATE, { input: { id: orderId, shippingAddress: {
+          firstName: have("firstName"), lastName: have("lastName"), company: have("company"), phone: have("phone"),
+          address1: have("address1") ?? d.address.line1, address2: have("address2"), city: have("city") ?? d.address.city,
+          zip: have("zip"), provinceCode: code, countryCode: have("countryCodeV2") ?? d.address.countryCode,
+        } } }, { idempotent: true });
+        assertNoUserErrors("orderUpdate", u.orderUpdate?.userErrors);
+        province = true;
+      } catch (e) { refused("the governorate", e); }
+    }
+    return { customer, province };
+  }
+
   private async ensureOrderIdDefinition() {
     if (this.orderIdDefined) return;
     const r = await this.gql.run<{ metafieldDefinitionCreate: { userErrors: Array<{ field?: string[] | null; message: string; code?: string | null }> } }>(Q.ORDER_ID_DEFINITION, {

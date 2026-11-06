@@ -215,3 +215,55 @@ describe("the store's profile from Shopify (onboarding)", () => {
   });
 });
 
+describe("store copies made before customers and governorate codes were sent (U26 repair)", () => {
+  function legacy(over: { customersDenied?: boolean } = {}) {
+    const drafts = new Map<string, StoreOrderDraft>();
+    const w = setup({ hooks: {
+      loadStoreOrderDraft: async (id) => drafts.get(id),
+      onStoreOrderCreated: async () => {},
+      loadStoreCopy: async (id) => { const d = drafts.get(id); const c = [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`); return d && c ? { copyId: c.id, draft: d } : undefined; },
+    } });
+    const run = async () => {
+      drafts.set(OID, draft());
+      await w.store.enqueue(MizanEngine.shopifyCreateOrderJob(OID), w.clock.now());
+      await settle(w.engine, w.store, w.clock);
+      // As the old code left it: a guest order, the code written as the province's name; the team added a zip and a company in Shopify.
+      const copy = [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${OID}`)!;
+      copy.customer = null as unknown as Record<string, unknown>;
+      copy.shippingAddress = { ...copy.shippingAddress, province: "C", provinceCode: null, zip: "11757", company: "Nile Abayas HQ" };
+      w.shop.customersDenied = over.customersDenied ?? false;
+      drafts.set(OID, draft({ customer: { firstName: "Mona", lastName: "Adel", phone: "+201001234821" } }));
+      await w.store.enqueue(MizanEngine.shopifyRepairCopyJob(OID, "u26"), w.clock.now());
+      await settle(w.engine, w.store, w.clock);
+      return copy;
+    };
+    return { w, run };
+  }
+
+  it("the governorate's code is added and every other field Shopify has stays (orderUpdate replaces the address)", async () => {
+    const { w, run } = legacy();
+    const copy = await run();
+    expect(copy.shippingAddress).toMatchObject({ province: "Cairo", provinceCode: "C", address1: "12 Abbas El Akkad St", city: "Sheraton", zip: "11757", company: "Nile Abayas HQ", firstName: "Mona" });
+    expect(await w.store.jobs({ status: "dead" })).toEqual([]);
+  });
+
+  it("an existing store customer with that phone is attached as they are; none is ever created by the repair (the buyer may have been erased)", async () => {
+    const { w, run } = legacy();
+    w.shop.customers.push({ id: "gid://shopify/Customer/9", firstName: "Mona", lastName: "Hassan", phone: "+201001234821" });
+    const copy = await run();
+    expect(copy.customer).toMatchObject({ id: "gid://shopify/Customer/9", lastName: "Hassan" });
+
+    const other = legacy();
+    const guest = await other.run();
+    expect(guest.customer).toBeNull();
+    expect(other.w.shop.customers).toEqual([]);
+  });
+
+  it("a refused customer step does not stop the governorate; nothing dead", async () => {
+    const { w, run } = legacy({ customersDenied: true });
+    const copy = await run();
+    expect(copy.customer).toBeNull();
+    expect(copy.shippingAddress).toMatchObject({ provinceCode: "C", zip: "11757" });
+    expect(await w.store.jobs({ status: "dead" })).toEqual([]);
+  });
+});
