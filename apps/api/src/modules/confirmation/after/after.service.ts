@@ -8,6 +8,7 @@ import { APP_CONFIG, type AppConfig } from "../../../platform/config.js";
 import { Database } from "../../../platform/db/database.js";
 import { ProblemError } from "../../../platform/http/problem.js";
 import { autoBookIntent } from "./decide.js";
+import { NOTICE_SOURCE } from "./notices.js";
 
 type Trx = Transaction<DB>;
 export type Lang = "ar" | "en";
@@ -54,7 +55,7 @@ export class AfterConfirmationService {
 
   /** A notice for the roles the store chose; once per key. */
   async notify(trx: Trx, tenantId: string, roles: MemberRole[], text: string, orderId: string, dedupeKey: string): Promise<void> {
-    await trx.insertInto("notifications").values({ tenant_id: tenantId, roles, text, entity_type: "order", entity_id: orderId, source: "after_confirmation", dedupe_key: dedupeKey })
+    await trx.insertInto("notifications").values({ tenant_id: tenantId, roles, text, entity_type: "order", entity_id: orderId, source: NOTICE_SOURCE, dedupe_key: dedupeKey })
       .onConflict((oc) => oc.columns(["tenant_id", "dedupe_key"]).where("dedupe_key", "is not", null).doNothing()).execute();
   }
 
@@ -120,6 +121,8 @@ export class AfterConfirmationService {
   async release(auth: AuthContext, orderId: string, now = new Date()) {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
+      // The follow-up before the order: the same lock order as the runner (no deadlock).
+      await trx.selectFrom("order_followups").select("id").where("order_id", "=", orderId).where("kind", "=", "release").forUpdate().execute();
       const o = await trx.selectFrom("orders").select(["id", "held_until", "hold_reason"]).where("id", "=", orderId).forUpdate().executeTakeFirst();
       if (!o) throw new ProblemError(404, "order_not_found", "no order with this id");
       await trx.updateTable("orders").set({ held_until: null, hold_reason: null }).where("id", "=", orderId).execute();
@@ -137,9 +140,12 @@ export class AfterConfirmationService {
     return this.db.tenant(tenantId, async (trx) => {
       const o = await trx.selectFrom("orders").select("id").where("id", "=", orderId).executeTakeFirst();
       if (!o) throw new ProblemError(404, "order_not_found", "no order with this id");
+      // Every stage: waiting, refused, or already handed to shipping (the booking checks auto_book before it books).
       const row = await trx.updateTable("order_followups").set({ auto_book: false, result: "by_team", updated_at: now })
-        .where("order_id", "=", orderId).where("kind", "=", "release").where("status", "in", ["pending", "blocked"]).returning(["id", "status"]).executeTakeFirst();
+        .where("order_id", "=", orderId).where("kind", "=", "release").where("status", "in", ["pending", "blocked", "done"]).returning(["id", "status"]).executeTakeFirst();
       if (row?.status === "blocked") await trx.updateTable("order_followups").set({ status: "done" }).where("id", "=", row.id).execute();
+      // The team read what the customer wrote and decided: the order goes back to packing.
+      await trx.updateTable("orders").set({ held_until: null, hold_reason: null }).where("id", "=", orderId).where("hold_reason", "=", "customer_message").execute();
       await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "auto_book_skipped", actor_type: "user", actor_id: auth.user.id, data: JSON.stringify({}) }).execute();
       await this.audit.record(trx, { action: "confirmation.after_auto_book_skipped", tenantId, ...auditActor(auth), entity: { type: "order", id: orderId }, after: { followup: row?.id ?? null } });
       return { autoBook: false };

@@ -404,9 +404,9 @@ function view(r: Row): ShipmentView {
 }
 
 /** The courier booked through an API: the one asked for (when it is still connected), else the first connected. */
-function apiCourier(trx: Trx, id?: string | null) {
-  return trx.selectFrom("connections").select(["id", "provider", "status"]).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected")
-    .$if(Boolean(id), (q) => q.where("id", "=", id!)).orderBy("created_at").executeTakeFirst();
+async function apiCourier(trx: Trx, id?: string | null) {
+  const q = trx.selectFrom("connections").select(["id", "provider", "status"]).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected");
+  return (id ? await q.where("id", "=", id).executeTakeFirst() : undefined) ?? q.orderBy("created_at").executeTakeFirst();
 }
 
 function timeline(trx: Trx, tenantId: string, orderId: string, type: string, data: Record<string, unknown>, userId?: string) {

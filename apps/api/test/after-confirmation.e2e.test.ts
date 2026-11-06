@@ -152,7 +152,7 @@ describe("confirmed", () => {
     expect(await followups(id)).toEqual([expect.objectContaining({ status: "blocked", result: "payment_mode_not_allowed" })]);
     expect((await timeline(id)).map((e) => e.type)).toContain("auto_book_blocked");
     const notes = await db.tenant(store, (trx) => trx.selectFrom("notifications").select("text").where("entity_id", "=", id).execute());
-    expect(notes.map((x) => x.text).join(" ")).toMatch(/الحجز التلقائي للأوردر #\d+ اتوقّف/); // the store's language
+    expect(notes.map((x) => x.text)).toEqual([expect.stringMatching(/^blocked\|#\d+\|payment_mode_not_allowed$/)]); // told in each reader's language by the bell
     expect(JSON.stringify(notes)).not.toMatch(/Mona|1001234821|Abbas/);
   });
 
@@ -172,6 +172,29 @@ describe("confirmed", () => {
     expect(await shipments(kept)).toEqual([]);
     expect(await followups(kept)).toEqual([expect.objectContaining({ status: "done", result: "released", auto_book: false })]);
     await http().post(`/v1/orders/${kept}/after-confirmation/release`).set(as("agent")).expect(403);
+  });
+});
+
+describe("handing over to shipping", () => {
+  it("Book by hand pressed after the order was handed to shipping still stops the booking", async () => {
+    await save(settings((s) => { s.confirmed.autoBook.enabled = true; })).expect(200);
+    const id = await newOrder();
+    await confirm(id);
+    await app.get(ConfirmationRunner).runOnce(new Date(Date.now() + MIN)); // released: order.ready_to_ship waits for the dispatcher
+    expect(await followups(id)).toEqual([expect.objectContaining({ status: "done", result: "ready" })]);
+    await http().post(`/v1/orders/${id}/after-confirmation/skip`).set(as("owner")).expect(200);
+    await drain();
+    expect(await shipments(id)).toEqual([]);
+  });
+
+  it("a setting turned off after the hand-over wins too", async () => {
+    await save(settings((s) => { s.confirmed.autoBook.enabled = true; })).expect(200);
+    const id = await newOrder();
+    await confirm(id);
+    await app.get(ConfirmationRunner).runOnce(new Date(Date.now() + MIN));
+    await save(DEFAULT_AFTER).expect(200);
+    await drain();
+    expect(await shipments(id)).toEqual([]);
   });
 });
 
@@ -195,6 +218,20 @@ describe("no answer", () => {
     expect(cancelled.actor_type).toBe("system");
     expect(cancelled.data).toMatchObject({ reason: "no_answer" });
     expect(await eventTypes(id)).toEqual(expect.arrayContaining(["order.cancelled", "order.confirmation_failed"]));
+    expect((await eventTypes(id)).filter((t) => t === "confirmation.no_answer" )).toHaveLength(2); // once for the messages, once for the team's last call
+  });
+
+  it("the team's own calls assigned the order to the caller: still cancelled after the last unanswered call", async () => {
+    await save(cancelAfterAnHour).expect(200);
+    const id = await unanswered();
+    // A further call after the last one: no second no-answer, no second notice.
+    await http().post(`/v1/orders/${id}/confirmation/no-answer`).set(as("owner")).expect(200);
+    await drain();
+    expect((await eventTypes(id)).filter((t) => t === "confirmation.no_answer")).toHaveLength(2);
+    const owner = await db.tenant(store, (trx) => trx.selectFrom("memberships").select("user_id").where("role", "=", "owner").executeTakeFirstOrThrow());
+    await db.tenant(store, (trx) => trx.updateTable("orders").set({ assigned_to: owner.user_id }).where("id", "=", id).execute());
+    await runAt(new Date(Date.now() + 61 * MIN));
+    expect((await orderRow(id)).status).toBe("cancelled");
   });
 
   const unanswered = async () => {
@@ -207,14 +244,26 @@ describe("no answer", () => {
   };
   const cancelAfterAnHour = settings((s) => { s.noAnswer.autoCancel = { enabled: true, after: "team_calls", afterHours: 1, cancelIfAssigned: false }; });
 
-  it("never cancels an order a team member has taken", async () => {
-    await save(cancelAfterAnHour).expect(200);
-    const id = await unanswered();
+  it("never cancels an order a team member has taken (after the messages: nobody called yet)", async () => {
+    await save(settings((s) => { s.noAnswer.autoCancel = { enabled: true, after: "messages", afterHours: 1, cancelIfAssigned: false }; })).expect(200);
+    const id = await newOrder();
+    await runAt(new Date());
+    await runAt(new Date(Date.now() + 121 * MIN)); // the message went unanswered: cancel scheduled for an hour later
     const owner = await db.tenant(store, (trx) => trx.selectFrom("memberships").select("user_id").where("role", "=", "owner").executeTakeFirstOrThrow());
     await db.tenant(store, (trx) => trx.updateTable("orders").set({ assigned_to: owner.user_id }).where("id", "=", id).execute());
     await runAt(new Date(Date.now() + 61 * MIN));
     expect((await orderRow(id)).status).not.toBe("cancelled");
     expect(await followups(id)).toEqual([expect.objectContaining({ status: "skipped", result: "assigned" })]);
+  });
+
+  it("a message Meta reported failed never counts as 'the messages went unanswered': nothing is cancelled", async () => {
+    await save(settings((s) => { s.noAnswer.autoCancel = { enabled: true, after: "messages", afterHours: 1, cancelIfAssigned: false }; })).expect(200);
+    const id = await newOrder();
+    await runAt(new Date());
+    await db.tenant(store, (trx) => trx.updateTable("whatsapp_messages").set({ status: "failed" }).where("order_id", "=", id).execute());
+    await runAt(new Date(Date.now() + 121 * MIN));
+    expect(await eventTypes(id)).not.toContain("confirmation.no_answer");
+    expect(await followups(id)).toEqual([]);
   });
 
   it("a setting turned off before the time comes wins over the cancel already waiting", async () => {

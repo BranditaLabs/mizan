@@ -157,7 +157,9 @@ export class ConfirmationService {
     await this.events.emit(trx, { type: "confirmation.escalated", tenantId, entity: { type: "order", id: run.order_id }, actor: { type: "system" }, data: { number: order.number, runId: run.id, reason } });
     // The automatic messages really went out and nobody answered (E6-23a): what the store chose for "no answer" can start.
     if (reason === "no_reply" || reason === "team_call") {
-      const sent = await trx.selectFrom("confirmation_steps").select("id").where("run_id", "=", run.id).where("kind", "=", "send").where("status", "=", "done").where("channel", "not in", ["call_team", "agent"]).executeTakeFirst();
+      // A message that reached the customer (Meta did not report it failed), not merely one handed to Meta.
+      const sent = await trx.selectFrom("confirmation_steps as s").innerJoin("whatsapp_messages as m", "m.step_key", "s.idempotency_key").select("s.id")
+        .where("s.run_id", "=", run.id).where("s.kind", "=", "send").where("s.status", "=", "done").where("m.status", "in", ["accepted", "sent", "delivered", "read"]).executeTakeFirst();
       if (sent) await this.events.emit(trx, { type: "confirmation.no_answer", tenantId, entity: { type: "order", id: run.order_id }, actor: { type: "system" }, data: { number: order.number, runId: run.id, stage: "messages", reason, attempts: 0 } });
     }
   }
@@ -178,7 +180,8 @@ export class ConfirmationService {
     answer: Answer; channel: AnswerChannel; actor: { type: "customer" } | { type: "system" } | { type: "user"; id: string }; reason?: string; note?: string; location?: { lat: number; lng: number };
   }, now = new Date()): Promise<{ outcome: string }> {
     if (run && run.outcome && run.status !== "needs_agent") throw new ProblemError(409, "already_answered", `this order was already ${run.outcome}`);
-    const order = await trx.selectFrom("orders").select(["status", "number"]).where("id", "=", orderId).executeTakeFirstOrThrow();
+    // Locked: two answers at once (an agent's confirm, Mizan's automatic cancel) cannot both pass this check.
+    const order = await trx.selectFrom("orders").select(["status", "number"]).where("id", "=", orderId).forUpdate().executeTakeFirstOrThrow();
     if (!["new", "pending_confirmation"].includes(order.status)) throw new ProblemError(409, "already_answered", `this order is already ${order.status}`);
     const outcome = OUTCOME[a.answer];
     const pii = a.note ? await this.cipher.forTenant(trx, tenantId) : null;
@@ -427,7 +430,7 @@ export class ConfirmationService {
       await trx.insertInto("confirmations").values({ tenant_id: tenantId, order_id: orderId, run_id: run.id, channel: "call_team", attempt: attempts, outcome: "no_answer", agent_id: auth.user.id, started_at: now, finished_at: now }).execute();
       await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "call_no_answer", actor_type: "user", actor_id: auth.user.id, data: JSON.stringify({ channel: "call_team", attempt: String(attempts) }) }).execute();
       await this.audit.record(trx, { action: "confirmation.call_no_answer", tenantId, ...auditActor(auth), entity: { type: "order", id: orderId }, after: { attempts, callAfter: after?.toISOString() ?? null } });
-      if (last) {
+      if (attempts === settings.teamCalls.attempts) { // once: the call that made it unreachable, not every later try
         const o = await trx.selectFrom("orders").select("number").where("id", "=", orderId).executeTakeFirstOrThrow();
         await this.events.emit(trx, { type: "confirmation.no_answer", tenantId, entity: { type: "order", id: orderId }, actor: { type: "user", id: auth.user.id }, data: { number: o.number, runId: run.id, stage: "team_calls", reason: "unreachable", attempts } });
       }

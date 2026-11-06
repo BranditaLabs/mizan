@@ -33,12 +33,12 @@ export class AfterConfirmationConsumer implements EventHandler {
     const orderId = event.entity.id;
     const d = event.data as Record<string, unknown>;
     const number = String(d.number ?? "");
-    const { settings: s, lang } = await this.after.settingsOf(trx, t);
+    const { settings: s } = await this.after.settingsOf(trx, t);
     const ref = { after: event.id };
     const at = new Date(event.occurredAt);
-    const act = async (section: { tags: string[]; notify: { enabled: boolean; roles: string[] } }, kind: Parameters<typeof notice>[0]) => {
+    const act = async (section: { tags: string[]; notify: { enabled: boolean; roles: string[] } }, kind: Parameters<typeof notice>[0], dedupe = `after:${event.id}`) => {
       if (section.tags.length) await this.actions.tag(trx, t, orderId, section.tags, { type: "system" }, ref);
-      if (section.notify.enabled) await this.after.notify(trx, t, section.notify.roles as never, notice(kind, number, lang), orderId, `after:${event.id}`);
+      if (section.notify.enabled) await this.after.notify(trx, t, section.notify.roles as never, notice(kind, number), orderId, dedupe);
     };
 
     switch (event.type) {
@@ -52,17 +52,19 @@ export class AfterConfirmationConsumer implements EventHandler {
       case "confirmation.escalated":
         if (d.reason === "change_requested") {
           await act(s.changed, "changed");
-          if (s.changed.assignTo) await this.actions.assign(trx, t, orderId, s.changed.assignTo, { type: "system" }, ref);
+          // Only a member still on the team (one who left would own the call-back and nobody would make it).
+          const member = s.changed.assignTo ? await trx.selectFrom("memberships").select("user_id").where("user_id", "=", s.changed.assignTo).where("status", "=", "active").executeTakeFirst() : undefined;
+          if (member) await this.actions.assign(trx, t, orderId, member.user_id, { type: "system" }, ref);
         } else if (d.reason === "opted_out") {
           await act(s.optedOut, "opted_out");
         }
         return;
       case "confirmation.no_answer": {
-        await act(s.noAnswer, "no_answer");
+        await act(s.noAnswer, "no_answer", `after:${String(d.runId ?? event.id)}:no_answer`); // once per run
         const ac = s.noAnswer.autoCancel;
         if (ac.enabled && d.stage === ac.after && typeof d.runId === "string") {
           const row = await trx.insertInto("order_followups").values({
-            tenant_id: t, order_id: orderId, run_id: d.runId, kind: "no_answer_cancel", run_at: new Date(at.getTime() + ac.afterHours * 3_600_000),
+            tenant_id: t, order_id: orderId, run_id: d.runId, kind: "no_answer_cancel", channel: String(d.stage), run_at: new Date(at.getTime() + ac.afterHours * 3_600_000),
             idempotency_key: `no_answer_cancel:${d.runId}`,
           }).onConflict((oc) => oc.columns(["tenant_id", "idempotency_key"]).doNothing()).returning("id").executeTakeFirst();
           if (row) await trx.insertInto("order_events").values({ tenant_id: t, order_id: orderId, type: "auto_cancel_scheduled", actor_type: "system", data: JSON.stringify({ afterHours: ac.afterHours }) }).execute();
@@ -72,17 +74,19 @@ export class AfterConfirmationConsumer implements EventHandler {
       case "order.auto_ship_blocked": {
         // Shipping's own refusal at booking (the runner's refusals were recorded where they happened).
         if (d.source !== "shipping" || typeof d.followupId !== "string") return;
-        const row = await trx.selectFrom("order_followups").select(["id", "deferrals"]).where("id", "=", d.followupId).forUpdate().executeTakeFirst();
-        if (!row) return;
+        const row = await trx.selectFrom("order_followups").select(["id", "deferrals", "auto_book"]).where("id", "=", d.followupId).forUpdate().executeTakeFirst();
+        if (!row || !row.auto_book) return; // booked by hand since: nothing to retry or report
         if (d.retry === true && row.deferrals < MAX_DEFERRALS) {
-          await trx.updateTable("order_followups").set({ status: "pending", run_at: new Date(at.getTime() + DEFER_MINUTES * 60_000), deferrals: row.deferrals + 1, result: null, updated_at: at })
+          const next = new Date(at.getTime() + DEFER_MINUTES * 60_000);
+          await trx.updateTable("order_followups").set({ status: "pending", run_at: next, deferrals: row.deferrals + 1, result: null, updated_at: at })
             .where("id", "=", row.id).execute();
+          await trx.updateTable("orders").set({ held_until: next, hold_reason: "grace" }).where("id", "=", orderId).where((eb) => eb.or([eb("hold_reason", "is", null), eb("hold_reason", "=", "grace")])).execute();
           return;
         }
         const code = String(d.code ?? "failed");
         await trx.updateTable("order_followups").set({ status: "blocked", result: code, updated_at: at }).where("id", "=", row.id).execute();
         await trx.insertInto("order_events").values({ tenant_id: t, order_id: orderId, type: "auto_book_blocked", actor_type: "system", data: JSON.stringify({ code }) }).execute();
-        await this.after.notify(trx, t, [...TEAM], blockedNotice(code, number, lang), orderId, `after:${event.id}`);
+        await this.after.notify(trx, t, [...TEAM], blockedNotice(code, number), orderId, `after:${event.id}`);
         return;
       }
       case "order.payment_changed":
@@ -97,6 +101,6 @@ export class AfterConfirmationConsumer implements EventHandler {
 
   private async rearm(trx: Trx, orderId: string, code: string, at: Date): Promise<void> {
     await trx.updateTable("order_followups").set({ status: "pending", run_at: at, result: null, updated_at: at })
-      .where("order_id", "=", orderId).where("kind", "=", "release").where("status", "=", "blocked").where("result", "=", code).execute();
+      .where("order_id", "=", orderId).where("kind", "=", "release").where("status", "=", "blocked").where("result", "=", code).where("auto_book", "=", true).execute();
   }
 }

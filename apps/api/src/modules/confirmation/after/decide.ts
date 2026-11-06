@@ -8,7 +8,7 @@ export type ReleaseDecision =
   | { kind: "skip"; code: "order_moved" | "held_by_customer" }
   | { kind: "defer" }
   | { kind: "released"; code: "released" | "setting_off" | "offer_settling" }
-  | { kind: "blocked"; code: "payment_mode_not_allowed" | "stock_short" | "duplicate_suspected" }
+  | { kind: "blocked"; code: "payment_mode_not_allowed" | "stock_short" | "stock_settling" | "duplicate_suspected" }
   | { kind: "book"; expireOffer: boolean };
 
 /**
@@ -19,6 +19,8 @@ export type ReleaseDecision =
  */
 export function decideRelease(i: {
   order: { status: string; paymentMode: string; stockStatus: string | null; duplicateStatus: string | null; holdReason: string | null };
+  /** The order has stocked items whose reservation has not been made yet (the stock consumer is behind). */
+  stockPending?: boolean;
   autoBook: boolean; deferrals: number; settling: boolean; offerProposed: boolean; settings: AfterConfirmation;
 }): ReleaseDecision {
   if (i.order.status !== "confirmed") return { kind: "skip", code: "order_moved" };
@@ -29,6 +31,8 @@ export function decideRelease(i: {
   if (!ab.enabled) return { kind: "released", code: "setting_off" };
   if (i.order.paymentMode === "unknown" || !ab.paymentModes.includes(i.order.paymentMode)) return { kind: "blocked", code: "payment_mode_not_allowed" };
   if (i.order.stockStatus === "short") return { kind: "blocked", code: "stock_short" };
+  // Stock not planned yet is not "enough stock": wait for it (booking an order nobody can pack is what stock_short prevents).
+  if (i.stockPending) return i.deferrals < MAX_DEFERRALS ? { kind: "defer" } : { kind: "blocked", code: "stock_settling" };
   if (i.order.duplicateStatus === "suspected") return { kind: "blocked", code: "duplicate_suspected" };
   return { kind: "book", expireOffer: i.offerProposed };
 }
@@ -45,6 +49,8 @@ export type NoAnswerDecision = { cancel: true } | { cancel: false; code: string 
  */
 export function decideNoAnswerCancel(i: {
   settings: AfterConfirmation;
+  /** "team_calls": the team's own calls assigned the order to the caller, which is not someone holding it. */
+  stage?: string | null;
   run: { status: string; outcome: string | null; reason: string | null } | null;
   order: { status: string; paidMinor: bigint; assignedTo: string | null };
 }): NoAnswerDecision {
@@ -55,7 +61,7 @@ export function decideNoAnswerCancel(i: {
   if (i.run.reason && PERSON_DECIDES.has(i.run.reason)) return { cancel: false, code: "person_decides" };
   if (!["new", "pending_confirmation"].includes(i.order.status)) return { cancel: false, code: "order_moved" };
   if (i.order.paidMinor > 0n) return { cancel: false, code: "paid" };
-  if (i.order.assignedTo && !ac.cancelIfAssigned) return { cancel: false, code: "assigned" };
+  if (i.order.assignedTo && !ac.cancelIfAssigned && i.stage !== "team_calls") return { cancel: false, code: "assigned" };
   return { cancel: true };
 }
 

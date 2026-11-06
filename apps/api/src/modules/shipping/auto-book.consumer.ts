@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { sql, type Transaction } from "kysely";
 import type { DB } from "@mizan/db";
-import type { DomainEvent } from "@mizan/shared";
+import { afterConfirmationSettings, type DomainEvent } from "@mizan/shared";
 import { AuditService } from "../../platform/audit/audit.service.js";
 import { EventsService } from "../../platform/events/events.service.js";
 import { EventConsumer, type EventHandler } from "../../platform/events/consumer.js";
@@ -34,10 +34,22 @@ export class AutoBookConsumer implements EventHandler {
         data: { number: d.number ?? "", followupId: d.followupId ?? null, code, retry, source: "shipping" },
       });
     };
+    // Still wanted? Book by hand pressed since, or the setting turned off since: nothing is booked (off wins).
+    const followup = d.followupId ? await trx.selectFrom("order_followups").select(["id", "auto_book"]).where("id", "=", d.followupId).forUpdate().executeTakeFirst() : undefined;
+    if (!followup || !followup.auto_book) return;
+    const t0 = await trx.selectFrom("tenants").select("settings").where("id", "=", t).executeTakeFirstOrThrow();
+    const ab = afterConfirmationSettings(t0.settings).confirmed.autoBook;
+    if (!ab.enabled) {
+      await trx.updateTable("order_followups").set({ result: "setting_off", updated_at: new Date(event.occurredAt) }).where("id", "=", followup.id).execute();
+      return;
+    }
     const o = await trx.selectFrom("orders").select(["status", "payment_mode", "stock_status", "duplicate_status"]).where("id", "=", orderId).forUpdate().executeTakeFirst();
     if (!o || o.status !== "confirmed") return blocked("order_moved");
-    if (o.payment_mode === "unknown") return blocked("payment_mode_not_allowed");
+    if (o.payment_mode === "unknown" || !ab.paymentModes.includes(o.payment_mode)) return blocked("payment_mode_not_allowed");
     if (o.stock_status === "short") return blocked("stock_short");
+    if (o.stock_status === null && (await trx.selectFrom("order_lines").select("id").where("order_id", "=", orderId).where("variant_id", "is not", null).executeTakeFirst())) {
+      return blocked("stock_settling", true); // reserved a moment later by the stock consumer: try again then
+    }
     if (o.duplicate_status === "suspected") return blocked("duplicate_suspected");
     const settling = await trx.selectFrom("order_offers").select("id").where("order_id", "=", orderId).where("status", "in", ["accepted", "applying"]).executeTakeFirst()
       ?? await trx.selectFrom("order_edits").select("id").where("order_id", "=", orderId).where("status", "=", "sending").executeTakeFirst();

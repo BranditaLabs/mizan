@@ -35,6 +35,12 @@ describe("releasing a confirmed order", () => {
     expect(release({ order: order({ duplicateStatus: "suspected" }) })).toEqual({ kind: "blocked", code: "duplicate_suspected" });
   });
 
+  it("stock not reserved yet is not enough stock: it waits, then stops with why", () => {
+    expect(release({ stockPending: true })).toEqual({ kind: "defer" });
+    expect(release({ stockPending: true, deferrals: MAX_DEFERRALS })).toEqual({ kind: "blocked", code: "stock_settling" });
+    expect(release({ stockPending: true, autoBook: false })).toEqual({ kind: "released", code: "released" }); // only booking needs it
+  });
+
   it("waits while an offer or edit is being applied, then lets go without booking", () => {
     expect(release({ settling: true })).toEqual({ kind: "defer" });
     expect(release({ settling: true, deferrals: MAX_DEFERRALS })).toEqual({ kind: "released", code: "offer_settling" });
@@ -73,6 +79,8 @@ describe("cancelling an order nobody answered", () => {
     expect(decide({ order: { status: "confirmed" } })).toEqual({ cancel: false, code: "order_moved" });
     expect(decide({ order: { paidMinor: 5000n } })).toEqual({ cancel: false, code: "paid" });
     expect(decide({ order: { assignedTo: "u-1" } })).toEqual({ cancel: false, code: "assigned" });
+    // After the team's own last call the caller is the one assigned: not someone holding it.
+    expect(decideNoAnswerCancel({ settings: cancelling, stage: "team_calls", run: waiting, order: { ...fresh, assignedTo: "u-1" } })).toEqual({ cancel: true });
     expect(decideNoAnswerCancel({ settings: on((s) => { s.noAnswer.autoCancel.enabled = true; s.noAnswer.autoCancel.cancelIfAssigned = true; }), run: waiting, order: { ...fresh, assignedTo: "u-1" } })).toEqual({ cancel: true });
   });
 });
