@@ -11,6 +11,7 @@ import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { NotConnectedError } from "../src/integrations/connection-resolver.js";
 import { EngineRegistry, type RuntimeFactory } from "../src/integrations/engine-registry.js";
 import { EngineJobRunner } from "../src/integrations/engine-runner.js";
+import { StoreProfile } from "../src/integrations/store-profile.js";
 import type { AppConfig } from "../src/platform/config.js";
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001";
@@ -261,4 +262,17 @@ describe("the store's profile from Shopify (onboarding)", () => {
     expect(t.name).toBe("دلتا للعطور");
     expect((t.settings as { brand?: Record<string, unknown> }).brand).toMatchObject({ logoUrl: "https://cdn.shopify.com/s/files/logo-2.png", shopName: "Delta Perfumes Egypt" });
   });
+
+  it("with two Shopify stores, the first connected names the brand; the other store's profile changes nothing", async () => {
+    const before = await brandOf(B);
+    const second = await db.tenant(B, (trx) => trx.insertInto("connections").values({ tenant_id: B, kind: "store", provider: "shopify", external_account: "second-store.myshopify.com", status: "active" })
+      .returning("id").executeTakeFirstOrThrow());
+    const profile = app.get(StoreProfile);
+    await profile.record(B, second.id, { name: "Second Store", brand: "read", logoUrl: "https://cdn.shopify.com/s/files/second.png" });
+    const after = await brandOf(B);
+    expect(after.name).toBe(before.name);
+    expect((after.settings as { brand?: { logoUrl?: string } }).brand?.logoUrl).toBe((before.settings as { brand?: { logoUrl?: string } }).brand?.logoUrl);
+    await db.tenant(B, (trx) => trx.updateTable("connections").set({ status: "disconnected" }).where("id", "=", second.id).execute());
+  });
 });
+
