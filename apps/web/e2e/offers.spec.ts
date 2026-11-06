@@ -51,7 +51,7 @@ test("order detail: the offer and the team's answer to it", async ({ page }) => 
   await page.route(`**/v1/orders/${id}/offer`, (route) => { decided = route.request().postDataJSON(); return route.fulfill({ json: { status: "accepted" } }); });
   await page.route(`**/v1/orders/${id}/confirmation`, (route) => route.fulfill({ json: {
     run: { id: "88888888-8888-4888-8888-888888888888", status: "needs_agent", outcome: null, reason: "team_call", answeredChannel: null, plan: [], step: 1, startedAt: at, finishedAt: null, linkExpiresAt: at, next: null, calls: { attempts: 0, max: 3, after: null } },
-    steps: [], attempts: [], whatsapp: [], script: ["أهلاً منى، معاك فريق المتجر."], channels: { whatsapp: true, call_auto: false, call_team: true },
+    steps: [], attempts: [], whatsapp: [], script: ["أهلاً منى، معاك فريق المتجر."], after: { heldUntil: null, holdReason: null, followups: [] }, channels: { whatsapp: true, call_auto: false, call_team: true },
     offer: { id: "99999999-9999-4999-8999-999999999999", title: "طرحة مطابقة", qty: 1, unitPrice: egp("150.00"), offerPrice: egp("135.00"), discountPct: "10", source: "rule", status: "proposed", messageAr: null, messageEn: null },
   } }));
   await page.goto(`/ar/orders/${id}`);

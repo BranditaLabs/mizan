@@ -37,6 +37,7 @@ export function AfterConfirmationBox({ orderId, after, onChange }: { orderId: st
     onSuccess: () => { toast({ message: t("skippedToast") }); onChange(); },
   });
 
+  if (!after) return null; // an API from before E6-23a: nothing to show, never a broken card
   const rel = after.followups.find((f) => f.kind === "release");
   const cancel = after.followups.find((f) => f.kind === "no_answer_cancel");
   // "Sat 10:30 AM" in the store's time: these are minutes away, the hour is what matters.
