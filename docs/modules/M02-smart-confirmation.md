@@ -67,11 +67,23 @@ A location     → kept on the order for the courier
 - **No idempotency key at Meta:** a send whose response is lost waits 10 minutes for its status webhook (our key in `biz_opaque_callback_data`); found → recorded as sent; none → sent again, once.
 - **Utility vs marketing:** the template stays pure utility (no promotion). Upsell offers (E6-11) go as a follow-up inside the free 24-hour window that the customer's tap opens.
 
-### Templates (submit in WhatsApp Manager, category Utility)
+### Templates (category Utility; the owner chooses and submits them from Mizan, E6-16d)
 
-`mizan_order_confirm_ar` — body: `{{1}} 👋` / `أوردرك رقم {{3}} من {{2}} وصلنا.` / `الإجمالي {{4}}.` / `أكّد الأوردر عشان نجهّزه ونشحنه لك.` — quick replies in order: أكّد الأوردر · عايز أعدّل · ألغي الأوردر.
-`mizan_order_confirm_en` — body: `{{1}} 👋` / `We received your order {{3}} from {{2}}.` / `Total: {{4}}.` / `Please confirm so we can prepare and ship it.` — quick replies: Confirm order · I want a change · Cancel order.
-Parameters: 1 greeting with first name, 2 store name, 3 order number, 4 amount ("1,250 ج.م. عند الاستلام"). The store's language decides which one is sent; the connection is **active** only when that one is approved.
+One catalogue in code (`confirmation/templates.ts`), used to send, to check the account, to submit, in the preview and in the editor's catalogue. Every body starts with "👋 {{1}}" because Meta refuses a body that starts or ends with a variable.
+
+| Variant | Name in the store's account | Body | Quick replies, in order (confirm · change · cancel) |
+| --- | --- | --- | --- |
+| `ar_egyptian` | `mizan_order_confirm_ar` | `👋 {{1}}` / `أوردرك رقم {{3}} من {{2}} وصلنا.` / `الإجمالي {{4}}.` / `أكّد الأوردر عشان نجهّزه ونشحنه لك.` | أكّد الأوردر · عايز أعدّل · ألغي الأوردر |
+| `ar_formal` | `mizan_order_confirm_ar_formal` | `👋 {{1}}` / `استلمنا طلبك رقم {{3}} من {{2}}.` / `الإجمالي {{4}}.` / `يُرجى تأكيد الطلب لنجهّزه ونشحنه إليك.` | تأكيد الطلب · أريد تعديلاً · إلغاء الطلب |
+| `ar_gulf` | `mizan_order_confirm_ar_gulf` | `👋 {{1}}` / `وصلنا طلبك رقم {{3}} من {{2}}.` / `الإجمالي {{4}}.` / `أكّد طلبك عشان نجهّزه ونشحنه لك.` | أكّد الطلب · أبي أعدّل · ألغِ الطلب |
+| `en` | `mizan_order_confirm_en` | `👋 {{1}}` / `We received your order {{3}} from {{2}}.` / `Total: {{4}}.` / `Please confirm so we can prepare and ship it.` | Confirm order · I want a change · Cancel order |
+
+Parameters (all variants): 1 greeting with first name (the pack's), 2 store name, 3 order number, 4 amount ("1,250 ج.م. عند الاستلام"). Each variant keeps a sample of the four for Meta's review (`example`).
+
+- **The owner's choice:** `script.template` = `ar_egyptian` | `ar_formal` | `ar_gulf`, the Arabic first message; unset follows the pack (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English stores always send `en`. Settings → Confirmation → WhatsApp → "Arabic first message" (Follow my wording style / Egyptian / Formal Arabic / Gulf).
+- **What is sent** (`effectiveTemplate`): the chosen one when Meta approved it; else the first approved of Egyptian, formal, Gulf — the fallback is recorded on the transcript (`whatsapp_messages.template`) and the owner gets one notice a day (`template_fallback|<chosen>|<used>`); else the chosen one (the send fails as "template missing" and the cascade moves on, as before). Quick-reply payloads are signed per button index, so a tap maps to its action whatever the variant; a tap that comes back with only the button's text is matched against every variant's buttons, and the order found from the message it answers.
+- **Active** when at least one template for the store's language is approved (Arabic: any of the three; English: `en`); otherwise needs attention with the chosen one's state (`template_pending`, `template_rejected`, `template_missing`). The background check lists all four and keeps checking every 10 minutes while any is PENDING.
+- **Submit to Meta** (owner, admin: `whatsapp.connect`): `POST /v1/settings/confirmation/templates/{variant}/submit` → 202, an outbox job (`whatsapp.createTemplate`, key `wa-template:<connection>:<name>`, a new key per resubmission) that creates the template unless it exists (looked up by name first: never twice), stores Meta's answer (status, category) with the others and brings the check forward. A REJECTED one is edited back into review. Audited and evented (`whatsapp.template_submitted`). Each template shows its state (Approved / In review / Rejected / Paused / Not sent yet / Unknown), "In use" on the effective one, and "Submit to Meta" when MISSING or REJECTED. Meta usually answers within minutes to a day.
 
 ### Connecting the number
 
@@ -130,7 +142,7 @@ Since E6-16a every word the buyer reads in the chat after the template is a **ke
 - **Rules on save** (422 with the path, e.g. `script.texts.en.btn_offer_yes`, `script.cancelReasons.3.title.ar`): too long (variables counted at their width, the store's name at its real length), an unknown variable or one the key does not allow, a required variable missing (`{{link}}` in `link_text`, `{{start_keyword}}` in `opted_out`, the summary's amount, count and city), only variables, a variable in a title, a new line in a title, fragment, header or footer, a link in a title, `on_delivery`, `opted_out`, `opted_in`, header or footer, `on_delivery` unsafe for the approved template (a link, a phone number, an emoji, a tab or 4 spaces), two equal titles (after the pack fills in) or ids. Saved scripts are `version: 2`.
 - **When sending,** every key is fitted to its limit: the items are shortened first, then the pack's text is used, then the text is cut on a grapheme with "…" (never inside a link, never empty). A stored script is read tolerantly: a key it does not know or a text with a variable that key cannot use is dropped; a text that grew too long (the store was renamed) is kept and fitted, and `GET /v1/settings/confirmation` reports it in `scriptIssues`. Until the owner writes `noted`, typed messages get their own "change received" text (as before E6-16a, so one edit still changes both), and a broken script never resets the steps or calling hours. Saving never fails on a text that only got too long since it was stored: it stays in `scriptIssues` and is fitted when sent.
 - **Composed in code, not editable as one string:** the Meta templates and their parameters (only the pack's greeting and the checked `on_delivery` flow in), the summary's structure (only its labels are keys), the offer line's format, money (Arabic currency names: ج.م.، ر.س، د.إ، د.ك، ر.ق، د.ب، ر.ع, not the new riyal sign), the reason list's shape, the call script's built-in lines (`call` left empty) and the IVR prompts.
-- **The approved Arabic template stays Egyptian** ("أوردرك… وصلنا… عشان نجهّزه"): with the gulf pack a KSA buyer reads an Egyptian first message, then Gulf replies. Rewording `mizan_order_confirm_ar` in neutral Arabic before the first submission is the owner's decision.
+- **The first message is the owner's choice** (E6-16d): Egyptian, formal or Gulf Arabic, each its own Meta template (§Templates); unset, it follows the pack. The Gulf wording is a starting point: the editor says so when the gulf pack is picked.
 
 ## Main screen — Confirmation queue
 

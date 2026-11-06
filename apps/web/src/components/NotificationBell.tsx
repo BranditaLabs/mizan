@@ -16,12 +16,15 @@ type Note = Schemas["NotificationList"]["data"][number];
 /** Where a notification leads: its order, the stock screen, or the automation. */
 const PROVIDERS: ReadonlySet<string> = new Set(["shopify", "woocommerce", "bosta", "whatsapp_cloud"]);
 
+const TEMPLATE_VARIANTS: ReadonlySet<string> = new Set(["ar_egyptian", "ar_formal", "ar_gulf", "en"]);
+
 function hrefOf(n: Note): string | null {
   if (!n.entity) return null;
   if (n.entity.type === "order") return `/orders/${n.entity.id}`;
   if (n.entity.type === "variant") return "/stock";
   if (n.entity.type === "automation") return "/automations";
   if (n.entity.type === "plan") return "/settings/usage";
+  if (n.entity.type === "connection" && n.source === "whatsapp.template_fallback") return "/settings/confirmation";
   if (n.entity.type === "connection") return n.source === "connection.sync_completed" ? "/orders" : "/settings/integrations";
   return null;
 }
@@ -37,6 +40,7 @@ const AFTER_WHY = new Set(["payment_blocks_shipping", "payment_mode_not_allowed"
 export function NotificationBell() {
   const t = useTranslations("notifications");
   const tp = useTranslations("notifications.providers");
+  const tv = useTranslations("confirmationSettings.whatsapp.templates.variant");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -81,6 +85,12 @@ export function NotificationBell() {
       const why = AFTER_WHY.has(code) ? t(`after.why.${code}` as "after.why.other") : t("after.why.other");
       if (kind === "blocked") return t("after.blocked", { n: num, why });
       if (AFTER_KINDS.has(kind)) return t(`after.${kind}` as "after.confirmed", { n: num });
+    }
+    if (n.source === "whatsapp.template_fallback") {
+      // "template_fallback|ar_gulf|ar_egyptian" (E6-16d): the owner's choice is not approved yet, another went out.
+      const [, chosen = "", used = ""] = n.text.split("|");
+      const name = (v: string) => (TEMPLATE_VARIANTS.has(v) ? tv(v as "ar_egyptian") : v);
+      return t("templateFallback", { chosen: name(chosen), used: name(used) });
     }
     if (n.source === "plan.limit") {
       // "orders|near|240|300|free": the store's plan limit (E12-1), told in the reader's language.

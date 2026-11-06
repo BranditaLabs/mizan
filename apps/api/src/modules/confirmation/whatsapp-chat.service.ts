@@ -10,6 +10,7 @@ import { parseActionId, type ChatAction } from "./confirmation-link.js";
 import { ConfirmationService, type RunRow } from "./confirmation.service.js";
 import { consentKeyword, reasonOf, type CancelReason, type ChatMessage } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
+import { templateActionOf } from "./templates.js";
 import { OffersService } from "./offers/offers.service.js";
 import { AfterConfirmationService } from "./after/after.service.js";
 import { notice } from "./after/notices.js";
@@ -136,7 +137,15 @@ export class WhatsAppChat {
       .where("phone_hash", "=", hash).where("whatsapp_opt_out_at", "is", null).execute();
     if (m.reply) {
       const tap = parseActionId(this.config.LINK_SIGNING_KEY, m.reply);
-      if (!tap) return { run: null, action: "ignored" };
+      if (!tap) {
+        // A template's quick reply that came back with its text and no payload: the action from any
+        // variant's buttons (E6-16d), the order from the message it answers, else the customer's latest run.
+        const action = m.kind === "quick_reply" ? templateActionOf(m.text ?? m.reply) : null;
+        if (!action) return { run: null, action: "ignored" };
+        const answered = await this.runAnswered(trx, m.contextId) ?? await this.recentRun(trx, hash, now);
+        if (!answered) return { run: null, action: "ignored" };
+        return { run: answered, action: await this.onTap(trx, tenantId, answered, action, undefined, m.id, now) };
+      }
       const run = await trx.selectFrom("confirmation_runs").select("id").where("id", "=", tap.runId).executeTakeFirst();
       if (!run) return { run: null, action: "ignored" }; // another store's run is invisible here (RLS)
       const locked = await this.confirmations.runById(trx, run.id, true);
@@ -287,6 +296,13 @@ export class WhatsAppChat {
 
   private reply(trx: Transaction<DB>, tenantId: string, run: RunRow, message: ChatMessage, inbound: string, now: Date) {
     return this.confirmations.queueReply(trx, tenantId, run, message, inbound, now);
+  }
+
+  /** The run of the template a tap answers (Meta's `context.id` is our message's id). */
+  private async runAnswered(trx: Transaction<DB>, contextId: string | undefined): Promise<RunRow | null> {
+    if (!contextId) return null;
+    const row = await trx.selectFrom("whatsapp_messages").select("run_id").where("wamid", "=", contextId).where("direction", "=", "out").executeTakeFirst();
+    return row?.run_id ? this.confirmations.runById(trx, row.run_id, true) : null;
   }
 
   /** The customer's latest run (a typed message or a location has no button to say which order). */

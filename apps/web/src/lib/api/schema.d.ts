@@ -2417,6 +2417,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/settings/confirmation/templates/{variant}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_submitTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/confirmation/queue": {
         parameters: {
             query?: never;
@@ -4237,6 +4253,11 @@ export interface components {
                         en?: string;
                     };
                 }[];
+                /**
+                 * @description E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one
+                 * @enum {string}
+                 */
+                template?: "ar_egyptian" | "ar_formal" | "ar_gulf";
             };
             routing: {
                 /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
@@ -4374,6 +4395,11 @@ export interface components {
                             en?: string;
                         };
                     }[];
+                    /**
+                     * @description E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one
+                     * @enum {string}
+                     */
+                    template?: "ar_egyptian" | "ar_formal" | "ar_gulf";
                 };
                 routing: {
                     /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
@@ -4398,12 +4424,30 @@ export interface components {
                  */
                 call_team: true;
             };
+            /** @description E6-16d: the first-message templates and their review state */
+            templates?: {
+                /** @enum {string} */
+                variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+                /** @description The name in the store's WhatsApp account */
+                name: string;
+                /** @enum {string} */
+                lang: "ar" | "en";
+                /**
+                 * @description Meta's review state; MISSING: not in the account; UNKNOWN: no number connected or not checked yet
+                 * @enum {string}
+                 */
+                status: "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED" | "MISSING" | "UNKNOWN";
+                /** @description What the store's orders get now (the chosen one, or the approved fallback) */
+                effective: boolean;
+                /** @description Can be sent to Meta for review (MISSING or REJECTED, with a number connected) */
+                submittable: boolean;
+            }[];
             /** @description E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it. */
             scriptIssues?: {
                 /** @description e.g. ["texts", "en", "btn_offer_yes"] or ["cancelReasons", 3, "title", "ar"] */
                 path: (string | number)[];
                 /** @enum {string} */
-                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script";
+                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script" | "invalid_template";
                 limit?: number;
                 length?: number;
                 variable?: string;
@@ -9198,7 +9242,7 @@ export interface components {
                     };
                 }[];
             };
-            /** @description The Meta-approved templates: read-only */
+            /** @description Deprecated (E6-16d): the default templates (Egyptian Arabic, English); read `templates` */
             templateText: {
                 ar: {
                     body: string;
@@ -9209,6 +9253,17 @@ export interface components {
                     buttons: string[];
                 };
             };
+            /** @description E6-16d: every first-message template, read-only (Meta approves the wording) */
+            templates: {
+                /** @enum {string} */
+                variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+                /** @description The name in the store's WhatsApp account */
+                name: string;
+                /** @enum {string} */
+                lang: "ar" | "en";
+                body: string;
+                buttons: string[];
+            }[];
         };
         ScriptPreview: {
             /** @enum {string} */
@@ -9219,7 +9274,7 @@ export interface components {
                 /** @description e.g. ["texts", "en", "btn_offer_yes"] or ["cancelReasons", 3, "title", "ar"] */
                 path: (string | number)[];
                 /** @enum {string} */
-                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script";
+                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script" | "invalid_template";
                 limit?: number;
                 length?: number;
                 variable?: string;
@@ -9269,6 +9324,14 @@ export interface components {
                 key: "confirmed" | "confirmed_offer_top" | "change_prompt" | "change_received" | "cancel_prompt" | "cancel_button" | "cancel_header" | "cancel_section" | "keep_title" | "keep_description" | "cancelled" | "offer_pitch" | "offer_question" | "btn_offer_yes" | "btn_offer_no" | "offer_added" | "offer_added_generic" | "offer_failed" | "offer_failed_generic" | "offer_declined" | "offer_expired" | "summary_pay" | "summary_paid" | "summary_more" | "summary_area" | "noted" | "already" | "opted_out" | "opted_in" | "on_delivery" | "footer" | "link_text" | "call";
                 text: string;
             }[];
+            /** @description E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback) */
+            template?: {
+                /** @enum {string} */
+                variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+                name: string;
+                /** @enum {string} */
+                status: "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED" | "MISSING" | "UNKNOWN";
+            };
         };
         ScriptPreviewRequest: {
             script: {
@@ -9373,6 +9436,11 @@ export interface components {
                         en?: string;
                     };
                 }[];
+                /**
+                 * @description E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one
+                 * @enum {string}
+                 */
+                template?: "ar_egyptian" | "ar_formal" | "ar_gulf";
             };
             /**
              * Format: uuid
@@ -10045,6 +10113,13 @@ export interface components {
                  */
                 acceptUrl: string;
             }[];
+        };
+        TemplateSubmit: {
+            /** @enum {string} */
+            variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+            name: string;
+            /** @description False when the same submission is already waiting (pressed twice) */
+            queued: boolean;
         };
         Tenant: {
             /** Format: uuid */
@@ -19778,6 +19853,59 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_submitTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                variant: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description E6-16d: send a first-message template (ar_egyptian, ar_formal, ar_gulf, en) to Meta for review, in the store's WhatsApp account: queued (an outbox job, never twice for one name); the status shows in GET /v1/settings/confirmation once Meta answers. A rejected one goes back to review. Audited */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateSubmit"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

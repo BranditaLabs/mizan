@@ -3,6 +3,8 @@ import { DriftMonitor } from "../src/adapt/drift.js";
 import { isIntegrationError } from "../src/core/errors.js";
 import { WhatsAppCloudConnector } from "../src/connectors/whatsapp/connector.js";
 import { afterUnknownSend, parseWhatsAppWebhook, verifyMetaSignature } from "../src/connectors/whatsapp/webhooks.js";
+import { MemoryStore } from "../src/sync/store.js";
+import { OutboxWorker } from "../src/sync/worker.js";
 import { FakeClock, seeded, testRuntime } from "./fakes/clock.js";
 import { FakeWhatsApp } from "./fakes/whatsapp.js";
 
@@ -96,5 +98,41 @@ describe("WhatsApp under chaos", () => {
     for (const it of items) expect(wa.sentWithKey(it.key), it.key).toHaveLength(1); // no customer messaged twice
     expect([...answered.keys()].sort()).toEqual(items.map((x) => x.key).sort());
     expect([...answered.values()].every((n) => n === 1)).toBe(true);
+  });
+
+  /**
+   * E6-16d: owners submitting the confirmation template from Mizan, as outbox jobs (one per name,
+   * idempotency key per number and name), while Meta fails a share of calls, hangs, and loses the
+   * answer to creates it made. Required: every template created exactly once, every job done, an
+   * empty dead letter, and a submit pressed twice is one job.
+   */
+  it.each([0.1, 0.25, 0.5])("20 template submissions with %s of calls failing: each created once, none dead", async (rate) => {
+    const seed = Number(process.env.CHAOS_SEED ?? 0);
+    const clock = new FakeClock();
+    const wa = new FakeWhatsApp(clock, seeded(51 + seed * 7));
+    wa.randomFaultRate = rate;
+    const rt = testRuntime(clock, { [wa.host]: wa.handler }, seeded(52 + seed * 7));
+    const c = new WhatsAppCloudConnector({ phoneNumberId: wa.phoneNumberId, wabaId: wa.wabaId, accessToken: wa.token, baseUrl: wa.baseUrl }, rt, new DriftMonitor());
+    const store = new MemoryStore();
+    const worker = new OutboxWorker(store, rt, {
+      "whatsapp.createTemplate": async (job) => {
+        const p = job.payload as { name: string };
+        await c.createTemplate({ name: p.name, language: "ar", category: "UTILITY", body: "👋 {{1}}\nطلبك {{3}} من {{2}}.\nالإجمالي {{4}}.", example: ["أهلاً منى", "متجر النيل", "#1001", "1,250 ج.م."], buttons: ["أكّد", "عدّل", "ألغِ"] });
+      },
+    });
+    const names = Array.from({ length: 20 }, (_, i) => `mizan_chaos_${i}`);
+    for (const name of names) {
+      for (let press = 0; press < 2; press++) await store.enqueue({ kind: "whatsapp.createTemplate", connection: "whatsapp", payload: { name }, idempotencyKey: `wa-template:conn-1:${name}` }, clock.now());
+    }
+    for (let round = 0; round < 300; round++) {
+      await worker.tick();
+      if ((await store.jobs()).every((j) => j.status === "done" || j.status === "dead")) break;
+      clock.advance(5 * 60_000);
+    }
+    const jobs = await store.jobs();
+    expect(jobs).toHaveLength(names.length); // pressed twice: one job
+    if (rate === 0.5) expect(jobs.some((j) => j.attempts > 1)).toBe(true); // failures really happened
+    expect(jobs.filter((j) => j.status !== "done").map((j) => `${(j.payload as { name: string }).name}:${j.status}:${j.lastError}`)).toEqual([]);
+    for (const name of names) expect(wa.createdTemplates.filter((t) => t.name === name), name).toHaveLength(1);
   });
 });

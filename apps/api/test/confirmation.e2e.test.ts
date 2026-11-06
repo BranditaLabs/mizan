@@ -427,7 +427,15 @@ describe("every chat word editable (E6-16a)", () => {
     expect(p.issues).toEqual([]);
     expect(p.conversations.map((c: { scenario: string }) => c.scenario)).toEqual(["confirm", "confirm_offer", "change", "cancel", "message", "already", "opt_out", "opt_in"]);
     for (const c of p.conversations) expect(c.turns[0]).toMatchObject({ from: "business", kind: "template", editable: false });
-    expect(p.conversations[0].turns[0].body).toContain(`أوردرك رقم ${o.body.number} من Nile Abayas وصلنا.`);
+    // E6-16d: the gulf pack's first message, as the store would send it (no WhatsApp number here: its state is unknown).
+    expect(p.template).toEqual({ variant: "ar_gulf", name: "mizan_order_confirm_ar_gulf", status: "UNKNOWN" });
+    expect(p.conversations[0].turns[0].body).toMatch(new RegExp(`^👋 .+\\nوصلنا طلبك رقم ${o.body.number} من Nile Abayas\\.`));
+    expect(p.conversations[0].turns[0].buttons).toEqual(["أكّد الطلب", "أبي أعدّل", "ألغِ الطلب"]);
+    expect(p.conversations[0].turns[1]).toMatchObject({ kind: "tap", text: "أكّد الطلب" });
+    // The owner's own choice wins over the pack's.
+    const chosen = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script: { ...script, template: "ar_egyptian" }, orderId: o.body.id }).expect(200)).body;
+    expect(chosen.template).toMatchObject({ variant: "ar_egyptian", name: "mizan_order_confirm_ar" });
+    expect(chosen.conversations[0].turns[0].body).toContain(`أوردرك رقم ${o.body.number} من Nile Abayas وصلنا.`);
     const cancel = p.conversations.find((c: { scenario: string }) => c.scenario === "cancel").turns.find((t: { kind: string }) => t.kind === "list");
     expect(cancel).toMatchObject({ key: "cancel_prompt", editable: true, header: `طلب ${o.body.number} من Nile Abayas`, footer: "مع Nile Abayas" });
     expect(cancel.list.rows).toEqual([{ title: "المقاس مو مضبوط", description: "نبدّله لك" }, { title: "التوصيل متأخر" }, { title: "لا، كمّل الطلب" }]);
@@ -440,6 +448,8 @@ describe("every chat word editable (E6-16a)", () => {
     expect(en.lang).toBe("en");
     expect(en.link).toContain("https://app.mizan.test/en/c/xxxxxxxx");
     expect(en.replies).toHaveLength(5); // the v1 shape, until E6-16b
+    expect(en.template).toMatchObject({ variant: "en", name: "mizan_order_confirm_en" });
+    expect(en.conversations[0].turns[0].buttons).toEqual(["Confirm order", "I want a change", "Cancel order"]);
   });
 
   it("saving refuses with the exact paths, in Arabic and English texts", async () => {

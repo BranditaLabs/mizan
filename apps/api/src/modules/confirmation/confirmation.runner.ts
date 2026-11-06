@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from "@nestjs/common";
-import { sql } from "kysely";
-import { asWorker } from "@mizan/db";
+import { sql, type Transaction } from "kysely";
+import { asWorker, type DB } from "@mizan/db";
 import { afterUnknownSend, isIntegrationError, type MessagingProvider, type WhatsAppChat } from "@mizan/engine";
 import { APP_CONFIG, runsWorkerInProcess, type AppConfig } from "../../platform/config.js";
 import { Database } from "../../platform/db/database.js";
@@ -9,7 +9,8 @@ import { MetricsService } from "../../platform/metrics/metrics.service.js";
 import { actionId } from "./confirmation-link.js";
 import { ConfirmationService, type RunRow } from "./confirmation.service.js";
 import { FollowupsRunner } from "./after/followups.runner.js";
-import { CALL_DIGITS, callPrompts, chatContent, CHAT_MESSAGES, TEMPLATE_ACTIONS, templateName, whatsappParams, type ChatMessage, type MessageFacts } from "./messages.js";
+import { CALL_DIGITS, callPrompts, chatContent, CHAT_MESSAGES, whatsappParams, type ChatMessage, type MessageFacts } from "./messages.js";
+import { chosenTemplate, effectiveTemplate, TEMPLATE_ACTIONS, TEMPLATE_SPECS, type TemplateVariant } from "./templates.js";
 import { canChat, MessagingRegistry } from "./messaging.registry.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
 import { OfferAi } from "./offers/offer-ai.service.js";
@@ -23,9 +24,11 @@ const backoff = (attempt: number) => Math.min(8, 2 ** (attempt - 1)) * 60_000;
 /** A WhatsApp send whose response was lost is checked again after this long (its status webhook decides). */
 const VERIFY_MS = 10 * 60_000;
 const UNKNOWN = "unknown_outcome";
+/** The notification source when a send used another approved template than the owner's choice (E6-16d). */
+export const TEMPLATE_FALLBACK_SOURCE = "whatsapp.template_fallback";
 
-/** What went out; the kind is the transcript's (template, text, buttons, list) or a call. */
-type Sent = { ref: string; kind: "template" | "text" | "buttons" | "list" | "call" };
+/** What went out; the kind is the transcript's (template, text, buttons, list) or a call; a template says which one, and whether it stood in for the chosen one (E6-16d). */
+type Sent = { ref: string; kind: "template" | "text" | "buttons" | "list" | "call"; template?: { variant: TemplateVariant; chosen: TemplateVariant; fallback: boolean } };
 
 /**
  * Runs due confirmation steps (E6-7, E6-10). For each store with due steps: claim them in a short
@@ -73,9 +76,10 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
     await this.running;
   }
 
-  /** One pass: WhatsApp numbers waiting for their check, then every store with due steps. Returns how many steps ran. */
+  /** One pass: WhatsApp numbers waiting for their check, templates to submit (E6-16d), then every store with due steps. Returns how many steps ran. */
   async runOnce(now = new Date()): Promise<number> {
     await this.whatsappConnections.checkWaiting(now).catch((err) => this.logger.error({ err }, "whatsapp connection check failed"));
+    await this.whatsappConnections.runTemplateJobs(now).catch((err) => this.logger.error({ err }, "whatsapp template jobs failed"));
     const due = await asWorker(this.db.kysely, (trx) => trx.selectFrom("confirmation_steps").select("tenant_id").distinct()
       .where((eb) => eb.or([
         eb.and([eb("status", "=", "pending"), eb("run_at", "<=", now)]),
@@ -155,8 +159,8 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
       return this.finishSend(tenantId, step, prepared.run, now, { ok: false, final: true, error: prepared.message ? "channel not connected" : "no phone on the order" });
     }
     try {
-      const { ref, kind } = await this.deliver(provider, step, prepared.run, prepared.message.to, prepared.message.facts);
-      await this.finishSend(tenantId, step, prepared.run, now, { ok: true, ref, kind }, m.whatsappConnectionId);
+      const sent = await this.deliver(provider, step, prepared.run, prepared.message.to, prepared.message.facts, m.whatsappTemplates);
+      await this.finishSend(tenantId, step, prepared.run, now, { ok: true, ...sent }, m.whatsappConnectionId);
     } catch (err) {
       if (isIntegrationError(err) && err.kind === "timeout" && step.channel === "whatsapp" && canChat(provider)) {
         // Outcome unknown (Meta has no idempotency key): check for its status webhook before any re-send.
@@ -167,7 +171,7 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
     }
   }
 
-  private deliver(provider: MessagingProvider & Partial<WhatsAppChat>, step: StepRow, run: RunRow, to: string, f: MessageFacts): Promise<Sent> {
+  private deliver(provider: MessagingProvider & Partial<WhatsAppChat>, step: StepRow, run: RunRow, to: string, f: MessageFacts, statuses: Record<string, string> | null = null): Promise<Sent> {
     const key = step.idempotency_key;
     const sign = (action: Parameters<typeof actionId>[2], arg?: string) => actionId(this.config.LINK_SIGNING_KEY, run.id, action, arg);
     if (step.kind === "reply") {
@@ -186,18 +190,30 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
       }).then(as("list"));
     }
     if (step.channel === "whatsapp") {
+      // E6-16d: the owner's choice when Meta approved it, else an approved one (recorded); its buttons keep TEMPLATE_ACTIONS' order.
+      const chosen = chosenTemplate(f.lang, f.script);
+      const { variant, fallback } = effectiveTemplate(chosen, f.lang, statuses);
+      const spec = TEMPLATE_SPECS[variant];
       const quickReplies = TEMPLATE_ACTIONS.map((a) => sign(a));
       const sent = canChat(provider)
-        ? provider.sendTemplate({ to, key, template: templateName(f.lang), lang: f.lang, params: whatsappParams(f), quickReplies })
-        : provider.sendWhatsApp({ to, key, template: templateName(f.lang), lang: f.lang, params: whatsappParams(f), buttons: quickReplies });
-      return sent.then((r) => ({ ref: r.ref, kind: "template" }));
+        ? provider.sendTemplate({ to, key, template: spec.name, lang: spec.lang, params: whatsappParams(f), quickReplies })
+        : provider.sendWhatsApp({ to, key, template: spec.name, lang: spec.lang, params: whatsappParams(f), buttons: quickReplies });
+      return sent.then((r): Sent => ({ ref: r.ref, kind: "template", template: { variant, chosen, fallback } }));
     }
     return provider.placeCall({ to, lang: f.lang, prompts: callPrompts(f), digits: { ...CALL_DIGITS }, callbackUrl: `${this.config.PUBLIC_URL.replace(/\/$/, "")}/webhooks/messaging/voice` })
       .then((r) => ({ ref: r.ref, kind: "call" }));
   }
 
+  /** "template_fallback|ar_gulf|ar_egyptian": told in the reader's language by the notification bell; once per store and day. */
+  private async fallbackNotice(trx: Transaction<DB>, tenantId: string, connectionId: string, chosen: TemplateVariant, used: TemplateVariant, now: Date) {
+    await trx.insertInto("notifications").values({
+      tenant_id: tenantId, roles: ["owner", "admin"], text: `template_fallback|${chosen}|${used}`, entity_type: "connection", entity_id: connectionId,
+      source: TEMPLATE_FALLBACK_SOURCE, dedupe_key: `${TEMPLATE_FALLBACK_SOURCE}:${now.toISOString().slice(0, 10)}`,
+    }).onConflict((oc) => oc.columns(["tenant_id", "dedupe_key"]).where("dedupe_key", "is not", null).doNothing()).execute();
+  }
+
   private async finishSend(tenantId: string, step: StepRow, run: RunRow, now: Date,
-    r: { ok: true; ref: string; kind?: Sent["kind"] } | { ok: false; final: boolean; error: string; unknown?: boolean }, connectionId: string | null = null, unknownSince?: Date): Promise<void> {
+    r: { ok: true; ref: string; kind?: Sent["kind"]; template?: Sent["template"] } | { ok: false; final: boolean; error: string; unknown?: boolean }, connectionId: string | null = null, unknownSince?: Date): Promise<void> {
     await this.db.tenant(tenantId, async (trx) => {
       const live = await this.confirmations.runById(trx, run.id, true);
       if (r.ok) {
@@ -209,10 +225,13 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
           const reply = (step.payload as { message?: string } | null)?.message;
           const kind = r.kind ?? (step.kind === "reply" ? reply === "cancel_reasons" ? "list" : reply === "confirmed_offer" ? "buttons" : "text" : "template");
           const action = step.kind === "reply" ? (step.payload as { message?: string } | null)?.message ?? null : "ask";
+          const template = r.template?.variant ?? null;
           await trx.insertInto("whatsapp_messages").values({
             tenant_id: tenantId, connection_id: connectionId, run_id: live.id, order_id: live.order_id, direction: "out", wamid: r.ref, kind, action, status: "accepted",
-            step_key: step.idempotency_key, customer_hash: live.customer_hash, created_at: now, updated_at: now,
-          }).onConflict((oc) => oc.columns(["tenant_id", "wamid"]).doUpdateSet({ run_id: live.id, order_id: live.order_id, kind, action, step_key: step.idempotency_key, connection_id: connectionId })).execute();
+            step_key: step.idempotency_key, customer_hash: live.customer_hash, template, created_at: now, updated_at: now,
+          }).onConflict((oc) => oc.columns(["tenant_id", "wamid"]).doUpdateSet({ run_id: live.id, order_id: live.order_id, kind, action, step_key: step.idempotency_key, connection_id: connectionId, ...(template ? { template } : {}) })).execute();
+          // The chosen template is not approved (yet): the owner hears it once a day (E6-16d).
+          if (r.template?.fallback && connectionId) await this.fallbackNotice(trx, tenantId, connectionId, r.template.chosen, r.template.variant, now);
         }
         if (step.kind === "reply") return;
         if (live.status !== "running" || live.step !== step.idx) return; // answered while we were sending

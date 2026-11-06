@@ -49,29 +49,9 @@ This is what E6-10 needs to work for real. Until it's done, confirmation goes st
 | 2 | Add a **payment method** on that WhatsApp account (Meta bills per delivered template message) | WhatsApp Manager → Billing | — |
 | 3 | Create a **system user** with a **permanent token** that has `whatsapp_business_messaging` and `whatsapp_business_management` on that account | Business settings → Users → System users | The store owner pastes it in **Mizan → Settings → Confirmation → Connect WhatsApp**. Never send it to anyone. |
 | 4 | Copy the **Phone number ID** and the **WhatsApp Business Account ID** (digits, *not* the phone number) | App → WhatsApp → API setup | Pasted in the same Mizan form |
-| 5 | Submit the two **message templates** below, category **Utility**, exactly as written | WhatsApp Manager → Message templates | Mizan checks approval automatically; the connection turns green when approved |
+| 5 | Choose the **first message** (Egyptian, formal or Gulf Arabic) and press **Submit to Meta** for it (and English if the store sells in English) | **Mizan → Settings → Confirmation → WhatsApp → First confirmation message** (E6-16d) | Meta reviews it, usually within minutes to a day; Mizan shows its state and the connection turns green when one in the store's language is approved |
 
-**Template `mizan_order_confirm_ar`** (language: Arabic, category: Utility)
-
-```
-{{1}} 👋
-أوردرك رقم {{3}} من {{2}} وصلنا.
-الإجمالي {{4}}.
-أكّد الأوردر عشان نجهّزه ونشحنه لك.
-```
-Quick-reply buttons, in this order: **أكّد الأوردر** · **عايز أعدّل** · **ألغي الأوردر**
-
-Example values for Meta's review: `{{1}}` = أهلاً منى · `{{2}}` = متجر النيل · `{{3}}` = #1042 · `{{4}}` = 1,250 ج.م. عند الاستلام
-
-**Template `mizan_order_confirm_en`** (language: English, category: Utility)
-
-```
-{{1}} 👋
-We received your order {{3}} from {{2}}.
-Total: {{4}}.
-Please confirm so we can prepare and ship it.
-```
-Quick-reply buttons: **Confirm order** · **I want a change** · **Cancel order**
+Mizan submits the template in your account itself, category **Utility**, with Meta's example values. The four templates (exact wording in `docs/modules/M02-smart-confirmation.md` §Templates): `mizan_order_confirm_ar` (Egyptian), `mizan_order_confirm_ar_formal`, `mizan_order_confirm_ar_gulf`, `mizan_order_confirm_en`. Each starts with "👋 {{1}}": Meta refuses a template that starts or ends with a variable. Submitting by hand in WhatsApp Manager still works: use the same names and wording.
 
 > 💡 **Keep offers out of these templates.** Meta re-classifies a utility template that promotes anything as *marketing*, which costs more and needs marketing opt-in. Mizan sends the upsell offer later, inside the free chat window that opens when the customer taps.
 

@@ -49,11 +49,13 @@ export function ScriptEditor({ value, onChange }: { value: Script | undefined; o
           <Select label={t("pack")} value={script.pack} onChange={(e) => { onChange({ ...script, pack: e.target.value as Script["pack"] }); preview.reset(); }} className="w-56">
             <option value="egyptian">{t("packs.egyptian")}</option>
             <option value="formal">{t("packs.formal")}</option>
+            <option value="gulf">{t("packs.gulf")}</option>
           </Select>
           <nav aria-label={t("language")} className="mz-tabs">
             {(["ar", "en"] as const).map((l) => <button key={l} type="button" className="mz-tab" aria-current={lang === l ? "true" : undefined} onClick={() => setLang(l)}>{t(`lang.${l}`)}</button>)}
           </nav>
         </div>
+        {script.pack === "gulf" ? <p className="text-body-sm text-text-2" data-testid="gulf-hint">{t("gulfHint")}</p> : null}
         <p className="text-caption text-text-3">
           {t("variables")}{" "}
           {TOKENS.map((v) => <code key={v} dir="ltr" className="me-1.5 inline-block rounded-xs bg-surface-sunk px-1">{v}</code>)}

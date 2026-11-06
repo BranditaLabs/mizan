@@ -60,6 +60,7 @@ export class EngineJobRunner implements OnApplicationBootstrap, OnApplicationShu
     const rows = await asWorker(this.db.kysely, (trx) => sql<{ tenant_id: string; scope: string }>`
       SELECT tenant_id, scope FROM mz_outbox
       WHERE next_attempt_at <= ${now} AND (status = 'pending' OR (status = 'running' AND locked_until < ${now}))
+        AND scope NOT LIKE 'whatsapp:%' -- a WhatsApp number's jobs (E6-16d): run by the confirmation runner, not a store engine
         AND NOT ((tenant_id::text || '|' || scope) = ANY(${exclude}::text[]))
       GROUP BY tenant_id, scope ORDER BY min(next_attempt_at) LIMIT ${limit}`.execute(trx));
     return rows.rows.map((r) => ({ tenantId: r.tenant_id, store: r.scope }));

@@ -22,6 +22,8 @@ import type { ScriptPreview } from "./confirmation.dto.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
 import { AfterConfirmationService } from "./after/after.service.js";
+import { chosenTemplate, effectiveTemplate, statusOf, TEMPLATE_SPECS } from "./templates.js";
+import { templateStates } from "./whatsapp-connections.service.js";
 
 export type Answer = "confirm" | "cancel" | "change";
 export type AnswerChannel = "link" | "whatsapp" | "voice_ivr" | "voice_ai" | "agent" | "call_team" | "auto";
@@ -305,10 +307,14 @@ export class ConfirmationService {
         price: fromMinor(13500n, cur), was: fromMinor(15000n, cur), message: null, newTotal: fromMinor(dueMinor + 13500n, cur),
       };
       const text = (c: ReturnType<typeof chatContent>) => (c.type === "text" ? c.text : c.body);
+      // E6-16d: the first message the store would send now with this draft's choice: the chosen one, or the approved fallback.
+      const { statuses } = await templateStates(trx, tenantId);
+      const sent = effectiveTemplate(chosenTemplate(lang, script), lang, statuses).variant;
       return {
         lang, sample: !orderId,
         issues: validateScript(script, { storeName: name, storeLang }),
-        conversations: previewConversations(withSummary, offer),
+        conversations: previewConversations(withSummary, offer, sent),
+        template: { variant: sent, name: TEMPLATE_SPECS[sent].name, status: statusOf(statuses, sent) },
         call: callScript(f),
         link: linkText(f),
         replies: [
@@ -491,7 +497,7 @@ export class ConfirmationService {
       const raw = (t.settings as { confirmation?: { script?: unknown } } | null)?.confirmation?.script;
       // What in the saved script no longer passes (renamed store, tighter limit): shown, never dropped.
       const issues = scriptIssues(raw, { storeName: t.name, storeLang: t.locale?.startsWith("en") ? "en" : "ar" });
-      return { settings: confirmationSettings(t.settings), channels: await this.messaging.channels(tenantId, trx), scriptIssues: issues };
+      return { settings: confirmationSettings(t.settings), channels: await this.messaging.channels(tenantId, trx), scriptIssues: issues, templates: (await templateStates(trx, tenantId)).templates };
     });
   }
 
@@ -513,7 +519,7 @@ export class ConfirmationService {
       const before = confirmationSettings(t.settings);
       await trx.updateTable("tenants").set({ settings: JSON.stringify({ ...(t.settings as object), confirmation: next }) }).where("id", "=", tenantId).execute();
       await this.audit.record(trx, { action: "confirmation.settings_updated", tenantId, ...auditActor(auth), entity: { type: "tenant", id: tenantId }, before, after: next });
-      return { settings: next, channels: await this.messaging.channels(tenantId, trx), scriptIssues: next.script ? scriptIssues(next.script, { storeName: t.name, storeLang }) : [] };
+      return { settings: next, channels: await this.messaging.channels(tenantId, trx), scriptIssues: next.script ? scriptIssues(next.script, { storeName: t.name, storeLang }) : [], templates: (await templateStates(trx, tenantId)).templates };
     });
   }
 
