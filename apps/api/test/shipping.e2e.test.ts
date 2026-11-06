@@ -490,6 +490,22 @@ describe("orders made in Mizan reach Shopify: one record in Mizan, Shopify and t
     expect(copyOf(id)).toHaveLength(1);
   });
 
+  it("copies made before customers and governorate codes were sent are put right by the guardian, once each (U26)", async () => {
+    const id = await manual({ mode: "cod" });
+    await settle();
+    const copy = copyOf(id)[0]!;
+    expect(copy.customer).toMatchObject({ phone: "+201001234821" }); // a new copy carries the buyer already
+    copy.customer = null as unknown as Record<string, unknown>; // as the old code left it
+    copy.shippingAddress = { ...copy.shippingAddress, province: "C", provinceCode: null };
+    shop.customers.length = 0;
+    // The sweep starts after the deploy, when every old copy exists: from the beginning.
+    await db.tenant(store, (trx) => trx.deleteFrom("mz_records").where("type", "=", "guardian").where("key", "like", "copy-repair:%").execute());
+    for (let i = 0; i < 4; i++) { await app.get(SyncGuardian).round(Date.now(), clock.now()); await settle(); }
+    expect(copy.customer).toMatchObject({ phone: "+201001234821" });
+    expect(copy.shippingAddress).toMatchObject({ province: "Cairo", provinceCode: "C" });
+    expect(shop.customers.filter((c) => c.phone === "+201001234821")).toHaveLength(1);
+  });
+
   it("shipped with Bosta: the copy in Shopify is fulfilled with the tracking number", async () => {
     const id = await manual({ mode: "cod" });
     await settle();

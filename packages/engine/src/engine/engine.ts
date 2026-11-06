@@ -641,6 +641,11 @@ export class MizanEngine {
   }
 
   /** An order made in Mizan was edited (`editId`): its store copy follows. One job per edit. */
+  /** Put right a copy made before customers and governorate codes were sent (U26): once per copy and repair version. */
+  static shopifyRepairCopyJob(orderId: string, version: string): NewJob<{ orderId: string }> {
+    return { kind: "shopify.repairCopy", connection: "shopify", payload: { orderId }, idempotencyKey: `shopify:copy-repair:${orderId}:${version}` };
+  }
+
   static shopifyCopyEditJob(orderId: string, editId: string): NewJob<{ orderId: string; editId: string }> {
     return { kind: "shopify.syncCopy", connection: "shopify", payload: { orderId, editId }, idempotencyKey: `shopify:copy-edit:${orderId}:${editId}` };
   }
@@ -852,6 +857,12 @@ export class MizanEngine {
       "shopify.createProduct": (j) => this.publishProduct(j.payload.productId, "shopify"),
       "shopify.createOrder": (j) => this.createStoreOrder(j.payload.orderId),
       "shopify.syncCopy": (j) => this.syncStoreCopy(j.payload.orderId, j.payload.editId),
+      "shopify.repairCopy": async (j) => {
+        const target = await this.opts.hooks?.loadStoreCopy?.(j.payload.orderId);
+        if (!target) return;
+        const r = await this.shopify.repairCopy(target.copyId, target.draft);
+        this.emit("store_copy.repaired", { orderId: j.payload.orderId, ...r });
+      },
       "shopify.cancelFulfillment": async (j) => { this.emit("store_fulfillment.cancelled", { orderId: j.payload.orderId, outcome: await this.shopify.cancelFulfillment(j.payload.orderId, j.payload.trackingNumber) }); },
       "paymob.createLink": (j) => this.createPaymentLink(j.payload.linkId),
       "paymob.ingestTransaction": (j) => this.ingestPaymobTransaction(j.payload.transactionId),

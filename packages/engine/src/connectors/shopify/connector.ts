@@ -554,6 +554,58 @@ export class ShopifyConnector {
     } };
   }
 
+  /**
+   * Put right a store copy made before customers and governorate codes were sent (U26): the buyer set
+   * on it (found by phone or email; created when the app may write customers), and the governorate's
+   * code added to the address Shopify has, nothing else of the address changed. Safe to repeat.
+   */
+  async repairCopy(orderId: string, d: Pick<StoreOrderDraft, "number" | "customer" | "address">): Promise<{ customer: "set" | "had" | "none"; province: boolean }> {
+    const raw = await this.gql.run<{ order?: unknown }>(Q.ORDER_CUSTOMER, { id: orderId }, { idempotent: true });
+    const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
+    if (!r.str("id", ["id"])) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${orderId} not found` });
+    let customer: "set" | "had" | "none" = r.str("customer", ["customer.id"]) ? "had" : "none";
+    if (customer === "none" && d.customer) {
+      const id = await this.customerIdFor(d.number, d.customer);
+      if (id) {
+        const s = await this.gql.run<{ orderCustomerSet: { userErrors: UserErrors } }>(Q.ORDER_CUSTOMER_SET, { orderId, customerId: id }, { idempotent: true });
+        assertNoUserErrors("orderCustomerSet", s.orderCustomerSet?.userErrors);
+        customer = "set";
+      }
+    }
+    // Only an address Shopify holds without a code (the old copies' "C" written as a name): the team's own fixes stay.
+    const code = d.address.provinceCode;
+    const have = (k: string) => r.str(k, [`shippingAddress.${k}`]);
+    let province = false;
+    if (code && r.any("address", ["shippingAddress"]) && !have("provinceCode")) {
+      const u = await this.gql.run<{ orderUpdate: { userErrors: UserErrors } }>(Q.ORDER_UPDATE, { input: { id: orderId, shippingAddress: {
+        firstName: have("firstName") ?? null, lastName: have("lastName") ?? null, phone: have("phone") ?? null, address1: have("address1") ?? d.address.line1,
+        address2: have("address2") ?? null, city: have("city") ?? d.address.city, provinceCode: code, countryCode: have("countryCodeV2") ?? d.address.countryCode,
+      } } }, { idempotent: true });
+      assertNoUserErrors("orderUpdate", u.orderUpdate?.userErrors);
+      province = true;
+    }
+    return { customer, province };
+  }
+
+  /** The store's customer id for this buyer: found, or created (write_customers); undefined when neither is possible. */
+  private async customerIdFor(number: string, c: NonNullable<StoreOrderDraft["customer"]>): Promise<string | undefined> {
+    const found = await this.customerFor(number, c);
+    const existing = (found?.toAssociate as { id?: string } | undefined)?.id;
+    if (existing || !found) return existing;
+    try {
+      const made = await this.gql.run<{ customerCreate?: { customer?: { id?: string } | null; userErrors: UserErrors } }>(Q.CUSTOMER_CREATE, { input: found.toUpsert }, { idempotent: false, maxAttempts: 1 });
+      const errs = made.customerCreate?.userErrors ?? [];
+      // Taken meanwhile (a lost answer, or the search index behind): found again.
+      if (errs.some((e) => /taken|already/i.test(e.message))) return ((await this.customerFor(number, c))?.toAssociate as { id?: string } | undefined)?.id;
+      assertNoUserErrors("customerCreate", errs);
+      return made.customerCreate?.customer?.id ?? undefined;
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.kind !== "permission") throw e;
+      this.drift.record({ connector: "shopify", entity: "customer", kind: "missing_field", detail: `order ${number}: no customer in the store and the app may not create one (write_customers)`, at: this.rt.clock.now() });
+      return undefined;
+    }
+  }
+
   private async ensureOrderIdDefinition() {
     if (this.orderIdDefined) return;
     const r = await this.gql.run<{ metafieldDefinitionCreate: { userErrors: Array<{ field?: string[] | null; message: string; code?: string | null }> } }>(Q.ORDER_ID_DEFINITION, {

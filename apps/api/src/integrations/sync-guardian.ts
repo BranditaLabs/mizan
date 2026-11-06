@@ -28,6 +28,8 @@ export const GUARD = {
 /** Trouble that passes: worth another try later. The rest (validation, auth, permission…) needs a person. */
 const RETRYABLE = /^(gave up after \d+ attempts — (rate_limited|transient|timeout|circuit_open|conflict)|rate_limited|transient|timeout|circuit_open|conflict)/;
 const COLLECTS_ON_DELIVERY = new Set(["cod", "partial"]);
+/** The copy repair's version: a new one walks every copy again. */
+const COPY_REPAIR = "u26";
 const TERMINAL_FOR_STORE = new Set<ShipmentStatus>(["delivered", "returned", "lost"]);
 
 /** When the guardian will bring a dead job back on its own (engine-clock ms), or null when it needs a person. */
@@ -235,6 +237,14 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
       for (const u of unread) {
         count(await engineQueue({ shopify: storeId }).enqueue({ kind: "shopify.ingestOrder", connection: "shopify", payload: { orderId: u.store_copy_id! }, idempotencyKey: `shopify:order:${u.store_copy_id}:baseline:v${COPY_SNAPSHOT_VERSION}` }, clock));
       }
+      // U26: copies made before customers and governorate codes were sent are put right once each
+      // (a cursor walks them, a few per round; the job's key makes a repeat a no-op).
+      const queue = engineQueue({ shopify: storeId });
+      const cursor = await queue.get<{ after: string }>("guardian", `copy-repair:${COPY_REPAIR}`);
+      const old = await trx.selectFrom("orders").select("id").where("store_copy_connection_id", "=", storeId).where("store_copy_id", "is not", null)
+        .where("status", "!=", "cancelled").$if(Boolean(cursor?.after), (q) => q.where("id", ">", cursor!.after)).orderBy("id").limit(25).execute();
+      for (const o of old) count(await queue.enqueue(MizanEngine.shopifyRepairCopyJob(o.id, COPY_REPAIR), clock));
+      if (old.length) await queue.put("guardian", `copy-repair:${COPY_REPAIR}`, { after: old.at(-1)!.id }, clock);
     }
 
     // Orders made in Mizan with no copy in the store yet (the job lost, or made before the switch): queued (a no-op when queued).

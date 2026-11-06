@@ -521,6 +521,27 @@ export const CUSTOMER_FIND: GqlOperation = {
   variants: [`query MizanCustomerFind($query: String!) { customers(first: 1, query: $query) { nodes { id } } }`],
 };
 
+/** The order's customer and address as Shopify has them (a copy made before customers and codes were sent). */
+export const ORDER_CUSTOMER: GqlOperation = {
+  name: "MizanOrderCustomer",
+  cost: 1,
+  variants: [`query MizanOrderCustomer($id: ID!) { order(id: $id) { id customer { id } shippingAddress { firstName lastName phone address1 address2 city provinceCode countryCodeV2 } } }`],
+};
+
+/** A new store customer (write_customers). Not idempotent: found first by phone or email. */
+export const CUSTOMER_CREATE: GqlOperation = {
+  name: "MizanCustomerCreate",
+  cost: 10,
+  variants: [`mutation MizanCustomerCreate($input: CustomerInput!) { customerCreate(input: $input) { customer { id } userErrors { field message } } }`],
+};
+
+/** A customer set on an order (write_orders); setting the same one again changes nothing. */
+export const ORDER_CUSTOMER_SET: GqlOperation = {
+  name: "MizanOrderCustomerSet",
+  cost: 10,
+  variants: [`mutation MizanOrderCustomerSet($orderId: ID!, $customerId: ID!) { orderCustomerSet(orderId: $orderId, customerId: $customerId) { order { id } userErrors { field message } } }`],
+};
+
 /** Onboarding: the store's own name, currency, timezone and country, so the merchant does not type them. */
 export const SHOP_PROFILE: GqlOperation = {
   name: "MizanShopProfile",

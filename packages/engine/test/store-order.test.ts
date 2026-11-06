@@ -215,3 +215,56 @@ describe("the store's profile from Shopify (onboarding)", () => {
   });
 });
 
+describe("store copies made before customers and governorate codes were sent (U26 repair)", () => {
+  function legacy(over: { writeDenied?: boolean } = {}) {
+    const drafts = new Map<string, StoreOrderDraft>();
+    const w = setup({ hooks: {
+      loadStoreOrderDraft: async (id) => drafts.get(id),
+      onStoreOrderCreated: async () => {},
+      loadStoreCopy: async (id) => { const d = drafts.get(id); const c = [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${id}`); return d && c ? { copyId: c.id, draft: d } : undefined; },
+    } });
+    w.shop.customerWriteDenied = over.writeDenied ?? false;
+    const run = async () => {
+      drafts.set(OID, draft());
+      await w.store.enqueue(MizanEngine.shopifyCreateOrderJob(OID), w.clock.now());
+      await settle(w.engine, w.store, w.clock);
+      // As the old code left it: a guest order, the code written as the province's name.
+      const copy = [...w.shop.orders.values()].find((o) => o.sourceIdentifier === `mizan:${OID}`)!;
+      copy.customer = null as unknown as Record<string, unknown>;
+      copy.shippingAddress = { ...copy.shippingAddress, province: "C", provinceCode: null };
+      drafts.set(OID, draft({ customer: { firstName: "Mona", lastName: "Adel", phone: "+201001234821" } }));
+      await w.store.enqueue(MizanEngine.shopifyRepairCopyJob(OID, "u26"), w.clock.now());
+      await settle(w.engine, w.store, w.clock);
+      return copy;
+    };
+    return { w, run };
+  }
+
+  it("sets the buyer (created when the store has none) and the governorate's code; the rest of the address is the store's", async () => {
+    const { w, run } = legacy();
+    const copy = await run();
+    expect(copy.customer).toMatchObject({ firstName: "Mona", phone: "+201001234821" });
+    expect(copy.shippingAddress).toMatchObject({ province: "Cairo", provinceCode: "C", address1: "12 Abbas El Akkad St", city: "Sheraton" });
+    // Again (a second repair version, a replay): nothing more to do, no second customer.
+    await w.store.enqueue(MizanEngine.shopifyRepairCopyJob(OID, "again"), w.clock.now());
+    await settle(w.engine, w.store, w.clock);
+    expect(w.shop.customers).toHaveLength(1);
+    expect(await w.store.jobs({ status: "dead" })).toEqual([]);
+  });
+
+  it("a store whose customers the app may not create: the code is still put right, the order stays a guest one", async () => {
+    const { w, run } = legacy({ writeDenied: true });
+    const copy = await run();
+    expect(copy.customer).toBeNull();
+    expect(copy.shippingAddress).toMatchObject({ provinceCode: "C" });
+    expect(await w.store.jobs({ status: "dead" })).toEqual([]);
+  });
+
+  it("an existing store customer with that phone is attached as they are", async () => {
+    const { w, run } = legacy();
+    w.shop.customers.push({ id: "gid://shopify/Customer/9", firstName: "Mona", lastName: "Hassan", phone: "+201001234821" });
+    const copy = await run();
+    expect(copy.customer).toMatchObject({ id: "gid://shopify/Customer/9", lastName: "Hassan" });
+    expect(w.shop.customers).toHaveLength(1);
+  });
+});
