@@ -240,12 +240,16 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
       }
       // U26: copies made before customers and governorate codes were sent are put right once each
       // (a cursor walks them, a few per round; the job's key makes a repeat a no-op).
+      // The walk ends once it reaches the last copy (new copies are made right); its jobs are no recovery count.
       const queue = engineQueue({ shopify: storeId });
-      const cursor = await queue.get<{ after: string }>("guardian", `copy-repair:${COPY_REPAIR}`);
-      const old = await trx.selectFrom("orders").select("id").where("store_copy_connection_id", "=", storeId).where("store_copy_id", "is not", null)
-        .where("status", "!=", "cancelled").$if(Boolean(cursor?.after), (q) => q.where("id", ">", cursor!.after)).orderBy("id").limit(25).execute();
-      for (const o of old) count(await queue.enqueue(MizanEngine.shopifyRepairCopyJob(o.id, COPY_REPAIR), clock));
-      if (old.length) await queue.put("guardian", `copy-repair:${COPY_REPAIR}`, { after: old.at(-1)!.id }, clock);
+      const cursor = await queue.get<{ after?: string; done?: boolean }>("guardian", `copy-repair:${COPY_REPAIR}`);
+      if (!cursor?.done) {
+        const old = await trx.selectFrom("orders").select("id").where("store_copy_connection_id", "=", storeId).where("store_copy_id", "is not", null)
+          .where("status", "!=", "cancelled").where("pii_redacted_at", "is", null)
+          .$if(Boolean(cursor?.after), (q) => q.where("id", ">", cursor!.after!)).orderBy("id").limit(25).execute();
+        for (const o of old) await queue.enqueue(MizanEngine.shopifyRepairCopyJob(o.id, COPY_REPAIR), clock);
+        await queue.put("guardian", `copy-repair:${COPY_REPAIR}`, old.length ? { after: old.at(-1)!.id } : { ...cursor, done: true }, clock);
+      }
     }
 
     // Orders made in Mizan with no copy in the store yet (the job lost, or made before the switch): queued (a no-op when queued).

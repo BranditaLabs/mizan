@@ -497,11 +497,13 @@ describe("orders made in Mizan reach Shopify: one record in Mizan, Shopify and t
     expect(copy.customer).toMatchObject({ phone: "+201001234821" }); // a new copy carries the buyer already
     copy.customer = null as unknown as Record<string, unknown>; // as the old code left it
     copy.shippingAddress = { ...copy.shippingAddress, province: "C", provinceCode: null };
+    // The store has the buyer as a customer (the repair attaches one, never creates one).
     shop.customers.length = 0;
+    shop.customers.push({ id: "gid://shopify/Customer/501", firstName: "Mona", phone: "+201001234821" });
     // The sweep starts after the deploy, when every old copy exists: from the beginning.
     await db.tenant(store, (trx) => trx.deleteFrom("mz_records").where("type", "=", "guardian").where("key", "like", "copy-repair:%").execute());
     for (let i = 0; i < 4; i++) { await app.get(SyncGuardian).round(Date.now(), clock.now()); await settle(); }
-    expect(copy.customer).toMatchObject({ phone: "+201001234821" });
+    expect(copy.customer).toMatchObject({ id: "gid://shopify/Customer/501" });
     expect(copy.shippingAddress).toMatchObject({ province: "Cairo", provinceCode: "C" });
     expect(shop.customers.filter((c) => c.phone === "+201001234821")).toHaveLength(1);
   });

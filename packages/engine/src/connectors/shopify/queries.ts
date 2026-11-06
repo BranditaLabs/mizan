@@ -525,14 +525,7 @@ export const CUSTOMER_FIND: GqlOperation = {
 export const ORDER_CUSTOMER: GqlOperation = {
   name: "MizanOrderCustomer",
   cost: 1,
-  variants: [`query MizanOrderCustomer($id: ID!) { order(id: $id) { id customer { id } shippingAddress { firstName lastName phone address1 address2 city provinceCode countryCodeV2 } } }`],
-};
-
-/** A new store customer (write_customers). Not idempotent: found first by phone or email. */
-export const CUSTOMER_CREATE: GqlOperation = {
-  name: "MizanCustomerCreate",
-  cost: 10,
-  variants: [`mutation MizanCustomerCreate($input: CustomerInput!) { customerCreate(input: $input) { customer { id } userErrors { field message } } }`],
+  variants: [`query MizanOrderCustomer($id: ID!) { order(id: $id) { id customer { id } shippingAddress { firstName lastName company phone address1 address2 city zip provinceCode countryCodeV2 } } }`],
 };
 
 /** A customer set on an order (write_orders); setting the same one again changes nothing. */
