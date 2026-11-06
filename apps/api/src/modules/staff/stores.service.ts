@@ -14,7 +14,7 @@ import type { StoreDetailSchema, StoresQuerySchema } from "./stores.dto.js";
 
 type Trx = Transaction<DB>;
 type Query = z.output<typeof StoresQuerySchema>;
-type Status = "trial" | "active" | "suspended" | "deleted";
+type Status = "active" | "suspended" | "deleted"; // a trial is the subscription's status, not the store's (E12-2a3)
 type UsageRow = { month: Date | string; orders: number; whatsapp_messages: number; ai_offers: number; plan: string };
 
 /**

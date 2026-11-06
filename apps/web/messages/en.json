@@ -5254,5 +5254,24 @@
     "alert": {
       "noCourier": "No Bosta connected: automatic booking won't run. <link>Connect a courier</link>"
     }
+  },
+  "trial": {
+    "title": "Your plan: {plan}",
+    "daysLeft": "{days, plural, =1 {1 day} other {<n>#</n> days}} left in your {plan} trial. After that the store moves to Free, and orders keep coming in as usual.",
+    "lastDay": "Today is the last day of your {plan} trial. Tomorrow the store moves to Free, and orders keep coming in as usual.",
+    "endsOn": "The trial ends:",
+    "after": "No card needed. Payment and subscriptions are coming soon; until then, talk to us to stay on this plan.",
+    "ended": "Your {plan} trial is over. The store is on Free now, and orders still come in as usual.",
+    "comped": "Mizan covers this plan.",
+    "status": {
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Payment late",
+      "restricted": "Restricted",
+      "paused": "Paused",
+      "cancelled": "Cancelled",
+      "expired": "Ended",
+      "incomplete": "Payment pending"
+    }
   }
 }

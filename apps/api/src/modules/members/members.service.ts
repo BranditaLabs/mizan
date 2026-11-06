@@ -141,7 +141,7 @@ export class MembersService {
       await setActingUser(trx, auth.user.id, contact);
       return trx.selectFrom("invitations as i").innerJoin("tenants as t", "t.id", "i.tenant_id")
         .select(["i.id", "i.tenant_id", "t.name", "i.role", "i.expires_at"])
-        .where("i.status", "=", "pending").where("i.expires_at", ">", new Date()).where("t.status", "in", ["trial", "active"])
+        .where("i.status", "=", "pending").where("i.expires_at", ">", new Date()).where("t.status", "=", "active")
         .orderBy("i.created_at").execute();
     });
     return rows.map((r) => ({ id: r.id, tenantId: r.tenant_id, tenantName: r.name, role: r.role as MemberRole, expiresAt: r.expires_at.toISOString() }));

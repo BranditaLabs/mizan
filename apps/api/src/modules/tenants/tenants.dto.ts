@@ -36,7 +36,8 @@ export const UpdateTenantSchema = z.strictObject({
 }).refine((b) => Object.keys(b).length > 0, "change at least one field");
 export type UpdateTenantBody = z.infer<typeof UpdateTenantSchema>;
 
-export const TENANT_STATUSES = ["trial", "active", "suspended", "deleted"] as const;
+/** The store's platform lifecycle. A trial is the subscription's status (GET /v1/billing/subscription), not the store's (E12-2a3). */
+export const TENANT_STATUSES = ["active", "suspended", "deleted"] as const;
 export const TENANT_PLANS = ["free", "growth", "scale", "enterprise"] as const;
 
 export const TenantViewSchema = z.object({

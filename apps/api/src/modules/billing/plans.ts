@@ -1,16 +1,11 @@
+import { NEXT_PLAN, PLAN_LIMITS, PLAN_RANK, PLANS, type Plan, type PlanLimits } from "@mizan/shared";
+
 /**
- * Plans and what each includes (docs/01 §8, proposals to validate with pilot merchants). Limits
- * are soft: E12-1 warns and prompts an upgrade, it never stops an order. null = no limit.
+ * Plans and what each includes now live in @mizan/shared (plans.ts, E12-2a3): one contract for the
+ * API, the dashboard and the landing. Re-exported here for the billing module. Order limits are
+ * soft: E12-1 warns and prompts an upgrade, it never stops an order. null = no limit.
  */
-export const PLANS = ["free", "growth", "scale", "enterprise"] as const;
-export type Plan = (typeof PLANS)[number];
-export interface PlanLimits { ordersPerMonth: number | null; stores: number | null; users: number | null }
-export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
-  free: { ordersPerMonth: 300, stores: 1, users: 2 },
-  growth: { ordersPerMonth: 3000, stores: 3, users: 8 },
-  scale: { ordersPerMonth: 10_000, stores: null, users: 25 },
-  enterprise: { ordersPerMonth: null, stores: null, users: null },
-};
+export { NEXT_PLAN, PLAN_LIMITS, PLAN_RANK, PLANS, type Plan, type PlanLimits };
 
 /** "2026-10" → the month's first day as a date string; null when not a month. */
 export function monthStart(month: string): string | null {
@@ -30,10 +25,6 @@ export function monthOf(at: Date, timeZone: string): string {
   const get = (t: string) => parts.find((p) => p.type === t)!.value;
   return `${get("year")}-${get("month")}-01`;
 }
-
-/** The plan to suggest when a limit is near or passed. */
-export const NEXT_PLAN: Record<Plan, Plan | null> = { free: "growth", growth: "scale", scale: "enterprise", enterprise: null };
-export const PLAN_RANK: Record<Plan, number> = { free: 0, growth: 1, scale: 2, enterprise: 3 };
 
 export const LIMIT_METRICS = ["orders", "stores", "users"] as const;
 export type LimitMetric = (typeof LIMIT_METRICS)[number];
