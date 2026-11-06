@@ -103,6 +103,14 @@ describe("the order summary after confirming (E6-23a)", () => {
     expect((chatContent("confirmed", base) as { text: string }).text).not.toContain("•");
     expect((chatContent("confirmed", { ...base, lang: "ar", summary: { due: { amount: "1000.00", currency: "EGP" } } }) as { text: string }).text).toContain("هتدفع للمندوب");
   });
+  it("its labels are the store's script (E6-16a); without one the summary reads as before", () => {
+    const summary = { due: { amount: "1000.00", currency: "EGP" }, more: 2 };
+    expect((chatContent("confirmed", { ...base, summary }) as { text: string }).text)
+      .toBe("Done ✅ your order #1042 is confirmed and will ship soon. Thanks for choosing Nile!\n\n• 2× Abaya\n• and 2 more\n💵 Pay the courier: EGP 1,000\n📍 Nasr City");
+    const script = { pack: "egyptian" as const, texts: { ar: {}, en: { summary_pay: "💰 Cash for the courier: {{summary.due}}", summary_more: "+{{summary.more}} other items", summary_area: "🚚 To {{order.city}}", summary_paid: "✔️ Already paid" } } };
+    expect((chatContent("confirmed", { ...base, script, summary }) as { text: string }).text).toContain("• 2× Abaya\n• +2 other items\n💰 Cash for the courier: EGP 1,000\n🚚 To Nasr City");
+    expect((chatContent("confirmed", { ...base, script, summary: { due: { amount: "0.00", currency: "EGP" } } }) as { text: string }).text).toContain("✔️ Already paid");
+  });
 });
 
 describe("the order summary fits WhatsApp (E6-23b review)", () => {

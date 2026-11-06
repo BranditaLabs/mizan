@@ -1,18 +1,22 @@
-import { MoneySchema } from "@mizan/shared";
+import { BUYER_CANCEL_REASONS, MoneySchema } from "@mizan/shared";
 import { z } from "zod";
 import { OfferViewSchema } from "./offers/offers.dto.js";
 import { AUTOMATED_CHANNELS, ConfirmationSettingsSchema } from "./confirmation.settings.js";
 import { ANSWER_CHANNELS, ROUTES } from "./analytics.js";
-import { SCRIPT_KEYS, ScriptSchema } from "./script.js";
+import { IssueSchema, KEY_KINDS, PACKS, ReasonItemSchema, SCRIPT_GROUPS, SCRIPT_KEYS, ScriptDraftSchema, VARIABLES } from "./script.js";
 
 export const ChannelsSchema = z.object({
   whatsapp: z.boolean().describe("The store's WhatsApp number is connected and its template approved"),
   call_auto: z.boolean().describe("A vendor for automated calls is connected"),
   call_team: z.literal(true).describe("The store's team can always call"),
 }).describe("Channels the store can use for confirmation");
-export const ConfirmationSettingsViewSchema = z.object({ settings: ConfirmationSettingsSchema, channels: ChannelsSchema });
+export const ConfirmationSettingsViewSchema = z.object({
+  settings: ConfirmationSettingsSchema,
+  channels: ChannelsSchema,
+  scriptIssues: z.array(IssueSchema).optional().describe("E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it."),
+});
 
-const Reason = z.enum(["changed_mind", "ordered_by_mistake", "found_cheaper", "delivery_too_late", "other"]);
+const Reason = z.enum(BUYER_CANCEL_REASONS);
 
 /** The customer's answer on the link page. */
 export const PublicAnswerSchema = z.object({
@@ -146,15 +150,54 @@ export const CallQueueNextSchema = z.object({
   order: z.object({ id: z.uuid(), number: z.string(), attempts: z.number().int(), unreachable: z.boolean() }).nullable().describe("Claimed for the caller (assigned to them); null when nothing is due"),
 });
 
-/** E6-5: preview a script (saved or not) with one of the store's orders, or a sample. */
+/** E6-5, E6-16a: preview a script (saved or not, problems and all) with one of the store's orders, or a sample. */
 export const ScriptPreviewRequestSchema = z.strictObject({
-  script: ScriptSchema,
+  script: ScriptDraftSchema,
   orderId: z.uuid().optional().describe("One of the store's orders; a sample order when absent"),
+  lang: z.enum(["ar", "en"]).optional().describe("The buyer's language to preview; the store's when absent"),
 });
+
+export const PREVIEW_SCENARIOS = ["confirm", "confirm_offer", "change", "cancel", "message", "already", "opt_out", "opt_in"] as const;
+const TurnSchema = z.object({
+  from: z.enum(["business", "customer"]),
+  kind: z.enum(["template", "text", "buttons", "list", "tap", "typed"]),
+  key: z.enum(SCRIPT_KEYS).optional().describe("The script key behind the main text"),
+  editable: z.boolean().describe("False for the Meta-approved template and the customer's own turns"),
+  header: z.string().optional(),
+  body: z.string().optional(),
+  text: z.string().optional(),
+  footer: z.string().optional(),
+  buttons: z.array(z.string()).optional(),
+  list: z.object({ button: z.string(), section: z.string().optional(), rows: z.array(z.object({ title: z.string(), description: z.string().optional() })) }).optional(),
+  length: z.number().int().optional().describe("Characters in the body or text"),
+});
+export type PreviewTurn = z.output<typeof TurnSchema>;
 export const ScriptPreviewSchema = z.object({
   lang: z.enum(["ar", "en"]),
   sample: z.boolean(),
-  replies: z.array(z.object({ branch: z.enum(["confirm", "change", "cancel"]), key: z.enum(SCRIPT_KEYS), text: z.string() })).describe("What the customer reads after each button"),
+  issues: z.array(IssueSchema).describe("What the draft breaks; saving refuses these (422)"),
+  conversations: z.array(z.object({ scenario: z.enum(PREVIEW_SCENARIOS), turns: z.array(TurnSchema) })).describe("One chat per scenario, the template first"),
   call: z.array(z.string()).describe("The team's call script, line by line"),
+  link: z.string().describe("The hand-sent WhatsApp message, with a placeholder link (never a real one)"),
+  replies: z.array(z.object({ branch: z.enum(["confirm", "change", "cancel"]), key: z.enum(SCRIPT_KEYS), text: z.string() })).describe("Deprecated, removed in E6-16b: what the customer reads after each button"),
 });
 export type ScriptPreview = z.output<typeof ScriptPreviewSchema>;
+
+/** E6-16a: everything the editor needs to edit the script, static per deploy. */
+const PackTextsSchema = z.object({ ar: z.record(z.string(), z.string()), en: z.record(z.string(), z.string()) });
+const TemplateTextSchema = z.object({ body: z.string(), buttons: z.array(z.string()) });
+export const ScriptCatalogueSchema = z.object({
+  packs: z.array(z.enum(PACKS)),
+  groups: z.array(z.enum(SCRIPT_GROUPS)),
+  keys: z.array(z.object({
+    key: z.enum(SCRIPT_KEYS), group: z.enum(SCRIPT_GROUPS), kind: z.enum(KEY_KINDS), limit: z.number().int(),
+    vars: z.array(z.enum(VARIABLES)), required: z.array(z.enum(VARIABLES)), optional: z.boolean(), composed: z.boolean(),
+  })),
+  variables: z.array(z.object({ name: z.enum(VARIABLES), width: z.number().int().describe("Counted at this length when checking a limit") })),
+  cancelCodes: z.array(z.enum(BUYER_CANCEL_REASONS)),
+  maxReasons: z.number().int(),
+  packTexts: z.record(z.enum(PACKS), PackTextsSchema).describe("Each pack's wording per language and key; a key absent is composed in code or optional"),
+  packReasons: z.record(z.enum(PACKS), z.array(ReasonItemSchema)),
+  templateText: z.object({ ar: TemplateTextSchema, en: TemplateTextSchema }).describe("The Meta-approved templates: read-only"),
+});
+export type ScriptCatalogue = z.output<typeof ScriptCatalogueSchema>;

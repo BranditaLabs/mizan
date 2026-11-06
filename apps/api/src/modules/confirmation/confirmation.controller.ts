@@ -9,8 +9,9 @@ import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { RateLimiter } from "../../platform/http/rate-limit.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, ScriptPreviewRequestSchema, ScriptPreviewSchema, WhatsAppConnectSchema,
+  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, ScriptCatalogueSchema, ScriptPreviewRequestSchema, ScriptPreviewSchema, WhatsAppConnectSchema,
 } from "./confirmation.dto.js";
+import { scriptCatalogue } from "./script/view.js";
 import { ConnectionViewSchema } from "../connections/connections.dto.js";
 import { WhatsAppConnections } from "./whatsapp-connections.service.js";
 import { ConfirmationService } from "./confirmation.service.js";
@@ -117,20 +118,31 @@ export class ConfirmationController {
     return this.confirmations.getSettings(auth.tenant!.id);
   }
 
+  @Get("settings/confirmation/script-catalogue")
+  @Can("confirmation.manage")
+  @ApiJson(200, "ScriptCatalogue", ScriptCatalogueSchema, "E6-16a: every editable key (group, kind, limit, variables), the packs' wording and reasons, and the read-only templates; the same until the next deploy (ETag, 304)")
+  catalogue(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const { body, etag } = scriptCatalogue();
+    void res.header("ETag", etag).header("Cache-Control", "private, max-age=3600");
+    if (req.headers["if-none-match"] === etag) { void res.code(304); return undefined; }
+    return body;
+  }
+
   @Post("settings/confirmation/preview")
   @HttpCode(200)
   @Can("confirmation.manage")
   @ApiJsonBody("ScriptPreviewRequest", ScriptPreviewRequestSchema)
-  @ApiJson(200, "ScriptPreview", ScriptPreviewSchema, "E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script")
-  @ApiProblems(404, 422)
+  @ApiJson(200, "ScriptPreview", ScriptPreviewSchema, "E6-5, E6-16a: a draft filled from an order (or a sample): a chat per scenario with the template first, the call script, the hand-sent message, and the draft's issues (200, not 422)")
+  @ApiProblems(404)
   preview(@Auth() auth: AuthContext, @Body(new ZodPipe(ScriptPreviewRequestSchema)) body: z.output<typeof ScriptPreviewRequestSchema>) {
-    return this.confirmations.previewScript(auth.tenant!.id, body.script, body.orderId);
+    return this.confirmations.previewScript(auth.tenant!.id, body.script, body.orderId, body.lang);
   }
 
   @Put("settings/confirmation")
   @Can("confirmation.manage")
   @ApiJsonBody("ConfirmationSettings", ConfirmationSettingsSchema)
-  @ApiJson(200, "ConfirmationSettingsView", ConfirmationSettingsViewSchema, "Saved; applies to orders that start confirmation from now on")
+  @ApiJson(200, "ConfirmationSettingsView", ConfirmationSettingsViewSchema, "Saved; applies to orders that start confirmation from now on. A script is checked with the store's name and language and saved as version 2")
+  @ApiProblems(422)
   saveSettings(@Auth() auth: AuthContext, @Body(new ZodPipe(ConfirmationSettingsSchema)) body: ConfirmationSettings) {
     return this.confirmations.putSettings(auth, body);
   }

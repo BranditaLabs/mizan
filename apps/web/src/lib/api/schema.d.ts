@@ -2481,6 +2481,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/settings/confirmation/script-catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ConfirmationController_catalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/settings/confirmation/preview": {
         parameters: {
             query?: never;
@@ -4121,29 +4137,106 @@ export interface components {
             /** @description The store's own wording for the chat replies and the call script (E6-5) */
             script?: {
                 /**
-                 * @description The starting wording: egyptian (default) or formal Arabic
+                 * @description 2 since E6-16a; absent on scripts saved before
+                 * @enum {number}
+                 */
+                version?: 2;
+                /**
+                 * @description The starting wording: egyptian (default), formal Arabic or gulf
                  * @enum {string}
                  */
-                pack: "egyptian" | "formal";
-                /** @description The owner's own wording per message and language; empty = the pack's */
+                pack: "egyptian" | "formal" | "gulf";
+                /** @description The owner's own wording per key and language; absent = the pack's */
                 texts: {
                     ar: {
                         confirmed?: string;
+                        confirmed_offer_top?: string;
                         change_prompt?: string;
                         change_received?: string;
                         cancel_prompt?: string;
+                        cancel_button?: string;
+                        cancel_header?: string;
+                        cancel_section?: string;
+                        keep_title?: string;
+                        keep_description?: string;
                         cancelled?: string;
+                        offer_pitch?: string;
+                        offer_question?: string;
+                        btn_offer_yes?: string;
+                        btn_offer_no?: string;
+                        offer_added?: string;
+                        offer_added_generic?: string;
+                        offer_failed?: string;
+                        offer_failed_generic?: string;
+                        offer_declined?: string;
+                        offer_expired?: string;
+                        summary_pay?: string;
+                        summary_paid?: string;
+                        summary_more?: string;
+                        summary_area?: string;
+                        noted?: string;
+                        already?: string;
+                        opted_out?: string;
+                        opted_in?: string;
+                        on_delivery?: string;
+                        footer?: string;
+                        link_text?: string;
                         call?: string;
                     };
                     en: {
                         confirmed?: string;
+                        confirmed_offer_top?: string;
                         change_prompt?: string;
                         change_received?: string;
                         cancel_prompt?: string;
+                        cancel_button?: string;
+                        cancel_header?: string;
+                        cancel_section?: string;
+                        keep_title?: string;
+                        keep_description?: string;
                         cancelled?: string;
+                        offer_pitch?: string;
+                        offer_question?: string;
+                        btn_offer_yes?: string;
+                        btn_offer_no?: string;
+                        offer_added?: string;
+                        offer_added_generic?: string;
+                        offer_failed?: string;
+                        offer_failed_generic?: string;
+                        offer_declined?: string;
+                        offer_expired?: string;
+                        summary_pay?: string;
+                        summary_paid?: string;
+                        summary_more?: string;
+                        summary_area?: string;
+                        noted?: string;
+                        already?: string;
+                        opted_out?: string;
+                        opted_in?: string;
+                        on_delivery?: string;
+                        footer?: string;
+                        link_text?: string;
                         call?: string;
                     };
                 };
+                /** @description The store's cancel reasons; absent = the pack's five */
+                cancelReasons?: {
+                    /** @description Stable slug; no '-' (it separates the signed argument) */
+                    id: string;
+                    /**
+                     * @description The canonical code reports and events use
+                     * @enum {string}
+                     */
+                    code: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
+                    title: {
+                        ar?: string;
+                        en?: string;
+                    };
+                    description?: {
+                        ar?: string;
+                        en?: string;
+                    };
+                }[];
             };
             routing: {
                 /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
@@ -4181,29 +4274,106 @@ export interface components {
                 /** @description The store's own wording for the chat replies and the call script (E6-5) */
                 script?: {
                     /**
-                     * @description The starting wording: egyptian (default) or formal Arabic
+                     * @description 2 since E6-16a; absent on scripts saved before
+                     * @enum {number}
+                     */
+                    version?: 2;
+                    /**
+                     * @description The starting wording: egyptian (default), formal Arabic or gulf
                      * @enum {string}
                      */
-                    pack: "egyptian" | "formal";
-                    /** @description The owner's own wording per message and language; empty = the pack's */
+                    pack: "egyptian" | "formal" | "gulf";
+                    /** @description The owner's own wording per key and language; absent = the pack's */
                     texts: {
                         ar: {
                             confirmed?: string;
+                            confirmed_offer_top?: string;
                             change_prompt?: string;
                             change_received?: string;
                             cancel_prompt?: string;
+                            cancel_button?: string;
+                            cancel_header?: string;
+                            cancel_section?: string;
+                            keep_title?: string;
+                            keep_description?: string;
                             cancelled?: string;
+                            offer_pitch?: string;
+                            offer_question?: string;
+                            btn_offer_yes?: string;
+                            btn_offer_no?: string;
+                            offer_added?: string;
+                            offer_added_generic?: string;
+                            offer_failed?: string;
+                            offer_failed_generic?: string;
+                            offer_declined?: string;
+                            offer_expired?: string;
+                            summary_pay?: string;
+                            summary_paid?: string;
+                            summary_more?: string;
+                            summary_area?: string;
+                            noted?: string;
+                            already?: string;
+                            opted_out?: string;
+                            opted_in?: string;
+                            on_delivery?: string;
+                            footer?: string;
+                            link_text?: string;
                             call?: string;
                         };
                         en: {
                             confirmed?: string;
+                            confirmed_offer_top?: string;
                             change_prompt?: string;
                             change_received?: string;
                             cancel_prompt?: string;
+                            cancel_button?: string;
+                            cancel_header?: string;
+                            cancel_section?: string;
+                            keep_title?: string;
+                            keep_description?: string;
                             cancelled?: string;
+                            offer_pitch?: string;
+                            offer_question?: string;
+                            btn_offer_yes?: string;
+                            btn_offer_no?: string;
+                            offer_added?: string;
+                            offer_added_generic?: string;
+                            offer_failed?: string;
+                            offer_failed_generic?: string;
+                            offer_declined?: string;
+                            offer_expired?: string;
+                            summary_pay?: string;
+                            summary_paid?: string;
+                            summary_more?: string;
+                            summary_area?: string;
+                            noted?: string;
+                            already?: string;
+                            opted_out?: string;
+                            opted_in?: string;
+                            on_delivery?: string;
+                            footer?: string;
+                            link_text?: string;
                             call?: string;
                         };
                     };
+                    /** @description The store's cancel reasons; absent = the pack's five */
+                    cancelReasons?: {
+                        /** @description Stable slug; no '-' (it separates the signed argument) */
+                        id: string;
+                        /**
+                         * @description The canonical code reports and events use
+                         * @enum {string}
+                         */
+                        code: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
+                        title: {
+                            ar?: string;
+                            en?: string;
+                        };
+                        description?: {
+                            ar?: string;
+                            en?: string;
+                        };
+                    }[];
                 };
                 routing: {
                     /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
@@ -4228,6 +4398,16 @@ export interface components {
                  */
                 call_team: true;
             };
+            /** @description E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it. */
+            scriptIssues?: {
+                /** @description e.g. ["texts", "en", "btn_offer_yes"] or ["cancelReasons", 3, "title", "ar"] */
+                path: (string | number)[];
+                /** @enum {string} */
+                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script";
+                limit?: number;
+                length?: number;
+                variable?: string;
+            }[];
         };
         ConfirmationSummary: {
             days: number;
@@ -8961,53 +9141,246 @@ export interface components {
                 createdAt: string;
             }[];
         };
+        ScriptCatalogue: {
+            packs: ("egyptian" | "formal" | "gulf")[];
+            groups: ("confirmation" | "change" | "cancel" | "offer" | "summary" | "system" | "calls")[];
+            keys: {
+                /** @enum {string} */
+                key: "confirmed" | "confirmed_offer_top" | "change_prompt" | "change_received" | "cancel_prompt" | "cancel_button" | "cancel_header" | "cancel_section" | "keep_title" | "keep_description" | "cancelled" | "offer_pitch" | "offer_question" | "btn_offer_yes" | "btn_offer_no" | "offer_added" | "offer_added_generic" | "offer_failed" | "offer_failed_generic" | "offer_declined" | "offer_expired" | "summary_pay" | "summary_paid" | "summary_more" | "summary_area" | "noted" | "already" | "opted_out" | "opted_in" | "on_delivery" | "footer" | "link_text" | "call";
+                /** @enum {string} */
+                group: "confirmation" | "change" | "cancel" | "offer" | "summary" | "system" | "calls";
+                /** @enum {string} */
+                kind: "text" | "body" | "body_fragment" | "fragment" | "button" | "list_button" | "header" | "section" | "row" | "row_description" | "footer" | "template_fragment" | "composed";
+                limit: number;
+                vars: ("customer.first_name" | "customer.greeting" | "order.number" | "order.total" | "order.due" | "order.cod" | "order.items" | "order.city" | "store.name" | "offer.title" | "offer.line" | "offer.new_total" | "summary.due" | "summary.more" | "link" | "start_keyword")[];
+                required: ("customer.first_name" | "customer.greeting" | "order.number" | "order.total" | "order.due" | "order.cod" | "order.items" | "order.city" | "store.name" | "offer.title" | "offer.line" | "offer.new_total" | "summary.due" | "summary.more" | "link" | "start_keyword")[];
+                optional: boolean;
+                composed: boolean;
+            }[];
+            variables: {
+                /** @enum {string} */
+                name: "customer.first_name" | "customer.greeting" | "order.number" | "order.total" | "order.due" | "order.cod" | "order.items" | "order.city" | "store.name" | "offer.title" | "offer.line" | "offer.new_total" | "summary.due" | "summary.more" | "link" | "start_keyword";
+                /** @description Counted at this length when checking a limit */
+                width: number;
+            }[];
+            cancelCodes: ("changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other")[];
+            maxReasons: number;
+            /** @description Each pack's wording per language and key; a key absent is composed in code or optional */
+            packTexts: {
+                [key: string]: {
+                    ar: {
+                        [key: string]: string;
+                    };
+                    en: {
+                        [key: string]: string;
+                    };
+                };
+            };
+            packReasons: {
+                [key: string]: {
+                    /** @description Stable slug; no '-' (it separates the signed argument) */
+                    id: string;
+                    /**
+                     * @description The canonical code reports and events use
+                     * @enum {string}
+                     */
+                    code: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
+                    title: {
+                        ar?: string;
+                        en?: string;
+                    };
+                    description?: {
+                        ar?: string;
+                        en?: string;
+                    };
+                }[];
+            };
+            /** @description The Meta-approved templates: read-only */
+            templateText: {
+                ar: {
+                    body: string;
+                    buttons: string[];
+                };
+                en: {
+                    body: string;
+                    buttons: string[];
+                };
+            };
+        };
         ScriptPreview: {
             /** @enum {string} */
             lang: "ar" | "en";
             sample: boolean;
-            /** @description What the customer reads after each button */
+            /** @description What the draft breaks; saving refuses these (422) */
+            issues: {
+                /** @description e.g. ["texts", "en", "btn_offer_yes"] or ["cancelReasons", 3, "title", "ar"] */
+                path: (string | number)[];
+                /** @enum {string} */
+                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script";
+                limit?: number;
+                length?: number;
+                variable?: string;
+            }[];
+            /** @description One chat per scenario, the template first */
+            conversations: {
+                /** @enum {string} */
+                scenario: "confirm" | "confirm_offer" | "change" | "cancel" | "message" | "already" | "opt_out" | "opt_in";
+                turns: {
+                    /** @enum {string} */
+                    from: "business" | "customer";
+                    /** @enum {string} */
+                    kind: "template" | "text" | "buttons" | "list" | "tap" | "typed";
+                    /**
+                     * @description The script key behind the main text
+                     * @enum {string}
+                     */
+                    key?: "confirmed" | "confirmed_offer_top" | "change_prompt" | "change_received" | "cancel_prompt" | "cancel_button" | "cancel_header" | "cancel_section" | "keep_title" | "keep_description" | "cancelled" | "offer_pitch" | "offer_question" | "btn_offer_yes" | "btn_offer_no" | "offer_added" | "offer_added_generic" | "offer_failed" | "offer_failed_generic" | "offer_declined" | "offer_expired" | "summary_pay" | "summary_paid" | "summary_more" | "summary_area" | "noted" | "already" | "opted_out" | "opted_in" | "on_delivery" | "footer" | "link_text" | "call";
+                    /** @description False for the Meta-approved template and the customer's own turns */
+                    editable: boolean;
+                    header?: string;
+                    body?: string;
+                    text?: string;
+                    footer?: string;
+                    buttons?: string[];
+                    list?: {
+                        button: string;
+                        section?: string;
+                        rows: {
+                            title: string;
+                            description?: string;
+                        }[];
+                    };
+                    /** @description Characters in the body or text */
+                    length?: number;
+                }[];
+            }[];
+            /** @description The team's call script, line by line */
+            call: string[];
+            /** @description The hand-sent WhatsApp message, with a placeholder link (never a real one) */
+            link: string;
+            /** @description Deprecated, removed in E6-16b: what the customer reads after each button */
             replies: {
                 /** @enum {string} */
                 branch: "confirm" | "change" | "cancel";
                 /** @enum {string} */
-                key: "confirmed" | "change_prompt" | "change_received" | "cancel_prompt" | "cancelled" | "call";
+                key: "confirmed" | "confirmed_offer_top" | "change_prompt" | "change_received" | "cancel_prompt" | "cancel_button" | "cancel_header" | "cancel_section" | "keep_title" | "keep_description" | "cancelled" | "offer_pitch" | "offer_question" | "btn_offer_yes" | "btn_offer_no" | "offer_added" | "offer_added_generic" | "offer_failed" | "offer_failed_generic" | "offer_declined" | "offer_expired" | "summary_pay" | "summary_paid" | "summary_more" | "summary_area" | "noted" | "already" | "opted_out" | "opted_in" | "on_delivery" | "footer" | "link_text" | "call";
                 text: string;
             }[];
-            /** @description The team's call script, line by line */
-            call: string[];
         };
         ScriptPreviewRequest: {
             script: {
                 /**
-                 * @description The starting wording: egyptian (default) or formal Arabic
+                 * @description 2 since E6-16a; absent on scripts saved before
+                 * @enum {number}
+                 */
+                version?: 2;
+                /**
+                 * @description The starting wording: egyptian (default), formal Arabic or gulf
                  * @enum {string}
                  */
-                pack: "egyptian" | "formal";
-                /** @description The owner's own wording per message and language; empty = the pack's */
+                pack: "egyptian" | "formal" | "gulf";
+                /** @description The owner's own wording per key and language; absent = the pack's */
                 texts: {
                     ar: {
                         confirmed?: string;
+                        confirmed_offer_top?: string;
                         change_prompt?: string;
                         change_received?: string;
                         cancel_prompt?: string;
+                        cancel_button?: string;
+                        cancel_header?: string;
+                        cancel_section?: string;
+                        keep_title?: string;
+                        keep_description?: string;
                         cancelled?: string;
+                        offer_pitch?: string;
+                        offer_question?: string;
+                        btn_offer_yes?: string;
+                        btn_offer_no?: string;
+                        offer_added?: string;
+                        offer_added_generic?: string;
+                        offer_failed?: string;
+                        offer_failed_generic?: string;
+                        offer_declined?: string;
+                        offer_expired?: string;
+                        summary_pay?: string;
+                        summary_paid?: string;
+                        summary_more?: string;
+                        summary_area?: string;
+                        noted?: string;
+                        already?: string;
+                        opted_out?: string;
+                        opted_in?: string;
+                        on_delivery?: string;
+                        footer?: string;
+                        link_text?: string;
                         call?: string;
                     };
                     en: {
                         confirmed?: string;
+                        confirmed_offer_top?: string;
                         change_prompt?: string;
                         change_received?: string;
                         cancel_prompt?: string;
+                        cancel_button?: string;
+                        cancel_header?: string;
+                        cancel_section?: string;
+                        keep_title?: string;
+                        keep_description?: string;
                         cancelled?: string;
+                        offer_pitch?: string;
+                        offer_question?: string;
+                        btn_offer_yes?: string;
+                        btn_offer_no?: string;
+                        offer_added?: string;
+                        offer_added_generic?: string;
+                        offer_failed?: string;
+                        offer_failed_generic?: string;
+                        offer_declined?: string;
+                        offer_expired?: string;
+                        summary_pay?: string;
+                        summary_paid?: string;
+                        summary_more?: string;
+                        summary_area?: string;
+                        noted?: string;
+                        already?: string;
+                        opted_out?: string;
+                        opted_in?: string;
+                        on_delivery?: string;
+                        footer?: string;
+                        link_text?: string;
                         call?: string;
                     };
                 };
+                /** @description The store's cancel reasons; absent = the pack's five */
+                cancelReasons?: {
+                    /** @description Stable slug; no '-' (it separates the signed argument) */
+                    id: string;
+                    /**
+                     * @description The canonical code reports and events use
+                     * @enum {string}
+                     */
+                    code: "changed_mind" | "ordered_by_mistake" | "found_cheaper" | "delivery_too_late" | "other";
+                    title: {
+                        ar?: string;
+                        en?: string;
+                    };
+                    description?: {
+                        ar?: string;
+                        en?: string;
+                    };
+                }[];
             };
             /**
              * Format: uuid
              * @description One of the store's orders; a sample order when absent
              */
             orderId?: string;
+            /**
+             * @description The buyer's language to preview; the store's when absent
+             * @enum {string}
+             */
+            lang?: "ar" | "en";
         };
         SendFeedback: {
             /** @enum {string} */
@@ -19572,13 +19945,55 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Saved; applies to orders that start confirmation from now on */
+            /** @description Saved; applies to orders that start confirmation from now on. A script is checked with the store's name and language and saved as version 2 */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["ConfirmationSettingsView"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_catalogue: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description E6-16a: every editable key (group, kind, limit, variables), the packs' wording and reasons, and the read-only templates; the same until the next deploy (ETag, 304) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScriptCatalogue"];
                 };
             };
             /** @description Problem (RFC 9457) with a stable `code` */
@@ -19609,7 +20024,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description E6-5: the script filled from an order (or a sample): each reply by the button it answers, and the call script */
+            /** @description E6-5, E6-16a: a draft filled from an order (or a sample): a chat per scenario with the template first, the call script, the hand-sent message, and the draft's issues (200, not 422) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -19620,15 +20035,6 @@ export interface operations {
             };
             /** @description Not found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-            /** @description Understood but refused (a business rule) */
-            422: {
                 headers: {
                     [name: string]: unknown;
                 };

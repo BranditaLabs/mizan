@@ -23,7 +23,7 @@ export interface WhatsAppCloudConfig {
 export const WHATSAPP_GRAPH_VERSION = "v24.0";
 
 /** Meta's limits on interactive messages; checked before sending so a bad message never costs a call. */
-export const LIMITS = { buttons: 3, buttonTitle: 20, buttonId: 256, rows: 10, rowTitle: 24, rowDescription: 72, listButton: 20, body: 1024, text: 4096, callbackData: 512 } as const;
+export const LIMITS = { buttons: 3, buttonTitle: 20, buttonId: 256, rows: 10, rowTitle: 24, rowDescription: 72, listButton: 20, header: 60, footer: 60, section: 24, body: 1024, text: 4096, callbackData: 512 } as const;
 
 export interface SendResult {
   /** Meta's message id (`wamid.…`): status webhooks and replies (`context.id`) refer to it. */
@@ -43,9 +43,13 @@ interface Common {
   key: string;
 }
 export interface TemplateMessage extends Common { template: string; lang: string; params: string[]; quickReplies: string[] }
-export interface ButtonsMessage extends Common { body: string; buttons: Array<{ id: string; title: string }>; footer?: string }
-export interface ListMessage extends Common { body: string; button: string; rows: Array<{ id: string; title: string; description?: string }>; section?: string }
+/** A text header above the body (media headers later, E6-17). */
+export interface MessageHeader { type: "text"; text: string }
+export interface ButtonsMessage extends Common { body: string; buttons: Array<{ id: string; title: string }>; header?: MessageHeader; footer?: string }
+export interface ListMessage extends Common { body: string; button: string; rows: Array<{ id: string; title: string; description?: string }>; section?: string; header?: MessageHeader; footer?: string }
 export interface TextMessage extends Common { text: string }
+
+const framing = (m: { header?: MessageHeader; footer?: string }) => ({ ...(m.header ? { header: { type: "text", text: m.header.text } } : {}), ...(m.footer ? { footer: { text: m.footer } } : {}) });
 
 export interface TemplateInfo { name: string; language: string; status: string; category?: string }
 
@@ -118,6 +122,12 @@ export class WhatsAppCloudConnector implements MessagingProvider, WhatsAppChat {
     if ([...v].length > max) throw this.invalid(op, `${label} longer than ${max}`);
   }
 
+  /** A header or footer, when given, is checked like the body: never empty, never over Meta's limit. */
+  private frame(op: string, m: { header?: MessageHeader; footer?: string }) {
+    if (m.header !== undefined) this.within(op, "header", m.header.text, LIMITS.header);
+    if (m.footer !== undefined) this.within(op, "footer", m.footer, LIMITS.footer);
+  }
+
   /** An approved template (opens the conversation outside the 24-hour window), with quick-reply payloads in button order. */
   async sendTemplate(m: TemplateMessage): Promise<SendResult> {
     m.quickReplies.forEach((p) => this.within("sendTemplate", "quick reply payload", p, LIMITS.buttonId));
@@ -133,10 +143,11 @@ export class WhatsAppCloudConnector implements MessagingProvider, WhatsAppChat {
     this.within(op, "body", m.body, LIMITS.body);
     if (!m.buttons.length || m.buttons.length > LIMITS.buttons) throw this.invalid(op, `1–${LIMITS.buttons} buttons`);
     for (const b of m.buttons) { this.within(op, "button title", b.title, LIMITS.buttonTitle); this.within(op, "button id", b.id, LIMITS.buttonId); }
+    this.frame(op, m);
     return this.message(op, m, {
       type: "interactive",
       interactive: {
-        type: "button", body: { text: m.body }, ...(m.footer ? { footer: { text: m.footer } } : {}),
+        type: "button", ...framing(m), body: { text: m.body },
         action: { buttons: m.buttons.map((b) => ({ type: "reply", reply: { id: b.id, title: b.title } })) },
       },
     });
@@ -153,10 +164,12 @@ export class WhatsAppCloudConnector implements MessagingProvider, WhatsAppChat {
       this.within(op, "row id", r.id, LIMITS.buttonId);
       if (r.description) this.within(op, "row description", r.description, LIMITS.rowDescription);
     }
+    if (m.section !== undefined) this.within(op, "section title", m.section, LIMITS.section);
+    this.frame(op, m);
     return this.message(op, m, {
       type: "interactive",
       interactive: {
-        type: "list", body: { text: m.body },
+        type: "list", ...framing(m), body: { text: m.body },
         action: { button: m.button, sections: [{ ...(m.section ? { title: m.section } : {}), rows: m.rows.map((r) => ({ id: r.id, title: r.title, ...(r.description ? { description: r.description } : {}) })) }] },
       },
     });

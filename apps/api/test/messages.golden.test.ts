@@ -4,8 +4,12 @@ import { callPrompts, callScript, CHAT_MESSAGES, chatContent, linkText, whatsapp
 import type { Script } from "../src/modules/confirmation/script.js";
 
 /**
- * What the customer reads today, recorded before the script catalogue (E6-16a) moved the texts
- * into packs. Every case must stay byte for byte; only Arabic money outside EGP changed on purpose.
+ * What the customer reads, recorded before the script catalogue (E6-16a) moved the texts into
+ * packs, and kept byte for byte since. The changes made on purpose, each pinned below:
+ * - Arabic money outside EGP: "1,250 ر.س", not "1,250 SAR";
+ * - the full-stop rule: the hand-sent link text no longer says "ج.م.." (nor a formal call's total);
+ * - the formal pack is complete: formal stores no longer read Egyptian outside the six v1 keys;
+ * - an owner's text over its key's limit has its items shortened (`fit`), as every send does now.
  */
 const m = (amount: string, currency = "EGP"): Money => ({ amount, currency });
 const offer = (currency = "EGP", over: Partial<OfferFacts> = {}): OfferFacts => ({
@@ -76,4 +80,14 @@ describe("messages golden (E6-16a baseline)", () => {
       it(`currency · ${c} · ${lang}`, () => expect(record({ ...make(lang), script: SCRIPTS.v1_egyptian })).toMatchSnapshot());
     }
   }
+
+  it("pins each change made on purpose", () => {
+    const sar = record({ ...SAR.sar!("ar"), script: SCRIPTS.v1_egyptian });
+    expect(sar.whatsappParams[3]).toBe("1,250 ر.س عند الاستلام");
+    expect(linkText(CASES.plain!("ar"))).toBe("أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh");
+    expect(record({ ...CASES.plain!("ar"), script: SCRIPTS.formal }).chat.offer_declined).toEqual({ type: "text", text: "لا بأس 🙏 سيبقى طلبك كما هو." });
+    const long = record({ ...CASES.summary_offer_long!("ar"), script: SCRIPTS.v1_egyptian }).chat.change_prompt as { text: string };
+    expect(long.text.length).toBeLessThanOrEqual(1000);
+    expect(long.text).toContain("× 12");
+  });
 });

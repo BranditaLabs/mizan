@@ -30,6 +30,9 @@ Use these terms in code, UI copy and docs. Arabic column = Egyptian merchant usa
 | Order | أوردر · طلب | A customer purchase from a store |
 | Confirmation | تأكيد الأوردر | Checking with the customer that the order is real before shipping |
 | Confirmation agent | موظف التأكيد · الكول سنتر | Person who calls or messages customers |
+| Script (confirmation) | سكريبت التأكيد | The store's own wording for every chat message after the template and for the team's call (M2) |
+| Pack | باقة الصياغة · لهجة | The starting wording of a script: Egyptian, formal (Modern Standard Arabic) or Gulf; the owner's text wins over it |
+| Gulf pack | الباقة الخليجية | Saudi and Gulf Arabic wording for KSA and GCC stores (the approved template stays the same) |
 | Risk score | درجة الخطورة | 0–100 likelihood an order is fake or will be refused |
 | Fake order | أوردر وهمي | Order with no real intent to buy |
 | Duplicate order | أوردر مكرر | Same customer + product within the window |

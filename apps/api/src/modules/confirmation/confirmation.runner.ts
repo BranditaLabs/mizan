@@ -24,7 +24,8 @@ const backoff = (attempt: number) => Math.min(8, 2 ** (attempt - 1)) * 60_000;
 const VERIFY_MS = 10 * 60_000;
 const UNKNOWN = "unknown_outcome";
 
-type Sent = { ref: string };
+/** What went out; the kind is the transcript's (template, text, buttons, list) or a call. */
+type Sent = { ref: string; kind: "template" | "text" | "buttons" | "list" | "call" };
 
 /**
  * Runs due confirmation steps (E6-7, E6-10). For each store with due steps: claim them in a short
@@ -154,8 +155,8 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
       return this.finishSend(tenantId, step, prepared.run, now, { ok: false, final: true, error: prepared.message ? "channel not connected" : "no phone on the order" });
     }
     try {
-      const { ref } = await this.deliver(provider, step, prepared.run, prepared.message.to, prepared.message.facts);
-      await this.finishSend(tenantId, step, prepared.run, now, { ok: true, ref }, m.whatsappConnectionId);
+      const { ref, kind } = await this.deliver(provider, step, prepared.run, prepared.message.to, prepared.message.facts);
+      await this.finishSend(tenantId, step, prepared.run, now, { ok: true, ref, kind }, m.whatsappConnectionId);
     } catch (err) {
       if (isIntegrationError(err) && err.kind === "timeout" && step.channel === "whatsapp" && canChat(provider)) {
         // Outcome unknown (Meta has no idempotency key): check for its status webhook before any re-send.
@@ -174,20 +175,29 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
       const name = (step.payload as { message?: string } | null)?.message as ChatMessage;
       if (!CHAT_MESSAGES.includes(name)) return Promise.reject(new Error(`unknown reply ${String(name)}`));
       const c = chatContent(name, f);
-      if (c.type === "text") return provider.sendText({ to, key, text: c.text });
-      if (c.type === "buttons") return provider.sendButtons({ to, key, body: c.body, buttons: c.buttons.map((b) => ({ id: sign(b.action, b.arg), title: b.title })) });
-      return provider.sendList({ to, key, body: c.body, button: c.button, rows: c.rows.map((r) => ({ id: sign(r.action, r.arg), title: r.title })) });
+      // Header, footer, section and row descriptions are the store's script (E6-16a): passed as they are.
+      const frame = { ...(c.type !== "text" && c.header ? { header: c.header } : {}), ...(c.type !== "text" && c.footer ? { footer: c.footer } : {}) };
+      const as = (kind: Sent["kind"]) => (r: { ref: string }): Sent => ({ ref: r.ref, kind });
+      if (c.type === "text") return provider.sendText({ to, key, text: c.text }).then(as("text"));
+      if (c.type === "buttons") return provider.sendButtons({ to, key, body: c.body, ...frame, buttons: c.buttons.map((b) => ({ id: sign(b.action, b.arg), title: b.title })) }).then(as("buttons"));
+      return provider.sendList({
+        to, key, body: c.body, button: c.button, ...frame, ...(c.section ? { section: c.section } : {}),
+        rows: c.rows.map((r) => ({ id: sign(r.action, r.arg), title: r.title, ...(r.description ? { description: r.description } : {}) })),
+      }).then(as("list"));
     }
     if (step.channel === "whatsapp") {
       const quickReplies = TEMPLATE_ACTIONS.map((a) => sign(a));
-      if (canChat(provider)) return provider.sendTemplate({ to, key, template: templateName(f.lang), lang: f.lang, params: whatsappParams(f), quickReplies });
-      return provider.sendWhatsApp({ to, key, template: templateName(f.lang), lang: f.lang, params: whatsappParams(f), buttons: quickReplies });
+      const sent = canChat(provider)
+        ? provider.sendTemplate({ to, key, template: templateName(f.lang), lang: f.lang, params: whatsappParams(f), quickReplies })
+        : provider.sendWhatsApp({ to, key, template: templateName(f.lang), lang: f.lang, params: whatsappParams(f), buttons: quickReplies });
+      return sent.then((r) => ({ ref: r.ref, kind: "template" }));
     }
-    return provider.placeCall({ to, lang: f.lang, prompts: callPrompts(f), digits: { ...CALL_DIGITS }, callbackUrl: `${this.config.PUBLIC_URL.replace(/\/$/, "")}/webhooks/messaging/voice` });
+    return provider.placeCall({ to, lang: f.lang, prompts: callPrompts(f), digits: { ...CALL_DIGITS }, callbackUrl: `${this.config.PUBLIC_URL.replace(/\/$/, "")}/webhooks/messaging/voice` })
+      .then((r) => ({ ref: r.ref, kind: "call" }));
   }
 
   private async finishSend(tenantId: string, step: StepRow, run: RunRow, now: Date,
-    r: { ok: true; ref: string } | { ok: false; final: boolean; error: string; unknown?: boolean }, connectionId: string | null = null, unknownSince?: Date): Promise<void> {
+    r: { ok: true; ref: string; kind?: Sent["kind"] } | { ok: false; final: boolean; error: string; unknown?: boolean }, connectionId: string | null = null, unknownSince?: Date): Promise<void> {
     await this.db.tenant(tenantId, async (trx) => {
       const live = await this.confirmations.runById(trx, run.id, true);
       if (r.ok) {
@@ -195,8 +205,9 @@ export class ConfirmationRunner implements OnApplicationBootstrap, OnApplication
         this.metrics.confirmationSteps.inc({ channel: step.channel, result: "sent" });
         if (step.channel === "whatsapp") {
           // The transcript; a status webhook may have arrived first and made the row already.
+          // The kind of what was sent; a send verified by its status webhook (nothing in hand) is read from the reply's name.
           const reply = (step.payload as { message?: string } | null)?.message;
-          const kind = step.kind === "reply" ? reply === "cancel_reasons" ? "list" : reply === "confirmed_offer" ? "buttons" : "text" : "template";
+          const kind = r.kind ?? (step.kind === "reply" ? reply === "cancel_reasons" ? "list" : reply === "confirmed_offer" ? "buttons" : "text" : "template");
           const action = step.kind === "reply" ? (step.payload as { message?: string } | null)?.message ?? null : "ask";
           await trx.insertInto("whatsapp_messages").values({
             tenant_id: tenantId, connection_id: connectionId, run_id: live.id, order_id: live.order_id, direction: "out", wamid: r.ref, kind, action, status: "accepted",

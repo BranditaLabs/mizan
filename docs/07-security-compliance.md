@@ -112,6 +112,7 @@ All three verified with the Shopify HMAC; acknowledged with 200 immediately; pro
 - Button and list ids are signed per run (`c1.<run>.<action>.<mac>`, HMAC-SHA256 with `LINK_SIGNING_KEY`, 12 bytes): a forged, edited or replayed tap does nothing beyond its own order, and an answered order refuses a second answer.
 - No message text is stored or logged: the transcript keeps what a message meant (asked, confirmed, tapped cancel…) and its delivery status. A change the customer types is stored only encrypted (`confirmations.notes`). Numbers in logs are masked.
 - The merchant's WhatsApp token is a secret (encrypted, never shown again, never logged).
+- **The store's script (E6-5, E6-16a):** its variables never include the address or the phone. `{{order.city}}` is the one part of the address allowed, a deliberate minimum since E6-5: the buyer reads their own area in the order summary and the team confirms it on the call. The script preview never builds a real confirm link (a signed link is a bearer key): it shows a placeholder. Script issues are reported as paths and codes, never the owner's text.
 
 ### AI-written offers (E6-12)
 

@@ -4,13 +4,13 @@ exports[`messages golden (E6-16a baseline) > currency · sar · ar 1`] = `
 {
   "callPrompts": [
     "أهلاً منى، معاك متجر النيل.",
-    "بنأكّد أوردرك رقم 1001 بـ 1,250 SAR.",
+    "بنأكّد أوردرك رقم 1001 بـ 1,250 ر.س.",
     "لو عايز تأكّد اضغط واحد. لو عايز تعدّل اضغط اتنين. لو عايز تلغي اضغط تلاتة.",
   ],
   "callScript": [
     "أهلاً منى",
-    "بنأكّد #1001 بـ 1,250 SAR عند الاستلام لـ الرياض",
-    "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 SAR بدل 150 SAR. تحب نضيفه لنفس الأوردر؟",
+    "بنأكّد #1001 بـ 1,250 ر.س عند الاستلام لـ الرياض",
+    "🎁 وبعد ما يأكّد اعرض عليه: Matching scarf بـ 135 ر.س بدل 150 ر.س. تحب نضيفه لنفس الأوردر؟",
   ],
   "chat": {
     "already": {
@@ -54,7 +54,7 @@ exports[`messages golden (E6-16a baseline) > currency · sar · ar 1`] = `
       "type": "list",
     },
     "cancelled": {
-      "text": "خلاص اتلغى #1001 (1,250 SAR).",
+      "text": "خلاص اتلغى #1001 (1,250 ر.س).",
       "type": "text",
     },
     "change_prompt": {
@@ -70,7 +70,7 @@ exports[`messages golden (E6-16a baseline) > currency · sar · ar 1`] = `
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-💵 هتدفع للمندوب: 1,250 SAR
+💵 هتدفع للمندوب: 1,250 ر.س
 📍 الرياض",
       "type": "text",
     },
@@ -79,10 +79,10 @@ exports[`messages golden (E6-16a baseline) > currency · sar · ar 1`] = `
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-💵 هتدفع للمندوب: 1,250 SAR
+💵 هتدفع للمندوب: 1,250 ر.س
 📍 الرياض
 
-🎁 عرض ليك: Matching scarf بـ 135 SAR بدل 150 SAR.
+🎁 عرض ليك: Matching scarf بـ 135 ر.س بدل 150 ر.س.
 تحب نضيفه لنفس الأوردر؟",
       "buttons": [
         {
@@ -103,7 +103,7 @@ exports[`messages golden (E6-16a baseline) > currency · sar · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 SAR.",
+      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ر.س.",
       "type": "text",
     },
     "offer_declined": {
@@ -127,12 +127,12 @@ exports[`messages golden (E6-16a baseline) > currency · sar · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 SAR. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ر.س. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
     "#1001",
-    "1,250 SAR عند الاستلام",
+    "1,250 ر.س عند الاستلام",
   ],
 }
 `;
@@ -380,7 +380,7 @@ exports[`messages golden (E6-16a baseline) > default · fraction · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -607,7 +607,7 @@ exports[`messages golden (E6-16a baseline) > default · items_city · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -834,7 +834,7 @@ exports[`messages golden (E6-16a baseline) > default · no_name · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً بيك",
     "متجر النيل",
@@ -1076,7 +1076,7 @@ exports[`messages golden (E6-16a baseline) > default · offer · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -1334,7 +1334,7 @@ exports[`messages golden (E6-16a baseline) > default · offer_message · ar 1`] 
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -1576,7 +1576,7 @@ exports[`messages golden (E6-16a baseline) > default · paid · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -1802,7 +1802,7 @@ exports[`messages golden (E6-16a baseline) > default · plain · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -2041,7 +2041,7 @@ exports[`messages golden (E6-16a baseline) > default · summary · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -2285,7 +2285,7 @@ exports[`messages golden (E6-16a baseline) > default · summary_no_due · ar 1`]
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -2543,7 +2543,7 @@ exports[`messages golden (E6-16a baseline) > default · summary_offer · ar 1`] 
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -2840,7 +2840,7 @@ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -3117,7 +3117,7 @@ exports[`messages golden (E6-16a baseline) > default · summary_paid · ar 1`] =
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -3263,41 +3263,41 @@ exports[`messages golden (E6-16a baseline) > formal · fraction · ar 1`] = `
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -3327,31 +3327,31 @@ exports[`messages golden (E6-16a baseline) > formal · fraction · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250.50 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -3489,41 +3489,41 @@ exports[`messages golden (E6-16a baseline) > formal · items_city · ar 1`] = `
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -3553,31 +3553,31 @@ exports[`messages golden (E6-16a baseline) > formal · items_city · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -3709,48 +3709,48 @@ exports[`messages golden (E6-16a baseline) > formal · no_name · ar 1`] = `
     "لو عايز تأكّد اضغط واحد. لو عايز تعدّل اضغط اتنين. لو عايز تلغي اضغط تلاتة.",
   ],
   "callScript": [
-    "مرحباً حضرتك، معك فريق متجر النيل.",
+    "مرحباً عميلنا الكريم، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: .",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -3780,33 +3780,33 @@ exports[`messages golden (E6-16a baseline) > formal · no_name · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً بك، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
-    "أهلاً بيك",
+    "أهلاً بك",
     "متجر النيل",
     "#1001",
     "1,250 ج.م. عند الاستلام",
@@ -3943,41 +3943,41 @@ exports[`messages golden (E6-16a baseline) > formal · offer · ar 1`] = `
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -4001,18 +4001,18 @@ exports[`messages golden (E6-16a baseline) > formal · offer · ar 1`] = `
     "confirmed_offer": {
       "body": "تم ✅ تأكيد طلبك #1001 وسيتم شحنه قريباً. شكراً لاختيارك متجر النيل.
 
-🎁 عرض ليك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
-تحب نضيفه لنفس الأوردر؟",
+🎁 عرض خاص لك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -4022,31 +4022,31 @@ exports[`messages golden (E6-16a baseline) > formal · offer · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -4201,41 +4201,41 @@ exports[`messages golden (E6-16a baseline) > formal · offer_message · ar 1`] =
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -4260,17 +4260,17 @@ exports[`messages golden (E6-16a baseline) > formal · offer_message · ar 1`] =
       "body": "تم ✅ تأكيد طلبك #1001 وسيتم شحنه قريباً. شكراً لاختيارك متجر النيل.
 
 🎁 خصم خاص ليك النهارده
-تحب نضيفه لنفس الأوردر؟",
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -4280,31 +4280,31 @@ exports[`messages golden (E6-16a baseline) > formal · offer_message · ar 1`] =
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -4453,46 +4453,46 @@ exports[`messages golden (E6-16a baseline) > formal · paid · ar 1`] = `
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: .",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -4522,31 +4522,31 @@ exports[`messages golden (E6-16a baseline) > formal · paid · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -4684,41 +4684,41 @@ exports[`messages golden (E6-16a baseline) > formal · plain · ar 1`] = `
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -4748,31 +4748,31 @@ exports[`messages golden (E6-16a baseline) > formal · plain · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -4910,41 +4910,41 @@ exports[`messages golden (E6-16a baseline) > formal · summary · ar 1`] = `
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -4966,8 +4966,8 @@ exports[`messages golden (E6-16a baseline) > formal · summary · ar 1`] = `
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-• و2 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و2 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -4976,8 +4976,8 @@ exports[`messages golden (E6-16a baseline) > formal · summary · ar 1`] = `
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-• و2 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و2 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -4986,31 +4986,31 @@ exports[`messages golden (E6-16a baseline) > formal · summary · ar 1`] = `
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -5161,41 +5161,41 @@ exports[`messages golden (E6-16a baseline) > formal · summary_no_due · ar 1`] 
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -5229,31 +5229,31 @@ exports[`messages golden (E6-16a baseline) > formal · summary_no_due · ar 1`] 
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -5397,41 +5397,41 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer · ar 1`] =
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -5453,7 +5453,7 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer · ar 1`] =
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-💵 هتدفع للمندوب: 1,250 ج.م.
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -5462,21 +5462,21 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer · ar 1`] =
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-💵 هتدفع للمندوب: 1,250 ج.م.
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر
 
-🎁 عرض ليك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
-تحب نضيفه لنفس الأوردر؟",
+🎁 عرض خاص لك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -5486,31 +5486,31 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer · ar 1`] =
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -5676,41 +5676,41 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer_long · ar 
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -5742,8 +5742,8 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer_long · ar 
 • 10× Item 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 11× Item 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 12× Item 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
-• و3 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و3 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -5756,22 +5756,22 @@ exports[`messages golden (E6-16a baseline) > formal · summary_offer_long · ar 
 • 4× Item 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 5× Item 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 6× Item 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
-• و9 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و9 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر
 
 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-تحب نضيفه لنفس الأوردر؟",
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -5781,31 +5781,31 @@ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -5981,46 +5981,46 @@ exports[`messages golden (E6-16a baseline) > formal · summary_paid · ar 1`] = 
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -6058,31 +6058,31 @@ exports[`messages golden (E6-16a baseline) > formal · summary_paid · ar 1`] = 
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -6228,41 +6228,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · fraction · ar 1
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -6292,31 +6292,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · fraction · ar 1
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250.50 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -6454,41 +6454,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · items_city · ar
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -6518,31 +6518,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · items_city · ar
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -6674,48 +6674,48 @@ exports[`messages golden (E6-16a baseline) > formal_override · no_name · ar 1`
     "لو عايز تأكّد اضغط واحد. لو عايز تعدّل اضغط اتنين. لو عايز تلغي اضغط تلاتة.",
   ],
   "callScript": [
-    "مرحباً حضرتك، معك فريق متجر النيل.",
+    "مرحباً عميلنا الكريم، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: .",
     "الإجمالي 1,250 ج.م. عند الاستلام.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -6745,33 +6745,33 @@ exports[`messages golden (E6-16a baseline) > formal_override · no_name · ar 1`
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً بك، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
-    "أهلاً بيك",
+    "أهلاً بك",
     "متجر النيل",
     "#1001",
     "1,250 ج.م. عند الاستلام",
@@ -6908,41 +6908,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer · ar 1`] 
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -6966,18 +6966,18 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer · ar 1`] 
     "confirmed_offer": {
       "body": "تم ✅ تأكيد طلبك #1001 وسيتم شحنه قريباً. شكراً لاختيارك متجر النيل.
 
-🎁 عرض ليك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
-تحب نضيفه لنفس الأوردر؟",
+🎁 عرض خاص لك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -6987,31 +6987,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer · ar 1`] 
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -7166,41 +7166,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer_message ·
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -7225,17 +7225,17 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer_message ·
       "body": "تم ✅ تأكيد طلبك #1001 وسيتم شحنه قريباً. شكراً لاختيارك متجر النيل.
 
 🎁 خصم خاص ليك النهارده
-تحب نضيفه لنفس الأوردر؟",
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -7245,31 +7245,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · offer_message ·
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -7418,46 +7418,46 @@ exports[`messages golden (E6-16a baseline) > formal_override · paid · ar 1`] =
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: .",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -7487,31 +7487,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · paid · ar 1`] =
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -7649,41 +7649,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · plain · ar 1`] 
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -7713,31 +7713,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · plain · ar 1`] 
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -7875,41 +7875,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary · ar 1`
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -7931,8 +7931,8 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary · ar 1`
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-• و2 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و2 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -7941,8 +7941,8 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary · ar 1`
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-• و2 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و2 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -7951,31 +7951,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary · ar 1`
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -8126,41 +8126,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_no_due �
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -8194,31 +8194,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_no_due �
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -8362,41 +8362,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer ·
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -8418,7 +8418,7 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer ·
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-💵 هتدفع للمندوب: 1,250 ج.م.
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -8427,21 +8427,21 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer ·
 
 • 2× عباية سادة
 • 1× Linen shirt with a very long name that goes on and on past eighty characters wi…
-💵 هتدفع للمندوب: 1,250 ج.م.
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر
 
-🎁 عرض ليك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
-تحب نضيفه لنفس الأوردر؟",
+🎁 عرض خاص لك: Matching scarf بـ 135 ج.م. بدل 150 ج.م.
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -8451,31 +8451,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer ·
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -8641,41 +8641,41 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer_lo
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -8707,8 +8707,8 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer_lo
 • 10× Item 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 11× Item 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 12× Item 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
-• و3 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و3 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر",
       "type": "text",
     },
@@ -8721,22 +8721,22 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_offer_lo
 • 4× Item 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 5× Item 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
 • 6× Item 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…
-• و9 منتج كمان
-💵 هتدفع للمندوب: 1,250 ج.م.
+• و9 من المنتجات الأخرى
+💵 المبلغ المستحق للمندوب: 1,250 ج.م.
 📍 مدينة نصر
 
 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
-تحب نضيفه لنفس الأوردر؟",
+هل تودّ إضافته إلى الطلب نفسه؟",
       "buttons": [
         {
           "action": "offer_yes",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "ضيفه",
+          "title": "أضفه",
         },
         {
           "action": "offer_no",
           "arg": "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
-          "title": "لا شكراً",
+          "title": "لا، شكراً",
         },
       ],
       "type": "buttons",
@@ -8746,31 +8746,31 @@ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيف Matching scarf لأوردرك، والإجمالي الجديد 1,385 ج.م.",
+      "text": "تم ✅ ستتم إضافة Matching scarf إلى طلبك، ويصبح الإجمالي الجديد 1,385 ج.م.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف Matching scarf لأوردرك دلوقتي. فريق متجر النيل هيكلّمك يظبطها معاك.",
+      "text": "نعتذر، لم نتمكن من إضافة Matching scarf إلى طلبك حالياً. سيتواصل معك فريق متجر النيل لإتمام ذلك.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -8946,46 +8946,46 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_paid · 
   "callScript": [
     "مرحباً منى، معك فريق متجر النيل.",
     "نتصل لتأكيد طلبك رقم #1001: عباية سادة × 2، Linen shirt with a very long name that goes on and on past eighty characters wide × 1.",
-    "الإجمالي 1,250 ج.م..",
+    "الإجمالي 1,250 ج.م.",
     "هل نؤكد الطلب ونشحنه لك؟",
   ],
   "chat": {
     "already": {
-      "text": "أوردرك #1001 متسجّل قبل كده. لو محتاج حاجة اكتبلنا هنا وفريقنا هيساعدك.",
+      "text": "طلبك #1001 مسجّل مسبقاً. إن احتجت أي شيء فراسلنا هنا وسيساعدك فريقنا.",
       "type": "text",
     },
     "cancel_reasons": {
       "body": "نأسف لذلك 😔 هل يمكنك إخبارنا بسبب الإلغاء؟",
-      "button": "اختار السبب",
+      "button": "اختر السبب",
       "rows": [
         {
           "action": "reason",
           "arg": "changed_mind",
-          "title": "غيّرت رأيي",
+          "title": "عدلت عن رأيي",
         },
         {
           "action": "reason",
           "arg": "ordered_by_mistake",
-          "title": "طلبته بالغلط",
+          "title": "طلبته عن طريق الخطأ",
         },
         {
           "action": "reason",
           "arg": "found_cheaper",
-          "title": "لقيته أرخص",
+          "title": "وجدته بسعر أقل",
         },
         {
           "action": "reason",
           "arg": "delivery_too_late",
-          "title": "التوصيل هيتأخر عليّا",
+          "title": "موعد التوصيل متأخر",
         },
         {
           "action": "reason",
           "arg": "other",
-          "title": "سبب تاني",
+          "title": "سبب آخر",
         },
         {
           "action": "keep",
-          "title": "لا، كمّل الأوردر",
+          "title": "لا، أكمل الطلب",
         },
       ],
       "type": "list",
@@ -9023,31 +9023,31 @@ exports[`messages golden (E6-16a baseline) > formal_override · summary_paid · 
       "type": "text",
     },
     "offer_added": {
-      "text": "تمام ✅ هنضيفه لأوردرك.",
+      "text": "تم ✅ ستتم إضافته إلى طلبك.",
       "type": "text",
     },
     "offer_declined": {
-      "text": "ولا يهمك 🙏 أوردرك ماشي زي ما هو.",
+      "text": "لا بأس 🙏 سيبقى طلبك كما هو.",
       "type": "text",
     },
     "offer_expired": {
-      "text": "العرض ده خلص، بس أوردرك ماشي زي ما هو 🙏",
+      "text": "انتهى هذا العرض، وسيستمر طلبك كما هو 🙏",
       "type": "text",
     },
     "offer_failed": {
-      "text": "معلش، مقدرناش نضيف العرض دلوقتي. فريق متجر النيل هيكلّمك.",
+      "text": "نعتذر، لم نتمكن من إضافة العرض حالياً. سيتواصل معك فريق متجر النيل.",
       "type": "text",
     },
     "opted_in": {
-      "text": "أهلاً بيك تاني 👋 هنبعتلك تحديثات أوردراتك من متجر النيل هنا.",
+      "text": "أهلاً بك مجدداً 👋 سنرسل إليك تحديثات طلباتك من متجر النيل هنا.",
       "type": "text",
     },
     "opted_out": {
-      "text": "تمام، مش هنبعتلك رسايل تاني هنا من متجر النيل. لو حبيت ترجع اكتب «ابدأ».",
+      "text": "تم، لن نرسل إليك رسائل أخرى هنا من متجر النيل. للعودة اكتب «ابدأ».",
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، طلبك #1001 من متجر النيل بقيمة 1,250 ج.م. يمكنك تأكيده أو تعديله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -9281,7 +9281,7 @@ exports[`messages golden (E6-16a baseline) > none · fraction · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -9508,7 +9508,7 @@ exports[`messages golden (E6-16a baseline) > none · items_city · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -9735,7 +9735,7 @@ exports[`messages golden (E6-16a baseline) > none · no_name · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً بيك",
     "متجر النيل",
@@ -9977,7 +9977,7 @@ exports[`messages golden (E6-16a baseline) > none · offer · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -10235,7 +10235,7 @@ exports[`messages golden (E6-16a baseline) > none · offer_message · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -10477,7 +10477,7 @@ exports[`messages golden (E6-16a baseline) > none · paid · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -10703,7 +10703,7 @@ exports[`messages golden (E6-16a baseline) > none · plain · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -10942,7 +10942,7 @@ exports[`messages golden (E6-16a baseline) > none · summary · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -11186,7 +11186,7 @@ exports[`messages golden (E6-16a baseline) > none · summary_no_due · ar 1`] = 
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -11444,7 +11444,7 @@ exports[`messages golden (E6-16a baseline) > none · summary_offer · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -11741,7 +11741,7 @@ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -12018,7 +12018,7 @@ exports[`messages golden (E6-16a baseline) > none · summary_paid · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -12250,7 +12250,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · fraction · ar 1`] =
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250.50 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -12474,7 +12474,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · items_city · ar 1`]
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -12699,7 +12699,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · no_name · ar 1`] = 
       "type": "text",
     },
   },
-  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً بيك، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً بيك",
     "متجر النيل",
@@ -12939,7 +12939,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · offer · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -13195,7 +13195,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · offer_message · ar 
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -13435,7 +13435,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · paid · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -13659,7 +13659,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · plain · ar 1`] = `
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -13895,7 +13895,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · summary · ar 1`] = 
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -14136,7 +14136,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · summary_no_due · ar
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -14391,7 +14391,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · summary_offer · ar 
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -14599,7 +14599,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · summary_offer_long �
       "type": "text",
     },
     "change_prompt": {
-      "text": "قولنا تعدّل إيه في Item 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 1، Item 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 2، Item 2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 3، Item 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 4، Item 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 5، Item 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 6، Item 6 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 7، Item 7 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 8، Item 8 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 9، Item 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 10، Item 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 11، Item 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx × 12",
+      "text": "قولنا تعدّل إيه في Item 0 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 1، Item 1 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 2، Item 2 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 3، Item 3 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 4، Item 4 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 5، Item 5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 6، Item 6 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 7، Item 7 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 8، Item 8 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 9، Item 9 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 10، Item 10 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 11، Item 11 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx… × 12",
       "type": "text",
     },
     "change_received": {
@@ -14684,7 +14684,7 @@ yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",
@@ -14959,7 +14959,7 @@ exports[`messages golden (E6-16a baseline) > v1_egyptian · summary_paid · ar 1
       "type": "text",
     },
   },
-  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م.. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
+  "linkText": "أهلاً منى، أوردرك #1001 من متجر النيل بـ 1,250 ج.م. أكّده أو عدّله من هنا: https://app.example/ar/c/abcdefgh",
   "whatsappParams": [
     "أهلاً منى",
     "متجر النيل",

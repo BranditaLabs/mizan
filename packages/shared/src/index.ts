@@ -10,3 +10,4 @@ export * from "./legal.js";
 export * from "./permissions.js";
 export * from "./places.js";
 export * from "./after-confirmation.js";
+export * from "./confirmation.js";

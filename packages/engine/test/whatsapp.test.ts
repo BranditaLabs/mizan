@@ -102,6 +102,38 @@ describe("WhatsApp Cloud API connector (E6-4)", () => {
     expect(JSON.stringify(lines)).not.toMatch(/1001234821|منى/);
   });
 
+  it("a header, footer and section title go out as Meta expects them, and are checked first (E6-16a)", async () => {
+    const { wa, c } = setupWa();
+    wa.writes("201001234821", "الغي");
+    await c.sendList({ to: TO, key: "l", header: { type: "text", text: "متجر النيل · #1001" }, footer: "متجر النيل", section: "الأسباب", body: "ليه؟", button: "اختار", rows: [{ id: "r1", title: "غيّرت رأيي", description: "مش محتاجه" }] });
+    await c.sendButtons({ to: TO, key: "b", header: { type: "text", text: "عرض" }, footer: "متجر النيل", body: "تضيفه؟", buttons: [{ id: "y", title: "ضيفه" }] });
+    const [list, buttons] = wa.accepted.map((m) => m.body.interactive);
+    expect(list).toMatchObject({ header: { type: "text", text: "متجر النيل · #1001" }, footer: { text: "متجر النيل" }, action: { sections: [{ title: "الأسباب", rows: [{ id: "r1", description: "مش محتاجه" }] }] } });
+    expect(buttons).toMatchObject({ header: { type: "text", text: "عرض" }, footer: { text: "متجر النيل" } });
+    const list1 = { to: TO, key: "k", body: "x", button: "b", rows: [{ id: "r", title: "t" }] };
+    await expect(c.sendList({ ...list1, header: { type: "text", text: "h".repeat(61) } })).rejects.toMatchObject({ kind: "validation" });
+    await expect(c.sendList({ ...list1, footer: "f".repeat(61) })).rejects.toMatchObject({ kind: "validation" });
+    await expect(c.sendList({ ...list1, footer: "  " })).rejects.toMatchObject({ kind: "validation" });
+    await expect(c.sendList({ ...list1, section: "s".repeat(25) })).rejects.toMatchObject({ kind: "validation" });
+    await expect(c.sendButtons({ to: TO, key: "k", body: "x", buttons: [{ id: "a", title: "ok" }], header: { type: "text", text: "" } })).rejects.toMatchObject({ kind: "validation" });
+    // Code points, not UTF-16 units: 60 emoji fit a header.
+    await expect(c.sendList({ ...list1, header: { type: "text", text: "🎁".repeat(60) } })).resolves.toMatchObject({ ref: expect.stringMatching(/^wamid/) });
+  });
+
+  it("the fake refuses what Meta refuses: an oversized header, footer or section, more than 10 rows", async () => {
+    const { wa } = setupWa();
+    const post = (interactive: Record<string, unknown>) => wa.handler(new URL(`${wa.baseUrl}/${wa.version}/${wa.phoneNumberId}/messages`), {
+      method: "POST", headers: { authorization: `Bearer ${wa.token}` }, body: JSON.stringify({ messaging_product: "whatsapp", to: "201001234821", type: "interactive", interactive }),
+    });
+    const list = (extra: Record<string, unknown> = {}, rows = 1, section?: string) => ({ type: "list", body: { text: "x" }, action: { button: "b", sections: [{ ...(section ? { title: section } : {}), rows: Array.from({ length: rows }, (_, i) => ({ id: `r${i}`, title: `t${i}` })) }] }, ...extra });
+    expect((await post(list())).status).toBe(200);
+    expect((await post(list({}, 11))).status).toBe(400);
+    expect((await post(list({}, 1, "s".repeat(25)))).status).toBe(400);
+    expect((await post(list({ header: { type: "text", text: "h".repeat(61) } }))).status).toBe(400);
+    expect((await post(list({ footer: { text: "f".repeat(61) } }))).status).toBe(400);
+    expect((await post({ type: "button", body: { text: "x" }, footer: { text: "f".repeat(61) }, action: { buttons: [{ type: "reply", reply: { id: "a", title: "ok" } }] } })).status).toBe(400);
+  });
+
   it("reads template review status across pages", async () => {
     const { c } = setupWa();
     const all = await c.templates();
