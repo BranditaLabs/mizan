@@ -11,6 +11,8 @@ import { ConfirmationService, type RunRow } from "./confirmation.service.js";
 import { CANCEL_REASONS, consentKeyword, type CancelReason, type ChatMessage } from "./messages.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
+import { AfterConfirmationService } from "./after/after.service.js";
+import { notice } from "./after/notices.js";
 
 /** Delivery order; a late "delivered" never overwrites "read", "failed" is final. */
 const RANK: Record<string, number> = { accepted: 0, received: 0, sent: 1, delivered: 2, read: 3, failed: 4 };
@@ -43,6 +45,7 @@ export class WhatsAppChat {
     @Inject(ConfirmationService) private readonly confirmations: ConfirmationService,
     @Inject(MessagingRegistry) private readonly registry: MessagingRegistry,
     @Inject(OffersService) private readonly offers: OffersService,
+    @Inject(AfterConfirmationService) private readonly after: AfterConfirmationService,
   ) {}
 
   /** Meta's subscription check (GET). */
@@ -166,8 +169,28 @@ export class WhatsAppChat {
     if (LIVE.includes(run.status)) {
       if (run.status === "running") await this.confirmations.escalate(trx, tenantId, run, "customer_message", now);
       await this.reply(trx, tenantId, run, "noted", m.id, now);
+    } else if (await this.heldAfterConfirming(trx, tenantId, run.order_id, now)) {
+      // Confirmed, still in the store's change window (E6-23a): held for the team, who read it before packing.
+      await this.reply(trx, tenantId, run, "noted", m.id, now);
     }
     return { run, action: "message" };
+  }
+
+  /**
+   * A message after confirming, inside the grace window: the order stays off packing and booking
+   * until a person looks (Release now), and the team is told. Nothing else changes.
+   */
+  private async heldAfterConfirming(trx: Transaction<DB>, tenantId: string, orderId: string, now: Date): Promise<boolean> {
+    const held = await trx.updateTable("orders").set({ hold_reason: "customer_message", held_until: new Date("9999-12-31T00:00:00Z") })
+      .where("id", "=", orderId).where("status", "=", "confirmed").where("hold_reason", "=", "grace").where("held_until", ">", now)
+      .returning("number").executeTakeFirst();
+    if (!held) return false;
+    await trx.updateTable("order_followups").set({ status: "blocked", result: "customer_message", updated_at: now })
+      .where("order_id", "=", orderId).where("kind", "=", "release").where("status", "=", "pending").execute();
+    await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "change_after_confirm", actor_type: "customer", data: JSON.stringify({ channel: "whatsapp" }) }).execute();
+    const { lang } = await this.after.settingsOf(trx, tenantId);
+    await this.after.notify(trx, tenantId, ["owner", "admin", "ops_manager"], notice("customer_message", held.number, lang), orderId, `after:customer_message:${orderId}`);
+    return true;
   }
 
   private async onTap(trx: Transaction<DB>, tenantId: string, run: RunRow, action: ChatAction, arg: string | undefined, inbound: string, now: Date): Promise<string> {

@@ -18,6 +18,7 @@ import type { Script } from "./script.js";
 import type { ScriptPreview } from "./confirmation.dto.js";
 import { MessagingRegistry } from "./messaging.registry.js";
 import { OffersService } from "./offers/offers.service.js";
+import { AfterConfirmationService } from "./after/after.service.js";
 
 export type Answer = "confirm" | "cancel" | "change";
 export type AnswerChannel = "link" | "whatsapp" | "voice_ivr" | "voice_ai" | "agent" | "call_team" | "auto";
@@ -58,6 +59,7 @@ export class ConfirmationService {
     @Inject(MessagingRegistry) private readonly messaging: MessagingRegistry,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(OffersService) private readonly offers: OffersService,
+    @Inject(AfterConfirmationService) private readonly after: AfterConfirmationService,
   ) {}
 
   /**
@@ -153,6 +155,11 @@ export class ConfirmationService {
     const order = await trx.selectFrom("orders").select("number").where("id", "=", run.order_id).executeTakeFirstOrThrow();
     await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: run.order_id, type: "confirmation_escalated", actor_type: "system", data: JSON.stringify({ reason }) }).execute();
     await this.events.emit(trx, { type: "confirmation.escalated", tenantId, entity: { type: "order", id: run.order_id }, actor: { type: "system" }, data: { number: order.number, runId: run.id, reason } });
+    // The automatic messages really went out and nobody answered (E6-23a): what the store chose for "no answer" can start.
+    if (reason === "no_reply" || reason === "team_call") {
+      const sent = await trx.selectFrom("confirmation_steps").select("id").where("run_id", "=", run.id).where("kind", "=", "send").where("status", "=", "done").where("channel", "not in", ["call_team", "agent"]).executeTakeFirst();
+      if (sent) await this.events.emit(trx, { type: "confirmation.no_answer", tenantId, entity: { type: "order", id: run.order_id }, actor: { type: "system" }, data: { number: order.number, runId: run.id, stage: "messages", reason, attempts: 0 } });
+    }
   }
 
   /** The order changed elsewhere (cancelled or paid in the store): stop asking the customer. */
@@ -180,7 +187,8 @@ export class ConfirmationService {
       agent_id: a.actor.type === "user" ? a.actor.id : null, notes: pii?.encrypt(a.note, "confirmations.notes") ?? null,
     }).execute();
     if (a.location) await trx.updateTable("orders").set({ ship_lat: a.location.lat, ship_lng: a.location.lng }).where("id", "=", orderId).execute();
-    const actor = a.actor.type === "user" ? { type: "user" as const, id: a.actor.id } : { type: "customer" as const };
+    // The customer answered (chat, link, call), or Mizan did (the trusted route, an automatic cancel): the timeline says which.
+    const actor = a.actor.type === "user" ? { type: "user" as const, id: a.actor.id } : a.actor.type === "system" ? { type: "system" as const } : { type: "customer" as const };
     const data = { channel: a.channel, ...(a.reason ? { reason: a.reason } : {}) };
     if (run) {
       await this.cancelSteps(trx, run.id, now);
@@ -192,10 +200,12 @@ export class ConfirmationService {
     if (a.answer === "confirm") {
       await this.setOrderStatus(trx, tenantId, orderId, order.status, "confirmed", "confirmed", actor, data, { confirmed_at: now });
       await this.events.emit(trx, { type: "order.confirmed", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, channel: a.channel, ...(run ? { runId: run.id } : {}) } });
+      // What the store chose for after confirmation (E6-23a): the hold and its follow-up, in this transaction.
+      await this.after.onConfirmed(trx, tenantId, orderId, run?.id ?? null, a.channel, now);
     } else if (a.answer === "cancel") {
       await this.setOrderStatus(trx, tenantId, orderId, order.status, "cancelled", "cancelled", actor, { ...data, reason: a.reason ?? "customer_cancelled" }, { cancelled_at: now });
       await this.events.emit(trx, { type: "order.cancelled", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: a.reason ?? "customer_cancelled", channel: a.channel } });
-      await this.events.emit(trx, { type: "order.confirmation_failed", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: "cancelled", channel: a.channel } });
+      await this.events.emit(trx, { type: "order.confirmation_failed", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: "cancelled", cancelReason: a.reason ?? "customer_cancelled", channel: a.channel } });
     } else {
       await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "change_requested", actor_type: actor.type, actor_id: actor.type === "user" ? actor.id : null, data: JSON.stringify(data) }).execute();
       await this.events.emit(trx, { type: "confirmation.escalated", tenantId, entity: { type: "order", id: orderId }, actor: evActor, data: { number: order.number, reason: "change_requested", channel: a.channel } });
@@ -417,6 +427,10 @@ export class ConfirmationService {
       await trx.insertInto("confirmations").values({ tenant_id: tenantId, order_id: orderId, run_id: run.id, channel: "call_team", attempt: attempts, outcome: "no_answer", agent_id: auth.user.id, started_at: now, finished_at: now }).execute();
       await trx.insertInto("order_events").values({ tenant_id: tenantId, order_id: orderId, type: "call_no_answer", actor_type: "user", actor_id: auth.user.id, data: JSON.stringify({ channel: "call_team", attempt: String(attempts) }) }).execute();
       await this.audit.record(trx, { action: "confirmation.call_no_answer", tenantId, ...auditActor(auth), entity: { type: "order", id: orderId }, after: { attempts, callAfter: after?.toISOString() ?? null } });
+      if (last) {
+        const o = await trx.selectFrom("orders").select("number").where("id", "=", orderId).executeTakeFirstOrThrow();
+        await this.events.emit(trx, { type: "confirmation.no_answer", tenantId, entity: { type: "order", id: orderId }, actor: { type: "user", id: auth.user.id }, data: { number: o.number, runId: run.id, stage: "team_calls", reason: "unreachable", attempts } });
+      }
       return { attempts, max: settings.teamCalls.attempts, after: after?.toISOString() ?? null, unreachable: last };
     });
   }

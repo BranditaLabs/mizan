@@ -2609,6 +2609,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/settings/after-confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AfterConfirmationController_view"];
+        put: operations["AfterConfirmationController_save"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/after-confirmation/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AfterConfirmationController_release"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orders/{id}/after-confirmation/skip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AfterConfirmationController_skip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -3257,6 +3305,269 @@ export interface components {
             };
             /** Format: uuid */
             connectionId: string;
+        };
+        AfterConfirmation: {
+            confirmed: {
+                /** @description Keep the order off pick lists and ready-to-ship, and do not auto-book, so the customer can still change or cancel */
+                graceMinutes: number;
+                /** @description In Mizan and, for Shopify orders, in the store */
+                tags: string[];
+                /**
+                 * @description The WhatsApp thank-you after a tap: the short text, or with the items, the cash to collect and the area
+                 * @enum {string}
+                 */
+                message: "short" | "summary";
+                notify: {
+                    enabled: boolean;
+                    /** @description Who is told, by role (a notice in Mizan) */
+                    roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                };
+                autoBook: {
+                    enabled: boolean;
+                    /**
+                     * Format: uuid
+                     * @description A Bosta connection; null: the first one connected
+                     */
+                    courierConnectionId: string | null;
+                    paymentModes: ("cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer")[];
+                    /** @description Confirmations that may book by themselves */
+                    channels: ("whatsapp" | "link" | "call_team" | "agent" | "auto" | "voice_ivr" | "voice_ai")[];
+                    /** @description Also auto-book orders whose customer asked for a change before the team confirmed */
+                    afterChange: boolean;
+                };
+            };
+            changed: {
+                tags: string[];
+                notify: {
+                    enabled: boolean;
+                    /** @description Who is told, by role (a notice in Mizan) */
+                    roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                };
+                /**
+                 * Format: uuid
+                 * @description A team member who takes the call back
+                 */
+                assignTo: string | null;
+            };
+            cancelled: {
+                tags: string[];
+                notify: {
+                    enabled: boolean;
+                    /** @description Who is told, by role (a notice in Mizan) */
+                    roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                };
+            };
+            noAnswer: {
+                tags: string[];
+                notify: {
+                    enabled: boolean;
+                    /** @description Who is told, by role (a notice in Mizan) */
+                    roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                };
+                autoCancel: {
+                    enabled: boolean;
+                    /**
+                     * @description messages: the automatic messages went unanswered; team_calls: the team's last call went unanswered
+                     * @enum {string}
+                     */
+                    after: "messages" | "team_calls";
+                    afterHours: number;
+                    /** @description Also cancel when a team member has taken the order */
+                    cancelIfAssigned: boolean;
+                };
+            };
+            optedOut: {
+                tags: string[];
+                notify: {
+                    enabled: boolean;
+                    /** @description Who is told, by role (a notice in Mizan) */
+                    roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                };
+            };
+        };
+        AfterConfirmationView: {
+            settings: {
+                confirmed: {
+                    /** @description Keep the order off pick lists and ready-to-ship, and do not auto-book, so the customer can still change or cancel */
+                    graceMinutes: number;
+                    /** @description In Mizan and, for Shopify orders, in the store */
+                    tags: string[];
+                    /**
+                     * @description The WhatsApp thank-you after a tap: the short text, or with the items, the cash to collect and the area
+                     * @enum {string}
+                     */
+                    message: "short" | "summary";
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                    autoBook: {
+                        enabled: boolean;
+                        /**
+                         * Format: uuid
+                         * @description A Bosta connection; null: the first one connected
+                         */
+                        courierConnectionId: string | null;
+                        paymentModes: ("cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer")[];
+                        /** @description Confirmations that may book by themselves */
+                        channels: ("whatsapp" | "link" | "call_team" | "agent" | "auto" | "voice_ivr" | "voice_ai")[];
+                        /** @description Also auto-book orders whose customer asked for a change before the team confirmed */
+                        afterChange: boolean;
+                    };
+                };
+                changed: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                    /**
+                     * Format: uuid
+                     * @description A team member who takes the call back
+                     */
+                    assignTo: string | null;
+                };
+                cancelled: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                };
+                noAnswer: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                    autoCancel: {
+                        enabled: boolean;
+                        /**
+                         * @description messages: the automatic messages went unanswered; team_calls: the team's last call went unanswered
+                         * @enum {string}
+                         */
+                        after: "messages" | "team_calls";
+                        afterHours: number;
+                        /** @description Also cancel when a team member has taken the order */
+                        cancelIfAssigned: boolean;
+                    };
+                };
+                optedOut: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                };
+            };
+            /** @description Bosta connections a store can book with */
+            couriers: {
+                /** Format: uuid */
+                id: string;
+                provider: string;
+                name: string;
+                status: string;
+            }[];
+            /** @description Active team members (for who takes a change request) */
+            members: {
+                /** Format: uuid */
+                id: string;
+                name: string;
+                role: string;
+            }[];
+            /** @description A starting point the screen can fill in; never applied by itself */
+            recommended: {
+                confirmed: {
+                    /** @description Keep the order off pick lists and ready-to-ship, and do not auto-book, so the customer can still change or cancel */
+                    graceMinutes: number;
+                    /** @description In Mizan and, for Shopify orders, in the store */
+                    tags: string[];
+                    /**
+                     * @description The WhatsApp thank-you after a tap: the short text, or with the items, the cash to collect and the area
+                     * @enum {string}
+                     */
+                    message: "short" | "summary";
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                    autoBook: {
+                        enabled: boolean;
+                        /**
+                         * Format: uuid
+                         * @description A Bosta connection; null: the first one connected
+                         */
+                        courierConnectionId: string | null;
+                        paymentModes: ("cod" | "prepaid" | "partial" | "bnpl" | "bank_transfer")[];
+                        /** @description Confirmations that may book by themselves */
+                        channels: ("whatsapp" | "link" | "call_team" | "agent" | "auto" | "voice_ivr" | "voice_ai")[];
+                        /** @description Also auto-book orders whose customer asked for a change before the team confirmed */
+                        afterChange: boolean;
+                    };
+                };
+                changed: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                    /**
+                     * Format: uuid
+                     * @description A team member who takes the call back
+                     */
+                    assignTo: string | null;
+                };
+                cancelled: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                };
+                noAnswer: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                    autoCancel: {
+                        enabled: boolean;
+                        /**
+                         * @description messages: the automatic messages went unanswered; team_calls: the team's last call went unanswered
+                         * @enum {string}
+                         */
+                        after: "messages" | "team_calls";
+                        afterHours: number;
+                        /** @description Also cancel when a team member has taken the order */
+                        cancelIfAssigned: boolean;
+                    };
+                };
+                optedOut: {
+                    tags: string[];
+                    notify: {
+                        enabled: boolean;
+                        /** @description Who is told, by role (a notice in Mizan) */
+                        roles: ("owner" | "admin" | "ops_manager" | "agent" | "warehouse" | "finance" | "media_buyer")[];
+                    };
+                };
+            };
+        };
+        AfterRelease: {
+            released: boolean;
+            autoBook: boolean;
+        };
+        AfterSkip: {
+            /** @enum {boolean} */
+            autoBook: false;
         };
         AgentAnswer: {
             /** @enum {string} */
@@ -19727,6 +20038,173 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OfferDecided"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AfterConfirmationController_view: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What happens after each outcome (confirmed, changed, cancelled, no answer, opted out), the couriers and team to choose from, and a recommended starting point */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterConfirmationView"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AfterConfirmationController_save: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AfterConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Saved and audited; applies to orders reaching each outcome from now on (a setting turned off also stops follow-ups already waiting) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterConfirmationView"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AfterConfirmationController_release: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Release now: the change window ends (or a hold because the customer wrote), and an automatic booking runs at once with all its checks; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterRelease"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AfterConfirmationController_skip: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Book by hand: this order will not be booked automatically; audited */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AfterSkip"];
                 };
             };
             /** @description Not found */

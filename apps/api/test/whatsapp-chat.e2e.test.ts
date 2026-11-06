@@ -241,6 +241,33 @@ describe("the conversation", () => {
     expect((await orderRow(id)).ship_lat).toBe(30.0561);
   });
 
+  it("written after confirming, inside the store's change window: held for the team, who read it before packing (E6-23a)", async () => {
+    const after = (await http().get("/v1/settings/after-confirmation").set(as("owner")).expect(200)).body.settings;
+    await http().put("/v1/settings/after-confirmation").set(as("owner")).send({ ...after, confirmed: { ...after.confirmed, graceMinutes: 30 } }).expect(200);
+    try {
+      const id = await newOrder();
+      await run();
+      const t = await templateFor(id);
+      wa.tapQuickReply(CUSTOMER, t.confirm, t.message.id);
+      await deliver();
+      const held = () => db.tenant(store, (trx) => trx.selectFrom("orders").select(["status", "hold_reason"]).where("id", "=", id).executeTakeFirstOrThrow());
+      expect(await held()).toEqual({ status: "confirmed", hold_reason: "grace" });
+      const before = wa.accepted.length;
+      wa.writes(CUSTOMER, "معلش عايزة أغيّر المقاس");
+      await deliver();
+      expect(await held()).toEqual({ status: "confirmed", hold_reason: "customer_message" });
+      const f = await db.tenant(store, (trx) => trx.selectFrom("order_followups").select(["status", "result"]).where("order_id", "=", id).executeTakeFirstOrThrow());
+      expect(f).toEqual({ status: "blocked", result: "customer_message" });
+      await run();
+      expect(sentAfter(before).map((m) => m.body.text?.body)).toContain("وصلنا ✍️ فريق Nile Abayas هيكلّمك قريب.");
+      const notes = await db.tenant(store, (trx) => trx.selectFrom("notifications").select("text").where("entity_id", "=", id).execute());
+      expect(notes.map((x) => x.text).join(" ")).toMatch(/العميل كتب رسالة بعد تأكيد الأوردر/);
+      expect(JSON.stringify(notes)).not.toMatch(/المقاس|Mona|1001234821/); // never what they wrote, never who
+    } finally {
+      await http().put("/v1/settings/after-confirmation").set(as("owner")).send(after).expect(200);
+    }
+  });
+
   it("STOP: the customer is opted out, the team calls instead, and later orders skip WhatsApp until START (E6-4b)", async () => {
     const PHONE = "201001239999";
     const mine = () => newOrder({ customer: { name: "Sara Nabil", phone: `+${PHONE}` }, shippingAddress: { name: "Sara Nabil", phone: `+${PHONE}`, line1: "5 Makram Ebeid St", city: "Nasr City", countryCode: "EG" } });
