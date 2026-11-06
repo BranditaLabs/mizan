@@ -3,13 +3,13 @@
 import { AUTO_BOOK_CHANNELS, AUTO_BOOK_MODES, MEMBER_ROLES, rolesWith, Tag } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Checkbox, Switch } from "@/components/ui/Choice";
-import { Field, Select } from "@/components/ui/Field";
+import { Select } from "@/components/ui/Field";
 import { SaveBar } from "@/components/ui/SaveBar";
 import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
@@ -34,6 +34,7 @@ const EDITORS = rolesWith("confirmation.manage");
 export function AfterConfirmationScreen() {
   const t = useTranslations("afterConfirmation");
   const tpm = useTranslations("payments.mode");
+  const locale = useLocale();
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -68,6 +69,7 @@ export function AfterConfirmationScreen() {
   const set = <K extends Outcome>(k: K, next: Partial<After[K]>) => setDraft({ ...s, [k]: { ...s[k], ...next } });
   const overlap = s.confirmed.tags.filter((x) => s.cancelled.tags.includes(x));
   const valid = overlap.length === 0;
+  const overlapText = overlap.length ? <p className="mt-1 text-body-sm text-danger" role="alert">{t.rich("cancelled.overlap", { tags: () => <Bdi>{new Intl.ListFormat(locale, { type: "conjunction" }).format(overlap)}</Bdi> })}</p> : null;
 
   return frame(
     <>
@@ -79,17 +81,16 @@ export function AfterConfirmationScreen() {
               <>
                 <Row icon="pending">
                   <Sentence text={t.rich("confirmed.grace", { n: () => (
-                    <input type="number" min={0} max={120} step={5} value={s.confirmed.graceMinutes} aria-label={t("confirmed.graceLabel")}
-                      onChange={(e) => set("confirmed", { graceMinutes: Math.max(0, Math.min(120, Math.round(Number(e.target.value) || 0))) })}
-                      className="mz-input mz-num mx-1 inline-block h-8 w-20 text-center" dir="ltr" />
+                    <Num value={s.confirmed.graceMinutes} min={0} max={120} label={t("confirmed.graceLabel")} onChange={(graceMinutes) => set("confirmed", { graceMinutes })}
+                      className="mz-input mz-num mx-1 inline-block h-8 w-20 text-center" />
                   ) })} />
                   <Hint>{t(s.confirmed.graceMinutes ? "confirmed.graceOn" : "confirmed.graceOff")}</Hint>
                 </Row>
-                <Row icon="tag"><Tags label={t("tagsLabel")} value={s.confirmed.tags} onChange={(tags) => set("confirmed", { tags })} sentence={t("confirmed.tags")} /></Row>
+                <Row icon="tag"><Tags value={s.confirmed.tags} onChange={(tags) => set("confirmed", { tags })} sentence={t("confirmed.tags")} />{overlapText}</Row>
                 <Row icon="message">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-body-sm">{t("confirmed.message")}</span>
-                    <Select label={t("confirmed.messageLabel")} value={s.confirmed.message} onChange={(e) => set("confirmed", { message: e.target.value as "short" | "summary" })} className="w-72 [&>label]:sr-only">
+                    <Select label={t("confirmed.messageLabel")} value={s.confirmed.message} onChange={(e) => set("confirmed", { message: e.target.value as "short" | "summary" })} className="w-full max-w-72 [&>label]:sr-only">
                       <option value="short">{t("confirmed.messageShort")}</option>
                       <option value="summary">{t("confirmed.messageSummary")}</option>
                     </Select>
@@ -101,7 +102,7 @@ export function AfterConfirmationScreen() {
                   {s.confirmed.autoBook.enabled ? (
                     <div className="mt-3 flex flex-col gap-3 rounded-md bg-surface-sunk p-3">
                       {couriers.length ? (
-                        <Select label={t("confirmed.courier")} value={s.confirmed.autoBook.courierConnectionId ?? ""} className="w-72"
+                        <Select label={t("confirmed.courier")} value={s.confirmed.autoBook.courierConnectionId ?? ""} className="w-full max-w-72"
                           onChange={(e) => set("confirmed", { autoBook: { ...s.confirmed.autoBook, courierConnectionId: e.target.value || null } })}>
                           <option value="">{t("confirmed.courierFirst")}</option>
                           {couriers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -126,9 +127,9 @@ export function AfterConfirmationScreen() {
             {tab === "changed" ? (
               <>
                 <Row icon="customer"><Fixed inline lines={[t("changed.fixed")]} /></Row>
-                <Row icon="tag"><Tags label={t("tagsLabel")} value={s.changed.tags} onChange={(tags) => set("changed", { tags })} sentence={t("changed.tags")} /></Row>
+                <Row icon="tag"><Tags value={s.changed.tags} onChange={(tags) => set("changed", { tags })} sentence={t("changed.tags")} /></Row>
                 <Row icon="team">
-                  <Select label={t("changed.assign")} value={s.changed.assignTo ?? ""} className="w-72" onChange={(e) => set("changed", { assignTo: e.target.value || null })}>
+                  <Select label={t("changed.assign")} value={s.changed.assignTo ?? ""} className="w-full max-w-72" onChange={(e) => set("changed", { assignTo: e.target.value || null })}>
                     <option value="">{t("changed.nobody")}</option>
                     {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </Select>
@@ -140,8 +141,8 @@ export function AfterConfirmationScreen() {
             {tab === "cancelled" ? (
               <>
                 <Row icon="tag">
-                  <Tags label={t("tagsLabel")} value={s.cancelled.tags} onChange={(tags) => set("cancelled", { tags })} sentence={t("cancelled.tags")} />
-                  {overlap.length ? <p className="mt-1 text-body-sm text-danger" role="alert">{t("cancelled.overlap", { tags: overlap.join("، ") })}</p> : null}
+                  <Tags value={s.cancelled.tags} onChange={(tags) => set("cancelled", { tags })} sentence={t("cancelled.tags")} />
+                  {overlapText}
                 </Row>
                 <Row icon="notification"><NotifyRow t={t} value={s.cancelled.notify} onChange={(notify) => set("cancelled", { notify })} /></Row>
                 <Fixed lines={[t("cancelled.fixedStore"), t("cancelled.fixedStock")]} />
@@ -151,7 +152,7 @@ export function AfterConfirmationScreen() {
             {tab === "noAnswer" ? (
               <>
                 <Row icon="call"><Fixed inline lines={[t("noAnswer.fixed")]} /></Row>
-                <Row icon="tag"><Tags label={t("tagsLabel")} value={s.noAnswer.tags} onChange={(tags) => set("noAnswer", { tags })} sentence={t("noAnswer.tags")} /></Row>
+                <Row icon="tag"><Tags value={s.noAnswer.tags} onChange={(tags) => set("noAnswer", { tags })} sentence={t("noAnswer.tags")} /></Row>
                 <Row icon="notification"><NotifyRow t={t} value={s.noAnswer.notify} onChange={(notify) => set("noAnswer", { notify })} /></Row>
                 <Row icon="refused">
                   <Switch label={t("noAnswer.autoCancel")} description={t("noAnswer.autoCancelHint")} checked={s.noAnswer.autoCancel.enabled}
@@ -159,13 +160,15 @@ export function AfterConfirmationScreen() {
                   {s.noAnswer.autoCancel.enabled ? (
                     <div className="mt-3 flex flex-col gap-3 rounded-md bg-surface-sunk p-3">
                       <div className="flex flex-wrap items-end gap-3">
-                        <Select label={t("noAnswer.after")} value={s.noAnswer.autoCancel.after} className="w-64"
+                        <Select label={t("noAnswer.after")} value={s.noAnswer.autoCancel.after} className="w-full max-w-64"
                           onChange={(e) => set("noAnswer", { autoCancel: { ...s.noAnswer.autoCancel, after: e.target.value as "messages" | "team_calls" } })}>
                           <option value="messages">{t("noAnswer.afterMessages")}</option>
                           <option value="team_calls">{t("noAnswer.afterTeamCalls")}</option>
                         </Select>
-                        <Field label={t("noAnswer.hours")} type="number" ltr min={1} max={72} value={s.noAnswer.autoCancel.afterHours} className="w-36"
-                          onChange={(e) => set("noAnswer", { autoCancel: { ...s.noAnswer.autoCancel, afterHours: Math.max(1, Math.min(72, Math.round(Number(e.target.value) || 1))) } })} />
+                        <label className="flex flex-col gap-1.5 text-label">{t("noAnswer.hours")}
+                          <Num value={s.noAnswer.autoCancel.afterHours} min={1} max={72} label={t("noAnswer.hours")} className="mz-input mz-num h-10 w-36"
+                            onChange={(afterHours) => set("noAnswer", { autoCancel: { ...s.noAnswer.autoCancel, afterHours } })} />
+                        </label>
                       </div>
                       <Checkbox label={t("noAnswer.ifAssigned")} checked={s.noAnswer.autoCancel.cancelIfAssigned}
                         onChange={(e) => set("noAnswer", { autoCancel: { ...s.noAnswer.autoCancel, cancelIfAssigned: e.target.checked } })} />
@@ -179,7 +182,7 @@ export function AfterConfirmationScreen() {
             {tab === "optedOut" ? (
               <>
                 <Row icon="call"><Fixed inline lines={[t("optedOut.fixed")]} /></Row>
-                <Row icon="tag"><Tags label={t("tagsLabel")} value={s.optedOut.tags} onChange={(tags) => set("optedOut", { tags })} sentence={t("optedOut.tags")} /></Row>
+                <Row icon="tag"><Tags value={s.optedOut.tags} onChange={(tags) => set("optedOut", { tags })} sentence={t("optedOut.tags")} /></Row>
                 <Row icon="notification"><NotifyRow t={t} value={s.optedOut.notify} onChange={(notify) => set("optedOut", { notify })} /></Row>
               </>
             ) : null}
@@ -222,9 +225,10 @@ function Fixed({ lines, inline = false }: { lines: string[]; inline?: boolean })
 }
 
 /** Tags as chips: Enter or a comma adds one (the same rule as Automation Studio's tags). */
-function Tags({ label, value, onChange, sentence }: { label: string; value: string[]; onChange(next: string[]): void; sentence: string }) {
+function Tags({ value, onChange, sentence }: { value: string[]; onChange(next: string[]): void; sentence: string }) {
   const t = useTranslations("afterConfirmation");
   const id = useId();
+  const errId = `${id}-error`;
   const [text, setText] = useState("");
   const [error, setError] = useState(false);
   const add = () => {
@@ -249,10 +253,10 @@ function Tags({ label, value, onChange, sentence }: { label: string; value: stri
             <button type="button" className="text-text-3 hover:text-text" aria-label={t("removeTag", { tag })} onClick={() => onChange(value.filter((x) => x !== tag))}><Icon name="close" size={12} /></button>
           </span>
         ))}
-        <input id={id} aria-label={label} className="mz-input h-8 w-44" value={text} placeholder={t("tagPlaceholder")} dir="auto"
+        <input id={id} aria-describedby={error ? errId : undefined} aria-invalid={error || undefined} className="mz-input h-8 w-44" value={text} placeholder={t("tagPlaceholder")} dir="auto"
           onChange={(e) => { setText(e.target.value); setError(false); }} onKeyDown={onKey} onBlur={add} />
       </div>
-      {error ? <p className="text-caption text-danger" role="alert">{t("tagInvalid")}</p> : null}
+      {error ? <p id={errId} className="text-caption text-danger" role="alert">{t("tagInvalid")}</p> : null}
     </div>
   );
 }
@@ -282,5 +286,20 @@ function Choices({ legend, options, value, onChange, labelOf }: { legend: string
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * A whole number that keeps what is typed (an emptied field stays empty while typing) and settles
+ * into its range when the field is left; the setting holds the last valid number meanwhile.
+ */
+function Num({ value, min, max, label, className, onChange }: { value: number; min: number; max: number; label: string; className?: string; onChange(next: number): void }) {
+  const [text, setText] = useState<string | null>(null);
+  const settle = (raw: string) => Math.max(min, Math.min(max, Math.round(Number(raw))));
+  return (
+    <input type="number" inputMode="numeric" dir="ltr" min={min} max={max} aria-label={label} className={className}
+      value={text ?? String(value)}
+      onChange={(e) => { setText(e.target.value); if (e.target.value !== "" && Number.isFinite(Number(e.target.value))) onChange(settle(e.target.value)); }}
+      onBlur={() => { if (text !== null) { onChange(text === "" || !Number.isFinite(Number(text)) ? value : settle(text)); setText(null); } }} />
   );
 }

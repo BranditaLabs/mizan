@@ -288,10 +288,20 @@ describe("the settings", () => {
     expect((await save(next).expect(200)).body.settings).toEqual(next);
     await http().get("/v1/settings/after-confirmation").set(as("agent")).expect(403);
     expect((await save(settings((s) => { s.confirmed.tags = ["x"]; s.cancelled.tags = ["x"]; })).expect(422)).body.errors[0]).toMatchObject({ code: "tags_overlap" });
-    expect((await save(settings((s) => { s.confirmed.autoBook.courierConnectionId = "00000000-0000-4000-8000-000000000000"; })).expect(422)).body.errors[0]).toMatchObject({ code: "courier_not_found" });
+    expect((await save(settings((s) => { s.confirmed.autoBook.enabled = true; s.confirmed.autoBook.courierConnectionId = "00000000-0000-4000-8000-000000000000"; })).expect(422)).body.errors[0]).toMatchObject({ code: "courier_not_found" });
     await http().put("/v1/settings/confirmation").set(as("owner")).send({ ...DEFAULT_CONFIRMATION, callingHours: { start: "00:00", end: "23:59" } }).expect(200);
     expect((await http().get("/v1/settings/after-confirmation").set(as("owner")).expect(200)).body.settings).toEqual(next);
     const audit = await http().get("/v1/audit-log?action=confirmation.after_settings_updated").set(as("owner")).expect(200);
     expect(audit.body.data.map((e: { action: string }) => e.action)).toContain("confirmation.after_settings_updated");
   });
+
+  it("a chosen courier disconnected since never blocks saving: it shows as none, and any save goes through", async () => {
+    const extra = await db.tenant(store, (trx) => trx.insertInto("connections").values({ tenant_id: store, kind: "courier", provider: "bosta", external_account: "bosta-2", status: "active" }).returning("id").executeTakeFirstOrThrow());
+    await save(settings((s) => { s.confirmed.autoBook = { ...s.confirmed.autoBook, enabled: true, courierConnectionId: extra.id }; })).expect(200);
+    await db.tenant(store, (trx) => trx.updateTable("connections").set({ status: "disconnected" }).where("id", "=", extra.id).execute());
+    const view = (await http().get("/v1/settings/after-confirmation").set(as("owner")).expect(200)).body;
+    expect(view.settings.confirmed.autoBook.courierConnectionId).toBeNull();
+    await save({ ...view.settings, cancelled: { ...view.settings.cancelled, tags: ["refused"] } }).expect(200);
+  });
 });
+

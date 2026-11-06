@@ -93,7 +93,7 @@ describe("the order summary after confirming (E6-23a)", () => {
     expect(text).toContain("• 2× Abaya");
     expect(text).toMatch(/Pay the courier: .*1,000/);
     expect(text).toContain("📍 Nasr City");
-    expect(text).toContain("tracking number");
+    expect(text).not.toContain("tracking"); // nothing promised that Mizan does not send yet
     expect(text).not.toMatch(/\+?20\d{9,}|Abbas/);
   });
   it("paid says paid; unknown leaves the money out; no summary unless chosen; Arabic too", () => {
@@ -104,3 +104,21 @@ describe("the order summary after confirming (E6-23a)", () => {
     expect((chatContent("confirmed", { ...base, lang: "ar", summary: { due: { amount: "1000.00", currency: "EGP" } } }) as { text: string }).text).toContain("هتدفع للمندوب");
   });
 });
+
+describe("the order summary fits WhatsApp (E6-23b review)", () => {
+  const long = Array.from({ length: 10 }, (_, i) => ({ title: `Embroidered abaya with a long description of fabric and fit number ${i}`, quantity: 1 }));
+  const facts = { lang: "en" as const, store: "Nile", firstName: "Mona", number: "#1042", cod: { amount: "1250.00", currency: "EGP" }, total: { amount: "1250.00", currency: "EGP" }, link: "",
+    items: long, city: "Nasr City", summary: { due: { amount: "1250.00", currency: "EGP" }, more: 3 },
+    offer: { id: "o1", title: "Scarf", qty: 1, price: { amount: "135.00", currency: "EGP" }, was: null, message: null, newTotal: { amount: "1385.00", currency: "EGP" } } };
+  it("the offer's interactive body stays within 1024 characters, shortening or dropping items with '+N more'", () => {
+    const body = (chatContent("confirmed_offer", facts as never) as { body: string }).body;
+    expect(body.length).toBeLessThanOrEqual(1024);
+    expect(body).toMatch(/and \d+ more/);
+    expect(body).toContain("Pay the courier");
+  });
+  it("items beyond the ten listed are counted", () => {
+    const text = (chatContent("confirmed", { ...facts, items: long.slice(0, 2), summary: { due: null, more: 4 } } as never) as { text: string }).text;
+    expect(text).toContain("and 4 more");
+  });
+});
+

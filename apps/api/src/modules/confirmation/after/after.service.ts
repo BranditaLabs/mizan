@@ -71,8 +71,12 @@ export class AfterConfirmationService {
       .where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected").orderBy("created_at").execute();
     const members = await trx.selectFrom("memberships as m").innerJoin("users as u", "u.id", "m.user_id")
       .select(["m.user_id", "m.role", "u.display_name", "u.email"]).where("m.status", "=", "active").orderBy("u.display_name").execute();
+    // A courier disconnected or a member gone since: shown as "none", so a save never fails on it.
+    const shown = structuredClone(settings);
+    if (shown.confirmed.autoBook.courierConnectionId && !couriers.some((c) => c.id === shown.confirmed.autoBook.courierConnectionId)) shown.confirmed.autoBook.courierConnectionId = null;
+    if (shown.changed.assignTo && !members.some((m) => m.user_id === shown.changed.assignTo)) shown.changed.assignTo = null;
     return {
-      settings,
+      settings: shown,
       couriers: couriers.map((c) => ({ id: c.id, provider: c.provider, name: c.display_name ?? c.external_account ?? c.provider, status: c.status })),
       members: members.map((m) => ({ id: m.user_id, name: m.display_name ?? m.email ?? "", role: m.role })),
       recommended: recommendedAfter(couriers.length > 0),
@@ -105,7 +109,7 @@ export class AfterConfirmationService {
     }
     const overlap = s.confirmed.tags.find((t) => s.cancelled.tags.includes(t));
     if (overlap) fail("cancelled.tags", "tags_overlap", "a tag cannot mean both confirmed and cancelled");
-    const courier = s.confirmed.autoBook.courierConnectionId;
+    const courier = s.confirmed.autoBook.enabled ? s.confirmed.autoBook.courierConnectionId : null;
     if (courier && !(await trx.selectFrom("connections").select("id").where("id", "=", courier).where("kind", "=", "courier").where("provider", "=", "bosta").where("status", "!=", "disconnected").executeTakeFirst())) {
       fail("confirmed.autoBook.courierConnectionId", "courier_not_found", "no such courier connection");
     }

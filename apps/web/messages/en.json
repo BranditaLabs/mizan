@@ -1108,7 +1108,9 @@
         "release": "Release now",
         "skip": "Book by hand",
         "releasedToast": "Released: it goes to packing now.",
-        "skippedToast": "It won't book by itself."
+        "skippedToast": "It won't book by itself.",
+        "retry": "Try booking again",
+        "retriedToast": "We'll try to book it again now."
       }
     },
     "answerChannel": {
@@ -4817,7 +4819,7 @@
     },
     "cancelled": {
       "tags": "tag it",
-      "overlap": "A tag can't mean both confirmed and cancelled: {tags}",
+      "overlap": "A tag can't mean both confirmed and cancelled: <tags></tags>",
       "fixedStore": "It's cancelled in your store too.",
       "fixedStock": "Its stock goes back by itself."
     },

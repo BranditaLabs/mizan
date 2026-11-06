@@ -250,7 +250,7 @@ export class ConfirmationService {
     return {
       to,
       facts: {
-        ...(wantsSummary ? { summary: { due: pay } } : {}),
+        ...(wantsSummary ? { summary: { due: pay, more: Math.max(0, Number((await trx.selectFrom("order_lines").select((eb) => eb.fn.countAll<string>().as("n")).where("order_id", "=", run.order_id).executeTakeFirstOrThrow()).n) - items.length) } } : {}),
         lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number,
         total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: this.linkFor(run.id, lang),
         items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city, offer, ...(settings.script ? { script: settings.script } : {}),

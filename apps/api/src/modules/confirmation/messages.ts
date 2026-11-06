@@ -27,7 +27,7 @@ export interface MessageFacts {
    * E6-23a: the thank-you after a tap carries the order summary (items, what the courier collects,
    * the area). `due`: from cashToCollect; zero is "paid"; null leaves the money line out. Never an address or phone.
    */
-  summary?: { due: Money | null } | null;
+  summary?: { due: Money | null; more?: number } | null;
 }
 
 export interface OfferFacts {
@@ -93,16 +93,32 @@ export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
   return `${o.title}${qty} for ${money(o.price, lang)}${o.was ? ` instead of ${money(o.was, lang)}` : ""}`;
 }
 
-/** The order summary after confirming (E6-23a): up to ten items, the money, the area, what comes next. */
-export function summaryBlock(f: MessageFacts): string {
+/**
+ * The order summary after confirming (E6-23a): the items, what the courier collects, the area. Fits
+ * `budget` characters (an interactive message's body is 1024 at most): item titles are shortened,
+ * then items dropped with "+N more", then the summary left out rather than the message refused.
+ */
+export function summaryBlock(f: MessageFacts, budget = 3000): string {
   if (!f.summary) return "";
   const ar = f.lang === "ar";
-  const lines = (f.items ?? []).slice(0, 10).map((i) => `• ${i.quantity}× ${i.title}`);
   const due = f.summary.due;
-  if (due) lines.push(Number(due.amount) > 0 ? (ar ? `💵 هتدفع للمندوب: ${money(due, "ar")}` : `💵 Pay the courier: ${money(due, "en")}`) : (ar ? "💳 مدفوع" : "💳 Paid"));
-  if (f.city) lines.push(ar ? `📍 ${f.city}` : `📍 ${f.city}`);
-  lines.push(ar ? "هنبعتلك رقم الشحنة أول ما يطلع." : "We'll send you the tracking number once it ships.");
-  return `\n\n${lines.join("\n")}`;
+  const tail: string[] = [];
+  if (due) tail.push(Number(due.amount) > 0 ? (ar ? `💵 هتدفع للمندوب: ${money(due, "ar")}` : `💵 Pay the courier: ${money(due, "en")}`) : (ar ? "💳 مدفوع" : "💳 Paid"));
+  if (f.city) tail.push(`📍 ${f.city}`);
+  const items = f.items ?? [];
+  const extra = f.summary.more ?? 0;
+  const build = (n: number, width: number) => {
+    const cut = (t: string) => (t.length > width ? `${t.slice(0, width - 1)}…` : t);
+    const lines = items.slice(0, n).map((i) => `• ${i.quantity}× ${cut(i.title)}`);
+    const left = items.length - n + extra;
+    if (left > 0) lines.push(ar ? `• و${left} منتج كمان` : `• and ${left} more`);
+    return `\n\n${[...lines, ...tail].join("\n")}`;
+  };
+  for (const width of [80, 40, 24]) {
+    for (let n = items.length; n >= 1; n--) { const b = build(n, width); if (b.length <= budget) return b; }
+  }
+  const bare = `\n\n${tail.join("\n")}`;
+  return tail.length && bare.length <= budget ? bare : "";
 }
 
 export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
@@ -115,10 +131,13 @@ export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
       const o = f.offer;
       if (!o) return chatContent("confirmed", f);
       const pitch = o.message ?? (ar ? `🎁 عرض ليك: ${stop(offerLine(o, "ar"))}` : `🎁 An offer for you: ${stop(offerLine(o, "en"))}`);
-      const head = (own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`)) + summaryBlock(f);
+      const top = own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`);
+      const ask = ar ? `\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `\n\n${pitch}\nShall we add it to the same order?`;
+      // WhatsApp refuses an interactive body over 1024 characters: the summary gets what is left.
+      const head = top + summaryBlock(f, 1024 - top.length - ask.length);
       return {
         type: "buttons",
-        body: ar ? `${head}\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `${head}\n\n${pitch}\nShall we add it to the same order?`,
+        body: `${head}${ask}`,
         buttons: [{ action: "offer_yes", arg: o.id, title: ar ? "ضيفه" : "Add it" }, { action: "offer_no", arg: o.id, title: ar ? "لا شكراً" : "No, thanks" }],
       };
     }
