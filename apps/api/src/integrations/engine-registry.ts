@@ -189,7 +189,8 @@ export class EngineRegistry {
       ...engineSyncOptions(storeSyncOf(c.store.config)),
       // The courier is booked only through Mizan's shipping (one shipment row per booking): never because a
       // store order carries a tag (the standalone engine's shortcut would book outside it, unseen by Mizan).
-      autoShipTag: this.config.ENGINE_AUTO_SHIP_TAG ?? null,
+      // Ignored in production even when set (E6-23a: automatic booking goes through Mizan's shipping, never a tag).
+      autoShipTag: this.config.NODE_ENV === "production" ? null : this.config.ENGINE_AUTO_SHIP_TAG ?? null,
       learned: {
         ...(c.shopify ? { shopify: c.shopify.learned } : {}),
         ...(c.woocommerce ? { woocommerce: c.woocommerce.learned } : {}),

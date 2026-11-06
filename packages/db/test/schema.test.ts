@@ -633,4 +633,23 @@ describe("schema", () => {
       await expect(db.query(`SELECT idempotency_key FROM confirmation_steps`)).rejects.toThrow(/permission denied/);
     } finally { await db.exec("ROLLBACK;"); }
   });
+
+  it("holds an order after confirmation, and keeps follow-ups per store, once per key, ids and times only to the worker (0073, E6-23a)", async () => {
+    const order = (await asTenant(T1, () => db.query<{ id: string }>(`SELECT id FROM orders LIMIT 1`))).rows[0]!.id;
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET held_until = now() WHERE id = $1`, [order]))).rejects.toThrow(/orders_hold_complete/);
+    await asTenant(T1, () => db.query(`UPDATE orders SET held_until = now(), hold_reason = 'grace' WHERE id = $1`, [order]));
+    await expect(asTenant(T1, () => db.query(`UPDATE orders SET hold_reason = 'whatever' WHERE id = $1`, [order]))).rejects.toThrow(/check/);
+    const followup = (key: string) => asTenant(T1, () => db.query(`INSERT INTO order_followups (tenant_id, order_id, kind, run_at, idempotency_key) VALUES ($1, $2, 'release', now(), $3)`, [T1, order, key]));
+    await followup(`release:${order}`);
+    await expect(followup(`release:${order}`)).rejects.toThrow(/duplicate key/);
+    await expect(asTenant(T1, () => db.query(`INSERT INTO order_followups (tenant_id, order_id, kind, run_at, idempotency_key) VALUES ($1, $2, 'ship_now', now(), 'x')`, [T1, order]))).rejects.toThrow(/check/);
+    expect((await asTenant(T2, () => db.query(`SELECT * FROM order_followups`))).rows).toEqual([]);
+    await db.exec("BEGIN; SET LOCAL ROLE mizan_worker;");
+    try {
+      const due = await db.query<{ tenant_id: string }>(`SELECT tenant_id, run_at, status FROM order_followups WHERE status = 'pending'`);
+      expect(due.rows.map((r) => r.tenant_id)).toEqual([T1]);
+      await expect(db.query(`SELECT idempotency_key FROM order_followups`)).rejects.toThrow(/permission denied/);
+    } finally { await db.exec("ROLLBACK;"); }
+  });
 });
+

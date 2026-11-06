@@ -284,6 +284,8 @@ export function roleScope(eb: Eb, auth: AuthContext) {
 function readyToShip(eb: ExpressionBuilder<DB & { o: DB["orders"] }, "o">) {
   return eb.and([
     eb("o.status", "=", "confirmed"),
+    // Held after confirmation (E6-23a: the change window, or the customer wrote): not ready yet.
+    eb.or([eb("o.held_until", "is", null), eb("o.held_until", "<=", sql<Date>`now()`)]),
     eb.or([eb("o.stock_status", "is", null), eb("o.stock_status", "!=", "short")]),
     eb.or([eb("o.duplicate_status", "is", null), eb("o.duplicate_status", "!=", "suspected")]),
     eb.not(eb.exists(eb.selectFrom("shipments as s").select("s.id").whereRef("s.order_id", "=", "o.id").where("s.is_return_leg", "=", false)

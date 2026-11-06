@@ -2746,6 +2746,9 @@
       "order_assigned": "an order is assigned",
       "order_tagged": "an order is tagged",
       "order_confirmed": "an order is confirmed",
+      "confirmation_no_answer": "nobody answers the confirmation",
+      "order_ready_to_ship": "a confirmed order is released for automatic booking",
+      "order_auto_ship_blocked": "automatic booking of an order stops",
       "order_cancelled": "an order is cancelled",
       "stock_short": "a confirmed order waits for stock",
       "stock_low": "an item runs low",
@@ -2827,6 +2830,31 @@
       "bosta": "Bosta",
       "whatsapp_cloud": "WhatsApp",
       "other": "A connection"
+    },
+    "after": {
+      "confirmed": "Order {n} was confirmed",
+      "changed": "The customer asked to change order {n}",
+      "cancelled": "Order {n} was cancelled",
+      "no_answer": "Nobody answered the confirmation of order {n}",
+      "opted_out": "The customer of order {n} asked for no messages: call them",
+      "customer_message": "The customer wrote after confirming order {n}: held until you look at it",
+      "auto_cancelled": "Order {n} was cancelled automatically: nobody answered",
+      "followup_dead": "A step after confirming order {n} stopped and needs a person",
+      "blocked": "Automatic booking of order {n} stopped: {why}",
+      "why": {
+        "payment_blocks_shipping": "the payment hasn't arrived",
+        "payment_mode_not_allowed": "its payment method isn't one that books by itself",
+        "address_missing": "the address or phone is missing",
+        "no_courier": "no courier is connected",
+        "courier_needs_attention": "the courier account needs attention",
+        "store_not_connected": "the store isn't connected",
+        "stock_short": "there isn't enough stock",
+        "stock_settling": "the stock hasn't been reserved yet",
+        "duplicate_suspected": "it may be a duplicate",
+        "offer_settling": "an offer or edit is still being applied",
+        "order_moved": "the order changed meanwhile",
+        "other": "something stopped it"
+      }
     }
   },
   "tickets": {

@@ -39,6 +39,7 @@ export class PickingService {
       await sql`SELECT pg_advisory_xact_lock(hashtext(${`picklists:${tenantId}`}))`.execute(trx);
       let q = trx.selectFrom("orders as o").select(["o.id"])
         .where("o.status", "=", "confirmed").where("o.packed_at", "is", null)
+        .where((eb) => eb.or([eb("o.held_until", "is", null), eb("o.held_until", "<=", sql<Date>`now()`)])) // held after confirmation (E6-23a)
         .where((eb) => eb.or([eb("o.stock_status", "is", null), eb("o.stock_status", "!=", "short")]))
         .where((eb) => eb.or([eb("o.duplicate_status", "is", null), eb("o.duplicate_status", "!=", "suspected")]))
         .where((eb) => eb.not(eb.exists(eb.selectFrom("pick_list_orders as plo").innerJoin("pick_lists as pl", "pl.id", "plo.pick_list_id")

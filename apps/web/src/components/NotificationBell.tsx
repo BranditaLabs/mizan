@@ -31,6 +31,9 @@ function hrefOf(n: Note): string | null {
  * caller's role. A bell with the unread count; the panel lists the latest, each linking to what
  * it is about; opening it marks them read. Checked every minute.
  */
+const AFTER_KINDS = new Set(["confirmed", "changed", "cancelled", "no_answer", "opted_out", "customer_message", "auto_cancelled", "followup_dead"]);
+const AFTER_WHY = new Set(["payment_blocks_shipping", "payment_mode_not_allowed", "address_missing", "no_courier", "courier_needs_attention", "store_not_connected", "stock_short", "stock_settling", "duplicate_suspected", "offer_settling", "order_moved"]);
+
 export function NotificationBell() {
   const t = useTranslations("notifications");
   const tp = useTranslations("notifications.providers");
@@ -70,6 +73,14 @@ export function NotificationBell() {
       if (n.source === "connection.needs_attention") return t(provider === "bosta" ? "connection.courierRefused" : "connection.storeRefused", { name });
       if (n.source === "connection.disconnected") return t("connection.disconnected", { name });
       void c;
+    }
+    if (n.source === "after_confirmation") {
+      // "blocked|#1042|no_courier" (E6-23a): what happened after confirmation, in the reader's language; the number isolated in either direction.
+      const [kind = "", number = "", code = ""] = n.text.split("|");
+      const num = `\u2068${number}\u2069`;
+      const why = AFTER_WHY.has(code) ? t(`after.why.${code}` as "after.why.other") : t("after.why.other");
+      if (kind === "blocked") return t("after.blocked", { n: num, why });
+      if (AFTER_KINDS.has(kind)) return t(`after.${kind}` as "after.confirmed", { n: num });
     }
     if (n.source === "plan.limit") {
       // "orders|near|240|300|free": the store's plan limit (E12-1), told in the reader's language.
