@@ -198,6 +198,12 @@ class MizanMotion {
   static const reducedGlide = Duration(milliseconds: 120);
   static const reducedReveal = Duration(milliseconds: 120);
   static const reducedDrift = Duration(milliseconds: 0);
+  static const double reducedDistanceRise = 0;
+  static const double reducedDistanceReveal = 0;
+  static const double reducedDistanceRow = 0;
+  static const double reducedDistanceLean = 0;
+  static const reducedStaggerList = Duration.zero;
+  static const reducedStaggerGrid = Duration.zero;
 }
 
 ThemeData _mizanTheme(Brightness b) {

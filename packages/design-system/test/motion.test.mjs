@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 /**
  * DS-1 (docs/16 §2.3): Brandita's motion, type steps, Geist 800/900 and the island edge, added
@@ -70,6 +71,18 @@ describe("reduced motion", () => {
     const dart = read("dist/mizan_tokens.dart");
     for (const k of keys(T.motion.reduced)) expect(dart, k).toContain(`static const reduced${k[0].toUpperCase()}${k.slice(1)} = Duration(milliseconds: ${T.motion.reduced[k]});`);
   });
+
+  it("Flutter gets a zero for every distance and every stagger delay, as CSS does", () => {
+    const cap = (k) => k[0].toUpperCase() + k.slice(1);
+    for (const file of ["dist/mizan_tokens.dart", "../../apps/ops/lib/theme/mizan_tokens.dart"]) {
+      const dart = read(file);
+      for (const k of keys(T.motion.distance)) expect(dart, `${file} ${k}`).toContain(`static const double reducedDistance${cap(k)} = 0;`);
+      const msStagger = keys(T.motion.stagger).filter((k) => (T.motion.stagger.$units[k] ?? T.motion.stagger.$units["*"]) === "ms");
+      expect(msStagger.length).toBeGreaterThan(0);
+      for (const k of msStagger) expect(dart, `${file} ${k}`).toContain(`static const reducedStagger${cap(k)} = Duration.zero;`);
+      expect(dart).not.toContain("reducedStaggerCap");
+    }
+  });
 });
 
 describe("Tailwind entries", () => {
@@ -83,6 +96,17 @@ describe("Tailwind entries", () => {
   it("v3 preset has the same names", () => {
     const preset = read("dist/tailwind-preset.cjs");
     for (const n of ['"spring-soft"', '"glide"', '"island-lg"', '"nav-full"', '"island"']) expect(preset, n).toContain(n);
+  });
+
+  it("v3 preset lists screens in ascending order (v3 emits min-width queries in object order)", () => {
+    const req = createRequire(import.meta.url);
+    const screens = req(join(root, "dist/tailwind-preset.cjs")).theme.screens;
+    const px = Object.values(screens).map((s) => parseInt(s, 10));
+    expect(px).toEqual([...px].sort((a, b) => a - b));
+    expect(Object.keys(screens)).toEqual(expect.arrayContaining(["nav", "nav-full", "2xl"]));
+    expect(Object.keys(screens).indexOf("nav-full")).toBeLessThan(Object.keys(screens).indexOf("2xl"));
+    // On theme, not theme.extend: extending would put them after Tailwind's default 2xl.
+    expect(req(join(root, "dist/tailwind-preset.cjs")).theme.extend.screens).toBeUndefined();
   });
 });
 

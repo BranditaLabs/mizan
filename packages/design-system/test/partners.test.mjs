@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { partnerBySlug, planPartnerLogo } from "../logos/partners/index.ts";
+import { partnerBySlug, partnerMarkMinSize, planPartnerLogo } from "../logos/partners/index.ts";
 
 /** DS-3 (docs/16 §5.9): partner logos, their manifest, and what PartnerLogo draws. */
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -79,6 +79,39 @@ describe("partner manifest", () => {
     for (const slug of ["whatsapp", "applepay", "meta", "facebook", "instagram"]) expect(partnerBySlug(slug).monogram, slug).toBe(true);
     expect(partnerBySlug("stripe").allowedVariants).not.toContain("black"); // Stripe: slate/blurple or white only
   });
+
+  it("no mark is drawn before someone has read the brand's guide (guideCheckedAt)", () => {
+    for (const e of P) {
+      const drawn = [16, 24, 32, 48, 96, 160, 320].some((s) => ["color", "mono"].some((v) => planPartnerLogo(e.slug, s, v).kind === "mark"));
+      if (drawn) expect(e.guideCheckedAt, e.slug).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+    // Files are in, guides unread: monograms until someone confirms them.
+    for (const slug of ["wordpress", "x"]) {
+      expect(partnerBySlug(slug).guideCheckedAt, slug).toBeNull();
+      expect(planPartnerLogo(slug, 320).kind, slug).toBe("monogram");
+      expect(planPartnerLogo(slug, 320, "mono").kind, slug).toBe("monogram");
+    }
+  });
+
+  it("a colour simple-icons file is the brand's whole mark, so Shopify's two-green bag waits for the press kit", () => {
+    // simple-icons draws Shopify's bag as one green path; the real full-colour mark is two greens with a white S.
+    expect(partnerBySlug("shopify").allowedVariants).not.toContain("color");
+    expect(existsSync(join(dir, "shopify.svg"))).toBe(false);
+    const p = planPartnerLogo("shopify", 160);
+    // Colour asked for: the black file on the light tile in both themes. Mono: black, then white by theme.
+    expect([p.kind, p.light.variant, p.light.tile, p.dark.variant, p.dark.tile]).toEqual(["mark", "black", true, "black", true]);
+    const m = planPartnerLogo("shopify", 160, "mono");
+    expect([m.light.variant, m.light.tile, m.dark.variant, m.dark.tile]).toEqual(["black", false, "white", false]);
+  });
+
+  it("monograms are distinct within a kind, so a picker or a table can tell them apart", () => {
+    for (const kind of new Set(P.map((e) => e.kind))) {
+      const texts = P.filter((e) => e.kind === kind && !e.textOnly).map((e) => planPartnerLogo(e.slug, 16).text);
+      expect(texts.every(Boolean), kind).toBe(true);
+      const dupes = texts.filter((t, i) => texts.indexOf(t) !== i);
+      expect(dupes, kind).toEqual([]);
+    }
+  });
 });
 
 describe("partner SVG files", () => {
@@ -124,6 +157,17 @@ describe("planPartnerLogo", () => {
     expect(big.markPx).toBeGreaterThanOrEqual(80);
     expect(big.markPx + 2 * big.padPx).toBe(160);
     expect(big.padPx).toBe(Math.round(160 * 0.5 / 2)); // ½ S of clear space on each side
+  });
+  it("partnerMarkMinSize is the first size that draws the mark (the /ui gallery uses it)", () => {
+    expect(partnerMarkMinSize("shopify")).toBe(160);
+    expect(planPartnerLogo("shopify", 159).kind).toBe("monogram");
+    expect(partnerMarkMinSize("woocommerce")).toBe(24);
+    expect(partnerMarkMinSize("bosta")).toBeUndefined();
+    expect(partnerMarkMinSize("wordpress")).toBeUndefined();
+    for (const e of P) {
+      const s = partnerMarkMinSize(e.slug);
+      if (s) expect(planPartnerLogo(e.slug, Math.max(96, s)).kind, e.slug).toBe("mark");
+    }
   });
   it("monograms carry the brand's initial and its name in the reader's language", () => {
     expect(planPartnerLogo("bosta", 32, "color", "ar")).toMatchObject({ kind: "monogram", text: "B", name: "بوسطة" });

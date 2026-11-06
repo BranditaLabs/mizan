@@ -151,6 +151,9 @@ T.viz.light.forEach((_, i) => { v3colors[`viz-${i + 1}`] = `var(--mz-viz-${i + 1
 const v3 = {
   darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
+    // Tailwind v3 writes min-width queries in object order, so they must ascend (v4 sorts by value).
+    // Set on theme, not extend: extending would append nav and nav-full after the default 2xl.
+    screens: Object.fromEntries(entries(T.breakpoint).sort(([, a], [, b]) => a - b).map(([k, n]) => [kebab(k), `${n}px`])),
     extend: {
       colors: v3colors,
       fontFamily: { sans: ["var(--mz-font-sans)"], display: ["var(--mz-font-display)"], mono: ["var(--mz-font-mono)"] },
@@ -159,7 +162,6 @@ const v3 = {
       boxShadow: { ...Object.fromEntries(entries(T.shadow).filter(([k]) => k !== "none").map(([k]) => [k, `var(--mz-shadow-${k})`])), none: "none" },
       transitionTimingFunction: Object.fromEntries(entries(M.easing).map(([k, s]) => [kebab(k), s])),
       transitionDuration: Object.fromEntries(entries(M.duration).map(([k]) => [k, `var(--mz-duration-${k})`])),
-      screens: Object.fromEntries(entries(T.breakpoint).map(([k, n]) => [kebab(k), `${n}px`])),
       zIndex: Object.fromEntries(entries(T.z).map(([k, n]) => [k, String(n)])),
     },
   },
@@ -252,6 +254,8 @@ ${withUnits(M.stagger).map(([k, s]) => s.endsWith("ms")
 
   // With reduced motion (MediaQuery.disableAnimations): short fades, no travel.
 ${entries(M.reduced).map(([k, n]) => `  static const reduced${cap(k)} = Duration(milliseconds: ${n});`).join("\n")}
+${entries(M.distance).map(([k]) => `  static const double reducedDistance${cap(k)} = 0;`).join("\n")}
+${withUnits(M.stagger).filter(([, s]) => s.endsWith("ms")).map(([k]) => `  static const reducedStagger${cap(k)} = Duration.zero;`).join("\n")}
 }
 
 ThemeData _mizanTheme(Brightness b) {

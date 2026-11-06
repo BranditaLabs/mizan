@@ -6,6 +6,15 @@ module.exports = {
     "[data-theme=\"dark\"]"
   ],
   "theme": {
+    "screens": {
+      "sm": "640px",
+      "md": "768px",
+      "nav": "768px",
+      "lg": "1024px",
+      "xl": "1280px",
+      "nav-full": "1280px",
+      "2xl": "1536px"
+    },
     "extend": {
       "colors": {
         "bg": "rgb(var(--mz-bg-rgb) / <alpha-value>)",
@@ -251,15 +260,6 @@ module.exports = {
         "glide": "var(--mz-duration-glide)",
         "reveal": "var(--mz-duration-reveal)",
         "drift": "var(--mz-duration-drift)"
-      },
-      "screens": {
-        "sm": "640px",
-        "md": "768px",
-        "lg": "1024px",
-        "xl": "1280px",
-        "2xl": "1536px",
-        "nav": "768px",
-        "nav-full": "1280px"
       },
       "zIndex": {
         "base": "0",

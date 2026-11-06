@@ -15,7 +15,7 @@ describe("<PartnerLogo>", () => {
   });
 
   it("mono renders the light and the dark file for the theme switch", () => {
-    const html = renderToStaticMarkup(<PartnerLogo slug="x" size={32} variant="mono" />);
+    const html = renderToStaticMarkup(<PartnerLogo slug="woocommerce" size={32} variant="mono" />);
     expect(html).toContain('data-scheme="light"');
     expect(html).toContain('data-scheme="dark"');
     expect(html).toContain('fill="#000000"');

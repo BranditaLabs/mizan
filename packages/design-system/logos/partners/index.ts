@@ -32,8 +32,8 @@ const nameOf = (entry: PartnerEntry | undefined, slug: string, locale: "ar" | "e
 const initial = (entry: PartnerEntry | undefined, slug: string) => entry?.monogramText ?? (entry?.nameEn ?? slug).replace(/[^A-Za-z0-9]/g, "").charAt(0).toUpperCase();
 
 /**
- * Decides what PartnerLogo draws. A mark ships only when the entry has a guide link, allowed
- * variants and a minimum size, and only if the mark (size minus clear space) is at least that
+ * Decides what PartnerLogo draws. A mark ships only when the entry has a guide link that someone
+ * has read (guideCheckedAt), allowed variants and a minimum size, and only if the mark (size minus clear space) is at least that
  * minimum; otherwise a monogram tile. Marks are never recoloured: "mono" picks the brand's own
  * black/white file only where allowedVariants lists it, else the colour mark on a light tile.
  */
@@ -43,7 +43,7 @@ export function planPartnerLogo(slug: string, size: number, variant: PartnerLogo
   if (entry?.textOnly) return { kind: "text", entry, name };
   const monogram = (): PartnerLogoPlan => ({ kind: "monogram", entry, text: initial(entry, slug), name });
   const marks = entry ? MARKS[entry.slug] : undefined;
-  if (!entry || entry.monogram || !marks || !entry.guideUrl || entry.allowedVariants.length === 0 || !entry.minPx) return monogram();
+  if (!entry || entry.monogram || !marks || !entry.guideUrl || !entry.guideCheckedAt || entry.allowedVariants.length === 0 || !entry.minPx) return monogram();
 
   const padPx = Math.round(size * entry.clearSpace / (1 + 2 * entry.clearSpace));
   const markPx = size - 2 * padPx;
@@ -58,4 +58,16 @@ export function planPartnerLogo(slug: string, size: number, variant: PartnerLogo
   const light = face("black", false) ?? onTile;
   const dark = face("on-dark", false) ?? face("white", false) ?? onTile;
   return { kind: "mark", entry, name, light, dark, markPx, padPx };
+}
+
+/**
+ * The smallest outer size (clear space included) at which a partner's mark is drawn rather than
+ * its monogram, or undefined when no size draws the mark (unchecked guide, no file, monogram).
+ */
+export function partnerMarkMinSize(slug: string): number | undefined {
+  const entry = partnerBySlug(slug);
+  if (!entry?.minPx) return undefined;
+  const start = Math.ceil(entry.minPx * (1 + 2 * entry.clearSpace));
+  for (let size = start; size <= start + 4; size++) if (planPartnerLogo(slug, size).kind === "mark") return size;
+  return undefined;
 }
