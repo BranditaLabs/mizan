@@ -12,6 +12,7 @@ import { EventDispatcher } from "../src/platform/events/dispatcher.js";
 import { EventsService } from "../src/platform/events/events.service.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { EngineJobRunner } from "../src/integrations/engine-runner.js";
+import { PiiCipher } from "../src/platform/pii/pii-cipher.js";
 import { SyncGuardian } from "../src/integrations/sync-guardian.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
 import { FakeVerifier } from "./support/fake-auth.js";
@@ -506,6 +507,31 @@ describe("orders made in Mizan reach Shopify: one record in Mizan, Shopify and t
     expect(copy.customer).toMatchObject({ id: "gid://shopify/Customer/501" });
     expect(copy.shippingAddress).toMatchObject({ province: "Cairo", provinceCode: "C" });
     expect(shop.customers.filter((c) => c.phone === "+201001234821")).toHaveLength(1);
+  });
+
+  it("an old copy whose buyer is not a store customer: created when no erasure was asked for; an erasure of that phone stops it (U27)", async () => {
+    const legacy = async (phone: string) => {
+      const id = await manual({ mode: "cod" }, "Cairo", phone);
+      await settle();
+      const copy = copyOf(id)[0]!;
+      copy.customer = null as unknown as Record<string, unknown>;
+      copy.shippingAddress = { ...copy.shippingAddress, province: "C", provinceCode: null };
+      return { id, copy };
+    };
+    const a = await legacy("01001239001");
+    const b = await legacy("01001239002");
+    shop.customers.length = 0; // as the old code left the store: no customers for these buyers
+    // The store asked to erase b's buyer (customers/redact naming the phone): recorded with the phone's hash, as the webhook does.
+    const shopId = await shopifyId(); // outside the transaction below: one connection in tests
+    await db.tenant(store, async (trx) => {
+      const pii = await app.get(PiiCipher).forTenant(trx, store);
+      await trx.insertInto("privacy_requests").values({ tenant_id: store, connection_id: shopId, source: "shopify_customers_redact", payload: JSON.stringify({ shop: "x", orderIds: [], phoneHash: pii.phoneHash("+201001239002") }), due_at: new Date() }).execute();
+    });
+    await db.tenant(store, (trx) => trx.deleteFrom("mz_records").where("type", "=", "guardian").where("key", "like", "copy-repair:%").execute());
+    for (let i = 0; i < 4; i++) { await app.get(SyncGuardian).round(Date.now(), clock.now()); await settle(); }
+    expect(a.copy.customer).toMatchObject({ phone: "+201001239001" });
+    expect(b.copy.customer).toBeNull();
+    expect(b.copy.shippingAddress).toMatchObject({ provinceCode: "C" }); // the governorate is still put right
   });
 
   it("shipped with Bosta: the copy in Shopify is fulfilled with the tracking number", async () => {

@@ -557,8 +557,8 @@ export class ShopifyConnector {
   /**
    * Put right a store copy made before customers and governorate codes were sent (U26). Two
    * independent steps, each said as drift when the store refuses it:
-   *  - the buyer: a customer the store already has (by phone, then email) is set on the order.
-   *    Never created here: an old copy's buyer may have been erased in Shopify since.
+   *  - the buyer: a customer the store already has (by phone, then email) is set on the order;
+   *    with none, one is created only when the platform says no erasure was asked for (`mayCreate`).
    *  - the governorate: an address Shopify holds without a code gets it. orderUpdate replaces the
    *    whole address, so every field Shopify has is sent back as it is.
    * Safe to repeat; an order Shopify no longer has is left alone.
@@ -575,7 +575,8 @@ export class ShopifyConnector {
     if (customer === "none" && d.customer) {
       try {
         const found = await this.customerFor(d.number, d.customer);
-        const id = (found?.toAssociate as { id?: string } | undefined)?.id;
+        let id = (found?.toAssociate as { id?: string } | undefined)?.id;
+        if (!id && found?.toUpsert && d.customer.mayCreate) id = await this.createCustomer(d.number, d.customer, found.toUpsert as Record<string, string>);
         if (id) {
           const s = await this.gql.run<{ orderCustomerSet: { userErrors: UserErrors } }>(Q.ORDER_CUSTOMER_SET, { orderId, customerId: id }, { idempotent: true });
           assertNoUserErrors("orderCustomerSet", s.orderCustomerSet?.userErrors);
@@ -599,6 +600,19 @@ export class ShopifyConnector {
       } catch (e) { refused("the governorate", e); }
     }
     return { customer, province };
+  }
+
+  /** Not idempotent: one attempt. Taken meanwhile (a lost answer) is found again; not found yet, the job tries later. */
+  private async createCustomer(number: string, c: NonNullable<StoreOrderDraft["customer"]>, input: Record<string, string>): Promise<string | undefined> {
+    const made = await this.gql.run<{ customerCreate?: { customer?: { id?: string } | null; userErrors: UserErrors } }>(Q.CUSTOMER_CREATE, { input }, { idempotent: false, maxAttempts: 1 });
+    const errs = made.customerCreate?.userErrors ?? [];
+    if (errs.some((e) => /taken|already/i.test(e.message))) {
+      const again = ((await this.customerFor(number, c))?.toAssociate as { id?: string } | undefined)?.id;
+      if (again) return again;
+      throw new IntegrationError({ kind: "transient", connector: "shopify", message: `customerCreate: the customer of ${number} exists but is not found yet` });
+    }
+    assertNoUserErrors("customerCreate", errs);
+    return made.customerCreate?.customer?.id ?? undefined;
   }
 
   private async ensureOrderIdDefinition() {
