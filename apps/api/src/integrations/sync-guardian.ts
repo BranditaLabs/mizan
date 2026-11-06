@@ -26,7 +26,8 @@ export const GUARD = {
   stuckBookingMs: 30 * MIN,
 };
 /** Trouble that passes: worth another try later. The rest (validation, auth, permission…) needs a person. */
-const RETRYABLE = /^(gave up after \d+ attempts — (rate_limited|transient|timeout|circuit_open|conflict)|rate_limited|transient|timeout|circuit_open|conflict)/;
+// "no handler for job kind": a job queued by new code and claimed by an old worker during a deploy; the next worker knows it.
+const RETRYABLE = /^(gave up after \d+ attempts — (rate_limited|transient|timeout|circuit_open|conflict)|rate_limited|transient|timeout|circuit_open|conflict|no handler for job kind)/;
 const COLLECTS_ON_DELIVERY = new Set(["cod", "partial"]);
 const TERMINAL_FOR_STORE = new Set<ShipmentStatus>(["delivered", "returned", "lost"]);
 
