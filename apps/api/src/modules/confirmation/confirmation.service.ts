@@ -10,6 +10,8 @@ import { EventsService } from "../../platform/events/events.service.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { PiiCipher } from "../../platform/pii/pii-cipher.js";
 import { roleScope } from "../orders/orders.service.js";
+import { paymentView } from "../shipping/shipping.service.js";
+import { cashToCollect } from "@mizan/engine";
 import { linkToken, runIdOf } from "./confirmation-link.js";
 import { routeFor } from "./routing.js";
 import { confirmationSettings, ConfirmationSettingsSchema, nextCallingTime, type AutomatedChannel, type ConfirmationSettings } from "./confirmation.settings.js";
@@ -223,7 +225,7 @@ export class ConfirmationService {
 
   /** Everything a message needs, read inside the store's transaction. Null when the order has no phone. */
   async facts(trx: Transaction<DB>, tenantId: string, run: Pick<RunRow, "id" | "order_id" | "customer_hash">): Promise<{ to: string; facts: MessageFacts } | null> {
-    const o = await trx.selectFrom("orders").select(["number", "ship_phone", "customer_label", "currency", "total_minor", "cod_minor", "ship_city"]).where("id", "=", run.order_id).executeTakeFirstOrThrow();
+    const o = await trx.selectFrom("orders").select(["number", "ship_phone", "customer_label", "currency", "total_minor", "cod_minor", "ship_city", "paid_minor", "payment_mode", "payment_status"]).where("id", "=", run.order_id).executeTakeFirstOrThrow();
     const pii = await this.cipher.forTenant(trx, tenantId);
     const to = pii.decrypt(o.ship_phone, "orders.ship_phone");
     if (!to) return null;
@@ -241,9 +243,14 @@ export class ConfirmationService {
         message: lang === "ar" ? f.message_ar : f.message_en, newTotal: fromMinor(due + BigInt(f.offer_price_minor) * BigInt(f.qty), o.currency),
       };
     })() : null;
+    // E6-23a: the summary after confirming, when the store chose it; the money from cashToCollect (rule 13).
+    const wantsSummary = (await this.after.settingsOf(trx, tenantId)).settings.confirmed.message === "summary";
+    let pay: Money | null = null;
+    if (wantsSummary) { try { pay = cashToCollect(paymentView(o)); } catch { pay = null; } }
     return {
       to,
       facts: {
+        ...(wantsSummary ? { summary: { due: pay, more: Math.max(0, Number((await trx.selectFrom("order_lines").select((eb) => eb.fn.countAll<string>().as("n")).where("order_id", "=", run.order_id).executeTakeFirstOrThrow()).n) - items.length) } } : {}),
         lang, store: name, firstName: label?.split(" ")[0] ?? null, number: o.number,
         total: fromMinor(BigInt(o.total_minor), o.currency), cod: fromMinor(BigInt(o.cod_minor), o.currency), link: this.linkFor(run.id, lang),
         items: items.map((i) => ({ title: i.title, quantity: i.quantity })), city: o.ship_city, offer, ...(settings.script ? { script: settings.script } : {}),
@@ -366,9 +373,21 @@ export class ConfirmationService {
         optedOut: await this.optedOut(trx, orderId),
         script: f ? callScript(f.facts) : [],
         offer: offerRow ? this.offers.view(offerRow) : null,
+        after: await this.afterView(trx, orderId),
         channels: await this.messaging.channels(tenantId, trx),
       };
     });
+  }
+
+  private async afterView(trx: Transaction<DB>, orderId: string) {
+    const hold = await trx.selectFrom("orders").select(["held_until", "hold_reason"]).where("id", "=", orderId).executeTakeFirstOrThrow();
+    const rows = await trx.selectFrom("order_followups").select(["kind", "status", "run_at", "result", "auto_book"]).where("order_id", "=", orderId).orderBy("created_at").execute();
+    const customer = hold.hold_reason === "customer_message";
+    return {
+      heldUntil: hold.held_until && !customer ? hold.held_until.toISOString() : null,
+      holdReason: (hold.hold_reason as "grace" | "customer_message" | null) ?? null,
+      followups: rows.map((r) => ({ kind: r.kind as "release", status: r.status as "pending", at: r.run_at.toISOString(), result: r.result, autoBook: r.auto_book })),
+    };
   }
 
   /**

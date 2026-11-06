@@ -23,6 +23,11 @@ export interface MessageFacts {
   offer?: OfferFacts | null;
   /** The store's script (E6-5): its wording wins over the built-in messages. */
   script?: Script;
+  /**
+   * E6-23a: the thank-you after a tap carries the order summary (items, what the courier collects,
+   * the area). `due`: from cashToCollect; zero is "paid"; null leaves the money line out. Never an address or phone.
+   */
+  summary?: { due: Money | null; more?: number } | null;
 }
 
 export interface OfferFacts {
@@ -88,20 +93,51 @@ export function offerLine(o: OfferFacts, lang: "ar" | "en"): string {
   return `${o.title}${qty} for ${money(o.price, lang)}${o.was ? ` instead of ${money(o.was, lang)}` : ""}`;
 }
 
+/**
+ * The order summary after confirming (E6-23a): the items, what the courier collects, the area. Fits
+ * `budget` characters (an interactive message's body is 1024 at most): item titles are shortened,
+ * then items dropped with "+N more", then the summary left out rather than the message refused.
+ */
+export function summaryBlock(f: MessageFacts, budget = 3000): string {
+  if (!f.summary) return "";
+  const ar = f.lang === "ar";
+  const due = f.summary.due;
+  const tail: string[] = [];
+  if (due) tail.push(Number(due.amount) > 0 ? (ar ? `💵 هتدفع للمندوب: ${money(due, "ar")}` : `💵 Pay the courier: ${money(due, "en")}`) : (ar ? "💳 مدفوع" : "💳 Paid"));
+  if (f.city) tail.push(`📍 ${f.city}`);
+  const items = f.items ?? [];
+  const extra = f.summary.more ?? 0;
+  const build = (n: number, width: number) => {
+    const cut = (t: string) => (t.length > width ? `${t.slice(0, width - 1)}…` : t);
+    const lines = items.slice(0, n).map((i) => `• ${i.quantity}× ${cut(i.title)}`);
+    const left = items.length - n + extra;
+    if (left > 0) lines.push(ar ? `• و${left} منتج كمان` : `• and ${left} more`);
+    return `\n\n${[...lines, ...tail].join("\n")}`;
+  };
+  for (const width of [80, 40, 24]) {
+    for (let n = items.length; n >= 1; n--) { const b = build(n, width); if (b.length <= budget) return b; }
+  }
+  const bare = `\n\n${tail.join("\n")}`;
+  return tail.length && bare.length <= budget ? bare : "";
+}
+
 export function chatContent(m: ChatMessage, f: MessageFacts): ChatContent {
   const ar = f.lang === "ar";
   const own = (key: ScriptKey) => { const t = scriptText(f.script, f.lang, key); return t ? render(t, f) : null; };
   switch (m) {
     case "confirmed":
-      return { type: "text", text: own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!`) };
+      return { type: "text", text: (own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد وهنشحنه قريب. شكراً إنك اخترت ${f.store}!` : `Done ✅ your order ${f.number} is confirmed and will ship soon. Thanks for choosing ${f.store}!`)) + summaryBlock(f) };
     case "confirmed_offer": {
       const o = f.offer;
       if (!o) return chatContent("confirmed", f);
       const pitch = o.message ?? (ar ? `🎁 عرض ليك: ${stop(offerLine(o, "ar"))}` : `🎁 An offer for you: ${stop(offerLine(o, "en"))}`);
-      const head = own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`);
+      const top = own("confirmed") ?? (ar ? `تمام ✅ أوردرك ${f.number} اتأكّد.` : `Done ✅ your order ${f.number} is confirmed.`);
+      const ask = ar ? `\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `\n\n${pitch}\nShall we add it to the same order?`;
+      // WhatsApp refuses an interactive body over 1024 characters: the summary gets what is left.
+      const head = top + summaryBlock(f, 1024 - top.length - ask.length);
       return {
         type: "buttons",
-        body: ar ? `${head}\n\n${pitch}\nتحب نضيفه لنفس الأوردر؟` : `${head}\n\n${pitch}\nShall we add it to the same order?`,
+        body: `${head}${ask}`,
         buttons: [{ action: "offer_yes", arg: o.id, title: ar ? "ضيفه" : "Add it" }, { action: "offer_no", arg: o.id, title: ar ? "لا شكراً" : "No, thanks" }],
       };
     }

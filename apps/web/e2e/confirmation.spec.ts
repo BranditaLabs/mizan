@@ -71,7 +71,7 @@ test("owner in Arabic: Settings → Confirmation shows no channel connected and 
   await signInOwner(page, owner, "ar");
   await expect(page).toHaveURL(/\/ar$/);
   await page.getByRole("link", { name: "الإعدادات" }).click();
-  await page.getByRole("navigation", { name: "الإعدادات" }).getByRole("link", { name: "التأكيد" }).click();
+  await page.getByRole("navigation", { name: "الإعدادات" }).getByRole("link", { name: "التأكيد", exact: true }).click(); // "بعد التأكيد" is its own page
   await expect(page).toHaveURL(/\/ar\/settings\/confirmation$/);
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("التأكيد");
@@ -156,6 +156,7 @@ test("order detail: the team's call panel with the script, the WhatsApp conversa
       { direction: "in", kind: "text", action: "message", status: "received", errorCode: null, at },
     ],
     script: ["أهلاً منى، معاك فريق متجر الكارت.", "بنأكّد أوردرك رقم #7002: عباية سادة × 2.", "الإجمالي 1,250 ج.م. عند الاستلام."],
+    after: { heldUntil: null, holdReason: null, followups: [] },
     channels: { whatsapp: false, call_auto: false, call_team: true },
   } }));
   let noAnswer = 0;

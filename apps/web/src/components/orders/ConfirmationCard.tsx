@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { AfterConfirmationBox } from "./AfterConfirmationBox";
 
 type Summary = Schemas["OrderConfirmation"];
 type RunStatus = NonNullable<Summary["run"]>["status"];
@@ -109,6 +110,8 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
             ) : null}
           </>
         )}
+
+        {s ? <AfterConfirmationBox orderId={orderId} after={s.after} onChange={refresh} /> : null}
 
         {s && s.whatsapp.length ? (
           <section aria-label={t("chat.title")} className="flex flex-col gap-1.5" data-testid="confirmation-chat">

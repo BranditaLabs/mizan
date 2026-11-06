@@ -375,7 +375,8 @@ export class ShippingService implements ShipmentResultSink {
 }
 
 /** The order's money as the payment rules read it (cashToCollect): the same numbers the order screen shows. */
-function paymentView(o: { number: string; currency: string; total_minor: string | number | bigint; paid_minor: string | number | bigint; payment_mode: string; payment_status: string }) {
+/** The order's money as cashToCollect reads it (rule 13): what the courier collects comes from here only. */
+export function paymentView(o: { number: string; currency: string; total_minor: string | number | bigint; paid_minor: string | number | bigint; payment_mode: string; payment_status: string }) {
   const total = BigInt(o.total_minor);
   const paid = BigInt(o.paid_minor);
   return {

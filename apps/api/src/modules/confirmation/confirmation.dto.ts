@@ -97,6 +97,18 @@ export const OrderConfirmationSchema = z.object({
   script: z.array(z.string()),
   /** The run's offer (E6-11), whatever its status. */
   offer: OfferViewSchema.nullable(),
+  /** What happens after confirmation (E6-23a): the hold and the follow-ups waiting or done (codes and times only). */
+  after: z.object({
+    heldUntil: z.iso.datetime().nullable().describe("Off packing and ready-to-ship until then (a customer's message: until a person releases it)"),
+    holdReason: z.enum(["grace", "customer_message"]).nullable(),
+    followups: z.array(z.object({
+      kind: z.enum(["release", "no_answer_cancel"]),
+      status: z.enum(["pending", "done", "skipped", "blocked", "dead"]),
+      at: z.iso.datetime(),
+      result: z.string().nullable().describe("A code: ready, released, by_team, setting_off, a blocked reason, cancelled…"),
+      autoBook: z.boolean(),
+    })),
+  }),
   channels: ChannelsSchema,
 });
 

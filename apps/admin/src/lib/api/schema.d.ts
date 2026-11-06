@@ -6080,6 +6080,26 @@ export interface components {
                  */
                 failure: "not_in_store" | "unavailable" | "permission" | "failed" | null;
             } | null;
+            after: {
+                /**
+                 * Format: date-time
+                 * @description Off packing and ready-to-ship until then (a customer's message: until a person releases it)
+                 */
+                heldUntil: string | null;
+                /** @enum {string|null} */
+                holdReason: "grace" | "customer_message" | null;
+                followups: {
+                    /** @enum {string} */
+                    kind: "release" | "no_answer_cancel";
+                    /** @enum {string} */
+                    status: "pending" | "done" | "skipped" | "blocked" | "dead";
+                    /** Format: date-time */
+                    at: string;
+                    /** @description A code: ready, released, by_team, setting_off, a blocked reason, cancelled… */
+                    result: string | null;
+                    autoBook: boolean;
+                }[];
+            };
             /** @description Channels the store can use for confirmation */
             channels: {
                 /** @description The store's WhatsApp number is connected and its template approved */

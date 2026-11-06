@@ -1093,6 +1093,24 @@
         "found_cheaper": "Found it cheaper",
         "delivery_too_late": "Delivery takes too long",
         "other": "Another reason"
+      },
+      "after": {
+        "title": "After confirmation",
+        "held": "In the change window until <t></t>",
+        "heldByCustomer": "The customer wrote after confirming: held until you release it",
+        "books": "Books by itself at <t></t>",
+        "releases": "Goes to packing at <t></t>",
+        "ready": "Handed to shipping for booking",
+        "byTeam": "Your team books it by hand",
+        "blocked": "Automatic booking stopped: {why}",
+        "autoCancel": "Cancelled at <t></t> if nobody answers",
+        "autoCancelled": "Cancelled automatically: nobody answered",
+        "release": "Release now",
+        "skip": "Book by hand",
+        "releasedToast": "Released: it goes to packing now.",
+        "skippedToast": "It won't book by itself.",
+        "retry": "Try booking again",
+        "retriedToast": "We'll try to book it again now."
       }
     },
     "answerChannel": {
@@ -1589,7 +1607,8 @@
       "payments": "Payments",
       "orders": "Orders",
       "privacy": "Privacy",
-      "inventory": "Inventory"
+      "inventory": "Inventory",
+      "afterConfirmation": "After confirmation"
     },
     "subtitle": "How your brand, its stores and its team work in Mizan.",
     "none": "There are no settings for your role.",
@@ -1623,7 +1642,8 @@
       "payments": "Turning cash on delivery into prepaid, and the methods you take.",
       "refunds": "Who approves refunds, and the limits.",
       "inventory": "Whether Mizan sends its stock count to your store, so it never sells what's reserved or gone.",
-      "purchasing": "Defaults for purchase orders and receiving."
+      "purchasing": "Defaults for purchase orders and receiving.",
+      "afterConfirmation": "What happens once an order is confirmed, changed, cancelled or unanswered."
     }
   },
   "confirmationSettings": {
@@ -4736,6 +4756,104 @@
       "city": "Enter the area",
       "line1": "Enter the street and building",
       "location": "Not a map link or coordinates. A short maps.app.goo.gl link has to be opened first and the full link copied"
+    }
+  },
+  "afterConfirmation": {
+    "title": "After confirmation",
+    "subtitle": "What Mizan does by itself once an order is confirmed, changed, cancelled, or nobody answers. Everything is off until you turn it on.",
+    "recommended": "Recommended settings",
+    "saved": "Saved. It applies to orders from now on.",
+    "loading": "Loading the settings…",
+    "loadFailed": "We couldn't load the settings. Refresh the page.",
+    "notAllowed": {
+      "title": "Only the owner, admins and operations managers",
+      "body": "Ask one of them to change what happens after confirmation."
+    },
+    "tabs": "Outcomes",
+    "tab": {
+      "confirmed": "Confirmed",
+      "changed": "Change asked",
+      "cancelled": "Cancelled",
+      "noAnswer": "No answer",
+      "optedOut": "Said STOP"
+    },
+    "when": {
+      "confirmed": "When an order is confirmed",
+      "changed": "When the customer asks to change the order",
+      "cancelled": "When the customer cancels",
+      "noAnswer": "When nobody answers the confirmation",
+      "optedOut": "When the customer says STOP on WhatsApp"
+    },
+    "confirmed": {
+      "grace": "wait <n></n> minutes before packing, so the customer can still change or cancel",
+      "graceLabel": "Minutes before packing",
+      "graceOn": "During this window the order stays off pick lists and isn't booked. If the customer writes, it waits for your team.",
+      "graceOff": "0 means the order goes to packing straight away.",
+      "tags": "tag it in Mizan and in Shopify",
+      "message": "send the customer on WhatsApp",
+      "messageLabel": "The thank-you message",
+      "messageShort": "a short thank-you",
+      "messageSummary": "the order summary (items, amount, area)",
+      "autoBook": "Book the courier by itself",
+      "autoBookHint": "Mizan books once the window ends, with every check the Ship button makes.",
+      "courier": "Courier",
+      "courierFirst": "The first connected courier",
+      "modes": "Only when the payment is",
+      "channels": "And the order was confirmed by",
+      "afterChange": "Even if the customer asked for a change first"
+    },
+    "channel": {
+      "whatsapp": "WhatsApp",
+      "link": "The link",
+      "call_team": "A team call",
+      "agent": "A team member",
+      "auto": "No need to ask (trusted)",
+      "voice_ivr": "Automated call",
+      "voice_ai": "AI call"
+    },
+    "changed": {
+      "fixed": "Your team calls the customer and edits the order.",
+      "tags": "tag it",
+      "assign": "Give the call to",
+      "nobody": "Nobody in particular"
+    },
+    "cancelled": {
+      "tags": "tag it",
+      "overlap": "A tag can't mean both confirmed and cancelled: <tags></tags>",
+      "fixedStore": "It's cancelled in your store too.",
+      "fixedStock": "Its stock goes back by itself."
+    },
+    "noAnswer": {
+      "fixed": "It goes on the \"Needs a call\" list (always).",
+      "tags": "tag it",
+      "autoCancel": "Cancel it if nobody answers",
+      "autoCancelHint": "Only when every guard holds: no money paid, nobody holding it, no change asked.",
+      "after": "Counting from",
+      "afterMessages": "the automatic messages",
+      "afterTeamCalls": "the team's last call",
+      "hours": "Hours to wait",
+      "ifAssigned": "Even if a team member has taken it",
+      "fixedPaid": "An order with a paid deposit is never cancelled by itself.",
+      "fixedWrites": "If the customer writes back, it isn't cancelled.",
+      "fixedStock": "Mizan holds no stock before confirmation, so nothing waits on it."
+    },
+    "optedOut": {
+      "fixed": "Only your team calls them: no more messages.",
+      "tags": "tag it"
+    },
+    "fixed": {
+      "rule13": "Unknown or unpaid payment methods never book by themselves.",
+      "cash": "The courier's cash amount is worked out at booking time.",
+      "customerWrites": "A customer who writes or taps Cancel during the window is held for your team."
+    },
+    "tagsLabel": "Tags",
+    "tagPlaceholder": "Type a tag and press Enter",
+    "tagInvalid": "Letters, numbers, spaces, - and _ only, up to 40 characters; 5 tags at most.",
+    "removeTag": "Remove the tag {tag}",
+    "notify": "Tell the team",
+    "notifyWho": "Who gets the notice",
+    "alert": {
+      "noCourier": "No Bosta connected: automatic booking won't run. <link>Connect a courier</link>"
     }
   }
 }
