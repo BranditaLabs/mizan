@@ -24,6 +24,11 @@ export const Roles = (...roles: MemberRole[]) => SetMetadata(ROLES, roles);
  */
 export const Can = (permission: Permission) => applyDecorators(SetMetadata(ROLES, [...PERMISSIONS[permission]]), SetMetadata(PERMISSION, permission));
 
+export const SUPPORT_MAY_READ = "mizan:support-may-read";
+
+/** A POST that changes nothing in the store (minting a live token): read-only support access (A-3) may call it too. */
+export const SupportMayRead = () => SetMetadata(SUPPORT_MAY_READ, true);
+
 /** Closed to Mizan support access (A-3), whatever the grant: customer data exports and the like. */
 export const NoSupport = () => SetMetadata(NO_SUPPORT, true);
 
