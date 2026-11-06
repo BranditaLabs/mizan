@@ -23,6 +23,21 @@ describe("places", () => {
     expect(placeKey("  مدينة   نصر ")).toBe("نصر");
   });
 
+  it("reads every governorate as Shopify and WooCommerce name it, and an ISO code only whole and in capitals", () => {
+    // Shopify's and WooCommerce's zone names for Egypt (EG_STATES in the WooCommerce mapper).
+    const STORE: Record<string, string> = {
+      ALX: "Alexandria", ASN: "Aswan", AST: "Asyut", BA: "Red Sea", BH: "Beheira", BNS: "Beni Suef", C: "Cairo", DK: "Dakahlia", DT: "Damietta",
+      FYM: "Faiyum", GH: "Gharbia", GZ: "Giza", IS: "Ismailia", JS: "South Sinai", KB: "Qalyubia", KFS: "Kafr el-Sheikh", KN: "Qena", LX: "Luxor",
+      MN: "Minya", MNF: "Monufia", MT: "Matrouh", PTS: "Port Said", SHG: "Sohag", SHR: "Al Sharqia", SIN: "North Sinai", SUZ: "Suez", WAD: "New Valley",
+    };
+    for (const [code, name] of Object.entries(STORE)) {
+      expect(findRegion("EG", name)?.code, name).toBe(code);
+      expect(findRegion("EG", code)?.code, code).toBe(code);
+    }
+    expect(findRegion("EG", "c")).toBeNull(); // a lone letter is not Cairo
+    expect(findRegion("EG", "Ba")).toBeNull();
+  });
+
   it("suggests areas as you type, word starts first", () => {
     const cairo = findRegion("EG", "Cairo");
     expect(searchAreas(cairo, "nas").map((x) => x.en)).toContain("Nasr City");

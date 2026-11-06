@@ -70,7 +70,7 @@ export class StoreWritebackConsumer implements EventHandler {
         // An API courier fulfils a store's order in its own job; a copy's Bosta booking does too (storeOrderId). A courier by hand: here.
         if (s?.provider !== "manual") return;
         await queue.enqueue(MizanEngine.shopifyFulfillJob({
-          orderId: o.external_id, trackingNumber: data.trackingNumber, company: String(data.provider ?? "Courier"), ...(s.tracking_url ? { url: s.tracking_url } : {}),
+          orderId: o.external_id, trackingNumber: data.trackingNumber, company: shopifyCarrier(String(data.provider ?? "Courier")), ...(s.tracking_url ? { url: s.tracking_url } : {}),
         }), now);
         return;
       }
@@ -102,4 +102,22 @@ export class StoreWritebackConsumer implements EventHandler {
       }
     }
   }
+}
+
+/**
+ * Shopify links a tracking number by itself for the carriers it knows, by their exact name: the name
+ * the team typed ("aramex", "ارامكس", "DHL") becomes that name. Others go as typed, with their own link.
+ */
+const CARRIERS: Array<[RegExp, string]> = [
+  [/^(aramex|ارامكس|أرامكس)$/i, "Aramex"],
+  [/^(dhl|dhl express|دي ?اتش ?ال)$/i, "DHL Express"],
+  [/^(smsa|smsa express|سمسا)$/i, "SMSA Express"],
+  [/^(j ?& ?t|j&t express|جي ?اند ?تي)$/i, "J&T Express"],
+  [/^(fedex|فيديكس)$/i, "FedEx"],
+  [/^(ups)$/i, "UPS"],
+  [/^(egypt post|البريد المصري|بريد مصر)$/i, "Egypt Post"],
+];
+export function shopifyCarrier(typed: string): string {
+  const name = typed.trim().replace(/\s+/g, " ");
+  return CARRIERS.find(([re]) => re.test(name))?.[1] ?? name;
 }

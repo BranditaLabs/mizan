@@ -1,3 +1,4 @@
+import { sql } from "kysely";
 import { Inject, Injectable } from "@nestjs/common";
 import { setActingUser } from "@mizan/db";
 import { isMemberRole, type MemberRole, type MembershipStatus, permissionsFor } from "@mizan/shared";
@@ -180,6 +181,7 @@ export class AuthService {
         .select([
           "m.tenant_id", "m.role", "m.status", "t.name", "t.slug", "t.status as tenant_status",
           "t.country", "t.base_currency", "t.locale", "t.timezone",
+          sql<string | null>`coalesce(t.settings -> 'brand' ->> 'squareLogoUrl', t.settings -> 'brand' ->> 'logoUrl')`.as("logo"),
         ])
         .where("m.user_id", "=", userId)
         .where("t.status", "!=", "deleted")
@@ -190,6 +192,7 @@ export class AuthService {
       tenantId: r.tenant_id,
       tenantName: r.name,
       tenantSlug: r.slug,
+      tenantLogo: r.logo,
       tenantStatus: r.tenant_status as MembershipView["tenantStatus"], // CHECK constraint; deleted are filtered out above
       country: r.country,
       baseCurrency: r.base_currency,

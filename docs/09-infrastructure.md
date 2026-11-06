@@ -70,7 +70,7 @@ MESSAGING_PROVIDER (none = confirmation links sent by hand; log = development on
 PUBLIC_URL, WEB_URL, ADMIN_URL (the back office, apps/admin: allowed by CORS), PLATFORM_BOOTSTRAP_EMAILS (first super admin)
 SHOPIFY_API_KEY, SHOPIFY_API_SECRET, SHOPIFY_API_VERSION=2026-10, SHOPIFY_SCOPES
 PAYMOB_* (platform-level config only; merchant keys live in the secrets table)
-BOSTA_BASE_URL, BOSTA_TRACKING_URL_TEMPLATE, WORKER_IN_PROCESS (dev only)
+BOSTA_BASE_URL, BOSTA_TRACKING_URL_TEMPLATE (optional: Bosta's public page is the default), WORKER_IN_PROCESS (dev only)
 META_APP_SECRET (signs WhatsApp webhooks), WHATSAPP_VERIFY_TOKEN (Meta's subscription check), WHATSAPP_GRAPH_VERSION=v24.0, WHATSAPP_GRAPH_URL (tests only)
 SENTRY_DSN, LOG_LEVEL, LOG_FORMAT
 ```

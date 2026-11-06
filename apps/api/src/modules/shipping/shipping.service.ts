@@ -103,22 +103,29 @@ export class ShippingService implements ShipmentResultSink {
    * E7-6: a courier without an API — the team hands the parcel over and types the courier and its
    * tracking number. Booked at once; its statuses come from the courier's report (CSV) or a person.
    */
-  async shipManual(auth: AuthContext, orderId: string, body: { courier: string; trackingNumber: string }, now = new Date()): Promise<ShipmentView> {
+  async shipManual(auth: AuthContext, orderId: string, body: { courier: string; trackingNumber: string; trackingUrl?: string | undefined }, now = new Date()): Promise<ShipmentView> {
     const tenantId = auth.tenant!.id;
     return this.db.tenant(tenantId, async (trx) => {
       const ready = await this.shippable(trx, orderId, false);
       if (ready.kind === "live") throw new ProblemError(409, "already_shipping", "the order already has a shipment with a courier");
       const { o, cod } = ready;
       const key = body.courier.trim().toLowerCase().replace(/\s+/g, " ");
-      let courier = await trx.selectFrom("connections").select(["id", "display_name"]).where("kind", "=", "courier").where("provider", "=", "manual").where("external_account", "=", key).executeTakeFirst();
+      let courier = await trx.selectFrom("connections").select(["id", "display_name", "config"]).where("kind", "=", "courier").where("provider", "=", "manual").where("external_account", "=", key).executeTakeFirst();
       courier ??= await trx.insertInto("connections").values({ tenant_id: tenantId, kind: "courier", provider: "manual", external_account: key, display_name: body.courier.trim(), status: "active" })
-        .returning(["id", "display_name"]).executeTakeFirstOrThrow();
+        .returning(["id", "display_name", "config"]).executeTakeFirstOrThrow();
+      // The tracking link: the one typed, else the courier's page learned from an earlier parcel ({tn} for the number).
+      const config = (courier.config ?? {}) as { trackingUrlTemplate?: string };
+      const trackingUrl = body.trackingUrl ?? config.trackingUrlTemplate?.replaceAll("{tn}", encodeURIComponent(body.trackingNumber)) ?? null;
+      const template = body.trackingUrl ? trackingTemplate(body.trackingUrl, body.trackingNumber) : null;
+      if (template && template !== config.trackingUrlTemplate) {
+        await trx.updateTable("connections").set({ config: JSON.stringify({ ...config, trackingUrlTemplate: template }), updated_at: now }).where("id", "=", courier.id).execute();
+      }
       const taken = await trx.selectFrom("shipments").select("id").where("connection_id", "=", courier.id).where("tracking_number", "=", body.trackingNumber).executeTakeFirst();
       if (taken) throw new ProblemError(409, "tracking_taken", "this courier's tracking number is already on another shipment");
       const name = courier.display_name ?? body.courier.trim();
       const row = await trx.insertInto("shipments").values({
         tenant_id: tenantId, order_id: orderId, connection_id: courier.id, provider: name, currency: o.currency, cod_minor: cod, booking: "booked", status: "created",
-        tracking_number: body.trackingNumber, status_at: now, requested_by: auth.user.id, booked_at: now, created_at: now, updated_at: now,
+        tracking_number: body.trackingNumber, tracking_url: trackingUrl, status_at: now, requested_by: auth.user.id, booked_at: now, created_at: now, updated_at: now,
       }).returning([...SHIPMENT_COLUMNS]).executeTakeFirstOrThrow();
       await timeline(trx, tenantId, orderId, "ship_requested", { shipmentId: row.id, provider: name, manual: true }, auth.user.id);
       await this.shipped(trx, tenantId, { id: row.id, provider: name }, o, { trackingNumber: body.trackingNumber, codMinor: cod, adopted: false }, now, { type: "user", id: auth.user.id });
@@ -306,14 +313,18 @@ export class ShippingService implements ShipmentResultSink {
       const name = pii.decrypt(o.ship_name, "orders.ship_name") ?? "";
       const phone = pii.decrypt(o.ship_phone, "orders.ship_phone") ?? undefined;
       const line2 = pii.decrypt(o.ship_line2, "orders.ship_line2");
+      // The customer's email lives on the customer (encrypted), not the order: Bosta sends the receiver its updates.
+      const c = o.customer_id ? await trx.selectFrom("customers").select("email").where("id", "=", o.customer_id).executeTakeFirst() : undefined;
+      const email = c ? pii.decrypt(c.email, "customers.email") ?? undefined : undefined;
       const money = (minor: string | number | bigint) => fromMinor(BigInt(minor), o.currency);
       return {
         ...paymentView(o), connector: "mizan", externalId: o.id, createdAt: o.placed_at.toISOString(), updatedAt: o.updated_at.toISOString(),
         subtotal: money(o.subtotal_minor), shipping: money(o.shipping_minor), refunded: money(o.refunded_minor), cancelled: o.status === "cancelled", tags: o.tags,
-        customer: { name, ...(phone ? { phone } : {}) },
+        customer: { name, ...(phone ? { phone } : {}), ...(email ? { email } : {}) },
         shippingAddress: {
           name, line1: pii.decrypt(o.ship_line1, "orders.ship_line1") ?? "", ...(line2 ? { line2 } : {}), city: o.ship_city ?? "",
           ...(o.ship_province ? { province: o.ship_province } : {}), ...(phone ? { phone } : {}), countryCode: o.ship_country ?? "EG",
+          ...(o.ship_lat !== null && o.ship_lng !== null ? { location: { lat: o.ship_lat, lng: o.ship_lng } } : {}),
         },
         lines: lines.map((l) => ({ externalLineId: l.external_line_id ?? l.id, ...(l.sku ? { sku: l.sku } : {}), title: l.title, quantity: l.quantity, unitPrice: money(l.unit_price_minor) })),
       } as CanonicalOrder;
@@ -401,4 +412,26 @@ function timeline(trx: Trx, tenantId: string, orderId: string, type: string, dat
   return trx.insertInto("order_events").values({
     tenant_id: tenantId, order_id: orderId, type, actor_type: userId ? "user" : "system", actor_id: userId ?? null, data: JSON.stringify(data),
   }).execute();
+}
+
+/**
+ * A courier's tracking page as a template ({tn} for the number), learned from one parcel's link: only
+ * when the number stands whole in the path or a query value, every time it appears, and nowhere
+ * else (never in the host). Otherwise nothing is learned: a wrong template would show the next
+ * customers someone else's parcel.
+ */
+export function trackingTemplate(link: string, trackingNumber: string): string | null {
+  let url: URL;
+  try { url = new URL(link); } catch { return null; }
+  if (url.protocol !== "https:" || url.host.toLowerCase().includes(trackingNumber.toLowerCase())) return null;
+  const origin = `${url.protocol}//${url.host}`;
+  if (!link.startsWith(origin)) return null;
+  const rest = link.slice(origin.length);
+  // Letters, digits, - and _ only (the schema's rule), so the number is safe inside a pattern as it is.
+  if (!/^[\w-]{3,64}$/.test(trackingNumber)) return null;
+  const escaped = trackingNumber;
+  const whole = () => new RegExp(`(?<=[/?=&#])${escaped}(?=$|[/?&#])`, "g");
+  if (!whole().test(rest)) return null;
+  const path = rest.replace(whole(), "{tn}");
+  return path.includes(trackingNumber) ? null : origin + path;
 }

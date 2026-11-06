@@ -18,6 +18,8 @@ export interface OrderEditPlan {
   address?: {
     name?: string | undefined; phone?: string | undefined; line1: string; line2?: string | undefined;
     city: string; province?: string | undefined; countryCode?: string | undefined;
+    /** ISO subdivision code ("C" for Cairo): what Shopify takes; `province` stays the name (WooCommerce's state). */
+    provinceCode?: string | undefined;
   } | undefined;
 }
 

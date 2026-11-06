@@ -118,6 +118,30 @@ export class ShopifyGraphql {
     }
   }
 
+  /**
+   * The Storefront API, with a public read-only token (the shop's brand). Same breaker and bucket as
+   * the Admin API: one shop, one place that decides it is down.
+   */
+  async storefront<T = Record<string, unknown>>(op: GqlOperation, token: string): Promise<T> {
+    let i = 0;
+    for (;;) {
+      const base = this.creds.baseUrl ?? `https://${this.creds.shop}`;
+      try {
+        const res = await send(this.rt, {
+          connector: "shopify", op: `shopify.storefront.${op.name}`, method: "POST", url: `${base}/api/${this.creds.apiVersion}/graphql.json`,
+          headers: { "X-Shopify-Storefront-Access-Token": token },
+          body: { query: op.variants[i], operationName: op.name },
+          idempotent: true, maxAttempts: 4, cost: op.cost, timeoutMs: 15_000,
+          inspect: (r) => this.inspect(op, r),
+        }, { circuit: this.circuit, bucket: this.bucket });
+        return ((res.json as GqlBody).data ?? {}) as T;
+      } catch (e) {
+        if (e instanceof IntegrationError && e.kind === "schema_drift" && i + 1 < op.variants.length) { i += 1; continue; }
+        throw e;
+      }
+    }
+  }
+
   private inspect(op: GqlOperation, res: HttpResponse): IntegrationError | null {
     const body = res.json as GqlBody | undefined;
     if (!body) return new IntegrationError({ kind: "transient", connector: "shopify", message: `${op.name}: empty or non-JSON response`, status: res.status });

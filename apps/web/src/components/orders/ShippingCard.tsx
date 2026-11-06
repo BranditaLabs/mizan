@@ -91,20 +91,24 @@ function ManualShipment({ orderId, onClose }: { orderId: string; onClose(): void
   const qc = useQueryClient();
   const [courier, setCourier] = useState("");
   const [tracking, setTracking] = useState("");
+  const [url, setUrl] = useState("");
+  const link = url.trim();
+  const linkOk = !link || /^https:\/\/\S+$/i.test(link);
   const save = useMutation({
-    mutationFn: () => ok(api.POST("/v1/orders/{id}/ship/manual", { params: { path: { id: orderId } }, body: { courier: courier.trim(), trackingNumber: tracking.trim() } })),
+    mutationFn: () => ok(api.POST("/v1/orders/{id}/ship/manual", { params: { path: { id: orderId } }, body: { courier: courier.trim(), trackingNumber: tracking.trim(), ...(link ? { trackingUrl: link } : {}) } })),
     onSuccess: () => { void qc.invalidateQueries({ queryKey: ["order"] }); onClose(); },
   });
   return (
     <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(
       <ButtonGroup>
-        <Button busy={save.isPending} disabled={courier.trim().length < 2 || tracking.trim().length < 3} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} disabled={courier.trim().length < 2 || tracking.trim().length < 3 || !linkOk} onClick={() => save.mutate()}>{t("save")}</Button>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>
       <div className="flex flex-col gap-3">
         <Field label={t("courier")} hint={t("courierHint")} value={courier} maxLength={60} onChange={(e) => setCourier(e.target.value)} dir="auto" />
         <Field label={t("tracking")} value={tracking} maxLength={64} ltr onChange={(e) => setTracking(e.target.value)} />
+        <Field label={t("url")} hint={t("urlHint")} type="url" inputMode="url" value={url} maxLength={500} ltr placeholder="https://" onChange={(e) => setUrl(e.target.value)} />
       </div>
     </Dialog>
   );

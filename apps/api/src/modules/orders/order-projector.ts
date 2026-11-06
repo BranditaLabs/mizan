@@ -447,7 +447,13 @@ export class OrderProjector {
       email: pii.encrypt(order.customer.email, "customers.email"),
     }).onConflict((oc) => oc.columns(["tenant_id", "phone_hash"]).doNothing()).returning("id").executeTakeFirst();
     if (inserted) return inserted.id;
-    const row = await trx.selectFrom("customers").select("id").where("phone_hash", "=", phoneHash).executeTakeFirstOrThrow();
+    const row = await trx.selectFrom("customers").select(["id", "name", "email"]).where("phone_hash", "=", phoneHash).executeTakeFirstOrThrow();
+    // Known by phone: a later order fills what the first one lacked (the email, a name), never wipes what is there.
+    const fill = {
+      ...(!row.email && order.customer.email ? { email: pii.encrypt(order.customer.email, "customers.email") } : {}),
+      ...(!row.name && order.customer.name ? { name: pii.encrypt(order.customer.name, "customers.name") } : {}),
+    };
+    if (Object.keys(fill).length) await trx.updateTable("customers").set(fill).where("id", "=", row.id).where("redacted_at", "is", null).execute();
     return row.id;
   }
 

@@ -4975,6 +4975,11 @@ export interface components {
             courier: string;
             /** @description The courier's tracking or waybill number */
             trackingNumber: string;
+            /**
+             * Format: uri
+             * @description The courier's tracking page for this parcel (https). Remembered for the courier: its next parcels get their link without it
+             */
+            trackingUrl?: string;
         };
         Marked: {
             marked: number;
@@ -5004,6 +5009,8 @@ export interface components {
                 tenantId: string;
                 tenantName: string;
                 tenantSlug: string;
+                /** @description The store's logo, from Shopify (square when the store has one); null until read */
+                tenantLogo: string | null;
                 /**
                  * @description Deleted stores are not listed
                  * @enum {string}

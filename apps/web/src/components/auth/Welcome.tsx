@@ -34,7 +34,11 @@ export function Welcome() {
   const { user, me, api, refreshMe, selectStore, signOut } = useSession();
   const countryId = useId();
 
-  const [name, setName] = useState("");
+  // Sent here by a Shopify install: the store's name starts from the shop and Shopify's own name and logo
+  // replace it on connect. Read once (this tab's storage; the page renders nothing before the session).
+  const [shop] = useState(() => (typeof window === "undefined" ? null : shopOf(resume.peek())));
+  const fromShopify = shop !== null;
+  const [name, setName] = useState(shop ?? "");
   const [country, setCountry] = useState<Schemas["CreateTenant"]["country"]>("EG");
   const [agreed, setAgreed] = useState(false);
   // One key per attempt: a retried create (network, 5xx) never makes two stores.
@@ -101,7 +105,7 @@ export function Welcome() {
       <section aria-labelledby="create">
         <h2 id="create" className="text-heading-sm">{t("create.title")}</h2>
         <form onSubmit={onCreate} className="mt-(--_gap) flex flex-col gap-(--_gap)">
-          <Field label={t("create.name")} required minLength={2} maxLength={80} name="store" autoComplete="organization"
+          <Field label={t("create.name")} hint={t(fromShopify ? "create.nameFromShopify" : "create.nameHint")} required minLength={2} maxLength={80} name="store" autoComplete="organization"
             value={name} onChange={(e) => setName(e.target.value)} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor={countryId} className="text-label text-text">{t("create.country")}</label>
@@ -124,4 +128,12 @@ export function Welcome() {
       </div>
     </Step>
   );
+}
+
+/** The shop a Shopify install came from ("nile-abayas.myshopify.com" → "Nile Abayas"), until Shopify's own name arrives. */
+function shopOf(path: string | null): string | null {
+  if (!path) return null;
+  const shop = new URLSearchParams(path.split("?")[1] ?? "").get("shop");
+  const handle = /^([a-z0-9][a-z0-9-]*)\.myshopify\.com$/i.exec(shop ?? "")?.[1];
+  return handle ? handle.split("-").filter(Boolean).map((w) => w[0]!.toUpperCase() + w.slice(1)).join(" ").slice(0, 80) : null;
 }

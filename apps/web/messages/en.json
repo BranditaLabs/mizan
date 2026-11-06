@@ -267,6 +267,8 @@
     "create": {
       "title": "Create a store",
       "name": "Store name",
+      "nameHint": "Selling on Shopify? Once you connect it, the name and logo come from your Shopify store.",
+      "nameFromShopify": "Taken from your Shopify store. It updates by itself when you change it in Shopify, with your logo.",
       "country": "Country",
       "countryHint": "We set the currency, time zone and phone format from the country.",
       "submit": "Create store"
@@ -3275,6 +3277,8 @@
       "courier": "Courier",
       "courierHint": "As your team calls it: J&T, Aramex, our driver…",
       "tracking": "Tracking number",
+      "url": "Tracking link (optional)",
+      "urlHint": "The courier's page for this parcel. Mizan remembers it for this courier's next parcels and sends it to your store.",
       "save": "Record",
       "cancel": "Cancel"
     },

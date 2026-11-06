@@ -31,21 +31,21 @@ export const EG_GOVERNORATES: readonly Region[] = [
     a("Agami", "العجمي"), a("Borg El Arab", "برج العرب"), a("Amreya", "العامرية"), a("Moharam Bek", "محرم بك"), a("Mansheya", "المنشية"), a("Anfoushi", "الأنفوشي"),
     a("Abu Qir", "أبو قير"), a("Asafra", "العصافرة"), a("Victoria", "فيكتوريا"), a("Kafr Abdo", "كفر عبده"),
   ] },
-  { code: "KB", en: "Qalyubia", ar: "القليوبية", courier: "Qalyubia", areas: [a("Banha", "بنها"), a("Shubra El Kheima", "شبرا الخيمة"), a("Qalyub", "قليوب"), a("El Khanka", "الخانكة"), a("Kafr Shukr", "كفر شكر"), a("Toukh", "طوخ"), a("Qaha", "قها"), a("Shibin El Qanater", "شبين القناطر"), a("El Qanater El Khayreya", "القناطر الخيرية")] },
-  { code: "SHR", en: "Sharqia", ar: "الشرقية", courier: "Sharqia", areas: [a("Zagazig", "الزقازيق"), a("10th of Ramadan", "العاشر من رمضان", "العاشر"), a("Belbeis", "بلبيس"), a("Minya El Qamh", "منيا القمح"), a("Abu Hammad", "أبو حماد"), a("Faqous", "فاقوس"), a("Hehya", "ههيا"), a("Abu Kebir", "أبو كبير")] },
-  { code: "DK", en: "Dakahlia", ar: "الدقهلية", courier: "Dakahlia", areas: [a("Mansoura", "المنصورة"), a("Talkha", "طلخا"), a("Mit Ghamr", "ميت غمر"), a("Aga", "أجا"), a("Sherbin", "شربين"), a("Belqas", "بلقاس"), a("Senbellawein", "السنبلاوين"), a("Dekernes", "دكرنس")] },
-  { code: "GH", en: "Gharbia", ar: "الغربية", courier: "Gharbia", areas: [a("Tanta", "طنطا"), a("El Mahalla El Kubra", "المحلة الكبرى", "mahalla"), a("Kafr El Zayat", "كفر الزيات"), a("Zefta", "زفتى"), a("Samanoud", "سمنود"), a("Santa", "السنطة"), a("Basyoun", "بسيون")] },
-  { code: "MNF", en: "Menofia", ar: "المنوفية", courier: "Menofia", areas: [a("Shibin El Kom", "شبين الكوم"), a("Sadat City", "مدينة السادات"), a("Menouf", "منوف"), a("Ashmoun", "أشمون"), a("Quesna", "قويسنا"), a("Tala", "تلا"), a("Berket El Sab", "بركة السبع")] },
-  { code: "BH", en: "Beheira", ar: "البحيرة", courier: "Behira", areas: [a("Damanhour", "دمنهور"), a("Kafr El Dawar", "كفر الدوار"), a("Rashid", "رشيد", "rosetta"), a("Edku", "إدكو"), a("Abu Hommos", "أبو حمص"), a("Kom Hamada", "كوم حمادة"), a("Wadi El Natrun", "وادي النطرون")] },
-  { code: "KFS", en: "Kafr El Sheikh", ar: "كفر الشيخ", also: ["Kafr Alsheikh", "Kafr Elsheikh"], areas: [a("Kafr El Sheikh", "كفر الشيخ"), a("Desouk", "دسوق"), a("Baltim", "بلطيم"), a("Fuwwah", "فوه"), a("Sidi Salem", "سيدي سالم"), a("Qallin", "قلين")] },
+  { code: "KB", en: "Qalyubia", ar: "القليوبية", courier: "Qalyubia", also: ["Qaliubiya", "Kalyubia"], areas: [a("Banha", "بنها"), a("Shubra El Kheima", "شبرا الخيمة"), a("Qalyub", "قليوب"), a("El Khanka", "الخانكة"), a("Kafr Shukr", "كفر شكر"), a("Toukh", "طوخ"), a("Qaha", "قها"), a("Shibin El Qanater", "شبين القناطر"), a("El Qanater El Khayreya", "القناطر الخيرية")] },
+  { code: "SHR", en: "Sharqia", ar: "الشرقية", courier: "Sharqia", also: ["Al Sharqia", "Ash Sharqia"], areas: [a("Zagazig", "الزقازيق"), a("10th of Ramadan", "العاشر من رمضان", "العاشر"), a("Belbeis", "بلبيس"), a("Minya El Qamh", "منيا القمح"), a("Abu Hammad", "أبو حماد"), a("Faqous", "فاقوس"), a("Hehya", "ههيا"), a("Abu Kebir", "أبو كبير")] },
+  { code: "DK", en: "Dakahlia", ar: "الدقهلية", courier: "Dakahlia", also: ["Dakahliya", "Ad Daqahliyah"], areas: [a("Mansoura", "المنصورة"), a("Talkha", "طلخا"), a("Mit Ghamr", "ميت غمر"), a("Aga", "أجا"), a("Sherbin", "شربين"), a("Belqas", "بلقاس"), a("Senbellawein", "السنبلاوين"), a("Dekernes", "دكرنس")] },
+  { code: "GH", en: "Gharbia", ar: "الغربية", courier: "Gharbia", also: ["Gharbiya", "Al Gharbiyah"], areas: [a("Tanta", "طنطا"), a("El Mahalla El Kubra", "المحلة الكبرى", "mahalla"), a("Kafr El Zayat", "كفر الزيات"), a("Zefta", "زفتى"), a("Samanoud", "سمنود"), a("Santa", "السنطة"), a("Basyoun", "بسيون")] },
+  { code: "MNF", en: "Menofia", ar: "المنوفية", courier: "Menofia", also: ["Monufia", "Menoufia", "Minufiya"], areas: [a("Shibin El Kom", "شبين الكوم"), a("Sadat City", "مدينة السادات"), a("Menouf", "منوف"), a("Ashmoun", "أشمون"), a("Quesna", "قويسنا"), a("Tala", "تلا"), a("Berket El Sab", "بركة السبع")] },
+  { code: "BH", en: "Beheira", ar: "البحيرة", courier: "Behira", also: ["Behira", "Al Beheira"], areas: [a("Damanhour", "دمنهور"), a("Kafr El Dawar", "كفر الدوار"), a("Rashid", "رشيد", "rosetta"), a("Edku", "إدكو"), a("Abu Hommos", "أبو حمص"), a("Kom Hamada", "كوم حمادة"), a("Wadi El Natrun", "وادي النطرون")] },
+  { code: "KFS", en: "Kafr El Sheikh", ar: "كفر الشيخ", also: ["Kafr Alsheikh", "Kafr Elsheikh", "Kafr el-Sheikh"], areas: [a("Kafr El Sheikh", "كفر الشيخ"), a("Desouk", "دسوق"), a("Baltim", "بلطيم"), a("Fuwwah", "فوه"), a("Sidi Salem", "سيدي سالم"), a("Qallin", "قلين")] },
   { code: "DT", en: "Damietta", ar: "دمياط", areas: [a("Damietta", "دمياط"), a("New Damietta", "دمياط الجديدة"), a("Ras El Bar", "رأس البر"), a("Faraskour", "فارسكور"), a("Kafr Saad", "كفر سعد"), a("Ezbet El Borg", "عزبة البرج")] },
-  { code: "PTS", en: "Port Said", ar: "بورسعيد", courier: "Port Said", areas: [a("Port Said", "بورسعيد"), a("Port Fouad", "بور فؤاد"), a("El Arab", "حي العرب"), a("El Zohour", "الزهور")] },
+  { code: "PTS", en: "Port Said", ar: "بورسعيد", courier: "Port Said", also: ["Port Saeed", "Bur Said"], areas: [a("Port Said", "بورسعيد"), a("Port Fouad", "بور فؤاد"), a("El Arab", "حي العرب"), a("El Zohour", "الزهور")] },
   { code: "IS", en: "Ismailia", ar: "الإسماعيلية", courier: "Ismailia", areas: [a("Ismailia", "الإسماعيلية"), a("Fayed", "فايد"), a("El Qantara", "القنطرة"), a("Abu Suwir", "أبو صوير"), a("El Tal El Kebir", "التل الكبير")] },
   { code: "SUZ", en: "Suez", ar: "السويس", courier: "Suez", areas: [a("Suez", "السويس"), a("El Arbaeen", "الأربعين"), a("Faisal", "فيصل السويس"), a("Ataqa", "عتاقة"), a("Ain Sokhna", "العين السخنة")] },
   { code: "FYM", en: "Faiyum", ar: "الفيوم", also: ["Fayoum", "Fayum"], areas: [a("Faiyum", "الفيوم", "fayoum"), a("Ibsheway", "إبشواي"), a("Tamiya", "طامية"), a("Sinnuris", "سنورس"), a("Itsa", "إطسا")] },
   { code: "BNS", en: "Beni Suef", ar: "بني سويف", also: ["Bani Suef", "Bani Sweif"], areas: [a("Beni Suef", "بني سويف"), a("New Beni Suef", "بني سويف الجديدة"), a("El Wasta", "الواسطى"), a("Nasser", "ناصر"), a("Biba", "ببا"), a("El Fashn", "الفشن")] },
   { code: "MN", en: "Minya", ar: "المنيا", also: ["Menya", "El Minya"], areas: [a("Minya", "المنيا"), a("New Minya", "المنيا الجديدة"), a("Mallawi", "ملوي"), a("Samalut", "سمالوط"), a("Beni Mazar", "بني مزار"), a("Maghagha", "مغاغة"), a("Abu Qurqas", "أبو قرقاص")] },
-  { code: "AST", en: "Asyut", ar: "أسيوط", courier: "Assiut", areas: [a("Asyut", "أسيوط", "assiut"), a("New Asyut", "أسيوط الجديدة"), a("Dayrout", "ديروط"), a("Manfalut", "منفلوط"), a("Abnub", "أبنوب"), a("Abu Tig", "أبوتيج")] },
+  { code: "AST", en: "Asyut", ar: "أسيوط", courier: "Assiut", also: ["Assiut", "Asyout"], areas: [a("Asyut", "أسيوط", "assiut"), a("New Asyut", "أسيوط الجديدة"), a("Dayrout", "ديروط"), a("Manfalut", "منفلوط"), a("Abnub", "أبنوب"), a("Abu Tig", "أبوتيج")] },
   { code: "SHG", en: "Sohag", ar: "سوهاج", courier: "Sohag", areas: [a("Sohag", "سوهاج"), a("Akhmim", "أخميم"), a("Girga", "جرجا"), a("Tahta", "طهطا"), a("El Maragha", "المراغة"), a("El Balyana", "البلينا")] },
   { code: "KN", en: "Qena", ar: "قنا", areas: [a("Qena", "قنا"), a("Nag Hammadi", "نجع حمادي"), a("Qus", "قوص"), a("Deshna", "دشنا"), a("Farshut", "فرشوط")] },
   { code: "LX", en: "Luxor", ar: "الأقصر", courier: "Luxor", areas: [a("Luxor", "الأقصر"), a("Esna", "إسنا"), a("Armant", "أرمنت"), a("El Bayadeya", "البياضية")] },
@@ -107,7 +107,9 @@ export function findRegion(country: string | null | undefined, ...texts: Array<s
   for (const text of texts) {
     const k = placeKey(text);
     if (!k) continue;
-    const exact = regions.find((r) => keysOf(r).includes(k)) ?? regions.find((r) => r.areas.some((x) => keysOf(x).includes(k)));
+    // Shopify and the order form carry the ISO code ("C", "GZ"); a code is matched whole, never as a fragment.
+    const code = text!.trim();
+    const exact = regions.find((r) => r.code === code) ?? regions.find((r) => keysOf(r).includes(k)) ?? regions.find((r) => r.areas.some((x) => keysOf(x).includes(k)));
     if (exact) return exact;
   }
   return null;

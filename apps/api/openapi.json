@@ -26722,6 +26722,12 @@
             "type": "string",
             "pattern": "^[\\w-]{3,64}$",
             "description": "The courier's tracking or waybill number"
+          },
+          "trackingUrl": {
+            "description": "The courier's tracking page for this parcel (https). Remembered for the courier: its next parcels get their link without it",
+            "type": "string",
+            "maxLength": 500,
+            "format": "uri"
           }
         },
         "required": [
@@ -26834,6 +26840,11 @@
                   "type": "string"
                 },
                 "tenantSlug": {
+                  "type": "string"
+                },
+                "tenantLogo": {
+                  "nullable": true,
+                  "description": "The store's logo, from Shopify (square when the store has one); null until read",
                   "type": "string"
                 },
                 "tenantStatus": {
@@ -26959,6 +26970,7 @@
                 "tenantId",
                 "tenantName",
                 "tenantSlug",
+                "tenantLogo",
                 "tenantStatus",
                 "country",
                 "baseCurrency",

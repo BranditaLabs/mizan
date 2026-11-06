@@ -2,7 +2,7 @@ import { mizanOrderRef, type StoreOrderDraft } from "../../core/store-order.js";
 import { editMarker, type OrderEditPlan } from "../../core/order-edit.js";
 import type { CreatedProduct, ProductDraft } from "../../core/product-draft.js";
 import { IntegrationError } from "../../core/errors.js";
-import type { CanonicalOrder, CanonicalProduct, ProductPatch } from "@mizan/shared";
+import { findRegion, type CanonicalOrder, type CanonicalProduct, type ProductPatch } from "@mizan/shared";
 import type { Runtime } from "../../core/runtime.js";
 import type { DriftSink } from "../../adapt/drift.js";
 import { Resolver } from "../../adapt/resolve.js";
@@ -14,6 +14,23 @@ import * as Q from "./queries.js";
 type UserErrors = Array<{ field?: string[] | null; message: string; code?: string | null }>;
 
 const MIZAN_ID = { namespace: "$app:mizan", key: "order_id" } as const;
+
+/** The store as Shopify knows it (onboarding): the merchant never types what the store already says. */
+export interface ShopProfile {
+  name: string;
+  domain?: string;
+  url?: string;
+  currency?: string;
+  timezone?: string;
+  country?: string;
+  logoUrl?: string;
+  squareLogoUrl?: string;
+  brandColor?: string;
+  /** The Storefront brand was read, the app may not read it (scope not granted yet), or none is set in Shopify. */
+  brand: "read" | "no_access" | "none";
+}
+
+const STOREFRONT_TOKEN_TITLE = "Mizan brand";
 
 export interface Tracking {
   company: string;
@@ -222,6 +239,54 @@ export class ShopifyConnector {
    * checks whether a fulfillment with this tracking number already exists
    * (a previous attempt may have succeeded before a timeout).
    */
+  /**
+   * The store's profile: name, currency, timezone and country from the Admin API, logo and colour
+   * from the Storefront API (Admin has no logo). Without the storefront scope the profile still
+   * comes back, with brand "no_access"; a later read (after the merchant approves it) fills the logo.
+   */
+  async shopProfile(): Promise<ShopProfile> {
+    const raw = await this.gql.run<{ shop?: unknown }>(Q.SHOP_PROFILE, {}, { idempotent: true });
+    const r = new Resolver(raw.shop, { connector: "shopify", entity: "shop", drift: this.drift, now: () => this.rt.clock.now() });
+    const profile: ShopProfile = {
+      name: r.str("name", ["name"], { required: true })!,
+      domain: r.str("domain", ["myshopifyDomain"]),
+      url: r.str("url", ["primaryDomain.url"]),
+      currency: r.str("currency", ["currencyCode"]),
+      timezone: r.str("timezone", ["ianaTimezone"]),
+      country: r.str("country", ["billingAddress.countryCodeV2", "billingAddress.countryCode"]),
+      brand: "none",
+    };
+    try {
+      const token = await this.storefrontToken();
+      const b = await this.gql.storefront<{ shop?: unknown }>(Q.STOREFRONT_BRAND, token);
+      const rb = new Resolver(b.shop, { connector: "shopify", entity: "brand", drift: this.drift, now: () => this.rt.clock.now() });
+      profile.logoUrl = rb.str("logo", ["brand.logo.image.url"]);
+      profile.squareLogoUrl = rb.str("squareLogo", ["brand.squareLogo.image.url"]);
+      profile.brandColor = rb.str("color", ["brand.colors.primary.0.background"]);
+      profile.brand = profile.logoUrl || profile.squareLogoUrl ? "read" : "none";
+    } catch (e) {
+      // Scope not granted (or a storefront token refused): the profile still counts, the logo comes later.
+      if (!(e instanceof IntegrationError) || !["permission", "auth", "not_found"].includes(e.kind)) throw e;
+      profile.brand = "no_access";
+    }
+    return profile;
+  }
+
+  /** The app's Storefront token on this shop: looked up before one is created, so a retried create never makes two. */
+  private async storefrontToken(): Promise<string> {
+    const list = await this.gql.run<{ shop?: unknown }>(Q.STOREFRONT_TOKENS, {}, { idempotent: true });
+    const r = new Resolver(list.shop, { connector: "shopify", entity: "storefront_token", drift: this.drift, now: () => this.rt.clock.now() });
+    const found = r.arr<{ title?: string; accessToken?: string }>("tokens", ["storefrontAccessTokens.nodes"]).find((t) => t.title === STOREFRONT_TOKEN_TITLE && t.accessToken);
+    if (found?.accessToken) return found.accessToken;
+    // Not idempotent: one attempt; an unknown outcome fails the job and the retry finds the token by its title.
+    const c = await this.gql.run<{ storefrontAccessTokenCreate?: { storefrontAccessToken?: { accessToken?: string } | null; userErrors: UserErrors } }>(
+      Q.STOREFRONT_TOKEN_CREATE, { input: { title: STOREFRONT_TOKEN_TITLE } }, { idempotent: false, maxAttempts: 1 });
+    assertNoUserErrors("storefrontAccessTokenCreate", c.storefrontAccessTokenCreate?.userErrors);
+    const token = c.storefrontAccessTokenCreate?.storefrontAccessToken?.accessToken;
+    if (!token) throw new IntegrationError({ kind: "transient", connector: "shopify", message: "storefrontAccessTokenCreate returned no token" });
+    return token;
+  }
+
   /** Cancel the order's fulfillment carrying this tracking number (safe to repeat: a cancelled or missing one is done). */
   async cancelFulfillment(orderId: string, trackingNumber: string): Promise<"cancelled" | "already_cancelled"> {
     const order = await this.getOrder(orderId);
@@ -232,12 +297,32 @@ export class ShopifyConnector {
     return "cancelled";
   }
 
-  async fulfillWithTracking(orderId: string, tracking: Tracking, notifyCustomer = true): Promise<"created" | "already_fulfilled"> {
+  /**
+   * Already there (this number on a fulfillment) is done; a live one without the link, or with another,
+   * gets the link (absolute, so safe to repeat). A cancelled one stays cancelled: the merchant undid it.
+   * A fulfillment carrying other parcels' numbers too is left alone (the update would drop them).
+   */
+  async fulfillWithTracking(orderId: string, tracking: Tracking, notifyCustomer = true): Promise<"created" | "already_fulfilled" | "link_updated"> {
     const raw = await this.gql.run<{ order: Record<string, unknown> | null }>(Q.ORDER_BY_ID, { id: orderId }, { idempotent: true });
     if (!raw.order) throw new IntegrationError({ kind: "not_found", connector: "shopify", message: `order ${orderId} not found` });
     const r = new Resolver(raw.order, { connector: "shopify", entity: "order", drift: this.drift, now: () => this.rt.clock.now() });
-    const existing = r.arr<{ trackingInfo?: Array<{ number?: string }> }>("fulfillments", ["fulfillments"]);
-    if (existing.some((f) => (f.trackingInfo ?? []).some((t) => t.number === tracking.number))) return "already_fulfilled";
+    const existing = r.arr<{ id?: string; status?: string; trackingInfo?: Array<{ number?: string; company?: string | null; url?: string | null }> }>("fulfillments", ["fulfillments"]);
+    const same = existing.find((f) => (f.trackingInfo ?? []).some((t) => t.number === tracking.number));
+    if (same) {
+      const info = (same.trackingInfo ?? []).find((t) => t.number === tracking.number);
+      if (!tracking.url || same.status === "CANCELLED" || !same.id || info?.url === tracking.url) return "already_fulfilled";
+      // The update replaces the fulfillment's whole tracking: one with other parcels' numbers is left as it is.
+      if ((same.trackingInfo ?? []).length > 1) {
+        this.drift.record({ connector: "shopify", entity: "fulfillment", kind: "missing_field", detail: `order ${orderId}: ${tracking.number} has no link, but its fulfillment carries other numbers too; left as it is`, at: this.rt.clock.now() });
+        return "already_fulfilled";
+      }
+      // notifyCustomer also decides the fulfillment's later updates: kept as the caller wants them (on, by default).
+      const u = await this.gql.run<{ fulfillmentTrackingInfoUpdate: { userErrors: UserErrors } }>(Q.FULFILLMENT_TRACKING_UPDATE, {
+        fulfillmentId: same.id, trackingInfoInput: { company: info?.company || tracking.company, number: tracking.number, url: tracking.url }, notifyCustomer,
+      }, { idempotent: true });
+      assertNoUserErrors("fulfillmentTrackingInfoUpdate", u.fulfillmentTrackingInfoUpdate?.userErrors);
+      return "link_updated";
+    }
 
     const open = r.arr<{ id: string; status: string }>("fulfillmentOrders", ["fulfillmentOrders"]).filter((fo) => /^(OPEN|IN_PROGRESS|SCHEDULED)$/i.test(fo.status));
     if (!open.length) {
@@ -386,10 +471,15 @@ export class ShopifyConnector {
     const found = await read();
     if (found) return { externalId: found.id, name: found.name, outcome: "already_created" };
     const money = (amount: string) => ({ shopMoney: { amount, currencyCode: d.currency } });
+    const buyer = d.customer ? await this.customerFor(d.number, d.customer) : undefined;
     const a = d.address;
     const order = {
       name: d.number, currency: d.currency, sourceIdentifier: mizanOrderRef(d.orderId), tags: d.tags,
       ...(d.note ? { note: d.note } : {}), ...(d.phone ? { phone: d.phone } : {}),
+      // A customer record, not a guest order, so history and messages follow the buyer.
+      ...(buyer ? { customer: buyer } : {}),
+      ...(d.customer?.email ? { email: d.customer.email } : {}),
+      ...(d.attributes?.length ? { customAttributes: d.attributes } : {}),
       metafields: [{ ...MIZAN_ID, type: "single_line_text_field", value: d.orderId }],
       lineItems: d.lines.map((l) => (l.variantExternalId
         ? { variantId: l.variantExternalId, quantity: l.quantity, priceSet: money(l.unitPrice) }
@@ -397,16 +487,27 @@ export class ShopifyConnector {
       ...(Number(d.shipping) > 0 ? { shippingLines: [{ title: "Delivery", priceSet: money(d.shipping) }] } : {}),
       ...(Number(d.discount) > 0 ? { discountCode: { itemFixedDiscountCode: { code: "MIZAN", amountSet: money(d.discount) } } } : {}),
       shippingAddress: {
-        firstName: a.firstName, lastName: a.lastName, address1: a.line1, ...(a.line2 ? { address2: a.line2 } : {}), city: a.city, countryCode: a.countryCode,
+        firstName: a.firstName, ...(a.lastName ? { lastName: a.lastName } : {}), address1: a.line1, ...(a.line2 ? { address2: a.line2 } : {}), city: a.city, countryCode: a.countryCode,
         ...(a.provinceCode ? { provinceCode: a.provinceCode } : {}), ...(a.phone ? { phone: a.phone } : {}),
       },
       financialStatus: d.financialStatus,
       ...(Number(d.paid) > 0 ? { transactions: [{ kind: "SALE", status: "SUCCESS", gateway: "Mizan", amountSet: money(d.paid) }] } : {}),
     };
+    const create = (input: Record<string, unknown>) => this.gql.run<{ orderCreate: { order: { id: string; name: string } | null; userErrors: UserErrors } }>(Q.ORDER_CREATE, {
+      order: input, options: { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: "DECREMENT_IGNORING_POLICY" },
+    }, { idempotent: false });
     try {
-      const c = await this.gql.run<{ orderCreate: { order: { id: string; name: string } | null; userErrors: UserErrors } }>(Q.ORDER_CREATE, {
-        order, options: { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: "DECREMENT_IGNORING_POLICY" },
-      }, { idempotent: false });
+      let c = await create(order).catch((e: unknown) => {
+        // The customer record refused (the app may not write customers on this store): the order matters more.
+        if ("customer" in order && e instanceof IntegrationError && e.kind === "permission") return null;
+        throw e;
+      });
+      const aboutCustomer = (errs: UserErrors | undefined) => Boolean(errs?.length) && errs!.every((x) => (x.field ?? []).some((f) => /customer|email/i.test(f)));
+      if (c === null || ("customer" in order && aboutCustomer(c.orderCreate?.userErrors))) {
+        this.drift.record({ connector: "shopify", entity: "orderCreate", kind: "missing_field", detail: `order ${d.number}: the customer record was refused; created as a guest order`, at: this.rt.clock.now() });
+        const { customer: _customer, email: _email, ...guest } = order as Record<string, unknown>;
+        c = await create(guest);
+      }
       if (c.orderCreate?.userErrors?.length) {
         const again = await read(); // refused because it exists already (the unique id): adopt it
         if (again) return { externalId: again.id, name: again.name, outcome: "already_created" };
@@ -426,6 +527,33 @@ export class ShopifyConnector {
 
   private orderIdDefined = false;
   /** The unique "Mizan order id" field on orders, once per store (already there is fine). */
+  /**
+   * The store's customer for this buyer: one it has (phone first, then email) is attached by id and
+   * left untouched (toUpsert would rename it to whoever this parcel is for); none, a new one. A store
+   * whose customers the app may not read: a guest order (said as drift).
+   */
+  private async customerFor(number: string, c: NonNullable<StoreOrderDraft["customer"]>): Promise<Record<string, unknown> | undefined> {
+    if (!c.phone && !c.email) return undefined;
+    const quote = (v: string) => `"${v.replace(/["\\]/g, "")}"`;
+    try {
+      for (const q of [c.phone ? `phone:${quote(c.phone)}` : null, c.email ? `email:${quote(c.email)}` : null]) {
+        if (!q) continue;
+        const r = await this.gql.run<{ customers?: unknown }>(Q.CUSTOMER_FIND, { query: q }, { idempotent: true });
+        const id = new Resolver(r, { connector: "shopify", entity: "customer", drift: this.drift, now: () => this.rt.clock.now() })
+          .arr<{ id?: string }>("customers", ["customers.nodes"])[0]?.id;
+        if (id) return { toAssociate: { id } };
+      }
+    } catch (e) {
+      if (!(e instanceof IntegrationError) || e.kind !== "permission") throw e;
+      this.drift.record({ connector: "shopify", entity: "customer", kind: "missing_field", detail: `order ${number}: the store's customers could not be read; created as a guest order`, at: this.rt.clock.now() });
+      return undefined;
+    }
+    return { toUpsert: {
+      ...(c.firstName ? { firstName: c.firstName } : {}), ...(c.lastName ? { lastName: c.lastName } : {}),
+      ...(c.phone ? { phone: c.phone } : {}), ...(c.email ? { email: c.email } : {}),
+    } };
+  }
+
   private async ensureOrderIdDefinition() {
     if (this.orderIdDefined) return;
     const r = await this.gql.run<{ metafieldDefinitionCreate: { userErrors: Array<{ field?: string[] | null; message: string; code?: string | null }> } }>(Q.ORDER_ID_DEFINITION, {
@@ -574,8 +702,10 @@ export class ShopifyConnector {
     if (plan.address) {
       const a = plan.address;
       const [firstName, ...rest] = (a.name ?? "").trim().split(/\s+/);
+      // MailingAddressInput takes the code, not the name ("C", never "Cairo" or a code in a name field).
+      const provinceCode = a.provinceCode ?? (a.province ? findRegion(a.countryCode ?? "EG", a.province)?.code : undefined);
       const d = await this.gql.run<{ orderUpdate: { userErrors: UserErrors } }>(Q.ORDER_UPDATE, { input: { id: plan.orderId, shippingAddress: {
-        address1: a.line1, address2: a.line2 ?? null, city: a.city, province: a.province ?? null,
+        address1: a.line1, address2: a.line2 ?? null, city: a.city, ...(provinceCode ? { provinceCode } : {}),
         ...(a.countryCode ? { countryCode: a.countryCode } : {}), ...(a.phone ? { phone: a.phone } : {}),
         ...(firstName ? { firstName, lastName: rest.join(" ") || null } : {}),
       } } }, { idempotent: true });

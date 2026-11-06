@@ -6,6 +6,7 @@ import { useId } from "react";
 import { Link } from "@/i18n/navigation";
 import { useSession } from "@/lib/session";
 import { useSwitchStore } from "@/lib/use-switch-store";
+import { StoreMark } from "./StoreMark";
 
 /**
  * The store you are working in, on the ink rail (`rail`) or in the mobile header. More than one
@@ -22,14 +23,17 @@ export function StoreSwitcher({ rail = false }: { rail?: boolean }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <label htmlFor={id} className={`text-overline uppercase ${muted} ${rail ? "" : "sr-only"}`}>{t("label")}</label>
+      <div className="flex min-w-0 items-center gap-2">
+      <StoreMark name={store.tenantName} logo={store.tenantLogo} rail={rail} size={rail ? 28 : 24} />
       {stores.length > 1 ? (
         <select id={id} value={store.tenantId} onChange={(e) => switchStore(e.target.value)} title={t("switch")} data-testid="store-switcher"
-          className={`h-9 min-w-0 truncate rounded-sm border px-2.5 text-label ${rail ? "border-rail-line bg-rail-surface text-text" : "border-line-strong bg-surface text-text"}`}>
+          className={`h-9 min-w-0 flex-1 truncate rounded-sm border px-2.5 text-label ${rail ? "border-rail-line bg-rail-surface text-text" : "border-line-strong bg-surface text-text"}`}>
           {stores.map((s) => <option key={s.tenantId} value={s.tenantId}>{s.tenantName}</option>)}
         </select>
       ) : (
         <output id={id} data-testid="store-switcher" className="truncate text-label text-text">{store.tenantName}</output>
       )}
+      </div>
       {rail ? (
         <div className="flex items-center justify-between gap-2">
           <span className={`text-caption ${muted}`} data-testid="store-role">{tr(store.role)}</span>

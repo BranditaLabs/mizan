@@ -16,10 +16,17 @@ export interface StoreOrderDraft {
   /** What was paid already (a deposit, a transfer, a prepaid order), recorded as one payment in the store. */
   paid: string;
   financialStatus: "PENDING" | "PARTIALLY_PAID" | "PAID";
-  address: { firstName: string; lastName: string; phone?: string; line1: string; line2?: string; city: string; province?: string; provinceCode?: string; countryCode: string };
+  /**
+   * The buyer as a store customer, so the order sits in their history: one the store has (by phone,
+   * then email) is attached as it is, never renamed; otherwise created. No name when none was given.
+   */
+  customer?: { firstName?: string; lastName?: string; phone?: string; email?: string };
+  address: { firstName: string; lastName?: string; phone?: string; line1: string; line2?: string; city: string; province?: string; provinceCode?: string; countryCode: string };
   phone?: string;
   tags: string[];
   note?: string;
+  /** Shown on the store's order ("Location" → a map link to the customer's pin). */
+  attributes?: Array<{ key: string; value: string }>;
 }
 
 export type StoreOrderOutcome =

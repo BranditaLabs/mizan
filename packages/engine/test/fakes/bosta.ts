@@ -48,6 +48,8 @@ export class FakeBosta {
   faults: Array<{ path?: string; fault: Fault }> = [];
   randomFaultRate = 0;
   shape: Shape = "object";
+  /** Bosta answers a delivery without its COD (seen on minimal read-backs). */
+  omitCod = false;
   /** Bosta's rule since 2026: a delivery names its district (by id or name). Off for the old behaviour. */
   requireDistrict = true;
   /** Create succeeds server-side, but the response never reaches the client. */
@@ -80,7 +82,7 @@ export class FakeBosta {
   }
 
   private render(d: Delivery) {
-    const base = { _id: d._id, businessReference: d.businessReference, cod: d.cod, dropOffAddress: d.dropOffAddress, receiver: d.receiver, updatedAt: d.updatedAt };
+    const base = { _id: d._id, businessReference: d.businessReference, ...(this.omitCod ? {} : { cod: d.cod }), dropOffAddress: d.dropOffAddress, receiver: d.receiver, updatedAt: d.updatedAt };
     if (this.shape === "flat") return { ...base, trackingNumber: d.trackingNumber, state: d.state.code, stateValue: d.state.value };
     if (this.shape === "codeOnly") return { ...base, trackingNumber: d.trackingNumber, state: d.state.code };
     if (this.shape === "renamed") return { ...base, tracking_number: d.trackingNumber, state: { code: d.state.code, value: d.state.value } };

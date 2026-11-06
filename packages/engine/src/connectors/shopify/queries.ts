@@ -28,7 +28,8 @@ const ORDER_BASE = `
   totalPriceSet { ${MONEY} }
   subtotalPriceSet { ${MONEY} }
   totalShippingPriceSet { ${MONEY} }
-  shippingAddress { name firstName lastName phone address1 address2 city province zip countryCodeV2 }
+  shippingAddress { name firstName lastName phone address1 address2 city province provinceCode zip countryCodeV2 }
+  billingAddress { phone }
   lineItems(first: 100) { nodes { id title sku quantity currentQuantity variant { id } originalUnitPriceSet { ${MONEY} } } }
   fulfillmentOrders(first: 10) { nodes { id status lineItems(first: 100) { nodes { id lineItem { id } } } } }
   fulfillments(first: 10) { id status trackingInfo { company number url } }
@@ -187,6 +188,20 @@ export const FULFILLMENT_CANCEL: GqlOperation = {
   cost: 10,
   variants: [
     `mutation MizanFulfillmentCancel($id: ID!) { fulfillmentCancel(id: $id) { fulfillment { id status } userErrors { field message } } }`,
+  ],
+};
+
+/** A fulfillment's tracking link put right (it was made before Mizan knew the courier's link). */
+export const FULFILLMENT_TRACKING_UPDATE: GqlOperation = {
+  name: "MizanFulfillmentTrackingUpdate",
+  cost: 10,
+  variants: [
+    `mutation MizanFulfillmentTrackingUpdate($fulfillmentId: ID!, $trackingInfoInput: FulfillmentTrackingInput!, $notifyCustomer: Boolean) {
+      fulfillmentTrackingInfoUpdate(fulfillmentId: $fulfillmentId, trackingInfoInput: $trackingInfoInput, notifyCustomer: $notifyCustomer) {
+        fulfillment { id trackingInfo { company number url } }
+        userErrors { field message }
+      }
+    }`,
   ],
 };
 
@@ -496,5 +511,43 @@ export const PUBLISHABLE_PUBLISH: GqlOperation = {
     `mutation MizanPublishablePublish($id: ID!, $input: [PublicationInput!]!) {
       publishablePublish(id: $id, input: $input) { userErrors { field message } }
     }`,
+  ],
+};
+
+/** A store customer by phone or email (read_customers): an order is attached to it, the record left as it is. */
+export const CUSTOMER_FIND: GqlOperation = {
+  name: "MizanCustomerFind",
+  cost: 2,
+  variants: [`query MizanCustomerFind($query: String!) { customers(first: 1, query: $query) { nodes { id } } }`],
+};
+
+/** Onboarding: the store's own name, currency, timezone and country, so the merchant does not type them. */
+export const SHOP_PROFILE: GqlOperation = {
+  name: "MizanShopProfile",
+  cost: 1,
+  variants: [`query MizanShopProfile { shop { name myshopifyDomain currencyCode ianaTimezone billingAddress { countryCodeV2 } primaryDomain { url } } }`],
+};
+
+/** The app's Storefront API tokens on the shop (unauthenticated_read_product_listings): one is reused, never one per read. */
+export const STOREFRONT_TOKENS: GqlOperation = {
+  name: "MizanStorefrontTokens",
+  cost: 1,
+  variants: [`query MizanStorefrontTokens { shop { storefrontAccessTokens(first: 100) { nodes { id title accessToken } } } }`],
+};
+
+export const STOREFRONT_TOKEN_CREATE: GqlOperation = {
+  name: "MizanStorefrontTokenCreate",
+  cost: 10,
+  variants: [`mutation MizanStorefrontTokenCreate($input: StorefrontAccessTokenInput!) {
+    storefrontAccessTokenCreate(input: $input) { storefrontAccessToken { id title accessToken } userErrors { field message } } }`],
+};
+
+/** Storefront API: the brand the merchant set in Shopify (Settings → Brand). The Admin API has no logo. */
+export const STOREFRONT_BRAND: GqlOperation = {
+  name: "MizanBrand",
+  cost: 1,
+  variants: [
+    `query MizanBrand { shop { brand { logo { image { url } } squareLogo { image { url } } colors { primary { background } } } } }`,
+    `query MizanBrand { shop { brand { logo { image { url } } squareLogo { image { url } } } } }`,
   ],
 };

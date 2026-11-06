@@ -162,9 +162,9 @@ describe("GET /v1/me", () => {
     await member("finance", OTHER, "owner");
     const res = await http().get("/v1/me").set(as("finance")).expect(200);
     expect(res.body.memberships).toEqual([
-      { tenantId: OTHER, tenantName: "Gulf Perfumes", tenantSlug: "gulf", tenantStatus: "active", country: "SA", baseCurrency: "SAR",
+      { tenantId: OTHER, tenantName: "Gulf Perfumes", tenantSlug: "gulf", tenantLogo: null, tenantStatus: "active", country: "SA", baseCurrency: "SAR",
         locale: "ar-SA", timezone: "Asia/Riyadh", role: "owner", permissions: permissionsFor("owner"), status: "active" },
-      { tenantId: STORE, tenantName: "Nile Abayas", tenantSlug: "nile", tenantStatus: "active", country: "EG", baseCurrency: "EGP",
+      { tenantId: STORE, tenantName: "Nile Abayas", tenantSlug: "nile", tenantLogo: null, tenantStatus: "active", country: "EG", baseCurrency: "EGP",
         locale: "ar-EG", timezone: "Africa/Cairo", role: "finance", permissions: permissionsFor("finance"), status: "active" },
     ]);
   });
