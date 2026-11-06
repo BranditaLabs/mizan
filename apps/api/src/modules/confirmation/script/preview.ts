@@ -37,6 +37,7 @@ export function previewConversations(f: MessageFacts, sampleOffer: OfferFacts): 
   return [
     { scenario: "confirm", turns: [template, tap(tpl.buttons[0]), reply("confirmed", "confirmed")] },
     { scenario: "confirm_offer", turns: [template, tap(tpl.buttons[0]), reply("confirmed_offer", "offer_pitch", withOffer), tap(offered.type === "buttons" ? offered.buttons[0]!.title : ""), reply("offer_added", "offer_added", withOffer)] },
+    { scenario: "offer_no", turns: [template, tap(tpl.buttons[0]), reply("confirmed_offer", "offer_pitch", withOffer), tap(offered.type === "buttons" ? offered.buttons[1]!.title : ""), reply("offer_declined", "offer_declined", withOffer)] },
     { scenario: "change", turns: [template, tap(tpl.buttons[1]), reply("change_prompt", "change_prompt"), typed(t.change), reply("change_received", "change_received")] },
     { scenario: "cancel", turns: [template, tap(tpl.buttons[2]), reply("cancel_reasons", "cancel_prompt"), tap(cancel.type === "list" ? cancel.rows[0]!.title : ""), reply("cancelled", "cancelled")] },
     { scenario: "message", turns: [template, typed(t.message), reply("noted", "noted")] },

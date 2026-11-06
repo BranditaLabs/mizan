@@ -344,8 +344,12 @@ describe("the store's script (E6-5)", () => {
 
     const sample = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script }).expect(200)).body;
     expect(sample.sample).toBe(true);
-    expect(sample.replies.find((r: { key: string }) => r.key === "confirmed")).toMatchObject({ branch: "confirm" });
-    expect(sample.replies.map((r: { branch: string }) => r.branch)).toEqual(["confirm", "change", "change", "cancel", "cancel"]);
+    const reply = (p: { conversations: Array<{ scenario: string; turns: Array<{ from: string; key?: string; text?: string; body?: string }> }> }, scenario: string, key: string) =>
+      p.conversations.find((c) => c.scenario === scenario)!.turns.find((t) => t.from === "business" && t.key === key);
+    expect(reply(sample, "confirm", "confirmed")).toMatchObject({ kind: "text", editable: true });
+    expect(sample.replies).toBeUndefined(); // the v1 shape is gone (E6-16b)
+    expect(["change_prompt", "change_received"].map((k) => reply(sample, "change", k)?.key)).toEqual(["change_prompt", "change_received"]);
+    expect(["cancel_prompt", "cancelled"].map((k) => reply(sample, "cancel", k)?.key)).toEqual(["cancel_prompt", "cancelled"]);
 
     const o = await http().post("/v1/orders").set(as("owner")).send({
       source: "phone", customer: { name: "Mona Adel", phone: "01001234821" }, address: { line1: "12 Abbas El Akkad St", city: "Nasr City" },
@@ -353,7 +357,7 @@ describe("the store's script (E6-5)", () => {
     }).expect(201);
     const real = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: o.body.id }).expect(200)).body;
     const lang = real.lang as "ar" | "en";
-    const confirmed = real.replies.find((r: { key: string }) => r.key === "confirmed").text as string;
+    const confirmed = reply(real, "confirm", "confirmed")!.text as string;
     expect(confirmed).toBe(lang === "ar" ? `تمام يا Mona ✅ ${o.body.number} اتأكّد` : `All set Mona ✅ ${o.body.number} is confirmed`);
     expect(JSON.stringify(real)).not.toMatch(/0100|Abbas/); // the first name, never the phone or address
 
@@ -425,7 +429,7 @@ describe("every chat word editable (E6-16a)", () => {
     const p = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, orderId: o.body.id }).expect(200)).body;
     expect(p.lang).toBe("ar");
     expect(p.issues).toEqual([]);
-    expect(p.conversations.map((c: { scenario: string }) => c.scenario)).toEqual(["confirm", "confirm_offer", "change", "cancel", "message", "already", "opt_out", "opt_in"]);
+    expect(p.conversations.map((c: { scenario: string }) => c.scenario)).toEqual(["confirm", "confirm_offer", "offer_no", "change", "cancel", "message", "already", "opt_out", "opt_in"]);
     for (const c of p.conversations) expect(c.turns[0]).toMatchObject({ from: "business", kind: "template", editable: false });
     expect(p.conversations[0].turns[0].body).toContain(`أوردرك رقم ${o.body.number} من Nile Abayas وصلنا.`);
     const cancel = p.conversations.find((c: { scenario: string }) => c.scenario === "cancel").turns.find((t: { kind: string }) => t.kind === "list");
@@ -434,12 +438,15 @@ describe("every chat word editable (E6-16a)", () => {
     expect(p.conversations[0].turns.at(-1).text).toContain("تم ✅ طلبك");
     const offered = p.conversations.find((c: { scenario: string }) => c.scenario === "confirm_offer").turns.find((t: { kind: string }) => t.kind === "buttons");
     expect(offered.buttons).toEqual(["أضفه", "لا، شكراً"]); // a sample offer when the store has none
+    // E6-16b: "No thanks" has its own chat, the same up to the offer.
+    const no = p.conversations.find((c: { scenario: string }) => c.scenario === "offer_no").turns;
+    expect(no.slice(-2)).toMatchObject([{ from: "customer", kind: "tap", text: "لا، شكراً" }, { from: "business", key: "offer_declined", editable: true }]);
     expect(p.link).toContain("https://app.mizan.test/ar/c/xxxxxxxx");
     expect(JSON.stringify(p)).not.toMatch(/0100|1234821|Abbas/); // the first name, never the phone or address
     const en = (await http().post("/v1/settings/confirmation/preview").set(as("owner")).send({ script, lang: "en" }).expect(200)).body;
     expect(en.lang).toBe("en");
     expect(en.link).toContain("https://app.mizan.test/en/c/xxxxxxxx");
-    expect(en.replies).toHaveLength(5); // the v1 shape, until E6-16b
+    expect(en.replies).toBeUndefined(); // removed in E6-16b
   });
 
   it("saving refuses with the exact paths, in Arabic and English texts", async () => {
