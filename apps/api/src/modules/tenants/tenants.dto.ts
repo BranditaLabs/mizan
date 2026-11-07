@@ -1,6 +1,7 @@
 import { COUNTRY_CODES, MEMBER_ROLES } from "@mizan/shared";
 import { z } from "zod";
 import { LegalVersionsSchema } from "../legal/legal.dto.js";
+import { SIGNUP_PLANS } from "../billing/trial.service.js";
 
 export const SLUG = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
@@ -13,6 +14,9 @@ export const CreateTenantSchema = z.strictObject({
   language: z.enum(["ar", "en"]).default("ar"),
   /** The terms and DPA versions the owner ticked; recorded with the store (L1-3). */
   acceptLegal: LegalVersionsSchema.optional().describe("The terms of service and DPA versions the owner accepted; 409 legal_version_changed when not current"),
+  /** The tier to try (E12-2a2); Growth when absent. Enterprise leads try Scale. Free only when sold publicly. The dashboard's sign-up sends the pricing page's choice (AU-1 Welcome). */
+  plan: z.enum(SIGNUP_PLANS).optional().describe("The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly). The dashboard sends the pricing page's choice"),
+  interval: z.enum(["month", "year"]).optional().describe("Monthly or yearly billing after the trial; monthly when absent"),
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantSchema>;
 
@@ -32,7 +36,8 @@ export const UpdateTenantSchema = z.strictObject({
 }).refine((b) => Object.keys(b).length > 0, "change at least one field");
 export type UpdateTenantBody = z.infer<typeof UpdateTenantSchema>;
 
-export const TENANT_STATUSES = ["trial", "active", "suspended", "deleted"] as const;
+/** The store's platform lifecycle. A trial is the subscription's status (GET /v1/billing/subscription), not the store's (E12-2a3). */
+export const TENANT_STATUSES = ["active", "suspended", "deleted"] as const;
 export const TENANT_PLANS = ["free", "growth", "scale", "enterprise"] as const;
 
 export const TenantViewSchema = z.object({

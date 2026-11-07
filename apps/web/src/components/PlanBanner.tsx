@@ -7,17 +7,23 @@ import { useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { TrialBanner } from "./TrialBanner";
 import { MotionSurface } from "@/components/ui/MotionSurface";
 
 const READERS = rolesWith("billing.read");
 const key = (tenantId: string, level: string) => `mizan-plan-banner:${tenantId}:${level}`;
 
 /**
- * The plan's soft limits (E12-1): when this month is near a limit or past it, one line across the
+ * The trial's days left (E12-2a3, TrialBanner), then the plan's soft limits (E12-1): when this month is near a limit or past it, one line across the
  * dashboard for owner, admin and finance, with a link to Plan and usage. Nothing is blocked. It
  * can be hidden for this visit; going from near to over shows it again.
  */
 export function PlanBanner() {
+  return <><TrialBanner /><LimitBanner /></>;
+}
+
+/** This month near or past a limit (E12-1). */
+function LimitBanner() {
   const t = useTranslations("planBanner");
   const { api, user, store } = useSession();
   const allowed = READERS.has(store?.role ?? "");

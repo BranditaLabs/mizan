@@ -76,7 +76,7 @@ describe("announcements (A-6)", () => {
     const ksa = (await http().post("/v1/platform/announcements").set(as("boss"))
       .send({ level: "critical", titleAr: "صيانة الليلة", titleEn: "Maintenance tonight", countries: ["SA"], endsAt: day(1) }).expect(201)).body;
     await http().post("/v1/platform/announcements").set(as("boss")).send({ titleAr: "قريباً", titleEn: "Soon", startsAt: day(1), endsAt: day(2) }).expect(201);
-    await http().post("/v1/platform/announcements").set(as("boss")).send({ titleAr: "للنمو", titleEn: "Growth only", plans: ["growth"], endsAt: day(2) }).expect(201);
+    await http().post("/v1/platform/announcements").set(as("boss")).send({ titleAr: "لـ Scale", titleEn: "Scale only", plans: ["scale"], endsAt: day(2) }) // both stores sign up into a Growth trial (E12-2a2).expect(201);
 
     expect((await http().get("/v1/announcements").set(as("owner", nile)).expect(200)).body.data)
       .toEqual([{ id: all.id, level: "info", titleAr: "تحديث جديد", titleEn: "New update", bodyAr: "شاشة المرتجعات الجديدة", bodyEn: "The new returns screen", link: "https://mizan.app/news", endsAt: all.endsAt }]);

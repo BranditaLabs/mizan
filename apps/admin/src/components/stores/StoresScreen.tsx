@@ -14,7 +14,7 @@ import { useSession } from "@/lib/session";
 import { StoreStatus } from "./StoreStatus";
 
 const PLANS = ["free", "growth", "scale", "enterprise"] as const;
-const STATUSES = ["trial", "active", "suspended", "deleted"] as const;
+const STATUSES = ["active", "suspended", "deleted"] as const;
 const PAGE = 50;
 
 /** A-2: find a store by name, slug or id; filter by plan, status and country; newest or busiest first. */

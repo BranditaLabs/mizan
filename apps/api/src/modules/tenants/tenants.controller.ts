@@ -17,10 +17,12 @@ export class TenantsController {
   @NoTenant()
   @HttpCode(201)
   @ApiJsonBody("CreateTenant", CreateTenantSchema)
-  @ApiJson(201, "Tenant", TenantViewSchema, "The new store, with the caller as owner (and their acceptance of the terms and DPA when sent)")
+  @ApiJson(201, "Tenant", TenantViewSchema, "The new store, with the caller as owner (and their acceptance of the terms and DPA when sent). It starts a trial of the plan asked for (Growth by default) unless the owner, phone or shop had one; then Free.")
   @ApiProblems(409, 422)
   create(@Auth() auth: AuthContext, @Body(new ZodPipe(CreateTenantSchema)) body: CreateTenantBody): Promise<TenantView> {
-    return this.tenants.create(auth.user.id, body, auth.ip);
+    // The owner's verified contacts tie the trial to them (one trial each, E12-2a2); only peppered HMACs are kept.
+    const who = { userId: auth.user.id, email: auth.identity.emailVerified ? auth.user.email : null, phone: auth.user.phone };
+    return this.tenants.create(auth.user.id, body, auth.ip, who);
   }
 
   /** The current store (X-Tenant-Id). */

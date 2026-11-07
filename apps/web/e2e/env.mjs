@@ -7,6 +7,11 @@ export const API = "http://localhost:8090";
 export const WEB = "http://localhost:3100";
 export const PROJECT = "demo-mizan";
 
+// The run's Mizan staff member (a bootstrap super admin), for what only staff can do, such as ending
+// a store's trial. One per run: the config sets it before the workers start, and they inherit it.
+process.env.E2E_STAFF ??= `staff-${Date.now()}@example.com`;
+export const STAFF = process.env.E2E_STAFF;
+
 /** NEXT_PUBLIC_* for `next build` (the emulator ignores the API key). */
 export const webEnv = {
   NEXT_PUBLIC_API_URL: API,
@@ -28,4 +33,5 @@ export const apiEnv = {
   AUTH_REQUIRE_MFA: "true",
   // No live exchange-rate feed: tests must not depend on an outside service (the FX card then says "missing").
   FX_SOURCE: "none",
+  PLATFORM_BOOTSTRAP_EMAILS: STAFF,
 };

@@ -1,3 +1,4 @@
+import { TRIAL_DAYS as SHARED_TRIAL_DAYS } from "@mizan/shared";
 import { parseInterval, parsePlan, type Interval, type Plan } from "./params";
 
 /**
@@ -8,12 +9,8 @@ import { parseInterval, parsePlan, type Interval, type Plan } from "./params";
  * may have been edited by hand.
  */
 
-/**
- * Trial length on every tier (owner decision: 7 days, docs/16 §7).
- * HAND-OFF (claude/rd-e12-trial): replace with the `TRIAL_DAYS` export of @mizan/shared (or
- * GET /v1/public/plans → trialDays) once it lands; the chip and the trial copy hide when it is 0.
- */
-export const TRIAL_DAYS = 7;
+/** Trial length on every tier (@mizan/shared, the default of billing_settings.trial_days); the chip and the trial copy hide when it is 0. */
+export const TRIAL_DAYS: number = SHARED_TRIAL_DAYS;
 
 export type SignupIntent = { v: 1; plan: Plan; interval: Interval; enterprise: boolean; at: number };
 
@@ -54,6 +51,16 @@ export const signupIntent = {
   },
   clear(): void { remove("session", INTENT); },
 };
+
+/**
+ * What `POST /v1/tenants` takes from the intent (E12-2a2 fields): the tier to try and the billing
+ * after the trial. Enterprise is sent as asked (the API starts a Scale trial and keeps the ask in
+ * the history); no intent sends nothing, and the API starts a Growth monthly trial.
+ */
+export function trialChoice(intent: SignupIntent | null): { plan?: "growth" | "scale" | "enterprise"; interval?: Interval } {
+  if (!intent) return {};
+  return { plan: intent.enterprise ? "enterprise" : intent.plan, interval: intent.interval };
+}
 
 /** The last way this browser signed in (email or phone), to open on it next time. */
 export const lastMethod = {

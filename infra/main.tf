@@ -156,6 +156,10 @@ resource "random_id" "link_signing_key" {
   byte_length = 32
 }
 
+resource "random_id" "trial_key_pepper" {
+  byte_length = 32
+}
+
 resource "random_password" "metrics_token" {
   length  = 40
   special = false
@@ -231,6 +235,7 @@ locals {
     DATABASE_URL_MIGRATOR = "postgres://mizan_migrator:${random_password.migrator.result}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/mizan?sslmode=require"
     DATABASE_APP_PASSWORD = random_password.app.result
     LINK_SIGNING_KEY      = random_id.link_signing_key.b64_std
+    TRIAL_KEY_PEPPER      = random_id.trial_key_pepper.b64_std
     METRICS_TOKEN         = random_password.metrics_token.result
   }
 }
@@ -267,7 +272,7 @@ locals {
       key => "${azurerm_key_vault.main.vault_uri}secrets/${lower(replace(key, "_", "-"))}"
     },
   )
-  api_secret_names     = concat(["DATABASE_URL", "LINK_SIGNING_KEY", "METRICS_TOKEN"], var.provider_secrets)
+  api_secret_names     = concat(["DATABASE_URL", "LINK_SIGNING_KEY", "METRICS_TOKEN", "TRIAL_KEY_PEPPER"], var.provider_secrets)
   migrate_secret_names = ["DATABASE_URL_MIGRATOR", "DATABASE_APP_PASSWORD"]
 }
 

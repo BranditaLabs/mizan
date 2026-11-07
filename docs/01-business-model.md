@@ -179,6 +179,8 @@ Sources to fill A and C: storefront platforms' published store counts per countr
 | Launch offer | First 50 merchants: 3 months free for a case study |
 | Billing | EGP for Egypt (Paymob); USD or SAR for GCC |
 
+**Trial (owner decisions, docs/16 §7):** every tier the merchant can pick starts with a **7-day trial** (`trial_days`, set by staff without a deploy), no card needed; an Enterprise lead gets a Scale trial plus a call. A trial that ends unpaid drops the store to a **limited Free plan** (D3): orders, webhooks and courier sync never stop; paid screens become locked previews. Free is not sold publicly (`free_tier_public`). One trial per owner, phone and shop domain. The prices above live as versioned rows in the price book (`plan_prices`, minor units); limits and features in `@mizan/shared` `plans.ts`. ✅ Built: E12-2a1–a3 (the trial, its end into Free, gating behind a flag); payment from E12-2b0.
+
 **Pricing logic:** the main meter is **order volume** (value and cost to serve both grow with orders). Seats, stores and add-ons push upgrades. Mizan does not charge a percentage of payments: merchants keep their own gateways and fees.
 
 **Validation (Discovery):** Van Westendorp survey and 15 interviews; anchor the price against tools replaced (sum of current subscriptions) and against losses avoided.

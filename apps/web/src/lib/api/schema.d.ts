@@ -1649,6 +1649,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/billing/subscription": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SubscriptionController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/metrics/catalogue": {
         parameters: {
             query?: never;
@@ -4889,6 +4905,16 @@ export interface components {
                 terms: string;
                 dpa: string;
             };
+            /**
+             * @description The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly). The dashboard sends the pricing page's choice
+             * @enum {string}
+             */
+            plan?: "growth" | "scale" | "enterprise" | "free";
+            /**
+             * @description Monthly or yearly billing after the trial; monthly when absent
+             * @enum {string}
+             */
+            interval?: "month" | "year";
         };
         CustomerHistory: {
             /** @description E.164, as Mizan reads what was typed */
@@ -5636,7 +5662,7 @@ export interface components {
                  * @description Deleted stores are not listed
                  * @enum {string}
                  */
-                tenantStatus: "trial" | "active" | "suspended";
+                tenantStatus: "active" | "suspended";
                 country: string;
                 baseCurrency: string;
                 locale: string;
@@ -7709,7 +7735,7 @@ export interface components {
             /** @enum {string} */
             plan: "free" | "growth" | "scale" | "enterprise";
             /** @enum {string} */
-            status: "trial" | "active" | "suspended" | "deleted";
+            status: "active" | "suspended" | "deleted";
             /** Format: date-time */
             createdAt: string;
             /** @description Active members */
@@ -7805,7 +7831,7 @@ export interface components {
                 /** @enum {string} */
                 plan: "free" | "growth" | "scale" | "enterprise";
                 /** @enum {string} */
-                status: "trial" | "active" | "suspended" | "deleted";
+                status: "active" | "suspended" | "deleted";
                 /** Format: date-time */
                 createdAt: string;
                 /** @description Active members */
@@ -9982,7 +10008,7 @@ export interface components {
             /** @enum {string} */
             plan: "free" | "growth" | "scale" | "enterprise";
             /** @enum {string} */
-            status: "trial" | "active" | "suspended" | "deleted";
+            status: "active" | "suspended" | "deleted";
             /** Format: date-time */
             updatedAt: string;
         };
@@ -10014,6 +10040,50 @@ export interface components {
         SubmitEvidence: {
             /** @description What was sent and how (portal, email); no card numbers */
             note?: string;
+        };
+        Subscription: {
+            /**
+             * @description The plan the store is entitled to now (Free once a trial ends unpaid)
+             * @enum {string}
+             */
+            plan: "free" | "growth" | "scale" | "enterprise";
+            /** @enum {string} */
+            status: "trialing" | "active" | "past_due" | "restricted" | "paused" | "cancelled" | "expired" | "incomplete";
+            /**
+             * @description The plan of the subscription itself (a trial's tier)
+             * @enum {string}
+             */
+            subscribedPlan: "free" | "growth" | "scale" | "enterprise";
+            /** @enum {string} */
+            interval: "month" | "year";
+            /** @description Mizan pays it (pilots, staff deals) */
+            comped: boolean;
+            cancelAtPeriodEnd: boolean;
+            /** Format: date-time */
+            currentPeriodEnd: string | null;
+            /** @description The store's time zone: days are counted in it */
+            timezone: string;
+            /** @description The running trial; null when none */
+            trial: {
+                /** @enum {string} */
+                plan: "free" | "growth" | "scale" | "enterprise";
+                /** Format: date-time */
+                startedAt: string;
+                /**
+                 * Format: date-time
+                 * @description 23:59:59 on the last day, in the store's time zone
+                 */
+                endsAt: string;
+                /** @description Calendar days left, today included: 7 on day 1, 1 on the last day */
+                daysLeft: number;
+            } | null;
+            /** @description The trial that ended most recently, if any (to say it is over) */
+            lastTrial: {
+                /** @enum {string} */
+                plan: "free" | "growth" | "scale" | "enterprise";
+                /** Format: date-time */
+                endedAt: string;
+            } | null;
         };
         Supplier: {
             /** Format: uuid */
@@ -10242,7 +10312,7 @@ export interface components {
             /** @enum {string} */
             plan: "free" | "growth" | "scale" | "enterprise";
             /** @enum {string} */
-            status: "trial" | "active" | "suspended" | "deleted";
+            status: "active" | "suspended" | "deleted";
             settings: {
                 [key: string]: unknown;
             };
@@ -15129,7 +15199,7 @@ export interface operations {
                 /** @description Name, slug or store id */
                 q?: string;
                 plan?: "free" | "growth" | "scale" | "enterprise";
-                status?: "trial" | "active" | "suspended" | "deleted";
+                status?: "active" | "suspended" | "deleted";
                 country?: string;
                 createdFrom?: string;
                 /** @description Inclusive */
@@ -17198,6 +17268,39 @@ export interface operations {
             };
         };
     };
+    SubscriptionController_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The plan the store has now, its subscription's status, and a running trial with its end and days left */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Subscription"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ReportsController_catalogue: {
         parameters: {
             query?: never;
@@ -17813,6 +17916,15 @@ export interface operations {
                     "application/json": components["schemas"]["SupplierList"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Problem (RFC 9457) with a stable `code` */
             default: {
                 headers: {
@@ -17848,6 +17960,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Supplier"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Conflict with the current state */
@@ -17896,6 +18017,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Supplier"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not found */
@@ -17954,6 +18084,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchaseOrderList"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Problem (RFC 9457) with a stable `code` */
             default: {
                 headers: {
@@ -17989,6 +18128,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not found */
@@ -18053,6 +18201,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchaseOrder"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Not found */
             404: {
                 headers: {
@@ -18099,6 +18256,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not found */
@@ -18163,6 +18329,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchaseOrder"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
             403: {
                 headers: {
@@ -18225,6 +18400,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchaseOrder"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Not found */
             404: {
                 headers: {
@@ -18276,6 +18460,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not found */
@@ -18333,6 +18526,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
@@ -18410,6 +18612,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchaseOrder"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Not found */
             404: {
                 headers: {
@@ -18473,6 +18684,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchaseOrder"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Not found */
             404: {
                 headers: {
@@ -18526,6 +18746,15 @@ export interface operations {
                     "application/json": components["schemas"]["ReorderSuggestions"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Problem (RFC 9457) with a stable `code` */
             default: {
                 headers: {
@@ -18561,6 +18790,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchaseOrder"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not found */
@@ -18623,6 +18861,15 @@ export interface operations {
                     "application/json": components["schemas"]["PurchasingSettings"];
                 };
             };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             /** @description Problem (RFC 9457) with a stable `code` */
             default: {
                 headers: {
@@ -18658,6 +18905,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PurchasingSettings"];
+                };
+            };
+            /** @description The store's plan does not include purchasing (plan_required; only when gating is on for the store) */
+            402: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Understood but refused (a business rule) */
@@ -21154,7 +21410,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description The new store, with the caller as owner (and their acceptance of the terms and DPA when sent) */
+            /** @description The new store, with the caller as owner (and their acceptance of the terms and DPA when sent). It starts a trial of the plan asked for (Growth by default) unless the owner, phone or shop had one; then Free. */
             201: {
                 headers: {
                     [name: string]: unknown;

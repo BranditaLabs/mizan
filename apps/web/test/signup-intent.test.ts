@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { clearAuthMemory, draft, lastMethod, signupIntent } from "../src/lib/auth/intent";
+import { clearAuthMemory, draft, lastMethod, signupIntent, trialChoice } from "../src/lib/auth/intent";
 
 class Mem {
   m = new Map<string, string>();
@@ -50,5 +50,20 @@ describe("sign-up intent (this tab only, no personal data)", () => {
     clearAuthMemory();
     expect([...session.m.keys()]).toEqual([]);
     expect(draft.read()).toBeNull();
+  });
+});
+
+describe("trialChoice: what the create-store call sends from the intent", () => {
+  it("sends the tier and billing chosen; Enterprise as asked; nothing without a choice", () => {
+    expect(trialChoice(null)).toEqual({});
+    expect(trialChoice({ v: 1, plan: "scale", interval: "year", enterprise: false, at: 0 })).toEqual({ plan: "scale", interval: "year" });
+    expect(trialChoice({ v: 1, plan: "growth", interval: "month", enterprise: false, at: 0 })).toEqual({ plan: "growth", interval: "month" });
+    expect(trialChoice({ v: 1, plan: "scale", interval: "month", enterprise: true, at: 0 })).toEqual({ plan: "enterprise", interval: "month" });
+  });
+  it("a hand-edited intent is re-validated before it is sent", () => {
+    session.setItem("mizan.signup", JSON.stringify({ v: 1, plan: "free", interval: "weekly", enterprise: false, at: 1000 }));
+    expect(trialChoice(signupIntent.read(2000))).toEqual({ plan: "growth", interval: "month" });
+    signupIntent.save("scale", "year", true, 1000);
+    expect(trialChoice(signupIntent.read(2000))).toEqual({ plan: "enterprise", interval: "year" });
   });
 });

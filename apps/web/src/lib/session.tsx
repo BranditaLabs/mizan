@@ -46,7 +46,7 @@ export interface Session {
 
 const Ctx = createContext<Session | null>(null);
 const storeKey = (uid: string) => `mizan-store:${uid}`;
-const OPEN_STORE = new Set<Membership["tenantStatus"]>(["trial", "active"]);
+const OPEN_STORE = new Set<Membership["tenantStatus"]>(["active"]);
 
 function remembered(uid: string): string | null {
   try {

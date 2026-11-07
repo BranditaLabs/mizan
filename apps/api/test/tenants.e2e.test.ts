@@ -32,7 +32,7 @@ describe("POST /v1/tenants", () => {
     const res = await http().post("/v1/tenants").set(as("sara")).send({ name: "Nile Abayas", country: "EG" }).expect(201);
     expect(res.body).toMatchObject({
       name: "Nile Abayas", slug: "nile-abayas", country: "EG", baseCurrency: "EGP", timezone: "Africa/Cairo", locale: "ar-EG",
-      plan: "free", status: "active", role: "owner", settings: { weekStartsOn: 6, phoneCountry: "EG" },
+      plan: "growth", status: "active", role: "owner", settings: { weekStartsOn: 6, phoneCountry: "EG" }, // a 7-day Growth trial (E12-2a2)
     });
     const id = res.body.id as string;
 
@@ -73,7 +73,7 @@ describe("POST /v1/tenants", () => {
   });
 
   it("422 for an unsupported country, a short name, a bad slug or unknown fields", async () => {
-    const bad = await http().post("/v1/tenants").set(as("sara")).send({ name: "A", country: "US", slug: "Bad Slug", plan: "scale" }).expect(422);
+    const bad = await http().post("/v1/tenants").set(as("sara")).send({ name: "A", country: "US", slug: "Bad Slug", tier: "scale" }).expect(422);
     expect(bad.body.errors.map((e: { path: string }) => e.path).sort()).toEqual(["", "country", "name", "slug"]);
   });
 

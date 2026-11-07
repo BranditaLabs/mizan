@@ -7,7 +7,7 @@ export const MembershipViewSchema = z.object({
   tenantName: z.string(),
   tenantSlug: z.string(),
   tenantLogo: z.string().nullable().describe("The store's logo, from Shopify (square when the store has one); null until read"),
-  tenantStatus: z.enum(["trial", "active", "suspended"]).describe("Deleted stores are not listed"),
+  tenantStatus: z.enum(["active", "suspended"]).describe("Deleted stores are not listed"),
   country: z.string(),
   baseCurrency: z.string(),
   locale: z.string(),

@@ -42,7 +42,7 @@ describe("back-office stores (A-2)", () => {
     expect((await http().get("/v1/platform/stores").set(as("owner", shop)).expect(403)).body.code).toBe("not_staff");
     const all = (await http().get("/v1/platform/stores").set(as("help")).expect(200)).body;
     expect(all.total).toBe(2);
-    expect(all.data[0]).toMatchObject({ name: "Delta Perfumes", plan: "free", members: 1, connections: { total: 0, needsAttention: 0 }, lastMonth: null }); // newest first
+    expect(all.data[0]).toMatchObject({ name: "Delta Perfumes", plan: "growth", members: 1, connections: { total: 0, needsAttention: 0 }, lastMonth: null }); // newest first
     expect((await http().get("/v1/platform/stores?q=nile").set(as("help")).expect(200)).body.data.map((s: { id: string }) => s.id)).toEqual([shop]);
     expect((await http().get(`/v1/platform/stores?q=${shop}`).set(as("help")).expect(200)).body.total).toBe(1);
     expect((await http().get("/v1/platform/stores?country=SA").set(as("help")).expect(200)).body.data.map((s: { id: string }) => s.id)).toEqual([other]);
@@ -82,15 +82,15 @@ describe("back-office stores (A-2)", () => {
     expect((await http().get("/v1/audit-log?action=store.").set(as("owner2", other)).expect(200)).body.data).toEqual([]);
   });
 
-  it("finance and super admins change the plan; the same plan changes nothing", async () => {
-    await http().put(`/v1/platform/stores/${shop}/plan`).set(as("help")).send({ plan: "growth" }).expect(403);
-    expect((await http().put(`/v1/platform/stores/${shop}/plan`).set(as("money")).send({ plan: "growth", reason: "annual deal" }).expect(200)).body.plan).toBe("growth");
-    await http().put(`/v1/platform/stores/${shop}/plan`).set(as("money")).send({ plan: "growth" }).expect(200);
+  it("finance and super admins change the plan through the subscription; the same plan changes nothing", async () => {
+    await http().put(`/v1/platform/stores/${shop}/plan`).set(as("help")).send({ plan: "scale" }).expect(403);
+    expect((await http().put(`/v1/platform/stores/${shop}/plan`).set(as("money")).send({ plan: "scale", reason: "annual deal" }).expect(200)).body.plan).toBe("scale");
+    await http().put(`/v1/platform/stores/${shop}/plan`).set(as("money")).send({ plan: "scale" }).expect(200);
     const log = (await http().get("/v1/audit-log?action=store.plan_changed").set(as("owner", shop)).expect(200)).body.data;
     expect(log).toHaveLength(1);
-    expect(log[0]).toMatchObject({ before: { plan: "free" }, after: { plan: "growth", reason: "annual deal" } });
-    expect((await http().get("/v1/usage").set(as("owner", shop)).expect(200)).body.plan).toBe("growth"); // limits follow
-    expect((await http().get("/v1/platform/stores?plan=growth").set(as("help")).expect(200)).body.data.map((s: { id: string }) => s.id)).toEqual([shop]);
+    expect(log[0]).toMatchObject({ before: { plan: "growth" }, after: { plan: "scale", subscription: "active", reason: "annual deal" } }); // from the Growth trial
+    expect((await http().get("/v1/usage").set(as("owner", shop)).expect(200)).body.plan).toBe("scale"); // limits follow
+    expect((await http().get("/v1/platform/stores?plan=scale").set(as("help")).expect(200)).body.data.map((s: { id: string }) => s.id)).toEqual([shop]);
   });
 
   it("anyone on the staff keeps internal notes the store never sees; every call is in the staff trail", async () => {

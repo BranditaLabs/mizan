@@ -14,7 +14,8 @@ import { StoresService } from "./stores.service.js";
 import { PublicSsoController, StoreSsoController } from "./sso.controller.js";
 import { SsoService } from "./sso.service.js";
 import { AuditModule } from "../../platform/audit/audit.module.js";
+import { BillingModule } from "../billing/billing.module.js";
 
 /** E17 back office: staff identity, PlatformGuard and the staff trail (A-1); stores (A-2); support access (A-3); system health (A-4); users (A-5); company sign-in (A-9). */
-@Module({ imports: [AuditModule], controllers: [StaffController, StoresController, StaffSupportAccessController, StoreSupportAccessController, HealthController, UsersController, StoreSsoController, PublicSsoController], providers: [StaffService, SsoService, HealthService, UsersService, StoresService, SupportAccessService, PlatformGuard, StaffAuditInterceptor], exports: [StaffService, PlatformGuard, StaffAuditInterceptor] })
+@Module({ imports: [AuditModule, BillingModule], controllers: [StaffController, StoresController, StaffSupportAccessController, StoreSupportAccessController, HealthController, UsersController, StoreSsoController, PublicSsoController], providers: [StaffService, SsoService, HealthService, UsersService, StoresService, SupportAccessService, PlatformGuard, StaffAuditInterceptor], exports: [StaffService, PlatformGuard, StaffAuditInterceptor] })
 export class StaffModule {}
