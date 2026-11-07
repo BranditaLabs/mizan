@@ -1,26 +1,20 @@
 "use client";
 
-import { ScaleMark, Words } from "@mizan/design-system/auth/react";
+import { Words } from "@mizan/design-system/auth/react";
 import { onReducedMotionChange, pauseWhenHidden, prefersReducedMotion } from "@mizan/design-system/auth-motion";
 import { Icon } from "@mizan/design-system/icons/react";
 import { RED_PRIORITY } from "@mizan/design-system/motion";
-import { useRed } from "@mizan/design-system/react/motion";
+import { FluidMark, useRed, useStageHidden } from "@mizan/design-system/react/motion";
 import { planPartnerLogo } from "@mizan/design-system/partners";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "@/i18n/navigation";
 import { TRIAL_DAYS } from "@/lib/auth/intent";
-import { useAuthUi, type Scene } from "@/lib/auth/ui-store";
+import { authUi, useAuthUi, type Scene } from "@/lib/auth/ui-store";
 import { GEOMETRY, lane, nodeWidth, type Geometry, type MapNode, type NodeId, type Variant } from "./geometry";
+import { BEAT_MS, INTRO_MS, initialStage, markBeat, stage, type StageEvent, type StagePhase, type StageState } from "./machine";
 import type { StageController } from "./animator";
 
-const PAUSED = "mizan.stage.paused";
-const OUTCOMES = ["0", "1", "2", "3", "4"] as const;
-const TICK_MS = 6000;
-const MAX_CYCLES = 5;
-
-function readPaused(): boolean { try { return localStorage.getItem(PAUSED) === "1"; } catch { return false; } }
-function savePaused(v: boolean) { try { localStorage.setItem(PAUSED, v ? "1" : "0"); } catch { /* a convenience */ } }
 const subscribeReduced = (cb: () => void) => onReducedMotionChange(cb);
 
 /** The scene a route implies before the card says more (sign-up, Shopify, outage come from the card). */
@@ -31,42 +25,64 @@ function sceneOf(pathname: string): Scene {
 }
 
 /**
- * The ink stage beside the card: the scale, the headline, a mini connections map (Mizan in the
- * middle, the store, couriers, WhatsApp and cash on delivery around it) and an outcomes ticker
- * tagged "Example". Server-rendered as its final frame (the poster); the animator chunk loads on
- * idle and builds it (never under reduced motion or Save-Data). Scenes change it without a rebuild.
- * The SVG is decorative (aria-hidden); a sentence says the same for screen readers.
+ * The ink stage beside the card, part of the page (not a player, so it has no pause control): the
+ * Brand 2.0 mark, the headline, a mini connections map (Mizan in the middle, the store, couriers,
+ * WhatsApp and cash on delivery around it) and one example outcome. It plays a short intro (≤ 5s),
+ * then stays still and moves only when the card says something happened (machine.ts): sending
+ * passes dots toward Mizan once, an error tips the mark; signing in is the card's DROP (DoneState
+ * takes the red, so the mark lets it go). Server-rendered as
+ * its settled frame; the animator chunk loads on idle (never under reduced motion or Save-Data).
+ * Out of sight or in a hidden tab nothing runs. The SVG is decorative; a sentence says the same
+ * for screen readers.
  */
 export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   const t = useTranslations("authStage");
   const pathname = usePathname();
   const ui = useAuthUi();
   const scene: Scene = variant === "staff" ? "staff" : ui.scene ?? sceneOf(pathname);
-  // The outage scene's red dot is the view's one red only while it holds the budget (else paper).
-  const red = useRed("auth-stage:outage", RED_PRIORITY.dot, scene === "outage");
+  const reduced = useSyncExternalStore(subscribeReduced, prefersReducedMotion, () => false);
+  // Landscape phones (and the phone strip while typing) hide the stage: nothing there may claim the red.
+  const hidden = useStageHidden(ui.keyboard);
   const root = useRef<HTMLElement>(null);
   const ctrl = useRef<StageController | null>(null);
-  const reduced = useSyncExternalStore(subscribeReduced, prefersReducedMotion, () => false);
-  const [paused, setPaused] = useState(false);
   const [visible, setVisible] = useState(true);
-  const [focusInCard, setFocusInCard] = useState(false);
-  const [tick, setTick] = useState({ at: 0, prev: -1, cycles: 0 });
+  // Every event carries the preference it was sent under (read in effects and handlers, never in render).
+  const reducedRef = useRef(reduced);
+  useEffect(() => { reducedRef.current = reduced; }, [reduced]);
+  const [st, dispatch] = useReducer((s: StageState, a: { e: StageEvent; reduced: boolean }) => stage(s, a.e, a.reduced), false, initialStage);
+  const send = useCallback((e: StageEvent) => dispatch({ e, reduced: reducedRef.current }), []);
+  const { phase, seq } = st;
+  // One red: the outage dot while the hub is down, else the mark's ball (while the stage shows and
+  // until signed in: then the card's DoneState plays the DROP with it).
+  const red = useRed("auth-stage:outage", RED_PRIORITY.dot, scene === "outage");
+  const markRed = scene !== "outage" && !hidden && !st.signedIn;
+  // What a late animator must catch up with (it loads on idle, maybe after the intro or a send).
+  const mountedAt = useRef(0);
+  const now = useRef<{ phase: StagePhase; visible: boolean }>({ phase, visible });
+  useEffect(() => { now.current = { phase, visible }; }, [phase, visible]);
+  useEffect(() => { mountedAt.current = performance.now(); }, []);
 
-  // The remembered choice is read after hydration, in the next frame (the server cannot know it).
-  useEffect(() => { const id = requestAnimationFrame(() => setPaused(readPaused())); return () => cancelAnimationFrame(id); }, []);
+  // The card's news (signals carry no PII: send, idle, error, signed in).
+  useEffect(() => authUi.onSignal((s) => send({ type: s })), [send]);
+  // Reduced motion (now or later): the settled frame, at once.
+  useEffect(() => { if (reduced) dispatch({ e: { type: "introEnd" }, reduced: true }); }, [reduced]);
 
   // Load the animator when the page is idle (not under reduced motion or Save-Data).
   useEffect(() => {
     const el = root.current;
     if (!el || reduced || variant === "staff") return;
     const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
-    if (saveData) return;
+    if (saveData) { send({ type: "introEnd" }); return; }
     let cancelled = false;
     const start = () => {
       void import("./animator").then(({ buildStage }) => {
         if (cancelled || !root.current) return;
-        ctrl.current = buildStage(root.current);
-        if (readPaused()) ctrl.current.pause();
+        const { phase: at, visible: seen } = now.current;
+        const c = buildStage(root.current, { elapsed: performance.now() - mountedAt.current, intro: at === "intro" && seen });
+        ctrl.current = c;
+        // The effects below ran before it existed: bring it to the current phase now.
+        if (at !== "intro") c.finishIntro();
+        c.transfer(at === "transfer" && seen);
       });
     };
     const ric = (window as Window & { requestIdleCallback?(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback;
@@ -77,44 +93,43 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
       ctrl.current?.destroy();
       ctrl.current = null;
     };
-  }, [reduced, variant]);
+  }, [reduced, variant, send]);
 
-  // Loops run only while someone can see them, nobody paused them, and the keyboard is closed.
+  // The intro ends on its own, or at once when the stage leaves sight (it never waits to be seen again).
   useEffect(() => {
     const el = root.current;
     if (!el) return;
     return pauseWhenHidden(el, setVisible);
   }, []);
-  const playing = visible && !paused && !ui.keyboard && !reduced;
-  useEffect(() => { if (playing) ctrl.current?.play(); else ctrl.current?.pause(); }, [playing]);
-
-  // The ticker waits while someone is typing in the card.
   useEffect(() => {
-    const on = (e: FocusEvent) => setFocusInCard(Boolean((e.target as Element | null)?.closest?.(".mz-auth-card input, .mz-auth-card select")));
-    const off = () => setFocusInCard(false);
-    document.addEventListener("focusin", on);
-    document.addEventListener("focusout", off);
-    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
-  }, []);
-  useEffect(() => {
-    if (!playing || focusInCard || tick.cycles >= MAX_CYCLES * OUTCOMES.length || variant === "staff") return;
-    const id = window.setTimeout(() => setTick((s) => ({ at: (s.at + 1) % OUTCOMES.length, prev: s.at, cycles: s.cycles + 1 })), TICK_MS);
+    if (phase !== "intro") return;
+    if (!visible) { send({ type: "introEnd" }); return; }
+    const id = window.setTimeout(() => send({ type: "introEnd" }), INTRO_MS);
     return () => window.clearTimeout(id);
-  }, [playing, focusInCard, tick, variant]);
+  }, [phase, visible, send]);
+  useEffect(() => { if (phase !== "intro") ctrl.current?.finishIntro(); }, [phase]);
+  // TRANSFER: one pass per send, while someone can see it.
+  useEffect(() => { ctrl.current?.transfer(phase === "transfer" && visible); }, [phase, seq, visible]);
+  // A beat (tip, the transfer pass) settles by itself, even if the work goes on.
+  useEffect(() => {
+    if (phase !== "tip" && phase !== "transfer") return;
+    const id = window.setTimeout(() => send({ type: "beatEnd" }), BEAT_MS[phase]);
+    return () => window.clearTimeout(id);
+  }, [phase, seq, send]);
 
   const n = (c: React.ReactNode) => <bdi dir="ltr">{c}</bdi>;
-  const togglePause = () => { setPaused((p) => { savePaused(!p); return !p; }); };
-  const headline = t("headline");
+  const beat = visible ? markBeat(phase) : null;
 
   return (
-    <aside ref={root} className="mz-auth-stage" data-testid="auth-stage" data-scene={scene} data-variant={variant} data-mz-red={red ? "on" : "off"} aria-label={t("kicker")}>
-      <span className="mz-auth-stage__ambient" aria-hidden="true" data-drift="" />
+    <aside ref={root} className="mz-auth-stage" data-testid="auth-stage" data-scene={scene} data-variant={variant} data-phase={phase}
+      data-mz-red={red ? "on" : "off"} aria-label={t("kicker")}>
+      <span className="mz-auth-stage__ambient" aria-hidden="true" />
       <div className="mz-auth-stage__content">
         <span className="mz-auth-stage__kicker">{variant === "staff" ? t("staffKicker") : t("kicker")}</span>
         <div className="mz-auth-stage__copy">
-          <span className="mz-auth-stage__scale"><ScaleMark size={64} /></span>
+          <span className="mz-auth-stage__mark" data-testid="stage-mark"><FluidMark beat={beat} beatKey={seq} claim={markRed} size={96} /></span>
           <p className="mz-auth-stage__headline" aria-hidden="true" data-words="">
-            <Words text={headline} />{" "}<span className="au-line2"><Words text={t("headline2")} /></span>
+            <Words text={t("headline")} />{" "}<span className="au-line2"><Words text={t("headline2")} /></span>
           </p>
         </div>
         {variant === "staff" ? null : (
@@ -126,22 +141,11 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
             </div>
             <div className="mz-auth-stage__ticker" aria-hidden="true">
               <span className="mz-auth-tag">{t("example")}</span>
-              <span className="mz-auth-roll">
-                {tick.prev >= 0 ? <span key={`o-${tick.cycles}`} data-out="">{t.rich(`outcomes.${OUTCOMES[tick.prev]!}`, { n })}</span> : null}
-                <span key={`i-${tick.cycles}`} data-in={tick.prev >= 0 ? "" : undefined}>{t.rich(`outcomes.${OUTCOMES[tick.at]!}`, { n })}</span>
-              </span>
+              <span className="mz-auth-roll"><span>{t.rich("outcome", { n })}</span></span>
             </div>
           </>
         )}
         <p className="au-sr">{t("srSummary")}</p>
-        {variant === "staff" || reduced ? null : (
-          <button type="button" className="mz-auth-pause" data-testid="stage-pause" aria-pressed={paused} onClick={togglePause}
-            aria-label={paused ? t("play") : t("pause")}>
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" fill="currentColor">
-              {paused ? <path d="M3 1.8v10.4L12 7z" /> : <><rect x="2.5" y="1.5" width="3" height="11" rx="1" /><rect x="8.5" y="1.5" width="3" height="11" rx="1" /></>}
-            </svg>
-          </button>
-        )}
       </div>
     </aside>
   );

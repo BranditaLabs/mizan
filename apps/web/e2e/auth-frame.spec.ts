@@ -172,6 +172,46 @@ test("required fields are flagged on submit, on the field", async ({ page }) => 
   await expect(page.getByLabel("Work email", { exact: true })).toHaveAttribute("aria-invalid", "true");
 });
 
+test("the stage is part of the page: no pause control, and still after its intro with no interaction", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/en/sign-in");
+  const stage = page.getByTestId("auth-stage");
+  await expect(stage).toBeVisible();
+  await expect(page.getByTestId("stage-pause")).toHaveCount(0);
+  await expect(stage.getByRole("button")).toHaveCount(0);
+  // The intro (≤ 5s) ends by itself and the stage settles.
+  await expect(stage).toHaveAttribute("data-phase", "settled", { timeout: 7000 });
+  await page.waitForTimeout(600);
+  const running = await page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && (a as CSSAnimation).animationName !== "au-caret").length);
+  expect(running).toBe(0);
+  // The mark is the view's one red, so the wordmark in the bar is mono.
+  await expect(page.getByTestId("stage-mark").locator("svg")).toHaveAttribute("data-mz-red", "on");
+});
+
+test("the stage answers the form: sending flows toward Mizan, an error tips the mark, then it settles", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/en/sign-in");
+  const stage = page.getByTestId("auth-stage");
+  await expect(stage).toHaveAttribute("data-phase", "settled", { timeout: 7000 });
+  await page.evaluate(() => {
+    const w = window as unknown as { __phases: string[] };
+    w.__phases = [];
+    const el = document.querySelector("[data-testid=auth-stage]")!;
+    new MutationObserver(() => w.__phases.push(el.getAttribute("data-phase") ?? "")).observe(el, { attributes: true, attributeFilter: ["data-phase"] });
+  });
+  // A wrong field: a tip, no network.
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(stage).toHaveAttribute("data-phase", "tip");
+  await expect(page.getByTestId("stage-mark").locator("svg")).toHaveAttribute("data-beat", "tip");
+  await expect(stage).toHaveAttribute("data-phase", "settled", { timeout: 5000 });
+  // A real attempt the server refuses: transfer while it runs, then a tip.
+  await page.getByLabel("Work email", { exact: true }).fill(`nobody-${Date.now()}@example.com`);
+  await page.getByLabel("Password").fill("not-the-password-1");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __phases: string[] }).__phases), { timeout: 15000 }).toEqual(expect.arrayContaining(["transfer", "tip"]));
+  await expect(stage).toHaveAttribute("data-phase", "settled", { timeout: 5000 });
+});
+
 test("reduced motion: nothing keeps running on the stage or after a step change", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/en/sign-in");
@@ -182,7 +222,7 @@ test("reduced motion: nothing keeps running on the stage or after a step change"
   expect(running).toBe(0);
 });
 
-for (const [w, h] of [[320, 640], [390, 844], [820, 1180], [1440, 900], [844, 390]] as const) {
+for (const [w, h] of [[320, 640], [390, 844], [820, 1180], [1440, 900], [844, 390], [1080, 1920], [2560, 1080]] as const) {
   test(`no sideways scroll at ${w}×${h} (AR and EN, both methods)`, async ({ page }) => {
     await page.setViewportSize({ width: w, height: h });
     for (const l of ["ar", "en"] as const) {

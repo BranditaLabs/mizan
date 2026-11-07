@@ -13,6 +13,9 @@ type State = { scene: Scene | null; mode: "signin" | "create" | null; locked: bo
 let state: State = { scene: null, mode: null, locked: false, keyboard: false };
 const listeners = new Set<() => void>();
 const modeRequests = new Set<(m: "signin" | "create") => void>();
+/** What the card tells the stage happened (the stage's machine turns it into motion). */
+export type StageSignal = "send" | "idle" | "error" | "signedIn";
+const stageListeners = new Set<(s: StageSignal) => void>();
 
 function emit() { listeners.forEach((l) => l()); }
 
@@ -28,6 +31,9 @@ export const authUi = {
   /** The bar's "Create an account" / "Sign in" link asks the card to switch. */
   requestMode(m: "signin" | "create") { modeRequests.forEach((r) => r(m)); },
   onModeRequest(r: (m: "signin" | "create") => void) { modeRequests.add(r); return () => { modeRequests.delete(r); }; },
+  /** The card's news for the stage: work started or ended, an error, signed in. Typing sends nothing. */
+  signal(s: StageSignal) { stageListeners.forEach((l) => l(s)); },
+  onSignal(l: (s: StageSignal) => void) { stageListeners.add(l); return () => { stageListeners.delete(l); }; },
 };
 
 const SERVER: State = { scene: null, mode: null, locked: false, keyboard: false };
