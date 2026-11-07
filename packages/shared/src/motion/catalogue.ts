@@ -215,8 +215,8 @@ export type PendingEvent = { [K in keyof typeof SPECS]: (typeof SPECS)[K] extend
 
 /**
  * Outbound-looking event names whose action is a write in Mizan, with the reason. test/motion.test.ts
- * checks that every other *_submitted, *_sent, .published, .connected, .applied or .synced row sends
- * or syncs.
+ * checks that every other *_submitted, *_sent, .sent, .published, .connected, .applied or .synced
+ * row sends or syncs, and pins the outbound rows a name cannot show (shipment.created and others).
  */
 export const OUTBOUND_WRITE_EXCEPTIONS: Readonly<Record<string, string>> = {
   "dispute.evidence_submitted": "recorded in Mizan; the store submits the evidence on the gateway's own portal",

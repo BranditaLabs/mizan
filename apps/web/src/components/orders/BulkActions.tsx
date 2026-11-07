@@ -133,7 +133,8 @@ export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
     }
     was.current = status;
   }, [b, id, motion]);
-  // A first look that failed says so (with "try again"); before the first answer, nothing.
+  // A first look that failed says so (with "try again"); before the first answer, a compact PAIR
+  // (there is no total to fill yet).
   if (!b) {
     return q.isError ? (
       <section className="mz-card flex flex-wrap items-center gap-2 pe-3" data-testid="bulk-progress">

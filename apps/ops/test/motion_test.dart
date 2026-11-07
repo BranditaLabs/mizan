@@ -141,12 +141,13 @@ void main() {
     });
 
     test('every event a screen names is in the catalogue', () {
-      // Event names passed to the motion API, and every phone event named anywhere outside the catalogue.
-      final uses = RegExp(r"(?:showEventSnack\(\s*context,\s*|EventLoader\(\s*|motionOf\(\s*)'([a-z_.]+)'|'(ops\.[a-z_]+)'");
+      // Event names passed to the motion API (also as a switch's (event, words) outcome), and every
+      // phone event named anywhere outside the catalogue.
+      final uses = RegExp(r"(?:showEventSnack\(\s*context,\s*|EventLoader\(\s*|motionOf\(\s*)'([a-z_.]+)'|'(ops\.[a-z_]+)'|=> \('([a-z_]+\.[a-z_]+)', ");
       final named = <String>{};
       for (final f in Directory('lib').listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart') && !f.path.endsWith('motion.dart'))) {
         for (final m in uses.allMatches(f.readAsStringSync())) {
-          named.add(m.group(1) ?? m.group(2)!);
+          named.add(m.group(1) ?? m.group(2) ?? m.group(3)!);
         }
       }
       expect(named, containsAll(<String>['order.packed', 'stock.received', 'stock.adjusted', 'ops.syncing', 'ops.loading', 'ops.sync_failed', 'ops.scan_counted', 'ops.scan_blocked']));

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
+import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -24,6 +25,7 @@ export function AnnouncementsScreen() {
   const q = useQuery({ queryKey: ["announcements"], queryFn: () => ok(api.GET("/v1/platform/announcements")) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["announcements"] });
   const [d, setD] = useState(empty);
+  const toast = useToast();
   const create = useMutation({
     mutationFn: () => {
       const countries = d.countries.split(/[\s,]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
@@ -33,9 +35,9 @@ export function AnnouncementsScreen() {
         endsAt: new Date(Date.now() + Number(d.hours) * 3_600_000).toISOString(),
       } }));
     },
-    onSuccess: () => { setD(empty); void refresh(); },
+    onSuccess: () => { setD(empty); void refresh(); toast({ message: t("done.posted"), outcome: "settle" }); },
   });
-  const end = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/announcements/{id}/end", { params: { path: { id } } })), onSettled: refresh });
+  const end = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/announcements/{id}/end", { params: { path: { id } } })), onSuccess: () => toast({ message: t("done.ended"), outcome: "settle" }), onSettled: refresh });
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (d.titleAr.trim() && d.titleEn.trim()) create.mutate(); };
   // Compared with when the list was loaded (not "now" during render): an ended one loses its button on the next load.
   const live = (endsAt: string) => Date.parse(endsAt) > q.dataUpdatedAt;

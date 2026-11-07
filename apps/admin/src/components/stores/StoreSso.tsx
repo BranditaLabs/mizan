@@ -4,6 +4,7 @@ import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
+import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
@@ -31,15 +32,17 @@ export function StoreSso({ storeId }: { storeId: string }) {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/platform/stores/{storeId}/sso", { params: { path: { storeId } } })) });
   const [form, setForm] = useState({ domain: "", providerId: "", reason: "" });
   const refresh = () => void qc.invalidateQueries({ queryKey: key });
+  const toast = useToast();
 
   const save = useMutation({
-    mutationFn: (v: { domain: string; providerId: string; enabled: boolean; reason: string }) =>
+    mutationFn: (v: { domain: string; providerId: string; enabled: boolean; reason: string; kind?: "paused" | "resumed" }) =>
       ok(api.PUT("/v1/platform/stores/{storeId}/sso/{domain}", { params: { path: { storeId, domain: v.domain } }, body: { providerId: v.providerId, enabled: v.enabled, reason: v.reason } })),
-    onSuccess: () => { setForm({ domain: "", providerId: "", reason: "" }); refresh(); },
+    // A new domain, a pause or a resume: each settles with its own words.
+    onSuccess: (_, v) => { setForm({ domain: "", providerId: "", reason: "" }); refresh(); toast({ message: t(`done.${v.kind ?? "saved"}`), outcome: "settle" }); },
   });
   const remove = useMutation({
     mutationFn: (domain: string) => ok(api.DELETE("/v1/platform/stores/{storeId}/sso/{domain}", { params: { path: { storeId, domain } }, body: {} })),
-    onSuccess: refresh,
+    onSuccess: () => { refresh(); toast({ message: t("done.removed"), outcome: "settle" }); },
   });
 
   const admin = can("super_admin");
@@ -71,7 +74,7 @@ export function StoreSso({ storeId }: { storeId: string }) {
                 {admin ? (
                   <>
                     <Button size="sm" variant="secondary" busy={save.isPending && save.variables?.domain === d.domain} as="saving"
-                      onClick={() => save.mutate({ domain: d.domain, providerId: d.providerId, enabled: !d.enabled, reason: d.enabled ? t("pausedReason") : t("resumedReason") })}>
+                      onClick={() => save.mutate({ domain: d.domain, providerId: d.providerId, enabled: !d.enabled, reason: d.enabled ? t("pausedReason") : t("resumedReason"), kind: d.enabled ? "paused" : "resumed" })}>
                       {d.enabled ? t("pause") : t("resume")}
                     </Button>
                     <Button size="sm" variant="danger" busy={remove.isPending && remove.variables === d.domain} as="saving" onClick={() => remove.mutate(d.domain)}>{t("remove")}</Button>

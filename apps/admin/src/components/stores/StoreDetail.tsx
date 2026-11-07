@@ -12,6 +12,7 @@ import { Field, Select, TextArea } from "@/components/ui/Field";
 import { Card, KeyValue } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
+import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { StoreSso } from "./StoreSso";
@@ -33,19 +34,22 @@ export function StoreDetail({ storeId }: { storeId: string }) {
   const key = ["store", storeId];
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/platform/stores/{storeId}", { params: { path: { storeId } } })) });
   const refresh = () => { void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ["stores"] }); };
+  // The confirmed outcome of each write: done for what changes the store's standing (suspend,
+  // reactivate, plan), settle for a routine change. Never red (that is the merchant's DROP).
+  const toast = useToast();
 
   const [reason, setReason] = useState("");
   const [plan, setPlan] = useState<Plan | "">("");
   const [note, setNote] = useState("");
   const [access, setAccess] = useState({ reason: "", minutes: "60", mode: "read" as "read" | "write" });
 
-  const suspend = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/suspend", { params: { path: { storeId } }, body: { reason: reason.trim() } })), onSuccess: () => { setReason(""); refresh(); } });
-  const reactivate = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/reactivate", { params: { path: { storeId } }, body: reason.trim() ? { reason: reason.trim() } : {} })), onSuccess: () => { setReason(""); refresh(); } });
-  const changePlan = useMutation({ mutationFn: (p: Plan) => ok(api.PUT("/v1/platform/stores/{storeId}/plan", { params: { path: { storeId } }, body: { plan: p, ...(reason.trim() ? { reason: reason.trim() } : {}) } })), onSuccess: () => { setPlan(""); setReason(""); refresh(); } });
-  const addNote = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/notes", { params: { path: { storeId } }, body: { body: note.trim() } })), onSuccess: () => { setNote(""); refresh(); } });
+  const suspend = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/suspend", { params: { path: { storeId } }, body: { reason: reason.trim() } })), onSuccess: () => { setReason(""); refresh(); toast({ message: t("done.suspended"), outcome: "done" }); } });
+  const reactivate = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/reactivate", { params: { path: { storeId } }, body: reason.trim() ? { reason: reason.trim() } : {} })), onSuccess: () => { setReason(""); refresh(); toast({ message: t("done.reactivated"), outcome: "done" }); } });
+  const changePlan = useMutation({ mutationFn: (p: Plan) => ok(api.PUT("/v1/platform/stores/{storeId}/plan", { params: { path: { storeId } }, body: { plan: p, ...(reason.trim() ? { reason: reason.trim() } : {}) } })), onSuccess: (_, p) => { setPlan(""); setReason(""); refresh(); toast({ message: t("done.planChanged", { plan: tp(p) }), outcome: "done" }); } });
+  const addNote = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/notes", { params: { path: { storeId } }, body: { body: note.trim() } })), onSuccess: () => { setNote(""); refresh(); toast({ message: t("done.noteSaved"), outcome: "settle" }); } });
   const openAccess = useMutation({
     mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/access", { params: { path: { storeId } }, body: { reason: access.reason.trim(), minutes: Number(access.minutes), mode: access.mode } })),
-    onSuccess: () => { setAccess({ reason: "", minutes: "60", mode: "read" }); void qc.invalidateQueries({ queryKey: ["my-access"] }); },
+    onSuccess: () => { setAccess({ reason: "", minutes: "60", mode: "read" }); void qc.invalidateQueries({ queryKey: ["my-access"] }); toast({ message: t("done.accessOpened"), outcome: "settle" }); },
   });
 
   if (q.isError) return <Alert tone="danger">{t("loadFailed")}</Alert>;

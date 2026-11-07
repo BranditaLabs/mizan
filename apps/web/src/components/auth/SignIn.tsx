@@ -462,7 +462,7 @@ export function SignIn({ params }: { params: AuthParams }) {
 
   let body: ReactNode;
   if (outage) {
-    body = <OutageCard key={outage.attempt} attempt={outage.attempt} onRetry={retrySso} />;
+    body = <OutageCard key={outage.attempt} attempt={outage.attempt} onRetry={retrySso} busy={busy === "primary"} />;
   } else if (step === "done") {
     body = (
       <SuccessMark title={t("doneTitle")} text={slow ? t("slow") : t("opening")}>

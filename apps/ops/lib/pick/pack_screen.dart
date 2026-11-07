@@ -73,11 +73,13 @@ class _PackScreenState extends State<PackScreen> {
   Future<void> _finish() async {
     final t = AppLocalizations.of(context);
     final navigator = Navigator.of(context);
-    await widget.store.enqueue(_session.toOp(opId: const Uuid().v4(), at: widget.now()));
+    final op = _session.toOp(opId: const Uuid().v4(), at: widget.now());
+    await widget.store.enqueue(op);
     // Saved on the phone, not yet in Mizan: ops.queued settles. The list screen sends it and plays
     // order.packed (done) only once Mizan has applied it.
     if (mounted) showEventSnack(context, 'ops.queued', t.packSaved('\u2066${widget.order.number}\u2069'));
-    navigator.pop(true);
+    // The list screen gets this op's id: its outcome is this box's, not the whole run's.
+    navigator.pop(op.opId);
   }
 
   @override

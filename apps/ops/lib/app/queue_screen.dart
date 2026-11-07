@@ -75,12 +75,20 @@ class _QueueScreenState extends State<QueueScreen> {
     setState(() => _syncing = false);
     await _reload();
     final f = report.failure;
+    if (!mounted) return;
+    // The run's answer replaces any toast still showing or waiting ("saved"). Some refused (fail) or overruled (tip): say so, each row shows which.
     // Every op sent and agreed: the two systems match (ops.syncing's outcome, MERGE).
-    if (f == null && report.applied > 0 && mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (f == null && report.rejected > 0) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      showEventSnack(context, 'ops.op_rejected', t.syncedSomeRejected(report.rejected + report.conflicts));
+    } else if (f == null && report.conflicts > 0) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      showEventSnack(context, 'ops.op_conflict', t.syncedSomeConflict(report.conflicts));
+    } else if (f == null && report.applied > 0) {
+      ScaffoldMessenger.of(context).clearSnackBars();
       showEventSnack(context, 'ops.syncing', t.synced);
     }
-    if (f != null && mounted) {
+    if (f != null) {
       showEventSnack(context, 'ops.sync_failed', switch (f.kind) {
         SyncFailureKind.offline => t.syncFailedOffline,
         SyncFailureKind.signedOut || SyncFailureKind.forbidden => t.signInToSync,
@@ -181,8 +189,9 @@ class _OpTile extends StatelessWidget {
       subtitle: op.message == null ? null : Text(op.message!),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         if (syncing && op.status == OpStatus.pending) ...[const EventLoader('ops.syncing', height: 14, still: true), const SizedBox(width: MizanSpace.s2)],
-        // Mizan's answer for this op: applied merges, a conflict tips, a refusal fails (a small glyph).
-        if (glyph != null) ...[EventGlyph(motionOf(glyph).outcome, key: ValueKey('op-glyph-$glyph'), size: 16), const SizedBox(width: MizanSpace.s2)],
+        // Mizan's answer for this op: applied merges, a conflict tips, a refusal fails. A still glyph
+        // (its end frame): past answers never replay when the list opens or reloads.
+        if (glyph != null) ...[EventGlyph(motionOf(glyph).outcome, key: ValueKey('op-glyph-$glyph'), size: 16, still: true), const SizedBox(width: MizanSpace.s2)],
         Text(status, style: MizanType.label),
       ]),
     );

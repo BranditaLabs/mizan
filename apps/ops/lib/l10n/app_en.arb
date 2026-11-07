@@ -233,5 +233,45 @@
       }
     }
   },
-  "receiveProgress": "Received of expected"
+  "receiveProgress": "Received of expected",
+  "packConflict": "Order {number}: Mizan kept its own version ({reason}).",
+  "@packConflict": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "reason": {"type": "String"}
+    }
+  },
+  "packRejected": "Order {number} was not accepted: {reason}",
+  "@packRejected": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "reason": {"type": "String"}
+    }
+  },
+  "deliveryConflict": "Delivery for {number}: Mizan kept its own numbers ({reason}).",
+  "@deliveryConflict": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "reason": {"type": "String"}
+    }
+  },
+  "deliveryRejected": "Delivery for {number} was not accepted: {reason}",
+  "@deliveryRejected": {
+    "placeholders": {
+      "number": {"type": "String"},
+      "reason": {"type": "String"}
+    }
+  },
+  "syncedSomeRejected": "{count, plural, =1{Synced, but 1 operation was not accepted. See the list.} other{Synced, but {count} operations were not accepted. See the list.}}",
+  "@syncedSomeRejected": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "syncedSomeConflict": "{count, plural, =1{Synced. For 1 operation Mizan's count won. See the list.} other{Synced. For {count} operations Mizan's count won. See the list.}}",
+  "@syncedSomeConflict": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  }
 }

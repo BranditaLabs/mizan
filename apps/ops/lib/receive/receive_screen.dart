@@ -13,6 +13,7 @@ import '../motion/mizan_loader.dart';
 import '../motion/motion.dart';
 import '../motion/vessels_count.dart';
 import '../pick/pack_screen.dart' show ScannerBuilder;
+import '../sync/op.dart';
 import '../sync/op_store.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_engine.dart';
@@ -88,24 +89,31 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
     await _load();
   }
 
-  /// A delivery saved on the phone: send it (TRANSFER), then stock.received (done) once Mizan
-  /// applied it, or ops.sync_failed (it stays queued and goes later).
-  Future<void> _syncSaved(PurchaseOrder po) async {
+  /// A delivery saved on the phone: send it (TRANSFER), then this op's own answer:
+  /// stock.received (done) only once Mizan applied *this* delivery, ops.op_conflict (tip) or
+  /// ops.op_rejected (fail) when Mizan refused it, ops.sync_failed when the run stopped before it.
+  Future<void> _syncSaved(PurchaseOrder po, String opId) async {
     final engine = widget.engine;
     if (engine == null || !mounted) return;
     final t = AppLocalizations.of(context);
     setState(() => _busy = 'ops.syncing');
     final report = await engine.run();
+    final op = await widget.store.byId(opId);
     if (!mounted) return;
     setState(() => _busy = null);
     final f = report.failure;
-    // The outcome replaces "saved on the phone" at once (the queued toast would hold it back).
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    if (f != null) {
-      showEventSnack(context, 'ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.receiveSignIn : t.syncFailedServer);
-    } else if (report.applied > 0) {
-      showEventSnack(context, 'stock.received', t.deliverySynced('\u2066${po.number}\u2069'));
-    }
+    final number = '\u2066${po.number}\u2069';
+    final (String, String)? outcome = switch (op?.status) {
+      OpStatus.applied => ('stock.received', t.deliverySynced(number)),
+      OpStatus.conflict => ('ops.op_conflict', t.deliveryConflict(number, op?.message ?? '')),
+      OpStatus.rejected => ('ops.op_rejected', t.deliveryRejected(number, op?.message ?? '')),
+      _ when f != null => ('ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.receiveSignIn : t.syncFailedServer),
+      _ => null,
+    };
+    // An outcome replaces "saved on the phone" at once; with none, the saved toast stays.
+    if (outcome == null) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    showEventSnack(context, outcome.$1, outcome.$2);
   }
 
   @override
@@ -143,12 +151,12 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
                 title: Text('\u2066${po.number}\u2069 · ${po.supplier}', style: MizanType.headingSm),
                 subtitle: Text('${t.stillExpected(max(0, po.left - here.values.fold(0, (a, b) => a + b)))} · ${t.fetchedAt(time.format(at.toLocal()))}'),
                 onTap: () async {
-                  final saved = await Navigator.of(context).push(
-                    MaterialPageRoute<bool>(
+                  final opId = await Navigator.of(context).push(
+                    MaterialPageRoute<String>(
                       builder: (_) => ReceiveScreen(po: po, alreadyHere: here, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now),
                     ),
                   );
-                  if (saved == true) await _syncSaved(po);
+                  if (opId != null) await _syncSaved(po, opId);
                   await _load();
                 },
               ),
@@ -217,11 +225,13 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   Future<void> _save() async {
     final t = AppLocalizations.of(context);
     final navigator = Navigator.of(context);
-    await widget.store.enqueue(_session.toOp(opId: const Uuid().v4(), at: widget.now()));
+    final op = _session.toOp(opId: const Uuid().v4(), at: widget.now());
+    await widget.store.enqueue(op);
     // Saved on the phone (ops.queued settles); the list screen sends it and plays stock.received
     // (done) only once Mizan has applied it.
     if (mounted) showEventSnack(context, 'ops.queued', t.deliverySaved('\u2066${widget.po.number}\u2069'));
-    navigator.pop(true);
+    // The list screen gets this op's id: its outcome is this delivery's, not the whole run's.
+    navigator.pop(op.opId);
   }
 
   @override

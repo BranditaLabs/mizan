@@ -71,6 +71,37 @@ const files = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
   return statSync(p).isDirectory() ? files(p) : [p];
 });
 
+/**
+ * The whole opening tag that starts at `start` (`<Button …>`): the first `>` outside braces and
+ * quotes, so an arrow prop (`onClick={() => …}`) or a `>` in an expression never cuts it short.
+ */
+function openingTag(s: string, start: number): string {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = start + 1; i < s.length; i++) {
+    const c = s[i]!;
+    if (quote) { if (c === quote && s[i - 1] !== "\\") quote = null; continue; }
+    if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "{") depth++;
+    else if (c === "}") depth--;
+    else if (c === ">" && depth === 0) return s.slice(start, i + 1);
+  }
+  return s.slice(start);
+}
+
+/** The value of `busy={…}` in a tag, braces matched (`busy={{ isPending, motion }}` included). */
+function busyExpr(tag: string): string | null {
+  const at = tag.search(/\sbusy=\{/);
+  if (at < 0) return null;
+  const open = tag.indexOf("{", at);
+  let depth = 0;
+  for (let i = open; i < tag.length; i++) {
+    if (tag[i] === "{") depth++;
+    else if (tag[i] === "}" && --depth === 0) return tag.slice(open + 1, i).trim();
+  }
+  return tag.slice(open + 1).trim();
+}
+
 describe("repo scan: every busy names a meaning", () => {
   const tsx = files(src).filter((f) => f.endsWith(".tsx"));
   it("every <Button|IconButton|ConfirmDialog busy={…}> carries as= or an event object/mutation", () => {
@@ -78,14 +109,23 @@ describe("repo scan: every busy names a meaning", () => {
     for (const f of tsx) {
       const s = readFileSync(f, "utf8");
       const events = new Set([...s.matchAll(/const (\w+) = useEventMutation\(/g)].map((m) => m[1]));
-      for (const m of s.matchAll(/<(?:Button|IconButton|ConfirmDialog)\b[^>]*?\sbusy=\{([^}]*)\}?/gs)) {
-        const tag = s.slice(m.index, s.indexOf(">", m.index + m[0].length));
-        const expr = m[1]!.trim();
-        if (/\sas=/.test(m[0] + tag) || expr.startsWith("{") || events.has(expr) || expr === "busy") continue;
+      for (const m of s.matchAll(/<(?:Button|IconButton|ConfirmDialog)\b/g)) {
+        const tag = openingTag(s, m.index);
+        const expr = busyExpr(tag);
+        if (expr === null || /\sas="/.test(tag) || expr.startsWith("{") || events.has(expr)) continue;
         bad.push(`${f.slice(src.length)}: busy={${expr}}`);
       }
     }
     expect(bad).toEqual([]);
+  });
+
+  it("the scan reads a whole tag: a busy after an arrow prop is still checked", () => {
+    const s = `<IconButton label="x" onClick={() => remove.mutate(id)} busy={remove.isPending} />`;
+    const tag = openingTag(s, 0);
+    expect(tag).toBe(s);
+    expect(busyExpr(tag)).toBe("remove.isPending");
+    expect(/\sas="/.test(tag)).toBe(false);
+    expect(busyExpr(openingTag(`<Button busy={{ isPending: p, motion: "order.confirmed" }} onClick={() => go()}>`, 0))).toBe(`{ isPending: p, motion: "order.confirmed" }`);
   });
 
   it("no border-spin spinner in any CSS module (a hand-made wait; use Waiting)", () => {

@@ -218,7 +218,20 @@
         "public_email_domain": "Public mailboxes like gmail.com can't belong to one company.",
         "validation_failed": "Check the domain and the provider ID.",
         "generic": "That didn't work. Try again."
+      },
+      "done": {
+        "saved": "Domain added. Its people sign in through the store's provider.",
+        "paused": "Company sign-in paused.",
+        "resumed": "Company sign-in resumed.",
+        "removed": "Domain removed."
       }
+    },
+    "done": {
+      "suspended": "Store suspended. Its team can no longer sign in.",
+      "reactivated": "Store reactivated.",
+      "planChanged": "Plan changed to {plan}.",
+      "noteSaved": "Note saved.",
+      "accessOpened": "Support access opened."
     }
   },
   "access": {
@@ -294,7 +307,11 @@
     "reason": "Reason",
     "reasonHint": "Shown to every store they belong to.",
     "disable": "Disable sign-in",
-    "enable": "Allow sign-in again"
+    "enable": "Allow sign-in again",
+    "done": {
+      "disabled": "Sign-in disabled.",
+      "enabled": "Sign-in enabled again."
+    }
   },
   "flags": {
     "title": "Feature flags",
@@ -311,7 +328,14 @@
     "storeId": "Store id",
     "onForStore": "On for this store",
     "offForStore": "Off for this store",
-    "none": "No flags yet."
+    "none": "No flags yet.",
+    "done": {
+      "created": "Flag added (off for everyone).",
+      "saved": "Flag saved.",
+      "deleted": "Flag deleted.",
+      "storeSaved": "Saved for this store.",
+      "storeCleared": "This store follows everyone again."
+    }
   },
   "announcements": {
     "title": "Announcements",
@@ -332,7 +356,11 @@
     "countries": "Only these countries",
     "countriesHint": "Like EG, SA. Empty: every country.",
     "post": "Post announcement",
-    "end": "End now"
+    "end": "End now",
+    "done": {
+      "posted": "Announcement posted.",
+      "ended": "Announcement ended."
+    }
   },
   "staff": {
     "title": "Staff",
@@ -351,7 +379,13 @@
       "disabled": "Disabled"
     },
     "disable": "Disable",
-    "enable": "Enable"
+    "enable": "Enable",
+    "done": {
+      "added": "Added to staff.",
+      "roleChanged": "Role changed.",
+      "disabled": "Staff member disabled.",
+      "enabled": "Staff member enabled."
+    }
   },
   "audit": {
     "title": "Staff trail",

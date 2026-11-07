@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
+import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -24,9 +25,12 @@ export function StaffScreen() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["staff"] });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<StaffRole>("support");
-  const add = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/staff", { body: { email: email.trim(), role } })), onSuccess: () => { setEmail(""); void refresh(); } });
+  const toast = useToast();
+  const add = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/staff", { body: { email: email.trim(), role } })), onSuccess: () => { setEmail(""); void refresh(); toast({ message: t("done.added"), outcome: "settle" }); } });
   const update = useMutation({
     mutationFn: (b: { id: string; role?: StaffRole; status?: "active" | "disabled" }) => ok(api.PATCH("/v1/platform/staff/{id}", { params: { path: { id: b.id } }, body: { ...(b.role ? { role: b.role } : {}), ...(b.status ? { status: b.status } : {}) } })),
+    // Disabling someone is done (it takes their access away); a role or re-enabling settles.
+    onSuccess: (_, b) => toast(b.status === "disabled" ? { message: t("done.disabled"), outcome: "done" } : { message: t(b.status === "active" ? "done.enabled" : "done.roleChanged"), outcome: "settle" }),
     onSettled: refresh,
   });
   const onAdd = (e: FormEvent) => { e.preventDefault(); if (email.trim()) add.mutate(); };

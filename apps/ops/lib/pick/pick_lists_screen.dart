@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../motion/event_snack.dart';
 import '../motion/fill_bar.dart';
 import '../motion/mizan_loader.dart';
+import '../sync/op.dart';
 import '../sync/op_store.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_engine.dart';
@@ -132,24 +133,31 @@ class _PickListScreenState extends State<PickListScreen> {
   Set<String> _packedHere = const {};
   bool _syncing = false;
 
-  /// A box saved on the phone: send it (TRANSFER), then order.packed (done) once Mizan applied
-  /// it, or ops.sync_failed (it stays queued and goes later).
-  Future<void> _syncSaved(PickOrder o) async {
+  /// A box saved on the phone: send it (TRANSFER), then this op's own answer: order.packed (done)
+  /// only once Mizan applied *this* box, ops.op_conflict (tip) or ops.op_rejected (fail) when Mizan
+  /// refused it, ops.sync_failed when the run stopped before it (it stays queued and goes later).
+  Future<void> _syncSaved(PickOrder o, String opId) async {
     final engine = widget.engine;
     if (engine == null || !mounted) return;
     final t = AppLocalizations.of(context);
     setState(() => _syncing = true);
     final report = await engine.run();
+    final op = await widget.store.byId(opId);
     if (!mounted) return;
     setState(() => _syncing = false);
     final f = report.failure;
-    // The outcome replaces "saved on the phone" at once (the queued toast would hold it back).
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    if (f != null) {
-      showEventSnack(context, 'ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.pickListsSignIn : t.syncFailedServer);
-    } else if (report.applied > 0) {
-      showEventSnack(context, 'order.packed', t.packSynced('\u2066${o.number}\u2069'));
-    }
+    final number = '\u2066${o.number}\u2069';
+    final (String, String)? outcome = switch (op?.status) {
+      OpStatus.applied => ('order.packed', t.packSynced(number)),
+      OpStatus.conflict => ('ops.op_conflict', t.packConflict(number, op?.message ?? '')),
+      OpStatus.rejected => ('ops.op_rejected', t.packRejected(number, op?.message ?? '')),
+      _ when f != null => ('ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.pickListsSignIn : t.syncFailedServer),
+      _ => null,
+    };
+    // An outcome replaces "saved on the phone" at once; with none, the saved toast stays.
+    if (outcome == null) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    showEventSnack(context, outcome.$1, outcome.$2);
   }
 
   @override
@@ -195,9 +203,9 @@ class _PickListScreenState extends State<PickListScreen> {
                   ? Text(t.packed, style: MizanType.label)
                   : FilledButton(
                       onPressed: () async {
-                        final saved = await Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => PackScreen(order: o, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now)));
+                        final opId = await Navigator.of(context).push(MaterialPageRoute<String>(builder: (_) => PackScreen(order: o, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now)));
                         await _load();
-                        if (saved == true) await _syncSaved(o);
+                        if (opId != null) await _syncSaved(o, opId);
                       },
                       child: Text(t.pack),
                     ),

@@ -21,7 +21,7 @@ const RECAPTCHA = "sms-verifier";
 /** How long "two-step is on" (DoneState) shows before signing in again with the code. */
 const ENABLED_MS = 1400;
 /** The press that is running (only that button animates). */
-type BusyKey = "send" | "check" | "sms" | "enable";
+type BusyKey = "send" | "check" | "sms" | "enable" | "signOut";
 
 /**
  * Turn on two-step verification (Firebase SMS second factor): owners and admins need it before the
@@ -150,6 +150,11 @@ export function TwoStep() {
         <AuthProgress kind="confirmed" label={t("enabledTitle")} size={96}>
           <p className="text-body-sm text-text-2">{t("doneBody")}</p>
         </AuthProgress>
+        {/* Two-step is on either way; if signing out failed, say so under the outcome and offer it again. */}
+        {errorAlert}
+        {error ? (
+          <Button variant="secondary" size="lg" busy={busy === "signOut"} as="loading" onClick={() => void run("signOut", () => signOutAndBack(true))}>{t("signOutAndBack")}</Button>
+        ) : null}
       </Step>
     );
   }

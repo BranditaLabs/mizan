@@ -529,6 +529,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Received of expected'**
   String get receiveProgress;
+
+  /// No description provided for @packConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Order {number}: Mizan kept its own version ({reason}).'**
+  String packConflict(String number, String reason);
+
+  /// No description provided for @packRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Order {number} was not accepted: {reason}'**
+  String packRejected(String number, String reason);
+
+  /// No description provided for @deliveryConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery for {number}: Mizan kept its own numbers ({reason}).'**
+  String deliveryConflict(String number, String reason);
+
+  /// No description provided for @deliveryRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery for {number} was not accepted: {reason}'**
+  String deliveryRejected(String number, String reason);
+
+  /// No description provided for @syncedSomeRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced, but 1 operation was not accepted. See the list.} other{Synced, but {count} operations were not accepted. See the list.}}'**
+  String syncedSomeRejected(int count);
+
+  /// No description provided for @syncedSomeConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced. For 1 operation Mizan\'s count won. See the list.} other{Synced. For {count} operations Mizan\'s count won. See the list.}}'**
+  String syncedSomeConflict(int count);
 }
 
 class _AppLocalizationsDelegate

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormAlert, ResendTimer, TextField } from "@mizan/design-system/auth/react";
+import { AuthProgress, FormAlert, ResendTimer, TextField } from "@mizan/design-system/auth/react";
 import { mmss } from "@mizan/design-system/auth-code";
 import { Icon } from "@mizan/design-system/icons/react";
 import { RedSwatch } from "@mizan/design-system/react/motion";
@@ -304,17 +304,22 @@ export function LinkResend({ startedAt, onResend, busy }: { startedAt: number; o
   );
 }
 
-/** The API is not answering: the card says so and tries again by itself (2, 4, 8, 16, then every 30s). */
-export function OutageCard({ attempt, onRetry }: { attempt: number; onRetry(): void }) {
+/**
+ * The API is not answering: the card says so and tries again by itself (2, 4, 8, 16, then every 30s).
+ * While a try is out (`busy`: pressed or automatic) the button waits for the answer with a PAIR
+ * (AuthProgress `loading`), cannot be pressed again, and the countdown holds.
+ */
+export function OutageCard({ attempt, onRetry, busy = false }: { attempt: number; onRetry(): void; busy?: boolean }) {
   const t = useTranslations("gate");
   const wait = [2, 4, 8, 16][attempt] ?? 30;
   // Keyed by attempt in the caller: each attempt starts its own countdown.
   const [left, setLeft] = useState(wait);
   useEffect(() => {
+    if (busy) return;
     if (left <= 0) { onRetry(); return; }
     const id = window.setTimeout(() => setLeft((l) => l - 1), 1000);
     return () => window.clearTimeout(id);
-  }, [left, onRetry]);
+  }, [left, onRetry, busy]);
   return (
     <div className="mz-auth-step" data-testid="auth-outage">
       <div className="mz-auth-head">
@@ -322,7 +327,11 @@ export function OutageCard({ attempt, onRetry }: { attempt: number; onRetry(): v
         <h1 className="mz-auth-h1" tabIndex={-1}>{t("outage.title")}</h1>
         <p className="mz-auth-sub"><span aria-live="off">{t.rich("outage.body", { time: mmss(left), n: bdi })}</span></p>
       </div>
-      <button type="button" className="mz-auth-btn" onClick={onRetry}>{t("outage.now")}</button>
+      <button type="button" className="mz-auth-btn" aria-disabled={busy || undefined} aria-busy={busy || undefined} data-testid="auth-outage-retry"
+        onClick={busy ? undefined : onRetry}>
+        {busy ? <AuthProgress kind="loading" size={20} /> : null}
+        {t("outage.now")}
+      </button>
     </div>
   );
 }

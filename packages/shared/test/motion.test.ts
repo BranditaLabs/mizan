@@ -285,12 +285,24 @@ describe("meanings: every loader matches what the action does (Brand 2.0)", () =
     expect(EVENT_MOTION["orders.bulk_continue"].pending).toBe("drop");
   });
 
+  const OUTBOUND = /(_submitted|_sent|\.sent|\.published|\.connected|\.applied|\.synced)$/;
   it("outbound-looking events send or sync, unless excepted with a reason", () => {
     for (const [type, rule] of Object.entries(EVENT_MOTION)) {
-      if (!/(_submitted|_sent|\.published|\.connected|\.applied|\.synced)$/.test(type)) continue;
+      if (!OUTBOUND.test(type)) continue;
       if (type in OUTBOUND_WRITE_EXCEPTIONS) { expect(OUTBOUND_WRITE_EXCEPTIONS[type].length, type).toBeGreaterThan(10); continue; }
       expect(["send", "sync"], type).toContain(rule.action);
     }
-    for (const type of Object.keys(OUTBOUND_WRITE_EXCEPTIONS)) expect(EVENT_MOTION, type).toHaveProperty([type]);
+    // An exception the name pattern never reaches would be dead: each one must match it.
+    for (const type of Object.keys(OUTBOUND_WRITE_EXCEPTIONS)) {
+      expect(EVENT_MOTION, type).toHaveProperty([type]);
+      expect(OUTBOUND.test(type), type).toBe(true);
+    }
+  });
+
+  it("pinned outbound rows (names the pattern cannot see): pushed to a courier, a store or Meta = transfer", () => {
+    for (const type of ["shipment.created", "connection.connected", "product.published", "offer.applied", "confirmation.sent", "whatsapp.template_submitted"] as const) {
+      expect(["send", "sync"], type).toContain(EVENT_MOTION[type].action);
+      expect(EVENT_MOTION[type].pending, type).toBe("transfer");
+    }
   });
 });

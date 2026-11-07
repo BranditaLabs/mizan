@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
+import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -21,10 +22,13 @@ export function FlagsScreen() {
   const editable = can("super_admin", "engineer");
   const q = useQuery({ queryKey: ["flags"], queryFn: () => ok(api.GET("/v1/platform/flags")) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["flags"] });
-  const put = useMutation({ mutationFn: (b: { key: string; enabled: boolean; description?: string }) => ok(api.PUT("/v1/platform/flags/{key}", { params: { path: { key: b.key } }, body: { enabled: b.enabled, ...(b.description !== undefined ? { description: b.description } : {}) } })), onSettled: refresh });
-  const putStore = useMutation({ mutationFn: (b: { key: string; storeId: string; enabled: boolean }) => ok(api.PUT("/v1/platform/flags/{key}/stores/{storeId}", { params: { path: { key: b.key, storeId: b.storeId } }, body: { enabled: b.enabled } })), onSettled: refresh });
-  const clearStore = useMutation({ mutationFn: (b: { key: string; storeId: string }) => ok(api.DELETE("/v1/platform/flags/{key}/stores/{storeId}", { params: { path: b } })), onSettled: refresh });
-  const remove = useMutation({ mutationFn: (key: string) => ok(api.DELETE("/v1/platform/flags/{key}", { params: { path: { key } } })), onSettled: refresh });
+  // Every flag change is routine: it settles (a create carries the description, a switch does not).
+  const toast = useToast();
+  const settle = (k: "created" | "saved" | "deleted" | "storeSaved" | "storeCleared") => toast({ message: t(`done.${k}`), outcome: "settle" });
+  const put = useMutation({ mutationFn: (b: { key: string; enabled: boolean; description?: string }) => ok(api.PUT("/v1/platform/flags/{key}", { params: { path: { key: b.key } }, body: { enabled: b.enabled, ...(b.description !== undefined ? { description: b.description } : {}) } })), onSuccess: (_, b) => settle(b.description !== undefined ? "created" : "saved"), onSettled: refresh });
+  const putStore = useMutation({ mutationFn: (b: { key: string; storeId: string; enabled: boolean }) => ok(api.PUT("/v1/platform/flags/{key}/stores/{storeId}", { params: { path: { key: b.key, storeId: b.storeId } }, body: { enabled: b.enabled } })), onSuccess: () => settle("storeSaved"), onSettled: refresh });
+  const clearStore = useMutation({ mutationFn: (b: { key: string; storeId: string }) => ok(api.DELETE("/v1/platform/flags/{key}/stores/{storeId}", { params: { path: b } })), onSuccess: () => settle("storeCleared"), onSettled: refresh });
+  const remove = useMutation({ mutationFn: (key: string) => ok(api.DELETE("/v1/platform/flags/{key}", { params: { path: { key } } })), onSuccess: () => settle("deleted"), onSettled: refresh });
   const [draft, setDraft] = useState({ key: "", description: "" });
   const [storeFor, setStoreFor] = useState<Record<string, string>>({});
 

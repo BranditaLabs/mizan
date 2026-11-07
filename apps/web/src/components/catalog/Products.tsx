@@ -178,7 +178,9 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
     </>,
     <ButtonGroup>
       {PRODUCT_EDITORS.has(store?.role ?? "") ? <Link href="/products/new" className={buttonClass("primary")}><Icon name="add" size={16} />{t("newProduct.open")}</Link> : null}
-      <Button variant="secondary" icon="download" busy={exporting !== null} as="loading" disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
+      {/* One wait, one loader: a PAIR on the button only until a total is known (a search); with a
+          total the FillProgress beside it is the wait, and the button just holds still. */}
+      <Button variant="secondary" icon="download" busy={exporting !== null && !exporting.total} as="loading" disabled={!counts?.products || Boolean(exporting?.total)} aria-busy={exporting !== null || undefined} onClick={() => void exportCsv()}>{t("download")}</Button>
       {exporting?.total ? <FillProgress value={(Math.min(exporting.done, exporting.total) / exporting.total) * 100} label={t("download")} valueText={copy.loader.progress(Math.min(exporting.done, exporting.total), exporting.total)} width={140} /> : null}
       <Button icon="upload" onClick={() => setImporting(true)}>{t("import.open")}</Button>
     </ButtonGroup>,

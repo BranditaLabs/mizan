@@ -14,6 +14,24 @@ const files = (dir: string): string[] => readdirSync(dir).flatMap((f) => {
 });
 const read = (rel: string) => readFileSync(join(src, rel), "utf8");
 
+/**
+ * The whole opening tag that starts at `start` (`<Button …>`): the first `>` outside braces and
+ * quotes, so an arrow prop (`onClick={() => …}`) or a `>` in an expression never cuts it short.
+ */
+function openingTag(s: string, start: number): string {
+  let depth = 0;
+  let quote: string | null = null;
+  for (let i = start + 1; i < s.length; i++) {
+    const c = s[i]!;
+    if (quote) { if (c === quote && s[i - 1] !== "\\") quote = null; continue; }
+    if (c === '"' || c === "'" || c === "`") quote = c;
+    else if (c === "{") depth++;
+    else if (c === "}") depth--;
+    else if (c === ">" && depth === 0) return s.slice(start, i + 1);
+  }
+  return s.slice(start);
+}
+
 describe("lint config", () => {
   const eslint = new ESLint({ cwd: fileURLToPath(new URL("..", import.meta.url)) });
   it("blocks a busy button with no meaning and a PrimaryCta with no busyAs", async () => {
@@ -29,13 +47,18 @@ describe("every busy names a meaning", () => {
   it("each <Button busy> in a screen carries as=", () => {
     const bad: string[] = [];
     for (const f of files(src).filter((x) => x.endsWith(".tsx") && !/components[\\/]ui[\\/]/.test(x))) {
-      for (const m of readFileSync(f, "utf8").matchAll(/<(?:Button|IconButton)\b[^>]*?\sbusy=\{/gs)) {
-        const s = readFileSync(f, "utf8");
-        const tag = s.slice(m.index, s.indexOf(">", m.index + m[0].length + 1) + 1);
-        if (!/\sas="/.test(tag)) bad.push(`${f.slice(src.length)}: ${tag.slice(0, 80)}`);
+      const s = readFileSync(f, "utf8");
+      for (const m of s.matchAll(/<(?:Button|IconButton)\b/g)) {
+        const tag = openingTag(s, m.index);
+        if (/\sbusy=\{/.test(tag) && !/\sas="/.test(tag)) bad.push(`${f.slice(src.length)}: ${tag.slice(0, 80)}`);
       }
     }
     expect(bad).toEqual([]);
+  });
+
+  it("the scan reads a whole tag: as= after an arrow prop still counts", () => {
+    const tag = `<Button onClick={() => end.mutate(id)} busy={end.isPending} as="saving">`;
+    expect(openingTag(`${tag}{t("end")}</Button>`, 0)).toBe(tag);
   });
 
   it("BusyLoader has no default loader", () => {
