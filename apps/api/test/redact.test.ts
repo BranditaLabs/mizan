@@ -28,6 +28,24 @@ describe("scrubUrl", () => {
       .toBe("/v1/orders?q=[redacted-email]&phone=010•••4821&status=confirmed");
     expect(scrubUrl("/v1/x?q=%E0%A4%A&p=01001234821")).toBe("/v1/x?q=%E0%A4%A&p=010•••4821");
   });
+
+  it("drops token parameters (GET /v1/live, LV-1a): `token=` never reaches a log line", () => {
+    const secret = ["3f1c2b7e-0000-4000-8000-000000000001", "AbCdEfGh", "0123456789", "ijklmnopqrstuvwxyzABCDE"].join(".");
+    const cases: Array<[string, string]> = [
+      [`/v1/live?topics=orders,shipments&token=${secret}`, "/v1/live?topics=orders,shipments"],
+      [`/v1/live?token=${encodeURIComponent(secret)}&topics=orders`, "/v1/live?topics=orders"],
+      [`/v1/live?token=${secret}`, "/v1/live"],
+      [`/v1/x?a=1&access_token=${secret}&b=2`, "/v1/x?a=1&b=2"],
+      [`/v1/x?id_token=${secret}`, "/v1/x"],
+    ];
+    for (const [url, out] of cases) {
+      expect(scrubUrl(url)).toBe(out);
+      expect(scrubUrl(url)).not.toContain("token=");
+    }
+    expect(scrubText(`GET https://api.mizan.test/v1/live?token=${secret} failed`)).toBe("GET https://api.mizan.test/v1/live failed");
+    expect(scrubText(`retry with token=${secret}`)).toBe("retry with [redacted-token]");
+    expect(scrubText("the token expired")).toBe("the token expired");
+  });
 });
 
 describe("redactDeep", () => {
