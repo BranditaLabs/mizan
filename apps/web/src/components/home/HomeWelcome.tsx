@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { useCanSetUp, useOnboarding, type Onboarding } from "@/components/onboarding/useOnboarding";
+import { Waiting } from "@/components/ui/Loader";
 
 type State = "connect" | "importing" | "importFailed" | "waiting" | "manual" | "team";
 
@@ -42,7 +43,9 @@ export function HomeWelcome() {
       <p className="mt-1.5 max-w-[62ch] text-body text-text-2">{state === "connect" ? t("subtitle") : t("subtitleConnected")}</p>
       {/* Empty state (components.md §6): icon, one-line title, one sentence, one action. */}
       <section className="mt-6 rounded-lg border border-line bg-surface p-6" aria-labelledby="empty-title" data-testid="home-welcome" data-state={state}>
-        <Icon name={state === "importFailed" ? "error" : "orders"} size={24} className="text-text-3" />
+        {state === "importing"
+          ? <span className="text-text-3"><Waiting meaning="syncing" size={32} /></span>
+          : <Icon name={state === "importFailed" ? "error" : "orders"} size={24} className="text-text-3" />}
         <h2 id="empty-title" className="mt-3 text-heading-sm">{t(`${k}.title`)}</h2>
         <p className="mt-1 text-body text-text-2">
           {t.rich(`${k}.body`, { days: 60, shop: () => <Bdi code>{shop}</Bdi> })}

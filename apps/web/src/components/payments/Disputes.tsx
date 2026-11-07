@@ -173,7 +173,7 @@ function RecordDispute({ orderId, held, onClose }: { orderId: string; held: { am
     <Dialog open onClose={onClose} title={t("recordTitle")} description={t("recordHint")} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!amount.trim()} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!amount.trim()} onClick={() => save.mutate()}>{t("save")}</Button>
       </>
     )}>
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (amount.trim()) save.mutate(); }}>
@@ -207,7 +207,7 @@ function SubmitEvidence({ dispute, onClose }: { dispute: Dispute; onClose(): voi
     <Dialog open onClose={onClose} title={t("sentTitle", { number: dispute.number })} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} onClick={() => save.mutate()}>{t("markSent")}</Button>
+        <Button busy={save.isPending} as="saving" onClick={() => save.mutate()}>{t("markSent")}</Button>
       </>
     )}>
       <div className="flex flex-col gap-3">
@@ -235,7 +235,7 @@ function CloseDispute({ dispute, onClose }: { dispute: Dispute; onClose(): void 
     <Dialog open onClose={onClose} title={t("closeTitle", { number: dispute.number })} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} onClick={() => save.mutate()}>{t("close")}</Button>
+        <Button busy={save.isPending} as="saving" onClick={() => save.mutate()}>{t("close")}</Button>
       </>
     )}>
       <div className="flex flex-col gap-3">

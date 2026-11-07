@@ -124,7 +124,7 @@ export function IntegrationsScreen() {
                       <span className="flex items-center gap-2 text-caption text-text-2">
                         <DateText value={j.failedAt} relative />
                         {unknown ? <Button size="sm" onClick={() => setCity({ jobId: j.id, text: unknown })}>{t("city.open")}</Button>
-                          : <Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} onClick={() => replay.mutate(j.id)}>{t("dead.replay")}</Button>}
+                          : <Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} as="syncing" onClick={() => replay.mutate(j.id)}>{t("dead.replay")}</Button>}
                       </span>
                     </li>
                     );

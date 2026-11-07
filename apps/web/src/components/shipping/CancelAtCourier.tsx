@@ -39,7 +39,7 @@ export function CancelAtCourier({ shipmentId }: { shipmentId: string }) {
         <Dialog open onClose={() => setOpen(false)} title={t("title")} description={t("body")} footer={(
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>{t("back")}</Button>
-            <Button variant="danger" busy={cancel.isPending} onClick={() => cancel.mutate()}>{t("confirm")}</Button>
+            <Button variant="danger" busy={cancel.isPending} as="sending" onClick={() => cancel.mutate()}>{t("confirm")}</Button>
           </>
         )}>
           {cancel.isError ? <Alert tone="danger">{problemText(cancel.error, tpr)}</Alert> : null}

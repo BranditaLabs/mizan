@@ -1,5 +1,6 @@
 "use client";
 
+import type { DomainEventType } from "@mizan/shared";
 import type { EventData } from "@mizan/shared/motion";
 import { useMutation, type DefaultError, type UseMutationOptions, type UseMutationResult } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -31,22 +32,23 @@ export interface EventMotionOptions<TData, TVars> {
 }
 
 /** A mutation result that also names its event, so `<Button busy={m}>` shows the event's loader. */
-export type EventMutation<TData, TVars> = UseMutationResult<TData, DefaultError, TVars> & { motion: string };
+export type EventMutation<TData, TVars, E extends DomainEventType = DomainEventType> = UseMutationResult<TData, DefaultError, TVars> & { motion: E };
 
 /**
- * useMutation that names its catalogue event. While it runs, `<Button busy={m}>` shows the event's
- * pending loader (drop for saving or sending, transfer for syncing, fill for known progress); on
- * success the provider plays the outcome on every mounted surface and confirms it in a toast (the
- * catalogue copy, or `message`). Screens never pick an animation.
+ * useMutation that names its catalogue event. While it runs, `<Button busy={m}>` shows the loader
+ * for what the event's action does (the catalogue derives it: read = pair, send or sync = transfer,
+ * write = drop); `<Button busy={m}>` is a type error for an event with no action (PendingEvent),
+ * which then needs `as=`. On success the provider plays the outcome on every mounted surface and
+ * confirms it in a toast (the catalogue copy, or `message`). Screens never pick an animation.
  *
  *   const confirm = useEventMutation("order.confirmed", { mutationFn, onSuccess }, { entityId: () => id });
  *   <Button busy={confirm} onClick={() => confirm.mutate()}>…</Button>
  */
-export function useEventMutation<TData = unknown, TVars = void>(
-  type: string,
+export function useEventMutation<TData = unknown, TVars = void, E extends DomainEventType = DomainEventType>(
+  type: E,
   options: UseMutationOptions<TData, DefaultError, TVars>,
   motion: EventMotionOptions<TData, TVars> = {},
-): EventMutation<TData, TVars> {
+): EventMutation<TData, TVars, E> {
   const meta: MotionMeta = {
     type: motion.pick ? (motion.pick as (d: unknown, v: unknown) => string) : type,
     ...(motion.entityId ? { entityId: motion.entityId as MotionMeta["entityId"] } : {}),

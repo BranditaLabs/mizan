@@ -154,3 +154,21 @@ test("gallery in English, dark theme: screenshot and contrast-safe hero tile", a
   expect(problems).toEqual([]);
   await context.close();
 });
+
+test("busy buttons and the auth slot play the meaning's loader: signing in and checking pair, sending transfers, saving drops", async ({ page }) => {
+  const problems = watch(page);
+  await page.goto("/en/ui");
+  const busy = page.getByTestId("gallery-busy-meanings");
+  const loaderOf = (scope: ReturnType<Page["locator"]>, meaning: string) => scope.locator(`[data-meaning="${meaning}"] [data-loader]`).first();
+  for (const [meaning, loader] of [["loading", "pair"], ["signingIn", "pair"], ["checking", "pair"], ["syncing", "transfer"], ["sending", "transfer"], ["saving", "drop"], ["creating", "drop"]] as const) {
+    await expect(loaderOf(busy, meaning), meaning).toHaveAttribute("data-loader", loader);
+  }
+  // The auth kit's key: the owner's complaint, in a real browser (signing in is not the save animation).
+  const auth = page.getByTestId("auth-progress-kinds");
+  await expect(auth.locator('[data-meaning="signingIn"] .mz-auth-cta__key [data-kind="signingIn"] [data-loader]')).toHaveAttribute("data-loader", "pair");
+  await expect(auth.locator('[data-meaning="sending"] .mz-auth-cta__key [data-kind="sending"] [data-loader]')).toHaveAttribute("data-loader", "transfer");
+  await expect(auth.locator('[data-meaning="creating"] [data-loader]')).toHaveAttribute("data-loader", "drop");
+  // A resend on its way: the inline transfer on the link.
+  await expect(page.getByTestId("gallery-auth").locator('button.mz-auth-link[aria-busy="true"] [data-loader]')).toHaveAttribute("data-loader", "transfer");
+  expect(problems).toEqual([]);
+});

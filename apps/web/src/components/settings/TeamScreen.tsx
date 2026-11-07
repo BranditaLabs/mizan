@@ -96,7 +96,7 @@ export function TeamScreen() {
         <Select label={t("role")} value={inviteRole} onChange={(e) => setInviteRole(e.target.value as MemberRole)}>
           {ROLES.filter((r) => r !== "owner" || role === "owner").map((r) => <option key={r} value={r}>{tr(r)}</option>)}
         </Select>
-        <div className="flex items-end"><Button type="submit" busy={invite.isPending} disabled={!contact.trim()}>{t("invite")}</Button></div>
+        <div className="flex items-end"><Button type="submit" busy={invite.isPending} as="saving" disabled={!contact.trim()}>{t("invite")}</Button></div>
       </form>
 
       {!q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={3} label={t("loading")} /></Pending></div> : (
@@ -154,7 +154,7 @@ export function TeamScreen() {
           </section>
         </>
       )}
-      <ConfirmDialog open={ask !== null} onClose={() => setAsk(null)} onConfirm={confirmAsk} busy={update.isPending || remove.isPending || revoke.isPending}
+      <ConfirmDialog open={ask !== null} onClose={() => setAsk(null)} onConfirm={confirmAsk} busy={update.isPending || remove.isPending || revoke.isPending} as="saving"
         title={ask ? t.rich(`ask.${ask.kind}.title`, { name: ask.name, b: (c) => <Bdi>{c}</Bdi> }) : ""}
         description={ask ? (ask.kind === "role" ? t.rich("ask.role.body", { name: ask.name, from: tr(ask.from), to: tr(ask.to), b: (c) => <Bdi>{c}</Bdi> })
           : t.rich(`ask.${ask.kind}.body`, { name: ask.name, b: (c) => <Bdi>{c}</Bdi> })) : ""}

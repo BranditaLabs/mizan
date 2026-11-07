@@ -9,12 +9,16 @@ import 'motion.dart';
 /// settle rises with overshoot; done settles, merges and draws a check; merge forms the neck; tip
 /// tilts and holds at angle.tipHold; fail tips twice, damps out and rests in the danger tone; drop
 /// lets the red fall once and ripple, the only outcome that uses red. Under reduced motion it shows
-/// the end frame at once. Rebuild it with a new key to play again.
+/// the end frame at once, and so does a [still] glyph (a past answer on a list row: it never
+/// replays on mount). Rebuild it with a new key to play again.
 class EventGlyph extends StatefulWidget {
-  const EventGlyph(this.outcome, {super.key, this.size = 20, this.label});
+  const EventGlyph(this.outcome, {super.key, this.size = 20, this.label, this.still = false});
 
   final MotionOutcome outcome;
   final double size;
+
+  /// The end frame only, no playback: for a record of something that already happened.
+  final bool still;
 
   /// Read out only when the glyph stands alone; next to its copy it is decorative.
   final String? label;
@@ -41,7 +45,7 @@ class _EventGlyphState extends State<EventGlyph> with SingleTickerProviderStateM
     super.didChangeDependencies();
     if (_started) return;
     _started = true;
-    if (reducedMotion(context) || widget.outcome == MotionOutcome.quiet) {
+    if (widget.still || reducedMotion(context) || widget.outcome == MotionOutcome.quiet) {
       _c.value = 1;
     } else {
       _c.forward();

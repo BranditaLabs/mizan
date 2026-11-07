@@ -6,6 +6,7 @@ import { Bdi } from "@/components/Bdi";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { When } from "@/components/ui/When";
+import { PageState } from "@/components/ui/PageState";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -27,6 +28,7 @@ export function AuditScreen() {
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="text-body-sm text-text-2">{t("subtitle")}</p>
       </header>
+      {!q.data ? <PageState variant="list" rows={5} /> : null}
       <div className="mz-table-wrap">
         <table className="mz-table" data-testid="trail">
           <thead><tr><th>{t("col.at")}</th><th>{t("col.who")}</th><th>{t("col.action")}</th><th>{t("col.outcome")}</th><th>{t("col.store")}</th></tr></thead>
@@ -43,7 +45,7 @@ export function AuditScreen() {
           </tbody>
         </table>
       </div>
-      {q.hasNextPage ? <div><Button variant="secondary" busy={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{t("more")}</Button></div> : null}
+      {q.hasNextPage ? <div><Button variant="secondary" busy={q.isFetchingNextPage} as="loading" onClick={() => void q.fetchNextPage()}>{t("more")}</Button></div> : null}
     </div>
   );
 }

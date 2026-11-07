@@ -107,7 +107,7 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
           <Button size="sm" variant="secondary">{t("buttons.small")}</Button>
           <Button>{t("buttons.medium")}</Button>
           <Button size="lg" iconEnd="forward">{t("buttons.large")}</Button>
-          <Button busy={busy} onClick={() => { setBusy(true); setTimeout(() => setBusy(false), 1500); }}>{t("buttons.busy")}</Button>
+          <Button busy={busy} as="saving" onClick={() => { setBusy(true); setTimeout(() => setBusy(false), 1500); }}>{t("buttons.busy")}</Button>
           <Button disabled>{t("buttons.disabled")}</Button>
         </ButtonGroup>
       </Section>

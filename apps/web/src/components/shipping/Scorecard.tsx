@@ -12,6 +12,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 import { ProviderLogo } from "@/components/ui/PartnerLogo";
+import { Waiting } from "@/components/ui/Loader";
 
 type Courier = Schemas["CourierScorecard"]["couriers"][number];
 type Zone = Courier["zones"][number];
@@ -45,7 +46,8 @@ export function Scorecard() {
   ];
   return (
     <Card title={t("title")} actions={(
-      <nav aria-label={t("period")} className="mz-tabs">
+      <nav aria-label={t("period")} className="mz-tabs items-center">
+        {q.isPlaceholderData ? <Waiting meaning="loading" size={18} /> : null}
         {PERIODS.map((d) => <button key={d} type="button" className="mz-tab" aria-current={days === d ? "true" : undefined} onClick={() => setDays(d)}>{t("lastDays", { days: d })}</button>)}
       </nav>
     )}>

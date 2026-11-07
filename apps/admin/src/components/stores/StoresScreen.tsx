@@ -12,6 +12,8 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { StoreStatus } from "./StoreStatus";
+import { PageState } from "@/components/ui/PageState";
+import { BusyLoader, busyKind } from "@/components/ui/BusyLabel";
 
 const PLANS = ["free", "growth", "scale", "enterprise"] as const;
 const STATUSES = ["active", "suspended", "deleted"] as const;
@@ -27,6 +29,9 @@ export function StoresScreen() {
   const [country, setCountry] = useState("");
   const [sort, setSort] = useState<"newest" | "orders">("newest");
   const [offset, setOffset] = useState(0);
+  // One control, one busy: the pressed page button waits; a filter or sort change shows the
+  // small PAIR above the table instead (never both, never the other button).
+  const [paged, setPaged] = useState<"previous" | "next" | null>(null);
   const query = {
     ...(q.trim() ? { q: q.trim() } : {}), ...(plan ? { plan: plan as (typeof PLANS)[number] } : {}),
     ...(status ? { status: status as (typeof STATUSES)[number] } : {}), ...(country ? { country } : {}), sort, limit: PAGE, offset,
@@ -36,7 +41,8 @@ export function StoresScreen() {
     queryFn: () => ok(api.GET("/v1/platform/stores", { params: { query } })),
     placeholderData: keepPreviousData,
   });
-  const reset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setOffset(0); };
+  const reset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setOffset(0); setPaged(null); };
+  const page = (to: number, dir: "previous" | "next") => { setPaged(dir); setOffset(to); };
 
   return (
     <div className="flex flex-col gap-4">
@@ -67,6 +73,9 @@ export function StoresScreen() {
         </Select>
       </div>
       {list.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
+      {!list.data ? <PageState variant="list" rows={5} /> : null}
+      {/* A new page or filter is being read while the old rows stay: a small PAIR, never a blank table. */}
+      {list.data && list.isPlaceholderData && !paged ? <span className="inline-flex items-center gap-2 text-caption text-text-2" role="status"><BusyLoader pending={busyKind("loading")} size={18} /></span> : null}
       <div className="mz-table-wrap">
         <table className="mz-table" data-testid="stores-table">
           <thead>
@@ -93,8 +102,8 @@ export function StoresScreen() {
       </div>
       {list.data && !list.data.data.length ? <p className="text-body-sm text-text-2">{t("empty")}</p> : null}
       <div className="flex gap-2">
-        {offset > 0 ? <Button variant="secondary" onClick={() => setOffset(Math.max(0, offset - PAGE))}>{t("previous")}</Button> : null}
-        {list.data?.nextOffset != null ? <Button variant="secondary" onClick={() => setOffset(list.data!.nextOffset!)}>{t("next")}</Button> : null}
+        {offset > 0 ? <Button variant="secondary" busy={list.isPlaceholderData && paged === "previous"} as="loading" onClick={() => page(Math.max(0, offset - PAGE), "previous")}>{t("previous")}</Button> : null}
+        {list.data?.nextOffset != null ? <Button variant="secondary" busy={list.isPlaceholderData && paged === "next"} as="loading" onClick={() => page(list.data!.nextOffset!, "next")}>{t("next")}</Button> : null}
       </div>
     </div>
   );

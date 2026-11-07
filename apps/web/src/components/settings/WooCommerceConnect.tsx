@@ -52,8 +52,8 @@ export function WooCommerceConnect({ open, onClose, site = "" }: { open: boolean
     <Dialog open={open} onClose={onClose} title={t("title")} description={t(mode === "approve" ? "approveBody" : "body")} footer={(
       <ButtonGroup>
         {mode === "approve"
-          ? <Button busy={approve.isPending} disabled={!siteOk} onClick={() => approve.mutate()}>{t("approve")}</Button>
-          : <Button busy={save.isPending} disabled={!ready} onClick={() => save.mutate()}>{t("connect")}</Button>}
+          ? <Button busy={approve.isPending} as="sending" disabled={!siteOk} onClick={() => approve.mutate()}>{t("approve")}</Button>
+          : <Button busy={save.isPending} as="syncing" disabled={!ready} onClick={() => save.mutate()}>{t("connect")}</Button>}
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>

@@ -3,7 +3,8 @@
 import { mmss, resendWait } from "@mizan/design-system/auth-code";
 import { successWipe } from "@mizan/design-system/auth-motion";
 import {
-  announce, BackButton, CodeField, FormAlert, PasswordField, PrimaryCta, ResendTimer, StepHeader, StepHost, StrengthMeter, SuccessMark,
+  announce, AuthProgress, BackButton, CodeField, FormAlert, PasswordField, PrimaryCta, ResendTimer, StepHeader, StepHost, StrengthMeter, SuccessMark,
+  type AuthWait,
 } from "@mizan/design-system/auth/react";
 import { Icon } from "@mizan/design-system/icons/react";
 import { normalizePhone, type PhoneCountry } from "@mizan/shared";
@@ -35,6 +36,8 @@ const RECAPTCHA = "sms-verifier";
 /** Firebase's own "too many requests" carries no wait: the button holds 30s, the copy promises no exact time. */
 const HOLD_S = 30;
 const SLOW_MS = 8000;
+/** The control whose press is running (only it animates). */
+type BusyKey = "primary" | "google" | "resend";
 
 /** Keeps a field ref unless the element leaving is not the one it points at (the exiting step unmounts later). */
 function keep(r: { current: HTMLInputElement | null }, el: HTMLInputElement | null) {
@@ -78,7 +81,11 @@ export function SignIn({ params }: { params: AuthParams }) {
   const [rejected, setRejected] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
   const [mfa, setMfa] = useState<Mfa | null>(null);
-  const [busy, setBusy] = useState(false);
+  // One control, one busy (plan §2c): the press that is running, and what it is doing right now.
+  // Only that control animates; the others are aria-disabled. A press can change meaning midway
+  // (a password accepted, then the second step's SMS goes out): `phase` follows it.
+  const [busy, setBusy] = useState<BusyKey | null>(null);
+  const [phase, setPhase] = useState<AuthWait | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<FormError | null>(null);
   const [sends, setSends] = useState({ count: 0, at: 0, just: false });
@@ -239,10 +246,11 @@ export function SignIn({ params }: { params: AuthParams }) {
     return null;
   }
 
-  async function run(work: () => Promise<void>, el?: HTMLElement | null) {
+  async function run(work: () => Promise<void>, el?: HTMLElement | null, key: BusyKey = "primary") {
     if (busy || held || !online) return;
     if (el) { const r = el.getBoundingClientRect(); pressed.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
-    setBusy(true);
+    setBusy(key);
+    setPhase(null);
     clearErrors();
     try {
       await work();
@@ -253,7 +261,8 @@ export function SignIn({ params }: { params: AuthParams }) {
       pressed.current = null;
       fail(e);
     } finally {
-      setBusy(false);
+      setBusy(null);
+      setPhase(null);
     }
   }
   const submitter = (e: FormEvent) => ((e.nativeEvent as SubmitEvent).submitter as HTMLElement | null) ?? (e.currentTarget as HTMLFormElement).querySelector<HTMLElement>("[type=submit]");
@@ -276,6 +285,8 @@ export function SignIn({ params }: { params: AuthParams }) {
     const hint = resolver.hints.find((h) => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID) as PhoneMultiFactorInfo | undefined;
     if (!hint) throw Object.assign(new Error("mfa"), { code: "auth/unsupported-first-factor" });
     setAuthLanguage(locale);
+    // The first factor passed: the press now sends the SMS code out (TRANSFER).
+    setPhase("sending");
     const verificationId = await new PhoneAuthProvider(auth).verifyPhoneNumber({ multiFactorHint: hint, session: resolver.session }, smsVerifier(auth, RECAPTCHA));
     const four = lastFour(hint.phoneNumber);
     setMfa({ resolver, verificationId, hint: four, phone: hint });
@@ -319,7 +330,7 @@ export function SignIn({ params }: { params: AuthParams }) {
         if (SILENT.has(authErrorCode(err))) { pressed.current = null; return; }
         await secondStep(err);
       }
-    }, el);
+    }, el, "google");
   };
 
   /** Company sign-in: which provider the work email's domain uses, then that provider's window (SAML or OIDC). */
@@ -329,6 +340,8 @@ export function SignIn({ params }: { params: AuthParams }) {
     const provider = providerId.startsWith("saml.") ? new SAMLAuthProvider(providerId) : new OAuthProvider(providerId);
     if (provider instanceof OAuthProvider) provider.setCustomParameters({ login_hint: email.trim() });
     setAuthLanguage(locale);
+    // Looked up (PAIR): now handed to the company's sign-in window (TRANSFER).
+    setPhase("sending");
     try {
       await signInWithPopup(auth, provider);
     } catch (err) {
@@ -374,7 +387,7 @@ export function SignIn({ params }: { params: AuthParams }) {
     setCode(""); setRejected(null);
     setSends((x) => ({ count: x.count + 1, at: Date.now(), just: true }));
     announce(t("live.codeResent"));
-  });
+  }, null, "resend");
 
   const verifyCode = (value: string, el?: HTMLElement | null) => {
     if (checkCode(value)) { setFieldErrors({ code: "codeIncomplete" }); return; }
@@ -428,13 +441,14 @@ export function SignIn({ params }: { params: AuthParams }) {
   const blocked = held || !online;
   // Sent here by a Shopify install: "Create an account" is a full-width pill under the primary.
   const promoted = !creating && (params.reason === "shopify" || params.reason === "shopifyGeneric");
-  // What the busy key means (AuthProgress picks the loader): sending a code or a link, or signing in.
-  const cta = (label: string, icon?: Parameters<typeof PrimaryCta>[0]["icon"], busyAs: "sending" | "signingIn" = "signingIn") => (
-    <PrimaryCta busyAs={busyAs} label={held && formError?.key === "tooMany" ? <>{label} · <bdi dir="ltr">{mmss(holdLeft)}</bdi></> : label} busy={busy}
-      disabled={blocked} icon={icon} aria-describedby={!online ? "offline-reason" : undefined} />
+  // What the press does, named at each call (AuthProgress picks the loader): signing in or checking
+  // a code = pair, sending a code or a link = transfer, creating an account = drop. No default.
+  const cta = (label: string, icon: Parameters<typeof PrimaryCta>[0]["icon"] | undefined, as: AuthWait) => (
+    <PrimaryCta busyAs={phase ?? as} label={held && formError?.key === "tooMany" ? <>{label} · <bdi dir="ltr">{mmss(holdLeft)}</bdi></> : label} busy={busy === "primary"}
+      disabled={blocked || (busy !== null && busy !== "primary")} icon={icon} aria-describedby={!online ? "offline-reason" : undefined} />
   );
   const emailField = (autoComplete: "username" | "email" = "username") => (
-    <EmailField value={email} autoComplete={autoComplete} inputRef={emailEl} readOnly={busy} error={fe("email")}
+    <EmailField value={email} autoComplete={autoComplete} inputRef={emailEl} readOnly={Boolean(busy)} error={fe("email")}
       onChange={(v) => { setEmail(v); if (fieldErrors.email && !checkEmail(v, "blur")) setFieldErrors((x) => ({ ...x, email: undefined })); }}
       onBlur={(v) => { const k = checkEmail(v, "blur"); if (k) setFieldErrors((x) => ({ ...x, email: k })); }} />
   );
@@ -448,10 +462,12 @@ export function SignIn({ params }: { params: AuthParams }) {
 
   let body: ReactNode;
   if (outage) {
-    body = <OutageCard key={outage.attempt} attempt={outage.attempt} onRetry={retrySso} />;
+    body = <OutageCard key={outage.attempt} attempt={outage.attempt} onRetry={retrySso} busy={busy === "primary"} />;
   } else if (step === "done") {
     body = (
       <SuccessMark title={t("doneTitle")} text={slow ? t("slow") : t("opening")}>
+        {/* DoneState played once; a slow route is a wait for an answer (PAIR) beside the slow copy. */}
+        {slow ? <span className="mz-auth-slow" data-testid="auth-slow"><AuthProgress kind="loading" size={40} /></span> : null}
         {slow ? <Link href={params.next} className="mz-auth-btn">{t("openStore")}</Link> : null}
       </SuccessMark>
     );
@@ -469,11 +485,11 @@ export function SignIn({ params }: { params: AuthParams }) {
             onChange={(m) => { clearErrors(); setSwapTo(`${s.mode}-${m}`); dispatch({ type: "method", method: m }); }} />
         </div>
         {s.method === "email" ? (
-          <form key="email" className="mz-auth-swap" data-swap={swapTo === `${s.mode}-${s.method}` ? "" : undefined} onSubmit={onEmail} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
+          <form key="email" className="mz-auth-swap" data-swap={swapTo === `${s.mode}-${s.method}` ? "" : undefined} onSubmit={onEmail} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
             <div className="mz-auth-group">
               {emailField(creating ? "email" : "username")}
               <PasswordField label={t("password")} name="password" autoComplete={creating ? "new-password" : "current-password"} enterKeyHint="go" required aria-required="true"
-                inputRef={passwordEl} readOnly={busy} value={password} showLabel={t("showChars")} hideLabel={t("hideChars")} capsLabel={t("capsLock")}
+                inputRef={passwordEl} readOnly={Boolean(busy)} value={password} showLabel={t("showChars")} hideLabel={t("hideChars")} capsLabel={t("capsLock")}
                 extraDescribedBy={creating && strength ? "pw-strength" : undefined}
                 error={fe("password")}
                 hint={creating ? t("passwordHint") : undefined} helpTone={creating && password.length >= 8 ? "ok" : "hint"}
@@ -483,12 +499,12 @@ export function SignIn({ params }: { params: AuthParams }) {
                 below={creating && strength ? <StrengthMeter id="pw-strength" score={strength.score} label={t("strength.label", { level: t(`strength.${strength.level}`) })} /> : null} />
             </div>
             {alert}
-            {cta(creating ? t("createSubmit") : t("continue"))}
+            {cta(creating ? t("createSubmit") : t("continue"), undefined, creating ? "creating" : "signingIn")}
             {promoted ? <PrimaryCta type="button" secondary label={t("createAccount")} icon="add" onClick={() => { clearErrors(); dispatch({ type: "mode", mode: "create" }); }} /> : null}
           </form>
         ) : (
-          <form key="phone" className="mz-auth-swap" data-swap={swapTo === `${s.mode}-${s.method}` ? "" : undefined} onSubmit={onPhone} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
-            <PhoneField value={phone} country={country} inputRef={phoneEl} readOnly={busy} error={fe("phone")}
+          <form key="phone" className="mz-auth-swap" data-swap={swapTo === `${s.mode}-${s.method}` ? "" : undefined} onSubmit={onPhone} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
+            <PhoneField value={phone} country={country} inputRef={phoneEl} readOnly={Boolean(busy)} error={fe("phone")}
               hint={creating ? t("createPhoneNote") : t("phoneHintSms")}
               onCountry={(c) => { setCountry(c); setFieldErrors((x) => ({ ...x, phone: undefined })); }}
               onChange={(v) => { setPhone(v); if (fieldErrors.phone && !checkPhone(v, country, "blur")) setFieldErrors((x) => ({ ...x, phone: undefined })); }}
@@ -500,12 +516,12 @@ export function SignIn({ params }: { params: AuthParams }) {
         )}
         <div className="mz-auth-divider" data-stagger="">{t("or")}</div>
         <div className={`mz-auth-providers ${creating ? "au-one" : ""}`} data-stagger="">
-          <button type="button" onClick={(e) => onGoogle(e.currentTarget)} aria-disabled={busy || blocked || undefined} aria-label={t("google")} className="mz-auth-btn">
-            <GoogleMark />
+          <button type="button" onClick={(e) => onGoogle(e.currentTarget)} aria-disabled={Boolean(busy) || blocked || undefined} aria-busy={busy === "google" || undefined} aria-label={t("google")} className="mz-auth-btn">
+            {busy === "google" ? <AuthProgress kind={phase ?? "signingIn"} size={20} /> : <GoogleMark />}
             {t("googleShort")}
           </button>
           {creating ? null : (
-            <button type="button" onClick={() => go("sso")} aria-disabled={busy || undefined} className="mz-auth-btn">
+            <button type="button" onClick={() => go("sso")} aria-disabled={Boolean(busy) || undefined} className="mz-auth-btn">
               <Icon name="locked" size={16} />
               {t("sso")}
             </button>
@@ -533,16 +549,16 @@ export function SignIn({ params }: { params: AuthParams }) {
         <BackButton label={t("back")} onClick={() => { setConfirmation(null); setMfa(null); back(); }} />
         {s.step === "phoneCode" ? <IdentityChip value={sentTo} changeLabel={t("changeNumber")} onChange={() => { setConfirmation(null); back(); }} /> : null}
         <StepHeader id={headingId} icon={s.step === "mfa" ? "locked" : "sms"} title={s.step === "mfa" ? t("mfa.title") : t("codeTitle")} body={<span id={`${headingId}-sent`}>{sentLine}</span>} />
-        <form onSubmit={onCode} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
-          <CodeField label={t("codeLabel")} value={code} busy={busy} rejected={rejected} describedBy={`${headingId}-sent`}
+        <form onSubmit={onCode} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
+          <CodeField label={t("codeLabel")} value={code} busy={Boolean(busy)} rejected={rejected} describedBy={`${headingId}-sent`}
             invalid={formError?.key === "invalidCode"} error={fieldErrors.code ? t(`errors.${fieldErrors.code}`) : undefined}
             onChange={(v) => { setCode(v); if (fieldErrors.code) setFieldErrors({}); if (formError?.key === "invalidCode" && v !== rejected) setFormError(null); }}
             onComplete={(v) => verifyCode(v)} />
-          <ResendTimer seconds={resendWait(sends.count)} startedAt={sends.at} busy={busy} justSent={sends.just} sentLabel={t("sent")}
+          <ResendTimer seconds={resendWait(sends.count)} startedAt={sends.at} busy={busy === "resend"} justSent={sends.just} sentLabel={t("sent")}
             resendLabel={t("resend")} readyMessage={t("live.resendReady")} onResend={resend}
             countdown={(time) => t.rich("resendIn", { time: "", n: () => time })} />
           {alert}
-          {cta(s.step === "mfa" ? t("mfa.submit") : t("verifySignIn"), "confirm")}
+          {cta(s.step === "mfa" ? t("mfa.submit") : t("verifySignIn"), "confirm", "checking")}
           <RecaptchaNote />
         </form>
         {s.step === "mfa" ? (
@@ -558,7 +574,7 @@ export function SignIn({ params }: { params: AuthParams }) {
       <>
         <BackButton label={t("back")} onClick={back} />
         <StepHeader id={headingId} icon="locked" title={t("resetTitle")} body={t("resetBody")} />
-        <form onSubmit={onReset} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
+        <form onSubmit={onReset} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
           {emailField()}
           {alert}
           {cta(t("resetSend"), undefined, "sending")}
@@ -571,7 +587,7 @@ export function SignIn({ params }: { params: AuthParams }) {
         <BackButton label={t("back")} onClick={back} />
         <StepHeader id={headingId} icon="email" title={t("resetSentTitle")} body={t.rich("resetSent", { email: email.trim(), e: bdi })} />
         <p className="mz-auth-sub" data-stagger="">{t("resetSpam")}</p>
-        <LinkResend startedAt={linkAt} busy={busy} onResend={() => void run(sendReset)} />
+        <LinkResend startedAt={linkAt} busy={busy === "resend"} onResend={() => void run(sendReset, null, "resend")} />
         {alert}
         <PrimaryCta type="button" label={t("backToSignIn")} onClick={() => { clearErrors(); dispatch({ type: "restart" }); }} />
       </>
@@ -581,10 +597,10 @@ export function SignIn({ params }: { params: AuthParams }) {
       <>
         <BackButton label={t("back")} onClick={back} />
         <StepHeader id={headingId} icon="locked" title={t("ssoTitle")} body={t("ssoBody")} />
-        <form onSubmit={onSso} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
+        <form onSubmit={onSso} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
           {emailField()}
           {alert}
-          {cta(t("ssoSubmit"))}
+          {cta(t("ssoSubmit"), undefined, "signingIn")}
         </form>
       </>
     );

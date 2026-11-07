@@ -278,4 +278,63 @@ class AppLocalizationsAr extends AppLocalizations {
   String lineReceived(int received, int expected) {
     return 'وصل $received من $expected';
   }
+
+  @override
+  String packSynced(String number) {
+    return 'أوردر $number اتقفل ووصل ميزان.';
+  }
+
+  @override
+  String deliverySynced(String number) {
+    return 'تسليم $number وصل ميزان.';
+  }
+
+  @override
+  String get receiveProgress => 'اللي وصل من المطلوب';
+
+  @override
+  String packConflict(String number, String reason) {
+    return 'أوردر $number: ميزان خلّى النسخة اللي عنده ($reason).';
+  }
+
+  @override
+  String packRejected(String number, String reason) {
+    return 'أوردر $number مااتقبلش: $reason';
+  }
+
+  @override
+  String deliveryConflict(String number, String reason) {
+    return 'تسليم $number: ميزان خلّى الأرقام اللي عنده ($reason).';
+  }
+
+  @override
+  String deliveryRejected(String number, String reason) {
+    return 'تسليم $number مااتقبلش: $reason';
+  }
+
+  @override
+  String syncedSomeRejected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'اتزامن، بس $count عملية مااتقبلوش. شوف القايمة.',
+      few: 'اتزامن، بس $count عمليات مااتقبلوش. شوف القايمة.',
+      two: 'اتزامن، بس عمليتين مااتقبلوش. شوف القايمة.',
+      one: 'اتزامن، بس عملية واحدة مااتقبلتش. شوف القايمة.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncedSomeConflict(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'اتزامن. في $count عملية عدّ ميزان هو اللي اتاخد. شوف القايمة.',
+      few: 'اتزامن. في $count عمليات عدّ ميزان هو اللي اتاخد. شوف القايمة.',
+      two: 'اتزامن. في عمليتين عدّ ميزان هو اللي اتاخد. شوف القايمة.',
+      one: 'اتزامن. في عملية واحدة عدّ ميزان هو اللي اتاخد. شوف القايمة.',
+    );
+    return '$_temp0';
+  }
 }

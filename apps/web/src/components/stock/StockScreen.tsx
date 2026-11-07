@@ -129,7 +129,7 @@ export function StockScreen() {
           {stock.data ? <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(r) => r.variantId} rowLabel={(r) => r.sku} empty={empty} /> : null}
           {stock.hasNextPage ? (
             <div className="flex justify-center">
-              <Button variant="secondary" busy={stock.isFetchingNextPage} onClick={() => void stock.fetchNextPage()}>{t("more")}</Button>
+              <Button variant="secondary" busy={stock.isFetchingNextPage} as="loading" onClick={() => void stock.fetchNextPage()}>{t("more")}</Button>
             </div>
           ) : null}
           <p className="text-caption text-text-3">{t("rule")}</p>
@@ -172,7 +172,7 @@ function UpdateStock({ row, onClose }: { row: Row; onClose(): void }) {
     <Dialog open onClose={onClose} title={t("title", { sku: row.sku })} description={[row.productTitle, row.variantTitle].filter(Boolean).join(" · ")}
       footer={(
         <ButtonGroup>
-          <Button busy={save.isPending} disabled={!valid} onClick={() => save.mutate()}>{t("save")}</Button>
+          <Button busy={save.isPending} as="saving" disabled={!valid} onClick={() => save.mutate()}>{t("save")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>
@@ -214,7 +214,7 @@ function Threshold({ row }: { row: Row }) {
   return (
     <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3" data-testid="stock-threshold">
       <Field label={t("label")} hint={t("hint")} inputMode="numeric" ltr value={value} onChange={(e) => setValue(e.target.value)} error={n === undefined ? t("invalid") : null} className="grow" />
-      <Button variant="secondary" busy={save.isPending} disabled={n === undefined || n === row.lowStockAt} onClick={() => save.mutate()}>{t("save")}</Button>
+      <Button variant="secondary" busy={save.isPending} as="saving" disabled={n === undefined || n === row.lowStockAt} onClick={() => save.mutate()}>{t("save")}</Button>
     </div>
   );
 }

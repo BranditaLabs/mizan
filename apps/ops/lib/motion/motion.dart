@@ -16,6 +16,13 @@ const Map<String, EventMotion> opsEventMotion = <String, EventMotion>{
   // Sending the phone's queue to Mizan: two systems reconciling.
   'ops.syncing': EventMotion(outcome: MotionOutcome.merge, pending: MotionPending.transfer, surfaces: <String>['sync', 'list'], copy: null),
   'ops.sync_failed': EventMotion(outcome: MotionOutcome.fail, surfaces: <String>['toast'], copy: null),
+  // Saved on the phone, not yet in Mizan: it arrives (SETTLE). The domain event (order.packed,
+  // stock.received) plays DONE only once a sync has applied it.
+  'ops.queued': EventMotion(outcome: MotionOutcome.settle, surfaces: <String>['toast'], copy: null),
+  // One queued op's answer from Mizan, as a still glyph on its row.
+  'ops.op_applied': EventMotion(outcome: MotionOutcome.merge, surfaces: <String>['queue'], copy: null),
+  'ops.op_conflict': EventMotion(outcome: MotionOutcome.tip, surfaces: <String>['queue'], copy: null),
+  'ops.op_rejected': EventMotion(outcome: MotionOutcome.fail, surfaces: <String>['queue'], copy: null),
   // One scan checked on the spot: counted, or blocked (a wrong item, more than wanted).
   'ops.scan_counted': EventMotion(outcome: MotionOutcome.settle, surfaces: <String>['card'], copy: null),
   'ops.scan_blocked': EventMotion(outcome: MotionOutcome.tip, surfaces: <String>['card'], copy: null),

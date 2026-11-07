@@ -353,7 +353,7 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
       {saveIssues.length ? <Alert tone="danger" title={t("refused.title")}>{t("refused.body", { count: saveIssues.length })}</Alert> : null}
       {saveError ? (
         <Alert tone="danger" title={t("saveFailed")}>
-          <Button size="sm" variant="secondary" icon="refresh" className="mt-2" busy={save.isPending}
+          <Button size="sm" variant="secondary" icon="refresh" className="mt-2" busy={save.isPending} as="saving"
             onClick={() => save.mutate({ ...settings, steps: withoutIds(cur.steps), script: cleanScript(script) })}>{t("retry")}</Button>
         </Alert>
       ) : null}

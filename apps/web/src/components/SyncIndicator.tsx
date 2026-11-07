@@ -1,7 +1,8 @@
 "use client";
 
 import { can } from "@mizan/shared";
-import { EventGlyph, MizanLoader } from "@mizan/design-system/react/motion";
+import { EventGlyph } from "@mizan/design-system/react/motion";
+import { Waiting } from "@/components/ui/Loader";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -73,7 +74,8 @@ export function SyncIndicator() {
     <Link href={href} role="status" aria-live="polite" data-testid="sync-indicator"
       className={`hidden items-center gap-2 rounded-full border border-line px-3 py-1 text-caption hover:bg-surface-hover sm:inline-flex ${tone}`}>
       {state === "running"
-        ? <MizanLoader kind={(s.import?.orders ?? 0) + (s.import?.products ?? 0) > 0 ? "fill" : "transfer"} size={28} decorative />
+        // An import has counts but no total yet: TRANSFER (two systems syncing), never an indeterminate FILL.
+        ? <Waiting meaning="syncing" size={28} />
         : <EventGlyph key={played?.ids.join() ?? "rest"} outcome={state === "done" ? "merge" : "fail"} size={14} static={!played || played.entityId !== s.connectionId} />}
       <span className="max-w-[28ch] truncate">{label}</span>
       {shown.length > 1 ? <span className="text-text-3"><bdi>+{shown.length - 1}</bdi></span> : null}

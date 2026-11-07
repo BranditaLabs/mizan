@@ -35,7 +35,7 @@ function StoreSyncCard({ id, shop }: { id: string; shop: string }) {
       {!q.data ? <Pending query={q} compact><SkeletonRows rows={2} label={t("loading")} /></Pending> : (
         <div className="mt-3 flex flex-col gap-4">
           {SWITCHES.map((k) => (
-            <Switch key={k} label={t(`${k}.label`)} description={t.rich(`${k}.hint`, latin)} checked={q.data[k]} disabled={save.isPending}
+            <Switch key={k} label={t(`${k}.label`)} description={t.rich(`${k}.hint`, latin)} checked={q.data[k]} disabled={save.isPending} busy={save.isPending && k in (save.variables ?? {})} as="syncing"
               onChange={(e) => save.mutate({ [k]: e.target.checked })} />
           ))}
         </div>

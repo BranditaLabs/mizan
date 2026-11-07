@@ -151,7 +151,7 @@ export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {})
               ]} />
               <p className="text-caption text-text-3">{t("new.draftHint")}</p>
               {create.isError ? <Alert tone="danger">{problemText(create.error, tpr)}</Alert> : null}
-              <Button type="submit" busy={create.isPending}>{po ? t("edit.save") : t("new.save")}</Button>
+              <Button type="submit" busy={create.isPending} as="saving">{po ? t("edit.save") : t("new.save")}</Button>
             </div>
           </Card>
         </aside>

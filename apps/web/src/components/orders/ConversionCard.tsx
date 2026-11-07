@@ -82,7 +82,7 @@ export function ConversionCard({ orderId }: { orderId: string }) {
             <pre dir="auto" className="whitespace-pre-wrap rounded-md bg-surface-sunk p-3 font-sans text-body-sm" data-testid="conversion-message">{text}</pre>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" icon="copy" onClick={() => void copy(text)}>{t("copy")}</Button>
-              <Button size="sm" variant="ghost" busy={cancel.isPending} onClick={() => cancel.mutate()}>{t("cancel")}</Button>
+              <Button size="sm" variant="ghost" busy={cancel.isPending} as="saving" onClick={() => cancel.mutate()}>{t("cancel")}</Button>
             </div>
             <p className="text-caption text-text-3">{t("whenPaid")}</p>
           </>
@@ -101,7 +101,7 @@ export function ConversionCard({ orderId }: { orderId: string }) {
                 {c.methods.map((m) => <option key={m} value={m}>{t(`method.${m}`)}</option>)}
               </Select>
               {message ? <Alert tone="danger">{message}</Alert> : null}
-              <div><Button type="submit" busy={offer.isPending}>{t("offer")}</Button></div>
+              <div><Button type="submit" busy={offer.isPending} as="saving">{t("offer")}</Button></div>
             </form>
           )
         ) : null}

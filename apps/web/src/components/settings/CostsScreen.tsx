@@ -165,7 +165,7 @@ function AmountRule({ label, hint, rule, make, canEdit, currency }:
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2" noValidate>
       <Field label={`${label} (${currency})`} hint={hint} error={invalid ? t("invalidAmount") : null} ltr inputMode="decimal" autoComplete="off" placeholder="0.00"
         value={shown} onChange={(e) => setValue(e.target.value)} disabled={!canEdit} className="w-48" />
-      {canEdit ? <Button type="submit" variant="secondary" busy={save.isPending} disabled={value === null}>{t("save")}</Button> : null}
+      {canEdit ? <Button type="submit" variant="secondary" busy={save.isPending} as="saving" disabled={value === null}>{t("save")}</Button> : null}
       <div className="basis-full"><Since rule={rule} /></div>
     </form>
   );
@@ -187,7 +187,7 @@ function PercentRule({ label, rule, make, canEdit }: { label: string; rule: Rule
     <form onSubmit={submit} className="flex flex-wrap items-end gap-2" noValidate>
       <Field label={label} error={invalid ? t("invalidPercent") : null} ltr inputMode="decimal" autoComplete="off" placeholder="0"
         value={shown} onChange={(e) => setValue(e.target.value)} disabled={!canEdit} className="w-32" />
-      {canEdit ? <Button type="submit" variant="secondary" busy={save.isPending} disabled={value === null}>{t("save")}</Button> : null}
+      {canEdit ? <Button type="submit" variant="secondary" busy={save.isPending} as="saving" disabled={value === null}>{t("save")}</Button> : null}
       <div className="basis-full"><Since rule={rule} /></div>
     </form>
   );
@@ -214,7 +214,7 @@ function PaymentFeeRow({ method, rule, canEdit, currency }: { method: (typeof FE
       <p className="w-full font-medium sm:w-36 sm:self-center">{t(`payment.methods.${method}`)}</p>
       <Field label={t("payment.pct")} ltr inputMode="decimal" autoComplete="off" placeholder="0" value={p} onChange={(e) => setPct(e.target.value)} disabled={!canEdit} className="w-24" />
       <Field label={`${t("payment.fixed")} (${currency})`} ltr inputMode="decimal" autoComplete="off" placeholder="0.00" value={f} onChange={(e) => setFixed(e.target.value)} disabled={!canEdit} className="w-32" />
-      {canEdit ? <Button type="submit" variant="secondary" busy={save.isPending} disabled={pct === null && fixed === null}>{t("save")}</Button> : null}
+      {canEdit ? <Button type="submit" variant="secondary" busy={save.isPending} as="saving" disabled={pct === null && fixed === null}>{t("save")}</Button> : null}
       <div className="basis-full">{invalid ? <span className="text-caption text-danger">{t("invalidPercent")}</span> : <Since rule={rule} />}</div>
     </form>
   );
@@ -234,7 +234,7 @@ function RuleList({ rules, describe, canEdit, empty }: { rules: Rule[]; describe
       {rules.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
           <div className="min-w-0">{describe(r)}<span className="block"><Since rule={r} /></span></div>
-          {canEdit ? <Button variant="ghost" size="sm" busy={end.isPending && end.variables === r.id} onClick={() => end.mutate(r.id)}>{t("end")}</Button> : null}
+          {canEdit ? <Button variant="ghost" size="sm" busy={end.isPending && end.variables === r.id} as="saving" onClick={() => end.mutate(r.id)}>{t("end")}</Button> : null}
         </li>
       ))}
     </ul>
@@ -266,7 +266,7 @@ function CourierForm({ currency }: { currency: string }) {
       <Field label={`${t("courier.delivery")} (${currency})`} ltr inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-32"
         error={invalid ? t("invalidAmount") : null} />
       <Field label={`${t("courier.return")} (${currency})`} ltr inputMode="decimal" autoComplete="off" placeholder="0.00" value={ret} onChange={(e) => setRet(e.target.value)} className="w-32" />
-      <Button type="submit" icon="add" busy={save.isPending} disabled={!amount.trim()}>{t("courier.add")}</Button>
+      <Button type="submit" icon="add" busy={save.isPending} as="saving" disabled={!amount.trim()}>{t("courier.add")}</Button>
     </form>
   );
 }
@@ -289,7 +289,7 @@ function MonthlyForm({ currency }: { currency: string }) {
       <Field label={t("monthly.label")} hint={t("monthly.labelHint")} value={label} onChange={(e) => setLabel(e.target.value)} autoComplete="off" maxLength={60} className="w-56" />
       <Field label={`${t("monthly.amount")} (${currency})`} ltr inputMode="decimal" autoComplete="off" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-36"
         error={invalid ? t("invalidAmount") : null} />
-      <Button type="submit" icon="add" busy={save.isPending} disabled={!amount.trim() || !label.trim()}>{t("monthly.add")}</Button>
+      <Button type="submit" icon="add" busy={save.isPending} as="saving" disabled={!amount.trim() || !label.trim()}>{t("monthly.add")}</Button>
     </form>
   );
 }
@@ -346,7 +346,7 @@ function FxCard({ canEdit, today }: { canEdit: boolean; today: string }) {
               <Field label={t("day")} type="date" ltr value={day} max={today} onChange={(e) => setDay(e.target.value)} className="w-44" />
               <Field label={t("rate", { base: fx.data.base })} ltr inputMode="decimal" autoComplete="off" placeholder="0.0205" value={rate} onChange={(e) => setRate(e.target.value)} className="w-36"
                 error={invalid ? t("invalid") : null} />
-              <Button type="submit" variant="secondary" busy={set.isPending} disabled={!rate.trim()}>{t("set")}</Button>
+              <Button type="submit" variant="secondary" busy={set.isPending} as="saving" disabled={!rate.trim()}>{t("set")}</Button>
             </form>
           ) : null}
           {fx.data.feed ? <p className="mt-3 text-caption text-text-3">{fx.data.feed}</p> : null}
@@ -384,7 +384,7 @@ function RecalculateCard({ today }: { today: string }) {
     },
     meta: { toast: false },
     onSuccess: (r) => {
-      toast.event({ type: "costs.changed", message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
+      toast.event({ type: "pnl.recomputed", data: { data: { isFinal: !r.more } }, message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
       void qc.invalidateQueries({ queryKey: ["profitHome"] });
       void qc.invalidateQueries({ queryKey: ["profitBreakdown"] });
       void qc.invalidateQueries({ queryKey: ["orderPnl"] });
@@ -394,7 +394,7 @@ function RecalculateCard({ today }: { today: string }) {
     <Card title={t("title")} className="lg:col-span-2">
       <div className="flex flex-wrap items-center justify-between gap-3" data-testid="recalculate">
         <p className="max-w-[70ch] text-body-sm text-text-2">{t("body", { days: RECALC_DAYS })}</p>
-        <Button variant="secondary" icon="refresh" busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button>
+        <Button variant="secondary" icon="refresh" busy={run.isPending} as="syncing" onClick={() => run.mutate()}>{t("run")}</Button>
       </div>
       {run.isError ? <div className="mt-3"><Alert tone="danger">{problemText(run.error, tpr)}</Alert></div> : null}
     </Card>

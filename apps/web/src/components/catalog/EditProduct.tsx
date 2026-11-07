@@ -96,7 +96,7 @@ export function EditProduct({ product: p, onClose }: { product: Product; onClose
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-          <Button busy={save.isPending} disabled={invalid || empty} onClick={() => save.mutate()}>{t("save")}</Button>
+          <Button busy={save.isPending} as="saving" disabled={invalid || empty} onClick={() => save.mutate()}>{t("save")}</Button>
         </>
       )}>
       <div className="flex flex-col gap-5" data-testid="edit-product">

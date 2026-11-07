@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DOMAIN_EVENT_TYPES, DROP_ALLOWLIST, ENGINE_EVENT_TYPES, ENGINE_MOTION, EVENT_MOTION, ORDER_EVENT_TYPES, OUTCOMES, PENDINGS, SURFACES,
   TIMELINE_MOTION, engineMotion, motionFor, outcomesOf, type EventData,
+  ACTIONS, LOADER_FOR, WAIT_ACTION, WAIT_MOTION, OUTBOUND_WRITE_EXCEPTIONS,
 } from "../src/index.js";
 import * as catalogue from "../src/motion/index.js";
 // @ts-expect-error -- a plain .mjs script without types
@@ -246,5 +247,62 @@ describe("the ops app's Dart catalogue", () => {
   it("apps/ops/lib/motion/event_motion.g.dart is current (node packages/shared/scripts/gen-dart-motion.mjs)", () => {
     const have = readFileSync(DART_PATH, "utf8").replace(/\r\n/g, "\n");
     expect(have).toBe(renderDart(catalogue));
+  });
+});
+
+describe("meanings: every loader matches what the action does (Brand 2.0)", () => {
+  it("every row's loader is derived from its action", () => {
+    for (const [type, rule] of Object.entries(EVENT_MOTION)) {
+      if (rule.action) expect(rule.pending, type).toBe(LOADER_FOR[rule.action]);
+      else expect(rule.pending, type).toBeUndefined();
+      expect(ACTIONS).toContain(rule.action ?? "read");
+    }
+    for (const [k, a] of Object.entries(WAIT_ACTION)) expect(WAIT_MOTION[k as keyof typeof WAIT_MOTION], k).toBe(LOADER_FOR[a]);
+  });
+
+  it("no table maps to fill: FILL needs a real value, which no row or wait has", () => {
+    for (const [type, rule] of Object.entries(EVENT_MOTION)) {
+      expect(rule.pending, type).not.toBe("fill");
+      expect(rule.action, type).not.toBe("progress");
+    }
+    expect(Object.values(WAIT_MOTION)).not.toContain("fill");
+  });
+
+  it("auth waits: signing in and checking pair, sending a code or a link transfers, creating drops", () => {
+    expect(WAIT_MOTION).toEqual({ loading: "pair", signingIn: "pair", checking: "pair", syncing: "transfer", sending: "transfer", saving: "drop", creating: "drop" });
+    // The owner's complaint, as a test: signing in is not the save animation.
+    expect(WAIT_MOTION.signingIn).not.toBe("drop");
+    expect(WAIT_MOTION.sending).toBe("transfer");
+  });
+
+  it("pinned rows", () => {
+    expect(EVENT_MOTION["tenant.created"].pending).toBe("drop");
+    expect(EVENT_MOTION["confirmation.sent"].pending).toBe("transfer");
+    expect(EVENT_MOTION["whatsapp.template_submitted"].pending).toBe("transfer");
+    expect(EVENT_MOTION["pnl.recomputed"].pending).toBe("pair");
+    expect(EVENT_MOTION["order.packed"].pending).toBe("drop");
+    expect(EVENT_MOTION["orders.bulk_requested"].pending).toBe("drop");
+    expect(EVENT_MOTION["orders.bulk_continue"].pending).toBe("drop");
+  });
+
+  const OUTBOUND = /(_submitted|_sent|\.sent|\.published|\.connected|\.applied|\.synced)$/;
+  it("outbound-looking events send or sync, unless excepted with a reason", () => {
+    for (const [type, rule] of Object.entries(EVENT_MOTION)) {
+      if (!OUTBOUND.test(type)) continue;
+      if (type in OUTBOUND_WRITE_EXCEPTIONS) { expect(OUTBOUND_WRITE_EXCEPTIONS[type].length, type).toBeGreaterThan(10); continue; }
+      expect(["send", "sync"], type).toContain(rule.action);
+    }
+    // An exception the name pattern never reaches would be dead: each one must match it.
+    for (const type of Object.keys(OUTBOUND_WRITE_EXCEPTIONS)) {
+      expect(EVENT_MOTION, type).toHaveProperty([type]);
+      expect(OUTBOUND.test(type), type).toBe(true);
+    }
+  });
+
+  it("pinned outbound rows (names the pattern cannot see): pushed to a courier, a store or Meta = transfer", () => {
+    for (const type of ["shipment.created", "connection.connected", "product.published", "offer.applied", "confirmation.sent", "whatsapp.template_submitted"] as const) {
+      expect(["send", "sync"], type).toContain(EVENT_MOTION[type].action);
+      expect(EVENT_MOTION[type].pending, type).toBe("transfer");
+    }
   });
 });

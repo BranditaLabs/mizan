@@ -345,7 +345,9 @@ export function CodeField({ label, value, onChange, onComplete, length = 6, busy
 /**
  * "Resend in 0:59", then a button. The countdown ticks silently (aria-live off); when it reaches 0
  * the button rolls in and `readyMessage` is announced once. `seconds` restarts the countdown when
- * its `startedAt` changes.
+ * its `startedAt` changes. While a resend is on its way (`busy`) the link carries an inline
+ * TRANSFER (a code going out to another system, mono, about 14 px) and aria-busy; "sent" stays a
+ * static success icon.
  */
 export function ResendTimer({ seconds, startedAt, countdown, resendLabel, readyMessage, onResend, busy = false, sentLabel, justSent = false }: {
   seconds: number; startedAt: number; countdown(time: ReactNode): ReactNode; resendLabel: string; readyMessage?: string;
@@ -372,7 +374,10 @@ export function ResendTimer({ seconds, startedAt, countdown, resendLabel, readyM
         <span aria-live="off">{countdown(<bdi dir="ltr">{mmss(left)}</bdi>)}</span>
       ) : (
         <span className="au-roll" key="ready">
-          <button type="button" className="mz-auth-link" onClick={onResend} aria-disabled={busy || undefined} disabled={busy}>{resendLabel}</button>
+          <button type="button" className="mz-auth-link" onClick={onResend} aria-disabled={busy || undefined} aria-busy={busy || undefined} disabled={busy}>
+            {resendLabel}
+            {busy ? <span className="mz-auth-resend__busy" style={{ marginInlineStart: 6 }}><AuthProgress kind="sending" size={14} /></span> : null}
+          </button>
         </span>
       )}
     </div>
@@ -385,10 +390,13 @@ export function ResendTimer({ seconds, startedAt, countdown, resendLabel, readyM
  * The primary action as the Brandita key: an ink pill, the label at the start, a circle with an
  * arrow at the end (it turns on hover and focus). Busy and done keep the width; `aria-disabled`
  * (never `disabled`) so the button stays focusable and its reason can be read.
+ *
+ * While busy the key plays what the press does, never a default: `busyAs` is required whenever
+ * `busy` can be true (signing in and checking a code = pair, sending a code or a link = transfer,
+ * creating and saving = drop). A `busy` without `busyAs` is a type error.
  */
-export function PrimaryCta({ label, busy = false, busyAs = "signingIn", done = false, disabled = false, secondary = false, icon = "forward", className, onClick, type = "submit", ...rest }: {
-  label: ReactNode; busy?: boolean; busyAs?: "sending" | "signingIn"; done?: boolean; disabled?: boolean; secondary?: boolean; icon?: Parameters<typeof Icon>[0]["name"];
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "disabled">) {
+export function PrimaryCta(props: PrimaryCtaProps) {
+  const { label, busy = false, busyAs, done = false, disabled = false, secondary = false, icon = "forward", className, onClick, type = "submit", ...rest } = props as PrimaryCtaBase & { busy?: boolean; busyAs?: AuthWait };
   const ref = useRef<HTMLButtonElement>(null);
   const [width, setWidth] = useState<number | null>(null);
   useIso(() => {
@@ -407,11 +415,17 @@ export function PrimaryCta({ label, busy = false, busyAs = "signingIn", done = f
       }}>
       <span className="mz-auth-cta__label">{label}</span>
       <span className="mz-auth-cta__key" aria-hidden="true">
-        {busy ? <AuthProgress kind={busyAs} /> : done ? <AuthProgress kind="confirmed" size={24} /> : <Icon name={icon} size={16} />}
+        {busy && busyAs ? <AuthProgress kind={busyAs} /> : done ? <AuthProgress kind="confirmed" size={24} /> : <Icon name={icon} size={16} />}
       </span>
     </button>
   );
 }
+
+type PrimaryCtaBase = {
+  label: ReactNode; done?: boolean; disabled?: boolean; secondary?: boolean; icon?: Parameters<typeof Icon>[0]["name"];
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "disabled">;
+/** Idle (`busy` absent or false), or busy with the meaning of the press. */
+export type PrimaryCtaProps = PrimaryCtaBase & ({ busy?: false; busyAs?: AuthWait } | { busy: boolean; busyAs: AuthWait });
 
 /* ───────────── Theme menu (the top bar of both apps) ───────────── */
 
@@ -517,13 +531,17 @@ export function FormAlert({ tone = "danger", children, action, onDismiss, dismis
 
 /* ───────────── The one motion slot for waiting and confirming ───────────── */
 
-export type ProgressKind = "loading" | "sending" | "signingIn" | "confirmed";
+/** What an auth press does while it runs (a WAIT_MOTION meaning; the loader follows from it). */
+export type AuthWait = "signingIn" | "checking" | "sending" | "creating" | "saving";
+export type ProgressKind = "loading" | AuthWait | "confirmed";
 
 /**
- * Every loading, sending-a-code, signing-in and confirmed moment of the auth flow (both apps)
- * draws through this one slot, with the Brand 2.0 loaders picked by the catalogue's meaning
- * (WAIT_MOTION): `loading` is the pair (the session, a route), `sending` and `signingIn` are the
- * drop (in the busy key button), `confirmed` is DoneState (the pans MERGE and the red DROPs once).
+ * Every wait and confirmed moment of the auth flow (both apps) draws through this one slot, with
+ * the Brand 2.0 loader picked by the catalogue's meaning (WAIT_MOTION): `loading`, `signingIn` and
+ * `checking` are the pair (waiting for an answer: the session, a route, a password, a code);
+ * `sending` is the transfer (a code or a link going out to another system); `creating` and
+ * `saving` are the drop (a write: an account, a store, a second step); `confirmed` is DoneState
+ * (the pans MERGE and the red DROPs once).
  * The loaders are mono (currentColor): the auth header's full-colour wordmark stays the view's one
  * red, and DoneState takes the red through the view's budget (the wordmark turns mono meanwhile).
  * Reduced motion: each kind's still frame (MizanLoader, DoneState). Decorative unless `label` is

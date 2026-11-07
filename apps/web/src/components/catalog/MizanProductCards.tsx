@@ -6,7 +6,9 @@ import { useRef, useState, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Surface";
+import { Card, FillProgress } from "@/components/ui/Surface";
+import { Waiting } from "@/components/ui/Loader";
+import { useBrandCopy } from "@/lib/motion/useBrandCopy";
 import { ErrorState } from "@/components/ui/QueryState";
 import { ApiError, idempotency, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -29,9 +31,13 @@ export function PicturesCard({ product: p }: { product: Product }) {
   const input = useRef<HTMLInputElement>(null);
   const keys = useRef(new WeakMap<File, string>());
   const [error, setError] = useState<ReactNode>(null);
+  /** Pictures sent of those chosen: a real value for the FILL while the upload runs. */
+  const [sent, setSent] = useState<{ done: number; total: number } | null>(null);
+  const copy = useBrandCopy();
   const refresh = () => qc.invalidateQueries({ queryKey: ["products"] });
   const upload = useMutation({
     mutationFn: async (files: File[]) => {
+      setSent({ done: 0, total: files.length });
       // One at a time, in the order chosen: the first of a product's pictures is its main one. Each
       // file has its own key, so one sent again (a lost answer) is the same picture, never a copy.
       for (const f of files) {
@@ -41,10 +47,11 @@ export function PicturesCard({ product: p }: { product: Product }) {
           params: { path: { id: p.id } }, body: f as never, bodySerializer: (b: unknown) => b as File,
           headers: { "Content-Type": f.type, ...idempotency(keys.current.get(f)!) },
         }));
+        setSent((x) => (x ? { ...x, done: x.done + 1 } : x));
       }
     },
     retry: false,
-    onSettled: async () => { if (input.current) input.current.value = ""; await refresh(); },
+    onSettled: async () => { setSent(null); if (input.current) input.current.value = ""; await refresh(); },
     onError: (e) => setError(e instanceof ApiError && PICTURE_ERRORS.has(e.code) ? t.rich(`errors.${e.code as "picture_type"}`, latin) : problemText(e, tpr)),
     meta: { toast: false },
   });
@@ -59,19 +66,22 @@ export function PicturesCard({ product: p }: { product: Product }) {
       <>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label={t("choose")} data-testid="picture-input"
           onChange={(e) => { setError(null); const files = [...(e.target.files ?? [])]; if (files.length) upload.mutate(files); }} />
-        <Button size="sm" variant="secondary" icon="upload" busy={upload.isPending} pending="fill" onClick={() => input.current?.click()}>{t("add")}</Button>
+        <Button size="sm" variant="secondary" icon="upload" busy={upload.isPending} as="sending" onClick={() => input.current?.click()}>{t("add")}</Button>
       </>
     ) : null}>
       <div className="flex flex-col gap-3" data-testid="pictures-card">
         <p className="text-caption text-text-3">{t.rich("hint", latin)}</p>
         {error ? <Alert tone="danger">{error}</Alert> : null}
+        {upload.isPending && sent ? (
+          <FillProgress value={(sent.done / Math.max(1, sent.total)) * 100} label={t("add")} valueText={copy.loader.progress(sent.done, sent.total)} width={180} />
+        ) : null}
         {p.images.length === 0 ? <p className="text-body-sm text-text-2">{t("none")}</p> : (
           <ul className="flex flex-wrap gap-3">
             {p.images.map((img) => (
               <li key={img.id} className="flex flex-col items-center gap-1">
                 <ProductImage image={{ ...img, url: img.thumbUrl ?? img.url }} alt={p.title} size={96} />
                 <span className="text-caption text-text-3">{img.isMain ? t("main") : null}</span>
-                {canEdit ? <IconButton icon="delete" size="sm" label={t("remove")} disabled={remove.isPending} onClick={() => remove.mutate(img.id)} /> : null}
+                {canEdit ? <IconButton icon="delete" size="sm" label={t("remove")} busy={remove.isPending && remove.variables === img.id} as="saving" disabled={remove.isPending} onClick={() => remove.mutate(img.id)} /> : null}
               </li>
             ))}
           </ul>
@@ -108,7 +118,7 @@ export function PublishCard({ product: p }: { product: Product }) {
     <Card title={t("title")}>
       <div className="flex flex-col gap-3" data-testid="publish-card">
         <p className="text-body-sm text-text-2">{t("body")}</p>
-        {state === "publishing" ? <Alert tone="info">{t("publishing")}</Alert> : null}
+        {state === "publishing" ? <Alert tone="info"><Waiting meaning="sending" size={18}>{t("publishing")}</Waiting></Alert> : null}
         {state === "failed" ? <Alert tone="danger">{t("failed", { message: p.publish?.error ?? "" })}</Alert> : null}
         {/* The store list failed to load: say so, never "no store connected". */}
         {stores.isError && !stores.data ? <ErrorState compact error={stores.error} onRetry={() => void stores.refetch()} retrying={stores.isRefetching} /> : null}
@@ -118,7 +128,7 @@ export function PublishCard({ product: p }: { product: Product }) {
             <Select label={t("store")} value={target} onChange={(e) => setChoice(e.target.value)} className="min-w-56">
               {stores.data.map((c) => <option key={c.id} value={c.id}>{name(c)}</option>)}
             </Select>
-            <Button icon="upload" busy={publish.isPending} disabled={!target} onClick={() => publish.mutate()}>{state === "failed" ? t("again") : t("go")}</Button>
+            <Button icon="upload" busy={publish.isPending} as="sending" disabled={!target} onClick={() => publish.mutate()}>{state === "failed" ? t("again") : t("go")}</Button>
           </div>
         ) : null}
         {/* Shopify adds a new product to no sales channel; putting it on one needs a permission Mizan does not ask for yet. */}

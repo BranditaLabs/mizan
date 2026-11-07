@@ -24,7 +24,7 @@ export function SetupCard() {
           <h2 id="setup-title" className="text-heading-sm">{t("card.title")}</h2>
           <p className="mt-1 text-body-sm text-text-2">{t("card.body", { done, total: STEP_ORDER.length, next: t(NEXT[next]) })}</p>
         </div>
-        <Button variant="ghost" size="sm" busy={hide.isPending} onClick={() => hide.mutate({ dismissed: true })}>{t("card.hide")}</Button>
+        <Button variant="ghost" size="sm" busy={hide.isPending} as="saving" onClick={() => hide.mutate({ dismissed: true })}>{t("card.hide")}</Button>
       </div>
       <FillProgress value={(done / STEP_ORDER.length) * 100} label={t("progress", { done, total: STEP_ORDER.length })} valueText={t("progress", { done, total: STEP_ORDER.length })} width={200} />
       <div><Link href="/onboarding" className={buttonClass("primary")}>{t("card.cta")}</Link></div>

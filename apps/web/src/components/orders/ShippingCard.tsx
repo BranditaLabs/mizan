@@ -12,6 +12,7 @@ import { Field } from "@/components/ui/Field";
 import { IdCell } from "@/components/ui/DataTable";
 import { CancelAtCourier } from "@/components/shipping/CancelAtCourier";
 import { Card } from "@/components/ui/Surface";
+import { Waiting } from "@/components/ui/Loader";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useEventMutation } from "@/lib/motion/useEventMutation";
@@ -66,7 +67,7 @@ export function ShippingCard({ order: o }: { order: Order }) {
                   <span className="font-medium">{providerName(s.provider)}</span>
                   {s.trackingNumber ? <IdCell>{s.trackingNumber}</IdCell> : null}
                 </span>
-                {s.booking === "pending" ? <Badge tone="info">{t("booking.pending")}</Badge>
+                {s.booking === "pending" ? <Badge tone="info"><Waiting meaning="sending" size={16} />{t("booking.pending")}</Badge>
                   : s.booking === "failed" ? <Badge tone="danger">{t("booking.failed")}</Badge>
                   : <Badge tone={s.status === "delivered" ? "success" : s.status === "returned" || s.status === "lost" ? "danger" : "neutral"}>{STATUSES.has(s.status) ? t(`status.${s.status as "created"}`) : s.status}</Badge>}
               </div>
@@ -106,7 +107,7 @@ function ManualShipment({ orderId, onClose }: { orderId: string; onClose(): void
   return (
     <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(
       <ButtonGroup>
-        <Button busy={save.isPending} disabled={courier.trim().length < 2 || tracking.trim().length < 3 || !linkOk} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={courier.trim().length < 2 || tracking.trim().length < 3 || !linkOk} onClick={() => save.mutate()}>{t("save")}</Button>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>

@@ -68,5 +68,14 @@
   "syncing": "بنزامن…",
   "packProgress": "التغليف ماشي لحد فين",
   "pickListProgress": "الأوردرات اللي اتغلّفت",
-  "lineReceived": "وصل {received} من {expected}"
+  "lineReceived": "وصل {received} من {expected}",
+  "packSynced": "أوردر {number} اتقفل ووصل ميزان.",
+  "deliverySynced": "تسليم {number} وصل ميزان.",
+  "receiveProgress": "اللي وصل من المطلوب",
+  "packConflict": "أوردر {number}: ميزان خلّى النسخة اللي عنده ({reason}).",
+  "packRejected": "أوردر {number} مااتقبلش: {reason}",
+  "deliveryConflict": "تسليم {number}: ميزان خلّى الأرقام اللي عنده ({reason}).",
+  "deliveryRejected": "تسليم {number} مااتقبلش: {reason}",
+  "syncedSomeRejected": "{count, plural, =1{اتزامن، بس عملية واحدة مااتقبلتش. شوف القايمة.} =2{اتزامن، بس عمليتين مااتقبلوش. شوف القايمة.} few{اتزامن، بس {count} عمليات مااتقبلوش. شوف القايمة.} other{اتزامن، بس {count} عملية مااتقبلوش. شوف القايمة.}}",
+  "syncedSomeConflict": "{count, plural, =1{اتزامن. في عملية واحدة عدّ ميزان هو اللي اتاخد. شوف القايمة.} =2{اتزامن. في عمليتين عدّ ميزان هو اللي اتاخد. شوف القايمة.} few{اتزامن. في {count} عمليات عدّ ميزان هو اللي اتاخد. شوف القايمة.} other{اتزامن. في {count} عملية عدّ ميزان هو اللي اتاخد. شوف القايمة.}}"
 }

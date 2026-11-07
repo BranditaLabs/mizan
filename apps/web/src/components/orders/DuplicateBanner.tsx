@@ -49,12 +49,12 @@ export function DuplicateBanner({ order }: { order: Order }) {
         <p>{t.rich("body", { order: () => link, minutes: of.minutesApart, items: new Intl.ListFormat(locale, { type: "conjunction" }).format(of.items) })}</p>
         {DECIDERS.has(store?.role ?? "") ? (
           <ButtonGroup className="mt-3">
-            <Button size="sm" variant="secondary" busy={resolve.isPending && resolve.variables === "keep"} onClick={() => resolve.mutate("keep")}>{t("keep")}</Button>
+            <Button size="sm" variant="secondary" busy={resolve.isPending && resolve.variables === "keep"} as="saving" onClick={() => resolve.mutate("keep")}>{t("keep")}</Button>
             <Button size="sm" variant="danger" onClick={() => setConfirm(true)}>{t("merge")}</Button>
           </ButtonGroup>
         ) : null}
       </Alert>
-      <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} onConfirm={() => resolve.mutate("merge")} busy={resolve.isPending && resolve.variables === "merge"}
+      <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} onConfirm={() => resolve.mutate("merge")} busy={resolve.isPending && resolve.variables === "merge"} as="saving"
         title={t("mergeTitle")} description={t.rich("mergeBody", { ...latin, order: () => <IdCell>{of.number}</IdCell> })} confirmLabel={t("merge")} />
     </div>
   );

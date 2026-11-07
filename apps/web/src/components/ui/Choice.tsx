@@ -2,7 +2,9 @@
 
 import { useLocale } from "next-intl";
 import { useLayoutEffect, useRef, useState, type InputHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
+import type { WaitMeaning } from "@mizan/shared/motion";
 import { cx, moveIndex } from "./logic";
+import { Waiting } from "./Loader";
 
 /** Checkbox (16px, ink when checked) with its label (components.md §3). `indeterminate` for "some rows". */
 export function Checkbox({ label, indeterminate, className, ...input }: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { label: ReactNode; indeterminate?: boolean }) {
@@ -24,11 +26,13 @@ export function CheckboxOnly({ label, indeterminate, ...input }: Omit<InputHTMLA
 }
 
 /** Switch 34×20, ink when on: for settings that apply at once (not for form submits). */
-export function Switch({ label, description, className, ...input }: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role"> & { label: ReactNode; description?: ReactNode }) {
+export function Switch({ label, description, className, busy, as, ...input }: Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "role" | "as"> & { label: ReactNode; description?: ReactNode }
+  // A switch that writes while it flips names what the write does (as on Button): never a bare busy.
+  & ({ busy?: false; as?: WaitMeaning } | { busy: boolean; as: WaitMeaning })) {
   return (
-    <label className={cx("mz-check items-start justify-between gap-4", className)}>
+    <label className={cx("mz-check items-start justify-between gap-4", className)} aria-busy={busy || undefined}>
       <span className="flex flex-col gap-0.5">
-        <span className="text-label">{label}</span>
+        <span className="inline-flex items-center gap-2 text-label">{label}{busy && as ? <Waiting meaning={as} size={18} /> : null}</span>
         {description ? <span className="mz-hint">{description}</span> : null}
       </span>
       <input type="checkbox" role="switch" className="mz-switch shrink-0" {...input} />

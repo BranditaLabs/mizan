@@ -3,5 +3,5 @@
     "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx", "customConditions": ["source"],
     "strict": true, "noEmit": true, "skipLibCheck": true, "isolatedModules": true, "types": ["node"], "lib": ["ES2022", "DOM", "DOM.Iterable"]
   },
-  "include": ["dist/tokens.ts", "dist/motion-tokens.ts", "icons/index.ts", "icons/react.tsx", "logos/partners/*.ts", "logos/partners/react.tsx", "js/*.ts", "react/*.tsx", "motion/**/*.ts", "react/motion/**/*.ts", "react/motion/**/*.tsx"]
+  "include": ["dist/tokens.ts", "dist/motion-tokens.ts", "icons/index.ts", "icons/react.tsx", "logos/partners/*.ts", "logos/partners/react.tsx", "js/*.ts", "react/*.tsx", "motion/**/*.ts", "react/motion/**/*.ts", "react/motion/**/*.tsx", "test/*.check.tsx"]
 }

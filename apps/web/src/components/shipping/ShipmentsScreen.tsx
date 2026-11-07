@@ -112,7 +112,7 @@ export function ShipmentsScreen() {
           <div className="flex flex-col gap-3">
             <DataTable label={t("title")} columns={columns} rows={rows} rowKey={(r) => r.id} rowLabel={(r) => r.order.number}
               empty={q ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} /> : <EmptyState icon="shipping" title={t(`empty.${shipmentView}.title`)} body={t(`empty.${shipmentView}.body`)} />} />
-            {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
+            {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} as="loading" onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
           </div>
         )}
       </Tabs>
@@ -146,7 +146,7 @@ function SetStatusDialog({ row, onClose }: { row: Row; onClose(): void }) {
       <>
         <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
         {row.provider === "bosta" && !["delivered", "returned", "lost", "cancelled"].includes(row.status) ? <CancelAtCourier shipmentId={row.id} /> : null}
-        <Button busy={save.isPending} disabled={!status || (status === "cancelled" && row.provider === "bosta")} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!status || (status === "cancelled" && row.provider === "bosta")} onClick={() => save.mutate()}>{t("save")}</Button>
       </>
     )}>
       <div className="flex flex-col gap-3">

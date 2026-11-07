@@ -71,7 +71,7 @@ export function PickLists() {
       <form className="mz-card flex flex-col gap-2 p-4" onSubmit={(e) => { e.preventDefault(); if (validSize) create.mutate(); }}>
         <div className="flex flex-wrap items-end gap-3">
           <Field label={t("size")} inputMode="numeric" ltr value={size} onChange={(e) => setSize(e.target.value)} className="w-40" />
-          <Button type="submit" icon="add" busy={create.isPending} disabled={!validSize}>{t("create")}</Button>
+          <Button type="submit" icon="add" busy={create.isPending} as="saving" disabled={!validSize}>{t("create")}</Button>
         </div>
         <p className="text-caption text-text-2">{t("sizeHint")}</p>
       </form>
@@ -165,7 +165,7 @@ export function PickListDetail({ id }: { id: string }) {
           ))}
         </ul>
       </section>
-      <ConfirmDialog open={closing} onClose={() => setClosing(false)} onConfirm={() => close.mutate()} busy={close.isPending}
+      <ConfirmDialog open={closing} onClose={() => setClosing(false)} onConfirm={() => close.mutate()} busy={close.isPending} as="saving"
         title={t("closeTitle", { n: p.number })} description={t("closeBody")} confirmLabel={t("close")} />
     </div>,
   );

@@ -91,7 +91,7 @@ export function OrderFilters({ value, onChange, current, onView }: {
         ) : null}
         {any ? <Button size="sm" variant="ghost" onClick={() => { setViewId(""); onChange({}); }}>{t("clear")}</Button> : null}
         <Button size="sm" variant="secondary" icon="starred" onClick={() => setSaving(true)}>{t("save")}</Button>
-        {canRemove ? <Button size="sm" variant="ghost" icon="delete" busy={remove.isPending} onClick={() => remove.mutate(chosen.id)}>{t("removeView")}</Button> : null}
+        {canRemove ? <Button size="sm" variant="ghost" icon="delete" busy={remove.isPending} as="saving" onClick={() => remove.mutate(chosen.id)}>{t("removeView")}</Button> : null}
       </div>
       {saving ? <SaveViewDialog filters={current} onClose={() => setSaving(false)} onSaved={(v) => { setSaving(false); setViewId(v.id); }} /> : null}
     </section>
@@ -115,7 +115,7 @@ function SaveViewDialog({ filters, onClose, onSaved }: { filters: View["filters"
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-          <Button busy={save.isPending} disabled={!name.trim()} onClick={() => save.mutate()}>{t("saveConfirm")}</Button>
+          <Button busy={save.isPending} as="saving" disabled={!name.trim()} onClick={() => save.mutate()}>{t("saveConfirm")}</Button>
         </>
       )}>
       <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (name.trim()) save.mutate(); }}>

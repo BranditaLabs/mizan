@@ -102,9 +102,9 @@ function SupplierDialog({ supplier, onClose }: { supplier: Supplier | null; onCl
   return (
     <Dialog open onClose={onClose} title={supplier ? t("supplier.editTitle") : t("supplier.new")} footer={(
       <>
-        {supplier ? <Button variant="ghost" className="me-auto" busy={save.isPending && save.variables !== undefined} onClick={() => save.mutate(!supplier.archived)}>{supplier.archived ? t("supplier.restore") : t("supplier.archive")}</Button> : null}
+        {supplier ? <Button variant="ghost" className="me-auto" busy={save.isPending && save.variables !== undefined} as="saving" onClick={() => save.mutate(!supplier.archived)}>{supplier.archived ? t("supplier.restore") : t("supplier.archive")}</Button> : null}
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending && save.variables === undefined} onClick={submit}>{t("supplier.save")}</Button>
+        <Button busy={save.isPending && save.variables === undefined} as="saving" onClick={submit}>{t("supplier.save")}</Button>
       </>
     )}>
       <form className="grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); submit(); }}>
