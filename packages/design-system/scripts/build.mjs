@@ -21,6 +21,15 @@ const HEADER = "/* Generated from tokens/tokens.json by scripts/build.mjs. Do no
 const kebab = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([a-z])([0-9])/g, "$1-$2").replace(/\./g, "_").toLowerCase();
 const v = (o) => (o && typeof o === "object" && "$value" in o ? o.$value : o);
 const entries = (o) => Object.entries(o).filter(([k]) => !k.startsWith("$"));
+/** Plain-number groups ({ "$units": { key: unit, "*": default } }) as [key, "value+unit"]. */
+const withUnits = (group) => {
+  const u = group.$units ?? {};
+  return entries(group).map(([k, n]) => [k, `${n}${k in u ? u[k] : (u["*"] ?? "")}`]);
+};
+/** "cubic-bezier(a, b, c, d)" → [a, b, c, d] */
+const bezier = (s) => s.match(/-?[\d.]+/g).map(Number);
+const M = T.motion;
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
 const rgbTriplet = (c) => {
   if (c.startsWith("rgba")) return null;
   const h = c.replace("#", "");
@@ -32,20 +41,33 @@ function colorVars(theme) {
   return entries(T.color[theme]).map(([k, o]) => {
     const val = v(o); const t = rgbTriplet(val);
     return `  --mz-${kebab(k)}: ${val};` + (t ? `\n  --mz-${kebab(k)}-rgb: ${t};` : "");
-  }).join("\n");
+  }).join("\n") + themedShadows();
 }
+// A shadow that reads theme colours is declared with each theme, so a nested data-theme resolves its own colours.
+const isThemed = (s) => s.includes("var(");
+const themedShadows = () => entries(T.shadow).filter(([, s]) => isThemed(s)).map(([k, s]) => `\n  --mz-shadow-${k}: ${s};`).join("");
 const vizVars = (theme) => T.viz[theme].map((c, i) => `  --mz-viz-${i + 1}: ${c};`).join("\n");
+// Which one-colour partner logo face shows (css/components.css .mz-partner): set with each theme, so
+// the nearest data-theme wins and a light island inside a dark page shows the light file.
+const partnerFaceVars = (theme) => `  --mz-partner-face-light: ${theme === "light" ? "inline-flex" : "none"};\n  --mz-partner-face-dark: ${theme === "light" ? "none" : "inline-flex"};`;
 
 const staticVars = [
   ...entries(T.brand).map(([k, o]) => `  --mz-brand-${kebab(k)}: ${v(o)};`),
   ...entries(T.font.family).map(([k, o]) => `  --mz-font-${kebab(k)}: ${v(o)};`),
   ...entries(T.font.weight).map(([k, n]) => `  --mz-weight-${k}: ${n};`),
   ...entries(T.space).map(([k, n]) => `  --mz-space-${k.replace(".", "_")}: ${n}px;`),
-  ...entries(T.radius).map(([k, n]) => `  --mz-radius-${k}: ${n}px;`),
+  ...entries(T.radius).map(([k, n]) => `  --mz-radius-${kebab(k)}: ${n}px;`),
   ...entries(T.border).map(([k, n]) => `  --mz-border-${k}: ${n}px;`),
-  ...entries(T.shadow).map(([k, s]) => `  --mz-shadow-${k}: ${s};`),
-  ...entries(T.motion.duration).map(([k, n]) => `  --mz-duration-${k}: ${n}ms;`),
-  ...entries(T.motion.easing).map(([k, s]) => `  --mz-ease-${k}: ${s};`),
+  ...entries(T.shadow).filter(([, s]) => !isThemed(s)).map(([k, s]) => `  --mz-shadow-${k}: ${s};`),
+  ...entries(M.duration).map(([k, n]) => `  --mz-duration-${k}: ${n}ms;`),
+  ...entries(M.easing).map(([k, s]) => `  --mz-ease-${kebab(k)}: ${s};`),
+  ...entries(M.easingAlias).map(([k, to]) => `  --mz-ease${k === "default" ? "" : `-${kebab(k)}`}: var(--mz-ease-${kebab(to)});`),
+  `  --mz-press-scale: ${M.press.scale};`,
+  ...withUnits(M.distance).map(([k, s]) => `  --mz-distance-${kebab(k)}: ${s};`),
+  ...withUnits(M.stagger).map(([k, s]) => `  --mz-stagger-${kebab(k)}: ${s};`),
+  ...withUnits(M.scroll).map(([k, s]) => `  --mz-scroll-${kebab(k)}: ${s};`),
+  ...withUnits(T.glass).map(([k, s]) => `  --mz-glass-${kebab(k)}: ${s};`),
+  ...entries(T.fluid).map(([k, s]) => `  --mz-${kebab(k)}-fluid: ${s};`),
   ...entries(T.size.control).map(([k, n]) => `  --mz-control-${k}: ${n}px;`),
   ...entries(T.size.icon).map(([k, n]) => `  --mz-icon-${k}: ${n}px;`),
   `  --mz-icon-stroke: ${T.size.iconStroke};`,
@@ -69,6 +91,7 @@ ${staticVars}
   color-scheme: light;
 ${colorVars("light")}
 ${vizVars("light")}
+${partnerFaceVars("light")}
 }
 
 /* Dark theme: explicit */
@@ -76,6 +99,7 @@ ${vizVars("light")}
   color-scheme: dark;
 ${colorVars("dark")}
 ${vizVars("dark")}
+${partnerFaceVars("dark")}
 }
 
 /* Dark theme: follow the system unless the user chose light */
@@ -84,6 +108,7 @@ ${vizVars("dark")}
     color-scheme: dark;
 ${colorVars("dark").replace(/^/gm, "  ")}
 ${vizVars("dark").replace(/^/gm, "  ")}
+${partnerFaceVars("dark").replace(/^/gm, "  ")}
   }
 }
 
@@ -96,8 +121,13 @@ ${typeClasses}
 /* Numbers, IDs and codes stay left-to-right inside Arabic text */
 .mz-ltr, bdi.mz-num { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
 
+/* Reduced motion: short fades instead of movement (tokens.json motion.reduced) */
 @media (prefers-reduced-motion: reduce) {
-  :root { --mz-duration-fast: 0ms; --mz-duration-base: 80ms; --mz-duration-slow: 120ms; }
+  :root {
+${entries(M.reduced).map(([k, n]) => `    --mz-duration-${k}: ${n}ms;`).join("\n")}
+${entries(M.distance).map(([k]) => `    --mz-distance-${kebab(k)}: 0px;`).join("\n")}
+${withUnits(M.stagger).filter(([, s]) => s.endsWith("ms")).map(([k]) => `    --mz-stagger-${kebab(k)}: 0ms;`).join("\n")}
+  }
 }
 `);
 
@@ -111,11 +141,12 @@ ${twViz}
   --font-sans: var(--mz-font-sans);
   --font-display: var(--mz-font-display);
   --font-mono: var(--mz-font-mono);
-${entries(T.radius).map(([k, n]) => `  --radius-${k}: ${n}px;`).join("\n")}
-  --shadow-overlay: var(--mz-shadow-overlay);
+${entries(T.radius).map(([k, n]) => `  --radius-${kebab(k)}: ${n}px;`).join("\n")}
+${entries(T.shadow).filter(([k]) => k !== "none").map(([k]) => `  --shadow-${k}: var(--mz-shadow-${k});`).join("\n")}
 ${entries(T.type).map(([k, t]) => `  --text-${kebab(k)}: ${t.size}px;\n  --text-${kebab(k)}--line-height: ${t.lineHeight}px;\n  --text-${kebab(k)}--letter-spacing: ${t.tracking}em;\n  --text-${kebab(k)}--font-weight: ${t.weight};`).join("\n")}
-${entries(T.motion.easing).map(([k, s]) => `  --ease-${k}: ${s};`).join("\n")}
-${entries(T.breakpoint).map(([k, n]) => `  --breakpoint-${k}: ${n / 16}rem;`).join("\n")}
+${entries(M.easing).map(([k, s]) => `  --ease-${kebab(k)}: ${s};`).join("\n")}
+${entries(M.duration).map(([k]) => `  --transition-duration-${k}: var(--mz-duration-${k});`).join("\n")}
+${entries(T.breakpoint).map(([k, n]) => `  --breakpoint-${kebab(k)}: ${n / 16}rem;`).join("\n")}
 }
 `);
 
@@ -126,15 +157,17 @@ T.viz.light.forEach((_, i) => { v3colors[`viz-${i + 1}`] = `var(--mz-viz-${i + 1
 const v3 = {
   darkMode: ["selector", '[data-theme="dark"]'],
   theme: {
+    // Tailwind v3 writes min-width queries in object order, so they must ascend (v4 sorts by value).
+    // Set on theme, not extend: extending would append nav and nav-full after the default 2xl.
+    screens: Object.fromEntries(entries(T.breakpoint).sort(([, a], [, b]) => a - b).map(([k, n]) => [kebab(k), `${n}px`])),
     extend: {
       colors: v3colors,
       fontFamily: { sans: ["var(--mz-font-sans)"], display: ["var(--mz-font-display)"], mono: ["var(--mz-font-mono)"] },
       fontSize: Object.fromEntries(entries(T.type).map(([k, t]) => [kebab(k), [`${t.size}px`, { lineHeight: `${t.lineHeight}px`, letterSpacing: `${t.tracking}em`, fontWeight: String(t.weight) }]])),
-      borderRadius: Object.fromEntries(entries(T.radius).map(([k, n]) => [k, `${n}px`])),
-      boxShadow: { overlay: "var(--mz-shadow-overlay)", none: "none" },
-      transitionTimingFunction: Object.fromEntries(entries(T.motion.easing)),
-      transitionDuration: Object.fromEntries(entries(T.motion.duration).map(([k, n]) => [k, `${n}ms`])),
-      screens: Object.fromEntries(entries(T.breakpoint).map(([k, n]) => [k, `${n}px`])),
+      borderRadius: Object.fromEntries(entries(T.radius).map(([k, n]) => [kebab(k), `${n}px`])),
+      boxShadow: { ...Object.fromEntries(entries(T.shadow).filter(([k]) => k !== "none").map(([k]) => [k, `var(--mz-shadow-${k})`])), none: "none" },
+      transitionTimingFunction: Object.fromEntries(entries(M.easing).map(([k, s]) => [kebab(k), s])),
+      transitionDuration: Object.fromEntries(entries(M.duration).map(([k]) => [k, `var(--mz-duration-${k})`])),
       zIndex: Object.fromEntries(entries(T.z).map(([k, n]) => [k, String(n)])),
     },
   },
@@ -147,12 +180,22 @@ const flat = {
   color: { light: Object.fromEntries(entries(T.color.light).map(([k, o]) => [k, v(o)])), dark: Object.fromEntries(entries(T.color.dark).map(([k, o]) => [k, v(o)])) },
   viz: { light: T.viz.light, dark: T.viz.dark },
   font: { family: Object.fromEntries(entries(T.font.family).map(([k, o]) => [k, v(o)])), weight: T.font.weight },
-  type: Object.fromEntries(entries(T.type)),
+  type: Object.fromEntries(entries(T.type).map(([k, t]) => [k, Object.fromEntries(entries(t))])),
   space: Object.fromEntries(entries(T.space)),
   radius: Object.fromEntries(entries(T.radius)),
   border: T.border,
   shadow: Object.fromEntries(entries(T.shadow)),
-  motion: { duration: T.motion.duration, easing: T.motion.easing },
+  motion: {
+    duration: M.duration, easing: M.easing,
+    easingAlias: Object.fromEntries(entries(M.easingAlias)),
+    reduced: Object.fromEntries(entries(M.reduced)),
+    pressScale: M.press.scale,
+    distance: Object.fromEntries(entries(M.distance)),
+    stagger: Object.fromEntries(entries(M.stagger)),
+    scroll: Object.fromEntries(entries(M.scroll)),
+  },
+  glass: Object.fromEntries(entries(T.glass)),
+  fluid: Object.fromEntries(entries(T.fluid)),
   size: T.size, layout: T.layout, breakpoint: T.breakpoint, z: T.z,
 };
 out("tokens.json", JSON.stringify(flat, null, 2) + "\n");
@@ -207,10 +250,18 @@ ${entries(T.radius).map(([k, n]) => `  static const double ${k} = ${n};`).join("
 }
 
 class MizanMotion {
-${entries(T.motion.duration).map(([k, n]) => `  static const ${k} = Duration(milliseconds: ${n});`).join("\n")}
-  static const enter = Cubic(0.23, 1, 0.32, 1);
-  static const expand = Cubic(0.32, 0.72, 0, 1);
-  static const exit = Cubic(0.4, 0, 1, 1);
+${entries(M.duration).map(([k, n]) => `  static const ${k} = Duration(milliseconds: ${n});`).join("\n")}
+${entries(M.easing).map(([k, s]) => `  static const ${k} = Cubic(${bezier(s).join(", ")});`).join("\n")}
+  static const pressScale = ${M.press.scale};
+${entries(M.distance).map(([k, n]) => `  static const double distance${cap(k)} = ${n};`).join("\n")}
+${withUnits(M.stagger).map(([k, s]) => s.endsWith("ms")
+    ? `  static const stagger${cap(k)} = Duration(milliseconds: ${M.stagger[k]});`
+    : `  static const int stagger${cap(k)} = ${M.stagger[k]};`).join("\n")}
+
+  // With reduced motion (MediaQuery.disableAnimations): short fades, no travel.
+${entries(M.reduced).map(([k, n]) => `  static const reduced${cap(k)} = Duration(milliseconds: ${n});`).join("\n")}
+${entries(M.distance).map(([k]) => `  static const double reducedDistance${cap(k)} = 0;`).join("\n")}
+${withUnits(M.stagger).filter(([, s]) => s.endsWith("ms")).map(([k]) => `  static const reducedStagger${cap(k)} = Duration.zero;`).join("\n")}
 }
 
 ThemeData _mizanTheme(Brightness b) {

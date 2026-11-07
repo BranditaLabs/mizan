@@ -1718,8 +1718,36 @@
         "token_refused": "Meta refused the token. Create a new one and enter it again.",
         "token_lacks_permission": "The token lacks permissions on this account (<l>whatsapp_business_messaging</l> and <l>whatsapp_business_management</l>).",
         "template_pending": "Meta is still reviewing the confirmation message. WhatsApp confirmation starts as soon as it's approved.",
-        "template_rejected": "Meta rejected the confirmation message. Submit it again with the wording in the setup guide.",
-        "template_missing": "The confirmation message in the store's language (<l>mizan_order_confirm_ar</l> or <l>mizan_order_confirm_en</l>) isn't in the account. Add it in <l>WhatsApp Manager</l> with the wording in the setup guide."
+        "template_rejected": "Meta rejected the confirmation message. Submit it again under “First confirmation message” below, or pick another one.",
+        "template_missing": "The confirmation message in the store's language isn't in the account. Send it to Meta under “First confirmation message” below."
+      },
+      "templates": {
+        "title": "First confirmation message",
+        "body": "The first message a customer gets must be approved by Meta first. Send it to Meta from here; the review usually takes from minutes to a day.",
+        "choice": "Arabic first message",
+        "choiceHint": "What Arabic-speaking customers get. If your choice isn't approved yet, an approved one goes out until it is.",
+        "follow": "Follow my wording style",
+        "variant": {
+          "ar_egyptian": "Egyptian Arabic",
+          "ar_formal": "Formal Arabic",
+          "ar_gulf": "Gulf Arabic",
+          "en": "English"
+        },
+        "status": {
+          "APPROVED": "Approved",
+          "PENDING": "In review",
+          "REJECTED": "Rejected",
+          "PAUSED": "Paused",
+          "DISABLED": "Paused",
+          "MISSING": "Not sent yet",
+          "UNKNOWN": "Unknown"
+        },
+        "inUse": "In use",
+        "submit": "Submit to Meta",
+        "submitted": "Sent to Meta. We'll show their answer here.",
+        "submitting": "Sent, waiting for Meta",
+        "already": "Already sent; waiting for Meta.",
+        "notConnected": "Connect a WhatsApp number first to send the messages to Meta."
       }
     },
     "routing": {
@@ -1814,7 +1842,8 @@
       "en": "English",
       "issues": "{count, plural, one {# problem} other {# problems}}",
       "noIssues": "All good",
-      "restore": "Restore the style's wording"
+      "restore": "Restore the style's wording",
+      "gulfHint": "Gulf wording is a starting point: read it and change any word to fit your buyers."
     },
     "packs": {
       "egyptian": "Egyptian",
@@ -3292,7 +3321,8 @@
         "order_moved": "the order changed meanwhile",
         "other": "something stopped it"
       }
-    }
+    },
+    "templateFallback": "Your first message ({chosen}) isn't approved by Meta yet, so we sent {used} instead."
   },
   "tickets": {
     "title": "Tickets",
@@ -5155,6 +5185,14 @@
       "title": "Not available for your role",
       "body": "Owners, admins, ops managers and the warehouse work with pick lists."
     }
+  },
+  "partnerLogos": {
+    "title": "Partner logos",
+    "body": "Each brand's real mark, taken from its own guide and never redrawn. Colour sits on a light tile; one-colour files appear only where the brand allows them. A brand we can't show yet gets its initial.",
+    "color": "Colour",
+    "mono": "One colour",
+    "small": "Small",
+    "kinds": { "store": "Stores", "marketplace": "Marketplaces", "courier": "Couriers", "payment": "Payments", "messaging": "Messaging", "ads": "Ads", "government": "Government" }
   },
   "legal": {
     "home": "Mizan home",
