@@ -20,7 +20,7 @@ const EDITORS = rolesWith("refunds.settings");
 /** Settings → Refunds (E14-4): the amount over which a refund needs owner, admin or finance to approve. */
 export function RefundSettingsScreen() {
   const t = useTranslations("refundSettings");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

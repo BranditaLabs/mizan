@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
@@ -87,6 +88,14 @@ export function ProfitBreakdown() {
       {query.isPending ? <div className="mz-card"><SkeletonRows rows={6} label={t("loading")} /></div> : null}
       {query.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
       {b && b.rows.length === 0 ? <div className="mz-card"><EmptyState icon="profit" title={t("empty.title")} body={t("empty.body")} /></div> : null}
+      {b && b.total.costsMissing > 0 ? (
+        <div data-testid="breakdown-provisional">
+          <Alert tone="warning">
+            {t("provisional", { count: b.total.costsMissing })}{" "}
+            <Link href="/products?view=missing_cost" className="font-medium underline underline-offset-2">{t("fixCosts")}</Link>
+          </Alert>
+        </div>
+      ) : null}
       {b && b.rows.length > 0 ? (
         <div className="mz-table-wrap">
           <table className="mz-table" data-testid="breakdown-table">
@@ -134,11 +143,14 @@ function BreakdownLine({ r, label, strong = false }: { r: Row; label: string; st
       </th>
       <Cell className="mz-num"><bdi>{r.orders}</bdi></Cell>
       <Cell className="mz-num"><MoneyText money={r.revenue} /></Cell>
-      <Cell className="mz-num"><MoneyText money={r.productCost} /></Cell>
+      {/* FX-2: a missing cost reads "ناقص", never "0.00", and the row shows no margin. */}
+      <Cell className="mz-num">{r.costsMissing > 0 && Number(r.productCost.amount) === 0
+        ? <span title={t("missingHint", { count: r.costsMissing })}><Badge tone="warning" dot={false}>{t("missing")}</Badge></span>
+        : <MoneyText money={r.productCost} />}</Cell>
       <Cell className="mz-num"><MoneyText money={r.shippingAndCod} /></Cell>
       <Cell className="mz-num"><MoneyText money={r.ads} /></Cell>
       <Cell className={`mz-num ${negative ? "text-danger-text" : ""}`}><MoneyText money={r.net} /></Cell>
-      <Cell className={`mz-num ${negative ? "text-danger-text" : ""}`}><bdi>{r.margin === null ? t("none") : t("pct", { pct: r.margin })}</bdi></Cell>
+      <Cell className={`mz-num ${negative ? "text-danger-text" : ""}`}><bdi title={r.costsMissing > 0 ? t("missingHint", { count: r.costsMissing }) : undefined}>{r.margin === null ? t("none") : t("pct", { pct: r.margin })}</bdi></Cell>
       <Cell className="mz-num text-text-2"><MoneyText money={r.expectedNet} /></Cell>
     </tr>
   );

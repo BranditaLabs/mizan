@@ -60,7 +60,7 @@ export function IntegrationsScreen() {
   };
   // The installer stores the shop's address as its name: show a name only when the team gave one.
   const named = (c: { displayName: string | null; account: string | null }) => Boolean(c.displayName && c.displayName !== c.account);
-  const fixHref = (provider: string) => provider === "shopify" ? "/onboarding" : provider === "bosta" ? "/onboarding" : provider === "meta_whatsapp" || provider === "whatsapp" ? "/settings/confirmation" : null;
+  const fixHref = (provider: string) => provider === "shopify" ? "/onboarding" : provider === "bosta" ? "/onboarding" : provider === "meta_whatsapp" || provider === "whatsapp" || provider === "whatsapp_cloud" ? "/settings/confirmation" : null;
 
   return (
     <div className="flex min-w-0 flex-col gap-5" data-testid="integrations-settings">
@@ -82,14 +82,14 @@ export function IntegrationsScreen() {
                     <li key={c.id} className="mz-card flex flex-wrap items-start justify-between gap-3 p-4">
                       <div>
                         {named(c) ? <p className="font-medium"><Bdi>{c.displayName}</Bdi></p> : null}
-                        <p className={named(c) ? "text-body-sm text-text-2" : "font-medium"}>{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : c.provider} <Bdi code>{c.account ?? ""}</Bdi></p>
+                        <p className={named(c) ? "text-body-sm text-text-2" : "font-medium"}>{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : <Bdi code>{c.provider}</Bdi>} <Bdi code>{c.account ?? ""}</Bdi></p>
                         {c.reason ? <p className="text-body-sm text-danger-text">{reasonText(c.provider, c.reason)}</p> : null}
                         {c.missingScopes.length ? <p className="text-caption text-text-2">{t("missingScopes")} <Bdi code>{c.missingScopes.join(", ")}</Bdi></p> : null}
                         <p className="text-caption text-text-2">{t("updated")} <DateText value={c.updatedAt} relative /></p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge tone={TONE[c.status] ?? "neutral"}>{t(`status.${c.status}`)}</Badge>
-                        {href ? <Link href={href} className="text-body-sm font-medium underline">{t("fix")}</Link> : null}
+                        {href ? <Link href={href} className="inline-flex min-h-6 items-center text-body-sm font-medium underline pointer-coarse:min-h-11">{t("fix")}</Link> : null}
                         {c.provider === "woocommerce" && c.status !== "active" && CONNECTORS.has(role)
                           ? <Button size="sm" variant="secondary" onClick={() => setWoo({ site: `https://${c.account ?? ""}` })}>{t("woo.newKeys")}</Button> : null}
                         {CONNECTORS.has(role) ? <ConnectionActions c={c} /> : null}

@@ -20,7 +20,7 @@ const EDITORS = rolesWith("purchasing.settings");
 /** Settings → Purchasing (M16-2): the amount over which a purchase order needs the owner or an admin to approve. */
 export function PurchasingSettingsScreen() {
   const t = useTranslations("purchasingSettings");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

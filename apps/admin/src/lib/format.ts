@@ -1,23 +1,17 @@
-import { currencyDecimals, isDecimalAmount, type Money } from "@mizan/shared";
+import { formatMoney as formatMoneyShared, type Digits, type Money } from "@mizan/shared";
 
 /**
  * Number, money and date formatting for both languages (docs/08 §3).
  * Western digits by default (merchants and couriers use them); Eastern Arabic digits are a store
- * setting. Money stays a decimal string end to end: Intl formats the string exactly, never a float.
+ * setting. Money has one format everywhere (`formatMoney` in @mizan/shared, docs/16 §1.2):
+ * "EGP 1,150.00" in English, "1,150.00 ج.م." in Arabic; the amount stays a decimal string end to end.
  */
-export type Digits = "latn" | "arab";
+export type { Digits };
 
 const tag = (locale: string) => (locale === "ar" ? "ar-EG" : "en-EG");
 
 export function formatMoney(money: Money, locale: string, digits: Digits = "latn"): string {
-  if (!isDecimalAmount(money.amount)) throw new Error(`not a decimal amount: ${money.amount}`);
-  const decimals = currencyDecimals(money.currency);
-  const f = new Intl.NumberFormat(tag(locale), {
-    style: "currency", currency: money.currency, numberingSystem: digits,
-    minimumFractionDigits: decimals, maximumFractionDigits: decimals,
-  });
-  // Intl.NumberFormat accepts decimal strings exactly (ES2023); the cast keeps older lib typings happy.
-  return f.format(money.amount as unknown as number);
+  return formatMoneyShared(money, locale, digits);
 }
 
 export function formatNumber(value: number | bigint, locale: string, digits: Digits = "latn"): string {

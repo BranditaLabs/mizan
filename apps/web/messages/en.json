@@ -1018,8 +1018,8 @@
       "exchange_of": "Replacement for {number}",
       "partially_delivered": "Delivered in part: the rest comes back",
       "refused": "Refused at the door",
-      "tagged": "Tagged {tags}",
-      "untagged": "Tag removed: {tags}",
+      "tagged": "Tagged <b>{tags}</b>",
+      "untagged": "Tag removed: <b>{tags}</b>",
       "note_added": "Note added",
       "edit_requested": "Edit sent to the store",
       "edited": "Order edited",
@@ -1243,9 +1243,14 @@
         "cod_fee_missing": "Cash collection fee %",
         "payment_fee_missing": "Payment fee for this method",
         "agent_cost_missing": "Confirmation agent cost",
-        "packaging_cost_missing": "Packaging cost"
+        "packaging_cost_missing": "Packaging cost",
+        "ads_fx_missing": "Exchange rate for the ad spend's currency"
       },
-      "setCosts": "Set costs"
+      "setCosts": "Set costs",
+      "provisionalNet": "Provisional profit",
+      "provisionalHint": "Provisional: it changes once every cost is in.",
+      "missingChip": "Missing",
+      "setProductCosts": "Add product costs"
     },
     "needsCall": "Needs a call",
     "emptyCalls": {
@@ -1264,7 +1269,7 @@
       "keep": "Keep both",
       "merge": "Merge into the earlier order",
       "mergeTitle": "Merge this order?",
-      "mergeBody": "This order will be cancelled in Mizan as a duplicate of <order></order> and tagged mizan-duplicate in your store. The earlier order goes on as it is.",
+      "mergeBody": "This order will be cancelled in Mizan as a duplicate of <order></order> and tagged <l>mizan-duplicate</l> in your store. The earlier order goes on as it is.",
       "kept": "Kept. It goes on to confirmation.",
       "merged": "Merged. This order is cancelled as a duplicate.",
       "wasKept": "Kept as a separate order, though it looked like a duplicate of <order></order>.",
@@ -1769,11 +1774,11 @@
       "body": "Customers confirm their order with one tap in the chat. From your WhatsApp Business account on Meta: the phone number ID, the account ID and a permanent token. The token is stored encrypted and never shown again.",
       "number": "Phone number ID: <n>{id}</n>",
       "checking": "Checking the token and that Meta approved the confirmation message…",
-      "phoneNumberId": "Phone number ID",
-      "phoneNumberIdHint": "Digits only, from the API setup page, not the phone number.",
-      "wabaId": "WhatsApp Business Account ID",
+      "phoneNumberId": "<l>Phone number ID</l>",
+      "phoneNumberIdHint": "Digits only, from the <l>API setup</l> page, not the phone number.",
+      "wabaId": "WhatsApp Business Account ID (<l>WABA ID</l>)",
       "token": "Permanent token",
-      "tokenHint": "A system-user token with whatsapp_business_messaging and whatsapp_business_management.",
+      "tokenHint": "A <l>System user</l> token with <l>whatsapp_business_messaging</l> and <l>whatsapp_business_management</l>.",
       "connect": "Connect WhatsApp",
       "replace": "Save the new details",
       "cancel": "Cancel",
@@ -1789,10 +1794,38 @@
       },
       "reason": {
         "token_refused": "Meta refused the token. Create a new one and enter it again.",
-        "token_lacks_permission": "The token lacks permissions on this account (whatsapp_business_messaging and whatsapp_business_management).",
+        "token_lacks_permission": "The token lacks permissions on this account (<l>whatsapp_business_messaging</l> and <l>whatsapp_business_management</l>).",
         "template_pending": "Meta is still reviewing the confirmation message. WhatsApp confirmation starts as soon as it's approved.",
-        "template_rejected": "Meta rejected the confirmation message. Submit it again with the wording in the setup guide.",
-        "template_missing": "The confirmation message in the store's language (mizan_order_confirm_ar or mizan_order_confirm_en) isn't in the account. Add it in WhatsApp Manager with the wording in the setup guide."
+        "template_rejected": "Meta rejected the confirmation message. Submit it again under “First confirmation message” below, or pick another one.",
+        "template_missing": "The confirmation message in the store's language isn't in the account. Send it to Meta under “First confirmation message” below."
+      },
+      "templates": {
+        "title": "First confirmation message",
+        "body": "The first message a customer gets must be approved by Meta first. Send it to Meta from here; the review usually takes from minutes to a day.",
+        "choice": "Arabic first message",
+        "choiceHint": "What Arabic-speaking customers get. If your choice isn't approved yet, an approved one goes out until it is.",
+        "follow": "Follow my wording style",
+        "variant": {
+          "ar_egyptian": "Egyptian Arabic",
+          "ar_formal": "Formal Arabic",
+          "ar_gulf": "Gulf Arabic",
+          "en": "English"
+        },
+        "status": {
+          "APPROVED": "Approved",
+          "PENDING": "In review",
+          "REJECTED": "Rejected",
+          "PAUSED": "Paused",
+          "DISABLED": "Paused",
+          "MISSING": "Not sent yet",
+          "UNKNOWN": "Unknown"
+        },
+        "inUse": "In use",
+        "submit": "Submit to Meta",
+        "submitted": "Sent to Meta. We'll show their answer here.",
+        "submitting": "Sent, waiting for Meta",
+        "already": "Already sent; waiting for Meta.",
+        "notConnected": "Connect a WhatsApp number first to send the messages to Meta."
       }
     },
     "routing": {
@@ -1887,7 +1920,8 @@
       "en": "English",
       "issues": "{count, plural, one {# problem} other {# problems}}",
       "noIssues": "All good",
-      "restore": "Restore the style's wording"
+      "restore": "Restore the style's wording",
+      "gulfHint": "Gulf wording is a starting point: read it and change any word to fit your buyers."
     },
     "packs": {
       "egyptian": "Egyptian",
@@ -2403,7 +2437,7 @@
       "body": "A platform's export or your own sheet: a header row with date and spend, plus platform (or choose one below); currency and campaign are optional. Each day and platform in the file replaces what was there.",
       "file": "Choose a file",
       "paste": "Or paste it",
-      "pasteHint": "date,platform,spend,currency",
+      "pasteHint": "<l>date,platform,spend,currency</l>",
       "platform": "Platform",
       "platformFromFile": "From the file",
       "run": "Import",
@@ -2471,7 +2505,8 @@
       "vsPrev": "vs the {days} days before",
       "per100": "Of every <hundred></hundred> in revenue, you kept <kept></kept>.",
       "noRevenue": "No delivered or paid orders in this period yet: revenue counts when the money is real.",
-      "expected": "If the orders on their way deliver: <money></money>."
+      "expected": "If the orders on their way deliver: <money></money>.",
+      "provisionalTitle": "Provisional profit · last {days} days"
     },
     "where": {
       "title": "Where every pound went",
@@ -2570,6 +2605,12 @@
       "all": "Full log",
       "loading": "Loading",
       "empty": "Nothing yet. Changes and alerts show here as they happen."
+    },
+    "provisional": {
+      "products": "{count, plural, one {# product misses a cost} other {# products miss a cost}}",
+      "orders": "{count, plural, one {# order misses a cost or a rate} other {# orders miss a cost or a rate}}",
+      "notDelivered": "Nothing delivered yet",
+      "hint": "Provisional: this changes once every cost is in and orders are delivered."
     }
   },
   "newOrder": {
@@ -2741,7 +2782,11 @@
     "pct": "{pct}%",
     "export": "Export CSV",
     "note": "Revenue counts when the money is real (cash on delivery once delivered). Expected profit adds orders on their way if they deliver. A product's share of an order: its own cost, and the rest by its share of the order's value. Rent and ad spend no order carried stay on the home.",
-    "adsLink": "Ads: true ROAS"
+    "adsLink": "Ads: true ROAS",
+    "missing": "Missing",
+    "missingHint": "{count, plural, one {# order here misses a cost} other {# orders here miss a cost}}: no margin until it is in.",
+    "provisional": "Provisional profit: {count, plural, one {# order misses a cost} other {# orders miss a cost}}.",
+    "fixCosts": "Add the costs"
   },
   "callQueue": {
     "title": "Confirmation calls",
@@ -2865,7 +2910,7 @@
       "body": "Download the list, fill the cost column (and barcodes if you like), then import it here. Shopify's product export works too. Empty cells are left as they are.",
       "file": "Choose a file",
       "paste": "Or paste it",
-      "pasteHint": "SKU,Cost,Barcode",
+      "pasteHint": "<l>SKU,Cost,Barcode</l>",
       "run": "Import",
       "close": "Close",
       "failed": "Couldn't import the file. Try again.",
@@ -3034,12 +3079,12 @@
       "title": "Pictures",
       "add": "Add pictures",
       "choose": "Choose pictures",
-      "hint": "JPEG, PNG or WebP, up to 10 MB, at least 200 × 200. The first one is the main picture. Location and camera data are removed.",
+      "hint": "<l>JPEG</l>, <l>PNG</l> or <l>WebP</l>, up to 10 MB, at least 200 × 200. The first one is the main picture. Location and camera data are removed.",
       "none": "No pictures yet.",
       "main": "Main",
       "remove": "Remove picture",
       "errors": {
-        "picture_type": "Only JPEG, PNG or WebP pictures.",
+        "picture_type": "Only <l>JPEG</l>, <l>PNG</l> or <l>WebP</l> pictures.",
         "picture_too_small": "The picture is too small: at least 200 × 200 pixels.",
         "picture_too_large": "The picture is larger than 10 MB.",
         "payload_too_large": "The picture is larger than 10 MB.",
@@ -3326,7 +3371,9 @@
       "woocommerce": "WooCommerce",
       "bosta": "Bosta",
       "whatsapp_cloud": "WhatsApp",
-      "other": "A connection"
+      "other": "A connection",
+      "manual": "Courier recorded by hand",
+      "paymob": "Paymob"
     },
     "after": {
       "confirmed": "Order {n} was confirmed",
@@ -3352,7 +3399,8 @@
         "order_moved": "the order changed meanwhile",
         "other": "something stopped it"
       }
-    }
+    },
+    "templateFallback": "Your first message ({chosen}) isn't approved by Meta yet, so we sent {used} instead."
   },
   "tickets": {
     "title": "Tickets",
@@ -3758,7 +3806,10 @@
         "M15": "Payments",
         "M2": "Confirmation"
       }
-    }
+    },
+    "provisional": "Provisional profit: {count, plural, =0 {nothing is delivered yet} one {# order misses a cost} other {# orders miss a cost}}{delivered, select, no {, and nothing is delivered yet} other {}}.",
+    "provisionalTile": "Provisional",
+    "fixCosts": "Add the costs"
   },
   "shipping": {
     "title": "Shipping",
@@ -3899,7 +3950,7 @@
         "columns": "missing cells",
         "tracking": "not a tracking number",
         "status": "status not understood",
-        "date": "date not understood (YYYY-MM-DD) or in the future",
+        "date": "date not understood (<l>YYYY-MM-DD</l>) or in the future",
         "duplicate": "the same tracking number twice",
         "too_many": "too many rows (5,000 at most)",
         "empty": "no rows",
@@ -4048,11 +4099,11 @@
     },
     "tagReturned": {
       "label": "Tag returned orders",
-      "hint": "Adds the tag mizan-returned when the parcel is back."
+      "hint": "Adds the tag <l>mizan-returned</l> when the parcel is back."
     },
     "tagLost": {
       "label": "Tag lost orders",
-      "hint": "Adds the tag mizan-lost when the courier loses the parcel."
+      "hint": "Adds the tag <l>mizan-lost</l> when the courier loses the parcel."
     },
     "notAllowed": {
       "title": "Not available for your role",
@@ -4076,7 +4127,7 @@
       "phone": "Phone",
       "email": "Email"
     },
-    "phoneHint": "Egyptian, Saudi or Emirati mobile: 010…, +966…, +971…",
+    "phoneHint": "Egyptian, Saudi or Emirati mobile: <n>010…</n>, <n>+966…</n>, <n>+971…</n>",
     "role": "Role",
     "invite": "Send invitation",
     "invited": "Invitation created. Share its link with them.",
@@ -4144,7 +4195,10 @@
       "bosta": "Bosta",
       "meta_whatsapp": "WhatsApp",
       "whatsapp": "WhatsApp",
-      "woocommerce": "WooCommerce"
+      "woocommerce": "WooCommerce",
+      "whatsapp_cloud": "WhatsApp",
+      "manual": "Courier recorded by hand",
+      "paymob": "Paymob"
     },
     "status": {
       "active": "Connected",
@@ -4181,14 +4235,14 @@
       "title": "Connect WooCommerce",
       "body": "Mizan reads your orders with REST API keys and sets up the store's webhooks itself.",
       "steps": {
-        "one": "In WordPress, open WooCommerce → Settings → Advanced → REST API, and choose Add key.",
-        "two": "Give it a name (Mizan), pick your user, set Permissions to Read/Write, then Generate API key.",
+        "one": "In WordPress, open <l>WooCommerce › Settings › Advanced › REST API</l>, and choose <l>Add key</l>.",
+        "two": "Give it a name (<l>Mizan</l>), pick your user, set Permissions to <l>Read/Write</l>, then <l>Generate API key</l>.",
         "three": "Copy the consumer key and secret here. WooCommerce shows the secret once."
       },
       "site": "Store address",
       "sitePlaceholder": "https://shop.example.com",
-      "key": "Consumer key",
-      "secret": "Consumer secret",
+      "key": "<l>Consumer key</l>",
+      "secret": "<l>Consumer secret</l>",
       "secretHint": "Stored encrypted; never shown again.",
       "keyInvalid": "A consumer key starts with ck_",
       "secretInvalid": "A consumer secret starts with cs_",
@@ -4300,7 +4354,40 @@
       "shipment": "Shipping",
       "store": "Store and plan",
       "support": "Mizan support access",
-      "user": "Sign-in"
+      "user": "Sign-in",
+      "ad_spend": "Ad spend",
+      "automation": "Automations",
+      "catalog": "Products",
+      "confirmation": "Confirmation",
+      "cost_rule": "Costs",
+      "dispute": "Disputes",
+      "exchange": "Exchanges",
+      "export": "Exports",
+      "feedback": "Feedback",
+      "fx": "Exchange rates",
+      "integration": "Integrations",
+      "notify": "Team notifications",
+      "offer": "Offers",
+      "offer_rule": "Offers",
+      "offers": "Offers",
+      "onboarding": "Store setup",
+      "ops": "Warehouse app",
+      "orders": "Orders",
+      "payments": "Payments",
+      "picklist": "Pick lists",
+      "plan": "Plan",
+      "po": "Purchase orders",
+      "privacy": "Privacy",
+      "purchasing": "Purchasing",
+      "refunds": "Refunds",
+      "return": "Returns",
+      "secret": "Keys",
+      "staff": "Mizan staff",
+      "stock": "Stock",
+      "supplier": "Suppliers",
+      "tenant": "Store",
+      "ticket": "Tickets",
+      "whatsapp": "WhatsApp"
     },
     "col": {
       "when": "When",
@@ -4316,6 +4403,11 @@
       "automation": "Automation"
     },
     "actions": {
+      "whatsapp": {
+        "connect": "Connected WhatsApp",
+        "template_submitted": "Sent the confirmation message to Meta",
+        "template_fallback": "Sent an approved confirmation message instead of the chosen one"
+      },
       "member": {
         "invited": "Invited someone",
         "invitation_revoked": "Revoked an invitation",
@@ -4363,7 +4455,43 @@
         "created": "Created the store",
         "updated": "Changed the store",
         "settings_updated": "Changed store settings"
-      }
+      },
+      "order": {
+        "edited": "Order edited",
+        "created_manually": "Order added by hand",
+        "refusal_recorded": "Refusal at the door recorded",
+        "partial_delivery_recorded": "Partial delivery recorded"
+      },
+      "shipment": {
+        "requested": "Shipment booked with the courier",
+        "recorded": "Shipment recorded by hand",
+        "statuses_imported": "Courier statuses imported"
+      },
+      "payment": {
+        "recorded": "Payment recorded"
+      },
+      "po": {
+        "created": "Purchase order created",
+        "received": "Purchase order received"
+      },
+      "stock": {
+        "recorded": "Stock count recorded"
+      },
+      "ticket": {
+        "created": "Ticket opened"
+      },
+      "catalog": {
+        "product_updated": "Product updated",
+        "costs_updated": "Product costs updated"
+      },
+      "automation": {
+        "created": "Automation created"
+      },
+      "return": {
+        "inspected": "Return inspected"
+      },
+      "inFamily": "A change in {family}",
+      "other": "A change in the store"
     },
     "empty": {
       "title": "Nothing yet",
@@ -4720,7 +4848,7 @@
     "methodsTitle": "Where customers pay",
     "methodsHint": "Only what you fill in is offered. These are the store's details, shown to the customer.",
     "hints": {
-      "instapay": "Your InstaPay address, e.g. store@instapay",
+      "instapay": "Your InstaPay address, e.g. <l>store@instapay</l>",
       "wallet": "The wallet number",
       "bank_transfer": "Bank, account name and IBAN",
       "link": "A payment page you already have (https://…)"
@@ -5037,9 +5165,9 @@
     },
     "empty": {
       "title": "No campaigns in these days",
-      "campaign": "Import your ad spend with a campaign column, and tag your ad links with utm_campaign (or utm_id). Each campaign's results show here.",
-      "adset": "Import ad spend with an ad set column (TikTok: ad group), and tag your ad links with utm_term.",
-      "ad": "Import ad spend with an ad column, and tag your ad links with utm_content."
+      "campaign": "Import your ad spend with a campaign column, and tag your ad links with <l>utm_campaign</l> (or <l>utm_id</l>). Each campaign's results show here.",
+      "adset": "Import ad spend with an ad set column (TikTok: ad group), and tag your ad links with <l>utm_term</l>.",
+      "ad": "Import ad spend with an ad column, and tag your ad links with <l>utm_content</l>."
     },
     "fxMissing": "Some spend is in a currency without an exchange rate for its day, so it's left out. Add the rate in Settings → Costs.",
     "truncated": "Showing the 200 biggest rows.",
@@ -5200,7 +5328,7 @@
       "draft": "These documents are drafts under legal review and not in force yet.",
       "notAccepted": "Not accepted yet",
       "accepted": "Version <n>{version}</n>, accepted <n>{date}</n>",
-      "acceptedBy": "Version <n>{version}</n>, accepted <n>{date}</n> by <n>{name}</n>",
+      "acceptedBy": "Version <n>{version}</n>, accepted <n>{date}</n> by <who>{name}</who>",
       "privacy": "Privacy policy (a notice, nothing to accept)",
       "loading": "Loading…"
     }
@@ -5637,5 +5765,8 @@
       "conversion_offered": "Payment link sent",
       "conversion_paid": "Paid by link"
     }
+  },
+  "providerNames": {
+    "store_courier": "The store's own courier"
   }
 }

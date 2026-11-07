@@ -1,5 +1,5 @@
 {
-  "$schema": "Partner logos (docs/16 §5.9). Edit this file, then `npm run import:partners -w @mizan/design-system -- <simple-icons package dir>` and `npm run build`. guideCheckedAt is the date someone read the brand's guide for allowedVariants, minPx and clearSpace; an entry still null is unconfirmed [CONFIRM before production]. An entry without guideUrl, allowedVariants or minPx renders as a monogram.",
+  "$schema": "Partner logos (docs/16 §5.9). Edit this file, then `npm run import:partners -w @mizan/design-system -- <simple-icons package dir>` and `npm run build`. guideCheckedAt is the date someone read the brand's guide for allowedVariants, minPx and clearSpace; an entry still null is unconfirmed [CONFIRM before production]. An entry without guideUrl, allowedVariants, minPx or guideCheckedAt renders as a monogram, so no mark ships before its guide is read. monogramText keeps monograms distinct within a kind. permission: \"not-required\", \"granted:<date>\" (the brand's written OK) or \"required\" (the guide asks for written permission that Mizan does not have yet); only not-required or granted draws a mark, and an entry without it renders as a monogram.",
   "simpleIcons": "16.35.0",
   "partners": [
     {
@@ -14,7 +14,6 @@
       "license": "CC0-1.0 (Simple Icons path data); the mark is a trademark of its owner",
       "retrievedAt": "2026-11-06",
       "allowedVariants": [
-        "color",
         "black",
         "white"
       ],
@@ -23,8 +22,10 @@
       "hasDark": true,
       "nominativeOnly": true,
       "monogram": false,
+      "monogramText": "Sh",
       "guideCheckedAt": "2026-11-06",
-      "note": "Guide (read 2026-11-06): bag in full-colour green, monotone black or white; not below 80px wide digital; clear space ½ S; use must be authorized in writing [CONFIRM the written OK before production]."
+      "permission": "required",
+      "note": "Guide (read 2026-11-06): bag in full-colour green, monotone black or white; not below 80px wide digital; clear space ½ S; use must be authorized in writing, so permission is \"required\" and the bag stays a monogram until Shopify's written OK arrives (then \"granted:<date>\"). Colour: Shopify's full-colour bag is two greens with a white S, which simple-icons' one-path glyph is not; only the monotone files ship until the press-kit SVG is imported with source 'press-kit'."
     },
     {
       "slug": "woocommerce",
@@ -47,7 +48,9 @@
       "hasDark": true,
       "nominativeOnly": true,
       "monogram": false,
+      "monogramText": "Wo",
       "guideCheckedAt": "2026-11-06",
+      "permission": "not-required",
       "note": "Woo rebrand: simple-icons 'woocommerce' is the old mark, 'woo' the current one. Guide (read 2026-11-06): full colour, monochrome white, monochrome black; no minimum size or clear space given (16px and ¼ assumed) [CONFIRM with trademarks@automattic.com]."
     },
     {
@@ -71,8 +74,10 @@
       "hasDark": true,
       "nominativeOnly": true,
       "monogram": false,
+      "monogramText": "WP",
       "guideCheckedAt": null,
-      "note": "Variants from the WordPress logo page as listed by simple-icons [CONFIRM]."
+      "permission": "required",
+      "note": "Variants from the WordPress logo page as listed by simple-icons [CONFIRM]. Permission unknown until the guide is read: \"required\"."
     },
     {
       "slug": "salla",
@@ -91,6 +96,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Sa",
       "guideCheckedAt": null,
       "note": "In simple-icons, but in the press-kit list (docs/16 §5.9): monogram until Salla's guide is checked."
     },
@@ -287,6 +293,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Ar",
       "guideCheckedAt": null,
       "note": "Not in simple-icons 16.35.0."
     },
@@ -305,6 +312,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "SM",
       "guideCheckedAt": null
     },
     {
@@ -322,6 +330,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "SP",
       "guideCheckedAt": null
     },
     {
@@ -339,6 +348,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Ay",
       "guideCheckedAt": null
     },
     {
@@ -420,6 +430,44 @@
       "note": "Two-colour shield; needs the official file."
     },
     {
+      "slug": "manual",
+      "kind": "courier",
+      "nameEn": "Manual",
+      "nameAr": "يدوي",
+      "source": "monogram",
+      "guideUrl": null,
+      "license": null,
+      "retrievedAt": null,
+      "allowedVariants": [],
+      "minPx": 16,
+      "clearSpace": 0.25,
+      "hasDark": false,
+      "nominativeOnly": true,
+      "monogram": true,
+      "monogramText": "Ma",
+      "guideCheckedAt": null,
+      "note": "Not a brand: a courier without an API, recorded by hand (E7-6). Neutral monogram, distinct from Mylerz's M."
+    },
+    {
+      "slug": "other",
+      "kind": "courier",
+      "nameEn": "Other courier",
+      "nameAr": "شركة تانية",
+      "source": "monogram",
+      "guideUrl": null,
+      "license": null,
+      "retrievedAt": null,
+      "allowedVariants": [],
+      "minPx": 16,
+      "clearSpace": 0.25,
+      "hasDark": false,
+      "nominativeOnly": true,
+      "monogram": true,
+      "monogramText": "…",
+      "guideCheckedAt": null,
+      "note": "Not a brand: any courier Mizan does not list (Settings → Costs). Neutral monogram."
+    },
+    {
       "slug": "paymob",
       "kind": "payment",
       "nameEn": "Paymob",
@@ -434,6 +482,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Pm",
       "guideCheckedAt": null
     },
     {
@@ -488,6 +537,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Ge",
       "guideCheckedAt": null
     },
     {
@@ -505,6 +555,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Mo",
       "guideCheckedAt": null
     },
     {
@@ -522,6 +573,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Tp",
       "guideCheckedAt": null
     },
     {
@@ -556,6 +608,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "vU",
       "guideCheckedAt": null
     },
     {
@@ -573,6 +626,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Tb",
       "guideCheckedAt": null,
       "note": "Use Tabby's merchant badge files as-is once approved."
     },
@@ -591,6 +645,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Tm",
       "guideCheckedAt": null,
       "note": "Use Tamara's merchant badge files as-is once approved."
     },
@@ -659,17 +714,15 @@
       "guideUrl": "https://stripe.com/newsroom/brand-assets",
       "license": "CC0-1.0 (Simple Icons path data); the mark is a trademark of its owner",
       "retrievedAt": "2026-11-06",
-      "allowedVariants": [
-        "color",
-        "white"
-      ],
+      "allowedVariants": [],
       "minPx": 16,
       "clearSpace": 0.25,
-      "hasDark": true,
+      "hasDark": false,
       "nominativeOnly": true,
-      "monogram": false,
-      "guideCheckedAt": "2026-11-06",
-      "note": "Guide (read 2026-11-06): slate or blurple on light, white on dark, no other colour (so no black); no minimum size given."
+      "monogram": true,
+      "monogramText": "St",
+      "guideCheckedAt": null,
+      "note": "The guide (stripe.com/newsroom/brand-assets) gives the Stripe wordmark in slate, blurple or white, and a checkout badge; it offers no standalone S, so simple-icons' S glyph is not an official mark. Monogram until Stripe's own wordmark files are imported with source 'press-kit' after reading the Marks Usage Agreement (stripe.com/marks/legal); the guide states no minimum size [CONFIRM]."
     },
     {
       "slug": "paypal",
@@ -688,6 +741,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "PP",
       "guideCheckedAt": null,
       "note": "Two-tone monogram; needs the official file."
     },
@@ -708,6 +762,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Vi",
       "guideCheckedAt": null,
       "note": "In simple-icons; no official guide link confirmed yet."
     },
@@ -728,6 +783,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "MC",
       "guideCheckedAt": null,
       "note": "Interlocking circles in colour; the one-colour path is not an allowed variant."
     },
@@ -768,6 +824,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "GP",
       "guideCheckedAt": null,
       "note": "Multicolour mark; needs the official file."
     },
@@ -812,6 +869,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "Me",
       "guideCheckedAt": null,
       "note": "Meta's brand centre (as for WhatsApp) asks for its own files: press-kit file needed."
     },
@@ -932,6 +990,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "GA",
       "guideCheckedAt": null,
       "note": "Multicolour mark; needs the official file."
     },
@@ -950,6 +1009,7 @@
       "hasDark": false,
       "nominativeOnly": true,
       "monogram": true,
+      "monogramText": "MS",
       "guideCheckedAt": null,
       "note": "Not in simple-icons 16.35.0 (removed at the brand's request)."
     },
@@ -974,7 +1034,8 @@
       "nominativeOnly": true,
       "monogram": false,
       "guideCheckedAt": null,
-      "note": "Guide page refused automated reading (403): variants from the simple-icons listing [CONFIRM]."
+      "permission": "required",
+      "note": "Guide page refused automated reading (403): variants from the simple-icons listing [CONFIRM]. Permission unknown until the guide is read: \"required\"."
     },
     {
       "slug": "zatca",

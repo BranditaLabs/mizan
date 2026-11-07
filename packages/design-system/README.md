@@ -34,7 +34,7 @@ npm run build -w @mizan/design-system  # regenerate dist/, icons and the referen
 - **Red is a scalpel.** It marks the logo's red point, the active navigation indicator, the one number that matters, and errors. **Primary actions are ink, never red.** A screen with red in four places has three too many.
 - **Flat.** No shadows on cards, buttons or shapes. Only floating layers (menus, dialogs, toasts) use `--mz-shadow-overlay`.
 - **Type:** Geist (Latin UI and display; 800/900 for the Brandita display voice, `mz-text-display-hero`), Geist Mono (IDs, tracking numbers, SKUs), Alexandria (Arabic display and the Arabic wordmark), IBM Plex Sans Arabic (Arabic body). All open-source (OFL).
-- **Motion:** Brandita's site: `--mz-ease` (enter), `--mz-ease-spring`, `--mz-ease-sheet` (expand), durations up to `glide` 600ms and `reveal` 900ms. Under reduced motion every duration drops to ≤120ms and every distance to 0. Press is `scale(var(--mz-press-scale))` (0.98).
+- **Motion:** Brandita's site: `--mz-ease` (enter), `--mz-ease-spring`, `--mz-ease-sheet` (expand), durations up to `glide` 600ms and `reveal` 900ms. Under reduced motion every duration drops to ≤120ms and every distance and stagger delay to 0 (CSS overrides; Dart `reduced*` constants, e.g. `reducedDistanceRise`, `reducedStaggerList`). Press is `scale(var(--mz-press-scale))` (0.98).
 - **Logo:** type only. *mizan* in Geist Bold, *ميزان* in Alexandria Bold, outlined to paths. The dot of the **i** and the dot of the **ن** are red. Never set it in live type, recolour it, outline it, rotate it, add effects, or move the red point.
 
 ## Use in the Next.js web app (`apps/web`)
@@ -117,7 +117,7 @@ import { PartnerLogo } from "@mizan/design-system/partners/react"; // in apps/we
 <PartnerLogo slug="bosta" size={32} />                       // no usable mark yet: a monogram tile
 ```
 
-Marks are copied, never drawn: simple-icons paths at the version pinned in `partners.json`, or a partner's press-kit file. An entry ships a mark only with `guideUrl`, `allowedVariants` and `minPx`; a size under the guide's minimum falls back to the monogram. To refresh: `npm pack simple-icons@<version>` in a scratch folder, `npm run import:partners -w @mizan/design-system -- <folder>/package`, `npm run check:partners -w @mizan/design-system` (network, or pass the folder), then build.
+Marks are copied, never drawn: simple-icons paths at the version pinned in `partners.json`, or a partner's press-kit file. An entry ships a mark only with `guideUrl`, `guideCheckedAt` (the date someone read the guide), `permission` (`"not-required"` or `"granted:<date>"`; `"required"` while a guide's written OK is pending, as for Shopify), `allowedVariants` and `minPx`; a size under the guide's minimum falls back to the monogram (`partnerMarkMinSize(slug)` gives the smallest size that draws the mark). Monograms are distinct within a kind (`monogramText`: Tp/Tb/Tm, Pm/PP …). To refresh: `npm pack simple-icons@<version>` in a scratch folder, `npm run import:partners -w @mizan/design-system -- <folder>/package`, `npm run check:partners -w @mizan/design-system` (network, or pass the folder), then build.
 
 ## Changing the system
 

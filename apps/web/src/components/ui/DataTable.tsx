@@ -2,7 +2,7 @@
 
 import { Icon } from "@mizan/design-system/icons/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Bdi } from "../Bdi";
 import { Button } from "./Button";
 import { CheckboxOnly } from "./Choice";
@@ -62,6 +62,19 @@ export function DataTable<T>({ label, columns, rows, rowKey, rowLabel, selectabl
     setSelected(next);
   };
   const clear = () => setSelected(new Set());
+  // PG-6: a table that fits its width lets its header stick to the page (globals.css, data-fits).
+  const wrap = useRef<HTMLDivElement>(null);
+  const [fits, setFits] = useState(false);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const check = () => setFits((el.firstElementChild?.scrollWidth ?? 0) <= el.clientWidth + 1);
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    check();
+    return () => ro.disconnect();
+  }, []);
   const nextSort = (id: string) =>
     setSort((s) => (s?.id !== id ? { id, dir: "asc" } : s.dir === "asc" ? { id, dir: "desc" } : null));
 
@@ -76,7 +89,7 @@ export function DataTable<T>({ label, columns, rows, rowKey, rowLabel, selectabl
         </div>
       ) : null}
       {/* No height cap: a table inside the page scroll made two scrollbars (and trapped the wheel on phones). */}
-      <div className="mz-table-wrap">
+      <div ref={wrap} className="mz-table-wrap" data-fits={fits ? "" : undefined}>
         <table className="mz-table">
           <caption className="sr-only">{label}</caption>
           <thead>

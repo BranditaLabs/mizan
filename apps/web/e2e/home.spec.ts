@@ -19,6 +19,7 @@ const MONTH = {
     orders: 1284, revenue: egp("1420000.00"), net: egp("238700.00"), expectedNet: egp("291000.00"), fixedCosts: egp("24000.00"), unallocatedAds: egp("2300.00"),
     kept: egp("212400.00"), expectedKept: egp("264700.00"), margin: "15.0", keptPer100: egp("14.96"), previousKept: egp("196300.00"), change: "8.2",
     delivered: 1003, returned: 162, deliveryRate: "86.1", refusalLoss: egp("61000.00"), adSpend: egp("298200.00"),
+    quality: { costsComplete: true, delivered: true, provisional: false, ordersMissingCosts: 0, productsMissingCost: 0 },
     breakdown: {
       revenue: egp("1420000.00"), productCost: egp("582200.00"), shippingAndCod: egp("170400.00"), ads: egp("298200.00"), returns: egp("61000.00"),
       team: egp("32700.00"), fees: egp("39100.00"), fixed: egp("24000.00"), kept: egp("212400.00"),
@@ -62,10 +63,39 @@ for (const [locale, theme] of [["ar", "light"], ["en", "dark"]] as const) {
       await expect(home.getByTestId("kept")).toContainText("من كل");
       await expect(home.getByTestId("leaks")).toContainText("162 أوردر اترفضوا");
       await home.getByTestId("leaks").getByRole("link").nth(3).click();
-      await expect(page).toHaveURL(/\/ar\/onboarding$/);
+      await expect(page).toHaveURL(/\/ar\/products\?view=missing_cost$/);
     } else {
       await expect(home.getByTestId("kept")).toContainText("Of every");
       await expect(home.getByTestId("expected")).toContainText("264,700");
     }
   });
 }
+
+/** FX-2: costs missing (or nothing delivered) make the hero "provisional", never a final figure or a 100% share. */
+test("missing costs: provisional profit with a chip to the products without a cost", async ({ page }) => {
+  const owner = await ownerWithStore("Profit Home provisional");
+  const kept = egp("43518.54");
+  const NO_COSTS = {
+    ...MONTH,
+    period: {
+      ...MONTH.period, kept, expectedKept: kept, margin: null, keptPer100: egp("100.00"), delivered: 0, returned: 0, deliveryRate: null,
+      quality: { costsComplete: false, delivered: false, provisional: true, ordersMissingCosts: 40, productsMissingCost: 12 },
+      breakdown: { revenue: kept, productCost: egp("0.00"), shippingAndCod: egp("0.00"), ads: egp("0.00"), returns: egp("0.00"), team: egp("0.00"), fees: egp("0.00"), fixed: egp("0.00"), kept },
+    },
+  };
+  await page.route("**/v1/profit/home**", (route) => route.fulfill({ json: NO_COSTS }));
+  await page.goto("/ar/sign-in");
+  await signInOwner(page, owner, "ar");
+  const hero = page.getByTestId("kept");
+  await expect(hero).toContainText("ربح مبدئي");
+  await expect(hero).not.toContainText("اللي فضل معاك");
+  await expect(page.getByTestId("kept-figure")).toHaveAttribute("data-provisional", "");
+  await expect(page.getByTestId("kept-figure")).toContainText("~");
+  await expect(page.getByTestId("breakdown")).not.toContainText("100.0");
+  await expect(hero).not.toContainText("من كل");
+  const chips = page.getByTestId("provisional-chips");
+  await expect(chips).toContainText("ناقص تكلفة 12 منتج");
+  await expect(chips).toContainText("لسه مفيش أوردر اتسلّم");
+  await chips.getByRole("link").click();
+  await expect(page).toHaveURL(/\/ar\/products\?view=missing_cost$/);
+});

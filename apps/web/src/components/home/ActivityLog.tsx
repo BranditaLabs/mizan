@@ -9,6 +9,7 @@ import { PageState } from "@/components/ui/QueryState";
 import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
+import { auditActionLabel, auditActorLabel } from "@/lib/audit";
 import { useSession } from "@/lib/session";
 
 const AUDIT = rolesWith("audit.read");
@@ -45,14 +46,9 @@ export function ActivityLog() {
     enabled: Boolean(store) && !audit, refetchInterval: REFRESH_MS, meta: { toast: false },
   });
 
-  const action = (a: string) => {
-    const [family = "", ...rest] = a.split(".");
-    const key = `actions.${family}.${rest.join("_")}`;
-    if (ta.has(key as "title")) return ta(key as "title");
-    return ta.has(`families.${family}` as "title") ? ta(`families.${family}` as "title") : a;
-  };
-  const actor = (a: { type: string; displayName: string | null }) =>
-    a.type === "mizan_staff" ? ta("actor.mizan") : a.type === "user" ? (a.displayName ?? ta("actor.someone")) : ta.has(`actor.${a.type}` as "title") ? ta(`actor.${a.type}` as "title") : a.type;
+  // One key shape with Settings → Audit log and a generic fallback: never a raw action code.
+  const action = (a: string) => auditActionLabel(ta, a);
+  const actor = (a: { type: string; displayName: string | null }) => auditActorLabel(ta, a);
 
   const rows = audit
     ? (log.data?.data ?? []).map((e) => ({ id: e.id, at: e.createdAt, icon: ICON[e.action.split(".")[0] ?? ""] ?? "note", title: action(e.action), who: actor(e.actor) }))
@@ -81,7 +77,7 @@ export function ActivityLog() {
                 <div className="min-w-0 flex-1 text-body-sm">
                   <p className="font-medium text-text">{r.title}</p>
                   <p className="text-caption text-text-3">
-                    {r.who ? <><bdi>{r.who}</bdi>{" · "}</> : null}
+                    {r.who ? <><bdi dir="auto">{r.who}</bdi>{" · "}</> : null}
                     <DateText value={r.at} relative />
                   </p>
                 </div>

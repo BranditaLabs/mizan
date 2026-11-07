@@ -308,10 +308,17 @@
 .mz-partner-monogram { box-sizing: border-box; border-radius: var(--mz-radius-md); background: var(--mz-surface); box-shadow: inset 0 0 0 1px var(--mz-line);
   color: var(--mz-text-2); font-family: var(--mz-font-display); font-weight: var(--mz-weight-semibold); line-height: 1; letter-spacing: 0; direction: ltr; unicode-bidi: isolate; }
 .mz-partner-text { font-weight: var(--mz-weight-medium); color: var(--mz-text-2); }
-.mz-partner [data-scheme="dark"] { display: none; }
-[data-theme="dark"] .mz-partner [data-scheme="light"] { display: none; }
-[data-theme="dark"] .mz-partner [data-scheme="dark"] { display: inline-flex; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .mz-partner [data-scheme="light"] { display: none; }
-  :root:not([data-theme="light"]) .mz-partner [data-scheme="dark"] { display: inline-flex; }
+/* Which one-colour face shows is --mz-partner-face-*, set with each theme scope in tokens.css, so the
+   nearest data-theme wins: a light island (a pick list, a label, dispute evidence) inside a dark page
+   shows the light file, and a dark island inside a light page the dark one. */
+.mz-partner [data-scheme="light"] { display: var(--mz-partner-face-light, inline-flex); }
+.mz-partner [data-scheme="dark"] { display: var(--mz-partner-face-dark, none); }
+/* Mono at rest, the colour mark on its tile on hover and focus (owner decision D8): a swap of faces,
+   no motion on the mark; off under reduced motion. The host (a link, button or row) can carry it too. */
+.mz-partner [data-scheme="hover"] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .mz-partner:is(:hover, :focus-within) > [data-scheme="hover"],
+  :is(a, button, [role="button"], [role="option"], [role="row"], label):is(:hover, :focus-visible) .mz-partner > [data-scheme="hover"] { display: inline-flex; }
+  .mz-partner[data-hover]:is(:hover, :focus-within) > .mz-partner-face:not([data-scheme="hover"]),
+  :is(a, button, [role="button"], [role="option"], [role="row"], label):is(:hover, :focus-visible) .mz-partner[data-hover] > .mz-partner-face:not([data-scheme="hover"]) { display: none; }
 }

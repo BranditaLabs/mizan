@@ -40,7 +40,7 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
 export function AuthSplit({ theme, children }: { theme: Theme; children: ReactNode }) {
   const t = useTranslations("auth");
   return (
-    <GlassRoot theme={theme} className="min-h-dvh">
+    <GlassRoot className="min-h-dvh">
       <div className="flex min-h-dvh flex-wrap gap-4 p-[clamp(8px,2vh,16px)]">
         <div className="flex min-w-0 flex-[1_1_440px] flex-col px-2 py-[clamp(8px,2.2vh,20px)] sm:px-[clamp(8px,4vw,56px)]">
           <header className="flex items-center justify-between gap-3">

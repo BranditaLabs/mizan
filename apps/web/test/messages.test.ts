@@ -44,6 +44,21 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
       expect(/[؀-ۿ]/.test(v), `${k}: ${v}`).toBe(true);
     }
   });
+
+  it("Arabic copy keeps every Latin word inside <l> or <n> (rendered in <bdi>), brand names in Arabic (docs/16 §1.4, FX-1)", () => {
+    // Shown as is: the English name of English (in <bdi> on the switch) and input placeholders (attributes, not text).
+    const asIs = new Set(["shell.language.en", "auth.emailPlaceholder", "integrationsSettings.woo.sitePlaceholder"]);
+    const bare = (s: string) => s
+      .replace(/<(l|n)>.*?<\/\1>/g, "") // <n> is the <bdi> for numbers and ids
+      .replace(/<\/?\w+>/g, "")
+      .replace(/\{\s*\w+\s*,\s*(?:plural|select|selectordinal|number|date|time)\s*,/g, "{")
+      .replace(/(?:zero|one|two|few|many|other|=\d+)\s*\{/g, "{")
+      .replace(/\{\s*\w+\s*\}/g, "");
+    const found = Object.entries(A).filter(([k, v]) => !asIs.has(k) && /[A-Za-z]{4,}/.test(bare(v))).map(([k, v]) => `${k}: ${v}`);
+    expect(found).toEqual([]);
+    // English carries the same <l> tags (checked above), so both languages render the same element.
+    expect(bare("مثال: <l>SKU,Cost,Barcode</l>")).toBe("مثال: ");
+  });
 });
 
 describe("one name per role (U5 glossary)", () => {

@@ -217,6 +217,7 @@ export interface Connections {
   country: string | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  check_after: Timestamp | null;
 }
 
 export interface Conversations {
@@ -473,6 +474,18 @@ export interface Listings {
   stock_buffer: Generated<number>;
   last_error: string | null;
   synced_at: Timestamp | null;
+}
+
+export interface LiveTokens {
+  token_hash: Buffer;
+  tenant_id: string;
+  user_id: string;
+  role: string;
+  support_grant_id: string | null;
+  topics: ArrayType<string>;
+  expires_at: Timestamp;
+  used_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
 }
 
 export interface MediaObjects {
@@ -1482,6 +1495,7 @@ export interface WhatsappMessages {
   customer_hash: string | null;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
+  template: string | null;
 }
 
 export interface DB {
@@ -1517,6 +1531,7 @@ export interface DB {
   landed_costs: LandedCosts;
   legal_acceptances: LegalAcceptances;
   listings: Listings;
+  live_tokens: LiveTokens;
   media_objects: MediaObjects;
   memberships: Memberships;
   messages: Messages;

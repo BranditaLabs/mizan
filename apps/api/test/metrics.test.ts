@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { deliveredRate, metricByKey, METRICS, perUnitSigned, type MetricFacts } from "../src/modules/reports/metrics.js";
+import { COST_FLAGS, deliveredRate, metricByKey, METRICS, perUnitSigned, profitQuality, type MetricFacts } from "../src/modules/reports/metrics.js";
 import { isoWeekOf, isoWeekRange, isWeekParam, lastFullWeek } from "../src/modules/reports/week.js";
 import { percent } from "../src/modules/profit/home.js";
+import { provisionalLine } from "../src/modules/reports/dashboards.service.js";
+import { COST_FLAGS as SHARED_COST_FLAGS } from "@mizan/shared";
 
 /** E15-1: the metric layer's definitions, without the database. */
 const facts = (over: Partial<MetricFacts> = {}): MetricFacts => ({
   base: "EGP", days: 30, live: 200n, prepaid: 50n, cod: 150n, delivered: 120n, returned: 30n, net: 1_234_550n, netEnded: 1_234_550n, revenue: 9_000_000n, refunds: 500_000n, spend: 3_000_000n,
-  totalBase: 24_000_000n, ordersBase: 199n, available: 400n, unitsShipped: 600n, confirmed: 160n, confirmedAuto: 108n, ...over,
+  totalBase: 24_000_000n, ordersBase: 199n, available: 400n, unitsShipped: 600n, confirmed: 160n, confirmedAuto: 108n, ordersMissingCosts: 0n, productsMissingCost: 0n, ...over,
 });
 const value = (key: string, f = facts()) => metricByKey.get(key)!.compute(f);
 
@@ -109,5 +111,66 @@ describe("ISO weeks for the weekly export (L1-7)", () => {
     expect(lastFullWeek("2026-10-26")).toBe("2026-W43"); // a Monday
     expect(lastFullWeek("2026-10-25")).toBe("2026-W42"); // a Sunday: its own week is not over
     expect(lastFullWeek("2027-01-04")).toBe("2026-W53");
+  });
+});
+
+describe("profit honesty (FX-2)", () => {
+  it("final only with every cost in and something delivered", () => {
+    expect(profitQuality(facts())).toEqual({ costsComplete: true, delivered: true, provisional: false, ordersMissingCosts: 0, productsMissingCost: 0 });
+  });
+
+  it("missing costs make the period provisional and count what to fix", () => {
+    expect(profitQuality(facts({ ordersMissingCosts: 14n, productsMissingCost: 12n }))).toEqual({ costsComplete: false, delivered: true, provisional: true, ordersMissingCosts: 14, productsMissingCost: 12 });
+  });
+
+  it("nothing delivered is provisional even with every cost in (no 100% margin on a new store)", () => {
+    const q = profitQuality(facts({ delivered: 0n }));
+    expect(q.provisional).toBe(true);
+    expect(q.costsComplete).toBe(true);
+    expect(q.delivered).toBe(false);
+  });
+
+  it("only the profit metrics are marked; counts and ad spend never are", () => {
+    expect(METRICS.filter((m) => m.profit).map((m) => m.key).sort()).toEqual(["net_profit", "profit_per_completed_order"]);
+  });
+
+  it("missing inputs, not things on their way", () => {
+    expect(COST_FLAGS).toContain("cost_missing");
+    expect(COST_FLAGS).not.toContain("estimated" as never);
+    expect(COST_FLAGS).not.toContain("awaiting_settlement" as never);
+  });
+
+  it("one list for the API and the screens, with both exchange-rate flags", () => {
+    expect(COST_FLAGS).toBe(SHARED_COST_FLAGS);
+    expect(COST_FLAGS).toContain("fx_missing");
+    expect(COST_FLAGS).toContain("ads_fx_missing");
+  });
+});
+
+describe("the export's provisional line (FX-2): the screen's words", () => {
+  const q = (ordersMissingCosts: number, delivered: boolean) => ({ ordersMissingCosts, delivered, provisional: ordersMissingCosts > 0 || !delivered });
+
+  it("nothing when the profit is final", () => {
+    expect(provisionalLine(q(0, true), false)).toBeNull();
+    expect(provisionalLine(q(0, true), true)).toBeNull();
+  });
+
+  it("never \"0 orders miss a cost\": nothing delivered says only that", () => {
+    expect(provisionalLine(q(0, false), false)).toBe("Provisional profit: nothing is delivered yet.");
+    expect(provisionalLine(q(0, false), true)).toBe("ربح مبدئي: لسه مفيش أوردر اتسلّم.");
+  });
+
+  it("English one and other", () => {
+    expect(provisionalLine(q(1, true), false)).toBe("Provisional profit: 1 order misses a cost.");
+    expect(provisionalLine(q(3, true), false)).toBe("Provisional profit: 3 orders miss a cost.");
+    expect(provisionalLine(q(2, false), false)).toBe("Provisional profit: 2 orders miss a cost, and nothing is delivered yet.");
+  });
+
+  it("Arabic one, two, few and other", () => {
+    expect(provisionalLine(q(1, true), true)).toBe("ربح مبدئي: أوردر واحد ناقصه تكلفة.");
+    expect(provisionalLine(q(2, true), true)).toBe("ربح مبدئي: أوردرين ناقصهم تكلفة.");
+    expect(provisionalLine(q(5, true), true)).toBe("ربح مبدئي: 5 أوردرات ناقصها تكلفة.");
+    expect(provisionalLine(q(14, true), true)).toBe("ربح مبدئي: 14 أوردر ناقصه تكلفة.");
+    expect(provisionalLine(q(1, false), true)).toBe("ربح مبدئي: أوردر واحد ناقصه تكلفة، ولسه مفيش أوردر اتسلّم.");
   });
 });

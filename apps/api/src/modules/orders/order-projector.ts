@@ -5,7 +5,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { Transaction } from "kysely";
 import type { DB } from "@mizan/db";
 import { cashToCollect, type ShipBlockReason } from "@mizan/engine";
-import { normalizePhone, resolveOrderSource, toAsciiDigits, toMinor, type CanonicalOrder } from "@mizan/shared";
+import { normalizePhone, realCustomerName, resolveOrderSource, toAsciiDigits, toMinor, type CanonicalOrder } from "@mizan/shared";
 import { phoneCountryOf } from "../../platform/pii/phone-country.js";
 import { Database } from "../../platform/db/database.js";
 import { DuplicatesService } from "./duplicates.service.js";
@@ -426,7 +426,8 @@ export class OrderProjector {
       refunded_minor: minor(order.refunded),
       tags: order.tags,
       ship_name: pii.encrypt(a?.name ?? order.customer.name, "orders.ship_name"),
-      customer_label: pii.encrypt(customerLabel(a?.name ?? order.customer.name), "orders.customer_label"),
+      // The connectors' "Customer" placeholder is no name: the screens say so in the reader's language.
+      customer_label: pii.encrypt(customerLabel(realCustomerName(a?.name) ?? realCustomerName(order.customer.name)), "orders.customer_label"),
       phone_last4: lastFour(shipPhone),
       ship_phone: pii.encrypt(shipPhone, "orders.ship_phone"),
       ship_line1: pii.encrypt(a?.line1, "orders.ship_line1"),
@@ -443,7 +444,7 @@ export class OrderProjector {
       tenant_id: tenantId,
       phone_hash: phoneHash,
       phone_e164: pii.encrypt(e164, "customers.phone_e164"),
-      name: pii.encrypt(order.customer.name, "customers.name"),
+      name: pii.encrypt(realCustomerName(order.customer.name), "customers.name"),
       email: pii.encrypt(order.customer.email, "customers.email"),
     }).onConflict((oc) => oc.columns(["tenant_id", "phone_hash"]).doNothing()).returning("id").executeTakeFirst();
     if (inserted) return inserted.id;
@@ -451,7 +452,7 @@ export class OrderProjector {
     // Known by phone: a later order fills what the first one lacked (the email, a name), never wipes what is there.
     const fill = {
       ...(!row.email && order.customer.email ? { email: pii.encrypt(order.customer.email, "customers.email") } : {}),
-      ...(!row.name && order.customer.name ? { name: pii.encrypt(order.customer.name, "customers.name") } : {}),
+      ...(!row.name && realCustomerName(order.customer.name) ? { name: pii.encrypt(realCustomerName(order.customer.name), "customers.name") } : {}),
     };
     if (Object.keys(fill).length) await trx.updateTable("customers").set(fill).where("id", "=", row.id).where("redacted_at", "is", null).execute();
     return row.id;

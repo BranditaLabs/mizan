@@ -65,6 +65,14 @@
   --mz-duration-glide: 600ms;
   --mz-duration-reveal: 900ms;
   --mz-duration-drift: 24000ms;
+  --mz-duration-tip: 2600ms;
+  --mz-duration-merge: 380ms;
+  --mz-duration-settle: 720ms;
+  --mz-duration-fall: 620ms;
+  --mz-duration-ripple: 1400ms;
+  --mz-duration-roll: 700ms;
+  --mz-duration-route: 280ms;
+  --mz-duration-exit: 150ms;
   --mz-ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
   --mz-ease-expand: cubic-bezier(0.32, 0.72, 0, 1);
   --mz-ease-exit: cubic-bezier(0.4, 0, 1, 1);
@@ -72,6 +80,12 @@
   --mz-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --mz-ease-spring-soft: cubic-bezier(0.34, 1.7, 0.64, 1);
   --mz-ease-pour: cubic-bezier(0.22, 1, 0.36, 1);
+  --mz-ease-settle: cubic-bezier(.34,1.32,.5,1);
+  --mz-angle-tip: 18deg;
+  --mz-angle-tip-hold: 8deg;
+  --mz-red-ink: #E33232;
+  --mz-mono: var(--mz-font-mono);
+  --mz-sans: var(--mz-font-sans);
   --mz-ease: var(--mz-ease-enter);
   --mz-ease-sheet: var(--mz-ease-expand);
   --mz-press-scale: 0.98;
@@ -232,6 +246,10 @@
   --mz-viz-4: #1BAF7A;
   --mz-viz-5: #4A3AA7;
   --mz-viz-6: #E87BA4;
+  --mz-red: #DE0000;
+  --mz-tick: #FEF7FF;
+  --mz-partner-face-light: inline-flex;
+  --mz-partner-face-dark: none;
 }
 
 /* Dark theme: explicit */
@@ -329,6 +347,10 @@
   --mz-viz-4: #199E70;
   --mz-viz-5: #9085E9;
   --mz-viz-6: #D55181;
+  --mz-red: #E33232;
+  --mz-tick: #0B0B0B;
+  --mz-partner-face-light: none;
+  --mz-partner-face-dark: inline-flex;
 }
 
 /* Dark theme: follow the system unless the user chose light */
@@ -427,6 +449,10 @@
     --mz-viz-4: #199E70;
     --mz-viz-5: #9085E9;
     --mz-viz-6: #D55181;
+    --mz-red: #E33232;
+    --mz-tick: #0B0B0B;
+    --mz-partner-face-light: none;
+    --mz-partner-face-dark: inline-flex;
   }
 }
 
@@ -468,8 +494,8 @@
 .mz-text-nav-link { font-family: var(--mz-font-sans); font-size: 13.5px; line-height: 20px; font-weight: 600; letter-spacing: 0em; }
 :lang(ar) .mz-text-nav-link, .mz-text-nav-link:lang(ar) { letter-spacing: 0; line-height: 23px; }
 
-/* Arabic: never negative tracking; body copy in IBM Plex Sans Arabic */
-:lang(ar) { letter-spacing: 0; }
+/* Arabic: never negative tracking; body copy in IBM Plex Sans Arabic; brand components in Alexandria */
+:lang(ar) { letter-spacing: 0; --mz-sans: var(--mz-font-arabic-display); }
 
 /* Numbers, IDs and codes stay left-to-right inside Arabic text */
 .mz-ltr, bdi.mz-num { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
@@ -485,13 +511,53 @@
     --mz-duration-glide: 120ms;
     --mz-duration-reveal: 120ms;
     --mz-duration-drift: 0ms;
+    --mz-duration-tip: 0ms;
+    --mz-duration-merge: 120ms;
+    --mz-duration-settle: 120ms;
+    --mz-duration-fall: 0ms;
+    --mz-duration-ripple: 0ms;
+    --mz-duration-roll: 0ms;
+    --mz-duration-route: 120ms;
+    --mz-duration-exit: 80ms;
     --mz-distance-rise: 0px;
     --mz-distance-reveal: 0px;
     --mz-distance-row: 0px;
     --mz-distance-lean: 0px;
     --mz-stagger-list: 0ms;
     --mz-stagger-grid: 0ms;
+    --mz-ease-settle: linear;
+    --mz-angle-tip: 0deg;
+    --mz-angle-tip-hold: 8deg;
   }
+}
+
+/* A forced reduced store (the gallery's toggle, tests): the same tokens on that element and below */
+[data-mz-reduced="true"] {
+  --mz-duration-instant: 0ms;
+  --mz-duration-fast: 0ms;
+  --mz-duration-base: 80ms;
+  --mz-duration-slow: 120ms;
+  --mz-duration-moderate: 120ms;
+  --mz-duration-glide: 120ms;
+  --mz-duration-reveal: 120ms;
+  --mz-duration-drift: 0ms;
+  --mz-duration-tip: 0ms;
+  --mz-duration-merge: 120ms;
+  --mz-duration-settle: 120ms;
+  --mz-duration-fall: 0ms;
+  --mz-duration-ripple: 0ms;
+  --mz-duration-roll: 0ms;
+  --mz-duration-route: 120ms;
+  --mz-duration-exit: 80ms;
+  --mz-distance-rise: 0px;
+  --mz-distance-reveal: 0px;
+  --mz-distance-row: 0px;
+  --mz-distance-lean: 0px;
+  --mz-stagger-list: 0ms;
+  --mz-stagger-grid: 0ms;
+  --mz-ease-settle: linear;
+  --mz-angle-tip: 0deg;
+  --mz-angle-tip-hold: 8deg;
 }
 
 /* Mizan fonts — all SIL Open Font License 1.1 (see fonts/licenses). In Next.js prefer next/font/local with the same files. */
@@ -761,8 +827,9 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 @keyframes mz-draw { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .mz-draw { stroke-dashoffset: 0; animation: none; } .mz-step { animation: mz-fade var(--mz-duration-fast) both; } }
 /* A value that just changed settles with a brief tint (RollingNumber adds it). */
-.mz-settle { animation: mz-settle 900ms var(--mz-ease-standard); border-radius: var(--mz-radius-xs); }
-@keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-brand) 12%, transparent); } }
+/* A figure that just settled (KpiFigure): a brief ink tint on the settle tokens (never red: the view's one red is the content's). */
+.mz-settle { animation: mz-settle var(--mz-duration-settle) var(--mz-ease-settle); border-radius: var(--mz-radius-xs); }
+@keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-text) 10%, transparent); } }
 
 /* ───────────── Feedback ───────────── */
 .mz-alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--mz-radius-md); font-size: 13px; line-height: 19px; background: var(--mz-info-soft); color: var(--mz-info-text); }
@@ -773,8 +840,8 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-empty { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 48px 24px; color: var(--mz-text-2); }
 .mz-empty .mz-icon { width: 24px; height: 24px; color: var(--mz-text-3); }
 .mz-empty h3 { font: 600 16px/24px var(--mz-font-display); }
-.mz-skeleton { background: linear-gradient(90deg, var(--mz-surface-sunk), var(--mz-surface-hover), var(--mz-surface-sunk)); background-size: 200% 100%; animation: mz-shimmer 1.4s linear infinite; border-radius: 4px; }
-@keyframes mz-shimmer { to { background-position: -200% 0; } }
+/* Brand 2.0: a still 6% ink, no shimmer (the list's pair loader says it is loading). */
+.mz-skeleton { background: color-mix(in srgb, var(--mz-text) 6%, transparent); border-radius: 4px; }
 .mz-progress { height: 6px; border-radius: 3px; background: var(--mz-line); overflow: hidden; }
 .mz-progress > i { display: block; height: 100%; background: var(--mz-primary); border-radius: 3px; }
 
@@ -785,7 +852,10 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-timeline { display: grid; gap: 0; }
 .mz-timeline__item { display: grid; grid-template-columns: 16px 1fr; gap: 10px; padding-block: 6px; position: relative; font-size: 13px; }
 .mz-timeline__item::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--mz-line-strong); margin-block-start: 6px; margin-inline-start: 4px; }
-.mz-timeline__item:first-child::before { background: var(--mz-brand); }
+.mz-timeline__item:first-child::before { background: var(--mz-text); }
+/* A row with its catalogue glyph (EventGlyph) in place of the dot. */
+.mz-timeline__item--glyph::before { content: none; }
+.mz-timeline__glyph { display: grid; place-items: center; inline-size: 16px; block-size: 18px; color: var(--mz-text-2); }
 .mz-timeline__item:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: 7px; inset-block: 19px -7px; width: 1px; background: var(--mz-line); }
 .mz-timeline__item time { display: block; font-size: 12px; color: var(--mz-text-3); }
 
@@ -858,12 +928,19 @@ a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; 
 .mz-partner-monogram { box-sizing: border-box; border-radius: var(--mz-radius-md); background: var(--mz-surface); box-shadow: inset 0 0 0 1px var(--mz-line);
   color: var(--mz-text-2); font-family: var(--mz-font-display); font-weight: var(--mz-weight-semibold); line-height: 1; letter-spacing: 0; direction: ltr; unicode-bidi: isolate; }
 .mz-partner-text { font-weight: var(--mz-weight-medium); color: var(--mz-text-2); }
-.mz-partner [data-scheme="dark"] { display: none; }
-[data-theme="dark"] .mz-partner [data-scheme="light"] { display: none; }
-[data-theme="dark"] .mz-partner [data-scheme="dark"] { display: inline-flex; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .mz-partner [data-scheme="light"] { display: none; }
-  :root:not([data-theme="light"]) .mz-partner [data-scheme="dark"] { display: inline-flex; }
+/* Which one-colour face shows is --mz-partner-face-*, set with each theme scope in tokens.css, so the
+   nearest data-theme wins: a light island (a pick list, a label, dispute evidence) inside a dark page
+   shows the light file, and a dark island inside a light page the dark one. */
+.mz-partner [data-scheme="light"] { display: var(--mz-partner-face-light, inline-flex); }
+.mz-partner [data-scheme="dark"] { display: var(--mz-partner-face-dark, none); }
+/* Mono at rest, the colour mark on its tile on hover and focus (owner decision D8): a swap of faces,
+   no motion on the mark; off under reduced motion. The host (a link, button or row) can carry it too. */
+.mz-partner [data-scheme="hover"] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .mz-partner:is(:hover, :focus-within) > [data-scheme="hover"],
+  :is(a, button, [role="button"], [role="option"], [role="row"], label):is(:hover, :focus-visible) .mz-partner > [data-scheme="hover"] { display: inline-flex; }
+  .mz-partner[data-hover]:is(:hover, :focus-within) > .mz-partner-face:not([data-scheme="hover"]),
+  :is(a, button, [role="button"], [role="option"], [role="row"], label):is(:hover, :focus-visible) .mz-partner[data-hover] > .mz-partner-face:not([data-scheme="hover"]) { display: none; }
 }
 
 

@@ -25,6 +25,13 @@ const CODES: Record<number, ErrorKind> = {
   368: "permission", 131031: "permission", 131042: "permission", 133010: "permission",
 };
 
+/**
+ * A template create refused because the name already exists in that language (code 100 with this
+ * subcode; unconfirmed, docs/06): read as "exists" after a lookup. 2388023 (the name is being
+ * deleted) is not one: nothing can be created under that name for weeks, a person must choose.
+ */
+export const TEMPLATE_EXISTS_SUBCODES: ReadonlySet<number> = new Set([2388024]);
+
 /** Codes that mean "this customer cannot get this message", not "our request is wrong". */
 export const RECIPIENT_CODES: ReadonlySet<number> = new Set([131026, 131021, 131030]);
 /** The 24-hour customer service window has closed: only a template can reach the customer now. */

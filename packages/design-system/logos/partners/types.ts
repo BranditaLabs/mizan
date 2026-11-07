@@ -25,7 +25,15 @@ export interface PartnerEntry {
   aliases?: string[];
   /** When someone read the guide and confirmed variants, size and clear space; null = unconfirmed. */
   guideCheckedAt: string | null;
+  /**
+   * Whether the brand's guide asks for written permission: "not-required", "granted:<YYYY-MM-DD>"
+   * (the written OK is on file) or "required" (asked for, not granted yet). Only not-required or
+   * granted draws a mark; "required" or a missing value renders the monogram.
+   */
+  permission?: PartnerPermission;
 }
+
+export type PartnerPermission = "not-required" | "required" | `granted:${string}`;
 
 export interface PartnerMark {
   viewBox: string;

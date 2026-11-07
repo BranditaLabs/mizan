@@ -1,6 +1,38 @@
 /* Generated from apps/api/openapi.json by `npm run gen:api -w @mizan/admin`. Do not edit. */
 
 export interface paths {
+    "/v1/live/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["LiveController_token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/live": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LiveController_stream"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orders/{id}/payments": {
         parameters: {
             query?: never;
@@ -2417,6 +2449,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/settings/confirmation/templates/{variant}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["ConfirmationController_submitTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/confirmation/queue": {
         parameters: {
             query?: never;
@@ -4237,6 +4285,11 @@ export interface components {
                         en?: string;
                     };
                 }[];
+                /**
+                 * @description E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one
+                 * @enum {string}
+                 */
+                template?: "ar_egyptian" | "ar_formal" | "ar_gulf";
             };
             routing: {
                 /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
@@ -4374,6 +4427,11 @@ export interface components {
                             en?: string;
                         };
                     }[];
+                    /**
+                     * @description E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one
+                     * @enum {string}
+                     */
+                    template?: "ar_egyptian" | "ar_formal" | "ar_gulf";
                 };
                 routing: {
                     /** @description Route each order by its risk score (E6-2); off: every cash order walks the steps above */
@@ -4398,12 +4456,32 @@ export interface components {
                  */
                 call_team: true;
             };
+            /** @description E6-16d: the first-message templates and their review state */
+            templates?: {
+                /** @enum {string} */
+                variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+                /** @description The name in the store's WhatsApp account */
+                name: string;
+                /** @enum {string} */
+                lang: "ar" | "en";
+                /**
+                 * @description Meta's review state; MISSING: not in the account; UNKNOWN: no number connected or not checked yet
+                 * @enum {string}
+                 */
+                status: "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED" | "MISSING" | "UNKNOWN";
+                /** @description What the store's orders get now (the chosen one, or the approved fallback) */
+                effective: boolean;
+                /** @description Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way) */
+                submittable: boolean;
+                /** @description A submission is queued or retrying (its job is pending or running); Meta has not answered it yet */
+                submitting: boolean;
+            }[];
             /** @description E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it. */
             scriptIssues?: {
                 /** @description e.g. ["texts", "en", "btn_offer_yes"] or ["cancelReasons", 3, "title", "ar"] */
                 path: (string | number)[];
                 /** @enum {string} */
-                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script";
+                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script" | "invalid_template";
                 limit?: number;
                 length?: number;
                 variable?: string;
@@ -4851,6 +4929,17 @@ export interface components {
             /** Format: date */
             to: string;
             currency: string;
+            quality: {
+                /** @description No order of the period misses a cost (product cost, courier rate, fee, FX rate) */
+                costsComplete: boolean;
+                /** @description At least one order of the period was delivered */
+                delivered: boolean;
+                /** @description Costs missing or nothing delivered: show "Provisional profit", never a margin */
+                provisional: boolean;
+                ordersMissingCosts: number;
+                /** @description Distinct products in those orders with no cost yet */
+                productsMissingCost: number;
+            };
             /** @description The dashboard's metrics the caller may see, from the metric layer */
             tiles: {
                 key: string;
@@ -4863,6 +4952,8 @@ export interface components {
                     amount: string;
                     currency: string;
                 } | null;
+                /** @description A profit figure whose inputs are not all there yet: shown as provisional */
+                provisional: boolean;
             }[];
             /** @description Daily values, every day of the period */
             series: {
@@ -5461,6 +5552,45 @@ export interface components {
                 occurredAt: string;
             }[];
         };
+        LiveChange: {
+            id: string;
+            /** @description A domain event type, notification.created, or resync (refetch every topic) */
+            type: string;
+            topics: string[];
+            entity: {
+                type: string;
+                id: string;
+            } | null;
+            orderId: string | null;
+            at: string;
+        };
+        LiveEnd: {
+            /**
+             * @description Mint a new token and reconnect
+             * @enum {string}
+             */
+            reason: "expired" | "revoked" | "shutdown";
+        };
+        LiveReady: {
+            topics: string[];
+            /** @description A comment line arrives at least this often */
+            heartbeatMs: number;
+            /** @description When the server ends the stream with `end` (reason expired) */
+            endsAt: string;
+        };
+        LiveToken: {
+            /** @description Single-use, for one GET /v1/live within expiresAt; bound to this store, this person and these topics */
+            token: string;
+            /** @description ISO time; a token not used by then is refused */
+            expiresAt: string;
+            topics: string[];
+            /** @description The path to open with EventSource (topics and token in the query string) */
+            url: string;
+        };
+        LiveTokenRequest: {
+            /** @description What the stream should carry; each needs the permission that reads the same data */
+            topics: string[];
+        };
         ManualShipment: {
             /** @description The courier's name as the team calls it (J&T, Aramex, our own driver…) */
             courier: string;
@@ -5564,6 +5694,17 @@ export interface components {
             to: string;
             /** @description The store's base currency, for money metrics */
             currency: string;
+            quality: {
+                /** @description No order of the period misses a cost (product cost, courier rate, fee, FX rate) */
+                costsComplete: boolean;
+                /** @description At least one order of the period was delivered */
+                delivered: boolean;
+                /** @description Costs missing or nothing delivered: show "Provisional profit", never a margin */
+                provisional: boolean;
+                ordersMissingCosts: number;
+                /** @description Distinct products in those orders with no cost yet */
+                productsMissingCost: number;
+            };
             data: {
                 key: string;
                 version: number;
@@ -5575,6 +5716,8 @@ export interface components {
                     amount: string;
                     currency: string;
                 } | null;
+                /** @description A profit figure whose inputs are not all there yet (quality.provisional): never shown as final */
+                provisional: boolean;
                 numerator?: string;
                 denominator?: string;
             }[];
@@ -8080,8 +8223,10 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
-                /** @description Net ÷ revenue, percent with one decimal */
+                /** @description Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2) */
                 margin: string | null;
+                /** @description Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row "ناقص" */
+                costsMissing: number;
             }[];
             total: {
                 /** @description Day, store connection id, courier connection id, country code, variant id (or title:… for a one-off item), or a special key */
@@ -8134,8 +8279,10 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
-                /** @description Net ÷ revenue, percent with one decimal */
+                /** @description Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2) */
                 margin: string | null;
+                /** @description Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row "ناقص" */
+                costsMissing: number;
             };
         };
         ProfitHome: {
@@ -8200,7 +8347,7 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
-                /** @description kept ÷ revenue */
+                /** @description kept ÷ revenue; null while costs are missing (FX-2) */
                 margin: string | null;
                 /** @description Of every 100 of revenue, what was kept */
                 keptPer100: {
@@ -8227,6 +8374,18 @@ export interface components {
                 adSpend: {
                     amount: string;
                     currency: string;
+                };
+                /** @description FX-2: provisional while costs are missing or nothing is delivered; the screens say "Provisional profit" */
+                quality: {
+                    /** @description No order of the period misses a cost (product cost, courier rate, fee, FX rate) */
+                    costsComplete: boolean;
+                    /** @description At least one order of the period was delivered */
+                    delivered: boolean;
+                    /** @description Costs missing or nothing delivered: show "Provisional profit", never a margin */
+                    provisional: boolean;
+                    ordersMissingCosts: number;
+                    /** @description Distinct products in those orders with no cost yet */
+                    productsMissingCost: number;
                 };
                 /** @description Where every pound of revenue went */
                 breakdown: {
@@ -9198,7 +9357,7 @@ export interface components {
                     };
                 }[];
             };
-            /** @description The Meta-approved templates: read-only */
+            /** @description Deprecated (E6-16d): the default templates (Egyptian Arabic, English); read `templates` */
             templateText: {
                 ar: {
                     body: string;
@@ -9209,6 +9368,17 @@ export interface components {
                     buttons: string[];
                 };
             };
+            /** @description E6-16d: every first-message template, read-only (Meta approves the wording) */
+            templates: {
+                /** @enum {string} */
+                variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+                /** @description The name in the store's WhatsApp account */
+                name: string;
+                /** @enum {string} */
+                lang: "ar" | "en";
+                body: string;
+                buttons: string[];
+            }[];
         };
         ScriptPreview: {
             /** @enum {string} */
@@ -9219,7 +9389,7 @@ export interface components {
                 /** @description e.g. ["texts", "en", "btn_offer_yes"] or ["cancelReasons", 3, "title", "ar"] */
                 path: (string | number)[];
                 /** @enum {string} */
-                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script";
+                code: "too_long" | "unknown_variable" | "variable_not_here" | "missing_variable" | "only_variables" | "no_variables_in_titles" | "no_new_lines" | "no_links" | "template_safe" | "duplicate_title" | "duplicate_id" | "reason_title_required" | "not_a_key" | "invalid_text" | "invalid_pack" | "invalid_reasons" | "invalid_script" | "invalid_template";
                 limit?: number;
                 length?: number;
                 variable?: string;
@@ -9261,6 +9431,14 @@ export interface components {
             call: string[];
             /** @description The hand-sent WhatsApp message, with a placeholder link (never a real one) */
             link: string;
+            /** @description E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback) */
+            template?: {
+                /** @enum {string} */
+                variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+                name: string;
+                /** @enum {string} */
+                status: "APPROVED" | "PENDING" | "REJECTED" | "PAUSED" | "DISABLED" | "MISSING" | "UNKNOWN";
+            };
         };
         ScriptPreviewRequest: {
             script: {
@@ -9365,6 +9543,11 @@ export interface components {
                         en?: string;
                     };
                 }[];
+                /**
+                 * @description E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one
+                 * @enum {string}
+                 */
+                template?: "ar_egyptian" | "ar_formal" | "ar_gulf";
             };
             /**
              * Format: uuid
@@ -10038,6 +10221,13 @@ export interface components {
                 acceptUrl: string;
             }[];
         };
+        TemplateSubmit: {
+            /** @enum {string} */
+            variant: "ar_egyptian" | "ar_formal" | "ar_gulf" | "en";
+            name: string;
+            /** @description False when the same submission is already waiting (pressed twice) */
+            queued: boolean;
+        };
         Tenant: {
             /** Format: uuid */
             id: string;
@@ -10395,6 +10585,144 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    LiveController_token: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LiveTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description A single-use token for one GET /v1/live, valid for LIVE_TOKEN_TTL_S (60 s); mint a new one for every reconnect */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveToken"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests (rate_limited; see Retry-After) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    LiveController_stream: {
+        parameters: {
+            query: {
+                /** @description From POST /v1/live/token */
+                token: string;
+                /** @description Comma-separated; must be among the token's topics (default: all of them) */
+                topics?: string;
+            };
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description text/event-stream: `event: ready` (LiveReady) first, then `event: change` (LiveChange, `id:` = the event id) for each change under the topics, a `:` comment line every heartbeatMs, and `event: end` (LiveEnd) before the server closes. Never compressed or buffered. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["LiveReady"] | components["schemas"]["LiveChange"] | components["schemas"]["LiveEnd"];
+                };
+            };
+            /** @description Not signed in or token expired */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not allowed (not_a_member, insufficient_role, mfa_required) */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too many requests (rate_limited; see Retry-After) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     PaymentsController_get: {
         parameters: {
             query?: never;
@@ -19770,6 +20098,59 @@ export interface operations {
             };
             /** @description Not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Problem (RFC 9457) with a stable `code` */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ConfirmationController_submitTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Accept-Language"?: "ar" | "en";
+                /** @description Store id; required on store routes */
+                "X-Tenant-Id"?: string;
+            };
+            path: {
+                variant: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description E6-16d: send a first-message template (ar_egyptian, ar_formal, ar_gulf, en) to Meta for review, in the store's WhatsApp account: queued (an outbox job, never twice for one name); the status shows in GET /v1/settings/confirmation once Meta answers. A rejected one goes back to review. Audited */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TemplateSubmit"];
+                };
+            };
+            /** @description Conflict with the current state */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Understood but refused (a business rule) */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

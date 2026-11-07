@@ -103,7 +103,7 @@ test("order detail in Arabic: masked customer, money, timeline; showing details 
   await expect(main.getByRole("heading", { level: 1 })).toHaveText("#7001");
   await expect(main.getByText("مستني التأكيد").first()).toBeVisible();
   await expect(main.getByText("المندوب هيحصّل")).toBeVisible();
-  await expect(main.getByText("الأوردر وصل من Shopify")).toBeVisible();
+  await expect(main.getByText("الأوردر وصل من شوبيفاي")).toBeVisible();
   await expect(main.getByText("••• 4821")).toBeVisible();
   await expect(main.getByText("منى عادل")).toHaveCount(0);
 

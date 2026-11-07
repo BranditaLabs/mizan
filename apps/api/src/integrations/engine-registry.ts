@@ -136,6 +136,17 @@ export class EngineRegistry {
     for (const key of [...this.cache.keys()]) if (key.startsWith(`${tenantId}|`)) this.cache.delete(key);
   }
 
+  /**
+   * Drop the tenant's engines when one was built more than `ms` ago (true), so the next call builds
+   * them from the connection rows as they are now: a credential replaced by another process (FX-3a).
+   */
+  invalidateIfOlder(tenantId: string, ms: number): boolean {
+    const now = Date.now();
+    const stale = [...this.cache.entries()].some(([k, e]) => k.startsWith(`${tenantId}|`) && now - e.builtAt >= ms);
+    if (stale) this.invalidate(tenantId);
+    return stale;
+  }
+
   /** Engines built on this instance (metrics). */
   all(): TenantEngine[] {
     return [...this.cache.values()];

@@ -126,7 +126,8 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 
 | Situation | Behaviour |
 | --- | --- |
-| SKU cost missing | Order flagged 'cost missing'; excluded from margin until set |
+| SKU cost missing | Order flagged 'cost missing'; no margin until set. The period reads "Provisional profit" (~, dashed) with "ناقص تكلفة N منتج" linking to the products without a cost; a missing cost shows "ناقص", never 0.00 (FX-2) |
+| Nothing delivered yet | The period is provisional too: no final-looking figure, no 100% share of revenue (FX-2) |
 | Courier fee unknown at shipping | Estimate used, replaced by actual from settlement |
 | Currency change mid-month | Each order keeps its own currency and day rate |
 | Partial refund | Revenue reduced by refund; costs stay |
@@ -140,6 +141,7 @@ Refunds reverse revenue; restocked items reverse COGS; chargebacks add the dispu
 - [ ] A refused order shows its full RTO cost.
 - [ ] Recalculation finishes within 1 minute of an event.
 - [ ] Estimated fees are visibly marked until actual.
+- [x] No margin is shown while costs are missing; Today, the order, Profit and Reports mark provisional profit the same way. (FX-2)
 
 ## API
 

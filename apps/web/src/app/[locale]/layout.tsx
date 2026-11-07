@@ -10,6 +10,7 @@ import { QueryProvider } from "@/lib/api/query";
 import { EventMotionProvider, ViewRedBudget } from "@/lib/motion/EventMotionProvider";
 import { OutageProvider } from "@/lib/outage";
 import { SessionProvider } from "@/lib/session";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { parseTheme, THEME_COOKIE, themeAttribute } from "@/lib/theme";
 import "../globals.css";
 
@@ -31,24 +32,27 @@ export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
-  const theme = themeAttribute(parseTheme((await cookies()).get(THEME_COOKIE)?.value));
+  const chosen = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const theme = themeAttribute(chosen);
   // The public landing page has its own root layout ((marketing)); its copy stays out of the dashboard.
   const messages = Object.fromEntries(Object.entries(await getMessages()).filter(([ns]) => ns !== "landing"));
   return (
     <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <ViewRedBudget>
-            <ToastProvider>
-              <EventMotionProvider>
-                <OutageProvider>
-                  <QueryProvider>
-                    <SessionProvider>{children}</SessionProvider>
-                  </QueryProvider>
-                </OutageProvider>
-              </EventMotionProvider>
-            </ToastProvider>
-          </ViewRedBudget>
+          <ThemeProvider initial={chosen}>
+            <ViewRedBudget>
+              <ToastProvider>
+                <EventMotionProvider>
+                  <OutageProvider>
+                    <QueryProvider>
+                      <SessionProvider>{children}</SessionProvider>
+                    </QueryProvider>
+                  </OutageProvider>
+                </EventMotionProvider>
+              </ToastProvider>
+            </ViewRedBudget>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

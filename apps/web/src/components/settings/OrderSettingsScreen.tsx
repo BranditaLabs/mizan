@@ -19,7 +19,7 @@ const EDITORS = rolesWith("orders.settings");
 /** Settings → Orders (M1, E5-3): how long after one order the same customer's same product is a likely duplicate. */
 export function OrderSettingsScreen() {
   const t = useTranslations("orderSettings");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

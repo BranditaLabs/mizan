@@ -35,7 +35,7 @@ function useRefresh() {
 /** A refund's error, in the team's words when it is one the rules raise. */
 function useRefundError() {
   const t = useTranslations("refunds");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   return (e: unknown) => (e instanceof ApiError && KNOWN.has(e.code) ? t(`errors.${e.code as "over_refund"}`) : problemText(e, tpr));
 }
 

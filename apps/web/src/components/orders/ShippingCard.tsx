@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useEventMutation } from "@/lib/motion/useEventMutation";
+import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 
 type Order = Schemas["OrderDetail"];
@@ -22,7 +23,6 @@ type Shipment = Order["shipments"][number];
 const SHIPPERS = rolesWith("shipping.ship");
 const ERRORS = new Set(["city_unknown", "address_invalid", "payment_blocks", "cancelled", "not_found", "courier_refused_key", "courier_failed"]);
 const STATUSES = new Set(["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"]);
-const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const isLive = (s: Shipment) => s.booking !== "failed" && s.status !== "cancelled";
 
 /**
@@ -32,6 +32,7 @@ export const isLive = (s: Shipment) => s.booking !== "failed" && s.status !== "c
  */
 export function ShippingCard({ order: o }: { order: Order }) {
   const t = useTranslations("shipping");
+  const providerName = useProviderName();
   const { api, store } = useSession();
   const qc = useQueryClient();
   const canShip = SHIPPERS.has(store?.role ?? "");

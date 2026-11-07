@@ -1,6 +1,227 @@
 {
   "openapi": "3.1.0",
   "paths": {
+    "/v1/live/token": {
+      "post": {
+        "operationId": "LiveController_token",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "A single-use token for one GET /v1/live, valid for LIVE_TOKEN_TTL_S (60 s); mint a new one for every reconnect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveToken"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (rate_limited; see Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/v1/live": {
+      "get": {
+        "operationId": "LiveController_stream",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "From POST /v1/live/token"
+            },
+            "description": "From POST /v1/live/token"
+          },
+          {
+            "name": "topics",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Comma-separated; must be among the token's topics (default: all of them)",
+              "type": "string",
+              "maxLength": 2000
+            },
+            "description": "Comma-separated; must be among the token's topics (default: all of them)"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream: `event: ready` (LiveReady) first, then `event: change` (LiveChange, `id:` = the event id) for each change under the topics, a `:` comment line every heartbeatMs, and `event: end` (LiveEnd) before the server closes. Never compressed or buffered.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LiveChange"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LiveEnd"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in or token expired",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (rate_limited; see Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "live"
+        ]
+      }
+    },
     "/v1/orders/{id}/payments": {
       "get": {
         "operationId": "PaymentsController_get",
@@ -15783,6 +16004,88 @@
         ]
       }
     },
+    "/v1/settings/confirmation/templates/{variant}/submit": {
+      "post": {
+        "operationId": "ConfirmationController_submitTemplate",
+        "parameters": [
+          {
+            "name": "variant",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "E6-16d: send a first-message template (ar_egyptian, ar_formal, ar_gulf, en) to Meta for review, in the store's WhatsApp account: queued (an outbox job, never twice for one name); the status shows in GET /v1/settings/confirmation once Meta answers. A rejected one goes back to review. Audited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateSubmit"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict with the current state",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "confirmation"
+        ]
+      }
+    },
     "/v1/confirmation/queue": {
       "get": {
         "operationId": "ConfirmationController_queueSummary",
@@ -24368,6 +24671,15 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "template": {
+                "description": "E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one",
+                "type": "string",
+                "enum": [
+                  "ar_egyptian",
+                  "ar_formal",
+                  "ar_gulf"
+                ]
               }
             },
             "required": [
@@ -24939,6 +25251,15 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "template": {
+                    "description": "E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one",
+                    "type": "string",
+                    "enum": [
+                      "ar_egyptian",
+                      "ar_formal",
+                      "ar_gulf"
+                    ]
                   }
                 },
                 "required": [
@@ -25019,6 +25340,70 @@
             "additionalProperties": false,
             "description": "Channels the store can use for confirmation"
           },
+          "templates": {
+            "description": "E6-16d: the first-message templates and their review state",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant": {
+                  "type": "string",
+                  "enum": [
+                    "ar_egyptian",
+                    "ar_formal",
+                    "ar_gulf",
+                    "en"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name in the store's WhatsApp account"
+                },
+                "lang": {
+                  "type": "string",
+                  "enum": [
+                    "ar",
+                    "en"
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "APPROVED",
+                    "PENDING",
+                    "REJECTED",
+                    "PAUSED",
+                    "DISABLED",
+                    "MISSING",
+                    "UNKNOWN"
+                  ],
+                  "description": "Meta's review state; MISSING: not in the account; UNKNOWN: no number connected or not checked yet"
+                },
+                "effective": {
+                  "type": "boolean",
+                  "description": "What the store's orders get now (the chosen one, or the approved fallback)"
+                },
+                "submittable": {
+                  "type": "boolean",
+                  "description": "Can be sent to Meta for review (MISSING or REJECTED, with a number connected, none on its way)"
+                },
+                "submitting": {
+                  "type": "boolean",
+                  "description": "A submission is queued or retrying (its job is pending or running); Meta has not answered it yet"
+                }
+              },
+              "required": [
+                "variant",
+                "name",
+                "lang",
+                "status",
+                "effective",
+                "submittable",
+                "submitting"
+              ],
+              "additionalProperties": false
+            }
+          },
           "scriptIssues": {
             "description": "E6-16a: what in the saved script no longer passes (the store was renamed, a limit changed): paths and codes, never the text. Sending still fits it.",
             "type": "array",
@@ -25060,7 +25445,8 @@
                     "invalid_text",
                     "invalid_pack",
                     "invalid_reasons",
-                    "invalid_script"
+                    "invalid_script",
+                    "invalid_template"
                   ]
                 },
                 "limit": {
@@ -26669,6 +27055,42 @@
           "currency": {
             "type": "string"
           },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "costsComplete": {
+                "type": "boolean",
+                "description": "No order of the period misses a cost (product cost, courier rate, fee, FX rate)"
+              },
+              "delivered": {
+                "type": "boolean",
+                "description": "At least one order of the period was delivered"
+              },
+              "provisional": {
+                "type": "boolean",
+                "description": "Costs missing or nothing delivered: show \"Provisional profit\", never a margin"
+              },
+              "ordersMissingCosts": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "productsMissingCost": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct products in those orders with no cost yet"
+              }
+            },
+            "required": [
+              "costsComplete",
+              "delivered",
+              "provisional",
+              "ordersMissingCosts",
+              "productsMissingCost"
+            ],
+            "additionalProperties": false
+          },
           "tiles": {
             "type": "array",
             "items": {
@@ -26713,6 +27135,10 @@
                     "currency"
                   ],
                   "additionalProperties": false
+                },
+                "provisional": {
+                  "type": "boolean",
+                  "description": "A profit figure whose inputs are not all there yet: shown as provisional"
                 }
               },
               "required": [
@@ -26720,7 +27146,8 @@
                 "name",
                 "definition",
                 "unit",
-                "value"
+                "value",
+                "provisional"
               ],
               "additionalProperties": false
             },
@@ -26787,6 +27214,7 @@
           "from",
           "to",
           "currency",
+          "quality",
           "tiles",
           "series"
         ],
@@ -29010,6 +29438,155 @@
         ],
         "additionalProperties": false
       },
+      "LiveChange": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "A domain event type, notification.created, or resync (refetch every topic)"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "orders, shipments, confirmation, tickets, refunds, connections, notifications, or order:<uuid>"
+            }
+          },
+          "entity": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "orderId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "topics",
+          "entity",
+          "orderId",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "LiveEnd": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "expired",
+              "revoked",
+              "shutdown"
+            ],
+            "description": "Mint a new token and reconnect"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "LiveReady": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "orders, shipments, confirmation, tickets, refunds, connections, notifications, or order:<uuid>"
+            }
+          },
+          "heartbeatMs": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "A comment line arrives at least this often"
+          },
+          "endsAt": {
+            "type": "string",
+            "description": "When the server ends the stream with `end` (reason expired)"
+          }
+        },
+        "required": [
+          "topics",
+          "heartbeatMs",
+          "endsAt"
+        ],
+        "additionalProperties": false
+      },
+      "LiveToken": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Single-use, for one GET /v1/live within expiresAt; bound to this store, this person and these topics"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "ISO time; a token not used by then is refused"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "orders, shipments, confirmation, tickets, refunds, connections, notifications, or order:<uuid>"
+            }
+          },
+          "url": {
+            "type": "string",
+            "description": "The path to open with EventSource (topics and token in the query string)"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt",
+          "topics",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "LiveTokenRequest": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "description": "What the stream should carry; each needs the permission that reads the same data"
+          }
+        },
+        "required": [
+          "topics"
+        ],
+        "additionalProperties": false
+      },
       "ManualShipment": {
         "type": "object",
         "properties": {
@@ -29468,6 +30045,42 @@
             "type": "string",
             "description": "The store's base currency, for money metrics"
           },
+          "quality": {
+            "type": "object",
+            "properties": {
+              "costsComplete": {
+                "type": "boolean",
+                "description": "No order of the period misses a cost (product cost, courier rate, fee, FX rate)"
+              },
+              "delivered": {
+                "type": "boolean",
+                "description": "At least one order of the period was delivered"
+              },
+              "provisional": {
+                "type": "boolean",
+                "description": "Costs missing or nothing delivered: show \"Provisional profit\", never a margin"
+              },
+              "ordersMissingCosts": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "productsMissingCost": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct products in those orders with no cost yet"
+              }
+            },
+            "required": [
+              "costsComplete",
+              "delivered",
+              "provisional",
+              "ordersMissingCosts",
+              "productsMissingCost"
+            ],
+            "additionalProperties": false
+          },
           "data": {
             "type": "array",
             "items": {
@@ -29513,6 +30126,10 @@
                   ],
                   "additionalProperties": false
                 },
+                "provisional": {
+                  "type": "boolean",
+                  "description": "A profit figure whose inputs are not all there yet (quality.provisional): never shown as final"
+                },
                 "numerator": {
                   "type": "string"
                 },
@@ -29524,7 +30141,8 @@
                 "key",
                 "version",
                 "unit",
-                "value"
+                "value",
+                "provisional"
               ],
               "additionalProperties": false
             }
@@ -29534,6 +30152,7 @@
           "from",
           "to",
           "currency",
+          "quality",
           "data"
         ],
         "additionalProperties": false
@@ -39100,8 +39719,14 @@
                 },
                 "margin": {
                   "nullable": true,
-                  "description": "Net ÷ revenue, percent with one decimal",
+                  "description": "Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2)",
                   "type": "string"
+                },
+                "costsMissing": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row \"ناقص\""
                 }
               },
               "required": [
@@ -39120,7 +39745,8 @@
                 "fees",
                 "net",
                 "expectedNet",
-                "margin"
+                "margin",
+                "costsMissing"
               ],
               "additionalProperties": false
             },
@@ -39307,8 +39933,14 @@
               },
               "margin": {
                 "nullable": true,
-                "description": "Net ÷ revenue, percent with one decimal",
+                "description": "Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2)",
                 "type": "string"
+              },
+              "costsMissing": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row \"ناقص\""
               }
             },
             "required": [
@@ -39327,7 +39959,8 @@
               "fees",
               "net",
               "expectedNet",
-              "margin"
+              "margin",
+              "costsMissing"
             ],
             "additionalProperties": false
           }
@@ -39567,7 +40200,7 @@
               },
               "margin": {
                 "nullable": true,
-                "description": "kept ÷ revenue",
+                "description": "kept ÷ revenue; null while costs are missing (FX-2)",
                 "type": "string"
               },
               "keptPer100": {
@@ -39658,6 +40291,43 @@
                   "currency"
                 ],
                 "additionalProperties": false
+              },
+              "quality": {
+                "type": "object",
+                "properties": {
+                  "costsComplete": {
+                    "type": "boolean",
+                    "description": "No order of the period misses a cost (product cost, courier rate, fee, FX rate)"
+                  },
+                  "delivered": {
+                    "type": "boolean",
+                    "description": "At least one order of the period was delivered"
+                  },
+                  "provisional": {
+                    "type": "boolean",
+                    "description": "Costs missing or nothing delivered: show \"Provisional profit\", never a margin"
+                  },
+                  "ordersMissingCosts": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "productsMissingCost": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Distinct products in those orders with no cost yet"
+                  }
+                },
+                "required": [
+                  "costsComplete",
+                  "delivered",
+                  "provisional",
+                  "ordersMissingCosts",
+                  "productsMissingCost"
+                ],
+                "additionalProperties": false,
+                "description": "FX-2: provisional while costs are missing or nothing is delivered; the screens say \"Provisional profit\""
               },
               "breakdown": {
                 "type": "object",
@@ -39841,6 +40511,7 @@
               "deliveryRate",
               "refusalLoss",
               "adSpend",
+              "quality",
               "breakdown"
             ],
             "additionalProperties": false
@@ -43350,7 +44021,53 @@
               "en"
             ],
             "additionalProperties": false,
-            "description": "The Meta-approved templates: read-only"
+            "description": "Deprecated (E6-16d): the default templates (Egyptian Arabic, English); read `templates`"
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "variant": {
+                  "type": "string",
+                  "enum": [
+                    "ar_egyptian",
+                    "ar_formal",
+                    "ar_gulf",
+                    "en"
+                  ]
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The name in the store's WhatsApp account"
+                },
+                "lang": {
+                  "type": "string",
+                  "enum": [
+                    "ar",
+                    "en"
+                  ]
+                },
+                "body": {
+                  "type": "string"
+                },
+                "buttons": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "variant",
+                "name",
+                "lang",
+                "body",
+                "buttons"
+              ],
+              "additionalProperties": false
+            },
+            "description": "E6-16d: every first-message template, read-only (Meta approves the wording)"
           }
         },
         "required": [
@@ -43362,7 +44079,8 @@
           "maxReasons",
           "packTexts",
           "packReasons",
-          "templateText"
+          "templateText",
+          "templates"
         ],
         "additionalProperties": false
       },
@@ -43419,7 +44137,8 @@
                     "invalid_text",
                     "invalid_pack",
                     "invalid_reasons",
-                    "invalid_script"
+                    "invalid_script",
+                    "invalid_template"
                   ]
                 },
                 "limit": {
@@ -43615,6 +44334,42 @@
           "link": {
             "type": "string",
             "description": "The hand-sent WhatsApp message, with a placeholder link (never a real one)"
+          },
+          "template": {
+            "description": "E6-16d: the first message the preview shows: the one the store would send now (the chosen one, or the approved fallback)",
+            "type": "object",
+            "properties": {
+              "variant": {
+                "type": "string",
+                "enum": [
+                  "ar_egyptian",
+                  "ar_formal",
+                  "ar_gulf",
+                  "en"
+                ]
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "APPROVED",
+                  "PENDING",
+                  "REJECTED",
+                  "PAUSED",
+                  "DISABLED",
+                  "MISSING",
+                  "UNKNOWN"
+                ]
+              }
+            },
+            "required": [
+              "variant",
+              "name",
+              "status"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -44062,6 +44817,15 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "template": {
+                "description": "E6-16d: the Arabic first message (WhatsApp template) the owner chose; absent = the pack's (egyptian → ar_egyptian, formal → ar_formal, gulf → ar_gulf). English is always one",
+                "type": "string",
+                "enum": [
+                  "ar_egyptian",
+                  "ar_formal",
+                  "ar_gulf"
+                ]
               }
             },
             "required": [
@@ -46663,6 +47427,33 @@
         "required": [
           "members",
           "invitations"
+        ],
+        "additionalProperties": false
+      },
+      "TemplateSubmit": {
+        "type": "object",
+        "properties": {
+          "variant": {
+            "type": "string",
+            "enum": [
+              "ar_egyptian",
+              "ar_formal",
+              "ar_gulf",
+              "en"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "queued": {
+            "type": "boolean",
+            "description": "False when the same submission is already waiting (pressed twice)"
+          }
+        },
+        "required": [
+          "variant",
+          "name",
+          "queued"
         ],
         "additionalProperties": false
       },

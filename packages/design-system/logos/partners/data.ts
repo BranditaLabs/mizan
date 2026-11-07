@@ -12,7 +12,6 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "source": "simple-icons@16.35.0",
     "guideUrl": "https://www.shopify.com/brand-assets",
     "allowedVariants": [
-      "color",
       "black",
       "white"
     ],
@@ -20,7 +19,9 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.5,
     "hasDark": true,
     "monogram": false,
-    "guideCheckedAt": "2026-11-06"
+    "monogramText": "Sh",
+    "guideCheckedAt": "2026-11-06",
+    "permission": "required"
   },
   {
     "slug": "woocommerce",
@@ -38,7 +39,9 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": true,
     "monogram": false,
-    "guideCheckedAt": "2026-11-06"
+    "monogramText": "Wo",
+    "guideCheckedAt": "2026-11-06",
+    "permission": "not-required"
   },
   {
     "slug": "wordpress",
@@ -56,7 +59,9 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": true,
     "monogram": false,
-    "guideCheckedAt": null
+    "monogramText": "WP",
+    "guideCheckedAt": null,
+    "permission": "required"
   },
   {
     "slug": "salla",
@@ -70,6 +75,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Sa",
     "guideCheckedAt": null
   },
   {
@@ -231,6 +237,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Ar",
     "guideCheckedAt": null
   },
   {
@@ -245,6 +252,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "SM",
     "guideCheckedAt": null
   },
   {
@@ -259,6 +267,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "SP",
     "guideCheckedAt": null
   },
   {
@@ -273,6 +282,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Ay",
     "guideCheckedAt": null
   },
   {
@@ -333,6 +343,36 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "guideCheckedAt": null
   },
   {
+    "slug": "manual",
+    "kind": "courier",
+    "nameEn": "Manual",
+    "nameAr": "يدوي",
+    "source": "monogram",
+    "guideUrl": null,
+    "allowedVariants": [],
+    "minPx": 16,
+    "clearSpace": 0.25,
+    "hasDark": false,
+    "monogram": true,
+    "monogramText": "Ma",
+    "guideCheckedAt": null
+  },
+  {
+    "slug": "other",
+    "kind": "courier",
+    "nameEn": "Other courier",
+    "nameAr": "شركة تانية",
+    "source": "monogram",
+    "guideUrl": null,
+    "allowedVariants": [],
+    "minPx": 16,
+    "clearSpace": 0.25,
+    "hasDark": false,
+    "monogram": true,
+    "monogramText": "…",
+    "guideCheckedAt": null
+  },
+  {
     "slug": "paymob",
     "kind": "payment",
     "nameEn": "Paymob",
@@ -344,6 +384,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Pm",
     "guideCheckedAt": null
   },
   {
@@ -386,6 +427,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Ge",
     "guideCheckedAt": null
   },
   {
@@ -400,6 +442,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Mo",
     "guideCheckedAt": null
   },
   {
@@ -414,6 +457,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Tp",
     "guideCheckedAt": null
   },
   {
@@ -442,6 +486,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "vU",
     "guideCheckedAt": null
   },
   {
@@ -456,6 +501,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Tb",
     "guideCheckedAt": null
   },
   {
@@ -470,6 +516,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Tm",
     "guideCheckedAt": null
   },
   {
@@ -523,15 +570,13 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "nameAr": "سترايب",
     "source": "simple-icons@16.35.0",
     "guideUrl": "https://stripe.com/newsroom/brand-assets",
-    "allowedVariants": [
-      "color",
-      "white"
-    ],
+    "allowedVariants": [],
     "minPx": 16,
     "clearSpace": 0.25,
-    "hasDark": true,
-    "monogram": false,
-    "guideCheckedAt": "2026-11-06"
+    "hasDark": false,
+    "monogram": true,
+    "monogramText": "St",
+    "guideCheckedAt": null
   },
   {
     "slug": "paypal",
@@ -545,6 +590,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "PP",
     "guideCheckedAt": null
   },
   {
@@ -559,6 +605,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Vi",
     "guideCheckedAt": null
   },
   {
@@ -573,6 +620,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "MC",
     "guideCheckedAt": null
   },
   {
@@ -601,6 +649,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "GP",
     "guideCheckedAt": null
   },
   {
@@ -633,6 +682,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "Me",
     "guideCheckedAt": null
   },
   {
@@ -717,6 +767,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "GA",
     "guideCheckedAt": null
   },
   {
@@ -731,6 +782,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": false,
     "monogram": true,
+    "monogramText": "MS",
     "guideCheckedAt": null
   },
   {
@@ -748,7 +800,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "clearSpace": 0.25,
     "hasDark": true,
     "monogram": false,
-    "guideCheckedAt": null
+    "guideCheckedAt": null,
+    "permission": "required"
   },
   {
     "slug": "zatca",
@@ -769,15 +822,6 @@ export const PARTNERS: readonly PartnerEntry[] = [
 
 export const MARKS: Readonly<Record<string, Partial<Record<"color" | "black" | "white" | "on-dark", PartnerMark>>>> = {
   "shopify": {
-    "color": {
-      "viewBox": "0 0 24 24",
-      "paths": [
-        {
-          "d": "M15.337 23.979l7.216-1.561s-2.604-17.613-2.625-17.73c-.018-.116-.114-.192-.211-.192s-1.929-.136-1.929-.136-1.275-1.274-1.439-1.411c-.045-.037-.075-.057-.121-.074l-.914 21.104h.023zM11.71 11.305s-.81-.424-1.774-.424c-1.447 0-1.504.906-1.504 1.141 0 1.232 3.24 1.715 3.24 4.629 0 2.295-1.44 3.76-3.406 3.76-2.354 0-3.54-1.465-3.54-1.465l.646-2.086s1.245 1.066 2.28 1.066c.675 0 .975-.545.975-.932 0-1.619-2.654-1.694-2.654-4.359-.034-2.237 1.571-4.416 4.827-4.416 1.257 0 1.875.361 1.875.361l-.945 2.715-.02.01zM11.17.83c.136 0 .271.038.405.135-.984.465-2.064 1.639-2.508 3.992-.656.213-1.293.405-1.889.578C7.697 3.75 8.951.84 11.17.84V.83zm1.235 2.949v.135c-.754.232-1.583.484-2.394.736.466-1.777 1.333-2.645 2.085-2.971.193.501.309 1.176.309 2.1zm.539-2.234c.694.074 1.141.867 1.429 1.755-.349.114-.735.231-1.158.366v-.252c0-.752-.096-1.371-.271-1.871v.002zm2.992 1.289c-.02 0-.06.021-.078.021s-.289.075-.714.21c-.423-1.233-1.176-2.37-2.508-2.37h-.115C12.135.209 11.669 0 11.265 0 8.159 0 6.675 3.877 6.21 5.846c-1.194.365-2.063.636-2.16.674-.675.213-.694.232-.772.87-.075.462-1.83 14.063-1.83 14.063L15.009 24l.927-21.166z",
-          "fill": "#7AB55C"
-        }
-      ]
-    },
     "black": {
       "viewBox": "0 0 24 24",
       "paths": [
@@ -850,26 +894,6 @@ export const MARKS: Readonly<Record<string, Partial<Record<"color" | "black" | "
       "paths": [
         {
           "d": "M21.469 6.825c.84 1.537 1.318 3.3 1.318 5.175 0 3.979-2.156 7.456-5.363 9.325l3.295-9.527c.615-1.54.82-2.771.82-3.864 0-.405-.026-.78-.07-1.11m-7.981.105c.647-.03 1.232-.105 1.232-.105.582-.075.514-.93-.067-.899 0 0-1.755.135-2.88.135-1.064 0-2.85-.15-2.85-.15-.585-.03-.661.855-.075.885 0 0 .54.061 1.125.09l1.68 4.605-2.37 7.08L5.354 6.9c.649-.03 1.234-.1 1.234-.1.585-.075.516-.93-.065-.896 0 0-1.746.138-2.874.138-.2 0-.438-.008-.69-.015C4.911 3.15 8.235 1.215 12 1.215c2.809 0 5.365 1.072 7.286 2.833-.046-.003-.091-.009-.141-.009-1.06 0-1.812.923-1.812 1.914 0 .89.513 1.643 1.06 2.531.411.72.89 1.643.89 2.977 0 .915-.354 1.994-.821 3.479l-1.075 3.585-3.9-11.61.001.014zM12 22.784c-1.059 0-2.081-.153-3.048-.437l3.237-9.406 3.315 9.087c.024.053.05.101.078.149-1.12.393-2.325.609-3.582.609M1.211 12c0-1.564.336-3.05.935-4.39L7.29 21.709C3.694 19.96 1.212 16.271 1.211 12M12 0C5.385 0 0 5.385 0 12s5.385 12 12 12 12-5.385 12-12S18.615 0 12 0",
-          "fill": "#FFFFFF"
-        }
-      ]
-    }
-  },
-  "stripe": {
-    "color": {
-      "viewBox": "0 0 24 24",
-      "paths": [
-        {
-          "d": "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z",
-          "fill": "#635BFF"
-        }
-      ]
-    },
-    "white": {
-      "viewBox": "0 0 24 24",
-      "paths": [
-        {
-          "d": "M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.594-7.305h.003z",
           "fill": "#FFFFFF"
         }
       ]

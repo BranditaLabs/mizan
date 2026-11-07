@@ -37,7 +37,7 @@ test("owner in Arabic: no spend yet, then true vs reported ROAS, cost per delive
   } }));
   await page.reload();
   const kpis = main.getByTestId("roas-kpis");
-  await expect(kpis).toContainText("العائد الحقيقي (ROAS)");
+  await expect(kpis).toContainText("العائد الحقيقي على الإعلانات");
   await expect(kpis).toContainText("6.00ضعف");
   await expect(kpis).toContainText("12.75ضعف");
   await expect(kpis).toContainText("7.50ضعف");

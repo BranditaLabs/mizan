@@ -1,6 +1,6 @@
 "use client";
 
-import { toAsciiDigits, rolesWith } from "@mizan/shared";
+import { FEE_METHOD_SLUGS, toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -27,7 +27,8 @@ const RATE = /^\d{1,10}(\.\d{1,8})?$/;
 const decimal = (v: string) => toAsciiDigits(v).replace(/[٫,]/g, ".").trim();
 const isPercent = (v: string) => PERCENT.test(v) && Number(v) <= 100;
 
-const FEE_METHODS = ["card", "wallet", "apple_pay", "bnpl", "instapay", "bank_transfer"] as const;
+/** Methods with a fee percentage, from the shared catalogue (X9). */
+const FEE_METHODS = FEE_METHOD_SLUGS;
 const COURIERS = ["bosta", "jt", "aramex", "mylerz", "other"] as const;
 const EDITORS = rolesWith("profit.manage");
 const READERS = rolesWith("profit.read");
@@ -363,7 +364,7 @@ const RECALC_ROUNDS = 10;
  */
 function RecalculateCard({ today }: { today: string }) {
   const t = useTranslations("costs.recalc");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

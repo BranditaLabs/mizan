@@ -1,7 +1,7 @@
 /** @mizan/engine — self-healing commerce and courier connectors (Shopify, Bosta). */
-export { MizanEngine, SHOPIFY_WEBHOOK_TOPICS, CATALOG_VERSION, type AccessCheck, type BackfillProgress, type CancelJob, type CancelOutcome, type EngineOptions, type OfferJob, type OfferOutcome, type ReconcileJob, type ReconcileResult, type ShipJob, type ShipOutcome, type ShipmentStatusUpdate, type Owner, type WebhookResult } from "./engine/engine.js";
+export { MizanEngine, SHOPIFY_WEBHOOK_TOPICS, CATALOG_VERSION, type AccessCheck, type BackfillProgress, type CancelJob, type CancelOutcome, type EngineOptions, type OfferJob, type OfferOutcome, type ReconcileJob, type ReconcileResult, type ShipJob, type ShipOutcome, type ShipmentStatusUpdate, type Owner, type WebhookResult, type IntakeOutcome } from "./engine/engine.js";
 export { SqlStore, STANDALONE_TENANT, type SqlClient, type StoreScope } from "./sync/sql-store.js";
-export { MemoryStore, type JobStatus, type NewJob, type OutboxJob, type Store } from "./sync/store.js";
+export { MemoryStore, type IntakeResult, type JobStatus, type NewJob, type OutboxJob, type Store } from "./sync/store.js";
 export { OutboxWorker, DEFAULT_WORKER, type JobOutcome, type WorkerOptions } from "./sync/worker.js";
 export { defaultRuntime, systemClock, silentLogger, type Clock, type FetchFn, type Logger, type LogLevel, type Runtime } from "./core/runtime.js";
 export { IntegrationError, isIntegrationError, type ErrorKind } from "./core/errors.js";
@@ -26,9 +26,9 @@ export { CircuitBreaker } from "./resilience/circuit.js";
 export { LogMessaging, maskNumber, unreachableNumber, type MessagingChannel, type MessagingProvider, type Sms, type VoiceCall, type WhatsAppTemplate } from "./connectors/messaging/provider.js";
 export {
   LIMITS as WHATSAPP_LIMITS, WHATSAPP_GRAPH_VERSION, WhatsAppCloudConnector,
-  type ButtonsMessage, type ListMessage, type MessageHeader, type SendResult, type TemplateInfo, type TemplateMessage, type TextMessage, type WhatsAppChat, type WhatsAppCloudConfig,
+  type ButtonsMessage, type CreatedTemplate, type ListMessage, type MessageHeader, type SendResult, type TemplateDraft, type TemplateInfo, type TemplateMessage, type TextMessage, type WhatsAppChat, type WhatsAppCloudConfig,
 } from "./connectors/whatsapp/connector.js";
-export { classifyGraphError, kindOfCode, RECIPIENT_CODES, WINDOW_CLOSED } from "./connectors/whatsapp/errors.js";
+export { classifyGraphError, kindOfCode, RECIPIENT_CODES, TEMPLATE_EXISTS_SUBCODES, WINDOW_CLOSED } from "./connectors/whatsapp/errors.js";
 export {
   afterUnknownSend, parseWhatsAppWebhook, signMeta, STATUS_RANK, verifyChallenge, verifyMetaSignature,
   type DeliveryStatus, type InboundKind, type InboundMessage, type ParsedWebhook, type StatusUpdate,

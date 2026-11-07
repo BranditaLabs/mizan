@@ -69,7 +69,7 @@ export function SuppliersScreen() {
 
 function SupplierDialog({ supplier, onClose }: { supplier: Supplier | null; onClose(): void }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

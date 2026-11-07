@@ -28,7 +28,7 @@ const QTY = /^[1-9]\d{0,5}$/;
  */
 export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {}) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const router = useRouter();
   const qc = useQueryClient();

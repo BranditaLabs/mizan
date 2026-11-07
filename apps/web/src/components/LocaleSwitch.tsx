@@ -19,7 +19,7 @@ export function LocaleSwitch() {
       <Icon name="language" size={16} className="hidden text-text-3 md:block" />
       <Segmented label={t("label")} value={locale}
         // At phone width the header has room for "ع" / "EN" only; the full name stays for screen readers.
-        options={routing.locales.map((l) => ({ value: l, lang: l, label: <><span className="sm:hidden" aria-hidden="true">{t(`short.${l}`)}</span><span className="sr-only sm:not-sr-only">{t(l)}</span></> }))}
+        options={routing.locales.map((l) => ({ value: l, lang: l, label: <><span className="sm:hidden" aria-hidden="true">{t(`short.${l}`)}</span><span className="sr-only sm:not-sr-only"><bdi>{t(l)}</bdi></span></> }))}
         onChange={(l) => startTransition(() => router.replace(pathname, { locale: l }))} />
     </div>
   );

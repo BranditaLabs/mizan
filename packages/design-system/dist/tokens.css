@@ -241,6 +241,8 @@
   --mz-viz-6: #E87BA4;
   --mz-red: #DE0000;
   --mz-tick: #FEF7FF;
+  --mz-partner-face-light: inline-flex;
+  --mz-partner-face-dark: none;
 }
 
 /* Dark theme: explicit */
@@ -340,6 +342,8 @@
   --mz-viz-6: #D55181;
   --mz-red: #E33232;
   --mz-tick: #0B0B0B;
+  --mz-partner-face-light: none;
+  --mz-partner-face-dark: inline-flex;
 }
 
 /* Dark theme: follow the system unless the user chose light */
@@ -440,6 +444,8 @@
     --mz-viz-6: #D55181;
     --mz-red: #E33232;
     --mz-tick: #0B0B0B;
+    --mz-partner-face-light: none;
+    --mz-partner-face-dark: inline-flex;
   }
 }
 

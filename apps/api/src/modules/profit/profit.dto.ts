@@ -1,6 +1,7 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
 import { BREAKDOWN_DIMENSIONS } from "./breakdown.js";
+import { ProfitQualitySchema } from "../reports/metrics.dto.js";
 
 /** One order's profit (E9-2). Realised numbers count money that is real; expected = if it delivers. */
 export const OrderPnlSchema = z.object({
@@ -46,7 +47,7 @@ export const ProfitHomeSchema = z.object({
     unallocatedAds: MoneySchema.describe("Ad spend on days with no order to carry it"),
     kept: MoneySchema.describe("What the store kept: net − fixed costs − unallocated ads"),
     expectedKept: MoneySchema,
-    margin: Pct.describe("kept ÷ revenue"),
+    margin: Pct.describe("kept ÷ revenue; null while costs are missing (FX-2)"),
     keptPer100: MoneySchema.nullable().describe("Of every 100 of revenue, what was kept"),
     previousKept: MoneySchema.describe("The same for the period before"),
     change: Pct.describe("kept vs the period before"),
@@ -55,6 +56,7 @@ export const ProfitHomeSchema = z.object({
     deliveryRate: Pct.describe("delivered ÷ (delivered + returned)"),
     refusalLoss: MoneySchema.describe("What refused orders lost, all costs counted"),
     adSpend: MoneySchema,
+    quality: ProfitQualitySchema.describe("FX-2: provisional while costs are missing or nothing is delivered; the screens say \"Provisional profit\""),
     breakdown: z.object({
       revenue: MoneySchema, productCost: MoneySchema, shippingAndCod: MoneySchema, ads: MoneySchema, returns: MoneySchema, team: MoneySchema,
       fees: MoneySchema.describe("Payment, channel and chargeback fees and packaging"), fixed: MoneySchema, kept: MoneySchema,
@@ -83,7 +85,8 @@ const BreakdownRowSchema = z.object({
   revenue: MoneySchema.describe("After refunds; counted when the money is real"), productCost: MoneySchema, shippingAndCod: MoneySchema, ads: MoneySchema,
   returns: MoneySchema.describe("Return shipping"), team: MoneySchema, fees: MoneySchema.describe("Payment, channel, packaging, chargebacks"),
   net: MoneySchema.describe("Realised profit"), expectedNet: MoneySchema.describe("If orders on their way deliver"),
-  margin: z.string().nullable().describe("Net ÷ revenue, percent with one decimal"),
+  margin: z.string().nullable().describe("Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2)"),
+  costsMissing: z.number().int().describe("Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row \"ناقص\""),
 });
 export const ProfitBreakdownSchema = z.object({
   by: z.enum(BREAKDOWN_DIMENSIONS), from: z.iso.date(), to: z.iso.date(), baseCurrency: z.string(),
