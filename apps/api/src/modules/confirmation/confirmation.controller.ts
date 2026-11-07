@@ -9,7 +9,7 @@ import { NoIdempotency } from "../../platform/http/idempotency.interceptor.js";
 import { RateLimiter } from "../../platform/http/rate-limit.js";
 import { ZodPipe } from "../../platform/http/zod.pipe.js";
 import {
-  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, ScriptCatalogueSchema, ScriptPreviewRequestSchema, ScriptPreviewSchema, WhatsAppConnectSchema,
+  AgentAnswerSchema, AnswerResultSchema, CallQueueNextSchema, CallQueueSchema, ConfirmationLinkSchema, ConfirmationSummaryQuerySchema, ConfirmationSummarySchema, ConfirmationSettingsViewSchema, NoAnswerSchema, OrderConfirmationSchema, PublicAnswerSchema, PublicConfirmationSchema, ScriptCatalogueSchema, ScriptPreviewRequestSchema, ScriptPreviewSchema, TemplateSubmitSchema, WhatsAppConnectSchema,
 } from "./confirmation.dto.js";
 import { scriptCatalogue } from "./script/view.js";
 import { ConnectionViewSchema } from "../connections/connections.dto.js";
@@ -86,6 +86,15 @@ export class ConfirmationController {
   @ApiProblems(404)
   checkWhatsApp(@Auth() auth: AuthContext) {
     return this.whatsapp.recheck(auth);
+  }
+
+  @Post("settings/confirmation/templates/:variant/submit")
+  @Can("whatsapp.connect")
+  @HttpCode(202)
+  @ApiJson(202, "TemplateSubmit", TemplateSubmitSchema, "E6-16d: send a first-message template (ar_egyptian, ar_formal, ar_gulf, en) to Meta for review, in the store's WhatsApp account: queued (an outbox job, never twice for one name); the status shows in GET /v1/settings/confirmation once Meta answers. A rejected one goes back to review. Audited")
+  @ApiProblems(409, 422)
+  submitTemplate(@Auth() auth: AuthContext, @Param("variant") variant: string) {
+    return this.whatsapp.submit(auth, variant);
   }
 
   @Get("confirmation/queue")
