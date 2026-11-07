@@ -18,11 +18,16 @@
     "./icons": "./icons/index.ts",
     "./package.json": "./package.json",
     "./icons/react": "./icons/react.tsx",
+    "./partners": "./logos/partners/index.ts",
+    "./partners/react": "./logos/partners/react.tsx",
+    "./partners/*": "./logos/partners/*",
     "./logo/*": "./logo/*",
     "./fonts/*": "./fonts/*"
   },
   "scripts": {
-    "build": "node scripts/build.mjs && node scripts/build-icons.mjs && node scripts/build-reference.mjs",
+    "build": "node scripts/build.mjs && node scripts/build-icons.mjs && node scripts/build-partners.mjs && node scripts/build-reference.mjs",
+    "import:partners": "node scripts/import-partner-logos.mjs",
+    "check:partners": "node scripts/check-partner-slugs.mjs",
     "build:png": "node scripts/build-png.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json"

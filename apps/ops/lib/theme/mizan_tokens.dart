@@ -56,6 +56,9 @@ class MizanColorsLight {
   static const railLine = Color(0xFF232325);
   static const railActive = Color(0xFFE33232);
   static const scrim = Color.fromRGBO(11, 11, 11, 0.48);
+  static const islandEdge = Color.fromRGBO(255, 255, 255, 0.06);
+  static const islandGlow = Color.fromRGBO(11, 11, 11, 0);
+  static const partnerTile = Color(0xFFFFFFFF);
 }
 
 class MizanColorsDark {
@@ -100,6 +103,9 @@ class MizanColorsDark {
   static const railLine = Color(0xFF1D1D1F);
   static const railActive = Color(0xFFE33232);
   static const scrim = Color.fromRGBO(0, 0, 0, 0.64);
+  static const islandEdge = Color.fromRGBO(255, 255, 255, 0.08);
+  static const islandGlow = Color.fromRGBO(254, 247, 255, 0.05);
+  static const partnerTile = Color(0xFFF7F3F8);
 }
 
 class MizanViz {
@@ -123,6 +129,9 @@ class MizanType {
   static const kpi = TextStyle(fontFamily: 'Geist', fontFamilyFallback: ['Alexandria'], fontSize: 32, height: 1.125, fontWeight: FontWeight.w600, letterSpacing: -0.96, fontFeatures: [FontFeature.tabularFigures()]);
   static const kpiSm = TextStyle(fontFamily: 'Geist', fontFamilyFallback: ['Alexandria'], fontSize: 22, height: 1.273, fontWeight: FontWeight.w600, letterSpacing: -0.44, fontFeatures: [FontFeature.tabularFigures()]);
   static const mono = TextStyle(fontFamily: 'GeistMono', fontFamilyFallback: [], fontSize: 13, height: 1.385, fontWeight: FontWeight.w500, letterSpacing: 0.00);
+  static const displayHero = TextStyle(fontFamily: 'Geist', fontFamilyFallback: ['Alexandria'], fontSize: 96, height: 0.958, fontWeight: FontWeight.w800, letterSpacing: -4.32);
+  static const kicker = TextStyle(fontFamily: 'Geist', fontFamilyFallback: ['IBMPlexSansArabic'], fontSize: 11, height: 1.455, fontWeight: FontWeight.w700, letterSpacing: 1.76);
+  static const navLink = TextStyle(fontFamily: 'Geist', fontFamilyFallback: ['IBMPlexSansArabic'], fontSize: 13.5, height: 1.481, fontWeight: FontWeight.w600, letterSpacing: 0.00);
 }
 
 class MizanSpace {
@@ -150,6 +159,9 @@ class MizanRadius {
   static const double lg = 12;
   static const double xl = 16;
   static const double full = 9999;
+  static const double pill = 9999;
+  static const double island = 20;
+  static const double islandLg = 28;
 }
 
 class MizanMotion {
@@ -157,9 +169,41 @@ class MizanMotion {
   static const fast = Duration(milliseconds: 150);
   static const base = Duration(milliseconds: 200);
   static const slow = Duration(milliseconds: 300);
+  static const moderate = Duration(milliseconds: 450);
+  static const glide = Duration(milliseconds: 600);
+  static const reveal = Duration(milliseconds: 900);
+  static const drift = Duration(milliseconds: 24000);
   static const enter = Cubic(0.23, 1, 0.32, 1);
   static const expand = Cubic(0.32, 0.72, 0, 1);
   static const exit = Cubic(0.4, 0, 1, 1);
+  static const standard = Cubic(0.2, 0, 0, 1);
+  static const spring = Cubic(0.34, 1.56, 0.64, 1);
+  static const springSoft = Cubic(0.34, 1.7, 0.64, 1);
+  static const pour = Cubic(0.22, 1, 0.36, 1);
+  static const pressScale = 0.98;
+  static const double distanceRise = 8;
+  static const double distanceReveal = 28;
+  static const double distanceRow = 14;
+  static const double distanceLean = 7;
+  static const staggerList = Duration(milliseconds: 50);
+  static const staggerGrid = Duration(milliseconds: 70);
+  static const int staggerCap = 8;
+
+  // With reduced motion (MediaQuery.disableAnimations): short fades, no travel.
+  static const reducedInstant = Duration(milliseconds: 0);
+  static const reducedFast = Duration(milliseconds: 0);
+  static const reducedBase = Duration(milliseconds: 80);
+  static const reducedSlow = Duration(milliseconds: 120);
+  static const reducedModerate = Duration(milliseconds: 120);
+  static const reducedGlide = Duration(milliseconds: 120);
+  static const reducedReveal = Duration(milliseconds: 120);
+  static const reducedDrift = Duration(milliseconds: 0);
+  static const double reducedDistanceRise = 0;
+  static const double reducedDistanceReveal = 0;
+  static const double reducedDistanceRow = 0;
+  static const double reducedDistanceLean = 0;
+  static const reducedStaggerList = Duration.zero;
+  static const reducedStaggerGrid = Duration.zero;
 }
 
 ThemeData _mizanTheme(Brightness b) {

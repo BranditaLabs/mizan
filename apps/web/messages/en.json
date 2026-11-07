@@ -5094,6 +5094,14 @@
       "body": "Owners, admins, ops managers and the warehouse work with pick lists."
     }
   },
+  "partnerLogos": {
+    "title": "Partner logos",
+    "body": "Each brand's real mark, taken from its own guide and never redrawn. Colour sits on a light tile; one-colour files appear only where the brand allows them. A brand we can't show yet gets its initial.",
+    "color": "Colour",
+    "mono": "One colour",
+    "small": "Small",
+    "kinds": { "store": "Stores", "marketplace": "Marketplaces", "courier": "Couriers", "payment": "Payments", "messaging": "Messaging", "ads": "Ads", "government": "Government" }
+  },
   "legal": {
     "home": "Mizan home",
     "description": "Mizan's terms of service, privacy policy and data processing agreement.",
