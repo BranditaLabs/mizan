@@ -3,7 +3,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -12,6 +11,7 @@ import { Card } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
 import { PageState } from "@/components/ui/PageState";
 
@@ -26,11 +26,11 @@ export function UsersScreen() {
   const query = { ...(q.trim().length >= 2 ? { q: q.trim() } : {}), limit: 50 };
   const list = useQuery({ queryKey: ["users", query], queryFn: () => ok(api.GET("/v1/platform/users", { params: { query } })), placeholderData: keepPreviousData });
   const detail = useQuery({ queryKey: ["user", open], queryFn: () => ok(api.GET("/v1/platform/users/{id}", { params: { path: { id: open! } } })), enabled: Boolean(open) });
-  const toast = useToast();
+  const staffDone = useStaffDone();
   const done = () => { setReason(""); void qc.invalidateQueries({ queryKey: ["users"] }); void qc.invalidateQueries({ queryKey: ["user", open] }); };
-  // Confirmed outcomes: disabling sign-in is done (it changes what the person can do), enabling settles.
-  const disable = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/users/{id}/disable", { params: { path: { id } }, body: { reason: reason.trim() } })), onSuccess: () => { done(); toast({ message: t("done.disabled"), outcome: "done" }); } });
-  const enable = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/users/{id}/enable", { params: { path: { id } } })), onSuccess: () => { done(); toast({ message: t("done.enabled"), outcome: "settle" }); } });
+  // Confirmed outcomes (STAFF_MOTION: disabling sign-in is done, enabling settles).
+  const disable = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/users/{id}/disable", { params: { path: { id } }, body: { reason: reason.trim() } })), onSuccess: () => { done(); staffDone("user.disabled", t("done.disabled")); } });
+  const enable = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/users/{id}/enable", { params: { path: { id } } })), onSuccess: () => { done(); staffDone("user.enabled", t("done.enabled")); } });
   const u = detail.data;
 
   return (

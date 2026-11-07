@@ -66,6 +66,24 @@ describe("every busy names a meaning", () => {
   });
 });
 
+describe("staff writes end on a confirmed outcome (STAFF_MOTION)", () => {
+  it("done for what changes standing, settle for routine, never red", async () => {
+    const { STAFF_MOTION } = await import("@/lib/motion/staffMotion");
+    expect(Object.values(STAFF_MOTION).every((o) => o === "done" || o === "settle")).toBe(true);
+    for (const a of ["store.suspended", "store.reactivated", "store.plan_changed", "user.disabled", "staff.disabled"] as const) expect(STAFF_MOTION[a], a).toBe("done");
+  });
+  it("every screen with a write names its outcome through useStaffDone, never a hand-picked toast", () => {
+    const bad: string[] = [];
+    for (const f of files(src).filter((x) => x.endsWith(".tsx") && !/components[\\/](ui|auth)[\\/]/.test(x))) {
+      const s = readFileSync(f, "utf8");
+      // A failed write's toast (lib/api/query.tsx) fails; a success outcome comes from STAFF_MOTION only.
+      if (/outcome:\s*"(?!fail")/.test(s)) bad.push(`${f.slice(src.length)}: picks an outcome by hand`);
+      if (/useMutation\(/.test(s) && !/useStaffDone\(\)/.test(s)) bad.push(`${f.slice(src.length)}: a write with no confirmed outcome`);
+    }
+    expect(bad).toEqual([]);
+  });
+});
+
 describe("staff sign-in: each press plays what it does", () => {
   const s = read("components/auth/SignIn.tsx");
   it("sign in pairs, then the MFA SMS transfers; the code check pairs; resend transfers on the link only", () => {

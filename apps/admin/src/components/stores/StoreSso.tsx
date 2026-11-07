@@ -4,7 +4,6 @@ import { Icon } from "@mizan/design-system/icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
-import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
@@ -13,6 +12,7 @@ import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { ApiError, ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
 import { PageState } from "@/components/ui/PageState";
 
@@ -32,17 +32,17 @@ export function StoreSso({ storeId }: { storeId: string }) {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/platform/stores/{storeId}/sso", { params: { path: { storeId } } })) });
   const [form, setForm] = useState({ domain: "", providerId: "", reason: "" });
   const refresh = () => void qc.invalidateQueries({ queryKey: key });
-  const toast = useToast();
+  const done = useStaffDone();
 
   const save = useMutation({
     mutationFn: (v: { domain: string; providerId: string; enabled: boolean; reason: string; kind?: "paused" | "resumed" }) =>
       ok(api.PUT("/v1/platform/stores/{storeId}/sso/{domain}", { params: { path: { storeId, domain: v.domain } }, body: { providerId: v.providerId, enabled: v.enabled, reason: v.reason } })),
     // A new domain, a pause or a resume: each settles with its own words.
-    onSuccess: (_, v) => { setForm({ domain: "", providerId: "", reason: "" }); refresh(); toast({ message: t(`done.${v.kind ?? "saved"}`), outcome: "settle" }); },
+    onSuccess: (_, v) => { setForm({ domain: "", providerId: "", reason: "" }); refresh(); done(`store.sso_${v.kind ?? "saved"}`, t(`done.${v.kind ?? "saved"}`)); },
   });
   const remove = useMutation({
     mutationFn: (domain: string) => ok(api.DELETE("/v1/platform/stores/{storeId}/sso/{domain}", { params: { path: { storeId, domain } }, body: {} })),
-    onSuccess: () => { refresh(); toast({ message: t("done.removed"), outcome: "settle" }); },
+    onSuccess: () => { refresh(); done("store.sso_removed", t("done.removed")); },
   });
 
   const admin = can("super_admin");

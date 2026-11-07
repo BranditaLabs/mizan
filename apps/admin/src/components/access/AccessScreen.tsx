@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
 import { PageState } from "@/components/ui/PageState";
 
@@ -20,8 +21,10 @@ export function AccessScreen() {
   const qc = useQueryClient();
   const { api } = useSession();
   const q = useQuery({ queryKey: ["my-access"], queryFn: () => ok(api.GET("/v1/platform/access")) });
+  const done = useStaffDone();
   const end = useMutation({
     mutationFn: (storeId: string) => ok(api.POST("/v1/platform/stores/{storeId}/access/end", { params: { path: { storeId } } })),
+    onSuccess: () => done("access.ended", t("done.ended")),
     onSettled: () => qc.invalidateQueries({ queryKey: ["my-access"] }),
   });
   const grants = q.data?.data ?? [];

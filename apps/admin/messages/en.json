@@ -244,7 +244,10 @@
       "write": "Read and change"
     },
     "end": "End now",
-    "howTo": "Open access from a store's page. Work inside the store from the Mizan dashboard."
+    "howTo": "Open access from a store's page. Work inside the store from the Mizan dashboard.",
+    "done": {
+      "ended": "Support access ended."
+    }
   },
   "health": {
     "title": "System health",
@@ -285,7 +288,10 @@
       "at": "Failed"
     },
     "driftGlyph": "Drift: off balance",
-    "deadGlyph": "Failed job"
+    "deadGlyph": "Failed job",
+    "done": {
+      "replayed": "Sent back to the queue."
+    }
   },
   "users": {
     "title": "Users",
@@ -440,7 +446,10 @@
     "gone": "Account deleted",
     "newer": "Newer",
     "older": "Older",
-    "loadFailed": "We couldn't load the feedback. Try again."
+    "loadFailed": "We couldn't load the feedback. Try again.",
+    "done": {
+      "changed": "Status changed."
+    }
   },
   "motion": {
     "loader": {

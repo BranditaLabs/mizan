@@ -3,13 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
-import { useToast } from "@/components/ui/Toast";
 import { Bdi } from "@/components/Bdi";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Field, Select, TextArea } from "@/components/ui/Field";
 import { When } from "@/components/ui/When";
 import { ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
 import { PageState } from "@/components/ui/PageState";
 
@@ -25,7 +25,7 @@ export function AnnouncementsScreen() {
   const q = useQuery({ queryKey: ["announcements"], queryFn: () => ok(api.GET("/v1/platform/announcements")) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["announcements"] });
   const [d, setD] = useState(empty);
-  const toast = useToast();
+  const done = useStaffDone();
   const create = useMutation({
     mutationFn: () => {
       const countries = d.countries.split(/[\s,]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
@@ -35,9 +35,9 @@ export function AnnouncementsScreen() {
         endsAt: new Date(Date.now() + Number(d.hours) * 3_600_000).toISOString(),
       } }));
     },
-    onSuccess: () => { setD(empty); void refresh(); toast({ message: t("done.posted"), outcome: "settle" }); },
+    onSuccess: () => { setD(empty); void refresh(); done("announcement.posted", t("done.posted")); },
   });
-  const end = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/announcements/{id}/end", { params: { path: { id } } })), onSuccess: () => toast({ message: t("done.ended"), outcome: "settle" }), onSettled: refresh });
+  const end = useMutation({ mutationFn: (id: string) => ok(api.POST("/v1/platform/announcements/{id}/end", { params: { path: { id } } })), onSuccess: () => done("announcement.ended", t("done.ended")), onSettled: refresh });
   const onSubmit = (e: FormEvent) => { e.preventDefault(); if (d.titleAr.trim() && d.titleEn.trim()) create.mutate(); };
   // Compared with when the list was loaded (not "now" during render): an ended one loses its button on the next load.
   const live = (endsAt: string) => Date.parse(endsAt) > q.dataUpdatedAt;
