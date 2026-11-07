@@ -113,7 +113,10 @@ describe("outbox writer", () => {
   it("team changes emit events carrying ids and facts, not personal data", async () => {
     const { tenantId } = await newStore("Team Store");
     await http().post("/v1/members/invite").set(as("owner", tenantId)).send({ phone: "01001234821", role: "agent" }).expect(201);
-    const rows = await db.kysely.selectFrom("domain_events").select(["type", "data", "actor"]).where("tenant_id", "=", tenantId).orderBy("occurred_at").execute();
+    const all = await db.kysely.selectFrom("domain_events").select(["type", "data", "actor"]).where("tenant_id", "=", tenantId).orderBy("occurred_at").execute();
+    // Signup also opens the subscription (E12-2a2): its events share the transaction's timestamp, so they are checked apart.
+    expect(all.filter((r) => r.type.startsWith("subscription.")).map((r) => r.type).sort()).toEqual(["subscription.plan_changed", "subscription.trial_started"]);
+    const rows = all.filter((r) => !r.type.startsWith("subscription."));
     expect(rows.map((r) => r.type)).toEqual(["tenant.created", "member.invited"]);
     expect(rows[1]!.data).toEqual({ role: "agent", channel: "phone", refreshed: false });
     expect(JSON.stringify(rows)).not.toMatch(/1001234821|@/);
@@ -149,7 +152,7 @@ describe("dispatcher", () => {
     ledger.failNext = 1;
     const { tenantId, eventId } = await newStore("Crash Store C");
     const first = await dispatcher.runOnce();
-    expect(first).toMatchObject({ claimed: 1, failed: 1 });
+    expect(first).toMatchObject({ claimed: 3, failed: 1 }); // tenant.created plus the subscription's trial_started and plan_changed (E12-2a2)
     const failed = await event(eventId);
     expect(failed).toMatchObject({ attempts: 1, dispatched_at: null, locked_until: null });
     expect(failed.next_attempt_at.getTime()).toBeGreaterThanOrEqual(Date.now() - 1000);
