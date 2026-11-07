@@ -240,7 +240,8 @@ module.exports = {
         "standard": "cubic-bezier(0.2, 0, 0, 1)",
         "spring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
         "spring-soft": "cubic-bezier(0.34, 1.7, 0.64, 1)",
-        "pour": "cubic-bezier(0.22, 1, 0.36, 1)"
+        "pour": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "settle": "cubic-bezier(.34,1.32,.5,1)"
       },
       "transitionDuration": {
         "instant": "var(--mz-duration-instant)",
@@ -250,7 +251,15 @@ module.exports = {
         "moderate": "var(--mz-duration-moderate)",
         "glide": "var(--mz-duration-glide)",
         "reveal": "var(--mz-duration-reveal)",
-        "drift": "var(--mz-duration-drift)"
+        "drift": "var(--mz-duration-drift)",
+        "tip": "var(--mz-duration-tip)",
+        "merge": "var(--mz-duration-merge)",
+        "settle": "var(--mz-duration-settle)",
+        "fall": "var(--mz-duration-fall)",
+        "ripple": "var(--mz-duration-ripple)",
+        "roll": "var(--mz-duration-roll)",
+        "route": "var(--mz-duration-route)",
+        "exit": "var(--mz-duration-exit)"
       },
       "screens": {
         "sm": "640px",

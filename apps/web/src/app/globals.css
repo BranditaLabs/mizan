@@ -12,6 +12,8 @@
 @import "@mizan/design-system/base.css" layer(base);
 /* The reference components (mz-btn, mz-table, mz-kpi …) that src/components/ui wraps; utilities still win. */
 @import "@mizan/design-system/components.css" layer(components);
+/* Brand 2.0 motion: the keyframes of the four rules and the one reduced-motion block for them. */
+@import "@mizan/design-system/motion.css" layer(components);
 /* Mizan Glass (docs/glass.md): the premium layer, and the bridge that renders the core tokens and components through it inside .mzg. */
 @import "@mizan/design-system/glass.css" layer(components);
 @import "@mizan/design-system/glass-bridge.css" layer(components);

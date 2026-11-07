@@ -173,13 +173,22 @@ class MizanMotion {
   static const glide = Duration(milliseconds: 600);
   static const reveal = Duration(milliseconds: 900);
   static const drift = Duration(milliseconds: 24000);
+  static const tip = Duration(milliseconds: 2600);
+  static const merge = Duration(milliseconds: 380);
+  static const settle = Duration(milliseconds: 720);
+  static const fall = Duration(milliseconds: 620);
+  static const ripple = Duration(milliseconds: 1400);
+  static const roll = Duration(milliseconds: 700);
+  static const route = Duration(milliseconds: 280);
+  static const exit = Duration(milliseconds: 150);
   static const enter = Cubic(0.23, 1, 0.32, 1);
   static const expand = Cubic(0.32, 0.72, 0, 1);
-  static const exit = Cubic(0.4, 0, 1, 1);
+  static const exitCurve = Cubic(0.4, 0, 1, 1);
   static const standard = Cubic(0.2, 0, 0, 1);
   static const spring = Cubic(0.34, 1.56, 0.64, 1);
   static const springSoft = Cubic(0.34, 1.7, 0.64, 1);
   static const pour = Cubic(0.22, 1, 0.36, 1);
+  static const settleCurve = Cubic(0.34, 1.32, 0.5, 1);
   static const pressScale = 0.98;
   static const double distanceRise = 8;
   static const double distanceReveal = 28;
@@ -198,6 +207,51 @@ class MizanMotion {
   static const reducedGlide = Duration(milliseconds: 120);
   static const reducedReveal = Duration(milliseconds: 120);
   static const reducedDrift = Duration(milliseconds: 0);
+  static const reducedTip = Duration(milliseconds: 0);
+  static const reducedMerge = Duration(milliseconds: 120);
+  static const reducedSettle = Duration(milliseconds: 120);
+  static const reducedFall = Duration(milliseconds: 0);
+  static const reducedRipple = Duration(milliseconds: 0);
+  static const reducedRoll = Duration(milliseconds: 0);
+  static const reducedRoute = Duration(milliseconds: 120);
+  static const reducedExit = Duration(milliseconds: 80);
+  static const reducedSettleCurve = Curves.linear;
+
+  // Brand 2.0 angles (degrees), spring constants and goo filter values (tokens.json motion).
+  static const double angleTip = 18.0;
+  static const double angleTipHold = 8.0;
+  static const double reducedAngleTip = 0.0;
+  static const double reducedAngleTipHold = 8.0;
+  static const double springPairK = 110.0;
+  static const double springPairC = 13.0;
+  static const double springLevelK = 60.0;
+  static const double springLevelZ = 0.9;
+  static const springLevelMassK = <double>[150.0, 95.0, 60.0];
+  static const springLevelMassC = <double>[14.0, 12.0, 10.5];
+  static const double springGaugeK = 70.0;
+  static const double springGaugeZ = 0.5;
+  static const springGaugeMassK = <double>[160.0, 100.0, 64.0];
+  static const double springGaugeMassZ = 0.55;
+  static const double springVesselsK = 55.0;
+  static const double springVesselsZ = 0.42;
+  static const double springBreakevenK = 60.0;
+  static const double springBreakevenZ = 0.45;
+  static const springBullseyeMassK = <double>[150.0, 95.0, 60.0];
+  static const double springBullseyeMassZ = 0.55;
+  static const double springFillSmoothing = 7.0;
+  static const double gooLoaderPair = 3.2;
+  static const double gooLoaderLevel = 3.0;
+  static const double gooLoaderTransfer = 2.4;
+  static const double gooLoaderDrop = 2.4;
+  static const double gooLoaderFill = 1.6;
+  static const double gooLoaderMatrixA = 36.0;
+  static const double gooLoaderMatrixB = -16.5;
+  static const double gooInstrumentGauge = 3.0;
+  static const double gooInstrumentVessels = 2.4;
+  static const double gooInstrumentBreakeven = 2.2;
+  static const double gooInstrumentBullseye = 3.0;
+  static const double gooInstrumentMatrixA = 22.0;
+  static const double gooInstrumentMatrixB = -10.0;
 }
 
 ThemeData _mizanTheme(Brightness b) {

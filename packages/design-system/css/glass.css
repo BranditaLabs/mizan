@@ -308,5 +308,4 @@
 @media (prefers-reduced-motion: reduce) {
   .rise, .draw, .fade-in, .grow-x, .seg-in, .slide-in { animation-duration: .01ms !important; animation-delay: 0s !important; }
   .fields i, .hero-tile .halo { animation: none !important; }
-  .ld-scale *, .ld-orbit *, .ld-word *, .ld-rail::after, .ld-bars i, .ld-ring { animation-duration: 3.6s !important; }
 }

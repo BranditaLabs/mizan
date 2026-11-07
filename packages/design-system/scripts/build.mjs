@@ -5,6 +5,7 @@
  *   dist/tailwind.css        Tailwind v4 @theme mapping (CSS-first config)
  *   dist/tailwind-preset.cjs Tailwind v3 preset (same names)
  *   dist/tokens.ts           Typed token object for TS/React
+ *   dist/motion-tokens.ts    The motion subset (motion/, react/motion/)
  *   dist/tokens.json         Flat resolved tokens (for tooling)
  *   dist/mizan_tokens.dart   Flutter colors, text styles, spacing, ThemeData builders
  * Run: npm run build -w @mizan/design-system   (CI checks the output is up to date)
@@ -46,6 +47,9 @@ function colorVars(theme) {
 // A shadow that reads theme colours is declared with each theme, so a nested data-theme resolves its own colours.
 const isThemed = (s) => s.includes("var(");
 const themedShadows = () => entries(T.shadow).filter(([, s]) => isThemed(s)).map(([k, s]) => `\n  --mz-shadow-${k}: ${s};`).join("");
+// Brand 2.0 component theming hooks, per theme so a nested data-theme gets its own: the bubble red
+// (#E33232 on ink) and the tick/cut-out colour (the page background).
+const brandHooks = (theme) => `  --mz-red: ${theme === "light" ? v(T.brand.red) : v(T.brand.redHi)};\n  --mz-tick: ${v(T.color[theme].bg)};`;
 const vizVars = (theme) => T.viz[theme].map((c, i) => `  --mz-viz-${i + 1}: ${c};`).join("\n");
 
 const staticVars = [
@@ -58,6 +62,10 @@ const staticVars = [
   ...entries(T.shadow).filter(([, s]) => !isThemed(s)).map(([k, s]) => `  --mz-shadow-${k}: ${s};`),
   ...entries(M.duration).map(([k, n]) => `  --mz-duration-${k}: ${n}ms;`),
   ...entries(M.easing).map(([k, s]) => `  --mz-ease-${kebab(k)}: ${s};`),
+  ...entries(M.angle).map(([k, n]) => `  --mz-angle-${kebab(k)}: ${n}deg;`),
+  `  --mz-red-ink: ${v(T.brand.redHi)};`,
+  `  --mz-mono: var(--mz-font-mono);`,
+  `  --mz-sans: var(--mz-font-sans);`,
   ...entries(M.easingAlias).map(([k, to]) => `  --mz-ease${k === "default" ? "" : `-${kebab(k)}`}: var(--mz-ease-${kebab(to)});`),
   `  --mz-press-scale: ${M.press.scale};`,
   ...withUnits(M.distance).map(([k, s]) => `  --mz-distance-${kebab(k)}: ${s};`),
@@ -88,6 +96,7 @@ ${staticVars}
   color-scheme: light;
 ${colorVars("light")}
 ${vizVars("light")}
+${brandHooks("light")}
 }
 
 /* Dark theme: explicit */
@@ -95,6 +104,7 @@ ${vizVars("light")}
   color-scheme: dark;
 ${colorVars("dark")}
 ${vizVars("dark")}
+${brandHooks("dark")}
 }
 
 /* Dark theme: follow the system unless the user chose light */
@@ -103,14 +113,15 @@ ${vizVars("dark")}
     color-scheme: dark;
 ${colorVars("dark").replace(/^/gm, "  ")}
 ${vizVars("dark").replace(/^/gm, "  ")}
+${brandHooks("dark").replace(/^/gm, "  ")}
   }
 }
 
 /* Type styles */
 ${typeClasses}
 
-/* Arabic: never negative tracking; body copy in IBM Plex Sans Arabic */
-:lang(ar) { letter-spacing: 0; }
+/* Arabic: never negative tracking; body copy in IBM Plex Sans Arabic; brand components in Alexandria */
+:lang(ar) { letter-spacing: 0; --mz-sans: var(--mz-font-arabic-display); }
 
 /* Numbers, IDs and codes stay left-to-right inside Arabic text */
 .mz-ltr, bdi.mz-num { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
@@ -121,6 +132,8 @@ ${typeClasses}
 ${entries(M.reduced).map(([k, n]) => `    --mz-duration-${k}: ${n}ms;`).join("\n")}
 ${entries(M.distance).map(([k]) => `    --mz-distance-${kebab(k)}: 0px;`).join("\n")}
 ${withUnits(M.stagger).filter(([, s]) => s.endsWith("ms")).map(([k]) => `    --mz-stagger-${kebab(k)}: 0ms;`).join("\n")}
+${entries(M.easingReduced).map(([k, s]) => `    --mz-ease-${kebab(k)}: ${s};`).join("\n")}
+${entries(M.angleReduced).map(([k, n]) => `    --mz-angle-${kebab(k)}: ${n}deg;`).join("\n")}
   }
 }
 `);
@@ -185,6 +198,11 @@ const flat = {
     distance: Object.fromEntries(entries(M.distance)),
     stagger: Object.fromEntries(entries(M.stagger)),
     scroll: Object.fromEntries(entries(M.scroll)),
+    easingReduced: Object.fromEntries(entries(M.easingReduced)),
+    angle: Object.fromEntries(entries(M.angle)),
+    angleReduced: Object.fromEntries(entries(M.angleReduced)),
+    spring: Object.fromEntries(entries(M.spring)),
+    goo: Object.fromEntries(entries(M.goo)),
   },
   glass: Object.fromEntries(entries(T.glass)),
   fluid: Object.fromEntries(entries(T.fluid)),
@@ -192,6 +210,9 @@ const flat = {
 };
 out("tokens.json", JSON.stringify(flat, null, 2) + "\n");
 out("tokens.ts", `${HEADER}export const tokens = ${JSON.stringify(flat, null, 2)} as const;\n\nexport type ColorToken = keyof typeof tokens.color.light;\nexport type TypeToken = keyof typeof tokens.type;\nexport type Theme = "light" | "dark";\n\n/** CSS variable reference for a colour token, e.g. cssVar("brand") → "var(--mz-brand)". */\nexport const cssVar = (t: ColorToken) => \`var(--mz-\${t.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([a-z])([0-9])/g, "$1-$2").toLowerCase()})\`;\n`);
+// The motion subset alone, so motion/ and react/motion/ ship only what they read (bundle budget).
+out("motion-tokens.ts", `${HEADER}export const motion = ${JSON.stringify(flat.motion, null, 2)} as const;
+`);
 
 // ───────────── Flutter ─────────────
 const dartColor = (c) => {
@@ -201,6 +222,13 @@ const dartColor = (c) => {
   }
   return `Color(0xFF${c.replace("#", "").toUpperCase()})`;
 };
+const dartNum = (n) => (Number.isInteger(n) ? `${n}.0` : String(n));
+/** Nested number groups as flat Dart constants: spring.level.massK → springLevelMassK. */
+const dartFlat = (prefix, group) => entries(group).flatMap(([k, o]) =>
+  typeof o === "number" ? [`  static const double ${prefix}${cap(k)} = ${dartNum(o)};`]
+    : entries(o).map(([kk, n]) => (Array.isArray(n)
+      ? `  static const ${prefix}${cap(k)}${cap(kk)} = <double>[${n.map(dartNum).join(", ")}];`
+      : `  static const double ${prefix}${cap(k)}${cap(kk)} = ${dartNum(n)};`))).join("\n");
 const dartColors = (theme) => entries(T.color[theme]).map(([k, o]) => `  static const ${k} = ${dartColor(v(o))};`).join("\n");
 const dartType = entries(T.type).map(([k, t]) => {
   const fam = t.family === "mono" ? "GeistMono" : "Geist";
@@ -243,7 +271,7 @@ ${entries(T.radius).map(([k, n]) => `  static const double ${k} = ${n};`).join("
 
 class MizanMotion {
 ${entries(M.duration).map(([k, n]) => `  static const ${k} = Duration(milliseconds: ${n});`).join("\n")}
-${entries(M.easing).map(([k, s]) => `  static const ${k} = Cubic(${bezier(s).join(", ")});`).join("\n")}
+${entries(M.easing).map(([k, s]) => `  static const ${k in M.duration ? `${k}Curve` : k} = Cubic(${bezier(s).join(", ")});`).join("\n")}
   static const pressScale = ${M.press.scale};
 ${entries(M.distance).map(([k, n]) => `  static const double distance${cap(k)} = ${n};`).join("\n")}
 ${withUnits(M.stagger).map(([k, s]) => s.endsWith("ms")
@@ -252,6 +280,13 @@ ${withUnits(M.stagger).map(([k, s]) => s.endsWith("ms")
 
   // With reduced motion (MediaQuery.disableAnimations): short fades, no travel.
 ${entries(M.reduced).map(([k, n]) => `  static const reduced${cap(k)} = Duration(milliseconds: ${n});`).join("\n")}
+${entries(M.easingReduced).map(([k]) => `  static const reduced${cap(k)}Curve = Curves.linear;`).join("\n")}
+
+  // Brand 2.0 angles (degrees), spring constants and goo filter values (tokens.json motion).
+${entries(M.angle).map(([k, n]) => `  static const double angle${cap(k)} = ${dartNum(n)};`).join("\n")}
+${entries(M.angleReduced).map(([k, n]) => `  static const double reducedAngle${cap(k)} = ${dartNum(n)};`).join("\n")}
+${dartFlat("spring", M.spring)}
+${dartFlat("goo", M.goo)}
 }
 
 ThemeData _mizanTheme(Brightness b) {

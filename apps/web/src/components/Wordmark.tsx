@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 export function Wordmark({ onDark, className = "" }: { onDark: boolean; className?: string }) {
   const t = useTranslations("shell");
   const ar = useLocale() === "ar";
-  const file = `mizan-wordmark${ar ? "-ar" : ""}${onDark ? "-on-dark" : ""}.svg`;
+  const file = `mizan-wordmark${ar ? "-ar" : ""}${onDark ? "-on-ink" : ""}.svg`;
   // eslint-disable-next-line @next/next/no-img-element -- static brand SVG, no optimisation needed
   return <img src={`/brand/${file}`} alt={t("logoAlt")} className={`h-6 w-auto ${className}`} />;
 }

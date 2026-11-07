@@ -77,7 +77,7 @@ const NO_FLASH = `try{if(/(?:^|;\\s*)${THEME_COOKIE}=light(?:;|$)/.test(document
 /** The wordmark from public/brand, for both themes (the CSS shows the one that matches). */
 function Wordmark({ locale, alt, className = "" }: { locale: string; alt: string; className?: string }) {
   const ar = locale === "ar";
-  const file = (dark: boolean) => `/brand/mizan-wordmark${ar ? "-ar" : ""}${dark ? "-on-dark" : ""}.svg`;
+  const file = (dark: boolean) => `/brand/mizan-wordmark${ar ? "-ar" : ""}${dark ? "-on-ink" : ""}.svg`;
   const [w, h] = ar ? [62, 28] : [80, 22];
   return (
     <span className={`lp-wm ${className}`}>

@@ -10,7 +10,7 @@ import type { PaymobCredentials } from "../connectors/paymob/client.js";
 import { createHash } from "node:crypto";
 import { cashToCollect, deliveryCompletesPayment, ShipBlockedError, type ShipBlockReason } from "../core/payments.js";
 import { IntegrationError } from "../core/errors.js";
-import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch, ShipmentStatus } from "@mizan/shared";
+import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, EngineEventType, ProductPatch, ShipmentStatus } from "@mizan/shared";
 import { findRegion, TERMINAL_STATUSES } from "@mizan/shared";
 import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
@@ -334,7 +334,8 @@ export class MizanEngine {
     this.listeners.push(listener);
   }
 
-  private emit(event: string, data: Record<string, unknown>) {
+  /** Every event type is in the motion catalogue (@mizan/shared ENGINE_EVENT_TYPES); test/motion-catalogue.test.ts checks the literals. */
+  private emit(event: EngineEventType, data: Record<string, unknown>) {
     this.rt.logger.log(event === "job.dead" || event === "drift" ? "warn" : "info", event, data);
     for (const l of this.listeners) l(event, data);
   }

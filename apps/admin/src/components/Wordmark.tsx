@@ -4,7 +4,7 @@ import { useLocale, useTranslations } from "next-intl";
 export function Wordmark() {
   const t = useTranslations("shell");
   const ar = useLocale() === "ar";
-  const file = (dark: boolean) => `/brand/mizan-wordmark${ar ? "-ar" : ""}${dark ? "-on-dark" : ""}.svg`;
+  const file = (dark: boolean) => `/brand/mizan-wordmark${ar ? "-ar" : ""}${dark ? "-on-ink" : ""}.svg`;
   return (
     <span className="inline-flex items-center gap-2">
       {/* eslint-disable-next-line @next/next/no-img-element -- static brand SVG */}
