@@ -22,6 +22,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { DateText, MoneyText, PhoneText } from "@/components/ui/Values";
 import { formatMoney } from "@/lib/format";
 import { WhatsAppPhone, type PhoneChrome } from "@/components/studio/WhatsAppPhone";
+import { AuthGallery } from "@/components/auth/Gallery";
 import { MotionGallery } from "./MotionGallery";
 import { CITIES, ORDERS, PHONE_CHATS, PROFIT_TREND, RTO_TREND, type OrderStatus, type SampleOrder } from "./sample";
 
@@ -249,6 +250,10 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
       </Section>
 
       <PartnerLogos />
+
+      <Section id="auth" title={t("auth.title")} body={t("auth.description")}>
+        <AuthGallery />
+      </Section>
 
       <ConfirmDialog open={confirming} onClose={() => setConfirming(false)}
         onConfirm={() => { setConfirming(false); toast({ message: t("toast.cancelled", { id: ORDERS[0]!.id }) }); }}

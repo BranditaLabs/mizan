@@ -12,6 +12,8 @@
 @import "@mizan/design-system/base.css" layer(base);
 /* The reference components (mz-btn, mz-table, mz-kpi …) that src/components/ui wraps; utilities still win. */
 @import "@mizan/design-system/components.css" layer(components);
+/* The screens before a store (and the staff sign-in): frame, card, fields, stage, motion (auth spec). */
+@import "@mizan/design-system/auth.css" layer(components);
 /* Brand 2.0 motion: the keyframes of the four rules and the one reduced-motion block for them. */
 @import "@mizan/design-system/motion.css" layer(components);
 

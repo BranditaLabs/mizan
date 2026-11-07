@@ -197,6 +197,15 @@ export const EVENT_MOTION = Object.fromEntries(
   Object.entries(SPECS).map(([type, s]) => [type, { audience: "merchant", ...s, copy: hasCopy(s) ? `motion.event.${type}` : null } satisfies MotionRule]),
 ) as Record<DomainEventType, MotionRule>;
 
+/**
+ * Waits that are not a domain event (a page or the session loading, the screens before a store):
+ * the loader for what is happening, with the catalogue's meanings. loading = pair; syncing two
+ * systems = transfer; saving, sending (a code, a link) and signing in = drop. The end of such a
+ * flow (signed in) is the DROP outcome, played by DoneState.
+ */
+export const WAIT_MOTION = { loading: "pair", syncing: "transfer", saving: "drop", sending: "drop", signingIn: "drop" } as const satisfies Record<string, Pending>;
+export type WaitMeaning = keyof typeof WAIT_MOTION;
+
 /** Events whose rule may play a red DROP (the checked-in allowlist, with the branch when it is a variant). */
 export const DROP_ALLOWLIST = [
   "order.confirmed", "order.created:manual", "payment.received", "payment.link_paid",

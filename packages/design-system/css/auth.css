@@ -1,0 +1,622 @@
+/* Mizan auth: the screens before a store (sign-in, create account, reset, two-step, welcome) and
+   the back office's staff sign-in. "Focus card on a living stage": one card that never remounts,
+   an ink stage beside it (an island on desktop, a band on tablets, a strip on phones), a Brandita
+   top bar, and Brandita motion.
+
+   Framework-neutral and scoped under `.mz-auth`; it reads only the core tokens (--mz-*), so it works
+   inside Mizan Glass (`.mzg`, which bridges the core tokens through glass) and on the plain kit
+   (apps/admin). Logical properties only; anything that slides uses `--mz-dir` (1, or -1 in RTL).
+
+   Motion tokens come from the design system (DS-1: --mz-ease-*, --mz-duration-*, which also
+   carry the reduced-motion values); --au-ease-wipe is local, DS-1 has no wipe curve. Only
+   `transform` and `opacity` animate, except stroke draws on small SVGs. */
+
+/* ───────────── 1. Root: motion tokens, direction ───────────── */
+.mz-auth {
+  --au-instant: var(--mz-duration-instant);
+  --au-fast: var(--mz-duration-fast);
+  --au-base: var(--mz-duration-base);
+  --au-slow: var(--mz-duration-slow);
+  --au-moderate: var(--mz-duration-moderate);
+  --au-glide: var(--mz-duration-glide);
+  --au-reveal: var(--mz-duration-reveal);
+  --au-drift: var(--mz-duration-drift);
+  --au-ease: var(--mz-ease);
+  --au-ease-exit: var(--mz-ease-exit);
+  --au-ease-std: var(--mz-ease-standard);
+  --au-ease-sheet: var(--mz-ease-sheet);
+  --au-ease-spring: var(--mz-ease-spring);
+  --au-ease-spring-soft: var(--mz-ease-spring-soft);
+  --au-ease-wipe: var(--mz-ease-wipe, cubic-bezier(.65, 0, .35, 1));
+  --au-gutter: clamp(16px, 4vw, 64px);
+  --au-ctl: 48px;
+  --au-cta: 52px;
+  --au-ink: var(--mz-brand-ink, #0B0B0B);
+  --au-paper: var(--mz-brand-paper, #FEF7FF);
+  --au-red: var(--mz-brand-red, #DE0000);
+  --au-surface: var(--mz-surface);
+  --au-ring: var(--mz-focus);
+  --mz-dir: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  color: var(--mz-text);
+  background: var(--mz-bg);
+  overflow-x: clip;
+}
+.mz-auth[dir="rtl"], [dir="rtl"] .mz-auth { --mz-dir: -1; }
+@media (pointer: fine) { .mz-auth { --au-ctl: 46px; } }
+.mz-auth *, .mz-auth *::before, .mz-auth *::after { box-sizing: border-box; }
+.mz-auth :focus-visible { outline: 2px solid var(--au-ring); outline-offset: 2px; }
+/* Whatever takes focus or is scrolled to stops below the fixed top bar (WCAG 2.4.11). */
+.mz-auth :is(input, select, textarea, button, a, h1, [role="alert"], [tabindex]) { scroll-margin-block: calc(env(safe-area-inset-top, 0px) + 84px) 24px; }
+.mz-auth .au-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Skip link: the first focusable, visible on focus. */
+.mz-auth-skip { position: absolute; inset-block-start: 8px; inset-inline-start: 8px; z-index: 100; padding: 10px 16px; border-radius: 999px; background: var(--mz-primary); color: var(--mz-on-primary); font-weight: 600; transform: translateY(-160%); transition: transform var(--au-base) var(--au-ease); }
+.mz-auth-skip:focus-visible { transform: none; }
+
+/* ───────────── 2. Top bar (Brandita: floating pill, glass after scroll, grid 1fr auto 1fr) ───────────── */
+.mz-auth-bar {
+  position: fixed; z-index: 40; inset-inline: 0; inset-block-start: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-inline: var(--au-gutter); pointer-events: none;
+  transition: transform var(--au-glide) var(--au-ease);
+}
+.mz-auth-bar[data-hidden] { transform: translateY(calc(-100% - 24px - env(safe-area-inset-top, 0px))); }
+.mz-auth-bar__in {
+  pointer-events: auto; position: relative; isolation: isolate;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
+  inline-size: min(1240px, 100%); block-size: 52px; margin-inline: auto; padding-inline: 18px 6px;
+  border-radius: 999px; border: 1px solid transparent;
+  transition: border-color .5s ease, box-shadow .5s ease;
+}
+.mz-auth-bar__in::before {
+  content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: inherit; pointer-events: none; opacity: 0;
+  background: color-mix(in srgb, var(--mz-surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(1.6); backdrop-filter: blur(12px) saturate(1.6);
+  transition: opacity .5s ease;
+}
+.mz-auth-bar[data-glass] .mz-auth-bar__in { border-color: var(--mz-line); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--mz-surface) 60%, transparent); }
+.mz-auth-bar[data-glass] .mz-auth-bar__in::before { opacity: 1; }
+@media (pointer: fine) { .mz-auth-bar__in::before { -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); } }
+/* On desktop the bar crosses the ink island: the glass pill is on from the start, so its words stay legible on both. */
+/* Opaque (the surface over the page colour), so the pill is one tone over paper and ink alike. */
+@media (min-width: 1024px) { .mz-auth-bar__in { border-color: var(--mz-line); box-shadow: 0 8px 24px -16px rgb(0 0 0 / .35); } .mz-auth-bar__in::before { opacity: 1; background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper)); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@media (min-width: 768px) { .mz-auth-bar { inset-block-start: calc(env(safe-area-inset-top, 0px) + 14px); } .mz-auth-bar__in { block-size: 56px; } }
+.mz-auth-bar__start { display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
+.mz-auth-bar__mid { display: flex; align-items: center; color: var(--mz-text-2); font-size: 13px; }
+.mz-auth-bar__end { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-inline-size: 0; }
+.mz-auth-bar__wordmark { display: inline-flex; align-items: center; block-size: 44px; }
+.mz-auth-bar__by { display: none; }
+@media (min-width: 1120px) { .mz-auth-bar__in { grid-template-columns: 1fr auto 1fr; } .mz-auth-bar__by { display: inline; } }
+.mz-auth-bar .au-short { display: none; }
+@media (max-width: 1023.98px) { .mz-auth-bar .au-long { display: none; } .mz-auth-bar .au-short { display: inline; } }
+.mz-auth-bar .au-wide { display: none; }
+@media (min-width: 768px) { .mz-auth-bar .au-wide { display: inline-flex; } }
+
+/* Bar links and the icon button: pill hit areas, Brandita underline that grows from the reading start. */
+.mz-auth-navlink {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding-inline: 12px; white-space: nowrap;
+  border-radius: 999px; color: var(--mz-text); font-size: 13.5px; font-weight: 600; text-decoration: none; background: none; border: 0; cursor: pointer;
+}
+.mz-auth-navlink::after {
+  content: ""; position: absolute; inset-inline: 12px; inset-block-end: 10px; block-size: 1px; background: currentColor;
+  transform: scaleX(0); transform-origin: var(--au-o, 0) 50%; transition: transform var(--au-moderate) var(--au-ease);
+}
+[dir="rtl"] .mz-auth-navlink::after, .mz-auth[dir="rtl"] .mz-auth-navlink::after { --au-o: 100%; }
+@media (hover: hover) and (pointer: fine) { .mz-auth-navlink:hover::after { transform: scaleX(1); } }
+.mz-auth-navlink:focus-visible::after { transform: scaleX(1); }
+.mz-auth-iconbtn {
+  display: inline-grid; place-items: center; inline-size: 44px; block-size: 44px; border-radius: 999px; border: 0; background: none; color: var(--mz-text); cursor: pointer;
+  transition: background-color var(--au-base) var(--au-ease), transform var(--au-base) var(--au-ease-spring);
+}
+.mz-auth-iconbtn:hover { background: var(--mz-surface-hover); }
+.mz-auth-iconbtn:active, .mz-auth-navlink:active { transform: scale(.98); transition-duration: var(--au-instant); }
+.mz-auth-iconbtn svg { transition: transform var(--au-slow) var(--au-ease-spring), opacity var(--au-fast); }
+.mz-auth-iconbtn .au-turn { display: inline-grid; place-items: center; }
+.mz-auth-iconbtn .au-turn[data-turn] { animation: au-icon-turn var(--au-slow) var(--au-ease-spring); }
+@keyframes au-icon-turn { from { transform: rotate(-30deg); opacity: .2; } to { transform: none; opacity: 1; } }
+
+/* Menus and popovers (theme, country, language confirm, trial "Change"). */
+.mz-auth-pop { position: relative; }
+.mz-auth-menu {
+  position: absolute; z-index: 50; inset-block-start: calc(100% + 6px); inset-inline-end: 0; min-inline-size: 200px; padding: 6px; margin: 0; list-style: none;
+  border-radius: 18px; border: 1px solid var(--mz-line); color: var(--mz-text); box-shadow: var(--mz-shadow-overlay);
+  /* Opaque: under Mizan Glass the surface is translucent, so it sits on the page colour (nothing shows through). */
+  background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper));
+  transform-origin: var(--au-mo, 100%) 0; animation: au-pop-in var(--au-base) var(--au-ease) both;
+}
+[dir="rtl"] .mz-auth-menu { --au-mo: 0; }
+.mz-auth-menu[data-align="start"] { inset-inline-end: auto; inset-inline-start: 0; --au-mo: 0; }
+[dir="rtl"] .mz-auth-menu[data-align="start"] { --au-mo: 100%; }
+@keyframes au-pop-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } to { opacity: 1; transform: none; } }
+.mz-auth-menu__item {
+  display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 44px; padding-inline: 12px; border-radius: 12px; border: 0; background: none; white-space: nowrap;
+  color: inherit; font: inherit; font-size: 14px; text-align: start; cursor: pointer;
+}
+.mz-auth-menu__item:hover, .mz-auth-menu__item[data-active] { background: var(--mz-surface-hover); }
+.mz-auth-menu__item[aria-checked="true"], .mz-auth-menu__item[aria-selected="true"] { font-weight: 600; }
+.mz-auth-menu__item .au-check { margin-inline-start: auto; opacity: 0; }
+.mz-auth-menu__item[aria-checked="true"] .au-check, .mz-auth-menu__item[aria-selected="true"] .au-check { opacity: 1; }
+.mz-auth-confirm { padding: 12px; display: flex; flex-direction: column; gap: 10px; max-inline-size: 300px; }
+.mz-auth-confirm p { margin: 0; font-size: 14px; color: var(--mz-text-2); }
+
+/* ───────────── 3. Layout: form column + stage (island ≥1024, band 768–1023, strip <768) ───────────── */
+.mz-auth-layout { position: relative; display: flex; flex-direction: column; flex: 1; min-inline-size: 0; }
+.mz-auth-form { position: relative; display: flex; flex-direction: column; flex: 1; min-inline-size: 0; padding-inline: 16px; padding-block-end: 24px; }
+.mz-auth-main { display: flex; flex-direction: column; align-items: stretch; min-inline-size: 0; }
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .mz-auth-form { padding-inline: var(--au-gutter); align-items: center; }
+  .mz-auth-main { inline-size: min(520px, 100%); margin-block-start: -40px; position: relative; z-index: 2; }
+  /* The card overlaps the band: a solid surface, so the ink never shows through its top. */
+  .mz-auth .mz-auth-card__surface { background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (max-width: 1023.98px) { .mz-auth-layout > .mz-auth-stage { order: -1; } }
+.mz-auth[data-keyboard] .mz-auth-form { padding-block-start: 70px; }
+@media (min-width: 1024px) {
+  .mz-auth-layout { display: grid; grid-template-columns: minmax(480px, 44%) 1fr; align-items: stretch; }
+  .mz-auth-form { grid-column: 1; grid-row: 1; padding-inline: clamp(24px, 4vw, 64px); padding-block-start: clamp(104px, 18vh, 168px); }
+  .mz-auth-main { inline-size: min(440px, 100%); margin-inline: auto; }
+  .mz-auth-main[data-wide] { inline-size: min(480px, 100%); }
+  .mz-auth-layout > .mz-auth-stage { grid-column: 2; grid-row: 1; }
+}
+@media (min-width: 1024px) and (max-width: 1279.98px) { .mz-auth-layout { grid-template-columns: 1fr 46%; } }
+/* The staff island holds a kicker, the scale and one word: narrower, its copy centred. */
+@media (min-width: 1024px) {
+  .mz-auth-layout:has(> .mz-auth-stage[data-variant="staff"]) { grid-template-columns: 1fr minmax(360px, 40%); }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { justify-content: center; padding-block: 96px; }
+}
+
+/* ───────────── 4. The focus card: a surface layer behind content (FLIPs its height), top-anchored ───────────── */
+.mz-auth-card { --_gap: 16px; --_ctl: max(44px, var(--au-ctl)); position: relative; isolation: isolate; margin-block-start: 12px; padding: clamp(20px, 3.5vw, 36px); border-radius: 20px; }
+@media (min-width: 480px) { .mz-auth-card { border-radius: 28px; } }
+@media (min-width: 1024px) { .mz-auth-card { margin-block-start: 0; } }
+.mz-auth-card__surface {
+  position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; transform-origin: 50% 0;
+  background: var(--mz-surface); border: 1px solid var(--mz-line); box-shadow: var(--mz-shadow-overlay, 0 24px 48px -28px rgba(11, 11, 11, .3));
+}
+@media (pointer: fine) {
+  .mz-auth-card__surface { background: color-mix(in srgb, var(--mz-surface) 82%, transparent); -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5); }
+}
+@media (prefers-reduced-transparency: reduce) { .mz-auth-card__surface, .mz-auth-bar__in::before { background: var(--mz-surface); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+.mz-auth-host { position: relative; }
+/* Only while a step's exit copy is there (no menu is open then): clip it to the card, room left for focus rings. */
+.mz-auth-host:has(> [data-ghost]) { overflow: clip; overflow-clip-margin: 8px; }
+.mz-auth-host > [data-ghost] { position: absolute; inset-inline: 0; inset-block-start: 0; pointer-events: none; }
+.mz-auth-step { display: flex; flex-direction: column; gap: 16px; min-inline-size: 0; }
+.mz-auth-step form { display: flex; flex-direction: column; gap: 16px; margin: 0; }
+.mz-auth-group { display: flex; flex-direction: column; gap: 12px; }
+.mz-auth-swap[data-swap] { animation: au-swap-in var(--au-base) var(--au-ease) both; }
+@keyframes au-swap-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* The Segmented thumb glides without overshoot inside the card (no spring past the track's end). */
+.mz-auth .mz-seg-thumb { transition-timing-function: var(--au-ease-sheet); }
+
+/* Step header: an optional ink tile, the H1 (programmatic focus only), the body. */
+.mz-auth-head { display: flex; flex-direction: column; gap: 8px; }
+.mz-auth-tile { display: inline-grid; place-items: center; inline-size: 48px; block-size: 48px; border-radius: 16px; background: var(--au-ink); color: var(--au-paper); margin-block-end: 6px; }
+.mz-auth-h1 { margin: 0; font-family: var(--mz-font-display, "Geist"), system-ui, sans-serif; font-weight: 600; font-size: clamp(26px, 3.2vw, 34px); line-height: 1.12; letter-spacing: -.02em; text-wrap: balance; outline: none; }
+:lang(ar) .mz-auth-h1, [dir="rtl"] .mz-auth-h1 { font-family: "Alexandria", "Geist", sans-serif; letter-spacing: 0; line-height: 1.3; }
+.mz-auth-h1 .au-w { display: inline-block; }
+.mz-auth-sub { margin: 0; color: var(--mz-text-2); font-size: 16px; line-height: 1.55; text-wrap: pretty; }
+.mz-auth-kicker { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--mz-text-3); }
+:lang(ar) .mz-auth-kicker { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.mz-auth-back {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; margin-block: -8px -4px; margin-inline-start: -10px; padding-inline: 10px;
+  border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.mz-auth-back:hover { color: var(--mz-text); background: var(--mz-surface-hover); }
+
+/* Step progress: visible text plus a bar. */
+.mz-auth-progress { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--mz-text-2); }
+.mz-auth-progress__bar { position: relative; flex: 1; block-size: 4px; border-radius: 999px; background: var(--mz-line); overflow: hidden; }
+.mz-auth-progress__bar > i { position: absolute; inset: 0; border-radius: inherit; background: var(--mz-text); transform-origin: var(--au-o, 0) 50%; transition: transform var(--au-moderate) var(--au-ease-sheet); }
+[dir="rtl"] .mz-auth-progress__bar > i { --au-o: 100%; }
+
+/* ───────────── 5. Fields: label above, helper slot always reserved, danger ring as an overlay ───────────── */
+.mz-auth-field { display: flex; flex-direction: column; gap: 8px; min-inline-size: 0; }
+.mz-auth-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 14px; font-weight: 600; color: var(--mz-text); }
+.mz-auth-control { position: relative; display: flex; align-items: stretch; min-inline-size: 0; }
+.mz-auth-control::after {
+  content: ""; position: absolute; inset: -1px; border-radius: 14px; pointer-events: none; box-shadow: 0 0 0 2px var(--mz-danger); opacity: 0;
+  transition: opacity var(--au-fast) var(--au-ease-std);
+}
+.mz-auth-control[data-invalid]::after { opacity: 1; }
+.mz-auth-input {
+  inline-size: 100%; min-inline-size: 0; block-size: max(44px, var(--au-ctl)); padding-inline: 14px; border-radius: 14px;
+  border: 1px solid var(--mz-line-strong); background: var(--mz-surface); color: var(--mz-text); font: inherit; font-size: 16px;
+  transition: border-color var(--au-base) var(--au-ease), background-color var(--au-base);
+}
+@media (pointer: fine) { .mz-auth-input { background: color-mix(in srgb, var(--mz-surface) 70%, transparent); } }
+.mz-auth-input::placeholder { color: var(--mz-text-3); opacity: 1; }
+.mz-auth-input:hover { border-color: var(--mz-text-3); }
+.mz-auth-input:focus { outline: none; border-color: var(--mz-text); }
+.mz-auth-input:focus-visible { outline: 2px solid var(--au-ring); outline-offset: 2px; }
+.mz-auth-input[readonly] { background: var(--mz-surface-sunk); }
+.mz-auth-input[dir="ltr"] { text-align: start; font-variant-numeric: tabular-nums; }
+[dir="rtl"] .mz-auth-input[dir="ltr"] { text-align: end; }
+.mz-auth-input.au-has-aside { padding-inline-end: 84px; }
+[dir="rtl"] .mz-auth-input.au-has-aside[dir="ltr"] { padding-inline: 84px 14px; text-align: end; }
+.mz-auth-help { min-block-size: 20px; margin: 0; font-size: 13px; line-height: 20px; color: var(--mz-text-2); overflow: clip; }
+.mz-auth-help > span { display: flex; align-items: flex-start; gap: 6px; }
+.mz-auth-help[data-tone="error"] { color: var(--mz-danger-text); }
+.mz-auth-help[data-tone="ok"] { color: var(--mz-text); }
+.mz-auth-help[data-tone="warn"] { color: var(--mz-warning-text); }
+.mz-auth-help svg { flex: none; margin-block-start: 3px; }
+.mz-auth-help[data-tone="error"] svg { animation: au-pop var(--au-slow) var(--au-ease-spring); }
+.mz-auth-help .au-roll { display: flex; animation: au-roll-in var(--au-slow) var(--au-ease) both; }
+@keyframes au-roll-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
+@keyframes au-pop { 0% { transform: scale(1); } 50% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.mz-auth-help button { position: relative; padding: 0; border: 0; background: none; color: var(--mz-text); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (pointer: coarse) { .mz-auth-help button::after { content: ""; position: absolute; inset-inline: -4px; inset-block: -12px; } }
+
+/* Password: the field and, when creating one, its strength meter. */
+.mz-auth-pw { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+/* Password: the reveal button names itself by its visible text ("Show"/"Hide"). */
+.mz-auth-reveal {
+  position: absolute; inset-block: 0; inset-inline-end: 0; display: inline-flex; align-items: center; gap: 6px; min-inline-size: 44px; padding-inline: 12px;
+  border: 0; border-start-end-radius: 14px; border-end-end-radius: 14px; background: none; color: var(--mz-text-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.mz-auth-reveal:hover { color: var(--mz-text); }
+.mz-auth-reveal svg { transition: opacity var(--au-fast); }
+
+/* Strength meter: 4 segments + a label; ink fills, never red. */
+.mz-auth-meter { display: flex; align-items: center; gap: 10px; min-block-size: 20px; font-size: 13px; color: var(--mz-text-2); }
+.mz-auth-meter__bars { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; flex: 1; max-inline-size: 160px; }
+.mz-auth-meter__bars > i { position: relative; block-size: 4px; border-radius: 999px; background: var(--mz-line); overflow: hidden; }
+.mz-auth-meter__bars > i::after { content: ""; position: absolute; inset: 0; background: var(--mz-text); transform: scaleX(0); transform-origin: var(--au-o, 0) 50%; transition: transform var(--au-base) var(--au-ease); }
+[dir="rtl"] .mz-auth-meter__bars > i::after { --au-o: 100%; }
+.mz-auth-meter__bars > i[data-on]::after { transform: scaleX(1); }
+.mz-auth-meter__bars > i:nth-child(2)::after { transition-delay: 40ms; } .mz-auth-meter__bars > i:nth-child(3)::after { transition-delay: 80ms; } .mz-auth-meter__bars > i:nth-child(4)::after { transition-delay: 120ms; }
+
+/* Phone: [country][number], always left to right so the dial code sits on the left in both languages. */
+.mz-auth-phone { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; min-inline-size: 0; }
+.mz-auth-country {
+  display: inline-flex; align-items: center; gap: 6px; min-inline-size: 76px; block-size: max(44px, var(--au-ctl)); padding-inline: 10px 8px; border-radius: 14px;
+  border: 1px solid var(--mz-line-strong); background: var(--mz-surface); color: var(--mz-text); font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.mz-auth-country:hover { border-color: var(--mz-text-3); }
+.mz-auth svg.au-flag { inline-size: 20px; block-size: 14px; border-radius: 2px; box-shadow: 0 0 0 1px var(--mz-line); flex: none; }
+.mz-auth-phone .mz-auth-menu { inset-inline-end: auto; inset-inline-start: 0; --au-mo: 0; }
+.mz-auth-phone .mz-auth-menu__item { cursor: pointer; }
+.mz-auth-phone .mz-auth-menu__item > bdi { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.mz-auth-phone .mz-auth-menu__item .au-check { margin-inline-start: 0; flex: none; }
+
+/* The code: six boxes drawn under one real input that covers the row. */
+.mz-auth-code { position: relative; display: grid; grid-template-columns: repeat(var(--au-len, 6), minmax(0, 1fr)); gap: 8px; border-radius: 16px; }
+@media (min-width: 768px) { .mz-auth-code { gap: 10px; } }
+.mz-auth-code:focus-within { outline: 2px solid var(--au-ring); outline-offset: 4px; }
+.mz-auth-code__box {
+  position: relative; display: grid; place-items: center; block-size: 56px; border-radius: 14px; border: 1px solid var(--mz-line-strong);
+  background: var(--mz-surface); font: 600 24px/1 var(--mz-font-sans, "Geist"), sans-serif; font-variant-numeric: tabular-nums; color: var(--mz-text);
+}
+.mz-auth-code__box[data-filled] { border-color: var(--mz-text-3); }
+.mz-auth-code__box[data-on] { border-color: var(--mz-text); }
+.mz-auth-code__box::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; box-shadow: 0 0 0 2px var(--mz-danger); opacity: 0; transition: opacity var(--au-fast); pointer-events: none; }
+.mz-auth-code[data-invalid] .mz-auth-code__box::after { opacity: 1; }
+.mz-auth-code__caret { inline-size: 2px; block-size: 26px; background: var(--mz-text); border-radius: 1px; animation: au-caret 1060ms steps(1) infinite; }
+@keyframes au-caret { 50% { opacity: 0; } }
+.mz-auth-code input {
+  position: absolute; inset: 0; inline-size: 100%; block-size: 100%; padding: 0; border: 0; outline: none; background: transparent;
+  color: transparent; caret-color: transparent; font-size: 16px; opacity: 1; cursor: text; letter-spacing: 1em; -webkit-text-fill-color: transparent;
+}
+.mz-auth-code input::selection { background: transparent; }
+.mz-auth-code[data-wave] .mz-auth-code__box { animation: au-wave var(--au-slow) var(--au-ease-spring) both; animation-delay: calc(var(--i, 0) * 30ms); }
+@keyframes au-wave { 0% { transform: translateY(-3px); } 100% { transform: none; } }
+
+/* Resend timer: tabular countdown, then a button that rolls in. */
+.mz-auth-resend { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-block-size: 44px; font-size: 14px; color: var(--mz-text-2); }
+.mz-auth-resend bdi { font-variant-numeric: tabular-nums; }
+.mz-auth-resend > .au-roll { animation: au-roll-in var(--au-slow) var(--au-ease) both; }
+.mz-auth-sent { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--mz-text); }
+
+/* ───────────── 6. Buttons: the primary key (ink pill + arrow circle), secondary pills, links ───────────── */
+.mz-auth-cta {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; inline-size: 100%; block-size: var(--au-cta);
+  padding-inline: 22px 10px; border: 0; border-radius: 999px; background: var(--mz-primary); color: var(--mz-on-primary);
+  font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; overflow: hidden;
+  transition: transform var(--au-base) var(--au-ease-spring), background-color var(--au-base);
+}
+.mz-auth-cta:active { transform: scale(.98); transition-duration: var(--au-instant); }
+.mz-auth-cta[aria-disabled="true"] { cursor: not-allowed; }
+.mz-auth-cta[aria-disabled="true"]:not([aria-busy="true"]):not([data-done]) { background: color-mix(in srgb, var(--mz-primary) 45%, var(--mz-surface)); }
+.mz-auth-cta__label { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: opacity var(--au-fast); }
+.mz-auth-cta[aria-busy="true"] .mz-auth-cta__label { opacity: .72; }
+.mz-auth-cta__key {
+  position: relative; flex: none; display: grid; place-items: center; inline-size: 32px; block-size: 32px; border-radius: 999px;
+  background: var(--mz-on-primary); color: var(--mz-primary); transition: transform var(--au-moderate) var(--au-ease);
+}
+.mz-auth-cta__key > svg { transition: transform var(--au-moderate) var(--au-ease), opacity var(--au-base); }
+@media (hover: hover) and (pointer: fine) {
+  .mz-auth-cta:not([aria-disabled="true"]):hover .mz-auth-cta__key { transform: rotate(calc(-45deg * var(--mz-dir))); }
+}
+.mz-auth-cta:focus-visible .mz-auth-cta__key { transform: rotate(calc(-45deg * var(--mz-dir))); }
+.mz-auth-cta:focus-visible { outline-offset: 3px; }
+.mz-auth-cta[data-done] .mz-auth-cta__key { animation: au-pop-in var(--au-slow) var(--au-ease-spring) both; }
+.mz-auth-cta--secondary { background: transparent; color: var(--mz-text); box-shadow: inset 0 0 0 1px var(--mz-line-strong); }
+.mz-auth-cta--secondary .mz-auth-cta__key { background: var(--mz-primary); color: var(--mz-on-primary); }
+
+.mz-auth-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-inline-size: 0; block-size: max(44px, var(--au-ctl)); padding-inline: 16px;
+  border-radius: 999px; border: 1px solid var(--mz-line-strong); background: var(--mz-surface); color: var(--mz-text);
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: transform var(--au-base) var(--au-ease-spring), background-color var(--au-base), border-color var(--au-base);
+}
+.mz-auth-btn:hover { border-color: var(--mz-text-3); background: var(--mz-surface-hover); }
+.mz-auth-btn:active { transform: scale(.98); transition-duration: var(--au-instant); }
+.mz-auth-btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.mz-auth-btn--ghost { border-color: transparent; background: none; }
+.mz-auth-providers { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@container (min-width: 300px) { .mz-auth-providers { grid-template-columns: 1fr 1fr; } }
+.mz-auth-card__body { container-type: inline-size; }
+.mz-auth-providers.au-one { grid-template-columns: 1fr; }
+.mz-auth-note summary { cursor: pointer; color: var(--mz-text-2); font-weight: 600; min-block-size: 32px; }
+.mz-auth-link {
+  position: relative; display: inline; padding: 0; border: 0; background: none; color: var(--mz-text); font: inherit; font-weight: 600; cursor: pointer;
+  text-decoration: underline; text-decoration-color: var(--mz-line-strong); text-underline-offset: 3px; transition: text-decoration-color var(--au-moderate) var(--au-ease);
+}
+.mz-auth-link:hover, .mz-auth-link:focus-visible { text-decoration-color: currentColor; }
+@media (pointer: coarse) { .mz-auth-link::after { content: ""; position: absolute; inset-inline: 0; inset-block: -12px; } }
+.mz-auth-divider { display: flex; align-items: center; gap: 12px; color: var(--mz-text-3); font-size: 13px; }
+.mz-auth-divider::before, .mz-auth-divider::after { content: ""; flex: 1; block-size: 1px; background: var(--mz-line); }
+.mz-auth-toggle { margin: 0; text-align: center; font-size: 15px; color: var(--mz-text-2); }
+.mz-auth-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--mz-text-3); }
+.mz-auth-note a { color: var(--mz-text-2); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.mz-auth-note a:hover { color: var(--mz-text); }
+.grecaptcha-badge { visibility: hidden; }
+
+/* ───────────── 7. Alerts, banners, chips ───────────── */
+.mz-auth-alert {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; outline: none;
+  background: var(--mz-danger-soft); color: var(--mz-danger-text); animation: au-alert-in var(--au-base) var(--au-ease) both;
+}
+.mz-auth-alert[data-tone="info"] { background: var(--mz-surface-sunk); color: var(--mz-text); }
+.mz-auth-alert[data-tone="success"] { background: var(--mz-success-soft); color: var(--mz-text); }
+.mz-auth-alert[data-tone="warning"] { background: var(--mz-warning-soft); color: var(--mz-text); }
+.mz-auth-alert > svg { flex: none; margin-block-start: 2px; animation: au-pop var(--au-slow) var(--au-ease-spring); }
+.mz-auth-alert__body { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: 6px; }
+.mz-auth-alert__body > button { align-self: flex-start; }
+.mz-auth-alert__dismiss { flex: none; display: grid; place-items: center; inline-size: 44px; block-size: 44px; margin: -12px; margin-inline-start: 0; border: 0; border-radius: 999px; background: none; color: inherit; cursor: pointer; }
+@keyframes au-alert-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.mz-auth-chip {
+  display: inline-flex; align-items: center; gap: 8px; max-inline-size: 100%; min-block-size: 36px; padding-inline: 14px 4px; border-radius: 999px;
+  background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); font-size: 14px; font-weight: 600; align-self: flex-start;
+}
+.mz-auth-chip bdi { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mz-auth-chip button { position: relative; min-block-size: 32px; padding-inline: 10px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.mz-auth-trial {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-block-size: 32px; padding-inline: 12px 4px; border-radius: 999px;
+  background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); font-size: 13px; font-weight: 600; animation: au-alert-in var(--au-base) var(--au-ease) both;
+}
+/* The trial's dot is a RedSwatch (the view's red budget sets its background: red, or the ink it sits among). */
+.mz-auth-trial__dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; animation: au-dot-in var(--au-slow) var(--au-ease-spring) 120ms both; }
+@keyframes au-dot-in { from { transform: scale(0); } to { transform: none; } }
+@media (pointer: coarse) { .mz-auth-chip button::after { content: ""; position: absolute; inset: -6px -2px; } }
+.mz-auth-trial__more { position: relative; display: inline-grid; place-items: center; inline-size: 28px; block-size: 28px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
+.mz-auth-trial__more:hover { background: var(--mz-surface-hover); color: var(--mz-text); }
+/* 28px drawn, 44px to touch. */
+.mz-auth-trial__more::after { content: ""; position: absolute; inset: -8px; }
+.mz-auth-trial__pick { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.mz-auth-trial__picklabel { font-size: 13px; font-weight: 600; color: var(--mz-text-2); }
+.mz-auth-trial__note { padding: 12px; font-size: 13px; color: var(--mz-text-2); max-inline-size: 280px; margin: 0; }
+
+/* ───────────── 8. Success: the mark, the wipe, the skeleton ───────────── */
+.mz-auth-success { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 24px; text-align: center; }
+.mz-auth-success svg { overflow: visible; }
+.mz-auth-wipe { position: fixed; z-index: 90; border-radius: 50%; background: var(--mz-bg); pointer-events: none; transform: scale(.001); }
+.mz-auth-overlay { position: fixed; inset: 0; z-index: 91; display: grid; place-items: center; pointer-events: none; }
+.mz-auth-skel { display: flex; flex-direction: column; gap: 16px; }
+.mz-auth-skel > i { display: block; block-size: 48px; border-radius: 14px; background: var(--mz-surface-sunk); animation: au-pulse 1200ms ease-in-out 3 alternate; }
+.mz-auth-skel > .mz-auth-progress-slot { align-self: center; color: var(--mz-text-2); }
+.mz-auth-skel > i:first-of-type { block-size: 34px; inline-size: 70%; }
+.mz-auth-skel > i:last-child { block-size: var(--au-cta); border-radius: 999px; }
+@keyframes au-pulse { from { opacity: .55; } to { opacity: 1; } }
+
+/* ScaleMark (the stage's art): the beam and the pans move on their own pivots. */
+.mz-auth-scale .au-beam, .mz-auth-scale .au-pan { transform-box: fill-box; }
+.mz-auth-scale .au-beam { transform-origin: 50% 50%; }
+.mz-auth-scale .au-pan { transform-origin: 50% 0; }
+.mz-auth-scale[data-settle] .au-beam { animation: au-settle var(--au-reveal) var(--au-ease-spring) both; }
+.mz-auth-scale[data-settle] .au-pan { animation: au-pan var(--au-reveal) var(--au-ease-spring) both; }
+.mz-auth-scale[data-settle] .au-pan + .au-pan { animation-delay: 60ms; }
+@keyframes au-settle { from { transform: rotate(-6deg); } to { transform: none; } }
+@keyframes au-pan { from { transform: translateY(4px); } to { transform: none; } }
+
+/* ───────────── 9. The stage: ink, whatever the theme ───────────── */
+.mz-auth-stage {
+  --st-fg: color-mix(in srgb, var(--au-paper) 92%, transparent);
+  --st-fg-2: color-mix(in srgb, var(--au-paper) 72%, transparent);
+  --st-line: color-mix(in srgb, var(--au-paper) 16%, transparent);
+  --st-node: color-mix(in srgb, var(--au-paper) 8%, var(--au-ink));
+  position: relative; isolation: isolate; overflow: hidden; color: var(--st-fg); background: var(--au-ink); border-radius: 20px;
+  margin-inline: 16px; margin-block-start: 70px; block-size: 72px; contain: layout paint;
+}
+.mz-auth-stage :focus-visible { outline-color: var(--au-paper); }
+/* Dark theme: the page is nearly ink too, so the island gets a hairline edge and a lifted ink. */
+.mz-auth.mzg:not(.light) .mz-auth-stage, [data-theme="dark"] .mz-auth:not(.light) .mz-auth-stage {
+  box-shadow: inset 0 0 0 1px var(--st-line); background: color-mix(in srgb, var(--au-paper) 3%, var(--au-ink));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mz-auth:not(.mzg) .mz-auth-stage { box-shadow: inset 0 0 0 1px var(--st-line); background: color-mix(in srgb, var(--au-paper) 3%, var(--au-ink)); }
+}
+.mz-auth-stage__ambient { position: absolute; inset: -20%; z-index: -1; pointer-events: none;
+  /* Paper light only: the red is budgeted (one per view), so the stage never tints itself with it. */
+  background: radial-gradient(40% 40% at 70% 20%, color-mix(in srgb, var(--au-paper) 12%, transparent), transparent 70%),
+              radial-gradient(50% 50% at 20% 90%, color-mix(in srgb, var(--au-paper) 8%, transparent), transparent 70%); }
+.mz-auth-stage__content { position: relative; display: flex; align-items: center; gap: 12px; block-size: 100%; padding-inline: 14px; }
+.mz-auth-stage__copy, .mz-auth-stage__ticker, .mz-auth-stage__scale, .mz-auth-stage__kicker { display: none; }
+.mz-auth-stage__map { flex: 1; min-inline-size: 0; block-size: 100%; display: grid; place-items: center; }
+.mz-auth-stage__map > svg { inline-size: 100%; block-size: 100%; max-block-size: 56px; }
+.mz-auth-stage__scale > svg { display: block; inline-size: 100%; block-size: 100%; }
+.mz-auth-pause {
+  position: relative; flex: none; display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 999px; border: 1px solid var(--st-line);
+  background: color-mix(in srgb, var(--au-paper) 6%, transparent); color: var(--st-fg); cursor: pointer;
+}
+.mz-auth-pause::after { content: ""; position: absolute; inset: -2px; }
+@media (max-width: 767.98px) { .mz-auth-stage .mz-auth-pause::after { inset: -6px; } }
+.mz-auth-pause:hover { background: color-mix(in srgb, var(--au-paper) 12%, transparent); }
+@media (max-width: 767.98px) {
+  .mz-auth[data-keyboard] .mz-auth-stage { display: none; }
+  .mz-auth-stage .mz-auth-pause { inline-size: 32px; block-size: 32px; }
+}
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .mz-auth-stage { margin-inline: var(--au-gutter); margin-block-start: 80px; block-size: 220px; border-radius: 28px; }
+  .mz-auth-stage__content { flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; padding: 24px 28px 52px; }
+  .mz-auth-stage__copy { display: flex; align-items: center; gap: 14px; }
+  .mz-auth-stage__scale { display: block; inline-size: 40px; block-size: 40px; flex: none; }
+  .mz-auth-stage__headline { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; }
+  .mz-auth-stage__headline .au-line2 { display: none; }
+  .mz-auth-stage__map > svg { max-block-size: 96px; }
+  .mz-auth-stage .mz-auth-pause { position: absolute; inset-block-end: 56px; inset-inline-end: 20px; }
+}
+@media (min-width: 1024px) {
+  .mz-auth-stage { position: sticky; inset-block-start: 16px; margin: 16px; margin-inline-start: 0; block-size: calc(100dvh - 32px); min-block-size: 560px; border-radius: 28px; }
+  .mz-auth-stage__content { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 20px; padding: 96px 48px 40px; }
+  .mz-auth-stage__kicker { display: block; color: var(--st-fg-2); font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+  :lang(ar) .mz-auth-stage__kicker { letter-spacing: 0; text-transform: none; font-size: 13px; }
+  .mz-auth-stage__copy { display: flex; flex-direction: column; gap: 18px; }
+  .mz-auth-stage__scale { display: block; inline-size: 64px; block-size: 64px; }
+  .mz-auth-stage__headline { margin: 0; font-family: var(--mz-font-display, "Geist"), sans-serif; font-weight: 800; font-size: clamp(34px, 3.2vw, 52px); line-height: 1.04; letter-spacing: -.035em; max-inline-size: 15ch; text-wrap: balance; }
+  :lang(ar) .mz-auth-stage__headline { font-family: "Alexandria", sans-serif; font-weight: 700; letter-spacing: 0; line-height: 1.25; max-inline-size: 18ch; }
+  .mz-auth-stage__headline .au-line2 { display: block; color: var(--st-fg-2); }
+  .mz-auth-stage__headline .au-w { display: inline-block; }
+  .mz-auth-stage__map { flex: 1; inline-size: 100%; min-block-size: 0; }
+  .mz-auth-stage__map > svg { max-block-size: 300px; max-inline-size: 440px; }
+  .mz-auth-stage__ticker { display: flex; align-items: center; gap: 12px; inline-size: calc(100% - 56px); min-block-size: 48px; font-size: 15px; color: var(--st-fg); }
+  .mz-auth-stage .mz-auth-pause { position: absolute; inset-block-end: 40px; inset-inline-end: 40px; }
+}
+@media (min-width: 1024px) and (max-height: 759.98px) { .mz-auth-stage__headline .au-line2 { display: none; } .mz-auth-stage__content { padding-block-start: 80px; } }
+@media (min-width: 1024px) and (max-height: 639.98px) { .mz-auth-stage__map { display: none; } }
+.mz-auth-tag { flex: none; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--st-line); color: var(--st-fg-2); font-size: 11px; font-weight: 600; }
+.mz-auth-roll { position: relative; display: grid; flex: 1; min-inline-size: 0; overflow: clip; }
+.mz-auth-roll > span { grid-area: 1 / 1; }
+.mz-auth-roll > span[data-out] { animation: au-tick-out var(--au-slow) var(--au-ease-exit) both; }
+.mz-auth-roll > span[data-in] { animation: au-tick-in var(--au-moderate) var(--au-ease) 120ms both; }
+@keyframes au-tick-out { to { opacity: 0; transform: translateY(-110%); } }
+@keyframes au-tick-in { from { opacity: 0; transform: translateY(110%); } to { opacity: 1; transform: none; } }
+
+/* Map pieces (shared geometry with onboarding's connections map). */
+/* Labels sit after their monogram in both languages (the map itself is not mirrored). */
+.mz-auth-map { direction: ltr; }
+/* Centred phrases (the trial pill, the hub) keep their own reading order. */
+:lang(ar) .mz-auth-map text[text-anchor="middle"] { direction: rtl; unicode-bidi: plaintext; }
+.mz-auth-map .st-edge { fill: none; stroke: var(--st-line); stroke-width: 1.5; }
+.mz-auth-map .st-edge.on { stroke: color-mix(in srgb, var(--au-paper) 34%, transparent); }
+.mz-auth-map .st-node rect, .mz-auth-map .st-node circle.bg { fill: var(--st-node); stroke: var(--st-line); }
+.mz-auth-map .st-node text { fill: var(--st-fg); font: 600 12px var(--mz-font-sans, "Geist"), sans-serif; }
+.mz-auth-map .st-node .mono { fill: var(--st-fg); font: 700 13px var(--mz-font-sans, "Geist"), sans-serif; }
+.mz-auth-map .st-node, .mz-auth-map .st-hub { transform-box: fill-box; transform-origin: 50% 50%; transition: opacity var(--au-moderate) var(--au-ease); }
+.mz-auth-map .st-hub circle.ring { fill: var(--au-paper); }
+.mz-auth-map .st-hub text { fill: var(--au-ink); font: 700 13px var(--mz-font-sans, "Geist"), sans-serif; }
+.mz-auth-map.au-v-strip .st-hub text { font-size: 8px; }
+.mz-auth-map .st-dot { fill: var(--au-paper); }
+/* The outage dot: red only while it holds the view's red (data-mz-red on the stage), else paper. */
+.mz-auth-map .st-red { fill: var(--au-paper); opacity: 0; transition: opacity var(--au-base); }
+.mz-auth-stage[data-mz-red="on"] .mz-auth-map .st-red { fill: var(--au-red); }
+.mz-auth-map .st-halo { fill: none; stroke: var(--au-paper); stroke-width: 1.5; opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
+.mz-auth-map .st-ghost rect { fill: none; stroke: var(--st-fg-2); stroke-dasharray: 4 4; }
+.mz-auth-map .st-badge { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; transition: opacity var(--au-moderate) var(--au-ease), transform var(--au-slow) var(--au-ease-spring-soft); transform: scale(.9); }
+.mz-auth-map .st-badge rect { fill: var(--au-paper); } .mz-auth-map .st-badge text { fill: var(--au-ink); font: 700 11px var(--mz-font-sans, "Geist"), sans-serif; }
+.mz-auth-map .st-icon { color: var(--st-fg); }
+.mz-auth-map .st-tile { fill: var(--au-paper); }
+/* Scene deltas: no rebuild, a property flip with a transition. */
+.mz-auth-stage[data-scene="signup"] .st-badge.trial { opacity: 1; transform: none; transition-delay: 200ms; }
+.mz-auth-stage[data-scene="shopify"] .st-node:not([data-node="shopify"]) { opacity: .45; }
+.mz-auth-stage[data-scene="shopify"] [data-node="shopify"] .st-halo { animation: au-halo 1800ms ease-out infinite; }
+@keyframes au-halo { from { opacity: .6; transform: scale(1); } to { opacity: 0; transform: scale(1.25); } }
+.mz-auth-stage:not([data-scene="invite"]):not([data-scene="welcome"]) .st-ghost { opacity: 0; }
+.mz-auth-stage[data-scene="outage"] .st-hub circle.ring { fill: none; stroke: var(--au-paper); stroke-dasharray: 4 3; }
+.mz-auth-stage[data-scene="outage"] .st-hub text { fill: var(--au-paper); }
+.mz-auth-stage[data-scene="outage"] .st-red { opacity: 1; }
+.mz-auth-stage[data-scene="outage"] .st-dot { display: none; }
+.mz-auth-stage[data-scene="staff"] .mz-auth-stage__map, .mz-auth-stage[data-scene="staff"] .mz-auth-stage__ticker { display: none; }
+
+/* Before first paint the frame marks a build ([data-stage-build], STAGE_BUILD_SCRIPT): the pieces
+   it animates are not painted until the animator takes over and removes the mark, so the poster
+   never shows and then blinks out. If the animator never arrives, they fade in after 1.5s. */
+[data-stage-build] .mz-auth-stage :is(.st-node:not(.st-ghost), .st-hub, .st-edge, .mz-auth-stage__headline .au-w) {
+  opacity: 0; animation: au-stage-reveal var(--au-slow) var(--au-ease-std) 1500ms both;
+}
+@keyframes au-stage-reveal { from { opacity: 0; } to { opacity: 1; } }
+
+/* One map per screen size: the strip on phones, the band on tablets, the island on desktop. */
+.mz-auth-map.au-v-band, .mz-auth-map.au-v-island { display: none; }
+@media (min-width: 768px) and (max-width: 1023.98px) { .mz-auth-map.au-v-strip { display: none; } .mz-auth-map.au-v-band { display: block; } }
+@media (min-width: 1024px) { .mz-auth-map.au-v-strip, .mz-auth-map.au-v-band { display: none; } .mz-auth-map.au-v-island { display: block; } }
+.mz-auth-map .st-particle { fill: var(--au-paper); opacity: 0; }
+/* The staff stage (back office): the scale, the kicker and the drift only. */
+.mz-auth-stage[data-variant="staff"] .mz-auth-stage__copy { display: flex; }
+@media (max-width: 767.98px) {
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__scale { display: block; inline-size: 36px; block-size: 36px; }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__kicker { display: block; font-size: 13px; font-weight: 600; color: var(--st-fg); }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { flex-direction: row; }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__headline { display: none; }
+}
+
+/* The one motion slot (AuthProgress): loading, sending, confirmed. */
+.mz-auth-progress-slot { display: inline-grid; place-items: center; line-height: 0; }
+.mz-auth-progress-slot[data-kind="loading"] { color: var(--mz-text); }
+
+/* ───────────── 10. Footer ───────────── */
+.mz-auth-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 16px; margin-block-start: auto; padding-block: 24px 8px; font-size: 13px; color: var(--mz-text-2); text-align: center; }
+.mz-auth-foot nav { display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; }
+.mz-auth-foot a { color: inherit; text-decoration: none; position: relative; }
+.mz-auth-foot a:hover { color: var(--mz-text); text-decoration: underline; text-underline-offset: 3px; }
+@media (min-width: 1024px) { .mz-auth-foot { justify-content: space-between; flex-wrap: nowrap; padding-block-end: 0; } }
+
+/* ───────────── 11. First paint: the H1 is painted on frame 0 (LCP), the rest rises in a short stagger ───────────── */
+.mz-auth-bar__in { animation: au-bar-in var(--au-slow) var(--au-ease) both; }
+.mz-auth-card { animation: au-card-in var(--au-moderate) var(--au-ease) both; }
+/* The first step's children (and its form's) on the page's first paint only (StepHost drops
+   data-first after it, or at the first step change); never the exit copy. The heading block is
+   painted at once (LCP). */
+.mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > *, .mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > form > * { animation: au-rise var(--au-slow) var(--au-ease) both; }
+.mz-auth-stagger > .mz-auth-step > :nth-child(2) { animation-delay: 60ms; } .mz-auth-stagger > .mz-auth-step > :nth-child(3) { animation-delay: 110ms; }
+.mz-auth-stagger > .mz-auth-step > :nth-child(4) { animation-delay: 160ms; } .mz-auth-stagger > .mz-auth-step > :nth-child(5) { animation-delay: 210ms; }
+.mz-auth-stagger > .mz-auth-step > :nth-child(6) { animation-delay: 260ms; } .mz-auth-stagger > .mz-auth-step > :nth-child(n+7) { animation-delay: 310ms; }
+.mz-auth-stagger > .mz-auth-step > form > * { animation-delay: 160ms; }
+.mz-auth-stagger > .mz-auth-step > form > :nth-child(2) { animation-delay: 200ms; } .mz-auth-stagger > .mz-auth-step > form > :nth-child(n+3) { animation-delay: 240ms; }
+.mz-auth-foot { animation: au-fade var(--au-slow) var(--au-ease-std) 300ms both; }
+@keyframes au-bar-in { from { opacity: .001; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes au-card-in { from { transform: translateY(12px); } to { transform: none; } }
+@keyframes au-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes au-fade { from { opacity: .001; } to { opacity: 1; } }
+/* A repeat visit within 10 minutes (a language switch included): a 150ms fade, no rise. */
+[data-auth-seen] .mz-auth-bar__in, [data-auth-seen] .mz-auth-card, [data-auth-seen] .mz-auth-foot { animation: none; }
+[data-auth-seen] .mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > *, [data-auth-seen] .mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > form > * { animation: au-fade var(--au-fast) linear both; animation-delay: 0ms; }
+/* The heading block is painted on frame 0, first visit or repeat (it is the LCP). */
+.mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > :is(.mz-auth-head, :has(> .mz-auth-h1)) { animation: none; }
+
+/* ───────────── 12. Landscape phones and zoom ───────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .mz-auth-bar { position: static; padding-block-start: 8px; } .mz-auth-bar__in { block-size: 44px; }
+  .mz-auth-stage { display: none; }
+  .mz-auth-form { align-items: center; }
+  .mz-auth-main { inline-size: min(560px, 100%); }
+  .mz-auth-main { margin-block-start: 0; }
+  .mz-auth-card { margin-block-start: 8px; padding: 16px 20px; }
+  .mz-auth-h1 { font-size: 22px; }
+  .mz-auth-sub { display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .mz-auth-code__box { block-size: 44px; }
+}
+@media (max-height: 480px) { .mz-auth-foot { display: none; } }
+
+/* ───────────── 13. Forced colours ───────────── */
+@media (forced-colors: active) {
+  .mz-auth-cta, .mz-auth-btn, .mz-auth-input, .mz-auth-code__box, .mz-auth-country { border: 1px solid ButtonText; }
+  .mz-auth-control::after, .mz-auth-code__box::after { box-shadow: none; outline: 2px solid Mark; }
+}
+
+/* ───────────── 14. Reduced motion: a full design, not duration 0 ───────────── */
+@media (prefers-reduced-motion: reduce) {
+  .mz-auth *, .mz-auth *::before, .mz-auth *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important; scroll-behavior: auto !important; }
+  .mz-auth-bar__in, .mz-auth-card, .mz-auth-stagger > .mz-auth-step > *, .mz-auth-stagger > .mz-auth-step > form > *, .mz-auth-swap, .mz-auth-iconbtn .au-turn,
+  .mz-auth-foot, .mz-auth-alert, .mz-auth-trial, .mz-auth-menu,
+  .mz-auth-help .au-roll, .mz-auth-resend > .au-roll, .mz-auth-roll > span, .mz-auth-code__box { animation: none !important; }
+  .mz-auth-alert, .mz-auth-help > span, .mz-auth-menu { animation: au-fade 120ms linear both !important; }
+  .mz-auth-code__caret, .mz-auth-scale .au-beam, .mz-auth-scale .au-pan, .mz-auth-map .st-halo, .mz-auth-trial__dot, .mz-auth-help svg, .mz-auth-alert > svg { animation: none !important; }
+  .mz-auth-bar { transition: none; } .mz-auth-bar[data-hidden] { transform: none; }
+  .mz-auth-cta__key, .mz-auth-cta__key > svg, .mz-auth-navlink::after, .mz-auth-progress__bar > i, .mz-auth-meter__bars > i::after, .mz-auth-map *, .mz-auth-skip { transition-duration: 120ms !important; transition-delay: 0ms !important; }
+  .mz-auth-cta:hover .mz-auth-cta__key, .mz-auth-cta:focus-visible .mz-auth-cta__key { transform: none !important; }
+  .mz-auth-skel > i { animation: none !important; }
+}

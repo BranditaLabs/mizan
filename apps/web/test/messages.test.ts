@@ -37,8 +37,9 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
   });
 
   it("Arabic copy is actually Arabic (no untranslated English left behind)", () => {
-    // The English name of English, and example data shown as is (an email address, a phone number, an order id).
-    const allowedLatin = new Set(["shell.language.en", "shell.language.short.en", "auth.emailPlaceholder", "auth.phonePlaceholder", "auth.brand.orderId"]);
+    // The English name of English, example data shown as is (an email address, a phone number, an order id),
+    // and the plan names, which are product names in Latin in both languages (pricing page, trial chip).
+    const allowedLatin = new Set(["shell.language.en", "shell.language.short.en", "auth.emailPlaceholder", "auth.phonePlaceholder", "auth.plans.growth", "auth.plans.scale"]);
     for (const [k, v] of Object.entries(A)) {
       if (allowedLatin.has(k)) continue;
       expect(/[؀-ۿ]/.test(v), `${k}: ${v}`).toBe(true);
@@ -46,8 +47,9 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
   });
 
   it("Arabic copy keeps every Latin word inside <l> or <n> (rendered in <bdi>), brand names in Arabic (docs/16 §1.4, FX-1)", () => {
-    // Shown as is: the English name of English (in <bdi> on the switch) and input placeholders (attributes, not text).
-    const asIs = new Set(["shell.language.en", "auth.emailPlaceholder", "integrationsSettings.woo.sitePlaceholder"]);
+    // Shown as is: the English name of English (in <bdi> on the switch), input placeholders (attributes, not text)
+    // and the plan names, product names the trial chip and its picker render in <bdi>.
+    const asIs = new Set(["shell.language.en", "auth.emailPlaceholder", "integrationsSettings.woo.sitePlaceholder", "auth.plans.growth", "auth.plans.scale"]);
     const bare = (s: string) => s
       .replace(/<(l|n)>.*?<\/\1>/g, "") // <n> is the <bdi> for numbers and ids
       .replace(/<\/?\w+>/g, "")

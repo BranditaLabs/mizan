@@ -6,6 +6,7 @@ import { useLocale } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiClient, ApiError, ok, type ApiClient, type Me, type Membership } from "./api/client";
 import { authConfigured, firebaseAuth } from "./firebase";
+import { clearAuthMemory, draft } from "./auth/intent";
 import { DEFAULT_TIME_ZONE } from "./format";
 
 /**
@@ -39,6 +40,8 @@ export interface Session {
   signOut(to?: string): Promise<void>;
   /** For the gates: where a deliberate sign-out asked to go (once), or null when the session just ended. */
   takeSignOutTarget(): string | null;
+  /** Someone was signed in during this page's life and is not now, without a deliberate sign-out here. */
+  sessionEnded(): boolean;
 }
 
 const Ctx = createContext<Session | null>(null);
@@ -72,9 +75,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(authConfigured ? undefined : null);
   const [chosen, setChosen] = useState<{ uid: string; tenantId: string } | null>(null);
 
+  // Someone was signed in during this page's life (a later signed-out state is a session that ended).
+  const hadUser = useRef(false);
   useEffect(() => {
     const auth = firebaseAuth();
-    return auth ? onIdTokenChanged(auth, (u) => setUser(u)) : undefined;
+    return auth ? onIdTokenChanged(auth, (u) => {
+      if (u) { hadUser.current = true; draft.clear(); } // signed in (here or in another tab): no typed email kept
+      setUser(u);
+    }) : undefined;
   }, []);
 
   const uid = user?.uid ?? "";
@@ -122,19 +130,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async (to = "/sign-in") => {
     const auth = firebaseAuth();
     signOutTarget.current = to;
+    hadUser.current = false; // deliberate: not "your session ended"
     if (auth) await firebaseSignOut(auth);
     queryClient.clear(); // nothing of this person stays in memory
+    clearAuthMemory(); // the sign-up intent, the typed draft, the pending detour
   }, [queryClient]);
   const takeSignOutTarget = useCallback(() => {
     const to = signOutTarget.current;
     signOutTarget.current = null;
     return to;
   }, []);
+  const sessionEnded = useCallback(() => hadUser.current, []);
 
   const meError = meQuery.error instanceof ApiError ? meQuery.error : meQuery.error ? new ApiError(0, "unknown", "") : null;
   const value: Session = {
     status: user === undefined ? "loading" : user ? "signed-in" : "signed-out",
-    user: user ?? null, me, meError, stores, store, storeCheck, api, selectStore, refreshMe, retry, signOut, takeSignOutTarget,
+    user: user ?? null, me, meError, stores, store, storeCheck, api, selectStore, refreshMe, retry, signOut, takeSignOutTarget, sessionEnded,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -1,7 +1,18 @@
-/** Where to go after sign-in: a path inside this app only (never another origin), default home. */
+// C0 and C1 control characters: browsers drop tabs and newlines inside URLs ("/<TAB>/evil.com" becomes "//evil.com").
+const CONTROL = /[\u0000-\u001F\u007F-\u009F]/;
+
+/**
+ * Where to go after sign-in: a path inside this app only (never another origin), default home.
+ * It must start with one "/", and hold no backslash (browsers read "\\" as "/") and no control
+ * character, also once percent-decoded ("/%5C" and "/%09").
+ */
 export function safeNext(raw: string | string[] | undefined): string {
   const v = Array.isArray(raw) ? raw[0] : raw;
-  return v && v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\") ? v : "/";
+  if (!v || !v.startsWith("/") || v.startsWith("//") || v.includes("\\") || CONTROL.test(v)) return "/";
+  let decoded = v;
+  try { decoded = decodeURIComponent(v); } catch { return "/"; }
+  if (decoded.startsWith("//") || decoded.includes("\\") || CONTROL.test(decoded)) return "/";
+  return v;
 }
 
 const RESUME = "mizan.resume";
@@ -25,3 +36,8 @@ export const resume = {
     return v;
   },
 };
+
+/** The sign-in link that brings someone back to `from`; `ended` adds the "your session ended" note (reason=expired). */
+export function signInPath(from: string, ended = false): string {
+  return `/sign-in?${ended ? "reason=expired&" : ""}next=${encodeURIComponent(from)}`;
+}

@@ -120,10 +120,11 @@ test("English from the browser language, and the switch remembers the choice", a
 });
 
 test("theme: chosen theme applies at once and is server-rendered on the next visit", async ({ page, request }) => {
-  // The sign-in screen has one toggle (light ↔ dark); "System" is in the app's theme switch (English smoke test).
+  // The sign-in screen has a theme menu: Same as device, Light, Dark (AU-1).
   await page.goto("/en/sign-in");
   expect(await bodyBg(page)).toBe(LIGHT_BG);
-  await page.getByRole("button", { name: "Switch theme" }).click();
+  await page.getByRole("button", { name: "Theme", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Dark" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect.poll(() => bodyBg(page)).toBe(DARK_BG);
 
@@ -132,7 +133,8 @@ test("theme: chosen theme applies at once and is server-rendered on the next vis
   await page.reload();
   expect(await bodyBg(page)).toBe(DARK_BG);
 
-  await page.getByRole("button", { name: "Switch theme" }).click();
+  await page.getByRole("button", { name: "Theme", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Light" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect.poll(() => bodyBg(page)).toBe(LIGHT_BG);
 });
@@ -142,8 +144,9 @@ test("system dark mode is followed when no theme was chosen", async ({ browser }
   const page = await context.newPage();
   await page.goto("/ar/sign-in");
   expect(await bodyBg(page)).toBe(DARK_BG);
-  // From the system's dark, the toggle goes to light.
-  await page.getByRole("button", { name: "غيّر الثيم" }).click();
+  // From the system's dark, the menu goes to light.
+  await page.getByRole("button", { name: "الثيم", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "فاتح" }).click();
   await expect.poll(() => bodyBg(page)).toBe(LIGHT_BG);
   await context.close();
 });
