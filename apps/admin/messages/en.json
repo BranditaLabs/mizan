@@ -20,8 +20,8 @@
     "checkNow": "Check now"
   },
   "auth": {
-    "title": "Sign in to the back office",
-    "subtitle": "Mizan staff only. Use your Mizan account; two-step verification is required.",
+    "title": "Staff sign-in",
+    "subtitle": "Staff only. Every sign-in is recorded.",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
@@ -42,8 +42,33 @@
       "codeExpired": "The code expired. Start again.",
       "tooMany": "Too many attempts. Wait a little and try again.",
       "network": "No connection. Check the internet and try again.",
-      "generic": "Sign-in failed. Try again."
-    }
+      "generic": "Sign-in failed. Try again.",
+      "requiredEmail": "Write your email.",
+      "requiredPassword": "Write your password.",
+      "codeIncomplete": "Type all 6 digits.",
+      "mfaNoPhone": "This account has no phone for the second step. Ask a platform admin to add one."
+    },
+    "badge": "Back office",
+    "kicker": "Staff only",
+    "show": "Show",
+    "hide": "Hide",
+    "capsLock": "Caps Lock is on.",
+    "resendIn": "Resend in <n>{time}</n>",
+    "resend": "Send a new code",
+    "sent": "Sent",
+    "resendReady": "You can send a new code now.",
+    "back": "Back",
+    "doneTitle": "You're in",
+    "done": "Opening the back office…",
+    "skip": "Skip to the form",
+    "language": "العربية",
+    "theme": "Theme",
+    "dismiss": "Dismiss",
+    "recaptcha": "This page is protected by reCAPTCHA. Google's <privacy>Privacy Policy</privacy> and <terms>Terms of Service</terms> apply.",
+    "themeSystem": "Same as device",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "by": "by Brandita"
   },
   "shell": {
     "logoAlt": "Mizan",

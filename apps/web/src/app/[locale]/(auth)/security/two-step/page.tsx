@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { cookies } from "next/headers";
-import { AuthSplit } from "@/components/AuthFrame";
 import { RequireUser } from "@/components/auth/Gate";
 import { TwoStep } from "@/components/auth/TwoStep";
-import { parseTheme, THEME_COOKIE } from "@/lib/theme";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -17,10 +14,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
-  return (
-    <AuthSplit theme={theme}>
-      <RequireUser><TwoStep /></RequireUser>
-    </AuthSplit>
-  );
+  return <RequireUser><TwoStep /></RequireUser>;
 }

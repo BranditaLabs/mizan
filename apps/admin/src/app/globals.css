@@ -12,6 +12,8 @@
 @import "@mizan/design-system/base.css" layer(base);
 /* The reference components (mz-btn, mz-table, mz-kpi …) that src/components/ui wraps; utilities still win. */
 @import "@mizan/design-system/components.css" layer(components);
+/* The screens before a store (and the staff sign-in): frame, card, fields, stage, motion (auth spec). */
+@import "@mizan/design-system/auth.css" layer(components);
 
 /* `dark:` follows the user's choice, or the system when there is none (same rule as tokens.css). */
 @custom-variant dark {

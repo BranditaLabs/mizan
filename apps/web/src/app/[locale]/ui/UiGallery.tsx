@@ -20,6 +20,7 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { DateText, MoneyText, PhoneText } from "@/components/ui/Values";
 import { formatMoney } from "@/lib/format";
 import { WhatsAppPhone, type PhoneChrome } from "@/components/studio/WhatsAppPhone";
+import { AuthGallery } from "@/components/auth/Gallery";
 import { CITIES, ORDERS, PHONE_CHATS, PROFIT_TREND, RTO_TREND, type OrderStatus, type SampleOrder } from "./sample";
 
 const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
@@ -239,6 +240,10 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
             </div>
           ))}
         </div>
+      </Section>
+
+      <Section id="auth" title={t("auth.title")} body={t("auth.description")}>
+        <AuthGallery />
       </Section>
 
       <ConfirmDialog open={confirming} onClose={() => setConfirming(false)}

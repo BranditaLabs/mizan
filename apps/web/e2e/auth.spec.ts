@@ -51,12 +51,13 @@ test("owner: new account → store → two-step verification → signs in with t
   const seen = await smsCount(phone.e164);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Second step" })).toBeVisible();
-  await expect(page.getByText(`ending in ${phone.e164.slice(-4)}`)).toBeVisible();
-  await page.getByLabel("Code").fill("000000");
-  await page.getByRole("button", { name: "Verify and sign in" }).click();
+  // In the card (the frame's live region says it too, for screen readers).
+  await expect(page.locator("main").getByText(`ending in ${phone.e164.slice(-4)}`)).toBeVisible();
+  // Six digits submit by themselves; a refused code is selected, so the next one replaces it.
+  await page.getByLabel("Verification code", { exact: true }).fill("000000");
   await expect(page.locator("main").getByRole("alert")).toHaveText("That code is wrong. Check the message and type it again.");
-  await page.getByLabel("Code").fill(await smsCode({ phone: phone.e164 }, seen));
-  await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await expect(page.getByRole("button", { name: "Verify and sign in" })).toBeVisible();
+  await page.getByLabel("Verification code", { exact: true }).fill(await smsCode({ phone: phone.e164 }, seen));
 
   await expect(page).toHaveURL(/\/en\/onboarding$/);
   await expect(page.getByRole("radiogroup", { name: "Sales channel" })).toBeVisible();

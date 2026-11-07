@@ -128,7 +128,7 @@
     "createSubmit": "Create account",
     "haveAccount": "Have an account? Sign in",
     "forgot": "Forgot password?",
-    "resetSent": "We sent a password reset link to <e>{email}</e>.",
+    "resetSent": "If <e>{email}</e> has a Mizan account, a reset link is on its way.",
     "phone": "Phone number",
     "phoneHint": "Example: <n>01001234821</n>",
     "sendCode": "Send code",
@@ -147,7 +147,7 @@
       "emailInUse": "This email already has an account. Sign in with it.",
       "weakPassword": "That password is too short. Use 8 characters or more.",
       "invalidEmail": "That email address looks wrong.",
-      "invalidPhone": "That phone number is not valid. Write it like 01001234821.",
+      "invalidPhone": "That phone number is not valid. Write it like <n>{example}</n>.",
       "invalidCode": "That code is wrong. Check the message and type it again.",
       "codeExpired": "That code expired. Send a new one.",
       "tooMany": "Too many attempts. Wait a little and try again.",
@@ -155,9 +155,28 @@
       "generic": "Something went wrong. Try again.",
       "popupBlocked": "The browser blocked the Google window. Allow pop-ups for this site and try again.",
       "methodOff": "This sign-in method is not turned on for Mizan yet.",
-      "otherMethod": "This email already signs in another way. Use your email and password.",
+      "otherMethod": "This email already signs in another way. Use the way you signed up first (Google, or email and password).",
       "ssoNotSet": "Your company hasn't set up sign-in with Mizan yet. Use your email, phone or Google, or ask your admin.",
-      "ssoWrongDomain": "Your company's sign-in isn't set up for this email. Use your email, phone or Google."
+      "ssoWrongDomain": "Your company's sign-in isn't set up for this email. Use your email, phone or Google.",
+      "passwordShort": "Use 8 characters or more.",
+      "requiredEmail": "Write your work email.",
+      "requiredPassword": "Write your password.",
+      "requiredPhone": "Write your mobile number.",
+      "codeIncomplete": "Type all 6 digits.",
+      "mfaTimedOut": "This sign-in timed out. Type your password again.",
+      "tooManyWait": "Too many attempts. Try again in <n>{time}</n>.",
+      "smsQuota": "We can't send more codes to this number now. Try later or sign in with email.",
+      "captchaFailed": "We couldn't check this browser. Reload the page and try again.",
+      "userDisabled": "This account can't sign in. Contact your store owner or Mizan support.",
+      "recentLogin": "For your security, confirm it's you first.",
+      "verifyFirst": "Confirm your email first.",
+      "phoneInUse": "This number already protects your account. Use another number or carry on.",
+      "factorMax": "This account has too many code numbers. Contact support.",
+      "mfaNoPhone": "This account needs a second step we can't send. Contact Mizan support.",
+      "storageBlocked": "This browser is blocking sign-in. Open Mizan in Chrome or Safari.",
+      "inAppBrowser": "Google sign-in doesn't work inside this app. Open the link in your browser, or use your email or phone.",
+      "linkExpired": "This link expired or was already used. Send a new one.",
+      "fixFields": "Check the highlighted field."
     },
     "redirecting": "Opening your store…",
     "createSubtitle": "One account for your store and your team. You add the store next.",
@@ -192,7 +211,6 @@
     "verifySignIn": "Verify and sign in",
     "doneTitle": "You're in",
     "opening": "Balancing your books…",
-    "switchTheme": "Switch theme",
     "footer": {
       "rights": "© 2026 Mizan · powered by Brandita",
       "privacy": "Privacy",
@@ -200,40 +218,82 @@
       "dpa": "Data processing",
       "legal": "Legal"
     },
-    "brand": {
-      "kicker": "The commerce operating system",
-      "headline": "Every order, every method.",
-      "headline2": "Real profit on each one.",
-      "status1": "Awaiting deposit",
-      "status2": "Shipped · collect 1,800",
-      "status3": "Delivered · settled",
-      "initials": "SM",
-      "customer": "Sara M.",
-      "method": "Deposit + COD · Bosta",
-      "amount": "EGP 2,100",
-      "profitLabel": "Net profit on this order",
-      "profit": "EGP 512",
-      "points": {
-        "whatsapp": {
-          "title": "Confirm on WhatsApp",
-          "body": "Risky orders get a deposit link before they ship."
-        },
-        "owed": {
-          "title": "Collect only what’s owed",
-          "body": "Couriers never collect more or less than the balance."
-        },
-        "profit": {
-          "title": "See real profit",
-          "body": "After shipping, fees, returns and ads, per order."
-        }
-      },
-      "orderId": "#EO-48302"
-    },
     "googleShort": "Google",
     "sso": "Company SSO",
     "ssoTitle": "Sign in with your company",
     "ssoBody": "Type your work email and we'll take you to your company's sign-in page.",
-    "ssoSubmit": "Continue to company sign-in"
+    "ssoSubmit": "Continue to company sign-in",
+    "emailTypo": "Did you mean <n>{suggestion}</n>?",
+    "emailTypoFix": "Yes, fix it",
+    "createSubtitleTrial": "Start your 7-day trial. You add your store in the next step.",
+    "createPhoneNote": "Team members can sign in with a phone. Store owners also add an email.",
+    "legalLine": "By creating an account you accept the <terms>Terms</terms> and the <privacy>Privacy policy</privacy>.",
+    "trial": {
+      "chip": "{days}-day trial of <b>{plan}</b>",
+      "yearly": "then yearly",
+      "enterprise": "{days}-day trial of <b>Scale</b> · we'll contact you about Enterprise",
+      "note": "Nothing is charged during the trial. On the last day you choose whether to continue.",
+      "change": "Change",
+      "pickLabel": "Plan for your trial",
+      "info": "About the trial"
+    },
+    "plans": {
+      "growth": "Growth",
+      "scale": "Scale"
+    },
+    "strength": {
+      "label": "Strength: {level}",
+      "tooShort": "Too short",
+      "weak": "Weak",
+      "ok": "Okay",
+      "strong": "Strong",
+      "great": "Very strong",
+      "tipLength": "Add a few more characters.",
+      "tipCommon": "Avoid common passwords like 12345678.",
+      "tipPersonal": "Don't put your email or name in it."
+    },
+    "countryValue": "Country code: {country} (<n>+{dial}</n>)",
+    "countryPicker": "Choose country",
+    "countries": {
+      "EG": "Egypt",
+      "SA": "Saudi Arabia",
+      "AE": "UAE"
+    },
+    "countryChanged": "We switched the country to {country} to match the number.",
+    "changeId": "Change",
+    "sent": "Sent",
+    "live": {
+      "codeSent": "Code sent to the number ending in {hint}.",
+      "codeResent": "New code sent.",
+      "resendReady": "You can send a new code now.",
+      "checking": "Checking…"
+    },
+    "retryReady": "You can try again now.",
+    "mfaNoPhoneQ": "Don't have your phone?",
+    "mfaNoPhoneA": "The store owner or Mizan support can change the number after checking it's you.",
+    "resetSentTitle": "Check your email",
+    "resetSpam": "Didn't get it? Check spam, or make sure it's the email you signed up with.",
+    "resendLink": "Send again",
+    "resendLinkIn": "Send again in <n>{time}</n>",
+    "slow": "This is taking longer than usual.",
+    "openStore": "Open your store",
+    "reason": {
+      "expired": "Your session ended. Sign in again and you'll go back where you were.",
+      "disabled": "This account can't sign in right now. Contact your store owner or Mizan support.",
+      "reset": "Your password was changed. Sign in with the new one.",
+      "verified": "Your email is confirmed. Sign in to carry on.",
+      "twoStep": "Sign in first, then we'll turn on two-step verification.",
+      "welcome": "Sign in to open your store or your invitations.",
+      "invite": "You've been invited to a store on Mizan. Sign in or create an account with the email or phone number the invitation was sent to.",
+      "shopify": "Sign in or create an account to connect <n>{shop}</n> to Mizan.",
+      "shopifyGeneric": "Sign in or create an account to connect your Shopify store."
+    },
+    "errorAction": {
+      "signInInstead": "Sign in with it",
+      "useEmail": "Sign in with email instead",
+      "reload": "Reload page",
+      "tryAgain": "Try again"
+    }
   },
   "twoStep": {
     "title": "Turn on two-step verification",
@@ -249,12 +309,23 @@
     "phone": {
       "title": "Phone number for codes",
       "submit": "Send code",
-      "enable": "Turn on"
+      "enable": "Turn on",
+      "whyQ": "Why is this needed?",
+      "whyA": "Even if someone learns your password, they can't get in without your phone. It's required for owners and admins."
     },
     "phoneAccount": "This account signs in with a phone number. Store owners need an email account to turn on the second step.",
     "recentLogin": "For your security, sign out, sign in again, then turn on the second step.",
     "signOutAndBack": "Sign out and back in",
-    "progress": "Step {at} of {total}"
+    "progress": "Step {at} of {total}",
+    "verify": {
+      "body": "We sent a link to <e>{email}</e>. Open it on any device and we'll carry on here by ourselves.",
+      "waiting": "Waiting for your confirmation…",
+      "stillWaiting": "Still waiting? Tap \"I confirmed my email\".",
+      "done": "Email confirmed",
+      "wrong": "Wrong email? Sign out and start again"
+    },
+    "doneBody": "Your store is protected.",
+    "codeSentTo": "We texted a code to <n>{phone}</n>."
   },
   "welcome": {
     "title": "Welcome",
@@ -271,18 +342,30 @@
       "nameFromShopify": "Taken from your Shopify store. It updates by itself when you change it in Shopify, with your logo.",
       "country": "Country",
       "countryHint": "We set the currency, time zone and phone format from the country.",
-      "submit": "Create store"
+      "submit": "Create store",
+      "submitHint": "Write the store name and accept the terms to continue.",
+      "needName": "Write the store name.",
+      "needTerms": "Agree to the terms to continue."
     },
     "errors": {
       "tenantLimit": "You have reached the store limit.",
       "generic": "We couldn't create the store. Try again."
     },
-    "signedInAs": "Signed in as <n>{who}</n>"
+    "signedInAs": "Signed in as <n>{who}</n>",
+    "created": {
+      "ready": "Store ready. Let's connect it."
+    }
   },
   "gate": {
     "loading": "Loading…",
     "unavailable": "We can't reach your store right now.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "outage": {
+      "title": "Mizan isn't answering right now",
+      "body": "Your data is safe. We'll try again by ourselves in <n>{time}</n>.",
+      "now": "Try now"
+    },
+    "backOnline": "Back online"
   },
   "ui": {
     "close": "Close",
@@ -544,6 +627,10 @@
       "ar": "Arabic chat",
       "en": "English chat",
       "label": "Sample chat: {lang}"
+    },
+    "auth": {
+      "title": "Sign-in pieces",
+      "description": "The auth kit: fields, the code, the resend timer, the key button, alerts, the trial chip and the stage."
     }
   },
   "problems": {
@@ -5283,6 +5370,63 @@
     "notifyWho": "Who gets the notice",
     "alert": {
       "noCourier": "No Bosta connected: automatic booking won't run. <link>Connect a courier</link>"
+    }
+  },
+  "frame": {
+    "skip": "Skip to the form",
+    "help": "Need help?",
+    "newQLink": "New to Mizan? Create an account",
+    "haveQLink": "Have an account? Sign in",
+    "by": "by Brandita",
+    "home": "Mizan home",
+    "theme": {
+      "label": "Theme",
+      "system": "Same as device",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "language": "Language",
+    "langSwitchTitle": "Switch language?",
+    "langSwitchBody": "If you switch now, you'll need to ask for a new code.",
+    "langSwitchGo": "Switch language",
+    "langSwitchStay": "Stay",
+    "recaptcha": "This page is protected by reCAPTCHA. Google's <privacy>Privacy Policy</privacy> and <terms>Terms of Service</terms> apply.",
+    "offline": "You're offline. You can carry on once the internet is back.",
+    "offlineCta": "Waiting for connection…",
+    "online": "You're back online.",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied",
+    "support": "Contact support",
+    "dismiss": "Dismiss",
+    "stepTitle": "{step} · Mizan"
+  },
+  "authStage": {
+    "kicker": "The commerce operating system",
+    "headline": "Every order, every method.",
+    "headline2": "Real profit on each one.",
+    "example": "Example",
+    "outcomes": {
+      "0": "Order confirmed on WhatsApp in 4 minutes, before it shipped.",
+      "1": "The courier collected exactly <n>EGP 1,800</n>: not more, not less.",
+      "2": "A risky order paid a deposit link first.",
+      "3": "Net profit on this order: <n>EGP 512</n> after shipping, fees and ads.",
+      "4": "Shopify, Bosta and payments in one place."
+    },
+    "trialTag": "{days}-day trial",
+    "waitingShopify": "Waiting for Shopify",
+    "inviteNode": "A store invited you",
+    "staffKicker": "Staff only",
+    "pause": "Pause animation",
+    "play": "Play animation",
+    "srSummary": "Mizan connects your store, couriers, WhatsApp and payments, and shows the real profit on every order.",
+    "nodes": {
+      "hub": "Mizan",
+      "shopify": "Shopify",
+      "woo": "WooCommerce",
+      "bosta": "Bosta",
+      "whatsapp": "WhatsApp",
+      "cod": "COD",
+      "store": "Store"
     }
   }
 }

@@ -1,7 +1,8 @@
 /** Firebase Auth error codes → `auth.errors.*` messages (never Firebase's English text). */
 export type AuthErrorKey =
   | "invalidCredential" | "emailInUse" | "weakPassword" | "invalidEmail" | "invalidPhone"
-  | "invalidCode" | "codeExpired" | "tooMany" | "network" | "generic";
+  | "invalidCode" | "codeExpired" | "tooMany" | "network" | "generic"
+  | "requiredEmail" | "requiredPassword" | "codeIncomplete" | "mfaNoPhone";
 
 const BY_CODE: Record<string, AuthErrorKey> = {
   "auth/invalid-credential": "invalidCredential",
@@ -12,7 +13,9 @@ const BY_CODE: Record<string, AuthErrorKey> = {
   "auth/weak-password": "weakPassword",
   "auth/password-does-not-meet-requirements": "weakPassword",
   "auth/invalid-email": "invalidEmail",
-  "auth/missing-email": "invalidEmail",
+  "auth/missing-email": "requiredEmail",
+  "auth/missing-password": "requiredPassword",
+  "auth/unsupported-first-factor": "mfaNoPhone",
   "auth/invalid-phone-number": "invalidPhone",
   "auth/missing-phone-number": "invalidPhone",
   "auth/invalid-verification-code": "invalidCode",
@@ -22,7 +25,11 @@ const BY_CODE: Record<string, AuthErrorKey> = {
   "auth/too-many-requests": "tooMany",
   "auth/quota-exceeded": "tooMany",
   "auth/network-request-failed": "network",
+  "auth/timeout": "network",
 };
+
+/** The person closed a window: nothing to say. */
+export const SILENT = new Set(["auth/popup-closed-by-user", "auth/cancelled-popup-request", "auth/user-cancelled"]);
 
 export function authErrorKey(e: unknown): AuthErrorKey {
   const code = typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : "";

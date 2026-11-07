@@ -6,6 +6,7 @@ import { useLocale } from "next-intl";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { apiClient, ApiError, ok, type ApiClient, type Me, type Membership } from "./api/client";
 import { authConfigured, firebaseAuth } from "./firebase";
+import { clearAuthMemory } from "./auth/intent";
 import { DEFAULT_TIME_ZONE } from "./format";
 
 /**
@@ -124,6 +125,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     signOutTarget.current = to;
     if (auth) await firebaseSignOut(auth);
     queryClient.clear(); // nothing of this person stays in memory
+    clearAuthMemory(); // the sign-up intent, the typed draft, the pending detour
   }, [queryClient]);
   const takeSignOutTarget = useCallback(() => {
     const to = signOutTarget.current;

@@ -113,14 +113,14 @@ export async function agentIn(phone: { e164: string }, ...storeNames: string[]):
 /** Sign in through the UI with a phone number and the texted code (Arabic or English labels). */
 export async function signInWithPhone(page: Page, phone: { national: string; e164: string }, locale: "ar" | "en" = "ar") {
   const L = locale === "ar"
-    ? { tab: "الموبايل", field: "رقم الموبايل", send: "كمّل", code: "كود التحقق", verify: "تأكيد ودخول" }
-    : { tab: "Phone", field: "Mobile number", send: "Continue", code: "Verification code", verify: "Verify and sign in" };
+    ? { tab: "الموبايل", field: "رقم الموبايل", send: "كمّل", code: "كود التحقق" }
+    : { tab: "Phone", field: "Mobile number", send: "Continue", code: "Verification code" };
   await page.getByRole("radio", { name: L.tab, exact: true }).click();
   await page.getByLabel(L.field, { exact: true }).fill(phone.national);
   const seen = await smsCount(phone.e164);
   await page.getByRole("button", { name: L.send, exact: true }).click();
+  // Six digits submit by themselves (AU-1); the button is only for a code typed short.
   await page.getByLabel(L.code, { exact: true }).fill(await smsCode({ phone: phone.e164 }, seen));
-  await page.getByRole("button", { name: L.verify, exact: true }).click();
 }
 
 /** An owner (two-step on) with a store, ready to sign in through the UI. */
@@ -135,12 +135,11 @@ export async function ownerWithStore(name: string) {
 /** Sign in through the UI with email, password and the SMS second step. */
 export async function signInOwner(page: Page, owner: { email: string; phone: { e164: string } }, locale: "ar" | "en" = "en") {
   const L = locale === "ar"
-    ? { email: "إيميل الشغل", password: "كلمة السر", submit: "كمّل", code: "كود التحقق", verify: "تأكيد ودخول" }
-    : { email: "Work email", password: "Password", submit: "Continue", code: "Verification code", verify: "Verify and sign in" };
+    ? { email: "إيميل الشغل", password: "كلمة السر", submit: "كمّل", code: "كود التحقق" }
+    : { email: "Work email", password: "Password", submit: "Continue", code: "Verification code" };
   await page.getByLabel(L.email, { exact: true }).fill(owner.email);
   await page.getByLabel(L.password, { exact: true }).fill(PASSWORD);
   const seen = await smsCount(owner.phone.e164);
   await page.getByRole("button", { name: L.submit, exact: true }).click();
   await page.getByLabel(L.code, { exact: true }).fill(await smsCode({ phone: owner.phone.e164 }, seen));
-  await page.getByRole("button", { name: L.verify }).click();
 }

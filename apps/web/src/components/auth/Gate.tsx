@@ -8,6 +8,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 import { BootLoader } from "@/components/ui/Loader";
+import { CardSkeleton } from "@mizan/design-system/auth/react";
 
 export function Loading() {
   const t = useTranslations("gate");
@@ -41,10 +42,11 @@ function useSignInRedirect(active: boolean) {
 
 /** Pages that need a signed-in person but no store (welcome, two-step). */
 export function RequireUser({ children }: { children: ReactNode }) {
+  const t = useTranslations("gate");
   const { status, me, meError } = useSession();
   useSignInRedirect(status === "signed-out");
-  if (status !== "signed-in") return <Loading />;
-  if (!me) return meError ? <Unavailable /> : <Loading />;
+  // Inside the auth card: a skeleton the size of a step, shown only after 300ms (never a flash).
+  if (status !== "signed-in" || !me) return meError && status === "signed-in" ? <Unavailable /> : <CardSkeleton label={t("loading")} />;
   return <>{children}</>;
 }
 

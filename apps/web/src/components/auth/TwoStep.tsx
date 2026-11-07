@@ -15,6 +15,7 @@ import { firebaseAuth, smsVerifier } from "@/lib/firebase";
 import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 
+/** The reCAPTCHA container lives in the persistent frame (Frame.tsx), outside every animated subtree. */
 const RECAPTCHA = "sms-verifier";
 
 /**
@@ -154,7 +155,6 @@ export function TwoStep() {
         </form>
       )}
       {error === "recentLogin" ? <Button variant="secondary" onClick={() => void signOutAndBack(false)}>{t("signOutAndBack")}</Button> : null}
-      <div id={RECAPTCHA} />
     </Step>
   );
 }
