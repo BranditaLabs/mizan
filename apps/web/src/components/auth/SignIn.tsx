@@ -140,6 +140,8 @@ export function SignIn({ params }: { params: AuthParams }) {
     authUi.set({ scene, mode: s.mode, locked: CODE_STEPS.has(step) });
   }, [s.mode, step, outage, creating, params.reason]);
   useEffect(() => () => authUi.set({ scene: null, mode: null, locked: false }), []);
+  // Signed in (by this card, a popup or a session that was already there): the stage's one DROP.
+  useEffect(() => { if (done) authUi.signal("signedIn"); }, [done]);
   useEffect(() => authUi.onModeRequest((mode) => { setFieldErrors({}); setFormError(null); dispatch({ type: "mode", mode }); }), []);
 
   /* ── Network ── */
@@ -244,6 +246,9 @@ export function SignIn({ params }: { params: AuthParams }) {
     if (el) { const r = el.getBoundingClientRect(); pressed.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
     setBusy(true);
     clearErrors();
+    // The stage: dots flow toward Mizan while the work runs; a tip if it fails (not when the person closed a popup).
+    authUi.signal("send");
+    let erred = false;
     try {
       await work();
       // Signed in by this press: the success wipe grows from the button.
@@ -251,9 +256,11 @@ export function SignIn({ params }: { params: AuthParams }) {
       pressed.current = null;
     } catch (e) {
       pressed.current = null;
+      erred = !SILENT.has(authErrorCode(e));
       fail(e);
     } finally {
       setBusy(false);
+      authUi.signal(erred ? "error" : "idle");
     }
   }
   const submitter = (e: FormEvent) => ((e.nativeEvent as SubmitEvent).submitter as HTMLElement | null) ?? (e.currentTarget as HTMLFormElement).querySelector<HTMLElement>("[type=submit]");
@@ -263,6 +270,7 @@ export function SignIn({ params }: { params: AuthParams }) {
     const errs = Object.fromEntries(checks.filter(([, k]) => k)) as FieldErrors;
     if (Object.keys(errs).length === 0) return false;
     setFieldErrors(errs);
+    authUi.signal("error");
     const first = checks.find(([, k]) => k)![0];
     ({ email: emailRef, password: passwordRef, phone: phoneRef, code: null })[first]?.current?.focus();
     announce(t("errors.fixFields", { count: Object.keys(errs).length }));

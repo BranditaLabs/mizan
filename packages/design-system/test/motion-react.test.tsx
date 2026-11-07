@@ -10,7 +10,7 @@ import * as transfer from "../motion/physics/transfer";
 import * as drop from "../motion/physics/drop";
 import * as fill from "../motion/physics/fill";
 import * as level from "../motion/physics/level";
-import { MizanLoader, EventGlyph, DoneState, RedBudgetProvider, Mark, Wordmark } from "../react/motion";
+import { MizanLoader, EventGlyph, DoneState, FluidMark, RedBudgetProvider, Mark, Wordmark, useRedTaken } from "../react/motion";
 import { Gauge, Vessels, Breakeven, Bullseye } from "../react/motion/instruments";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -315,5 +315,55 @@ describe("accessibility", () => {
     expect(merge).not.toContain("<rect x=\"3.5\"");
     const fail = renderToString(<EventGlyph outcome="fail" />);
     expect(fail).not.toContain("danger");
+  });
+});
+
+describe("FluidMark: the live mark, still unless a beat plays once", () => {
+  it("still by default: no motion class, the two balls under one goo filter", () => {
+    const html = renderToString(<FluidMark />);
+    expect(html).toContain('data-beat="still"');
+    expect(html).not.toMatch(/mz-(pan|settle|tip|drop|ripple)/);
+    expect(html.match(/<circle/g)?.length).toBe(2);
+    expect(html).toContain('aria-hidden="true"');
+  });
+
+  it("each beat plays its catalogue motion: settle travels in, tip passes, drop falls and ripples", () => {
+    const settle = renderToString(<FluidMark beat="settle" />);
+    expect(settle).toContain("mz-settle-in");
+    expect(settle).toContain("mz-pan-l");
+    expect(renderToString(<FluidMark beat="tip" />)).toContain("mz-tip-settle");
+    const drop = renderToString(<FluidMark beat="drop" />);
+    expect(drop).toContain("mz-drop-fall");
+    expect(drop).toContain("mz-ripple");
+    expect(drop).not.toMatch(/infinite/);
+  });
+
+  it("reduced motion: every beat is the still mark", () => {
+    forceReduced(true);
+    const { host, unmount } = mount(<FluidMark beat="drop" />);
+    expect(host.querySelector("svg")?.getAttribute("data-beat")).toBe("still");
+    expect(host.innerHTML).not.toMatch(/mz-(drop|ripple|tip|pan)/);
+    unmount();
+  });
+
+  it("its red ball is the view's one red; a DROP elsewhere takes it and the ball goes mono, a header wordmark goes mono while the mark holds it", () => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const Taken = () => <i data-taken={String(useRedTaken())} />;
+    const { host, unmount } = mount(<RedBudgetProvider><Taken /><FluidMark /><EventGlyph outcome="drop" /></RedBudgetProvider>);
+    const ball = () => host.querySelector("svg[data-beat]")!.getAttribute("data-mz-red");
+    expect(ball()).toBe("off");
+    expect(host.querySelectorAll('[data-mz-red="on"]').length).toBe(1);
+    act(() => { vi.advanceTimersByTime(620 + 1400 + 5); });
+    expect(ball()).toBe("on");
+    expect(host.querySelector("i")?.getAttribute("data-taken")).toBe("true");
+    unmount();
+    vi.useRealTimers();
+  });
+
+  it("claim={false}: never red", () => {
+    const { host, unmount } = mount(<RedBudgetProvider><FluidMark claim={false} /></RedBudgetProvider>);
+    expect(host.querySelector('[data-mz-red="on"]')).toBeNull();
+    unmount();
   });
 });
