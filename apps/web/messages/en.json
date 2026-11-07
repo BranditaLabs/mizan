@@ -4308,7 +4308,8 @@
       "stock": "Stock",
       "supplier": "Suppliers",
       "tenant": "Store",
-      "ticket": "Tickets"
+      "ticket": "Tickets",
+      "whatsapp": "WhatsApp"
     },
     "col": {
       "when": "When",
@@ -4324,6 +4325,11 @@
       "automation": "Automation"
     },
     "actions": {
+      "whatsapp": {
+        "connect": "Connected WhatsApp",
+        "template_submitted": "Sent the confirmation message to Meta",
+        "template_fallback": "Sent an approved confirmation message instead of the chosen one"
+      },
       "member": {
         "invited": "Invited someone",
         "invitation_revoked": "Revoked an invitation",

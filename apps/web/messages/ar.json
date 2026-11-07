@@ -4308,7 +4308,8 @@
       "stock": "المخزون",
       "supplier": "الموردين",
       "tenant": "المتجر",
-      "ticket": "التذاكر"
+      "ticket": "التذاكر",
+      "whatsapp": "واتساب"
     },
     "col": {
       "when": "إمتى",
@@ -4324,6 +4325,11 @@
       "automation": "أتمتة"
     },
     "actions": {
+      "whatsapp": {
+        "connect": "وصّل واتساب",
+        "template_submitted": "بعت رسالة التأكيد لميتا",
+        "template_fallback": "اتبعتت رسالة تأكيد متوافق عليها بدل اللي اتختارت"
+      },
       "member": {
         "invited": "دعا حد",
         "invitation_revoked": "لغى دعوة",
