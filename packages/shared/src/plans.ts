@@ -7,6 +7,13 @@
  * seats are checked when someone adds one. null = no limit.
  */
 export const PLANS = ["free", "growth", "scale", "enterprise"] as const;
+
+/**
+ * The trial length on every tier the screens before a store promise (owner decision: 7 days, docs/16 §7):
+ * the default of `billing_settings.trial_days` (migration 0079). The API reads the setting itself, so a
+ * store's real trial is always the setting's; this number only labels the chip and the trial copy.
+ */
+export const TRIAL_DAYS = 7;
 export type Plan = (typeof PLANS)[number];
 
 export interface PlanLimits { ordersPerMonth: number | null; stores: number | null; users: number | null }

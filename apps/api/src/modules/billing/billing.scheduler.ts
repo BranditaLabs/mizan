@@ -17,7 +17,7 @@ export const SCHEDULER_BATCH = 100;
  * LOCKED and version-checked, so two workers never end one trial twice and a re-run changes
  * nothing. Nothing here touches orders, webhooks or courier sync: they never stop.
  *
- * First, once after launch: the D18 backfill (migration 0076) gave existing stores a trial or a
+ * First, once after launch: the D18 backfill (migration 0080) gave existing stores a trial or a
  * comped plan but could not fill trials_used (the pepper lives only here), so each such store's
  * owner (account, email, phone) and connected shop domains are claimed now, and a
  * `trial_keys_claimed` history line makes sure it never runs again for that subscription.

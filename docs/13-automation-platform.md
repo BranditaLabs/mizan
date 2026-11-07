@@ -49,6 +49,9 @@ Outcomes: **settle** (arrives with a small overshoot), **done** (settles, merges
 | `privacy.completed` | done | drop | no | toast, list |
 | `plan.limit_reached` | tip | — | no | bell, banner, kpi |
 | `plan.upgrade_requested` | settle | drop | no | button, toast |
+| `subscription.trial_started` | settle | — | no | banner |
+| `subscription.trial_ended` | tip | — | no | banner, bell |
+| `subscription.plan_changed` | settle | — | no | banner, toast |
 | `automation.run_failed` | fail | — | no | list, bell |
 | `automation.paused` | fail | — | no | list, bell |
 | `connection.connected` | merge | transfer | no | button, toast, sync |

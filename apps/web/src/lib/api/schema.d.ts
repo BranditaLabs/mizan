@@ -4906,12 +4906,12 @@ export interface components {
                 dpa: string;
             };
             /**
-             * @description The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly). Not sent by the dashboard yet (OB-3)
+             * @description The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly). The dashboard sends the pricing page's choice
              * @enum {string}
              */
             plan?: "growth" | "scale" | "enterprise" | "free";
             /**
-             * @description Monthly or yearly billing after the trial; monthly when absent. Not sent by the dashboard yet (OB-3)
+             * @description Monthly or yearly billing after the trial; monthly when absent
              * @enum {string}
              */
             interval?: "month" | "year";

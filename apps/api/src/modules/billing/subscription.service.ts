@@ -43,7 +43,7 @@ const eventActor = (a: SubscriptionActor): EventActor => (a.type === "user" ? { 
  * subscription, or the Free one after a trial) or `transition` (the table in state.ts), inside the
  * caller's tenant transaction: the row is locked and version-checked, a subscription_events line is
  * appended, and tenants.plan follows the plan the subscription entitles. This is the only writer of
- * tenants.plan (a trigger refuses any other: migration 0076).
+ * tenants.plan (a trigger refuses any other: migration 0080).
  */
 @Injectable()
 export class SubscriptionService {

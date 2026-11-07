@@ -5720,6 +5720,11 @@
         "limit_reached": "Plan limit reached",
         "upgrade_requested": "Upgrade requested"
       },
+      "subscription": {
+        "trial_started": "Trial started",
+        "trial_ended": "Trial ended: the store is on Free",
+        "plan_changed": "Plan changed"
+      },
       "automation": {
         "run_failed": "An automation run failed",
         "paused": "Automation paused after failures"

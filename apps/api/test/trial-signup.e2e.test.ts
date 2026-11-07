@@ -128,7 +128,7 @@ describe("signup and trial (E12-2a2)", () => {
 });
 
 describe("stores that existed before subscriptions (D18 backfill)", () => {
-  /** A store as migration 0076 leaves it: a Growth trial and a `backfill` history line, nothing in trials_used. */
+  /** A store as migration 0080 leaves it: a Growth trial and a `backfill` history line, nothing in trials_used. */
   async function backfilled(token: string, shop: string | null) {
     await http().get("/v1/me").set(as(token)).expect(200); // the account, as at its last sign-in
     const uid = fake.identities.get(token)!.uid;

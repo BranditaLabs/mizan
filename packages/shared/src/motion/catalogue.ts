@@ -69,6 +69,11 @@ const SPECS = {
   "privacy.completed": m("drop", "done", S(tst, list)),
   "plan.limit_reached": m(null, "tip", S(bell, ban, kpi)),
   "plan.upgrade_requested": m("drop", "settle", S(btn, tst)),
+  // Subscriptions (E12-2a): platform events, never red. The trial and the plan show in the plan banner;
+  // a trial ending into Free is a warning (orders still flow), a plan change settles.
+  "subscription.trial_started": m(null, "settle", S(ban)),
+  "subscription.trial_ended": m(null, "tip", S(ban, bell)),
+  "subscription.plan_changed": m(null, "settle", S(ban, tst)),
   "automation.run_failed": m(null, "fail", S(list, bell), { mergeKey: "list" }),
   "automation.paused": m(null, "fail", S(list, bell)),
   "connection.connected": m("transfer", "merge", S(btn, tst, sync)),

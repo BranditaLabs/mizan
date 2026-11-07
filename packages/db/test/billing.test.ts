@@ -7,7 +7,7 @@ import { pgliteMigrationClient } from "../src/clients.js";
 import { loadMigrations, migrate, MIGRATIONS_DIR } from "../src/migrate.js";
 
 /**
- * E12-2a1 (migrations 0075, 0076): the billing catalogue, subscriptions, one trial per key and
+ * E12-2a1 (migrations 0079, 0080): the billing catalogue, subscriptions, one trial per key and
  * coupons. Stores reach trials_used and coupons only through their SECURITY DEFINER functions.
  */
 const db = new PGlite();
@@ -34,7 +34,7 @@ const asRole = <T>(role: string, fn: () => Promise<T>) => inTx(`SET LOCAL ROLE $
 beforeAll(async () => {
   // Stores that exist before subscriptions launch: two on Free, one staff moved to Scale, one deleted (staff had moved it to Growth).
   const before = mkdtempSync(join(tmpdir(), "mizan-billing-"));
-  for (const f of readdirSync(MIGRATIONS_DIR).filter((f) => f < "0075")) copyFileSync(join(MIGRATIONS_DIR, f), join(before, f));
+  for (const f of readdirSync(MIGRATIONS_DIR).filter((f) => f < "0079")) copyFileSync(join(MIGRATIONS_DIR, f), join(before, f));
   await migrate(pgliteMigrationClient(db), { dir: before });
   await db.exec(`INSERT INTO tenants (id, name, slug, timezone) VALUES ('${T1}', 'A', 'a', 'Africa/Cairo'), ('${T2}', 'B', 'b', 'Asia/Riyadh');
                  INSERT INTO tenants (id, name, slug, plan) VALUES ('${T3}', 'C', 'c', 'scale');

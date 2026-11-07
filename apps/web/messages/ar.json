@@ -5720,6 +5720,11 @@
         "limit_reached": "وصلت لحد الباقة",
         "upgrade_requested": "طلبت ترقية الباقة"
       },
+      "subscription": {
+        "trial_started": "التجربة بدأت",
+        "trial_ended": "التجربة خلصت: المتجر دلوقتي على المجانية",
+        "plan_changed": "الباقة اتغيّرت"
+      },
       "automation": {
         "run_failed": "تشغيل أوتوميشن فشل",
         "paused": "الأوتوميشن وقف بعد أخطاء"
