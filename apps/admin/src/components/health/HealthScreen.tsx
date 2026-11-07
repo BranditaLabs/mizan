@@ -13,6 +13,7 @@ import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 const secs = (s: number) => (s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${(s / 3600).toFixed(1)}h`);
 const mb = (b: number | null) => (b == null ? "—" : `${Math.round(b / 1_048_576)} MB`);
@@ -62,7 +63,7 @@ export function HealthScreen() {
               <ul className="flex flex-col gap-2 text-body-sm">
                 {d.circuits.map((c) => (
                   <li key={c.provider} className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{c.provider}</span>
+                    <span className="flex items-center gap-2 font-medium"><ProviderLogo slug={c.provider} />{c.provider}</span>
                     <span className="flex gap-2">
                       <Badge tone={c.open ? "danger" : "success"}>{t("open", { n: c.open })}</Badge>
                       {c.halfOpen ? <Badge tone="warning">{t("halfOpen", { n: c.halfOpen })}</Badge> : null}

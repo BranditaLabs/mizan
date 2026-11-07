@@ -41,6 +41,7 @@ import { EditBanner, EditOrderButton, canEditOrder } from "./EditOrder";
 import { printHref } from "./PrintDocuments";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
 import { MotionSurface } from "@/components/ui/MotionSurface";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 /** Risk reason codes the API writes (E6-1); an unknown code is shown as is. */
 const RISK_REASONS = new Set(["delivered_before", "refused_before", "cancelled_before", "first_order", "duplicate", "address_incomplete", "no_city", "phone_invalid", "high_value", "very_high_value", "bulk_quantity", "velocity", "chargeback_before", "bnpl", "awaiting_transfer", "paid"]);
@@ -179,7 +180,7 @@ export function OrderDetail({ id }: { id: string }) {
           {canEditOrder(o, store?.role) ? <EditOrderButton order={o} /> : null}
         </div>
         <p className="w-full text-body-sm text-text-2">
-          {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{sourceName(o.store.provider ?? "")}
+          {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}<ProviderLogo slug={o.store.provider} className="me-1" />{sourceName(o.store.provider ?? "")}
           {/* Made in Mizan and copied to the store: the same order there, or why not yet. */}
           {o.storeCopy ? <>{" · "}<span className={o.storeCopy.status === "failed" ? "text-danger-text" : undefined} data-testid="store-copy">
             {o.storeCopy.status === "created" ? t.rich("detail.copyCreated", { name: o.storeCopy.name ?? "", b: (c) => <bdi className="mz-id">{c}</bdi> })

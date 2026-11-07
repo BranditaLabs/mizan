@@ -7,7 +7,7 @@ export interface PartnerEntry {
   kind: PartnerKind;
   nameEn: string;
   nameAr: string;
-  /** "simple-icons@<exact version>", "press-kit" or "monogram" */
+  /** "simple-icons@<exact version>", "press-kit", "owner-supplied <YYYY-MM-DD>" or "monogram" */
   source: string;
   guideUrl: string | null;
   allowedVariants: PartnerVariant[];
@@ -31,9 +31,36 @@ export interface PartnerEntry {
    * granted draws a mark; "required" or a missing value renders the monogram.
    */
   permission?: PartnerPermission;
+  /** Where the owner's bitmap logo came from ("owner-supplied <YYYY-MM-DD>"), when it has one (RASTERS). */
+  rasterSource?: string;
 }
 
-export type PartnerPermission = "not-required" | "required" | `granted:${string}`;
+/**
+ * "owner:<YYYY-MM-DD>": the owner supplied the brand's official logo and decided to show it (DS-3b);
+ * the brand's own written OK, when it arrives, is recorded as "granted:<date>".
+ */
+export type PartnerPermission = "not-required" | "required" | `granted:${string}` | `owner:${string}`;
+
+/** One face of an owner bitmap: <file>@1x.png, @2x, @3x; w and h at 1x, widths of the three files. */
+export interface PartnerRasterImage {
+  file: string;
+  w: number;
+  h: number;
+  widths: number[];
+}
+
+/** An owner-supplied bitmap logo (DS-3b): a square mark and, where one exists, a wide lockup. */
+export interface PartnerRaster {
+  /** Smallest mark (without clear space) drawn, in px. */
+  minPx: number;
+  /** Smallest lockup width drawn, in px, where the brand's guide gives one. */
+  lockupMinPx?: number;
+  /** Clear space around the mark on its tile, where it differs from the entry's (a share of the mark's size). */
+  clearSpace?: number;
+  /** dark: a face for dark grounds where the logo has black parts (a wordmark turned white). */
+  mark: { light: PartnerRasterImage; dark?: PartnerRasterImage };
+  lockup?: { light: PartnerRasterImage; dark?: PartnerRasterImage };
+}
 
 export interface PartnerMark {
   viewBox: string;

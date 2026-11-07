@@ -9,6 +9,7 @@ import { SkeletonRows } from "@/components/ui/Surface";
 import { DateText } from "@/components/ui/Values";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 /** A round is due every 5 minutes: longer than this without one means the guardian is not running. */
 const LATE_MS = 20 * 60_000;
@@ -64,7 +65,7 @@ export function SyncHealth() {
           </div>
           {h.stores.length > 1 ? h.stores.map((s) => (
             <div key={s.connectionId} className="flex justify-between gap-3 sm:col-span-2">
-              <dt className="text-text-2"><Bdi>{s.name ?? s.provider}</Bdi></dt>
+              <dt className="flex items-center gap-2 text-text-2"><ProviderLogo slug={s.provider} /><Bdi>{s.name ?? s.provider}</Bdi></dt>
               <dd>{s.checkedAt ? <DateText value={s.checkedAt} relative /> : t("never")}</dd>
             </div>
           )) : null}

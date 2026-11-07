@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/format";
 import { useSession, useTimeZone } from "@/lib/session";
 import { CampaignResults } from "./CampaignResults";
 import { OrderSources } from "./OrderSources";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 type Roas = Schemas["Roas"];
 const PERIODS = [7, 14, 30, 90] as const;
@@ -126,7 +127,7 @@ export function AdsRoas() {
                 <ul className="flex flex-col gap-2" data-testid="roas-platforms">
                   {r.byPlatform.map((p) => (
                     <li key={p.platform} className="flex items-center justify-between gap-3 text-body-sm">
-                      <span>{PLATFORMS.has(p.platform) ? t(`platform.${p.platform}`) : p.platform}</span>
+                      <span className="inline-flex items-center gap-2"><ProviderLogo slug={p.platform} />{PLATFORMS.has(p.platform) ? t(`platform.${p.platform}`) : p.platform}</span>
                       <span className="flex items-center gap-2"><MoneyText money={p.spend} />{p.share ? <span className="text-caption text-text-3">{t("share", { pct: p.share })}</span> : null}</span>
                     </li>
                   ))}

@@ -16,6 +16,7 @@ import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { StoreSso } from "./StoreSso";
 import { StoreStatus } from "./StoreStatus";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 const PLANS = ["free", "growth", "scale", "enterprise"] as const;
 type Plan = (typeof PLANS)[number];
@@ -142,7 +143,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
             <ul className="flex flex-col divide-y divide-line">
               {s.integrations.map((c) => (
                 <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span><span className="font-medium">{c.provider}</span> <Bdi code>{c.account ?? ""}</Bdi></span>
+                  <span className="flex items-center gap-2"><ProviderLogo slug={c.provider} /><span className="font-medium">{c.provider}</span> <Bdi code>{c.account ?? ""}</Bdi></span>
                   <Badge tone={c.status === "active" ? "success" : c.status === "needs_attention" ? "danger" : "neutral"}>{c.reason ? t("integrationStatus", { status: c.status, reason: c.reason }) : c.status}</Badge>
                 </li>
               ))}

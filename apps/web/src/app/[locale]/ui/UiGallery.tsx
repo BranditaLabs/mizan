@@ -16,7 +16,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Avatar, Card, EmptyState, FillProgress, KeyValue, SkeletonRows, Timeline } from "@/components/ui/Surface";
 import { PartnerLogo } from "@/components/ui/PartnerLogo";
 import { Tabs } from "@/components/ui/Tabs";
-import { PARTNERS, partnerMarkMinSize } from "@mizan/design-system/partners";
+import { PARTNERS, RASTERS, partnerMarkMinSize } from "@mizan/design-system/partners";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DateText, MoneyText, PhoneText } from "@/components/ui/Values";
@@ -268,7 +268,8 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
 
 /**
  * Every partner in the manifest, by kind: colour at 96px, or at the smallest size its guide allows
- * the mark (partnerMarkMinSize), then one colour (colour on hover and focus) and small, which may be monograms.
+ * the mark (partnerMarkMinSize), then one colour (colour on hover and focus) and small, which may be monograms;
+ * an owner-supplied logo (DS-3b) also shows its lockup (icon and name) where its file has one.
  */
 function PartnerLogos() {
   const t = useTranslations("partnerLogos");
@@ -290,7 +291,9 @@ function PartnerLogos() {
                       <span title={t("small")}><PartnerLogo slug={p.slug} size={20} variant="mono" decorative /></span>
                     </div>
                   </div>
+                  {p.rasterSource && RASTERS[p.slug]?.lockup ? <span title={t("lockup")}><PartnerLogo slug={p.slug} size={28} shape="lockup" decorative /></span> : null}
                   <span className="text-body-sm">{locale === "ar" ? p.nameAr : p.nameEn}</span>
+                  {p.rasterSource ? <span className="text-caption text-text-3">{t("official")}</span> : null}
                 </li>
               ))}
             </ul>

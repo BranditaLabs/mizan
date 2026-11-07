@@ -303,7 +303,8 @@
    colour sits on a light neutral tile in both themes; one-colour files switch with the theme. */
 .mz-partner { display: inline-flex; flex: none; align-items: center; justify-content: center; vertical-align: middle; }
 .mz-partner-face { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: var(--mz-radius-md); }
-.mz-partner-face > svg { display: block; }
+.mz-partner-face > svg, .mz-partner-face > img { display: block; }
+.mz-partner-face > img { max-width: none; user-select: none; }
 .mz-partner-tile { background: var(--mz-partner-tile); box-shadow: inset 0 0 0 1px var(--mz-line); }
 .mz-partner-monogram { box-sizing: border-box; border-radius: var(--mz-radius-md); background: var(--mz-surface); box-shadow: inset 0 0 0 1px var(--mz-line);
   color: var(--mz-text-2); font-family: var(--mz-font-display); font-weight: var(--mz-weight-semibold); line-height: 1; letter-spacing: 0; direction: ltr; unicode-bidi: isolate; }

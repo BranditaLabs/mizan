@@ -35,6 +35,7 @@
   "scripts": {
     "build": "node scripts/build.mjs && node scripts/build-icons.mjs && node scripts/build-partners.mjs && node scripts/build-reference.mjs",
     "import:partners": "node scripts/import-partner-logos.mjs",
+    "import:owner-logos": "node scripts/import-owner-logos.mjs",
     "check:partners": "node scripts/check-partner-slugs.mjs",
     "build:png": "node scripts/build-png.mjs",
     "test": "node scripts/asset-budget.mjs && vitest run",

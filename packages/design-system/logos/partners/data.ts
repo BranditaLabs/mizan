@@ -1,5 +1,5 @@
 /* Generated from logos/partners/partners.json and its SVG files by scripts/build-partners.mjs. Do not edit. */
-import type { PartnerEntry, PartnerMark } from "./types";
+import type { PartnerEntry, PartnerMark, PartnerRaster } from "./types";
 
 export const SIMPLE_ICONS_VERSION = "16.35.0";
 
@@ -12,6 +12,7 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "source": "simple-icons@16.35.0",
     "guideUrl": "https://www.shopify.com/brand-assets",
     "allowedVariants": [
+      "color",
       "black",
       "white"
     ],
@@ -21,7 +22,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "monogram": false,
     "monogramText": "Sh",
     "guideCheckedAt": "2026-11-06",
-    "permission": "required"
+    "permission": "owner:2026-11-07",
+    "rasterSource": "owner-supplied 2026-11-07"
   },
   {
     "slug": "woocommerce",
@@ -41,7 +43,8 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "monogram": false,
     "monogramText": "Wo",
     "guideCheckedAt": "2026-11-06",
-    "permission": "not-required"
+    "permission": "not-required",
+    "rasterSource": "owner-supplied 2026-11-07"
   },
   {
     "slug": "wordpress",
@@ -183,14 +186,19 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "kind": "courier",
     "nameEn": "Bosta",
     "nameAr": "بوسطة",
-    "source": "monogram",
+    "source": "owner-supplied 2026-11-07",
     "guideUrl": null,
-    "allowedVariants": [],
+    "allowedVariants": [
+      "color"
+    ],
     "minPx": 16,
     "clearSpace": 0.25,
     "hasDark": false,
-    "monogram": true,
-    "guideCheckedAt": null
+    "monogram": false,
+    "monogramText": "B",
+    "guideCheckedAt": null,
+    "permission": "owner:2026-11-07",
+    "rasterSource": "owner-supplied 2026-11-07"
   },
   {
     "slug": "jt",
@@ -657,33 +665,42 @@ export const PARTNERS: readonly PartnerEntry[] = [
     "kind": "messaging",
     "nameEn": "WhatsApp",
     "nameAr": "واتساب",
-    "source": "simple-icons@16.35.0",
+    "source": "owner-supplied 2026-11-07",
     "guideUrl": "https://www.meta.com/brand/resources/whatsapp/whatsapp-brand/",
-    "allowedVariants": [],
+    "allowedVariants": [
+      "color"
+    ],
     "minPx": 16,
     "clearSpace": 0.25,
     "hasDark": false,
-    "monogram": true,
+    "monogram": false,
+    "monogramText": "W",
     "aliases": [
       "whatsapp_cloud",
       "meta_whatsapp"
     ],
-    "guideCheckedAt": "2026-11-06"
+    "guideCheckedAt": "2026-11-06",
+    "permission": "owner:2026-11-07",
+    "rasterSource": "owner-supplied 2026-11-07"
   },
   {
     "slug": "meta",
     "kind": "ads",
     "nameEn": "Meta",
     "nameAr": "ميتا",
-    "source": "simple-icons@16.35.0",
+    "source": "owner-supplied 2026-11-07",
     "guideUrl": "https://www.meta.com/brand/resources/meta/company-brand/",
-    "allowedVariants": [],
+    "allowedVariants": [
+      "color"
+    ],
     "minPx": 16,
     "clearSpace": 0.25,
     "hasDark": false,
-    "monogram": true,
+    "monogram": false,
     "monogramText": "Me",
-    "guideCheckedAt": null
+    "guideCheckedAt": null,
+    "permission": "owner:2026-11-07",
+    "rasterSource": "owner-supplied 2026-11-07"
   },
   {
     "slug": "facebook",
@@ -917,6 +934,155 @@ export const MARKS: Readonly<Record<string, Partial<Record<"color" | "black" | "
           "fill": "#FFFFFF"
         }
       ]
+    }
+  }
+};
+
+/** Owner-supplied bitmaps (DS-3b): served from /partners/<file>@<1|2|3>x.png; w and h are the 1x size in px. */
+export const RASTERS: Readonly<Record<string, PartnerRaster>> = {
+  "shopify": {
+    "minPx": 16,
+    "lockupMinPx": 80,
+    "clearSpace": 0.25,
+    "mark": {
+      "light": {
+        "file": "shopify-mark",
+        "w": 32,
+        "h": 32,
+        "widths": [
+          32,
+          64,
+          96
+        ]
+      }
+    },
+    "lockup": {
+      "light": {
+        "file": "shopify-lockup",
+        "w": 83,
+        "h": 24,
+        "widths": [
+          83,
+          166,
+          249
+        ]
+      },
+      "dark": {
+        "file": "shopify-lockup-dark",
+        "w": 83,
+        "h": 24,
+        "widths": [
+          83,
+          166,
+          249
+        ]
+      }
+    }
+  },
+  "woocommerce": {
+    "minPx": 16,
+    "mark": {
+      "light": {
+        "file": "woocommerce-mark",
+        "w": 32,
+        "h": 32,
+        "widths": [
+          32,
+          64,
+          96
+        ]
+      }
+    },
+    "lockup": {
+      "light": {
+        "file": "woocommerce-lockup",
+        "w": 93,
+        "h": 24,
+        "widths": [
+          93,
+          187,
+          280
+        ]
+      }
+    }
+  },
+  "bosta": {
+    "minPx": 16,
+    "mark": {
+      "light": {
+        "file": "bosta-mark",
+        "w": 32,
+        "h": 32,
+        "widths": [
+          32,
+          64,
+          96
+        ]
+      }
+    },
+    "lockup": {
+      "light": {
+        "file": "bosta-lockup",
+        "w": 79,
+        "h": 24,
+        "widths": [
+          79,
+          157,
+          236
+        ]
+      }
+    }
+  },
+  "whatsapp": {
+    "minPx": 16,
+    "mark": {
+      "light": {
+        "file": "whatsapp-mark",
+        "w": 32,
+        "h": 32,
+        "widths": [
+          32,
+          64,
+          96
+        ]
+      }
+    }
+  },
+  "meta": {
+    "minPx": 16,
+    "mark": {
+      "light": {
+        "file": "meta-mark",
+        "w": 32,
+        "h": 32,
+        "widths": [
+          32,
+          64,
+          96
+        ]
+      }
+    },
+    "lockup": {
+      "light": {
+        "file": "meta-lockup",
+        "w": 119,
+        "h": 24,
+        "widths": [
+          119,
+          238,
+          357
+        ]
+      },
+      "dark": {
+        "file": "meta-lockup-dark",
+        "w": 119,
+        "h": 24,
+        "widths": [
+          119,
+          238,
+          357
+        ]
+      }
     }
   }
 };

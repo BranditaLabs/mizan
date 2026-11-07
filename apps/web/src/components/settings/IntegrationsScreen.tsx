@@ -18,6 +18,7 @@ import { ConnectionActions } from "./ConnectionManage";
 import { EngineHealth, ResolveCityDialog, unknownCity } from "./EngineHealth";
 import { SyncHealth } from "./SyncHealth";
 import { WooCommerceConnect } from "./WooCommerceConnect";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 const READERS = rolesWith("connections.read");
 const CONNECTORS = rolesWith("connections.manage");
@@ -80,14 +81,17 @@ export function IntegrationsScreen() {
                   const href = c.status !== "active" ? fixHref(c.provider) : null;
                   return (
                     <li key={c.id} className="mz-card flex flex-wrap items-start justify-between gap-3 p-4">
-                      <div>
+                      <div className="flex min-w-0 items-start gap-3">
+                      <ProviderLogo slug={c.provider} size={40} />
+                      <div className="min-w-0">
                         {named(c) ? <p className="font-medium"><Bdi>{c.displayName}</Bdi></p> : null}
                         <p className={named(c) ? "text-body-sm text-text-2" : "font-medium"}>{t.has(`providers.${c.provider}`) ? t(`providers.${c.provider}` as "providers.shopify") : <Bdi code>{c.provider}</Bdi>} <Bdi code>{c.account ?? ""}</Bdi></p>
                         {c.reason ? <p className="text-body-sm text-danger-text">{reasonText(c.provider, c.reason)}</p> : null}
                         {c.missingScopes.length ? <p className="text-caption text-text-2">{t("missingScopes")} <Bdi code>{c.missingScopes.join(", ")}</Bdi></p> : null}
                         <p className="text-caption text-text-2">{t("updated")} <DateText value={c.updatedAt} relative /></p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge tone={TONE[c.status] ?? "neutral"}>{t(`status.${c.status}`)}</Badge>
                         {href ? <Link href={href} className="inline-flex min-h-6 items-center text-body-sm font-medium underline pointer-coarse:min-h-11">{t("fix")}</Link> : null}
                         {c.provider === "woocommerce" && c.status !== "active" && CONNECTORS.has(role)

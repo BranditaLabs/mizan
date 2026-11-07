@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { latin } from "@/lib/rich";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 const EDITORS = rolesWith("connections.manage");
 type Sync = Schemas["StoreSync"];
@@ -30,7 +31,7 @@ function StoreSyncCard({ id, shop }: { id: string; shop: string }) {
   });
   return (
     <section className="mz-card p-5" data-testid="store-sync">
-      <h2 className="text-heading-sm"><Bdi code>{shop}</Bdi></h2>
+      <h2 className="flex items-center gap-2 text-heading-sm"><ProviderLogo slug="shopify" /><Bdi code>{shop}</Bdi></h2>
       {!q.data ? <Pending query={q} compact><SkeletonRows rows={2} label={t("loading")} /></Pending> : (
         <div className="mt-3 flex flex-col gap-4">
           {SWITCHES.map((k) => (

@@ -19,6 +19,7 @@ import { useSession } from "@/lib/session";
 import { WooCommerceConnect } from "@/components/settings/WooCommerceConnect";
 import { shopDomain } from "./shop-domain";
 import { useRefreshOnboarding, useUpdateOnboarding, type Onboarding } from "./useOnboarding";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 const n = (c: React.ReactNode) => <Bdi code>{c}</Bdi>;
 
@@ -39,7 +40,9 @@ function ChannelPicker({ value, only, onPick, busy }: { value: Channel | null; o
       {CHANNELS.filter((c) => !only || only.has(c.id)).map((c) => (
         <button key={c.id} type="button" role="radio" aria-checked={value === c.id} disabled={busy} onClick={() => onPick(c.id)}
           className={`flex items-start gap-3 rounded-md border p-3 text-start transition-colors ${value === c.id ? "border-line-strong bg-surface-selected" : "border-line hover:bg-surface-hover"}`}>
-          <span className="mt-0.5 text-text-2"><Icon name={c.icon} size={18} /></span>
+          {c.id === "other" || c.id === "manual"
+            ? <span className="mt-0.5 text-text-2"><Icon name={c.icon} size={18} /></span>
+            : <ProviderLogo slug={c.id} size={32} />}
           <span className="min-w-0">
             <span className="block text-label">{t(`channels.${c.id}.title`)}</span>
             <span className="block text-caption text-text-3">{t(`channels.${c.id}.body`)}</span>
@@ -91,6 +94,7 @@ export function StoreStep({ o }: { o: Onboarding }) {
     if (c === "shopify") {
       return (
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+          <ProviderLogo slug="shopify" size={28} shape="lockup" />
           <Field label={t("field")} hint={t.rich("hint", { n })} error={invalid ? t("invalid") : null} ltr autoComplete="off" spellCheck={false}
             placeholder="nile-abayas.myshopify.com" value={shop} onChange={(e) => setShop(e.target.value)} name="shop" />
           <div><Button type="submit" icon="channels" busy={install.isPending || install.isSuccess}>{t("submit")}</Button></div>
@@ -100,6 +104,7 @@ export function StoreStep({ o }: { o: Onboarding }) {
     if (c === "woocommerce") {
       return (
         <div className="flex flex-col items-start gap-3">
+          <ProviderLogo slug="woocommerce" size={28} shape="lockup" />
           <p className="text-body-sm text-text-2">{t("wooBody")}</p>
           <Button icon="channels" onClick={() => setWoo(true)}>{t("wooCta")}</Button>
           <WooCommerceConnect open={woo} onClose={() => { setWoo(false); void refresh(); }} />
@@ -162,7 +167,7 @@ export function StoreStep({ o }: { o: Onboarding }) {
           <ul className="flex flex-col divide-y divide-line rounded-md border border-line" data-testid="other-stores">
             {s.stores.filter((x) => x.connectionId !== s.connectionId).map((x) => (
               <li key={x.connectionId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-body-sm">
-                <span className="min-w-0"><Bdi>{x.displayName ?? x.shop ?? x.provider}</Bdi></span>
+                <span className="flex min-w-0 items-center gap-2"><ProviderLogo slug={x.provider} /><Bdi>{x.displayName ?? x.shop ?? x.provider}</Bdi></span>
                 <span className="flex items-center gap-2">
                   <span className={x.status === "active" ? "text-text-2" : "text-danger-text"}>{t(`otherStatus.${x.status}`)}</span>
                   {x.status === "needs_attention" && x.provider === "shopify" && x.shop
@@ -237,6 +242,7 @@ export function CourierStep({ o }: { o: Onboarding }) {
   }
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (key.trim()) save.mutate(key.trim()); }} className="flex flex-col gap-4" noValidate>
+      <ProviderLogo slug="bosta" size={28} shape="lockup" />
       {c.status === "needs_attention" ? <Alert tone="danger">{t(c.reason === "key_lacks_permission" ? "noPermission" : "refused")}</Alert> : null}
       <Field label={t("field")} hint={t("hint")} type="password" ltr autoComplete="off" spellCheck={false} value={key} onChange={(e) => setKey(e.target.value)} name="bostaKey" />
       <ButtonGroup>
@@ -372,7 +378,7 @@ export function GrowStep({ o, step }: { o: Onboarding; step: string }) {
   const st = o.steps[key].status;
   return (
     <div className="flex flex-col gap-4">
-      <p className="max-w-[60ch] text-body-sm text-text-2">{t(`${key}.body`)}</p>
+      <p className="flex max-w-[60ch] items-start gap-3 text-body-sm text-text-2">{key === "whatsapp" ? <ProviderLogo slug="whatsapp" size={32} /> : null}<span>{t(`${key}.body`)}</span></p>
       {key === "team" && (o.steps.team.members > 1 || o.steps.team.invited > 0)
         ? <p className="text-body-sm text-text-2">{t("team.count", { members: o.steps.team.members, invited: o.steps.team.invited })}</p> : null}
       {st === "done" ? <Alert tone="success">{t(`${key}.done`)}</Alert> : null}

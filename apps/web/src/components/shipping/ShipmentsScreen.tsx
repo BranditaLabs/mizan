@@ -22,6 +22,7 @@ import { useSession } from "@/lib/session";
 import { ReadyToShip, useReadyToShip } from "./ReadyToShip";
 import { Scorecard } from "./Scorecard";
 import { StatusImport } from "./StatusImport";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 type Row = Schemas["ShipmentPage"]["data"][number];
 type ShipmentView = "active" | "review" | "delivered" | "returned" | "all";
@@ -73,7 +74,7 @@ export function ShipmentsScreen() {
   const statusLabel = (s: string) => (isStatus(s) ? ts(`status.${s}`) : s);
   const columns: Column<Row>[] = [
     { id: "order", header: t("columns.order"), cell: (r) => <Cell main={<Link href={`/orders/${r.order.id}`} className="hover:underline"><IdCell>{r.order.number}</IdCell></Link>} sub={<DateText relative now={now} value={r.createdAt} />} /> },
-    { id: "tracking", header: t("columns.tracking"), cell: (r) => <Cell main={r.trackingNumber ? (r.trackingUrl ? <a href={r.trackingUrl} target="_blank" rel="noreferrer" className="hover:underline"><IdCell>{r.trackingNumber}</IdCell></a> : <IdCell>{r.trackingNumber}</IdCell>) : "—"} sub={providerName(r.provider)} /> },
+    { id: "tracking", header: t("columns.tracking"), cell: (r) => <Cell main={r.trackingNumber ? (r.trackingUrl ? <a href={r.trackingUrl} target="_blank" rel="noreferrer" className="hover:underline"><IdCell>{r.trackingNumber}</IdCell></a> : <IdCell>{r.trackingNumber}</IdCell>) : "—"} sub={<span className="inline-flex items-center gap-1.5"><ProviderLogo slug={r.provider} />{providerName(r.provider)}</span>} /> },
     { id: "area", header: t("columns.area"), cell: (r) => <Cell main={<span dir="auto">{r.area.city ?? "—"}</span>} sub={r.area.province ? <span dir="auto">{r.area.province}</span> : null} /> },
     { id: "status", header: t("columns.status"), cell: (r) => (
       <Cell

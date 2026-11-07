@@ -1,5 +1,5 @@
 {
-  "$schema": "Partner logos (docs/16 §5.9). Edit this file, then `npm run import:partners -w @mizan/design-system -- <simple-icons package dir>` and `npm run build`. guideCheckedAt is the date someone read the brand's guide for allowedVariants, minPx and clearSpace; an entry still null is unconfirmed [CONFIRM before production]. An entry without guideUrl, allowedVariants, minPx or guideCheckedAt renders as a monogram, so no mark ships before its guide is read. monogramText keeps monograms distinct within a kind. permission: \"not-required\", \"granted:<date>\" (the brand's written OK) or \"required\" (the guide asks for written permission that Mizan does not have yet); only not-required or granted draws a mark, and an entry without it renders as a monogram.",
+  "$schema": "Partner logos (docs/16 §5.9). Edit this file, then `npm run import:partners -w @mizan/design-system -- <simple-icons package dir>` and `npm run build`. guideCheckedAt is the date someone read the brand's guide for allowedVariants, minPx and clearSpace; an entry still null is unconfirmed [CONFIRM before production]. An entry without guideUrl, allowedVariants, minPx or guideCheckedAt renders as a monogram, so no mark ships before its guide is read. monogramText keeps monograms distinct within a kind. permission: \"not-required\", \"granted:<date>\" (the brand's written OK) or \"required\" (the guide asks for written permission that Mizan does not have yet); only not-required or granted draws a mark, and an entry without it renders as a monogram. raster: the owner-supplied bitmap logo (DS-3b) in logos/partners/raster, made by `npm run import:owner-logos -w @mizan/design-system -- <folder>`: a square mark and, where one exists, a lockup, with -dark faces where the logo has black parts; permission \"owner:<date>\" records the owner's decision to show it (written brand authorisation, when it arrives, becomes \"granted:<date>\"). A raster entry draws from raster.minPx (lockups from raster.lockupMinPx when set) whether or not its guide has been read; that check stays open as [CONFIRM] in its note.",
   "simpleIcons": "16.35.0",
   "partners": [
     {
@@ -14,6 +14,7 @@
       "license": "CC0-1.0 (Simple Icons path data); the mark is a trademark of its owner",
       "retrievedAt": "2026-11-06",
       "allowedVariants": [
+        "color",
         "black",
         "white"
       ],
@@ -24,8 +25,17 @@
       "monogram": false,
       "monogramText": "Sh",
       "guideCheckedAt": "2026-11-06",
-      "permission": "required",
-      "note": "Guide (read 2026-11-06): bag in full-colour green, monotone black or white; not below 80px wide digital; clear space ½ S; use must be authorized in writing, so permission is \"required\" and the bag stays a monogram until Shopify's written OK arrives (then \"granted:<date>\"). Colour: Shopify's full-colour bag is two greens with a white S, which simple-icons' one-path glyph is not; only the monotone files ship until the press-kit SVG is imported with source 'press-kit'."
+      "permission": "owner:2026-11-07",
+      "note": "Guide (read 2026-11-06): bag in full-colour green, monotone black or white; not below 80px wide digital; clear space ½ S; use must be authorized in writing. Owner decision 2026-11-07: the owner supplied Shopify's official full-colour logo (bag and wordmark) and enabled it, so permission is \"owner:2026-11-07\"; Shopify's own written OK is still to be filed (then \"granted:<date>\") [CONFIRM]. The full-colour bag and the lockup are the owner's raster files (raster/, DS-3b); the 80px minimum is kept for the lockup and the simple-icons monotone SVGs, while the bag alone draws from 16px on its tile with ¼ clear space, so it fits the 24px rows [CONFIRM the bag's minimum and clear space with Shopify's guide]. Colour: Shopify's full-colour bag is two greens with a white S, which simple-icons' one-path glyph is not, so no colour SVG ships.",
+      "raster": {
+        "source": "owner-supplied 2026-11-07",
+        "file": "Shopify-Logo.png",
+        "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+        "retrievedAt": "2026-11-07",
+        "minPx": 16,
+        "lockupMinPx": 80,
+        "clearSpace": 0.25
+      }
     },
     {
       "slug": "woocommerce",
@@ -51,7 +61,14 @@
       "monogramText": "Wo",
       "guideCheckedAt": "2026-11-06",
       "permission": "not-required",
-      "note": "Woo rebrand: simple-icons 'woocommerce' is the old mark, 'woo' the current one. Guide (read 2026-11-06): full colour, monochrome white, monochrome black; no minimum size or clear space given (16px and ¼ assumed) [CONFIRM with trademarks@automattic.com]."
+      "note": "Woo rebrand: simple-icons 'woocommerce' is the old mark, 'woo' the current one. Guide (read 2026-11-06): full colour, monochrome white, monochrome black; no minimum size or clear space given (16px and ¼ assumed) [CONFIRM with trademarks@automattic.com]. Owner-supplied wordmark (2026-11-07, raster/) is the colour face; Woo has no separate icon, so the mark is the wordmark fitted in a square.",
+      "raster": {
+        "source": "owner-supplied 2026-11-07",
+        "file": "woocommerce_thumb.png",
+        "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+        "retrievedAt": "2026-11-07",
+        "minPx": 16
+      }
     },
     {
       "slug": "wordpress",
@@ -227,17 +244,29 @@
       "kind": "courier",
       "nameEn": "Bosta",
       "nameAr": "بوسطة",
-      "source": "monogram",
+      "source": "owner-supplied 2026-11-07",
       "guideUrl": null,
-      "license": null,
-      "retrievedAt": null,
-      "allowedVariants": [],
+      "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+      "retrievedAt": "2026-11-07",
+      "allowedVariants": [
+        "color"
+      ],
       "minPx": 16,
       "clearSpace": 0.25,
       "hasDark": false,
       "nominativeOnly": true,
-      "monogram": true,
-      "guideCheckedAt": null
+      "monogram": false,
+      "guideCheckedAt": null,
+      "monogramText": "B",
+      "permission": "owner:2026-11-07",
+      "raster": {
+        "source": "owner-supplied 2026-11-07",
+        "file": "59459631-0-Artboard-3.png",
+        "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+        "retrievedAt": "2026-11-07",
+        "minPx": 16
+      },
+      "note": "Owner-supplied official logo (2026-11-07): red box mark and the bosta wordmark, raster (raster/). Red on ink measured 3.9:1 (graphics need 3:1), so the dark face keeps the brand red. No public brand guide found: guideUrl null, minimum size and clear space assumed [CONFIRM with Bosta]."
     },
     {
       "slug": "jt",
@@ -833,45 +862,62 @@
       "kind": "messaging",
       "nameEn": "WhatsApp",
       "nameAr": "واتساب",
-      "source": "simple-icons@16.35.0",
-      "simpleIcons": "whatsapp",
-      "sourceUrl": "https://cdn.jsdelivr.net/npm/simple-icons@16.35.0/icons/whatsapp.svg",
+      "source": "owner-supplied 2026-11-07",
       "guideUrl": "https://www.meta.com/brand/resources/whatsapp/whatsapp-brand/",
-      "license": "CC0-1.0 (Simple Icons path data); the mark is a trademark of its owner",
-      "retrievedAt": "2026-11-06",
-      "allowedVariants": [],
+      "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+      "retrievedAt": "2026-11-07",
+      "allowedVariants": [
+        "color"
+      ],
       "minPx": 16,
       "clearSpace": 0.25,
       "hasDark": false,
       "nominativeOnly": true,
-      "monogram": true,
+      "monogram": false,
       "aliases": [
         "whatsapp_cloud",
         "meta_whatsapp"
       ],
       "guideCheckedAt": "2026-11-06",
-      "note": "Guide (read 2026-11-06): only the official files from the WhatsApp Brand Resource Center, never logos found elsewhere; no colour changes. The simple-icons path may not be used: press-kit file needed."
+      "note": "Guide (read 2026-11-06): only the official files from the WhatsApp Brand Resource Center, never logos found elsewhere; no colour changes. The simple-icons path is not used. Owner-supplied file (2026-11-07): white glyph on a green square; the square is made transparent around the bubble (raster/), so the bubble is green with its white phone, and the white ring shows on dark grounds. The file's name suggests a stock vector, not the Brand Resource Center download: replace it with the official file before production [CONFIRM].",
+      "monogramText": "W",
+      "permission": "owner:2026-11-07",
+      "raster": {
+        "source": "owner-supplied 2026-11-07",
+        "file": "vector-whatsapp-social-media-logo_1093524-447.avif",
+        "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+        "retrievedAt": "2026-11-07",
+        "minPx": 16
+      }
     },
     {
       "slug": "meta",
       "kind": "ads",
       "nameEn": "Meta",
       "nameAr": "ميتا",
-      "source": "simple-icons@16.35.0",
-      "simpleIcons": "meta",
-      "sourceUrl": "https://cdn.jsdelivr.net/npm/simple-icons@16.35.0/icons/meta.svg",
+      "source": "owner-supplied 2026-11-07",
       "guideUrl": "https://www.meta.com/brand/resources/meta/company-brand/",
-      "license": "CC0-1.0 (Simple Icons path data); the mark is a trademark of its owner",
-      "retrievedAt": "2026-11-06",
-      "allowedVariants": [],
+      "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+      "retrievedAt": "2026-11-07",
+      "allowedVariants": [
+        "color"
+      ],
       "minPx": 16,
       "clearSpace": 0.25,
       "hasDark": false,
       "nominativeOnly": true,
-      "monogram": true,
+      "monogram": false,
       "monogramText": "Me",
       "guideCheckedAt": null,
-      "note": "Meta's brand centre (as for WhatsApp) asks for its own files: press-kit file needed."
+      "note": "Meta's brand centre (as for WhatsApp) asks for its own files. Owner-supplied official logo (2026-11-07): blue infinity and the Meta wordmark, raster (raster/); the wordmark's dark slate turns white on dark grounds, the infinity keeps its blues (3.5:1 or more on ink) [CONFIRM minimum size and clear space with Meta's guide].",
+      "permission": "owner:2026-11-07",
+      "raster": {
+        "source": "owner-supplied 2026-11-07",
+        "file": "Meta_Platforms_Inc._logo.svg.webp",
+        "license": "owner-supplied official logo; usage per each brand's guidelines for integration listings",
+        "retrievedAt": "2026-11-07",
+        "minPx": 16
+      }
     },
     {
       "slug": "facebook",

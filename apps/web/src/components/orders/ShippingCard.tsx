@@ -17,6 +17,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useEventMutation } from "@/lib/motion/useEventMutation";
 import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 type Order = Schemas["OrderDetail"];
 type Shipment = Order["shipments"][number];
@@ -61,6 +62,7 @@ export function ShippingCard({ order: o }: { order: Order }) {
             <li key={s.id} className="flex flex-col gap-1.5 py-2.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="flex items-center gap-2">
+                  <ProviderLogo slug={s.provider} />
                   <span className="font-medium">{providerName(s.provider)}</span>
                   {s.trackingNumber ? <IdCell>{s.trackingNumber}</IdCell> : null}
                 </span>
