@@ -104,9 +104,12 @@ test("Email/Phone: an arrow key changes the method and keeps focus on the contro
 test("the theme menu: arrows move, a pick keeps focus on the button", async ({ page }) => {
   await page.goto("/en/sign-in");
   const button = page.getByRole("button", { name: "Theme", exact: true });
-  await button.focus();
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("menuitemradio", { checked: true })).toBeFocused();
+  // Before hydration the button has no key handler yet: press until the menu opens.
+  await expect(async () => {
+    await button.focus();
+    await page.keyboard.press("ArrowDown");
+    await expect(page.getByRole("menuitemradio", { checked: true })).toBeFocused({ timeout: 1000 });
+  }).toPass();
   await page.keyboard.press("End");
   await expect(page.getByRole("menuitemradio", { name: "Dark" })).toBeFocused();
   await page.keyboard.press("Enter");
