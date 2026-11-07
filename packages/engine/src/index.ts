@@ -1,7 +1,7 @@
 /** @mizan/engine — self-healing commerce and courier connectors (Shopify, Bosta). */
-export { MizanEngine, SHOPIFY_WEBHOOK_TOPICS, CATALOG_VERSION, type AccessCheck, type BackfillProgress, type CancelJob, type CancelOutcome, type EngineOptions, type OfferJob, type OfferOutcome, type ReconcileJob, type ReconcileResult, type ShipJob, type ShipOutcome, type ShipmentStatusUpdate, type Owner, type WebhookResult } from "./engine/engine.js";
+export { MizanEngine, SHOPIFY_WEBHOOK_TOPICS, CATALOG_VERSION, type AccessCheck, type BackfillProgress, type CancelJob, type CancelOutcome, type EngineOptions, type OfferJob, type OfferOutcome, type ReconcileJob, type ReconcileResult, type ShipJob, type ShipOutcome, type ShipmentStatusUpdate, type Owner, type WebhookResult, type IntakeOutcome } from "./engine/engine.js";
 export { SqlStore, STANDALONE_TENANT, type SqlClient, type StoreScope } from "./sync/sql-store.js";
-export { MemoryStore, type JobStatus, type NewJob, type OutboxJob, type Store } from "./sync/store.js";
+export { MemoryStore, type IntakeResult, type JobStatus, type NewJob, type OutboxJob, type Store } from "./sync/store.js";
 export { OutboxWorker, DEFAULT_WORKER, type JobOutcome, type WorkerOptions } from "./sync/worker.js";
 export { defaultRuntime, systemClock, silentLogger, type Clock, type FetchFn, type Logger, type LogLevel, type Runtime } from "./core/runtime.js";
 export { IntegrationError, isIntegrationError, type ErrorKind } from "./core/errors.js";

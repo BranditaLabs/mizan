@@ -14,6 +14,7 @@ import type { CanonicalOrder, CanonicalProduct, CanonicalShipment, ProductPatch,
 import { findRegion, TERMINAL_STATUSES } from "@mizan/shared";
 import type { Runtime } from "../core/runtime.js";
 import { DriftMonitor } from "../adapt/drift.js";
+import { SchemaDriftError } from "../adapt/resolve.js";
 import { fulfillmentEventFor } from "./progress.js";
 import { ShapeWatch } from "../adapt/shape.js";
 import { shouldApplyStatus } from "../adapt/status.js";
@@ -192,9 +193,24 @@ export interface OfferJob { offerId: string; orderId: string; variantId: string;
 /** The outcome of checking a courier key: a refusal is final (the merchant must fix the key), not retried. */
 export type AccessCheck = { ok: true } | { ok: false; reason: "auth" | "permission"; message: string };
 
+/**
+ * What happened to one webhook (FX-3a; the Event Center's `event_intake.outcome`, docs/16 §8.2).
+ * The engine answers the ones it can tell; the platform adds `unknown_connection`, `unrouted` and `disconnected`.
+ */
+export type IntakeOutcome =
+  | "accepted" | "duplicate" | "ignored" | "rejected_signature" | "unparseable" | "no_resource_id" | "not_configured"
+  | "unknown_connection" | "unrouted" | "disconnected";
+
 export interface WebhookResult {
   status: number;
   body: Record<string, unknown>;
+  outcome?: IntakeOutcome;
+  /** The inbound key the webhook was deduplicated on (accepted or duplicate). */
+  dedupeKey?: string;
+  /** Jobs queued (or already queued) for it. */
+  jobIds?: string[];
+  /** W6: the poll queued instead, when the webhook named no resource. */
+  nudged?: string;
 }
 
 interface OrderRecord {
@@ -272,7 +288,15 @@ export const CATALOG_VERSION = 2;
 export const SHOPIFY_WEBHOOK_TOPICS = ["ORDERS_CREATE", "ORDERS_UPDATED", "ORDERS_CANCELLED", "PRODUCTS_CREATE", "PRODUCTS_UPDATE", "APP_UNINSTALLED"] as const;
 
 const iso = (v: string | number | undefined) => (v === undefined ? undefined : new Date(v).toISOString());
+/**
+ * W8: how long a provider keeps retrying one delivery, for keys that can only use the body (no
+ * delivery id). Shopify retries for 4 hours; Bosta's window is unpublished [CONFIRM], so short:
+ * a retry outside it is processed again, which is safe (fat fetch, idempotent ingest).
+ */
+const RETRY_WINDOW_MS = { shopify: 4 * 3_600_000, bosta: 2 * 60_000 } as const;
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 16);
+/** The last Bosta webhook without a time accepted for a shipment (W8): its key, body hash and when. */
+type BostaLastHook = { key: string; body: string; at: number };
 
 /**
  * The Mizan integration engine.
@@ -375,34 +399,91 @@ export class MizanEngine {
 
   // ═════════════ inbound: webhooks ═════════════
 
-  async handleShopifyWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
-    if (!this.shopifyConn) return { status: 404, body: { error: "no Shopify store on this connection" } };
-    const hmac = headers["X-Shopify-Hmac-SHA256"] ?? headers["x-shopify-hmac-sha256"];
-    if (!verifyShopifyHmac(rawBody, hmac, this.opts_shopifySecret())) return { status: 401, body: { error: "invalid signature" } };
-    const meta = readShopifyHeaders(headers);
-    const dedupeKey = `shopify:${meta.eventId ?? meta.webhookId ?? hash(rawBody)}`;
-    if (!(await this.store.markInbound(dedupeKey, this.now()))) return { status: 200, body: { duplicate: true } };
+  /**
+   * Who answered a webhook and why (FX-3a). The body stays what providers and tests already see;
+   * `outcome` is what the platform records (the Event Center's intake row, A-10a).
+   */
+  private intake(status: number, body: Record<string, unknown>, outcome: IntakeOutcome, extra: Partial<WebhookResult> = {}): WebhookResult {
+    return { status, body, outcome, ...extra };
+  }
 
+  /** A webhook body that is not JSON: answered 200 (a retry would not fix it), never marked, recorded as drift (W5). */
+  private unparseable(connector: string, topic: string, body: Record<string, unknown> = { ignored: "unparseable body" }): WebhookResult {
+    this.drift.record({ connector, entity: "webhook", kind: "unparseable_body", detail: `${topic || "webhook"}: body is not JSON`, at: this.now() });
+    return this.intake(200, body, "unparseable");
+  }
+
+  /** W6: no resource id at any known path: drift naming the paths tried (rule 2); the caller nudges a poll. */
+  private noResourceId(connector: string, entity: string, paths: string[]) {
+    this.drift.record({ connector, entity: `webhook:${entity}`, kind: "missing_field", field: "id", detail: `none of ${paths.join(", ")}`, at: this.now() });
+  }
+
+  /**
+   * A poll for this connection at the next minute boundary (W6), keyed by that boundary: every
+   * webhook in a minute shares one poll that has not started yet and runs after all of them, so a
+   * webhook arriving after a nudged poll ran gets the next one, never the finished one.
+   */
+  private nudge(kind: "shopify.pollOrders" | "woocommerce.pollOrders" | "bosta.pollActive"): NewJob {
+    const at = (Math.floor(this.now() / 60_000) + 1) * 60_000;
+    return { ...this.job(kind, {}, `${kind}:nudge:${at / 60_000}`), runAt: at };
+  }
+
+  private job(kind: string, payload: unknown, idempotencyKey: string): NewJob {
+    return { kind, connection: kind.split(".")[0]!, payload, idempotencyKey };
+  }
+
+  /** Intake (W1): the dedupe key and its jobs saved in one unit, so a failed enqueue is retried, never a "duplicate". */
+  private async accept(key: string, jobs: NewJob[], answer: { body?: Record<string, unknown>; outcome?: IntakeOutcome } = {}): Promise<WebhookResult & { fresh: boolean }> {
+    const r = await this.store.markAndEnqueue(key, this.now(), jobs, this.now());
+    if (!r.marked) return { ...this.intake(200, { duplicate: true }, "duplicate", { dedupeKey: key }), fresh: false };
+    const outcome = answer.outcome ?? "accepted";
+    const extra: Partial<WebhookResult> = { dedupeKey: key, jobIds: r.jobs.map((j) => j.job.id) };
+    if (outcome === "no_resource_id" && extra.jobIds?.length) extra.nudged = extra.jobIds[0];
+    return { ...this.intake(200, answer.body ?? { accepted: true }, outcome, extra), fresh: true };
+  }
+
+  async handleShopifyWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
+    if (!this.shopifyConn) return this.intake(404, { error: "no Shopify store on this connection" }, "not_configured");
+    const hmac = headers["X-Shopify-Hmac-SHA256"] ?? headers["x-shopify-hmac-sha256"];
+    if (!verifyShopifyHmac(rawBody, hmac, this.opts_shopifySecret())) return this.intake(401, { error: "invalid signature" }, "rejected_signature");
+    const meta = readShopifyHeaders(headers);
+
+    // W5: parsed before anything is marked, so a body we cannot read never turns its retries into "duplicate".
     let payload: Record<string, unknown>;
     try {
       payload = JSON.parse(rawBody);
     } catch {
-      return { status: 200, body: { ignored: "unparseable body" } }; // never make Shopify retry a body we can't read
+      return this.unparseable("shopify", meta.topic); // never make Shopify retry a body we can't read
     }
-    const version = iso((payload.updated_at as string) ?? undefined) ?? meta.eventId ?? hash(rawBody);
+    // W8: Shopify's event id (one per event, the same on every retry), else the webhook id (one per
+    // delivery, kept across retries); only without both, the body within Shopify's retry window.
+    const delivery = meta.eventId ?? meta.webhookId;
+    const dedupeKey = `shopify:${delivery ?? `body:${hash(rawBody)}:${Math.floor(this.now() / RETRY_WINDOW_MS.shopify)}`}`;
+    const version = iso((payload.updated_at as string) ?? undefined) ?? delivery ?? hash(rawBody);
+
     if (meta.topic.startsWith("orders/")) {
       const id = gidFromWebhook("Order", payload);
-      // Keyed by Shopify's event id, not updated_at: updated_at has 1-second precision, so an order created
+      if (!id) {
+        this.noResourceId("shopify", "order", ["admin_graphql_api_id", "id"]);
+        return this.accept(dedupeKey, [this.nudge("shopify.pollOrders")], { body: { ignored: "no order id" }, outcome: "no_resource_id" });
+      }
+      // Keyed by the delivery, not updated_at: updated_at has 1-second precision, so an order created
       // and paid within the same second would otherwise lose its payment update. Duplicate deliveries of one
-      // event are already dropped above; re-ingesting is safe (fat fetch, idempotent writes).
-      if (id) await this.enqueue("shopify.ingestOrder", { orderId: id }, `shopify:order:${id}:${meta.eventId ?? version}`);
-    } else if (meta.topic.startsWith("products/") && meta.topic !== "products/delete") {
-      const id = gidFromWebhook("Product", payload);
-      if (id) await this.enqueue("shopify.ingestProduct", { productId: id }, `shopify:product:${id}:${version}`);
-    } else if (meta.topic === "app/uninstalled") {
-      this.emit("connection.uninstalled", { shop: meta.shop });
+      // event are dropped by the dedupe key; re-ingesting is safe (fat fetch, idempotent writes).
+      return this.accept(dedupeKey, [this.job("shopify.ingestOrder", { orderId: id }, `shopify:order:${id}:${delivery ?? `${version}:${hash(rawBody)}`}`)]);
     }
-    return { status: 200, body: { accepted: true } };
+    if (meta.topic.startsWith("products/") && meta.topic !== "products/delete") {
+      const id = gidFromWebhook("Product", payload);
+      if (!id) {
+        this.noResourceId("shopify", "product", ["admin_graphql_api_id", "id"]);
+        return this.accept(dedupeKey, [], { body: { ignored: "no product id" }, outcome: "no_resource_id" });
+      }
+      // One job per product version and content: two edits in the same second (same updated_at) differ in body.
+      return this.accept(dedupeKey, [this.job("shopify.ingestProduct", { productId: id }, `shopify:product:${id}:${version}:${hash(rawBody)}`)]);
+    }
+    const r = await this.accept(dedupeKey, []);
+    if (r.fresh && meta.topic === "app/uninstalled") this.emit("connection.uninstalled", { shop: meta.shop });
+    return r;
   }
 
   private opts_shopifySecret() {
@@ -415,43 +496,84 @@ export class MizanEngine {
    * failing webhook, so polling and the webhook sync cover what is lost.
    */
   async handleWooCommerceWebhook(headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
-    if (!this.woo) return { status: 404, body: { error: "no WooCommerce store on this connection" } };
+    if (!this.woo) return this.intake(404, { error: "no WooCommerce store on this connection" }, "not_configured");
     const signature = headers["X-WC-Webhook-Signature"] ?? headers["x-wc-webhook-signature"];
-    if (!signature && isWooPing(rawBody)) return { status: 200, body: { ping: true } }; // WooCommerce saves the webhook only after a 2xx
-    if (!verifyWooSignature(rawBody, signature, this.woo.creds.webhookSecret)) return { status: 401, body: { error: "invalid signature" } };
+    if (!signature && isWooPing(rawBody)) return this.intake(200, { ping: true }, "ignored"); // WooCommerce saves the webhook only after a 2xx
+    if (!verifyWooSignature(rawBody, signature, this.woo.creds.webhookSecret)) return this.intake(401, { error: "invalid signature" }, "rejected_signature");
     const meta = readWooHeaders(headers);
     let payload: Record<string, unknown>;
     try {
       payload = JSON.parse(rawBody);
     } catch {
-      return { status: 200, body: { ignored: "unparseable body" } };
+      return this.unparseable("woocommerce", meta.topic);
     }
     const resource = meta.resource || meta.topic.split(".")[0];
-    if (resource !== "order" && resource !== "product") return { status: 200, body: { ignored: meta.topic || "unknown topic" } };
-    if (resource === "product" && meta.event === "deleted") return { status: 200, body: { ignored: "product deleted" } }; // as for Shopify: kept, never deleted by a hint
+    if (resource !== "order" && resource !== "product") return this.intake(200, { ignored: meta.topic || "unknown topic" }, "ignored");
+    if (resource === "product" && meta.event === "deleted") return this.intake(200, { ignored: "product deleted" }, "ignored"); // as for Shopify: kept, never deleted by a hint
     const id = wooOrderIdFromWebhook(payload);
-    if (!id) return { status: 200, body: { ignored: `no ${resource} id` } };
-    // The delivery id is per second, not per event: the resource's own modification time tells versions apart.
-    const version = iso(payload.date_modified_gmt as string | undefined) ?? (meta.event === "deleted" ? "deleted" : hash(rawBody));
-    if (!(await this.store.markInbound(`woocommerce:${resource}:${id}:${version}`, this.now()))) return { status: 200, body: { duplicate: true } };
-    if (resource === "order") await this.enqueue("woocommerce.ingestOrder", { orderId: id }, `woocommerce:order:${id}:${version}`);
-    else await this.enqueue("woocommerce.ingestProduct", { productId: id }, `woocommerce:product:${id}:${version}`);
-    return { status: 200, body: { accepted: true } };
+    if (!id) {
+      this.noResourceId("woocommerce", resource, ["id"]);
+      const nudged = resource === "order" ? (await this.store.enqueue(this.nudge("woocommerce.pollOrders"), this.now())).job.id : undefined;
+      return this.intake(200, { ignored: `no ${resource} id` }, "no_resource_id", nudged ? { nudged } : {});
+    }
+    // W8: WooCommerce's delivery id is wp_hash(webhook id . time in seconds), and date_modified_gmt
+    // has 1-second precision, so neither tells two updates in one second apart: the body does.
+    const version = iso(payload.date_modified_gmt as string | undefined) ?? (meta.event === "deleted" ? "deleted" : "undated");
+    const key = `woocommerce:${resource}:${id}:${version}:${hash(rawBody)}`;
+    return this.accept(key, [resource === "order"
+      ? this.job("woocommerce.ingestOrder", { orderId: id }, key)
+      : this.job("woocommerce.ingestProduct", { productId: id }, key)]);
   }
 
   async handleBostaWebhook(query: Record<string, string | undefined>, headers: Record<string, string | undefined>, rawBody: string): Promise<WebhookResult> {
     const token = query.token ?? headers["x-mizan-token"] ?? headers["authorization"];
-    if (!this.bosta.verifyWebhook(token)) return { status: 401, body: { error: "invalid token" } };
+    if (!this.bosta.verifyWebhook(token)) return this.intake(401, { error: "invalid token" }, "rejected_signature");
+    const ignored = { ignored: "unrecognised payload; recorded as drift" };
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return this.unparseable("bosta", "", ignored);
+    }
     let hint: ReturnType<BostaConnector["parseWebhook"]>;
     try {
-      hint = this.bosta.parseWebhook(JSON.parse(rawBody));
-    } catch {
-      return { status: 200, body: { ignored: "unrecognised payload; recorded as drift" } };
+      hint = this.bosta.parseWebhook(body); // a missing tracking number is recorded as drift naming the paths tried
+    } catch (e) {
+      if (!(e instanceof SchemaDriftError)) throw e;
+      // W6: nothing to re-read; the next poll of active shipments soon instead.
+      return this.intake(200, ignored, "no_resource_id", { nudged: await this.nudgeBostaPoll() });
     }
-    const key = `bosta:${hint.trackingNumber}:${hint.code ?? hint.label ?? ""}:${hint.at ?? hash(rawBody)}`;
-    if (!(await this.store.markInbound(key, this.now()))) return { status: 200, body: { duplicate: true } };
-    await this.enqueue("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, key);
-    return { status: 200, body: { accepted: true } };
+    // W8: Bosta sends no delivery id [CONFIRM]. The state and its time tell events apart (a reversal
+    // delivered → returned → delivered has three times); without a time, see bostaUntimedKey.
+    const state = `bosta:${hint.trackingNumber}:${hint.code ?? hint.label ?? ""}`;
+    if (hint.at) return this.accept(`${state}:${hint.at}`, [this.job("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, `${state}:${hint.at}`)]);
+    const untimed = await this.bostaUntimedKey(hint.trackingNumber, state, rawBody);
+    const r = await this.accept(untimed.key, [this.job("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, untimed.key)]);
+    if (r.fresh) await this.store.put<BostaLastHook>("bosta_hook", hint.trackingNumber, { key: untimed.key, body: untimed.body, at: this.now() }, this.now());
+    return r;
+  }
+
+  /**
+   * W8, a Bosta webhook without a time: the same bytes again within the retry window, with no other
+   * webhook for that shipment in between, is Bosta's retry (the same key, so "duplicate"). Anything
+   * else is a new event: its key names the shipment's previous webhook, so a loop that comes back to
+   * the same state (out for delivery → customer not available → out for delivery), even within two
+   * minutes, is three events. A retry that arrives after another event is read again (safe: fat fetch).
+   */
+  private async bostaUntimedKey(trackingNumber: string, state: string, rawBody: string): Promise<{ key: string; body: string }> {
+    const body = hash(rawBody);
+    const last = await this.store.get<BostaLastHook>("bosta_hook", trackingNumber);
+    if (last && last.body === body && this.now() - last.at < RETRY_WINDOW_MS.bosta) return { key: last.key, body };
+    const after = last ? hash(last.key).slice(0, 8) : "first";
+    return { key: `${state}:body:${body}:${Math.floor(this.now() / RETRY_WINDOW_MS.bosta)}:after:${after}`, body };
+  }
+
+  /**
+   * W6: a poll of this store's active Bosta shipments at the next minute boundary (one per minute
+   * however many ask); the platform asks every store of a tenant when a webhook names no shipment.
+   */
+  async nudgeBostaPoll(): Promise<string> {
+    return (await this.store.enqueue(this.nudge("bosta.pollActive"), this.now())).job.id;
   }
 
   /**

@@ -285,6 +285,9 @@ describe("uninstall (E3-4)", () => {
     expect(c).toEqual({ status: "disconnected", status_reason: "app_uninstalled", secret_ref: null });
     const left = await db.tenant(stores.sara!, (trx) => trx.selectFrom("mz_outbox").select("status").where("connection_id", "=", connectionId).where("status", "in", ["pending", "running"]).execute());
     expect(left).toEqual([]);
+    // FX-3a: kept as dropped, with the reason, never deleted.
+    const dropped = await db.tenant(stores.sara!, (trx) => trx.selectFrom("mz_outbox").select(["idempotency_key", "last_error"]).where("connection_id", "=", connectionId).where("status", "=", "dropped").execute());
+    expect(dropped).toEqual([{ idempotency_key: "queued-before-uninstall", last_error: "connection disconnected (app_uninstalled)" }]);
     await expect(app.get(ConnectionResolver).resolve(stores.sara!)).rejects.toMatchObject({ code: "store_not_connected" });
     const events = await db.tenant(stores.sara!, (trx) => trx.selectFrom("domain_events").select("data").where("type", "=", "connection.disconnected").execute());
     expect(events.map((e) => e.data)).toEqual([{ provider: "shopify", reason: "app_uninstalled" }]);

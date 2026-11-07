@@ -11,6 +11,7 @@ import { SecretsService } from "../../../platform/secrets/secrets.service.js";
 import { ENGINE_RUNTIME, EngineRegistry, type RuntimeFactory } from "../../../integrations/engine-registry.js";
 import { STORE_PROVIDERS } from "../../../integrations/connection-resolver.js";
 import { ConnectionLifecycle } from "../../../integrations/connection-lifecycle.js";
+import { WebhookRouter } from "../../../integrations/webhook-router.js";
 import { toConnectionView, type ConnectionView } from "../connections.dto.js";
 
 const CONNECTION_COLUMNS = ["id", "kind", "provider", "external_account", "display_name", "status", "status_reason", "config", "updated_at"] as const;
@@ -31,6 +32,7 @@ export class BostaConnectService {
     @Inject(ENGINE_RUNTIME) private readonly runtime: RuntimeFactory,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(ConnectionLifecycle) private readonly lifecycle: ConnectionLifecycle,
+    @Inject(WebhookRouter) private readonly router: WebhookRouter,
   ) {}
 
   async saveKey(auth: AuthContext, apiKey: string): Promise<ConnectionView> {
@@ -68,6 +70,7 @@ export class BostaConnectService {
       return toConnectionView(row);
     });
     this.registry.invalidate(tenantId); // the next engine reads the new key
+    this.router.forget(view.id); // W3/W4: its next webhook routes from the saved row
     return view;
   }
 

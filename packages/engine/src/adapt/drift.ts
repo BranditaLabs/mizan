@@ -15,7 +15,8 @@ export type DriftKind =
   | "learned_status" // a new status code was learned from its label
   | "shape_changed" // keys added or removed versus the stored baseline
   | "version_fell_forward" // provider served a different API version than requested
-  | "coerced_value"; // value had an unexpected type and was converted
+  | "coerced_value" // value had an unexpected type and was converted
+  | "unparseable_body"; // a signed webhook whose body is not JSON (FX-3a W5)
 
 export interface DriftEvent {
   connector: string;
