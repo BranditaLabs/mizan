@@ -78,7 +78,7 @@ function Interstitial() {
         <Checkbox required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="legal-gate-agree"
           label={<span className="text-body-sm">{t.rich("agree", { terms: (c) => <LegalLink doc="terms">{c}</LegalLink>, dpa: (c) => <LegalLink doc="dpa">{c}</LegalLink> })}</span>} />
         {changed ? <Alert tone="warning">{t("versionChanged")}</Alert> : accept.error ? <Alert tone="danger">{t("gate.error")}</Alert> : null}
-        <Button type="submit" size="lg" busy={accept.isPending} disabled={!agreed}>{t("gate.accept")}</Button>
+        <Button type="submit" size="lg" busy={accept.isPending} as="saving" disabled={!agreed}>{t("gate.accept")}</Button>
       </form>
       {/* A way out without accepting: another store, or sign out. */}
       <div className="mt-5 flex flex-col gap-3 border-t border-line pt-4">

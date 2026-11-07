@@ -8,6 +8,7 @@ import { cx } from "@/components/ui/logic";
 import { scrollBehavior } from "./motion";
 import { parseWhatsApp, plainText, type WaNode } from "./whatsapp-format";
 import s from "./WhatsAppPhone.module.css";
+import { Waiting } from "@/components/ui/Loader";
 
 /** One turn of a preview conversation (the API's PreviewTurn). */
 export interface PhoneTurn {
@@ -187,7 +188,7 @@ export function WhatsAppPhone(p: WhatsAppPhoneProps) {
                     <span className={cx(s.sub, p.typing && s.subTyping)}>{p.typing ? p.chrome.typing : p.chrome.business}</span>
                   ) : null}
                 </span>
-                {p.loading ? <span className={s.spinner} role="status" aria-label={t("loading")} /> : null}
+                {p.loading ? <span role="status" className="inline-flex shrink-0"><span className="mz-sr">{t("loading")}</span><Waiting meaning="loading" size={14} /></span> : null}
                 <Icon name="call" size={19} className={s.headerIcon} />
                 <Icon name="more-vertical" size={19} className={s.headerIcon} />
               </header>

@@ -3,6 +3,7 @@
 import { normalizePhone } from "@mizan/shared";
 import { multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator, sendEmailVerification } from "firebase/auth";
 import { useLocale, useTranslations } from "next-intl";
+import { AuthProgress } from "@mizan/design-system/auth/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { AuthHeading, CodeField, Step } from "./kit";
 import { Bdi } from "@/components/Bdi";
@@ -17,6 +18,10 @@ import { useSession } from "@/lib/session";
 
 /** The reCAPTCHA container lives in the persistent frame (Frame.tsx), outside every animated subtree. */
 const RECAPTCHA = "sms-verifier";
+/** How long "two-step is on" (DoneState) shows before signing in again with the code. */
+const ENABLED_MS = 1400;
+/** The press that is running (only that button animates). */
+type BusyKey = "send" | "check" | "sms" | "enable" | "signOut";
 
 /**
  * Turn on two-step verification (Firebase SMS second factor): owners and admins need it before the
@@ -37,7 +42,8 @@ export function TwoStep() {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [verificationId, setVerificationId] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<BusyKey | null>(null);
+  const [enabledNow, setEnabledNow] = useState(false);
   const [error, setError] = useState<AuthErrorKey | "recentLogin" | null>(null);
 
   const enrolled = user ? multiFactor(user).enrolledFactors.length > 0 : false;
@@ -58,15 +64,15 @@ export function TwoStep() {
     return signOut(enrolledNow ? `/sign-in?enrolled=1${next ? `&${next}` : ""}` : `/sign-in${next ? `?${next}` : ""}`);
   };
 
-  async function run(work: () => Promise<void>) {
-    setBusy(true);
+  async function run(key: BusyKey, work: () => Promise<void>) {
+    setBusy(key);
     setError(null);
     try {
       await work();
     } catch (e) {
       setError(authErrorCode(e) === "auth/requires-recent-login" ? "recentLogin" : authErrorKey(e));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -94,12 +100,13 @@ export function TwoStep() {
         {linkSent ? <Alert tone="success">{t("verifyEmail.sent")}</Alert> : null}
         {notYet ? <Alert tone="warning">{t("verifyEmail.notYet")}</Alert> : null}
         {errorAlert}
-        <Button size="lg" variant={linkSent ? "secondary" : "primary"} busy={busy && !linkSent}
-          onClick={() => void run(async () => { auth.languageCode = locale; await sendEmailVerification(user); setLinkSent(true); })}>
+        {/* Sending the link out = TRANSFER; "I confirmed" waits for Firebase's answer = PAIR. */}
+        <Button size="lg" variant={linkSent ? "secondary" : "primary"} busy={busy === "send"} as="sending" disabled={busy !== null && busy !== "send"}
+          onClick={() => void run("send", async () => { auth.languageCode = locale; await sendEmailVerification(user); setLinkSent(true); })}>
           {t("verifyEmail.send")}
         </Button>
         {linkSent ? (
-          <Button size="lg" busy={busy} onClick={() => void run(async () => {
+          <Button size="lg" busy={busy === "check"} as="checking" disabled={busy !== null && busy !== "check"} onClick={() => void run("check", async () => {
             await user.reload();
             await user.getIdToken(true);
             setNotYet(!user.emailVerified);
@@ -112,7 +119,7 @@ export function TwoStep() {
 
   const onSend = (e: FormEvent) => {
     e.preventDefault();
-    void run(async () => {
+    void run("sms", async () => {
       const p = normalizePhone(phone, "EG");
       if (!p) {
         setError("invalidPhone");
@@ -128,11 +135,29 @@ export function TwoStep() {
   const onEnable = (e: FormEvent) => {
     e.preventDefault();
     if (!verificationId) return;
-    void run(async () => {
+    void run("enable", async () => {
       await multiFactor(user).enroll(PhoneMultiFactorGenerator.assertion(PhoneAuthProvider.credential(verificationId, code.trim())));
+      // The outcome first (DoneState: two-step is on), then sign in again with the code.
+      setEnabledNow(true);
+      await new Promise((r) => window.setTimeout(r, ENABLED_MS));
       await signOutAndBack(true);
     });
   };
+
+  if (enabledNow) {
+    return (
+      <Step key="enabled">
+        <AuthProgress kind="confirmed" label={t("enabledTitle")} size={96}>
+          <p className="text-body-sm text-text-2">{t("doneBody")}</p>
+        </AuthProgress>
+        {/* Two-step is on either way; if signing out failed, say so under the outcome and offer it again. */}
+        {errorAlert}
+        {error ? (
+          <Button variant="secondary" size="lg" busy={busy === "signOut"} as="loading" onClick={() => void run("signOut", () => signOutAndBack(true))}>{t("signOutAndBack")}</Button>
+        ) : null}
+      </Step>
+    );
+  }
 
   return (
     <Step key="phone">
@@ -143,7 +168,7 @@ export function TwoStep() {
         <form onSubmit={onEnable} className="flex flex-col gap-(--_gap)" noValidate>
           <CodeField label={te("code")} hint={te.rich("codeHint", { phone: phone.trim(), n: (c) => <Bdi code>{c}</Bdi> })} value={code} onChange={setCode} />
           {errorAlert}
-          <Button type="submit" size="lg" busy={busy}>{t("phone.enable")}</Button>
+          <Button type="submit" size="lg" busy={busy === "enable"} as="creating">{t("phone.enable")}</Button>
           <Button variant="ghost" onClick={() => { setVerificationId(null); setError(null); }}>{te("changeNumber")}</Button>
         </form>
       ) : (
@@ -151,7 +176,7 @@ export function TwoStep() {
           <Field label={te("phone")} hint={te.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> })} type="tel" ltr autoComplete="tel"
             inputMode="tel" required name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
           {errorAlert}
-          <Button type="submit" size="lg" busy={busy}>{t("phone.submit")}</Button>
+          <Button type="submit" size="lg" busy={busy === "sms"} as="sending">{t("phone.submit")}</Button>
         </form>
       )}
       {error === "recentLogin" ? <Button variant="secondary" onClick={() => void signOutAndBack(false)}>{t("signOutAndBack")}</Button> : null}

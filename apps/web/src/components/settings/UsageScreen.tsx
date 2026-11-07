@@ -60,7 +60,7 @@ function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
       {usage.upgradeRequest ? (
         <p className="text-body-sm">{t("upgrade.requested", { plan: t(`plan.${usage.upgradeRequest.plan}`) })}{" "}<DateText value={usage.upgradeRequest.at} /></p>
       ) : canAsk ? (
-        <div><Button busy={ask.isPending} onClick={() => ask.mutate()}>{t("upgrade.ask", { plan: t(`plan.${next.plan}`) })}</Button></div>
+        <div><Button busy={ask.isPending} as="saving" onClick={() => ask.mutate()}>{t("upgrade.ask", { plan: t(`plan.${next.plan}`) })}</Button></div>
       ) : <p className="text-body-sm text-text-2">{t("upgrade.ownerOnly")}</p>}
       {ask.isError ? <Alert tone="danger">{problemText(ask.error, tpr)}</Alert> : null}
     </section>

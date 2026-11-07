@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, type ReactNode } from "react";
-import { Button, IconButton } from "./Button";
+import { Button, IconButton, type BusyProps } from "./Button";
 import { cx } from "./logic";
 
 /**
@@ -66,16 +66,16 @@ export function Dialog({ open, onClose, title, description, children, footer, cl
  * Bosta will be asked to terminate the delivery."); the confirm button is `danger-solid`, and the
  * safe choice has the focus.
  */
-export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel, busy }: {
-  open: boolean; onClose(): void; onConfirm(): void; title: ReactNode; description: ReactNode; confirmLabel: string; busy?: boolean;
-}) {
+export function ConfirmDialog({ open, onClose, onConfirm, title, description, confirmLabel, ...busy }: {
+  open: boolean; onClose(): void; onConfirm(): void; title: ReactNode; description: ReactNode; confirmLabel: string;
+} & BusyProps) {
   const t = useTranslations("ui");
   return (
     <Dialog open={open} onClose={onClose} title={title} description={description}
       footer={(
         <>
           <Button variant="secondary" onClick={onClose} data-autofocus>{t("cancel")}</Button>
-          <Button variant="danger-solid" busy={busy} onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant="danger-solid" {...busy} onClick={onConfirm}>{confirmLabel}</Button>
         </>
       )} />
   );

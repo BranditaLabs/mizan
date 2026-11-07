@@ -8,6 +8,7 @@ import { Bdi } from "@/components/Bdi";
 import { ProductImage } from "@/components/catalog/ProductImage";
 import { Alert } from "@/components/ui/Alert";
 import { Button, IconButton } from "@/components/ui/Button";
+import { Waiting } from "@/components/ui/Loader";
 import { Combobox } from "@/components/ui/Combobox";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field } from "@/components/ui/Field";
@@ -38,7 +39,7 @@ export function canEditOrder(o: Order, role: string | undefined) {
 export function EditBanner({ order: o }: { order: Order }) {
   const t = useTranslations("orders.edit");
   const store = o.store.provider === "woocommerce" ? "WooCommerce" : "Shopify";
-  if (o.edit?.status === "sending") return <Alert tone="info">{t("sending", { store })}</Alert>;
+  if (o.edit?.status === "sending") return <Alert tone="info"><Waiting meaning="sending" size={18}>{t("sending", { store })}</Waiting></Alert>;
   if (o.edit?.status === "failed") return <Alert tone="danger">{t("failed", { store, message: o.edit.message ?? "" })}</Alert>;
   return null;
 }
@@ -124,7 +125,7 @@ function EditOrderDialog({ order: o, onClose }: { order: Order; onClose(): void 
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-          <Button busy={save.isPending} disabled={invalid || empty} onClick={() => save.mutate()}>{t("save")}</Button>
+          <Button busy={save.isPending} as="saving" disabled={invalid || empty} onClick={() => save.mutate()}>{t("save")}</Button>
         </>
       )}>
       <div className="flex flex-col gap-5" data-testid="edit-order">

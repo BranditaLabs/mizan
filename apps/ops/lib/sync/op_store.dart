@@ -156,6 +156,12 @@ class OpStore extends _$OpStore {
         }
       });
 
+  /// Where one op stands now (null if it was never queued): a screen reads its own op's answer.
+  Future<Op?> byId(String opId) async {
+    final r = await (select(ops)..where((o) => o.opId.equals(opId))).getSingleOrNull();
+    return r == null ? null : _toOp(r);
+  }
+
   Future<int> countWhere(OpStatus status) async {
     final c = ops.opId.count();
     final q = selectOnly(ops)

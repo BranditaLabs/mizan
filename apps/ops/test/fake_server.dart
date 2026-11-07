@@ -22,6 +22,10 @@ class FakeOpsServer implements SyncApi {
   /// Stock the server holds per SKU, and what confirmed orders reserve (a count under it conflicts).
   final Map<String, int> reserved = {};
 
+  /// Op types the server refuses (a closed list or purchase order), and the ones it answers with a conflict.
+  final Set<String> rejectTypes = {};
+  final Set<String> conflictTypes = {};
+
   int timesApplied(String opId) => appliedOrder.where((id) => id == opId).length;
 
   @override
@@ -55,6 +59,8 @@ class FakeOpsServer implements SyncApi {
 
   OpOutcome _apply(Op op) {
     if (!OpTypes.all.contains(op.type)) return OpOutcome(opId: op.opId, status: 'rejected', code: 'unknown_type', message: 'unknown type');
+    if (rejectTypes.contains(op.type)) return OpOutcome(opId: op.opId, status: 'rejected', code: 'closed', message: 'already closed in Mizan');
+    if (conflictTypes.contains(op.type)) return OpOutcome(opId: op.opId, status: 'conflict', code: 'changed', message: 'changed in Mizan meanwhile');
     final sku = op.payload['sku'] as String?;
     if (sku == 'NOPE') return OpOutcome(opId: op.opId, status: 'rejected', code: 'unknown_item', message: 'no item with this SKU');
     final qty = op.payload['quantity'] as int? ?? 0;

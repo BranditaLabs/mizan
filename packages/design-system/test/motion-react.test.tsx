@@ -12,6 +12,8 @@ import * as fill from "../motion/physics/fill";
 import * as level from "../motion/physics/level";
 import { MizanLoader, EventGlyph, DoneState, RedBudgetProvider, Mark, Wordmark } from "../react/motion";
 import { Gauge, Vessels, Breakeven, Bullseye } from "../react/motion/instruments";
+import type { MizanLoaderProps } from "../react/motion";
+import { AuthProgress, PrimaryCta, ResendTimer, type ProgressKind } from "../react/auth";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -315,5 +317,45 @@ describe("accessibility", () => {
     expect(merge).not.toContain("<rect x=\"3.5\"");
     const fail = renderToString(<EventGlyph outcome="fail" />);
     expect(fail).not.toContain("danger");
+  });
+});
+
+describe("meanings: each auth wait plays what is happening", () => {
+  it("AuthProgress: signing in and checking pair, sending transfers, creating and saving drop, confirmed is DoneState", () => {
+    const kind = (k: ProgressKind) => { const h = document.createElement("div"); h.innerHTML = renderToString(<AuthProgress kind={k} />); return h; };
+    for (const k of ["loading", "signingIn", "checking"] as const) expect(kind(k).querySelector("[data-loader]")?.getAttribute("data-loader"), k).toBe("pair");
+    expect(kind("sending").querySelector("[data-loader]")?.getAttribute("data-loader")).toBe("transfer");
+    for (const k of ["creating", "saving"] as const) expect(kind(k).querySelector("[data-loader]")?.getAttribute("data-loader"), k).toBe("drop");
+    const done = kind("confirmed");
+    expect(done.querySelector("[data-loader]")).toBeNull();
+    expect(done.querySelector('[data-kind="confirmed"]')).not.toBeNull();
+  });
+
+  it("PrimaryCta: the busy key plays its busyAs; idle shows the arrow", () => {
+    const h = document.createElement("div");
+    h.innerHTML = renderToString(<PrimaryCta label="Continue" busy busyAs="sending" />);
+    expect(h.querySelector(".mz-auth-cta__key [data-kind=\"sending\"] [data-loader]")?.getAttribute("data-loader")).toBe("transfer");
+    expect(h.querySelector("button")?.getAttribute("aria-busy")).toBe("true");
+    h.innerHTML = renderToString(<PrimaryCta label="Continue" busy busyAs="signingIn" />);
+    expect(h.querySelector("[data-loader]")?.getAttribute("data-loader")).toBe("pair");
+    h.innerHTML = renderToString(<PrimaryCta label="Continue" />);
+    expect(h.querySelector("[data-loader]")).toBeNull();
+  });
+
+  it("ResendTimer: a resend on its way shows an inline TRANSFER with aria-busy; idle shows none", () => {
+    const props = { seconds: 0, startedAt: 0, countdown: (t: ReactElement | string) => t, resendLabel: "Resend", onResend: () => undefined };
+    const h = document.createElement("div");
+    h.innerHTML = renderToString(<ResendTimer {...props} busy />);
+    const link = h.querySelector("button.mz-auth-link");
+    expect(link?.getAttribute("aria-busy")).toBe("true");
+    expect(link?.querySelector("[data-loader]")?.getAttribute("data-loader")).toBe("transfer");
+    h.innerHTML = renderToString(<ResendTimer {...props} />);
+    expect(h.querySelector("[data-loader]")).toBeNull();
+  });
+
+  it("an indeterminate fill warns in development (and is a type error: test/meaning.check.tsx)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    renderToString(<MizanLoader {...({ kind: "fill", decorative: true } as unknown as MizanLoaderProps)} />);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("needs a real value"));
   });
 });

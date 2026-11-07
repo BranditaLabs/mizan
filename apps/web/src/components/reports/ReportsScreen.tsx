@@ -15,6 +15,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { isoWeekOf } from "@/lib/week";
+import { Waiting } from "@/components/ui/Loader";
 
 type Dashboard = Schemas["Dashboard"];
 type DashboardId = Dashboard["id"];
@@ -61,6 +62,8 @@ export function ReportsScreen() {
           <h1 className="font-display text-heading-lg">{t("title")}</h1>
           <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
         </div>
+        {/* A new period or tab is read while the old figures stay: a small PAIR beside the tabs. */}
+        {dash.isPlaceholderData ? <Waiting meaning="loading" size={20} /> : null}
         <nav aria-label={t("period.label")} className="mz-tabs">
           {PERIODS.map((d) => (
             <button key={d} type="button" className="mz-tab" aria-current={days === d ? "true" : undefined} onClick={() => setDays(d)} data-testid={`period-${d}`}>
@@ -244,8 +247,8 @@ function Downloads({ d, days }: { d: Dashboard; days: Period }) {
   });
   return (
     <div className="flex gap-2">
-      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "xlsx"} pending="fill" onClick={() => download.mutate("xlsx")}>{t("excel")}</Button>
-      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "csv"} pending="fill" onClick={() => download.mutate("csv")}>{t("csv")}</Button>
+      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "xlsx"} as="checking" onClick={() => download.mutate("xlsx")}>{t("excel")}</Button>
+      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "csv"} as="checking" onClick={() => download.mutate("csv")}>{t("csv")}</Button>
     </div>
   );
 }

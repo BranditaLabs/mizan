@@ -81,7 +81,7 @@ export function TicketsScreen() {
           <div className="flex flex-col gap-3">
             <DataTable label={t("title")} columns={columns} rows={rows} rowKey={(r) => r.id} rowLabel={(r) => r.number} empty={empty} />
             {list.hasNextPage ? (
-              <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div>
+              <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} as="loading" onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div>
             ) : null}
           </div>
         )}

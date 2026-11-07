@@ -136,7 +136,7 @@ export function ResolveCityDialog({ jobId, text, onClose }: { jobId: string; tex
     <Dialog open onClose={onClose} title={t("title")} description={t.rich("body", { text, b: (c) => <bdi className="font-medium text-text">{c}</bdi> })} footer={(
       <>
         <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!picked} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!picked} onClick={() => save.mutate()}>{t("save")}</Button>
       </>
     )}>
       <div className="flex flex-col gap-3">

@@ -8,6 +8,23 @@ export const PENDINGS = ["pair", "transfer", "drop", "fill"] as const;
 export type Pending = (typeof PENDINGS)[number];
 
 /**
+ * What the viewer's action does. Rows and waits name this, never a loader; the loader is derived
+ * (LOADER_FOR), so a row cannot name a loader that disagrees with what it does (Brand 2.0 meanings):
+ *   read      read / wait for an answer (load, sign in, check a code, search)     -> PAIR
+ *   send      send something out to another system (SMS code, email link, push)  -> TRANSFER
+ *   sync      sync or reconcile two systems (import, store sync, ops queue)       -> TRANSFER
+ *   write     a write in Mizan (save, create, confirm, delete, a payment link)    -> DROP
+ *   progress  known progress with a real value (done/total)                       -> FILL
+ * `progress` never appears in a catalogue row or a wait meaning: neither has a value. FILL is reached
+ * only through a component that requires one (FillProgress, FillBar, MizanLoader kind="fill" value).
+ */
+export const ACTIONS = ["read", "send", "sync", "write", "progress"] as const;
+export type Action = (typeof ACTIONS)[number];
+/** An action a row or a wait can name (no value, so never progress). */
+export type RowAction = Exclude<Action, "progress">;
+export const LOADER_FOR = { read: "pair", send: "transfer", sync: "transfer", write: "drop", progress: "fill" } as const satisfies Record<Action, Pending>;
+
+/**
  * What an event plays when it lands:
  *   quiet  refresh the data, no motion          settle  arrive (SETTLE), neutral information
  *   done   settle, then a check (confirmed, not money)   merge  agreement, reconciled (MERGE)
@@ -45,7 +62,9 @@ export interface Variant {
 }
 
 export interface MotionRule {
-  /** Shown while the viewer's own action runs (absent: the event comes from outside). */
+  /** What the viewer's own action does (absent: the event comes from outside). */
+  action?: RowAction;
+  /** Shown while that action runs: always LOADER_FOR[action] (absent with no action). */
   pending?: Pending;
   outcome: Outcome;
   variant?: Variant;

@@ -13,7 +13,9 @@ import { EmptyState } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
+import { BusyLoader, busyKind } from "@/components/ui/BusyLabel";
 
 type Feedback = Schemas["PlatformFeedback"];
 type Status = Feedback["status"];
@@ -30,9 +32,10 @@ export function FeedbackScreen() {
   const [offset, setOffset] = useState(0);
   const query = { ...(filter === "all" ? {} : { status: filter }), limit: PAGE, offset };
   const list = useQuery({ queryKey: ["feedback", query], queryFn: () => ok(api.GET("/v1/platform/feedback", { params: { query } })), placeholderData: keepPreviousData });
+  const done = useStaffDone();
   const update = useMutation({
     mutationFn: ({ id, status }: { id: string; status: Status }) => ok(api.PATCH("/v1/platform/feedback/{id}", { params: { path: { id } }, body: { status } })),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["feedback"] }),
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["feedback"] }); done("feedback.status_changed", t("done.changed")); },
   });
   const rows = list.data?.data ?? [];
 
@@ -67,10 +70,11 @@ export function FeedbackScreen() {
                     <td>
                       <div className="flex items-center gap-2">
                         {f.status === "new" ? <span className="size-2 shrink-0 rounded-full bg-text" aria-hidden="true" /> : null}
-                        <select aria-label={t("change")} className="mz-select w-auto min-w-24" value={f.status} disabled={update.isPending && update.variables?.id === f.id}
+                        <select aria-label={t("change")} className="mz-select w-auto min-w-24" value={f.status} disabled={update.isPending && update.variables?.id === f.id} aria-busy={(update.isPending && update.variables?.id === f.id) || undefined}
                           data-testid={`feedback-status-${f.id}`} onChange={(e) => update.mutate({ id: f.id, status: e.target.value as Status })}>
                           {STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
                         </select>
+                        {update.isPending && update.variables?.id === f.id ? <BusyLoader pending={busyKind("saving")} size={18} /> : null}
                       </div>
                     </td>
                   </tr>

@@ -43,10 +43,14 @@ export function eventMotion(type: string, data?: EventData): { outcome: Outcome;
   return { outcome: m.outcome, copy: m.copy, values: m.select ? { [m.select.arg]: m.select.value } : {}, ...(m.pending ? { pending: m.pending } : {}) };
 }
 
-/** The loader a busy button shows for its event (the catalogue's `pending`), else drop (saving). */
-export function pendingFor(type: string | undefined): Pending {
-  if (!type || !isDomainEvent(type)) return "drop";
-  return motionFor(type).pending ?? "drop";
+/**
+ * The loader a busy control shows for its event: the catalogue's `pending`, derived from what the
+ * action does. An event with no action (it comes from outside), an unknown type or none: undefined.
+ * Never a default: the control must then name a meaning (Button `as`).
+ */
+export function pendingFor(type: string | undefined): Pending | undefined {
+  if (!type || !isDomainEvent(type)) return undefined;
+  return motionFor(type).pending;
 }
 
 /** A timeline row's outcome (exhaustive over order_events types; an unknown row settles). */

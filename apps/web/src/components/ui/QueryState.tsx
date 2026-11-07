@@ -32,7 +32,7 @@ export function ErrorState({ error, onRetry, retrying = false, compact = false, 
       </div>
       {canRetry ? (
         <div className={compact ? "" : "mt-2"}>
-          <Button size="sm" variant="secondary" icon="refresh" busy={retrying} onClick={() => onRetry?.()}>{t("retry")}</Button>
+          <Button size="sm" variant="secondary" icon="refresh" busy={retrying} as="loading" onClick={() => onRetry?.()}>{t("retry")}</Button>
         </div>
       ) : null}
     </div>

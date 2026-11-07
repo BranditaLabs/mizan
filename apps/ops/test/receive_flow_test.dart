@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mizan_ops/main.dart';
+import 'package:mizan_ops/motion/fill_bar.dart';
 import 'package:mizan_ops/motion/vessels_count.dart';
 import 'package:mizan_ops/receive/receive_api.dart';
 import 'package:mizan_ops/sync/op.dart';
@@ -87,13 +88,19 @@ void main() {
     await tester.pump();
     expect(find.textContaining('More than ordered needs a manager'), findsOneWidget);
     expect(find.text('2 good · 1 damaged'), findsOneWidget);
+    // The whole delivery as known progress with its real value (counted of expected).
+    final fill = find.byKey(const Key('receive-fill'));
+    expect(fill, findsOneWidget);
+    expect(tester.widget<FillBar>(fill).total, 5);
+    expect(tester.widget<FillBar>(fill).done, 3);
+    await tester.scrollUntilVisible(find.byKey(const Key('line-v-abaya')), 200, scrollable: find.byType(Scrollable).first);
     expect(find.byType(VesselsCount), findsWidgets); // ordered against received, per line
     await tester.ensureVisible(find.byKey(const Key('save-delivery')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('save-delivery')));
     await settle(tester);
     await settle(tester);
-    // Goods in: the stock.received toast with its glyph (done).
+    // Goods in: saved on the phone first (ops.queued), then stock.received (done) once the sync applied it.
     expect(find.byKey(const ValueKey('event-snack-stock.received')), findsOneWidget);
     expect(find.byKey(const ValueKey('glyph-done')), findsOneWidget);
 
@@ -104,6 +111,32 @@ void main() {
     expect(server.timesApplied(receipt.opId), 1);
     // Until the next fetch, what this phone received is not expected again.
     expect(find.textContaining('2 units still expected'), findsOneWidget);
+  });
+
+  testWidgets('Arabic: Mizan refuses this delivery: the refusal fails in place of the saved toast, never done', (tester) async {
+    final api = FakeReceiveApi();
+    final server = FakeOpsServer()..rejectTypes.add(OpTypes.poReceive);
+    final engine = SyncEngine(store: store, api: server, deviceId: 'phone-1');
+    await tester.runAsync(() async => store.savePurchaseOrders([await api.po('po-1')], DateTime.utc(2026, 10, 30, 9)));
+    await tester.pumpWidget(MizanOpsApp(store: store, engine: engine, receiveApi: api, locale: const Locale('ar'), scanner: (context, onCode) => const SizedBox.shrink()));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('tab-receive')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('po-po-1')));
+    await settle(tester);
+    await tester.enterText(find.byKey(const Key('typed-code')), '6221000000002');
+    await tester.tap(find.byKey(const Key('add-code')));
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('save-delivery')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('save-delivery')));
+    await settle(tester);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('event-snack-stock.received')), findsNothing);
+    expect(find.byKey(const ValueKey('event-snack-ops.queued')), findsNothing); // replaced by the answer
+    expect(find.byKey(const ValueKey('event-snack-ops.op_rejected')), findsOneWidget);
+    expect(find.textContaining('مااتقبلش: already closed in Mizan'), findsOneWidget);
+    expect(find.byKey(const ValueKey('glyph-fail')), findsOneWidget);
   });
 
   testWidgets('Arabic, offline: the cached PO still opens, right to left, and the delivery waits in the queue', (tester) async {
@@ -128,6 +161,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('save-delivery')));
     await settle(tester);
+    // No session: saved on the phone (ops.queued settles), never the done of stock.received.
+    expect(find.byKey(const ValueKey('event-snack-ops.queued')), findsOneWidget);
+    expect(find.byKey(const ValueKey('event-snack-stock.received')), findsNothing);
     final ops = (await tester.runAsync(() => store.recent()))!;
     expect(ops.single.status, OpStatus.pending);
     expect(find.textContaining('4 قطع لسه جايين'), findsOneWidget); // 4 left after 1 received here

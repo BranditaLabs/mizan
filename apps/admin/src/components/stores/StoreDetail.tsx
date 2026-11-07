@@ -13,6 +13,7 @@ import { Card, KeyValue } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
 import { StoreSso } from "./StoreSso";
 import { StoreStatus } from "./StoreStatus";
@@ -33,19 +34,22 @@ export function StoreDetail({ storeId }: { storeId: string }) {
   const key = ["store", storeId];
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/platform/stores/{storeId}", { params: { path: { storeId } } })) });
   const refresh = () => { void qc.invalidateQueries({ queryKey: key }); void qc.invalidateQueries({ queryKey: ["stores"] }); };
+  // The confirmed outcome of each write (STAFF_MOTION picks it: done for suspend, reactivate and
+  // plan, settle for a note or access; never red).
+  const done = useStaffDone();
 
   const [reason, setReason] = useState("");
   const [plan, setPlan] = useState<Plan | "">("");
   const [note, setNote] = useState("");
   const [access, setAccess] = useState({ reason: "", minutes: "60", mode: "read" as "read" | "write" });
 
-  const suspend = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/suspend", { params: { path: { storeId } }, body: { reason: reason.trim() } })), onSuccess: () => { setReason(""); refresh(); } });
-  const reactivate = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/reactivate", { params: { path: { storeId } }, body: reason.trim() ? { reason: reason.trim() } : {} })), onSuccess: () => { setReason(""); refresh(); } });
-  const changePlan = useMutation({ mutationFn: (p: Plan) => ok(api.PUT("/v1/platform/stores/{storeId}/plan", { params: { path: { storeId } }, body: { plan: p, ...(reason.trim() ? { reason: reason.trim() } : {}) } })), onSuccess: () => { setPlan(""); setReason(""); refresh(); } });
-  const addNote = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/notes", { params: { path: { storeId } }, body: { body: note.trim() } })), onSuccess: () => { setNote(""); refresh(); } });
+  const suspend = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/suspend", { params: { path: { storeId } }, body: { reason: reason.trim() } })), onSuccess: () => { setReason(""); refresh(); done("store.suspended", t("done.suspended")); } });
+  const reactivate = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/reactivate", { params: { path: { storeId } }, body: reason.trim() ? { reason: reason.trim() } : {} })), onSuccess: () => { setReason(""); refresh(); done("store.reactivated", t("done.reactivated")); } });
+  const changePlan = useMutation({ mutationFn: (p: Plan) => ok(api.PUT("/v1/platform/stores/{storeId}/plan", { params: { path: { storeId } }, body: { plan: p, ...(reason.trim() ? { reason: reason.trim() } : {}) } })), onSuccess: (_, p) => { setPlan(""); setReason(""); refresh(); done("store.plan_changed", t("done.planChanged", { plan: tp(p) })); } });
+  const addNote = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/notes", { params: { path: { storeId } }, body: { body: note.trim() } })), onSuccess: () => { setNote(""); refresh(); done("store.note_added", t("done.noteSaved")); } });
   const openAccess = useMutation({
     mutationFn: () => ok(api.POST("/v1/platform/stores/{storeId}/access", { params: { path: { storeId } }, body: { reason: access.reason.trim(), minutes: Number(access.minutes), mode: access.mode } })),
-    onSuccess: () => { setAccess({ reason: "", minutes: "60", mode: "read" }); void qc.invalidateQueries({ queryKey: ["my-access"] }); },
+    onSuccess: () => { setAccess({ reason: "", minutes: "60", mode: "read" }); void qc.invalidateQueries({ queryKey: ["my-access"] }); done("store.access_opened", t("done.accessOpened")); },
   });
 
   if (q.isError) return <Alert tone="danger">{t("loadFailed")}</Alert>;
@@ -84,10 +88,10 @@ export function StoreDetail({ storeId }: { storeId: string }) {
             ) : null}
             <div className="flex flex-wrap items-end gap-2">
               {can("super_admin") && s.status !== "suspended" && s.status !== "deleted" ? (
-                <Button variant="danger" busy={suspend.isPending} disabled={reason.trim().length < 3} onClick={() => suspend.mutate()}>{t("suspend")}</Button>
+                <Button variant="danger" busy={suspend.isPending} as="saving" disabled={reason.trim().length < 3} onClick={() => suspend.mutate()}>{t("suspend")}</Button>
               ) : null}
               {can("super_admin") && s.status === "suspended" ? (
-                <Button busy={reactivate.isPending} onClick={() => reactivate.mutate()}>{t("reactivate")}</Button>
+                <Button busy={reactivate.isPending} as="saving" onClick={() => reactivate.mutate()}>{t("reactivate")}</Button>
               ) : null}
               {can("super_admin", "finance") && s.status !== "deleted" ? (
                 <>
@@ -95,7 +99,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
                     <option value="">{t("choosePlan")}</option>
                     {PLANS.filter((p) => p !== s.plan).map((p) => <option key={p} value={p}>{tp(p)}</option>)}
                   </Select>
-                  <Button variant="secondary" disabled={!plan} busy={changePlan.isPending} onClick={() => plan && changePlan.mutate(plan)}>{t("applyPlan")}</Button>
+                  <Button variant="secondary" disabled={!plan} busy={changePlan.isPending} as="saving" onClick={() => plan && changePlan.mutate(plan)}>{t("applyPlan")}</Button>
                 </>
               ) : null}
             </div>
@@ -116,7 +120,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
               {can("super_admin") ? <option value="write">{t("access.write")}</option> : null}
             </Select>
             <div className="md:col-span-4 flex flex-wrap items-center gap-3">
-              <Button type="submit" variant="secondary" busy={openAccess.isPending} disabled={access.reason.trim().length < 3}>{t("access.open")}</Button>
+              <Button type="submit" variant="secondary" busy={openAccess.isPending} as="saving" disabled={access.reason.trim().length < 3}>{t("access.open")}</Button>
               <p className="text-caption text-text-2">{t("access.hint")}</p>
             </div>
             {openAccess.data ? <Alert tone="success">{t.rich("access.opened", { until: openAccess.data.expiresAt.slice(11, 16), b: (c) => <Bdi>{c}</Bdi> })}</Alert> : null}
@@ -178,7 +182,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
         <Card title={t("notes")}>
           <form onSubmit={onNote} className="flex flex-col gap-2">
             <TextArea label={t("addNote")} value={note} maxLength={2000} rows={3} name="note" onChange={(e) => setNote(e.target.value)} />
-            <div><Button type="submit" variant="secondary" busy={addNote.isPending} disabled={!note.trim()}>{t("saveNote")}</Button></div>
+            <div><Button type="submit" variant="secondary" busy={addNote.isPending} as="saving" disabled={!note.trim()}>{t("saveNote")}</Button></div>
           </form>
           <ul className="mt-3 flex flex-col gap-3" data-testid="store-notes">
             {s.notes.map((n) => (

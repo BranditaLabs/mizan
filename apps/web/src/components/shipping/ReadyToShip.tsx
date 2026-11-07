@@ -71,10 +71,10 @@ export function ReadyToShip({ q, now }: { q: string; now: number }) {
             <Button size="sm" icon="shipping" onClick={() => setAsking({ ids: [...keys], clear })}>{t("ship")}</Button>
           </ButtonGroup>
         )} />
-      {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
+      {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} as="loading" onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
       <Dialog open={asking !== null} onClose={() => setAsking(null)} title={t("askTitle", { count: asking?.ids.length ?? 0 })} description={t("askBody")} footer={(
         <ButtonGroup>
-          <Button busy={start.isPending} onClick={() => asking && start.mutate(asking.ids)}>{t("go")}</Button>
+          <Button busy={start.isPending} as="sending" onClick={() => asking && start.mutate(asking.ids)}>{t("go")}</Button>
           <Button variant="ghost" onClick={() => setAsking(null)}>{t("close")}</Button>
         </ButtonGroup>
       )} />

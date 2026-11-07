@@ -93,7 +93,7 @@ export function StoreStep({ o }: { o: Onboarding }) {
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
           <Field label={t("field")} hint={t.rich("hint", { n })} error={invalid ? t("invalid") : null} ltr autoComplete="off" spellCheck={false}
             placeholder="nile-abayas.myshopify.com" value={shop} onChange={(e) => setShop(e.target.value)} name="shop" />
-          <div><Button type="submit" icon="channels" busy={install.isPending || install.isSuccess}>{t("submit")}</Button></div>
+          <div><Button type="submit" icon="channels" busy={install.isPending || install.isSuccess} as="sending">{t("submit")}</Button></div>
         </form>
       );
     }
@@ -111,7 +111,7 @@ export function StoreStep({ o }: { o: Onboarding }) {
         <Alert tone="info" title={t("laterTitle")}>
           <span className="flex flex-col items-start gap-2">
             {t("laterBody")}
-            <Button variant="secondary" size="sm" busy={update.isPending} onClick={() => pick("manual")}>{t("useManual")}</Button>
+            <Button variant="secondary" size="sm" busy={update.isPending} as="saving" onClick={() => pick("manual")}>{t("useManual")}</Button>
           </span>
         </Alert>
       );
@@ -140,7 +140,7 @@ export function StoreStep({ o }: { o: Onboarding }) {
           <Alert tone="warning">
             <span className="flex flex-col items-start gap-2">
               {t("scopesChanged")}
-              <Button variant="secondary" size="sm" icon="refresh" busy={install.isPending || install.isSuccess} onClick={() => install.mutate(s.shop!)}>{t("approveScopes")}</Button>
+              <Button variant="secondary" size="sm" icon="refresh" busy={install.isPending || install.isSuccess} as="sending" onClick={() => install.mutate(s.shop!)}>{t("approveScopes")}</Button>
             </span>
           </Alert>
         ) : null}
@@ -148,13 +148,13 @@ export function StoreStep({ o }: { o: Onboarding }) {
           <Alert tone="danger" title={t("importFailed")}>
             <span className="flex flex-col items-start gap-2">
               {t(imp.error === "auth" || imp.error === "permission" ? `importWhy.${imp.error}` : "importWhy.other", { orders: imp.orders })}
-              <Button variant="secondary" size="sm" icon="refresh" busy={retry.isPending} onClick={() => retry.mutate(s.connectionId!)}>{t("retryImport")}</Button>
+              <Button variant="secondary" size="sm" icon="refresh" busy={retry.isPending} as="syncing" onClick={() => retry.mutate(s.connectionId!)}>{t("retryImport")}</Button>
             </span>
           </Alert>
         ) : imp ? (
-          <p className="text-body-sm text-text-2" role="status">
-            {t(imp.status === "running" ? "importing" : "imported", { orders: imp.orders, products: imp.products })}
-          </p>
+          imp.status === "running"
+            ? <Waiting meaning="syncing" size={22} live>{t("importing", { orders: imp.orders, products: imp.products })}</Waiting>
+            : <p className="text-body-sm text-text-2" role="status">{t("imported", { orders: imp.orders, products: imp.products })}</p>
         ) : null}
         {retry.isError ? <Alert tone="danger">{t("retryFailed")}</Alert> : null}
         {/* U7: the other stores too, each with its state: before, only the first could be retried or re-approved. */}
@@ -166,8 +166,8 @@ export function StoreStep({ o }: { o: Onboarding }) {
                 <span className="flex items-center gap-2">
                   <span className={x.status === "active" ? "text-text-2" : "text-danger-text"}>{t(`otherStatus.${x.status}`)}</span>
                   {x.status === "needs_attention" && x.provider === "shopify" && x.shop
-                    ? <Button size="sm" variant="secondary" busy={install.isPending} onClick={() => install.mutate(x.shop!)}>{t("approveScopes")}</Button> : null}
-                  {x.status !== "pending" ? <Button size="sm" variant="ghost" icon="refresh" busy={retry.isPending && retry.variables === x.connectionId} onClick={() => retry.mutate(x.connectionId)}>{t("retryImport")}</Button> : null}
+                    ? <Button size="sm" variant="secondary" busy={install.isPending} as="sending" onClick={() => install.mutate(x.shop!)}>{t("approveScopes")}</Button> : null}
+                  {x.status !== "pending" ? <Button size="sm" variant="ghost" icon="refresh" busy={retry.isPending && retry.variables === x.connectionId} as="syncing" onClick={() => retry.mutate(x.connectionId)}>{t("retryImport")}</Button> : null}
                 </span>
               </li>
             ))}
@@ -210,7 +210,7 @@ export function CourierStep({ o }: { o: Onboarding }) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-body-sm text-text-2">{t("manualStore")}</p>
-        {c.status === "todo" ? <div><Button variant="secondary" busy={update.isPending} onClick={() => update.mutate({ skip: { courier: true } })}>{t("skipManual")}</Button></div> : null}
+        {c.status === "todo" ? <div><Button variant="secondary" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { courier: true } })}>{t("skipManual")}</Button></div> : null}
       </div>
     );
   }
@@ -231,7 +231,7 @@ export function CourierStep({ o }: { o: Onboarding }) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-body-sm text-text-2">{t("skipped")}</p>
-        <div><Button variant="secondary" busy={update.isPending} onClick={() => update.mutate({ skip: { courier: false } })}>{t("undoSkip")}</Button></div>
+        <div><Button variant="secondary" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { courier: false } })}>{t("undoSkip")}</Button></div>
       </div>
     );
   }
@@ -240,8 +240,8 @@ export function CourierStep({ o }: { o: Onboarding }) {
       {c.status === "needs_attention" ? <Alert tone="danger">{t(c.reason === "key_lacks_permission" ? "noPermission" : "refused")}</Alert> : null}
       <Field label={t("field")} hint={t("hint")} type="password" ltr autoComplete="off" spellCheck={false} value={key} onChange={(e) => setKey(e.target.value)} name="bostaKey" />
       <ButtonGroup>
-        <Button type="submit" icon="courier" busy={save.isPending} disabled={!key.trim()}>{t("submit")}</Button>
-        {c.status === "todo" ? <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { courier: true } })}>{t("skip")}</Button> : null}
+        <Button type="submit" icon="courier" busy={save.isPending} as="syncing" disabled={!key.trim()}>{t("submit")}</Button>
+        {c.status === "todo" ? <Button variant="ghost" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { courier: true } })}>{t("skip")}</Button> : null}
       </ButtonGroup>
     </form>
   );
@@ -276,7 +276,7 @@ export function CostsStep({ o }: { o: Onboarding }) {
     return (
       <div className="flex flex-col gap-3">
         <p className="text-body-sm text-text-2">{t("skipped")}</p>
-        <div><Button variant="secondary" busy={update.isPending} onClick={() => update.mutate({ skip: { costs: false } })}>{t("undoSkip")}</Button></div>
+        <div><Button variant="secondary" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { costs: false } })}>{t("undoSkip")}</Button></div>
       </div>
     );
   }
@@ -288,7 +288,7 @@ export function CostsStep({ o }: { o: Onboarding }) {
         <p className="text-body-sm text-text-2">{t(o.steps.store.connectionId ? "none" : "noneManual")}</p>
         <ButtonGroup>
           <Link href="/products" className={buttonClass("secondary")}>{t("addProducts")}</Link>
-          <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { costs: true } })}>{t("skip")}</Button>
+          <Button variant="ghost" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { costs: true } })}>{t("skip")}</Button>
         </ButtonGroup>
       </div>
     );
@@ -326,9 +326,9 @@ export function CostsStep({ o }: { o: Onboarding }) {
       {invalid.size ? <Alert tone="danger">{t("invalid")}</Alert> : null}
       {save.isSuccess ? <Alert tone="success">{t("saved", { count: save.data.updated })}</Alert> : null}
       <ButtonGroup>
-        <Button type="submit" busy={save.isPending} disabled={!Object.values(costs).some((v) => v.trim())}>{t("save")}</Button>
+        <Button type="submit" busy={save.isPending} as="saving" disabled={!Object.values(costs).some((v) => v.trim())}>{t("save")}</Button>
         {list.data?.nextCursor ? <Button variant="secondary" onClick={() => setLimit((l) => Math.min(200, l + 40))}>{t("more")}</Button> : null}
-        <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { costs: true } })}>{t("skip")}</Button>
+        <Button variant="ghost" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { costs: true } })}>{t("skip")}</Button>
       </ButtonGroup>
     </form>
   );
@@ -381,8 +381,8 @@ export function GrowStep({ o, step }: { o: Onboarding; step: string }) {
       {st === "needs_attention" ? <Alert tone="danger">{t("whatsapp.attention")}</Alert> : null}
       <ButtonGroup>
         <Link href={GROW_HREF[key]} className={buttonClass(st === "done" ? "secondary" : "primary")}>{t(`${key}.cta`)}</Link>
-        {st === "todo" ? <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { [key]: true } })}>{t("skip")}</Button> : null}
-        {st === "skipped" ? <Button variant="ghost" busy={update.isPending} onClick={() => update.mutate({ skip: { [key]: false } })}>{t("undoSkip")}</Button> : null}
+        {st === "todo" ? <Button variant="ghost" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { [key]: true } })}>{t("skip")}</Button> : null}
+        {st === "skipped" ? <Button variant="ghost" busy={update.isPending} as="saving" onClick={() => update.mutate({ skip: { [key]: false } })}>{t("undoSkip")}</Button> : null}
       </ButtonGroup>
     </div>
   );

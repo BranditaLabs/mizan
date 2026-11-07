@@ -78,7 +78,7 @@ export function RefundRow({ refund, showOrder = false }: { refund: Refund; showO
       {approve.isError ? <Alert tone="danger">{errorText(approve.error)}</Alert> : null}
       {refund.can.approve || refund.can.reject || refund.can.complete ? (
         <div className="flex flex-wrap gap-2">
-          {refund.can.approve ? <Button size="sm" busy={approve.isPending} onClick={() => approve.mutate()}>{t("approve")}</Button> : null}
+          {refund.can.approve ? <Button size="sm" busy={approve.isPending} as="saving" onClick={() => approve.mutate()}>{t("approve")}</Button> : null}
           {refund.can.reject ? <Button size="sm" variant="ghost" onClick={() => setDialog("reject")}>{t("reject")}</Button> : null}
           {refund.can.complete ? <Button size="sm" variant="secondary" onClick={() => setDialog("complete")}>{t("markSent")}</Button> : null}
         </div>
@@ -107,7 +107,7 @@ function RefundStep({ refund, step, onClose }: { refund: Refund; step: "reject" 
     <Dialog open onClose={onClose} title={t(step === "reject" ? "rejectTitle" : "sentTitle", { number: refund.number })} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!ready} onClick={() => save.mutate()}>{t(step === "reject" ? "reject" : "markSent")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!ready} onClick={() => save.mutate()}>{t(step === "reject" ? "reject" : "markSent")}</Button>
       </>
     )}>
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (ready) save.mutate(); }}>
@@ -146,7 +146,7 @@ function RequestRefund({ orderId, onClose }: { orderId: string; onClose(): void 
     <Dialog open onClose={onClose} title={t("requestTitle")} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!o || nothing || !value.trim() || !dest} onClick={() => save.mutate()}>{t("request")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!o || nothing || !value.trim() || !dest} onClick={() => save.mutate()}>{t("request")}</Button>
       </>
     )}>
       {!o ? <PageState query={opts} compact variant="card" label={t("loading")} /> : (

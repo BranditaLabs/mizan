@@ -82,7 +82,7 @@ export function Automations() {
         <ul className="flex flex-col gap-3" data-testid="my-automations">
           {mine.map((a) => (
             <li key={a.id} className="mz-card flex flex-col gap-3 p-4">
-              <Switch label={<span className="text-label">{a.name}</span>} description={t("when", { trigger: trigger(a.trigger) })}
+              <Switch label={a.name} description={t("when", { trigger: trigger(a.trigger) })} busy={toggle.isPending && toggle.variables?.id === a.id} as="saving"
                 checked={a.enabled} disabled={toggle.isPending} onChange={(e) => toggle.mutate({ id: a.id, enabled: e.target.checked })} />
               {a.pausedReason === "errors" ? <Alert tone="danger">{t("paused")}</Alert> : null}
               <div className="flex flex-wrap items-center justify-between gap-2 text-body-sm text-text-2">
@@ -118,7 +118,7 @@ export function Automations() {
               <div className="mt-auto pt-1">
                 {r.installed
                   ? <Badge tone="success">{t("isInstalled")}</Badge>
-                  : <Button size="sm" variant="secondary" icon="add" busy={install.isPending && install.variables === r.key} onClick={() => install.mutate(r.key)}>{t("install")}</Button>}
+                  : <Button size="sm" variant="secondary" icon="add" busy={install.isPending && install.variables === r.key} as="saving" onClick={() => install.mutate(r.key)}>{t("install")}</Button>}
               </div>
             </li>
           ))}
@@ -187,7 +187,7 @@ function TryIt({ automation, action, onClose }: { automation: Automation; action
       <div className="flex flex-col gap-3">
       <form className="flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (number.trim()) run.mutate(); }}>
         <Field label={t("order")} hint={t("orderHint")} ltr value={number} onChange={(e) => setNumber(e.target.value)} className="min-w-0 flex-1" />
-        <Button type="submit" busy={run.isPending} disabled={!number.trim()}>{t("run")}</Button>
+        <Button type="submit" busy={run.isPending} as="checking" disabled={!number.trim()}>{t("run")}</Button>
       </form>
       {run.isError ? <Alert tone="danger">{problemText(run.error, tpr)}</Alert> : null}
       {run.data === null ? <Alert tone="warning">{t("noOrder")}</Alert> : null}

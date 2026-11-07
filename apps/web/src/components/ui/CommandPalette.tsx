@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 import { useModal } from "./Dialog";
 import { cx, matches, moveIndex } from "./logic";
+import { Waiting } from "./Loader";
 
 const ESC = "Esc";
 
@@ -54,7 +55,12 @@ export function CommandPalette({ open, onClose, commands, results = [], onQueryC
             <kbd className="mz-kbd" dir="ltr">{ESC}</kbd>
           </div>
           <ul id={`${id}-list`} role="listbox" aria-label={t("results")} className="max-h-[50dvh] overflow-y-auto p-1">
-            {shown.length === 0 ? <li className="px-3 py-6 text-center text-body-sm text-text-3">{t(busy ? "searching" : "empty")}</li> : null}
+            {shown.length === 0 ? (
+              <li className="flex items-center justify-center gap-2.5 px-3 py-6 text-center text-body-sm text-text-3">
+                {busy ? <Waiting meaning="loading" size={20} /> : null}
+                {t(busy ? "searching" : "empty")}
+              </li>
+            ) : null}
             {shown.map((c, i) => {
               const header = i === 0 || shown[i - 1]!.group !== c.group ? c.group : null;
               return (

@@ -12,7 +12,9 @@ import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { ApiError, ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
+import { PageState } from "@/components/ui/PageState";
 
 const KNOWN = new Set(["domain_taken", "public_email_domain", "validation_failed"]);
 
@@ -30,15 +32,17 @@ export function StoreSso({ storeId }: { storeId: string }) {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/platform/stores/{storeId}/sso", { params: { path: { storeId } } })) });
   const [form, setForm] = useState({ domain: "", providerId: "", reason: "" });
   const refresh = () => void qc.invalidateQueries({ queryKey: key });
+  const done = useStaffDone();
 
   const save = useMutation({
-    mutationFn: (v: { domain: string; providerId: string; enabled: boolean; reason: string }) =>
+    mutationFn: (v: { domain: string; providerId: string; enabled: boolean; reason: string; kind?: "paused" | "resumed" }) =>
       ok(api.PUT("/v1/platform/stores/{storeId}/sso/{domain}", { params: { path: { storeId, domain: v.domain } }, body: { providerId: v.providerId, enabled: v.enabled, reason: v.reason } })),
-    onSuccess: () => { setForm({ domain: "", providerId: "", reason: "" }); refresh(); },
+    // A new domain, a pause or a resume: each settles with its own words.
+    onSuccess: (_, v) => { setForm({ domain: "", providerId: "", reason: "" }); refresh(); done(`store.sso_${v.kind ?? "saved"}`, t(`done.${v.kind ?? "saved"}`)); },
   });
   const remove = useMutation({
     mutationFn: (domain: string) => ok(api.DELETE("/v1/platform/stores/{storeId}/sso/{domain}", { params: { path: { storeId, domain } }, body: {} })),
-    onSuccess: refresh,
+    onSuccess: () => { refresh(); done("store.sso_removed", t("done.removed")); },
   });
 
   const admin = can("super_admin");
@@ -54,6 +58,7 @@ export function StoreSso({ storeId }: { storeId: string }) {
     <Card title={t("title")}>
       <p className="text-body-sm text-text-2">{t("intro")}</p>
       {q.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
+      {!q.data && !q.isError ? <PageState variant="list" rows={2} /> : null}
       {q.data?.data.length ? (
         <ul className="mt-3 flex flex-col divide-y divide-line" data-testid="store-sso">
           {q.data.data.map((d) => (
@@ -68,11 +73,11 @@ export function StoreSso({ storeId }: { storeId: string }) {
                 <When value={d.updatedAt} />
                 {admin ? (
                   <>
-                    <Button size="sm" variant="secondary" busy={save.isPending && save.variables?.domain === d.domain}
-                      onClick={() => save.mutate({ domain: d.domain, providerId: d.providerId, enabled: !d.enabled, reason: d.enabled ? t("pausedReason") : t("resumedReason") })}>
+                    <Button size="sm" variant="secondary" busy={save.isPending && save.variables?.domain === d.domain} as="saving"
+                      onClick={() => save.mutate({ domain: d.domain, providerId: d.providerId, enabled: !d.enabled, reason: d.enabled ? t("pausedReason") : t("resumedReason"), kind: d.enabled ? "paused" : "resumed" })}>
                       {d.enabled ? t("pause") : t("resume")}
                     </Button>
-                    <Button size="sm" variant="danger" busy={remove.isPending && remove.variables === d.domain} onClick={() => remove.mutate(d.domain)}>{t("remove")}</Button>
+                    <Button size="sm" variant="danger" busy={remove.isPending && remove.variables === d.domain} as="saving" onClick={() => remove.mutate(d.domain)}>{t("remove")}</Button>
                   </>
                 ) : null}
               </span>
@@ -86,7 +91,7 @@ export function StoreSso({ storeId }: { storeId: string }) {
           <Field label={t("domain")} ltr placeholder="acme.com" value={form.domain} maxLength={253} name="ssoDomain" onChange={(e) => setForm({ ...form, domain: e.target.value })} />
           <Field label={t("provider")} hint={t("providerHint")} ltr placeholder="saml.acme" value={form.providerId} maxLength={65} name="ssoProvider" onChange={(e) => setForm({ ...form, providerId: e.target.value })} />
           <Field label={t("reason")} hint={t("reasonHint")} value={form.reason} maxLength={500} name="ssoReason" onChange={(e) => setForm({ ...form, reason: e.target.value })} />
-          <div className="md:col-span-3"><Button type="submit" variant="secondary" busy={save.isPending && save.variables?.domain === form.domain.trim().toLowerCase()} disabled={!ready}>{t("add")}</Button></div>
+          <div className="md:col-span-3"><Button type="submit" variant="secondary" busy={save.isPending && save.variables?.domain === form.domain.trim().toLowerCase()} as="saving" disabled={!ready}>{t("add")}</Button></div>
         </form>
       ) : null}
       {failure ? <div className="mt-3"><Alert tone="danger">{t(`errors.${code}`)}</Alert></div> : null}

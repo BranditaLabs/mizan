@@ -141,12 +141,13 @@ void main() {
     });
 
     test('every event a screen names is in the catalogue', () {
-      // Event names passed to the motion API, and every phone event named anywhere outside the catalogue.
-      final uses = RegExp(r"(?:showEventSnack\(\s*context,\s*|EventLoader\(\s*|motionOf\(\s*)'([a-z_.]+)'|'(ops\.[a-z_]+)'");
+      // Event names passed to the motion API (also as a switch's (event, words) outcome), and every
+      // phone event named anywhere outside the catalogue.
+      final uses = RegExp(r"(?:showEventSnack\(\s*context,\s*|EventLoader\(\s*|motionOf\(\s*)'([a-z_.]+)'|'(ops\.[a-z_]+)'|=> \('([a-z_]+\.[a-z_]+)', ");
       final named = <String>{};
       for (final f in Directory('lib').listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart') && !f.path.endsWith('motion.dart'))) {
         for (final m in uses.allMatches(f.readAsStringSync())) {
-          named.add(m.group(1) ?? m.group(2)!);
+          named.add(m.group(1) ?? m.group(2) ?? m.group(3)!);
         }
       }
       expect(named, containsAll(<String>['order.packed', 'stock.received', 'stock.adjusted', 'ops.syncing', 'ops.loading', 'ops.sync_failed', 'ops.scan_counted', 'ops.scan_blocked']));
@@ -167,6 +168,31 @@ void main() {
       for (final f in Directory('lib').listSync(recursive: true).whereType<File>().where((f) => f.path.endsWith('.dart'))) {
         expect(banned.hasMatch(f.readAsStringSync()), isFalse, reason: f.path);
       }
+    });
+  });
+
+  group('meanings: what each wait and outcome is (Brand 2.0)', () {
+    test('saved on the phone settles; done waits for Mizan; each op answer has its glyph', () {
+      expect(motionOf('ops.queued').outcome, MotionOutcome.settle);
+      expect(motionOf('order.packed').outcome, MotionOutcome.done);
+      expect(motionOf('stock.received').outcome, MotionOutcome.done);
+      expect(motionOf('ops.op_applied').outcome, MotionOutcome.merge);
+      expect(motionOf('ops.op_conflict').outcome, MotionOutcome.tip);
+      expect(motionOf('ops.op_rejected').outcome, MotionOutcome.fail);
+    });
+
+    test('refresh is two phases: sending the queue transfers, reading the lists pairs', () {
+      expect(motionOf('ops.syncing').pending, MotionPending.transfer);
+      expect(motionOf('ops.loading').pending, MotionPending.pair);
+    });
+
+    test('the catalogue names an action for every pending row, and never fill', () {
+      for (final e in eventMotion.entries) {
+        expect(e.value.pending == null, e.value.action == null, reason: e.key);
+        expect(e.value.pending, isNot(MotionPending.fill), reason: e.key);
+      }
+      expect(eventMotion['order.packed']!.action, MotionAction.write);
+      expect(eventMotion['tenant.created']!.pending, MotionPending.drop);
     });
   });
 }

@@ -50,7 +50,7 @@ function Rename({ c, onClose }: { c: Connection; onClose(): void }) {
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-          <Button busy={save.isPending} disabled={tooLong} onClick={() => save.mutate()}>{t("save")}</Button>
+          <Button busy={save.isPending} as="saving" disabled={tooLong} onClick={() => save.mutate()}>{t("save")}</Button>
         </>
       )}>
       <Field label={t("name")} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} error={tooLong ? t("tooLong") : null} hint={t("nameHint")} />
@@ -78,7 +78,7 @@ function Disconnect({ c, onClose }: { c: Connection; onClose(): void }) {
       footer={(
         <>
           <Button variant="secondary" onClick={onClose} data-autofocus>{t("cancel")}</Button>
-          <Button variant="danger-solid" busy={go.isPending} disabled={!matches} onClick={() => go.mutate()}>{t("disconnect")}</Button>
+          <Button variant="danger-solid" busy={go.isPending} as="saving" disabled={!matches} onClick={() => go.mutate()}>{t("disconnect")}</Button>
         </>
       )}>
       <div className="flex flex-col gap-3" data-testid="disconnect-dialog">

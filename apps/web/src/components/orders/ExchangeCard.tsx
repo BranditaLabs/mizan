@@ -123,7 +123,7 @@ function NewExchange({ order: o, onClose }: { order: Order; onClose(): void }) {
   return (
     <Dialog open onClose={onClose} title={t("title", { number: o.number })} description={t("body")} footer={(
       <ButtonGroup>
-        <Button busy={save.isPending} disabled={!items.length || !lineReady || quantity < 1} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!items.length || !lineReady || quantity < 1} onClick={() => save.mutate()}>{t("save")}</Button>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>

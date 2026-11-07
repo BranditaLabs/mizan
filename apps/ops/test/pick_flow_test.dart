@@ -116,6 +116,42 @@ void main() {
     expect(find.text('Packed'), findsNWidgets(2));
   });
 
+  testWidgets('An older op applies but Mizan overrules this box: the conflict tips, never the done of order.packed', (tester) async {
+    final api = FakePickApi();
+    final server = FakeOpsServer()..conflictTypes.add(OpTypes.orderPack);
+    final engine = SyncEngine(store: store, api: server, deviceId: 'phone-1');
+    // A count from earlier, still waiting: it goes in the same run and applies.
+    await tester.runAsync(() => store.enqueue(Op(opId: 'older-count', type: OpTypes.stockCount, payload: {'sku': 'AB-1', 'quantity': 4}, at: DateTime.utc(2026, 11, 1))));
+    await tester.pumpWidget(MizanOpsApp(store: store, engine: engine, pickApi: api, locale: const Locale('en'), scanner: (context, onCode) => const SizedBox.shrink()));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('tab-pick')));
+    await settle(tester);
+    await tester.tap(find.byKey(const Key('refresh')));
+    await settle(tester);
+    // The refresh sent the older count; queue it again so this box's run carries an applied op too.
+    await tester.runAsync(() => store.enqueue(Op(opId: 'older-count-2', type: OpTypes.stockCount, payload: {'sku': 'AB-1', 'quantity': 5}, at: DateTime.utc(2026, 11, 1, 1))));
+    await tester.tap(find.byKey(const Key('list-list-1')));
+    await settle(tester);
+    await tester.tap(find.text('Pack'));
+    await settle(tester);
+    for (final code in ['SC-1', 'SC-1', 'AB-1']) {
+      await tester.enterText(find.byKey(const Key('typed-code')), code);
+      await tester.tap(find.byKey(const Key('add-code')));
+    }
+    await tester.pump();
+    await tester.ensureVisible(find.byKey(const Key('finish')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('finish')));
+    await settle(tester);
+    await settle(tester);
+    expect(find.byKey(const ValueKey('event-snack-order.packed')), findsNothing);
+    expect(find.byKey(const ValueKey('event-snack-ops.op_conflict')), findsOneWidget);
+    expect(find.textContaining('changed in Mizan meanwhile'), findsOneWidget);
+    final ops = (await tester.runAsync(() => store.recent()))!;
+    expect(ops.singleWhere((o) => o.opId == 'older-count-2').status, OpStatus.applied);
+    expect(ops.singleWhere((o) => o.type == OpTypes.orderPack).status, OpStatus.conflict);
+  });
+
   testWidgets('Arabic, offline: the cached list still opens, right to left', (tester) async {
     final api = FakePickApi();
     await tester.runAsync(() async {

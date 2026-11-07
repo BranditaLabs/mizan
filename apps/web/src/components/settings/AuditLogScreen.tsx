@@ -72,7 +72,7 @@ export function AuditLogScreen() {
             </table>
           </div>
         )}
-      {q.hasNextPage ? <div><Button variant="secondary" busy={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{t("more")}</Button></div> : null}
+      {q.hasNextPage ? <div><Button variant="secondary" busy={q.isFetchingNextPage} as="loading" onClick={() => void q.fetchNextPage()}>{t("more")}</Button></div> : null}
     </div>
   );
 }

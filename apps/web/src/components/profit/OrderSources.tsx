@@ -55,7 +55,7 @@ export function OrderSources({ days }: { days: number }) {
             {s && s.attributedShare !== null ? t.rich("known", { pct: s.attributedShare, orders: s.orders, b: (c) => <strong><bdi className="mz-num">{c}</bdi></strong> }) : t("subtitle")}
           </p>
         </div>
-        {canBackfill ? <Button variant="secondary" size="sm" icon="refresh" busy={backfill.isPending} disabled={backfill.isSuccess} onClick={() => backfill.mutate()}>{t("backfill")}</Button> : null}
+        {canBackfill ? <Button variant="secondary" size="sm" icon="refresh" busy={backfill.isPending} as="syncing" disabled={backfill.isSuccess} onClick={() => backfill.mutate()}>{t("backfill")}</Button> : null}
       </header>
       {backfill.isSuccess ? <Alert tone="success">{t("backfillStarted", { days: backfill.data.days })}</Alert> : null}
       {backfill.isError ? <Alert tone="danger">{t("backfillFailed")}</Alert> : null}
