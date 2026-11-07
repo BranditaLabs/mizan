@@ -101,6 +101,10 @@ export function SignIn({ params }: { params: AuthParams }) {
   const pressed = useRef<{ x: number; y: number } | null>(null);
   const [wipeFrom, setWipeFrom] = useState<{ x: number; y: number } | null>(null);
   const retryRef = useRef<() => void>(() => {});
+  /** The method changed from the Email/Phone control: the new form fades in under it (not on first paint). */
+  const [swapTo, setSwapTo] = useState<string | null>(null);
+  /** The remembered method replaced the first form after paint: its field takes the focus the first one had. */
+  const refocus = useRef(false);
   const retrySso = useCallback(() => retryRef.current(), []);
   const creating = s.mode === "create";
   const done = status === "signed-in";
@@ -112,13 +116,22 @@ export function SignIn({ params }: { params: AuthParams }) {
     const id = requestAnimationFrame(() => {
       const d = draft.read();
       const m = d?.method ?? lastMethod.read();
-      if (m) dispatch({ type: "method", method: m });
+      if (m) { refocus.current = true; dispatch({ type: "method", method: m }); }
       if (d?.email) setEmail(d.email);
       setCountry(lastCountry.read() ?? countryFromLanguages(navigator.languages));
     });
     if (params.mode === "create") signupIntent.save(params.plan, params.interval, params.enterprise);
     return () => cancelAnimationFrame(id);
   }, [params]);
+
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    const a = document.activeElement;
+    if (a && a !== document.body && a.isConnected) return; // the person already moved on
+    if (!window.matchMedia?.("(pointer: fine)").matches) return;
+    (s.method === "phone" ? phoneRef : emailRef).current?.focus({ preventScroll: true });
+  }, [s.method]);
 
   /* ── What the frame needs: the stage's scene, the mode (the bar's link says the opposite), code steps lock the language ── */
   useEffect(() => {
@@ -162,6 +175,15 @@ export function SignIn({ params }: { params: AuthParams }) {
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
+
+  /* ── A refused password: the field takes focus with its value selected, so retyping replaces it ── */
+  useEffect(() => {
+    if (formError?.key !== "invalidCredential") return;
+    const el = passwordRef.current;
+    if (!el?.isConnected) return;
+    el.focus({ preventScroll: true });
+    el.select();
+  }, [formError?.key, formError?.at]);
 
   /* ── The new password's strength, after 300ms of quiet ── */
   useEffect(() => {
@@ -207,7 +229,6 @@ export function SignIn({ params }: { params: AuthParams }) {
       return;
     }
     setFormError({ key, at: Date.now(), action: actionFor(key) });
-    if (key === "invalidCredential") requestAnimationFrame(() => { passwordRef.current?.select(); });
   }
 
   function actionFor(key: AuthErrorKey): ReactNode {
@@ -244,7 +265,7 @@ export function SignIn({ params }: { params: AuthParams }) {
     setFieldErrors(errs);
     const first = checks.find(([, k]) => k)![0];
     ({ email: emailRef, password: passwordRef, phone: phoneRef, code: null })[first]?.current?.focus();
-    announce(t("errors.fixFields"));
+    announce(t("errors.fixFields", { count: Object.keys(errs).length }));
     return true;
   }
 
@@ -281,7 +302,6 @@ export function SignIn({ params }: { params: AuthParams }) {
       try {
         await signInWithEmailAndPassword(auth, address, password);
       } catch (err) {
-        if (authErrorCode(err) === "auth/user-disabled") { setReasonShown(true); throw err; }
         await secondStep(err);
       }
     }, el);
@@ -396,8 +416,10 @@ export function SignIn({ params }: { params: AuthParams }) {
     }
     return text;
   };
+  // A refused code or password puts focus in its field (value selected); the alert is still announced (role=alert).
+  const fieldTakesFocus = formError?.key === "invalidCode" || formError?.key === "invalidCredential";
   const alert = formError ? (
-    <FormAlert alertKey={formError.at} action={formError.action}>
+    <FormAlert alertKey={formError.at} action={formError.action} focusOnShow={!fieldTakesFocus}>
       {formError.key === "tooManyWait"
         ? t.rich("errors.tooManyWait", { time: mmss(holdLeft), n: bdi })
         : t(`errors.${formError.key}`)}
@@ -417,7 +439,8 @@ export function SignIn({ params }: { params: AuthParams }) {
   );
   const reason = !reasonShown ? null : params.enrolled ? <ReasonBanner tone="success" onDismiss={() => setReasonShown(false)}>{t("enrolled")}</ReasonBanner>
     : params.reason ? (
-      <ReasonBanner tone={params.reason === "disabled" ? "danger" : params.reason === "reset" || params.reason === "verified" ? "success" : "info"} onDismiss={() => setReasonShown(false)}>
+      // Every reason comes from a link anyone can craft: a neutral note that claims nothing about the account.
+      <ReasonBanner tone="info" onDismiss={() => setReasonShown(false)}>
         {params.reason === "shopify" && params.shop ? t.rich("reason.shopify", { shop: params.shop, n: bdi }) : t(`reason.${params.reason}`)}
       </ReasonBanner>
     ) : null;
@@ -442,10 +465,10 @@ export function SignIn({ params }: { params: AuthParams }) {
         <div data-stagger="">
           <Segmented label={t("tabs.label")} value={s.method} className="w-full [&>button]:min-h-11 [&>button]:flex-1 [&>button]:justify-center"
             options={(["email", "phone"] as const).map((m) => ({ value: m, label: t(`tabs.${m}`) }))}
-            onChange={(m) => { clearErrors(); dispatch({ type: "method", method: m }); }} />
+            onChange={(m) => { clearErrors(); setSwapTo(`${s.mode}-${m}`); dispatch({ type: "method", method: m }); }} />
         </div>
         {s.method === "email" ? (
-          <form key="email" onSubmit={onEmail} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
+          <form key="email" className="mz-auth-swap" data-swap={swapTo === `${s.mode}-${s.method}` ? "" : undefined} onSubmit={onEmail} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
             <div className="mz-auth-group">
               {emailField(creating ? "email" : "username")}
               <PasswordField label={t("password")} name="password" autoComplete={creating ? "new-password" : "current-password"} enterKeyHint="go" required aria-required="true"
@@ -463,7 +486,7 @@ export function SignIn({ params }: { params: AuthParams }) {
             {promoted ? <PrimaryCta type="button" secondary label={t("createAccount")} icon="add" onClick={() => { clearErrors(); dispatch({ type: "mode", mode: "create" }); }} /> : null}
           </form>
         ) : (
-          <form key="phone" onSubmit={onPhone} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
+          <form key="phone" className="mz-auth-swap" data-swap={swapTo === `${s.mode}-${s.method}` ? "" : undefined} onSubmit={onPhone} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
             <PhoneField value={phone} country={country} inputRef={phoneEl} readOnly={busy} error={fe("phone")}
               hint={creating ? t("createPhoneNote") : t("phoneHintSms")}
               onCountry={(c) => { setCountry(c); setFieldErrors((x) => ({ ...x, phone: undefined })); }}
@@ -566,7 +589,9 @@ export function SignIn({ params }: { params: AuthParams }) {
     );
   }
 
-  const stepKey = outage ? "outage" : step === "start" ? `start-${s.mode}-${s.method}` : step;
+  // The method is not part of the step: Email/Phone swaps only the form under the control, so the
+  // radiogroup (and its focus and thumb) stays put; the mode is a step change.
+  const stepKey = outage ? "outage" : step === "start" ? `start-${s.mode}` : step;
   return (
     <>
       <StepHost stepKey={stepKey} name={outage ? "outage" : step} direction={done ? "forward" : s.direction} focus={outage ? "heading" : focusFor(step)} className="mz-auth-stagger">

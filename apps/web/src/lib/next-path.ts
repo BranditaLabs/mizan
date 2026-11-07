@@ -36,3 +36,8 @@ export const resume = {
     return v;
   },
 };
+
+/** The sign-in link that brings someone back to `from`; `ended` adds the "your session ended" note (reason=expired). */
+export function signInPath(from: string, ended = false): string {
+  return `/sign-in?${ended ? "reason=expired&" : ""}next=${encodeURIComponent(from)}`;
+}

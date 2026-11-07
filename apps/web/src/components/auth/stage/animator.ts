@@ -1,7 +1,10 @@
 /**
  * The stage's build and loops (auth spec §5.7), loaded on idle by AuthStage and never under reduced
- * motion or Save-Data. It takes over the server-rendered poster in one frame: every piece is set to
- * its "from" state and then animated in, so nothing flashes. Particles ride precomputed lanes
+ * motion or Save-Data. The build runs only when the page was marked before first paint
+ * (STAGE_BUILD_SCRIPT: `data-stage-build` on <html>, which keeps the pieces it builds unpainted,
+ * with a CSS reveal if this chunk never arrives); it then takes over in one frame and removes the
+ * mark. Without the mark (a client navigation, a remount) the poster is already on screen and only
+ * the loops start, so visible content never disappears to be built again. Particles ride precomputed lanes
  * (geometry.ts), at most 6 per lane and 30 in total on fine pointers, 2 and 8 on touch, none on the
  * tablet band. Only transform and opacity animate, plus the edges' stroke draw.
  */
@@ -13,7 +16,12 @@ export type StageController = { play(): void; pause(): void; destroy(): void };
 const TRIP_MS = 2400;
 const SVG = "http://www.w3.org/2000/svg";
 
+/** The mark the inline script sets before first paint (see STAGE_BUILD_SCRIPT in lib/auth/intent.ts). */
+export const STAGE_BUILD_ATTR = "data-stage-build";
+
 export function buildStage(root: HTMLElement): StageController {
+  const html = document.documentElement;
+  const build = html.hasAttribute(STAGE_BUILD_ATTR);
   const anims: Animation[] = [];
   const made: Element[] = [];
   const add = (el: Element | null, frames: Keyframe[], opts: KeyframeAnimationOptions) => {
@@ -26,19 +34,19 @@ export function buildStage(root: HTMLElement): StageController {
   const coarse = window.matchMedia?.("(pointer: coarse)").matches ?? false;
 
   // 1–3: the scale settles and the headline's words rise.
-  add(root.querySelector(".mz-auth-stage__scale .au-beam"), [{ transform: "rotate(-8deg)" }, { transform: "none" }], { duration: ms("reveal", root), easing: spring });
-  root.querySelectorAll(".mz-auth-stage__scale .au-pan").forEach((pan, i) =>
+  if (build) add(root.querySelector(".mz-auth-stage__scale .au-beam"), [{ transform: "rotate(-8deg)" }, { transform: "none" }], { duration: ms("reveal", root), easing: spring });
+  if (build) root.querySelectorAll(".mz-auth-stage__scale .au-pan").forEach((pan, i) =>
     add(pan, [{ transform: `translateY(${i ? 6 : -6}px)` }, { transform: "none" }], { duration: ms("reveal", root), easing: spring }));
-  [...root.querySelectorAll(".mz-auth-stage__headline .au-w")].slice(0, 8).forEach((w, i) =>
+  if (build) [...root.querySelectorAll(".mz-auth-stage__headline .au-w")].slice(0, 8).forEach((w, i) =>
     add(w, [{ opacity: 0, transform: "translateY(.35em)" }, { opacity: 1, transform: "none" }], { duration: ms("slow", root), easing: springSoft, delay: 120 + i * 50 }));
 
   // 4–8 per map variant (only the visible one costs anything; hidden SVGs are display:none).
   root.querySelectorAll<SVGSVGElement>("svg.mz-auth-map").forEach((svg) => {
     if (svg.getClientRects().length === 0) return;
     const v = (svg.dataset.variant ?? "island") as Variant;
-    add(svg.querySelector(".st-hub"), [{ opacity: 0, transform: "scale(.92)" }, { opacity: 1, transform: "none" }], { duration: ms("slow", root), easing: enter, delay: 300 });
+    if (build) add(svg.querySelector(".st-hub"), [{ opacity: 0, transform: "scale(.92)" }, { opacity: 1, transform: "none" }], { duration: ms("slow", root), easing: enter, delay: 300 });
     const nodes = [...svg.querySelectorAll<SVGGElement>(".st-node:not(.st-ghost)")];
-    nodes.forEach((n, i) => {
+    if (build) nodes.forEach((n, i) => {
       const at = 420 + i * 70;
       add(n, [{ opacity: 0, transform: "scale(.92)" }, { opacity: 1, transform: "none" }], { duration: ms("slow", root), easing: enter, delay: at });
       const edge = svg.querySelector<SVGPathElement>(`[data-edge="${n.dataset.node}"]`);
@@ -63,7 +71,7 @@ export function buildStage(root: HTMLElement): StageController {
         layer.appendChild(dot);
         made.push(dot);
         const frames: Keyframe[] = pts.map((p, i) => ({ transform: `translate(${p.x}px, ${p.y}px)`, opacity: i === 0 || i === pts.length - 1 ? 0 : 0.9 }));
-        add(dot, frames, { duration: TRIP_MS, easing: "linear", iterations: Infinity, delay: 1600 + lane * 400 + (k * TRIP_MS) / perLane });
+        add(dot, frames, { duration: TRIP_MS, easing: "linear", iterations: Infinity, delay: (build ? 1600 : 200) + lane * 400 + (k * TRIP_MS) / perLane });
       }
     });
   });
@@ -71,6 +79,9 @@ export function buildStage(root: HTMLElement): StageController {
   // 10: the ambient light drifts slowly.
   add(root.querySelector("[data-drift]"), [{ transform: "translate(-2%, -2%)" }, { transform: "translate(2%, 2%)" }],
     { duration: parseMs(getComputedStyle(root).getPropertyValue("--au-drift")) ?? 24000, easing: "ease-in-out", direction: "alternate", iterations: Infinity });
+
+  // The pieces now hold their "from" frame (fill: both): the CSS hold can go in this same frame.
+  html.removeAttribute(STAGE_BUILD_ATTR);
 
   let playing = true;
   return {

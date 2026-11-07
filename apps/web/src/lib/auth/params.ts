@@ -6,7 +6,7 @@ import { safeNext } from "@/lib/next-path";
  */
 export type Plan = "growth" | "scale";
 export type Interval = "month" | "year";
-export type Reason = "expired" | "reset" | "verified" | "disabled" | "invite" | "welcome" | "twoStep" | "shopify" | "shopifyGeneric";
+export type Reason = "expired" | "reset" | "verified" | "invite" | "welcome" | "twoStep" | "shopify" | "shopifyGeneric";
 
 export type AuthParams = {
   next: string;
@@ -26,7 +26,13 @@ const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?
 
 const PLAN: Record<string, Plan> = { growth: "growth", scale: "scale", enterprise: "scale" };
 const BILLING: Record<string, Interval> = { monthly: "month", month: "month", yearly: "year", year: "year", annual: "year", annually: "year" };
-const REASONS = new Set(["expired", "reset", "verified", "disabled"]);
+/**
+ * Reasons a link may carry. Anyone can craft such a link, so each banner is a neutral note that
+ * claims nothing about the account: "expired" is what the gates add when a session ends by itself,
+ * "reset" and "verified" are the continue URLs of Firebase's emails. A disabled account is never a
+ * query reason: it is the sign-in error itself (auth/user-disabled).
+ */
+const REASONS = new Set(["expired", "reset", "verified"]);
 const SHOP = /^[a-z0-9][a-z0-9-]*\.myshopify\.com$/;
 
 export function parsePlan(v: string | undefined): { plan: Plan; enterprise: boolean } {

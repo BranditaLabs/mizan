@@ -2,7 +2,7 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { GlassRoot } from "@/components/GlassRoot";
 import { Link } from "@/i18n/navigation";
-import { SEEN_SCRIPT } from "@/lib/auth/intent";
+import { SEEN_SCRIPT, STAGE_BUILD_SCRIPT } from "@/lib/auth/intent";
 import { legalPath } from "@/lib/legal";
 import type { Theme } from "@/lib/theme";
 import { AuthStage } from "./stage/AuthStage";
@@ -22,6 +22,8 @@ export function AuthShell({ theme, wide = false, children }: { theme: Theme; wid
     <GlassRoot theme={theme} fields={false} className="mz-auth">
       {/* A repeat visit within 10 minutes (a language switch included) gets a 150ms fade, no rise. */}
       <script dangerouslySetInnerHTML={{ __html: SEEN_SCRIPT }} />
+      {/* The stage's build: its pieces wait unpainted until the animator takes over (never a flash of the poster). */}
+      <script dangerouslySetInnerHTML={{ __html: STAGE_BUILD_SCRIPT }} />
       <a href="#main" className="mz-auth-skip">{t("skip")}</a>
       <AuthTopBar theme={theme} />
       <div className="mz-auth-layout">

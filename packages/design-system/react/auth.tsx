@@ -10,11 +10,11 @@
 
 import {
   Children, isValidElement, useCallback, useEffect, useId, useLayoutEffect, useRef, useState,
-  type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type Ref,
+  type ButtonHTMLAttributes, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref,
 } from "react";
 import { Icon } from "../icons/react";
 import { mmss, normalizeCode, shouldAutoSubmit } from "../js/auth-code";
-import { flipSurface, interrupt, ms, prefersReducedMotion, revealWords, run, stepEnter, stepExit, type Direction } from "../js/auth-motion";
+import { flipSurface, interrupt, ms, prefersReducedMotion, revealWords, run, scrubGhostFields, stepEnter, stepExit, type Direction } from "../js/auth-motion";
 
 const useIso = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
@@ -48,17 +48,12 @@ const GHOST_STRIP = ["id", "for", "name", "aria-labelledby", "aria-describedby",
  * A still copy of the outgoing step for its exit: plain DOM (no React, so no effects run again,
  * nothing re-announces or steals focus), inert and aria-hidden, without ids, labels' targets,
  * names or test ids, so it can never be mistaken for the live step by a screen reader, a password
- * manager or a test. Typed values are copied so the exit shows what was there.
+ * manager or a test. Fields show what was there, except secrets: a password's copy holds filler
+ * of the same length behind type=password (scrubGhostFields), never the typed value.
  */
 function ghostOf(el: HTMLElement): HTMLElement {
   const copy = el.cloneNode(true) as HTMLElement;
-  const from = el.querySelectorAll<HTMLInputElement>("input, textarea, select");
-  copy.querySelectorAll<HTMLInputElement>("input, textarea, select").forEach((c, i) => {
-    const o = from[i];
-    if (o && "value" in o && o.type !== "password") c.setAttribute("value", o.value);
-    if (o?.type === "password") c.setAttribute("value", o.value ? "•".repeat(Math.min(o.value.length, 24)) : "");
-    if (o?.type === "password") c.setAttribute("type", "text");
-  });
+  scrubGhostFields(copy.querySelectorAll<HTMLInputElement>("input, textarea, select"), el.querySelectorAll<HTMLInputElement>("input, textarea, select"));
   for (const node of [copy, ...copy.querySelectorAll<HTMLElement>("*")]) for (const a of GHOST_STRIP) node.removeAttribute(a);
   copy.setAttribute("data-ghost", "");
   copy.setAttribute("aria-hidden", "true");
@@ -95,8 +90,11 @@ export function StepHost({ stepKey, direction = "forward", focus = "field", auto
     if (first.current) {
       first.current = false;
       if (autoFocusFields && focus !== "heading" && window.matchMedia?.("(pointer: fine)").matches) moveFocus(el, focus);
-      return;
+      // The first-paint stagger (css: [data-first]) has run its course; later content never replays it.
+      const id = window.setTimeout(() => host.current?.removeAttribute("data-first"), FIRST_PAINT_MS);
+      return () => window.clearTimeout(id);
     }
+    host.current?.removeAttribute("data-first");
     const out = pending.current;
     pending.current = null;
     ghost.current?.remove();
@@ -133,11 +131,14 @@ export function StepHost({ stepKey, direction = "forward", focus = "field", auto
   }, []);
 
   return (
-    <div ref={host} className={cx("mz-auth-host", className)}>
+    <div ref={host} className={cx("mz-auth-host", className)} data-first="">
       <div key={`s-${stepKey}`} ref={live} className="mz-auth-step" data-testid="auth-step" data-step={name ?? stepKey}>{children}</div>
     </div>
   );
 }
+
+/** Long enough for the first-paint stagger (its last item starts at 310ms and runs 300ms). */
+const FIRST_PAINT_MS = 800;
 
 function moveFocus(el: HTMLElement, focus: StepFocus) {
   if (focus === "none") return;
@@ -185,10 +186,14 @@ export function BackButton({ label, onClick }: { label: string; onClick(): void 
 
 export type HelpTone = "hint" | "error" | "ok" | "warn";
 
-/** The helper slot under a control: always 20px tall, an error replaces the hint in place and rolls in. */
+/**
+ * The helper slot under a control: always 20px tall, an error replaces the hint in place and rolls
+ * in. Not a live region: a field's error is read through aria-invalid and aria-describedby when
+ * focus moves to the first wrong field, and the form says once, politely, how many to fix.
+ */
 export function Help({ id, tone = "hint", children }: { id: string; tone?: HelpTone; children?: ReactNode }) {
   return (
-    <div id={id} className="mz-auth-help" data-tone={tone} role={tone === "error" ? "alert" : undefined}>
+    <div id={id} className="mz-auth-help" data-tone={tone}>
       {children ? (
         <span key={tone} className={tone === "error" ? "au-roll" : undefined}>
           {tone === "error" ? <Icon name="error" size={14} /> : tone === "ok" ? <Icon name="success" size={14} /> : null}
@@ -252,7 +257,7 @@ export function PasswordField({ showLabel, hideLabel, capsLabel, hint, error, be
   const capsCheck = (e: { getModifierState?(k: string): boolean }) => setCaps(Boolean(e.getModifierState?.("CapsLock")));
   return (
     <div className="mz-auth-pw">
-      <TextField {...props} id={props.id ?? id} inputRef={setRef} type={shown ? "text" : "password"} dir="ltr" spellCheck={false} autoCapitalize="none"
+      <TextField {...props} id={props.id ?? id} inputRef={setRef} type={shown ? "text" : "password"} data-secret="" dir="ltr" spellCheck={false} autoCapitalize="none"
         error={error} hint={caps && !error ? capsLabel : hint} helpTone={caps && !error ? "warn" : "hint"}
         onKeyDown={(e) => { capsCheck(e); props.onKeyDown?.(e); }} onKeyUp={(e) => { capsCheck(e); props.onKeyUp?.(e); }}
         trailing={(
@@ -274,7 +279,7 @@ export function PasswordField({ showLabel, hideLabel, capsLabel, hint, error, be
  */
 export function CodeField({ label, value, onChange, onComplete, length = 6, busy = false, error, invalid = false, hint, describedBy, rejected = null, name = "code" }: {
   label: string; value: string; onChange(v: string): void; onComplete?(v: string): void; length?: number; busy?: boolean;
-  /** A message under the boxes (role=alert there). */
+  /** A message under the boxes (read through aria-describedby). */
   error?: ReactNode;
   /** The danger ring only, when the message is the form's alert (a refused code). */
   invalid?: boolean;
@@ -409,6 +414,81 @@ export function CheckDraw({ size = 16 }: { size?: number }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path className="mz-draw" style={{ ["--au-len" as string]: 24 }} d="M5 12.5l4.5 4.5L19 7.5" />
     </svg>
+  );
+}
+
+/* ───────────── Theme menu (the top bar of both apps) ───────────── */
+
+export type ThemeChoice = "system" | "light" | "dark";
+const THEME_ICONS: ReadonlyArray<{ value: ThemeChoice; icon: Parameters<typeof Icon>[0]["name"] }> = [
+  { value: "system", icon: "device" },
+  { value: "light", icon: "theme-light" },
+  { value: "dark", icon: "theme-dark" },
+];
+
+/**
+ * The theme as a menu (menu + menuitemradio, aria-checked): opening focuses the checked item,
+ * ArrowUp/ArrowDown/Home/End move a roving tabindex, Escape returns to the button, Tab or a click
+ * outside closes it. The button's icon shows the theme in force and turns when it changes; the
+ * button itself is never replaced, so focus stays on it after a pick.
+ */
+export function ThemeMenu({ value, onPick, labels }: {
+  value: ThemeChoice; onPick(v: ThemeChoice): void; labels: { label: string } & Record<ThemeChoice, string>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [turn, setTurn] = useState(0);
+  const button = useRef<HTMLButtonElement>(null);
+  const items = useRef<Array<HTMLButtonElement | null>>([]);
+  const box = useRef<HTMLSpanElement>(null);
+  const current = THEME_ICONS.find((x) => x.value === value) ?? THEME_ICONS[0]!;
+
+  useEffect(() => {
+    if (!open) return;
+    items.current[Math.max(0, THEME_ICONS.findIndex((x) => x.value === value))]?.focus();
+    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    return () => document.removeEventListener("pointerdown", away);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const pick = (v: ThemeChoice) => {
+    setOpen(false);
+    button.current?.focus();
+    if (v === value) return;
+    setTurn((n) => n + 1);
+    onPick(v);
+  };
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = items.current.findIndex((el) => el === document.activeElement);
+    if (e.key === "Escape") { e.preventDefault(); setOpen(false); button.current?.focus(); return; }
+    if (e.key === "Tab") { setOpen(false); return; }
+    const n = THEME_ICONS.length;
+    const to = e.key === "ArrowDown" ? (i + 1) % n : e.key === "ArrowUp" ? (i - 1 + n) % n : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : null;
+    if (to === null) return;
+    e.preventDefault();
+    items.current[to]?.focus();
+  };
+  return (
+    <span ref={box} className="mz-auth-pop">
+      <button ref={button} type="button" className="mz-auth-iconbtn" aria-haspopup="menu" aria-expanded={open} aria-label={labels.label}
+        onClick={() => setOpen((o) => !o)}
+        onKeyDown={(e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setOpen(true); } }}>
+        {/* Only the icon is re-keyed to replay its turn. */}
+        <span key={turn} className="au-turn" data-turn={turn ? "" : undefined}><Icon name={current.icon} size={18} /></span>
+      </button>
+      {open ? (
+        <div role="menu" aria-label={labels.label} className="mz-auth-menu" onKeyDown={onKey}>
+          {THEME_ICONS.map((x, i) => (
+            <button key={x.value} ref={(el) => { items.current[i] = el; }} type="button" role="menuitemradio" aria-checked={x.value === value}
+              tabIndex={x.value === value ? 0 : -1} className="mz-auth-menu__item" onClick={() => pick(x.value)}>
+              <Icon name={x.icon} size={16} />
+              {labels[x.value]}
+              <Icon name="confirm" size={16} className="au-check" />
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </span>
   );
 }
 

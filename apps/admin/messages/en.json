@@ -57,6 +57,7 @@
     "resend": "Send a new code",
     "sent": "Sent",
     "resendReady": "You can send a new code now.",
+    "codeResent": "New code sent.",
     "back": "Back",
     "doneTitle": "You're in",
     "done": "Opening the back office…",

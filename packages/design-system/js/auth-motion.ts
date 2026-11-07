@@ -138,6 +138,31 @@ function done(a: Animation | null): Promise<void> {
 
 const sign = (direction: Direction) => (direction === "back" ? -1 : 1);
 
+/** The parts of a form field the exit copy touches (an input, textarea or select, or a test double). */
+export type GhostField = { type: string; value: string; hasAttribute(name: string): boolean };
+
+/**
+ * Makes the exit copy's fields safe to show. A cloned input keeps its live value (the HTML
+ * cloning steps copy the value and its dirty flag, so the `value` attribute draws nothing), so a
+ * secret is overwritten through the property: a password, or a field marked `data-secret` (a
+ * password shown with "Show" is type=text), stays or becomes type=password and holds filler of
+ * the same length, drawn as the same dots; the typed secret never reaches the copy. Other fields
+ * keep what was on screen.
+ */
+export function scrubGhostFields(copies: ArrayLike<GhostField>, originals: ArrayLike<GhostField>): void {
+  for (let i = 0; i < copies.length; i++) {
+    const c = copies[i]!;
+    const o = originals[i];
+    const secret = c.type === "password" || c.hasAttribute("data-secret") || o?.type === "password" || Boolean(o?.hasAttribute("data-secret"));
+    if (secret) {
+      c.type = "password";
+      c.value = "•".repeat(Math.min(o?.value.length ?? 0, 24));
+    } else {
+      c.value = o?.value ?? "";
+    }
+  }
+}
+
 /** The outgoing step: fades and slides 16px toward the reading start (forward) or end (back). */
 export function stepExit(el: HTMLElement, direction: Direction): Promise<void> {
   if (prefersReducedMotion()) return done(run(el, [{ opacity: 1 }, { opacity: 0 }], { duration: REDUCED_MS, easing: "linear" }));

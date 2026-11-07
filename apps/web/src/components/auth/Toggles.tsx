@@ -1,9 +1,10 @@
 "use client";
 
-import { Icon, type IconProps } from "@mizan/design-system/icons/react";
+import { ThemeMenu as SharedThemeMenu } from "@mizan/design-system/auth/react";
+import { Icon } from "@mizan/design-system/icons/react";
 import { prefersReducedMotion } from "@mizan/design-system/auth-motion";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type MouseEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import { getPathname, usePathname, useRouter } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { carriedQuery } from "@/lib/auth/params";
@@ -60,73 +61,17 @@ export function LanguageLink() {
   );
 }
 
-const THEMES: ReadonlyArray<{ value: Theme; icon: IconProps["name"] }> = [
-  { value: "system", icon: "device" },
-  { value: "light", icon: "theme-light" },
-  { value: "dark", icon: "theme-dark" },
-];
-
 /**
- * The theme as a menu: Same as device, Light, Dark (menuitemradio, aria-checked). The button's
- * icon shows the theme in force. The page crossfades for 200ms where the browser can.
+ * The theme menu (shared with the back office: @mizan/design-system/auth/react). The page
+ * crossfades for 200ms where the browser can.
  */
 export function ThemeMenu({ initial }: { initial: Theme }) {
   const t = useTranslations("frame.theme");
   const theme = useSyncExternalStore(subscribeTheme, currentTheme, () => initial);
-  const [open, setOpen] = useState(false);
-  const [turn, setTurn] = useState(0);
-  const button = useRef<HTMLButtonElement>(null);
-  const items = useRef<Array<HTMLButtonElement | null>>([]);
-  const box = useRef<HTMLSpanElement>(null);
-  const current = THEMES.find((x) => x.value === theme) ?? THEMES[0]!;
-
-  useEffect(() => {
-    if (!open) return;
-    items.current[THEMES.findIndex((x) => x.value === theme)]?.focus();
-    const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener("pointerdown", away);
-    return () => document.removeEventListener("pointerdown", away);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
-  const pick = (v: Theme) => {
-    setOpen(false);
-    button.current?.focus();
-    if (v === theme) return;
-    setTurn((n) => n + 1);
+  const onPick = (v: Theme) => {
     const doc = document as Document & { startViewTransition?(cb: () => void): unknown };
     if (doc.startViewTransition && !prefersReducedMotion()) doc.startViewTransition(() => chooseTheme(v));
     else chooseTheme(v);
   };
-  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const i = items.current.findIndex((el) => el === document.activeElement);
-    if (e.key === "Escape") { e.preventDefault(); setOpen(false); button.current?.focus(); return; }
-    if (e.key === "Tab") { setOpen(false); return; }
-    const n = THEMES.length;
-    const to = e.key === "ArrowDown" ? (i + 1) % n : e.key === "ArrowUp" ? (i - 1 + n) % n : e.key === "Home" ? 0 : e.key === "End" ? n - 1 : null;
-    if (to === null) return;
-    e.preventDefault();
-    items.current[to]?.focus();
-  };
-  return (
-    <span ref={box} className="mz-auth-pop">
-      <button ref={button} type="button" className="mz-auth-iconbtn" aria-haspopup="menu" aria-expanded={open} aria-label={t("label")}
-        data-turn={turn ? "" : undefined} key={`b-${turn}`} onClick={() => setOpen((o) => !o)}
-        onKeyDown={(e) => { if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); } }}>
-        <Icon name={current.icon} size={18} />
-      </button>
-      {open ? (
-        <div role="menu" aria-label={t("label")} className="mz-auth-menu" onKeyDown={onKey}>
-          {THEMES.map((x, i) => (
-            <button key={x.value} ref={(el) => { items.current[i] = el; }} type="button" role="menuitemradio" aria-checked={x.value === theme}
-              tabIndex={x.value === theme ? 0 : -1} className="mz-auth-menu__item" onClick={() => pick(x.value)}>
-              <Icon name={x.icon} size={16} />
-              {t(x.value)}
-              <Icon name="confirm" size={16} className="au-check" />
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </span>
-  );
+  return <SharedThemeMenu value={theme} onPick={onPick} labels={{ label: t("label"), system: t("system"), light: t("light"), dark: t("dark") }} />;
 }

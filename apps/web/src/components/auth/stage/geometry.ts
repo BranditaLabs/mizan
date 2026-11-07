@@ -7,42 +7,49 @@
 export type NodeId = "shopify" | "woo" | "bosta" | "whatsapp" | "cod";
 export type Variant = "island" | "band" | "strip";
 export type Pt = { x: number; y: number };
-export type MapNode = { id: NodeId; x: number; y: number; w: number; h: number; mono: string };
+/** w is the starting width; the drawn pill follows its label (nodeWidth). */
+export type MapNode = { id: NodeId; x: number; y: number; w: number; h: number };
 export type Geometry = { w: number; h: number; hub: Pt & { r: number }; nodes: MapNode[]; ghost: Pt & { w: number; h: number }; labels: boolean };
 
 export const NODE_ORDER: NodeId[] = ["shopify", "woo", "whatsapp", "bosta", "cod"];
-const MONO: Record<NodeId, string> = { shopify: "S", woo: "W", bosta: "B", whatsapp: "WA", cod: "$" };
+/** Space after a label inside its pill. */
+export const LABEL_END = 14;
+
+/** A labelled pill's width: the mark's circle, 4px, the label as drawn, then LABEL_END. */
+export function nodeWidth(n: Pick<MapNode, "h">, labelLength: number): number {
+  return Math.ceil(n.h + 4 + labelLength + LABEL_END);
+}
 
 export const GEOMETRY: Record<Variant, Geometry> = {
   island: {
     w: 440, h: 300, hub: { x: 220, y: 150, r: 36 }, labels: true,
     nodes: [
-      { id: "shopify", x: 70, y: 52, w: 116, h: 38, mono: MONO.shopify },
-      { id: "woo", x: 370, y: 52, w: 132, h: 38, mono: MONO.woo },
-      { id: "whatsapp", x: 64, y: 248, w: 120, h: 38, mono: MONO.whatsapp },
-      { id: "bosta", x: 376, y: 248, w: 104, h: 38, mono: MONO.bosta },
-      { id: "cod", x: 220, y: 276, w: 88, h: 34, mono: MONO.cod },
+      { id: "shopify", x: 70, y: 52, w: 116, h: 38 },
+      { id: "woo", x: 370, y: 52, w: 132, h: 38 },
+      { id: "whatsapp", x: 64, y: 248, w: 120, h: 38 },
+      { id: "bosta", x: 376, y: 248, w: 104, h: 38 },
+      { id: "cod", x: 220, y: 276, w: 88, h: 34 },
     ],
     ghost: { x: 220, y: 42, w: 96, h: 34 },
   },
   band: {
     w: 560, h: 96, hub: { x: 280, y: 48, r: 26 }, labels: true,
     nodes: [
-      { id: "shopify", x: 56, y: 26, w: 100, h: 30, mono: MONO.shopify },
-      { id: "woo", x: 160, y: 74, w: 116, h: 30, mono: MONO.woo },
-      { id: "whatsapp", x: 400, y: 74, w: 104, h: 30, mono: MONO.whatsapp },
-      { id: "bosta", x: 504, y: 26, w: 92, h: 30, mono: MONO.bosta },
-      { id: "cod", x: 400, y: 18, w: 70, h: 26, mono: MONO.cod },
+      { id: "shopify", x: 56, y: 26, w: 100, h: 30 },
+      { id: "woo", x: 160, y: 74, w: 116, h: 30 },
+      { id: "whatsapp", x: 400, y: 74, w: 104, h: 30 },
+      { id: "bosta", x: 504, y: 26, w: 92, h: 30 },
+      { id: "cod", x: 400, y: 18, w: 70, h: 26 },
     ],
     ghost: { x: 160, y: 20, w: 80, h: 26 },
   },
   strip: {
     w: 300, h: 56, hub: { x: 150, y: 28, r: 18 }, labels: false,
     nodes: [
-      { id: "shopify", x: 26, y: 28, w: 32, h: 32, mono: MONO.shopify },
-      { id: "woo", x: 84, y: 28, w: 32, h: 32, mono: MONO.woo },
-      { id: "whatsapp", x: 216, y: 28, w: 32, h: 32, mono: MONO.whatsapp },
-      { id: "bosta", x: 274, y: 28, w: 32, h: 32, mono: MONO.bosta },
+      { id: "shopify", x: 26, y: 28, w: 32, h: 32 },
+      { id: "woo", x: 84, y: 28, w: 32, h: 32 },
+      { id: "whatsapp", x: 216, y: 28, w: 32, h: 32 },
+      { id: "bosta", x: 274, y: 28, w: 32, h: 32 },
     ],
     ghost: { x: 150, y: 6, w: 0, h: 0 },
   },

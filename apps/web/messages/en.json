@@ -176,7 +176,7 @@
       "storageBlocked": "This browser is blocking sign-in. Open Mizan in Chrome or Safari.",
       "inAppBrowser": "Google sign-in doesn't work inside this app. Open the link in your browser, or use your email or phone.",
       "linkExpired": "This link expired or was already used. Send a new one.",
-      "fixFields": "Check the highlighted field."
+      "fixFields": "Check the {count, plural, one {highlighted field} other {# highlighted fields}}."
     },
     "redirecting": "Opening your store…",
     "createSubtitle": "One account for your store and your team. You add the store next.",
@@ -279,9 +279,8 @@
     "openStore": "Open your store",
     "reason": {
       "expired": "Your session ended. Sign in again and you'll go back where you were.",
-      "disabled": "This account can't sign in right now. Contact your store owner or Mizan support.",
-      "reset": "Your password was changed. Sign in with the new one.",
-      "verified": "Your email is confirmed. Sign in to carry on.",
+      "reset": "If you've just changed your password, sign in with the new one.",
+      "verified": "If you've just confirmed your email, sign in to carry on.",
       "twoStep": "Sign in first, then we'll turn on two-step verification.",
       "welcome": "Sign in to open your store or your invitations.",
       "invite": "You've been invited to a store on Mizan. Sign in or create an account with the email or phone number the invitation was sent to.",
@@ -5385,6 +5384,8 @@
     "help": "Need help?",
     "newQLink": "New to Mizan? Create an account",
     "haveQLink": "Have an account? Sign in",
+    "newQLinkShort": "Create an account",
+    "haveQLinkShort": "Sign in",
     "by": "by Brandita",
     "home": "Mizan home",
     "theme": {

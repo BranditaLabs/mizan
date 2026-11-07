@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { carriedQuery, parseAuthParams, parseInterval, parseInvite, parsePlan, reasonFromNext } from "../src/lib/auth/params";
-import { safeNext } from "../src/lib/next-path";
+import { safeNext, signInPath } from "../src/lib/next-path";
 
 describe("safeNext: control characters and backslashes never reach a redirect", () => {
   it.each(["/\t/evil.example", "/\n/evil.example", "/\u0085x", "/x\u0000", "/\\evil.example", "//evil.example", "/%5Cevil.example", "/%09/evil.example", "/%2F/evil.example", "/%E0%A4%A"])(
@@ -21,8 +21,12 @@ describe("sign-in params: allow-listed, mapped to enums, never echoed", () => {
     for (const y of ["yearly", "year", "annual", "ANNUAL", "annually"]) expect(parseInterval(y)).toBe("year");
     for (const m of ["monthly", "month", "weekly", "", undefined]) expect(parseInterval(m)).toBe("month");
   });
-  it("reasons: four from the query, the rest only from next", () => {
+  it("reasons: three from the query, the rest only from next; a disabled account is never a link", () => {
     expect(parseAuthParams({ reason: "expired" }).reason).toBe("expired");
+    expect(parseAuthParams({ reason: "reset" }).reason).toBe("reset");
+    expect(parseAuthParams({ reason: "verified" }).reason).toBe("verified");
+    expect(parseAuthParams({ reason: "disabled" }).reason).toBeNull();
+    expect(carriedQuery("?reason=disabled")).toBe("");
     expect(parseAuthParams({ reason: "<script>" }).reason).toBeNull();
     expect(parseAuthParams({ reason: "invite" }).reason).toBeNull();
     expect(parseAuthParams({ next: "/welcome?invite=x" }).reason).toBe("invite");
@@ -41,6 +45,15 @@ describe("sign-in params: allow-listed, mapped to enums, never echoed", () => {
     expect(parseInvite("0B1C2D3E-0000-4000-8000-000000000000")).toBe("0b1c2d3e-0000-4000-8000-000000000000");
     expect(parseInvite("unknown")).toBe("unknown");
     expect(parseInvite("not-a-uuid")).toBeNull();
+  });
+});
+
+describe("a session that ended by itself says so on sign-in", () => {
+  it("the gates' sign-in link: next always, reason=expired only when the session ended", () => {
+    expect(signInPath("/orders?x=1")).toBe("/sign-in?next=%2Forders%3Fx%3D1");
+    const ended = signInPath("/orders?x=1", true);
+    expect(ended).toBe("/sign-in?reason=expired&next=%2Forders%3Fx%3D1");
+    expect(parseAuthParams(Object.fromEntries(new URLSearchParams(ended.split("?")[1])))).toMatchObject({ reason: "expired", next: "/orders?x=1" });
   });
 });
 

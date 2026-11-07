@@ -58,7 +58,9 @@ export function AuthTopBar({ theme }: { theme: Theme }) {
             // A link (not a button) so it never shares a name with the card's own "Create an account" button.
             <Link href={mode === "create" ? "/sign-in" : "/sign-in?mode=signup"} className="mz-auth-navlink au-wide"
               onClick={(e) => { e.preventDefault(); authUi.requestMode(mode === "create" ? "signin" : "create"); }}>
-              {mode === "create" ? t("haveQLink") : t("newQLink")}
+              {/* The full question from 1024px; the short form on tablets, where the bar is narrower (one shows at a time). */}
+              <span className="au-long">{mode === "create" ? t("haveQLink") : t("newQLink")}</span>
+              <span className="au-short">{mode === "create" ? t("haveQLinkShort") : t("newQLinkShort")}</span>
             </Link>
           ) : null}
           <LanguageLink />

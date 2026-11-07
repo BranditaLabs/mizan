@@ -167,7 +167,8 @@ export function PhoneField({ value, onChange, country, onCountry, error, hint, i
           </ul>
         ) : null}
       </div>
-      <div id={`${helpId}-help`} className="mz-auth-help" data-tone={error ? "error" : "hint"} role={error ? "alert" : undefined}>
+      {/* Not a live region (as Help): read through aria-describedby when focus moves to the field. */}
+      <div id={`${helpId}-help`} className="mz-auth-help" data-tone={error ? "error" : "hint"}>
         {error ? <span className="au-roll"><Icon name="error" size={14} /><span>{error}</span></span> : hint ? <span><span>{hint}</span></span> : null}
       </div>
     </div>
@@ -180,15 +181,30 @@ export function PhoneField({ value, onChange, country, onCountry, error, hint, i
  * "[● 7 days] 7-day trial of Growth · then yearly": the plan the pricing page chose (from the URL,
  * allow-listed), with a note on what the trial means and a small "Change" between Growth and Scale.
  * Renders nothing when there is no trial. The red dot is decorative; the words carry the meaning.
+ * "Change" opens a labelled choice: arrow keys move the selection without closing it; a click,
+ * Enter or Space picks and closes. Escape and every close return focus to the button that opened it.
  */
 export function TrialChip({ plan, interval, enterprise = false, onPlan }: { plan: Plan; interval: Interval; enterprise?: boolean; onPlan?(p: Plan): void }) {
   const t = useTranslations("auth");
   const [pop, setPop] = useState<"note" | "change" | null>(null);
   const box = useRef<HTMLDivElement>(null);
+  const infoBtn = useRef<HTMLButtonElement>(null);
+  const changeBtn = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    const from = pop;
+    setPop(null);
+    (from === "change" ? changeBtn : infoBtn).current?.focus();
+  };
   useEffect(() => {
     if (!pop) return;
+    // The choice opens on the plan in force, so the arrows start from it.
+    if (pop === "change") box.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')?.focus();
     const away = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setPop(null); };
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setPop(null); };
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setPop(null);
+      (pop === "change" ? changeBtn : infoBtn).current?.focus();
+    };
     document.addEventListener("pointerdown", away);
     document.addEventListener("keydown", esc);
     return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
@@ -203,20 +219,24 @@ export function TrialChip({ plan, interval, enterprise = false, onPlan }: { plan
           {enterprise ? t.rich("trial.enterprise", days) : t.rich("trial.chip", { ...days, plan: t(`plans.${plan}`) })}
           {interval === "year" ? <> · {t("trial.yearly")}</> : null}
         </span>
-        <button type="button" className="mz-auth-trial__more" aria-expanded={pop === "note"} aria-label={t("trial.info")} onClick={() => setPop(pop === "note" ? null : "note")}>
+        <button ref={infoBtn} type="button" className="mz-auth-trial__more" aria-expanded={pop === "note"} aria-label={t("trial.info")} onClick={() => setPop(pop === "note" ? null : "note")}>
           <Icon name="info" size={14} />
         </button>
         {onPlan && !enterprise ? (
-          <button type="button" className="mz-auth-trial__more" style={{ inlineSize: "auto", paddingInline: 8 }} aria-expanded={pop === "change"} onClick={() => setPop(pop === "change" ? null : "change")}>
+          <button ref={changeBtn} type="button" className="mz-auth-trial__more" style={{ inlineSize: "auto", paddingInline: 8 }} aria-expanded={pop === "change"} onClick={() => setPop(pop === "change" ? null : "change")}>
             {t("trial.change")}
           </button>
         ) : null}
       </span>
       {pop === "note" ? <p className="mz-auth-menu mz-auth-trial__note" data-align="start" role="note">{t("trial.note")}</p> : null}
       {pop === "change" && onPlan ? (
-        <div className="mz-auth-menu" data-align="start" style={{ padding: 12 }}>
+        // A click (Enter and Space click too) on a plan picks and closes; arrow keys only move the selection.
+        <div className="mz-auth-menu mz-auth-trial__pick" data-align="start"
+          onClick={(e) => { if ((e.target as Element).closest('[role="radio"]')) close(); }}>
+          {/* The visible line; the radiogroup carries the same words as its name. */}
+          <span className="mz-auth-trial__picklabel" aria-hidden="true">{t("trial.pickLabel")}</span>
           <Segmented label={t("trial.pickLabel")} value={plan} options={(["growth", "scale"] as const).map((p) => ({ value: p, label: <bdi>{t(`plans.${p}`)}</bdi> }))}
-            onChange={(p) => { onPlan(p); setPop(null); }} />
+            onChange={(p) => onPlan(p)} />
         </div>
       ) : null}
     </div>

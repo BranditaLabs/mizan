@@ -1,9 +1,23 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * AU-1: the redesigned frame of the screens before a store (auth spec §10.4). Signed out only; the
  * journeys that sign in are in auth.spec.ts.
  */
+
+/** Records every field of the step copies that play the exit (StepHost's [data-ghost]) as they are inserted. */
+async function watchGhosts(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as { __ghosts: Array<{ type: string; value: string }> };
+    w.__ghosts = [];
+    new MutationObserver((ms) => {
+      for (const m of ms) for (const n of m.addedNodes) {
+        if (n instanceof HTMLElement && n.matches("[data-ghost]")) n.querySelectorAll("input").forEach((i) => w.__ghosts.push({ type: i.type, value: i.value }));
+      }
+    }).observe(document.body, { childList: true, subtree: true });
+  });
+}
+const ghosts = (page: Page) => page.evaluate(() => (window as unknown as { __ghosts: Array<{ type: string; value: string }> }).__ghosts);
 
 test("plan and billing from the pricing page: the trial chip; hostile values fall back to Growth", async ({ page }) => {
   await page.goto("/en/sign-in?mode=signup&plan=scale&billing=annual");
@@ -32,6 +46,12 @@ test("reason banners: known reasons show, anything else shows nothing", async ({
   await expect(page.getByTestId("auth-reason")).toBeHidden();
   await page.goto("/en/sign-in?reason=%3Cscript%3E");
   await expect(page.getByTestId("auth-reason")).toHaveCount(0);
+  // Anyone can craft a link: "your account is disabled" is never one (it is the sign-in error itself),
+  // and the continue-URL notes claim nothing about the account.
+  await page.goto("/en/sign-in?reason=disabled");
+  await expect(page.getByTestId("auth-reason")).toHaveCount(0);
+  await page.goto("/en/sign-in?reason=reset");
+  await expect(page.getByTestId("auth-reason")).toContainText("If you've just changed your password");
   await page.goto("/en/sign-in?next=%2Fintegrations%2Fshopify%2Fconnect%3Fshop%3Dnile-abayas.myshopify.com");
   await expect(page.getByTestId("auth-reason")).toContainText("nile-abayas.myshopify.com");
 });
@@ -52,6 +72,81 @@ test("Arabic: the dial code sits left of the number, and a wrong number never le
   await page.getByTestId("phone-country").click();
   await page.getByRole("option", { name: /السعودية/ }).click();
   await expect(page.getByTestId("phone-country")).toContainText("+966");
+});
+
+test("the exit copy of a step never shows the typed password (Forgot password?)", async ({ page }) => {
+  await page.goto("/en/sign-in");
+  await page.getByLabel("Work email", { exact: true }).fill("owner@example.com");
+  await page.getByLabel("Password").fill("hunter2-secret");
+  await watchGhosts(page);
+  await page.getByRole("button", { name: "Forgot password?" }).click();
+  await expect(page.getByTestId("auth-step")).toHaveAttribute("data-step", "reset");
+  const copies = await ghosts(page);
+  expect(copies.length).toBeGreaterThan(0);
+  expect(copies.some((g) => g.value === "hunter2-secret")).toBe(false);
+  expect(copies.filter((g) => g.value.includes("•")).every((g) => g.type === "password")).toBe(true);
+});
+
+test("Email/Phone: an arrow key changes the method and keeps focus on the control", async ({ page }) => {
+  await page.goto("/en/sign-in");
+  const email = page.getByRole("radio", { name: "Email", exact: true });
+  await email.focus();
+  await page.keyboard.press("ArrowRight");
+  const phone = page.getByRole("radio", { name: "Phone", exact: true });
+  await expect(phone).toHaveAttribute("aria-checked", "true");
+  await expect(phone).toBeFocused();
+  await expect(page.getByLabel("Mobile number", { exact: true })).toBeVisible();
+  await page.keyboard.press("ArrowLeft");
+  await expect(email).toBeFocused();
+  await expect(page.getByTestId("auth-step")).toHaveAttribute("data-step", "start");
+});
+
+test("the theme menu: arrows move, a pick keeps focus on the button", async ({ page }) => {
+  await page.goto("/en/sign-in");
+  const button = page.getByRole("button", { name: "Theme", exact: true });
+  await button.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("menuitemradio", { checked: true })).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("menuitemradio", { name: "Dark" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(button).toBeFocused();
+});
+
+test("the trial's Change: arrows move the plan without closing; Escape returns to Change", async ({ page }) => {
+  await page.goto("/en/sign-in?mode=signup&plan=growth");
+  const change = page.getByTestId("trial-chip").getByRole("button", { name: "Change" });
+  await change.click();
+  await expect(page.getByText("Plan for your trial")).toBeVisible();
+  await expect(page.getByRole("radio", { name: "Growth" })).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("radio", { name: "Scale" })).toBeFocused();
+  await expect(page.getByTestId("trial-chip")).toContainText("7-day trial of Scale");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("radiogroup", { name: "Plan for your trial" })).toHaveCount(0);
+  await expect(change).toBeFocused();
+});
+
+test("the country list: small flags, one line per country, opaque", async ({ page }) => {
+  await page.goto("/en/sign-in");
+  await page.getByRole("radio", { name: "Phone", exact: true }).click();
+  await page.getByTestId("phone-country").click();
+  const options = page.getByRole("option");
+  await expect(options).toHaveCount(3);
+  for (const o of await options.all()) expect((await o.boundingBox())!.height).toBeLessThanOrEqual(44);
+  const flag = await options.first().locator("svg.au-flag").boundingBox();
+  expect(flag!.width).toBeLessThanOrEqual(20);
+  const bg = await page.getByRole("listbox").evaluate((el) => getComputedStyle(el).backgroundImage + "|" + getComputedStyle(el).backgroundColor);
+  expect(bg).toMatch(/gradient|rgb\(\d+, \d+, \d+\)$/);
+});
+
+test("landscape phone: the card starts below the top bar", async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.goto("/en/sign-in");
+  const bar = await page.locator(".mz-auth-bar__in").boundingBox();
+  const card = await page.locator(".mz-auth-card").boundingBox();
+  expect(card!.y).toBeGreaterThanOrEqual(bar!.y + bar!.height);
 });
 
 test("steps move focus: reset link → its form; back to the start", async ({ page }) => {

@@ -48,6 +48,13 @@ export function SignIn() {
     if (status === "signed-in") router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
   }, [status, router]);
 
+  // A refused password: the field takes focus with its value selected, so retyping replaces it.
+  useEffect(() => {
+    if (error?.key !== "invalidCredential" || !passwordRef.current?.isConnected) return;
+    passwordRef.current.focus({ preventScroll: true });
+    passwordRef.current.select();
+  }, [error?.key, error?.at]);
+
   if (!auth) return <FormAlert tone="warning" focusOnShow={false}>{t("notConfigured")}</FormAlert>;
 
   async function run(work: () => Promise<void>) {
@@ -106,10 +113,12 @@ export function SignIn() {
     setMfa({ ...mfa, verificationId });
     setCode("");
     setSends((s) => ({ count: s.count + 1, at: Date.now(), just: true }));
-    announce(t("resendReady"));
+    announce(t("codeResent"));
   });
 
-  const alert = error ? <FormAlert alertKey={error.at}>{t(`errors.${error.key}`)}</FormAlert> : null;
+  // A refused code or password puts focus in its field (value selected); role=alert still announces the message.
+  const fieldTakesFocus = error?.key === "invalidCode" || error?.key === "invalidCredential";
+  const alert = error ? <FormAlert alertKey={error.at} focusOnShow={!fieldTakesFocus}>{t(`errors.${error.key}`)}</FormAlert> : null;
   const n = (c: React.ReactNode) => <bdi dir="ltr">{c}</bdi>;
   const step = status === "signed-in" ? "done" : mfa ? "mfa" : "start";
 
@@ -123,6 +132,8 @@ export function SignIn() {
           <StepHeader id={headingId} icon="locked" title={t("mfa.title")} body={<span id={`${headingId}-sent`}>{t.rich("mfa.body", { hint: mfa.hint, n })}</span>} />
           <form onSubmit={onMfa} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
             <CodeField label={t("code")} value={code} busy={busy} describedBy={`${headingId}-sent`} invalid={error?.key === "invalidCode"}
+              // Each refusal is new (no auto-submit here): the field re-selects its value every time.
+              rejected={error?.key === "invalidCode" ? `${error.at}` : null}
               error={fieldError.code ? t(`errors.${fieldError.code}`) : undefined}
               onChange={(v) => { setCode(v); setFieldError({}); }} />
             <ResendTimer seconds={resendWait(sends.count)} startedAt={sends.at} busy={busy} justSent={sends.just} sentLabel={t("sent")}

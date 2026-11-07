@@ -5,7 +5,7 @@ import { useEffect, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { usePathname, useRouter } from "@/i18n/navigation";
-import { resume } from "@/lib/next-path";
+import { resume, signInPath } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 import { BootLoader } from "@/components/ui/Loader";
 import { CardSkeleton } from "@mizan/design-system/auth/react";
@@ -29,15 +29,22 @@ function Unavailable() {
   );
 }
 
-/** Send a signed-out visitor to sign-in, then back here (or where a deliberate sign-out asked to go). */
+/**
+ * Send a signed-out visitor to sign-in, then back here (or where a deliberate sign-out asked to
+ * go). A session that ended by itself (token revoked, sign-in disabled, signed out in another tab)
+ * says so on the sign-in screen (reason=expired).
+ */
 function useSignInRedirect(active: boolean) {
   const router = useRouter();
   const pathname = usePathname();
-  const { takeSignOutTarget } = useSession();
+  const { takeSignOutTarget, sessionEnded } = useSession();
   useEffect(() => {
+    if (!active) return;
+    const target = takeSignOutTarget();
+    if (target) return void router.replace(target);
     // Keep the query (the Shopify callback's one-time install token must survive a sign-in).
-    if (active) router.replace(takeSignOutTarget() ?? `/sign-in?next=${encodeURIComponent(pathname + window.location.search)}`);
-  }, [active, pathname, router, takeSignOutTarget]);
+    router.replace(signInPath(pathname + window.location.search, sessionEnded()));
+  }, [active, pathname, router, takeSignOutTarget, sessionEnded]);
 }
 
 /** Pages that need a signed-in person but no store (welcome, two-step). */

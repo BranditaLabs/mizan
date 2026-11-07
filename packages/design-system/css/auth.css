@@ -49,6 +49,8 @@
 @media (pointer: fine) { .mz-auth { --au-ctl: 46px; } }
 .mz-auth *, .mz-auth *::before, .mz-auth *::after { box-sizing: border-box; }
 .mz-auth :focus-visible { outline: 2px solid var(--au-ring); outline-offset: 2px; }
+/* Whatever takes focus or is scrolled to stops below the fixed top bar (WCAG 2.4.11). */
+.mz-auth :is(input, select, textarea, button, a, h1, [role="alert"], [tabindex]) { scroll-margin-block: calc(env(safe-area-inset-top, 0px) + 84px) 24px; }
 .mz-auth .au-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* Skip link: the first focusable, visible on focus. */
@@ -64,7 +66,7 @@
 .mz-auth-bar[data-hidden] { transform: translateY(calc(-100% - 24px - env(safe-area-inset-top, 0px))); }
 .mz-auth-bar__in {
   pointer-events: auto; position: relative; isolation: isolate;
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 12px;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
   inline-size: min(1240px, 100%); block-size: 52px; margin-inline: auto; padding-inline: 18px 6px;
   border-radius: 999px; border: 1px solid transparent;
   transition: border-color .5s ease, box-shadow .5s ease;
@@ -79,20 +81,23 @@
 .mz-auth-bar[data-glass] .mz-auth-bar__in::before { opacity: 1; }
 @media (pointer: fine) { .mz-auth-bar__in::before { -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); } }
 /* On desktop the bar crosses the ink island: the glass pill is on from the start, so its words stay legible on both. */
-@media (min-width: 1024px) { .mz-auth-bar__in { border-color: var(--mz-line); box-shadow: 0 8px 24px -16px rgb(0 0 0 / .35); } .mz-auth-bar__in::before { opacity: 1; background: linear-gradient(var(--mz-surface), var(--mz-surface)), color-mix(in srgb, var(--mz-bg, var(--au-paper)) 88%, transparent); } }
+/* Opaque (the surface over the page colour), so the pill is one tone over paper and ink alike. */
+@media (min-width: 1024px) { .mz-auth-bar__in { border-color: var(--mz-line); box-shadow: 0 8px 24px -16px rgb(0 0 0 / .35); } .mz-auth-bar__in::before { opacity: 1; background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper)); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 @media (min-width: 768px) { .mz-auth-bar { inset-block-start: calc(env(safe-area-inset-top, 0px) + 14px); } .mz-auth-bar__in { block-size: 56px; } }
 .mz-auth-bar__start { display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
 .mz-auth-bar__mid { display: flex; align-items: center; color: var(--mz-text-2); font-size: 13px; }
 .mz-auth-bar__end { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-inline-size: 0; }
 .mz-auth-bar__wordmark { display: inline-flex; align-items: center; block-size: 44px; }
 .mz-auth-bar__by { display: none; }
-@media (min-width: 1120px) { .mz-auth-bar__by { display: inline; } }
+@media (min-width: 1120px) { .mz-auth-bar__in { grid-template-columns: 1fr auto 1fr; } .mz-auth-bar__by { display: inline; } }
+.mz-auth-bar .au-short { display: none; }
+@media (max-width: 1023.98px) { .mz-auth-bar .au-long { display: none; } .mz-auth-bar .au-short { display: inline; } }
 .mz-auth-bar .au-wide { display: none; }
 @media (min-width: 768px) { .mz-auth-bar .au-wide { display: inline-flex; } }
 
 /* Bar links and the icon button: pill hit areas, Brandita underline that grows from the reading start. */
 .mz-auth-navlink {
-  position: relative; display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding-inline: 12px;
+  position: relative; display: inline-flex; align-items: center; gap: 6px; min-block-size: 44px; padding-inline: 12px; white-space: nowrap;
   border-radius: 999px; color: var(--mz-text); font-size: 13.5px; font-weight: 600; text-decoration: none; background: none; border: 0; cursor: pointer;
 }
 .mz-auth-navlink::after {
@@ -109,14 +114,17 @@
 .mz-auth-iconbtn:hover { background: var(--mz-surface-hover); }
 .mz-auth-iconbtn:active, .mz-auth-navlink:active { transform: scale(.98); transition-duration: var(--au-instant); }
 .mz-auth-iconbtn svg { transition: transform var(--au-slow) var(--au-ease-spring), opacity var(--au-fast); }
-.mz-auth-iconbtn[data-turn] svg { animation: au-icon-turn var(--au-slow) var(--au-ease-spring); }
+.mz-auth-iconbtn .au-turn { display: inline-grid; place-items: center; }
+.mz-auth-iconbtn .au-turn[data-turn] { animation: au-icon-turn var(--au-slow) var(--au-ease-spring); }
 @keyframes au-icon-turn { from { transform: rotate(-30deg); opacity: .2; } to { transform: none; opacity: 1; } }
 
 /* Menus and popovers (theme, country, language confirm, trial "Change"). */
 .mz-auth-pop { position: relative; }
 .mz-auth-menu {
   position: absolute; z-index: 50; inset-block-start: calc(100% + 6px); inset-inline-end: 0; min-inline-size: 200px; padding: 6px; margin: 0; list-style: none;
-  border-radius: 18px; border: 1px solid var(--mz-line); background: var(--mz-surface); color: var(--mz-text); box-shadow: var(--mz-shadow-overlay);
+  border-radius: 18px; border: 1px solid var(--mz-line); color: var(--mz-text); box-shadow: var(--mz-shadow-overlay);
+  /* Opaque: under Mizan Glass the surface is translucent, so it sits on the page colour (nothing shows through). */
+  background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper));
   transform-origin: var(--au-mo, 100%) 0; animation: au-pop-in var(--au-base) var(--au-ease) both;
 }
 [dir="rtl"] .mz-auth-menu { --au-mo: 0; }
@@ -124,7 +132,7 @@
 [dir="rtl"] .mz-auth-menu[data-align="start"] { --au-mo: 100%; }
 @keyframes au-pop-in { from { opacity: 0; transform: translateY(-4px) scale(.97); } to { opacity: 1; transform: none; } }
 .mz-auth-menu__item {
-  display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 44px; padding-inline: 12px; border-radius: 12px; border: 0; background: none;
+  display: flex; align-items: center; gap: 10px; inline-size: 100%; min-block-size: 44px; padding-inline: 12px; border-radius: 12px; border: 0; background: none; white-space: nowrap;
   color: inherit; font: inherit; font-size: 14px; text-align: start; cursor: pointer;
 }
 .mz-auth-menu__item:hover, .mz-auth-menu__item[data-active] { background: var(--mz-surface-hover); }
@@ -154,6 +162,11 @@
   .mz-auth-layout > .mz-auth-stage { grid-column: 2; grid-row: 1; }
 }
 @media (min-width: 1024px) and (max-width: 1279.98px) { .mz-auth-layout { grid-template-columns: 1fr 46%; } }
+/* The staff island holds a kicker, the scale and one word: narrower, its copy centred. */
+@media (min-width: 1024px) {
+  .mz-auth-layout:has(> .mz-auth-stage[data-variant="staff"]) { grid-template-columns: 1fr minmax(360px, 40%); }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { justify-content: center; padding-block: 96px; }
+}
 
 /* ───────────── 4. The focus card: a surface layer behind content (FLIPs its height), top-anchored ───────────── */
 .mz-auth-card { --_gap: 16px; --_ctl: max(44px, var(--au-ctl)); position: relative; isolation: isolate; margin-block-start: 12px; padding: clamp(20px, 3.5vw, 36px); border-radius: 20px; }
@@ -168,10 +181,16 @@
 }
 @media (prefers-reduced-transparency: reduce) { .mz-auth-card__surface, .mz-auth-bar__in::before { background: var(--mz-surface); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 .mz-auth-host { position: relative; }
+/* Only while a step's exit copy is there (no menu is open then): clip it to the card, room left for focus rings. */
+.mz-auth-host:has(> [data-ghost]) { overflow: clip; overflow-clip-margin: 8px; }
 .mz-auth-host > [data-ghost] { position: absolute; inset-inline: 0; inset-block-start: 0; pointer-events: none; }
 .mz-auth-step { display: flex; flex-direction: column; gap: 16px; min-inline-size: 0; }
 .mz-auth-step form { display: flex; flex-direction: column; gap: 16px; margin: 0; }
 .mz-auth-group { display: flex; flex-direction: column; gap: 12px; }
+.mz-auth-swap[data-swap] { animation: au-swap-in var(--au-base) var(--au-ease) both; }
+@keyframes au-swap-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* The Segmented thumb glides without overshoot inside the card (no spring past the track's end). */
+.mz-auth .mz-seg-thumb { transition-timing-function: var(--au-ease-sheet); }
 
 /* Step header: an optional ink tile, the H1 (programmatic focus only), the body. */
 .mz-auth-head { display: flex; flex-direction: column; gap: 8px; }
@@ -228,7 +247,8 @@
 .mz-auth-help .au-roll { display: flex; animation: au-roll-in var(--au-slow) var(--au-ease) both; }
 @keyframes au-roll-in { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: none; } }
 @keyframes au-pop { 0% { transform: scale(1); } 50% { transform: scale(1.12); } 100% { transform: scale(1); } }
-.mz-auth-help button { padding: 0; border: 0; background: none; color: var(--mz-text); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.mz-auth-help button { position: relative; padding: 0; border: 0; background: none; color: var(--mz-text); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+@media (pointer: coarse) { .mz-auth-help button::after { content: ""; position: absolute; inset-inline: -4px; inset-block: -12px; } }
 
 /* Password: the field and, when creating one, its strength meter. */
 .mz-auth-pw { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
@@ -256,8 +276,11 @@
   border: 1px solid var(--mz-line-strong); background: var(--mz-surface); color: var(--mz-text); font: inherit; font-size: 15px; font-variant-numeric: tabular-nums; cursor: pointer;
 }
 .mz-auth-country:hover { border-color: var(--mz-text-3); }
-.mz-auth-country svg.au-flag { inline-size: 20px; block-size: 14px; border-radius: 2px; box-shadow: 0 0 0 1px var(--mz-line); flex: none; }
+.mz-auth svg.au-flag { inline-size: 20px; block-size: 14px; border-radius: 2px; box-shadow: 0 0 0 1px var(--mz-line); flex: none; }
 .mz-auth-phone .mz-auth-menu { inset-inline-end: auto; inset-inline-start: 0; --au-mo: 0; }
+.mz-auth-phone .mz-auth-menu__item { cursor: pointer; }
+.mz-auth-phone .mz-auth-menu__item > bdi { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.mz-auth-phone .mz-auth-menu__item .au-check { margin-inline-start: 0; flex: none; }
 
 /* The code: six boxes drawn under one real input that covers the row. */
 .mz-auth-code { position: relative; display: grid; grid-template-columns: repeat(var(--au-len, 6), minmax(0, 1fr)); gap: 8px; border-radius: 16px; }
@@ -339,8 +362,9 @@
 .mz-auth-divider { display: flex; align-items: center; gap: 12px; color: var(--mz-text-3); font-size: 13px; }
 .mz-auth-divider::before, .mz-auth-divider::after { content: ""; flex: 1; block-size: 1px; background: var(--mz-line); }
 .mz-auth-toggle { margin: 0; text-align: center; font-size: 15px; color: var(--mz-text-2); }
-.mz-auth-note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--mz-text-3); }
-.mz-auth-note a { color: var(--mz-text-2); }
+.mz-auth-note { margin: 0; font-size: 13px; line-height: 1.5; color: var(--mz-text-3); }
+.mz-auth-note a { color: var(--mz-text-2); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.mz-auth-note a:hover { color: var(--mz-text); }
 .grecaptcha-badge { visibility: hidden; }
 
 /* ───────────── 7. Alerts, banners, chips ───────────── */
@@ -361,15 +385,20 @@
   background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); font-size: 14px; font-weight: 600; align-self: flex-start;
 }
 .mz-auth-chip bdi { min-inline-size: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mz-auth-chip button { min-block-size: 32px; padding-inline: 10px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.mz-auth-chip button { position: relative; min-block-size: 32px; padding-inline: 10px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .mz-auth-trial {
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-block-size: 32px; padding-inline: 12px 4px; border-radius: 999px;
   background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); font-size: 13px; font-weight: 600; animation: au-alert-in var(--au-base) var(--au-ease) both;
 }
 .mz-auth-trial__dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--au-red); animation: au-dot-in var(--au-slow) var(--au-ease-spring) 120ms both; }
 @keyframes au-dot-in { from { transform: scale(0); } to { transform: none; } }
-.mz-auth-trial__more { display: inline-grid; place-items: center; inline-size: 28px; block-size: 28px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
+@media (pointer: coarse) { .mz-auth-chip button::after { content: ""; position: absolute; inset: -6px -2px; } }
+.mz-auth-trial__more { position: relative; display: inline-grid; place-items: center; inline-size: 28px; block-size: 28px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
 .mz-auth-trial__more:hover { background: var(--mz-surface-hover); color: var(--mz-text); }
+/* 28px drawn, 44px to touch. */
+.mz-auth-trial__more::after { content: ""; position: absolute; inset: -8px; }
+.mz-auth-trial__pick { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.mz-auth-trial__picklabel { font-size: 13px; font-weight: 600; color: var(--mz-text-2); }
 .mz-auth-trial__note { padding: 12px; font-size: 13px; color: var(--mz-text-2); max-inline-size: 280px; margin: 0; }
 
 /* ───────────── 8. Success: the mark, the wipe, the skeleton ───────────── */
@@ -407,19 +436,27 @@
   margin-inline: 16px; margin-block-start: 70px; block-size: 72px; contain: layout paint;
 }
 .mz-auth-stage :focus-visible { outline-color: var(--au-paper); }
+/* Dark theme: the page is nearly ink too, so the island gets a hairline edge and a lifted ink. */
+.mz-auth.mzg:not(.light) .mz-auth-stage, [data-theme="dark"] .mz-auth:not(.light) .mz-auth-stage {
+  box-shadow: inset 0 0 0 1px var(--st-line); background: color-mix(in srgb, var(--au-paper) 3%, var(--au-ink));
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mz-auth:not(.mzg) .mz-auth-stage { box-shadow: inset 0 0 0 1px var(--st-line); background: color-mix(in srgb, var(--au-paper) 3%, var(--au-ink)); }
+}
 .mz-auth-stage__ambient { position: absolute; inset: -20%; z-index: -1; pointer-events: none;
   background: radial-gradient(40% 40% at 70% 20%, color-mix(in srgb, var(--au-red) 22%, transparent), transparent 70%),
               radial-gradient(50% 50% at 20% 90%, color-mix(in srgb, var(--au-paper) 8%, transparent), transparent 70%); }
 .mz-auth-stage__content { position: relative; display: flex; align-items: center; gap: 12px; block-size: 100%; padding-inline: 14px; }
 .mz-auth-stage__copy, .mz-auth-stage__ticker, .mz-auth-stage__scale, .mz-auth-stage__kicker { display: none; }
 .mz-auth-stage__map { flex: 1; min-inline-size: 0; block-size: 100%; display: grid; place-items: center; }
-.mz-auth-stage__map svg { inline-size: 100%; block-size: 100%; max-block-size: 56px; }
+.mz-auth-stage__map > svg { inline-size: 100%; block-size: 100%; max-block-size: 56px; }
 .mz-auth-stage__scale > svg { display: block; inline-size: 100%; block-size: 100%; }
 .mz-auth-pause {
   position: relative; flex: none; display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 999px; border: 1px solid var(--st-line);
   background: color-mix(in srgb, var(--au-paper) 6%, transparent); color: var(--st-fg); cursor: pointer;
 }
 .mz-auth-pause::after { content: ""; position: absolute; inset: -2px; }
+@media (max-width: 767.98px) { .mz-auth-stage .mz-auth-pause::after { inset: -6px; } }
 .mz-auth-pause:hover { background: color-mix(in srgb, var(--au-paper) 12%, transparent); }
 @media (max-width: 767.98px) {
   .mz-auth[data-keyboard] .mz-auth-stage { display: none; }
@@ -432,7 +469,7 @@
   .mz-auth-stage__scale { display: block; inline-size: 40px; block-size: 40px; flex: none; }
   .mz-auth-stage__headline { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; }
   .mz-auth-stage__headline .au-line2 { display: none; }
-  .mz-auth-stage__map svg { max-block-size: 96px; }
+  .mz-auth-stage__map > svg { max-block-size: 96px; }
   .mz-auth-stage .mz-auth-pause { position: absolute; inset-block-end: 56px; inset-inline-end: 20px; }
 }
 @media (min-width: 1024px) {
@@ -447,7 +484,7 @@
   .mz-auth-stage__headline .au-line2 { display: block; color: var(--st-fg-2); }
   .mz-auth-stage__headline .au-w { display: inline-block; }
   .mz-auth-stage__map { flex: 1; inline-size: 100%; min-block-size: 0; }
-  .mz-auth-stage__map svg { max-block-size: 300px; max-inline-size: 440px; }
+  .mz-auth-stage__map > svg { max-block-size: 300px; max-inline-size: 440px; }
   .mz-auth-stage__ticker { display: flex; align-items: center; gap: 12px; inline-size: calc(100% - 56px); min-block-size: 48px; font-size: 15px; color: var(--st-fg); }
   .mz-auth-stage .mz-auth-pause { position: absolute; inset-block-end: 40px; inset-inline-end: 40px; }
 }
@@ -480,7 +517,9 @@
 .mz-auth-map .st-halo { fill: none; stroke: var(--au-paper); stroke-width: 1.5; opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
 .mz-auth-map .st-ghost rect { fill: none; stroke: var(--st-fg-2); stroke-dasharray: 4 4; }
 .mz-auth-map .st-badge { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; transition: opacity var(--au-moderate) var(--au-ease), transform var(--au-slow) var(--au-ease-spring-soft); transform: scale(.9); }
-.mz-auth-map .st-badge rect { fill: var(--au-red); } .mz-auth-map .st-badge text { fill: #fff; font: 700 11px var(--mz-font-sans, "Geist"), sans-serif; }
+.mz-auth-map .st-badge rect { fill: var(--au-paper); } .mz-auth-map .st-badge text { fill: var(--au-ink); font: 700 11px var(--mz-font-sans, "Geist"), sans-serif; }
+.mz-auth-map .st-icon { color: var(--st-fg); }
+.mz-auth-map .st-tile { fill: var(--au-paper); }
 /* Scene deltas: no rebuild, a property flip with a transition. */
 .mz-auth-stage[data-scene="signup"] .st-badge.trial { opacity: 1; transform: none; transition-delay: 200ms; }
 .mz-auth-stage[data-scene="shopify"] .st-node:not([data-node="shopify"]) { opacity: .45; }
@@ -492,6 +531,14 @@
 .mz-auth-stage[data-scene="outage"] .st-red { opacity: 1; }
 .mz-auth-stage[data-scene="outage"] .st-dot { display: none; }
 .mz-auth-stage[data-scene="staff"] .mz-auth-stage__map, .mz-auth-stage[data-scene="staff"] .mz-auth-stage__ticker { display: none; }
+
+/* Before first paint the frame marks a build ([data-stage-build], STAGE_BUILD_SCRIPT): the pieces
+   it animates are not painted until the animator takes over and removes the mark, so the poster
+   never shows and then blinks out. If the animator never arrives, they fade in after 1.5s. */
+[data-stage-build] .mz-auth-stage :is(.st-node:not(.st-ghost), .st-hub, .st-edge, .mz-auth-stage__headline .au-w) {
+  opacity: 0; animation: au-stage-reveal var(--au-slow) var(--au-ease-std) 1500ms both;
+}
+@keyframes au-stage-reveal { from { opacity: 0; } to { opacity: 1; } }
 
 /* One map per screen size: the strip on phones, the band on tablets, the island on desktop. */
 .mz-auth-map.au-v-band, .mz-auth-map.au-v-island { display: none; }
@@ -521,11 +568,15 @@
 /* ───────────── 11. First paint: the H1 is painted on frame 0 (LCP), the rest rises in a short stagger ───────────── */
 .mz-auth-bar__in { animation: au-bar-in var(--au-slow) var(--au-ease) both; }
 .mz-auth-card { animation: au-card-in var(--au-moderate) var(--au-ease) both; }
-.mz-auth-stagger > * { animation: au-rise var(--au-slow) var(--au-ease) both; }
-.mz-auth-stagger > :nth-child(1) { animation-delay: 0ms; animation-name: none; }
-.mz-auth-stagger > :nth-child(2) { animation-delay: 60ms; } .mz-auth-stagger > :nth-child(3) { animation-delay: 110ms; }
-.mz-auth-stagger > :nth-child(4) { animation-delay: 160ms; } .mz-auth-stagger > :nth-child(5) { animation-delay: 210ms; }
-.mz-auth-stagger > :nth-child(6) { animation-delay: 260ms; } .mz-auth-stagger > :nth-child(n+7) { animation-delay: 310ms; }
+/* The first step's children (and its form's) on the page's first paint only (StepHost drops
+   data-first after it, or at the first step change); never the exit copy. The heading block is
+   painted at once (LCP). */
+.mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > *, .mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > form > * { animation: au-rise var(--au-slow) var(--au-ease) both; }
+.mz-auth-stagger > .mz-auth-step > :nth-child(2) { animation-delay: 60ms; } .mz-auth-stagger > .mz-auth-step > :nth-child(3) { animation-delay: 110ms; }
+.mz-auth-stagger > .mz-auth-step > :nth-child(4) { animation-delay: 160ms; } .mz-auth-stagger > .mz-auth-step > :nth-child(5) { animation-delay: 210ms; }
+.mz-auth-stagger > .mz-auth-step > :nth-child(6) { animation-delay: 260ms; } .mz-auth-stagger > .mz-auth-step > :nth-child(n+7) { animation-delay: 310ms; }
+.mz-auth-stagger > .mz-auth-step > form > * { animation-delay: 160ms; }
+.mz-auth-stagger > .mz-auth-step > form > :nth-child(2) { animation-delay: 200ms; } .mz-auth-stagger > .mz-auth-step > form > :nth-child(n+3) { animation-delay: 240ms; }
 .mz-auth-foot { animation: au-fade var(--au-slow) var(--au-ease-std) 300ms both; }
 @keyframes au-bar-in { from { opacity: .001; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 @keyframes au-card-in { from { transform: translateY(12px); } to { transform: none; } }
@@ -533,7 +584,9 @@
 @keyframes au-fade { from { opacity: .001; } to { opacity: 1; } }
 /* A repeat visit within 10 minutes (a language switch included): a 150ms fade, no rise. */
 [data-auth-seen] .mz-auth-bar__in, [data-auth-seen] .mz-auth-card, [data-auth-seen] .mz-auth-foot { animation: none; }
-[data-auth-seen] .mz-auth-stagger > * { animation: au-fade var(--au-fast) linear both; animation-delay: 0ms; }
+[data-auth-seen] .mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > *, [data-auth-seen] .mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > form > * { animation: au-fade var(--au-fast) linear both; animation-delay: 0ms; }
+/* The heading block is painted on frame 0, first visit or repeat (it is the LCP). */
+.mz-auth-stagger[data-first] > .mz-auth-step:not([data-ghost]) > :is(.mz-auth-head, :has(> .mz-auth-h1)) { animation: none; }
 
 /* ───────────── 12. Landscape phones and zoom ───────────── */
 @media (max-height: 500px) and (orientation: landscape) {
@@ -541,8 +594,10 @@
   .mz-auth-stage { display: none; }
   .mz-auth-form { align-items: center; }
   .mz-auth-main { inline-size: min(560px, 100%); }
+  .mz-auth-main { margin-block-start: 0; }
   .mz-auth-card { margin-block-start: 8px; padding: 16px 20px; }
   .mz-auth-h1 { font-size: 22px; }
+  .mz-auth-sub { display: -webkit-box; -webkit-line-clamp: 1; line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
   .mz-auth-code__box { block-size: 44px; }
 }
 @media (max-height: 480px) { .mz-auth-foot { display: none; } }
@@ -556,7 +611,8 @@
 /* ───────────── 14. Reduced motion: a full design, not duration 0 ───────────── */
 @media (prefers-reduced-motion: reduce) {
   .mz-auth *, .mz-auth *::before, .mz-auth *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important; scroll-behavior: auto !important; }
-  .mz-auth-bar__in, .mz-auth-card, .mz-auth-stagger > *, .mz-auth-foot, .mz-auth-alert, .mz-auth-trial, .mz-auth-menu,
+  .mz-auth-bar__in, .mz-auth-card, .mz-auth-stagger > .mz-auth-step > *, .mz-auth-stagger > .mz-auth-step > form > *, .mz-auth-swap, .mz-auth-iconbtn .au-turn,
+  .mz-auth-foot, .mz-auth-alert, .mz-auth-trial, .mz-auth-menu,
   .mz-auth-help .au-roll, .mz-auth-resend > .au-roll, .mz-auth-roll > span, .mz-auth-code__box { animation: none !important; }
   .mz-auth-alert, .mz-auth-help > span, .mz-auth-menu { animation: au-fade 120ms linear both !important; }
   .mz-auth-code__caret, .mz-auth-spin, .mz-auth-scale .au-beam, .mz-auth-scale .au-pan, .mz-auth-map .st-halo, .mz-auth-trial__dot, .mz-auth-help svg, .mz-auth-alert > svg { animation: none !important; }

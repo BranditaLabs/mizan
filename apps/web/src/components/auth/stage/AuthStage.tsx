@@ -2,12 +2,14 @@
 
 import { ScaleMark, Words } from "@mizan/design-system/auth/react";
 import { onReducedMotionChange, pauseWhenHidden, prefersReducedMotion } from "@mizan/design-system/auth-motion";
-import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Icon } from "@mizan/design-system/icons/react";
+import { planPartnerLogo } from "@mizan/design-system/partners";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "@/i18n/navigation";
 import { TRIAL_DAYS } from "@/lib/auth/intent";
 import { useAuthUi, type Scene } from "@/lib/auth/ui-store";
-import { GEOMETRY, lane, type Geometry, type Variant } from "./geometry";
+import { GEOMETRY, lane, nodeWidth, type Geometry, type MapNode, type NodeId, type Variant } from "./geometry";
 import type { StageController } from "./animator";
 
 const PAUSED = "mizan.stage.paused";
@@ -85,9 +87,10 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   // The ticker waits while someone is typing in the card.
   useEffect(() => {
     const on = (e: FocusEvent) => setFocusInCard(Boolean((e.target as Element | null)?.closest?.(".mz-auth-card input, .mz-auth-card select")));
+    const off = () => setFocusInCard(false);
     document.addEventListener("focusin", on);
-    document.addEventListener("focusout", () => setFocusInCard(false));
-    return () => document.removeEventListener("focusin", on);
+    document.addEventListener("focusout", off);
+    return () => { document.removeEventListener("focusin", on); document.removeEventListener("focusout", off); };
   }, []);
   useEffect(() => {
     if (!playing || focusInCard || tick.cycles >= MAX_CYCLES * OUTCOMES.length || variant === "staff") return;
@@ -140,10 +143,73 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   );
 }
 
-/** One variant's map; CSS shows the one that fits the screen. */
+/** The partner each node stands for (DS-3 manifest); cash on delivery is Mizan's own icon. */
+const PARTNER: Record<Exclude<NodeId, "cod">, string> = { shopify: "shopify", woo: "woocommerce", bosta: "bosta", whatsapp: "whatsapp" };
+
+/**
+ * A node's mark inside a circle of diameter `d`: the partner's own one-colour file for dark
+ * grounds where DS-3's gate allows it (guide read, permission, size), else its manifest monogram;
+ * cash on delivery draws the `cod` icon. Never recoloured.
+ */
+function NodeMark({ id, d, locale }: { id: NodeId; d: number; locale: "ar" | "en" }) {
+  const c = d / 2;
+  if (id === "cod") {
+    const s = Math.round(d * 0.58);
+    return <Icon name="cod" size={s} x={c - s / 2} y={c - s / 2} className="st-icon" />;
+  }
+  const plan = planPartnerLogo(PARTNER[id], Math.round(d), "mono", locale);
+  if (plan.kind !== "mark") {
+    const text = plan.kind === "monogram" ? plan.text : plan.name.charAt(0);
+    return <text className="mono" x={c} y={c + 4.5} textAnchor="middle" style={text.length > 1 ? { fontSize: 11 } : undefined}>{text}</text>;
+  }
+  const face = plan.dark;
+  const m = plan.markPx;
+  return (
+    <>
+      {face.tile ? <circle className="st-tile" cx={c} cy={c} r={c} /> : null}
+      <svg x={c - m / 2} y={c - m / 2} width={m} height={m} viewBox={face.mark.viewBox} aria-hidden="true" focusable="false">
+        {face.mark.paths.map((p, i) => <path key={i} d={p.d} fill={p.fill} />)}
+      </svg>
+    </>
+  );
+}
+
+/**
+ * One variant's map; CSS shows the one that fits the screen. Each labelled pill is as wide as its
+ * label in the font actually drawn (measured once fonts are ready, and again on resize, when a
+ * hidden variant shows), centred where the geometry puts it, with LABEL_END after the label.
+ */
 function StageSvg({ v }: { v: Variant }) {
   const t = useTranslations("authStage");
+  const locale = useLocale() === "ar" ? "ar" : "en";
   const g: Geometry = GEOMETRY[v];
+  const labels = useRef<Partial<Record<NodeId, SVGTextElement | null>>>({});
+  const [widths, setWidths] = useState<Partial<Record<NodeId, number>>>({});
+
+  useLayoutEffect(() => {
+    if (!g.labels) return;
+    let alive = true;
+    const measure = () => {
+      if (!alive) return;
+      const next: Partial<Record<NodeId, number>> = {};
+      for (const n of g.nodes) {
+        const len = labels.current[n.id]?.getComputedTextLength?.() ?? 0;
+        if (len > 0) next[n.id] = nodeWidth(n, len);
+      }
+      if (Object.keys(next).length === 0) return; // hidden at this size: measured when it shows
+      setWidths((w) => (g.nodes.every((n) => w[n.id] === next[n.id]) ? w : next));
+    };
+    const id = requestAnimationFrame(measure);
+    void document.fonts?.ready.then(measure);
+    window.addEventListener("resize", measure);
+    return () => { alive = false; cancelAnimationFrame(id); window.removeEventListener("resize", measure); };
+  }, [g]);
+
+  // A wider pill stays centred on its point, moved in only as far as needed to stay inside the map.
+  const sized = (n: MapNode): MapNode & { left: number } => {
+    const w = widths[n.id] ?? n.w;
+    return { ...n, w, left: Math.max(2, Math.min(g.w - w - 2, n.x - w / 2)) };
+  };
   return (
     <svg className={`mz-auth-map au-v-${v}`} viewBox={`0 0 ${g.w} ${g.h}`} preserveAspectRatio="xMidYMid meet" data-variant={v} focusable="false">
       <g className="st-edges">
@@ -158,18 +224,18 @@ function StageSvg({ v }: { v: Variant }) {
           </g>
         </g>
       ) : null}
-      {g.nodes.map((n) => (
+      {g.nodes.map(sized).map((n) => (
         // Position on the outer group, motion on the inner one: a CSS transform would replace the attribute.
-        <g key={n.id} transform={`translate(${n.x - n.w / 2} ${n.y - n.h / 2})`}><g className="st-node" data-node={n.id}>
+        <g key={n.id} transform={`translate(${n.left} ${n.y - n.h / 2})`}><g className="st-node" data-node={n.id}>
           <rect className="st-halo" width={n.w} height={n.h} rx={n.h / 2} />
           <rect width={n.w} height={n.h} rx={n.h / 2} />
           {g.labels ? (
             <>
               <circle className="bg" cx={n.h / 2} cy={n.h / 2} r={n.h / 2 - 5} />
-              <text className="mono" x={n.h / 2} y={n.h / 2 + 4.5} textAnchor="middle">{n.mono}</text>
-              <text x={n.h + 4} y={n.h / 2 + 4}>{t(`nodes.${n.id}`)}</text>
+              <g transform="translate(5 5)"><NodeMark id={n.id} d={n.h - 10} locale={locale} /></g>
+              <text ref={(el) => { labels.current[n.id] = el; }} x={n.h + 4} y={n.h / 2 + 4}>{t(`nodes.${n.id}`)}</text>
             </>
-          ) : <text className="mono" x={n.w / 2} y={n.h / 2 + 4.5} textAnchor="middle">{n.mono}</text>}
+          ) : <g transform="translate(3 3)"><NodeMark id={n.id} d={n.h - 6} locale={locale} /></g>}
         </g></g>
       ))}
       <g transform={`translate(${g.hub.x} ${g.hub.y})`}><g className="st-hub">

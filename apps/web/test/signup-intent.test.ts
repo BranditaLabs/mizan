@@ -33,17 +33,22 @@ describe("sign-up intent (this tab only, no personal data)", () => {
     expect(signupIntent.read()).toBeNull();
     expect(lastMethod.read()).toBeNull();
   });
-  it("the draft keeps the email and method only", () => {
-    draft.save({ email: "a@b.co", method: "phone" });
+  it("the draft keeps the email and method only, in memory: the email never reaches browser storage", () => {
+    draft.save({ email: "a@b.co", method: "phone", password: "x" } as Parameters<typeof draft.save>[0]);
     expect(draft.read()).toEqual({ email: "a@b.co", method: "phone" });
-    session.setItem("mizan.auth.draft", JSON.stringify({ email: 5, method: "fax", password: "x" }));
+    expect([...session.m.values(), ...local.m.values()].join()).not.toContain("a@b.co");
+    draft.save({ email: 5 as unknown as string, method: "fax" as "email" });
     expect(draft.read()).toEqual({ email: undefined, method: undefined });
+    draft.clear();
+    expect(draft.read()).toBeNull();
   });
-  it("sign-out and a created store clear it all", () => {
+  it("sign-out and a created store clear it all (an earlier build's stored draft included)", () => {
     signupIntent.save("scale", "year");
     draft.save({ email: "a@b.co" });
+    session.setItem("mizan.auth.draft", JSON.stringify({ email: "old@b.co" }));
     session.setItem("mizan.resume", "/x");
     clearAuthMemory();
     expect([...session.m.keys()]).toEqual([]);
+    expect(draft.read()).toBeNull();
   });
 });
