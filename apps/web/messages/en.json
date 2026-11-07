@@ -5377,10 +5377,12 @@
   },
   "partnerLogos": {
     "title": "Partner logos",
-    "body": "Each brand's real mark, taken from its own guide and never redrawn. Colour sits on a light tile; one-colour files appear only where the brand allows them. A brand we can't show yet gets its initial.",
+    "body": "Each brand's real mark, from its own official file or guide and never redrawn. Colour sits on a light tile; one-colour files appear only where the brand allows them. A brand we can't show yet gets its initial.",
     "color": "Colour",
     "mono": "One colour",
     "small": "Small",
+    "lockup": "Logo with its name",
+    "official": "Official logo file",
     "kinds": {
       "store": "Stores",
       "marketplace": "Marketplaces",

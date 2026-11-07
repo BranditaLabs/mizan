@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MizanLoader } from "@mizan/design-system/react/motion";
+import { PartnerLogo } from "@mizan/design-system/partners/react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { CSSProperties, ReactNode } from "react";
 import { Faq, LandingRoot, LanguageButton, PricingToggles, ThemeButton } from "@/components/landing/client";
@@ -11,7 +12,8 @@ import { THEME_COOKIE } from "@/lib/theme";
 /**
  * The public landing page (L1-9), as the "Landing page · glass" board of the Mizan Glass canvas.
  * Served at /{locale}/landing, and at "/", "/ar", "/en" of the marketing host (MARKETING_HOST, proxy.ts).
- * Copy: messages/landing/{ar,en}.json. Everything is HTML, CSS and SVG: no images, no third-party scripts.
+ * Copy: messages/landing/{ar,en}.json. Everything is HTML, CSS and SVG, except the partners' own logos
+ * (small PNGs from /partners, DS-3b); no third-party scripts.
  */
 type Props = { params: Promise<{ locale: string }> };
 
@@ -46,7 +48,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const KPIS = [["kpiProfit", "181,680"], ["kpiDelivered", "81.6%"], ["kpiCash", "164,200"]] as const;
 const MENU: [string, IconPath][] = [["home", "home"], ["orders", "orders"], ["verification", "verify"], ["payments", "card"], ["shipping", "ship"], ["profit", "profit"], ["automations", "auto"]];
 const SHIPPED_ID = "#EO-48302";
-const LIVE = ["Shopify", "Bosta", "WhatsApp"];
+/** Live today, each with its owner-supplied logo (DS-3b); the name stays written next to it. */
+const LIVE: [string, string][] = [["Shopify", "shopify"], ["Bosta", "bosta"], ["WhatsApp", "whatsapp"]];
 const SOON = ["Paymob", "Mylerz", "J&T Express", "Salla", "Zid"];
 const LEAKS: [string, IconPath][] = [["door", "risk"], ["cash", "cod"], ["profit", "profit"]];
 const STEPS: [string, IconPath][] = [["order", "orders"], ["confirm", "verify"], ["ship", "ship"], ["reconcile", "recon"]];
@@ -206,7 +209,7 @@ export default async function LandingPage({ params }: Props) {
         <section className="wrap lp-integrations" aria-labelledby="lp-int">
           <h2 className="eyebrow lp-int-h" id="lp-int">{t("integrations.label")}</h2>
           <ul className="lp-tags">
-            {LIVE.map((n) => <li key={n} className="tag lp-int live-tag"><span className="live" aria-hidden="true" /><bdi>{n}</bdi><span className="mz-sr">{t("integrations.live")}</span></li>)}
+            {LIVE.map(([n, slug]) => <li key={n} className="tag lp-int live-tag"><span className="live" aria-hidden="true" /><PartnerLogo slug={slug} size={24} locale={locale === "ar" ? "ar" : "en"} decorative /><bdi>{n}</bdi><span className="mz-sr">{t("integrations.live")}</span></li>)}
             {SOON.map((n) => <li key={n} className="tag lp-int soon-tag"><bdi>{n}</bdi><span className="mz-sr">{t("integrations.soon")}</span></li>)}
           </ul>
           <span className="faint lp-small">{t("integrations.note")}</span>

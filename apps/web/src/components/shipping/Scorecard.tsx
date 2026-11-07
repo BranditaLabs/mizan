@@ -11,6 +11,7 @@ import { Pending } from "@/components/ui/QueryState";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 import { Waiting } from "@/components/ui/Loader";
 
 type Courier = Schemas["CourierScorecard"]["couriers"][number];
@@ -55,7 +56,8 @@ export function Scorecard() {
         {!q.data ? <Pending query={q} compact><SkeletonRows rows={3} label={t("title")} /></Pending> : !q.data.couriers.length ? <EmptyState icon="shipping" title={t("empty.title")} body={t("empty.body")} /> : (
           q.data.couriers.map((c) => (
             <section key={c.courier} className="flex flex-col gap-2" aria-label={providerName(c.courier)}>
-              <h3 className="text-heading-sm">
+              <h3 className="flex flex-wrap items-center gap-x-2 text-heading-sm">
+                <ProviderLogo slug={c.courier} />
                 {providerName(c.courier)}{" · "}
                 <span className="text-body-sm font-normal text-text-2">{t("summary", { shipments: c.shipments, rate: pct(c.deliveredRate), rto: pct(c.rtoRate) })}</span>
               </h3>

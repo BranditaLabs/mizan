@@ -19,6 +19,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { Link } from "@/i18n/navigation";
 import { latin } from "@/lib/rich";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 type Settings = Schemas["ConfirmationSettings"];
 type Script = NonNullable<Settings["script"]>;
@@ -84,7 +85,7 @@ export function ConfirmationSettingsScreen() {
       <Card title={t("channels.title")}>
         <ul className="flex flex-wrap gap-2" data-testid="confirmation-channels">
           {(["whatsapp", "call_auto"] as const).map((c) => (
-            <li key={c}><Badge tone={channels[c] ? "success" : "neutral"}>{t(`channel.${c}`)}{" · "}{t(channels[c] ? "channels.connected" : "channels.notConnected")}</Badge></li>
+            <li key={c} className="flex items-center gap-1.5">{c === "whatsapp" ? <ProviderLogo slug="whatsapp" /> : null}<Badge tone={channels[c] ? "success" : "neutral"}>{t(`channel.${c}`)}{" · "}{t(channels[c] ? "channels.connected" : "channels.notConnected")}</Badge></li>
           ))}
           <li><Badge tone="success">{t("channel.call_team")}{" · "}{t("channels.always")}</Badge></li>
         </ul>
@@ -176,7 +177,7 @@ function WhatsAppConnect({ templates, choice, onChoice }: { templates: Template[
   return (
     <Card title={t("title")} actions={wa ? <Badge tone={tone}>{t(`status.${wa.status}`)}</Badge> : null}>
       <div className="flex flex-col gap-3" data-testid="whatsapp-connect">
-        <p className="text-body-sm text-text-2">{t("body")}</p>
+        <p className="flex items-start gap-3 text-body-sm text-text-2"><ProviderLogo slug="whatsapp" size={32} /><span>{t("body")}</span></p>
         {list.isError && !list.data ? (
           <ErrorState compact error={list.error} onRetry={() => void list.refetch()} retrying={list.isRefetching} />
         ) : null}

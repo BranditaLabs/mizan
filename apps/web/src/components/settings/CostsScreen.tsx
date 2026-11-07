@@ -15,6 +15,7 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
+import { ProviderLogo } from "@/components/ui/PartnerLogo";
 
 type Rule = Schemas["CostRule"];
 type NewRule = Schemas["CreateCostRule"];
@@ -91,6 +92,7 @@ export function CostsScreen() {
           <RuleList rules={all("courier_rate")} canEdit={canEdit} empty={t("courier.empty")}
             describe={(r) => (
               <>
+                <ProviderLogo slug={r.scope.courier} className="me-2" />
                 <span className="font-medium">{t(`courier.names.${(COURIERS as readonly string[]).includes(r.scope.courier ?? "") ? r.scope.courier as "bosta" : "other"}`)}</span>
                 {r.scope.zone ? <span className="text-text-2">{" · "}{r.scope.zone}</span> : <span className="text-text-2">{" · "}{t("courier.allZones")}</span>}
                 <span className="block text-caption text-text-2">

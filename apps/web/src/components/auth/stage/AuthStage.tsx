@@ -5,7 +5,7 @@ import { onReducedMotionChange, pauseWhenHidden, prefersReducedMotion } from "@m
 import { Icon } from "@mizan/design-system/icons/react";
 import { RED_PRIORITY } from "@mizan/design-system/motion";
 import { FluidMark, useRed, useStageHidden } from "@mizan/design-system/react/motion";
-import { planPartnerLogo } from "@mizan/design-system/partners";
+import { PARTNER_ASSET_BASE, planPartnerLogo } from "@mizan/design-system/partners";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname } from "@/i18n/navigation";
@@ -156,7 +156,8 @@ const PARTNER: Record<Exclude<NodeId, "cod">, string> = { shopify: "shopify", wo
 
 /**
  * A node's mark inside a circle of diameter `d`: the partner's own one-colour file for dark
- * grounds where DS-3's gate allows it (guide read, permission, size), else its manifest monogram;
+ * grounds where DS-3's gate allows it (guide read, permission, size), the owner's bitmap on a paper
+ * tile where DS-3b supplied one, else its manifest monogram;
  * cash on delivery draws the `cod` icon. Never recoloured.
  */
 function NodeMark({ id, d, locale }: { id: NodeId; d: number; locale: "ar" | "en" }) {
@@ -166,6 +167,18 @@ function NodeMark({ id, d, locale }: { id: NodeId; d: number; locale: "ar" | "en
     return <Icon name="cod" size={s} x={c - s / 2} y={c - s / 2} className="st-icon" />;
   }
   const plan = planPartnerLogo(PARTNER[id], Math.round(d), "mono", locale);
+  if (plan.kind === "raster") {
+    // The owner's bitmap (DS-3b) on the paper tile; SVG <image> has no srcset, so the densest file keeps it sharp.
+    const { image } = plan.dark;
+    const w = plan.imgW;
+    const h = plan.imgH;
+    return (
+      <>
+        <circle className="st-tile" cx={c} cy={c} r={c} />
+        <image href={`${PARTNER_ASSET_BASE}/${image.file}@${image.widths.length}x.png`} x={c - w / 2} y={c - h / 2} width={w} height={h} preserveAspectRatio="xMidYMid meet" aria-hidden="true" />
+      </>
+    );
+  }
   if (plan.kind !== "mark") {
     const text = plan.kind === "monogram" ? plan.text : plan.name.charAt(0);
     return <text className="mono" x={c} y={c + 4.5} textAnchor="middle" style={text.length > 1 ? { fontSize: 11 } : undefined}>{text}</text>;
