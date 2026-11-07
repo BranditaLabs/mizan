@@ -14,7 +14,9 @@ import { Field, SearchInput, Select, TextArea } from "@/components/ui/Field";
 import { MenuButton } from "@/components/ui/Menu";
 import { StatCard } from "@/components/ui/StatCard";
 import { Avatar, Card, EmptyState, KeyValue, Progress, SkeletonRows, Timeline } from "@/components/ui/Surface";
+import { PartnerLogo } from "@/components/ui/PartnerLogo";
 import { Tabs } from "@/components/ui/Tabs";
+import { PARTNERS, partnerMarkMinSize } from "@mizan/design-system/partners";
 import { useToast } from "@/components/ui/Toast";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { DateText, MoneyText, PhoneText } from "@/components/ui/Values";
@@ -242,6 +244,8 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
         </div>
       </Section>
 
+      <PartnerLogos />
+
       <Section id="auth" title={t("auth.title")} body={t("auth.description")}>
         <AuthGallery />
       </Section>
@@ -254,6 +258,41 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
         {panel ? <OrderDetails order={panel} now={now} /> : null}
       </Drawer>
     </div>
+  );
+}
+
+/**
+ * Every partner in the manifest, by kind: colour at 96px, or at the smallest size its guide allows
+ * the mark (partnerMarkMinSize), then one colour (colour on hover and focus) and small, which may be monograms.
+ */
+function PartnerLogos() {
+  const t = useTranslations("partnerLogos");
+  const locale = useLocale() as "ar" | "en";
+  const kinds = [...new Set(PARTNERS.map((p) => p.kind))];
+  return (
+    <Section id="partners" title={t("title")} body={t("body")}>
+      <div className="flex flex-col gap-6" data-testid="gallery-partners">
+        {kinds.map((kind) => (
+          <div key={kind} className="flex flex-col gap-3">
+            <h3 className="text-label text-text-2">{t(`kinds.${kind}`)}</h3>
+            <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,12.5rem),1fr))] gap-3">
+              {PARTNERS.filter((p) => p.kind === kind).map((p) => (
+                <li key={p.slug} className="flex flex-col items-start gap-2 rounded-md border border-line bg-surface p-3">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <span title={t("color")}><PartnerLogo slug={p.slug} size={Math.max(96, partnerMarkMinSize(p.slug) ?? 0)} decorative /></span>
+                    <div className="flex flex-col items-start gap-2">
+                      <span title={t("mono")}><PartnerLogo slug={p.slug} size={32} variant="mono" decorative /></span>
+                      <span title={t("small")}><PartnerLogo slug={p.slug} size={20} variant="mono" decorative /></span>
+                    </div>
+                  </div>
+                  <span className="text-body-sm">{locale === "ar" ? p.nameAr : p.nameEn}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </Section>
   );
 }
 

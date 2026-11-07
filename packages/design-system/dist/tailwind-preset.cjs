@@ -6,6 +6,15 @@ module.exports = {
     "[data-theme=\"dark\"]"
   ],
   "theme": {
+    "screens": {
+      "sm": "640px",
+      "md": "768px",
+      "nav": "768px",
+      "lg": "1024px",
+      "xl": "1280px",
+      "nav-full": "1280px",
+      "2xl": "1536px"
+    },
     "extend": {
       "colors": {
         "bg": "rgb(var(--mz-bg-rgb) / <alpha-value>)",
@@ -49,6 +58,9 @@ module.exports = {
         "rail-line": "rgb(var(--mz-rail-line-rgb) / <alpha-value>)",
         "rail-active": "rgb(var(--mz-rail-active-rgb) / <alpha-value>)",
         "scrim": "var(--mz-scrim)",
+        "island-edge": "var(--mz-island-edge)",
+        "island-glow": "var(--mz-island-glow)",
+        "partner-tile": "rgb(var(--mz-partner-tile-rgb) / <alpha-value>)",
         "viz-1": "var(--mz-viz-1)",
         "viz-2": "var(--mz-viz-2)",
         "viz-3": "var(--mz-viz-3)",
@@ -187,6 +199,30 @@ module.exports = {
             "letterSpacing": "0em",
             "fontWeight": "500"
           }
+        ],
+        "display-hero": [
+          "96px",
+          {
+            "lineHeight": "92px",
+            "letterSpacing": "-0.045em",
+            "fontWeight": "800"
+          }
+        ],
+        "kicker": [
+          "11px",
+          {
+            "lineHeight": "16px",
+            "letterSpacing": "0.16em",
+            "fontWeight": "700"
+          }
+        ],
+        "nav-link": [
+          "13.5px",
+          {
+            "lineHeight": "20px",
+            "letterSpacing": "0em",
+            "fontWeight": "600"
+          }
         ]
       },
       "borderRadius": {
@@ -196,41 +232,49 @@ module.exports = {
         "md": "8px",
         "lg": "12px",
         "xl": "16px",
-        "full": "9999px"
+        "full": "9999px",
+        "pill": "9999px",
+        "island": "20px",
+        "island-lg": "28px"
       },
       "boxShadow": {
         "overlay": "var(--mz-shadow-overlay)",
+        "island": "var(--mz-shadow-island)",
         "none": "none"
       },
       "transitionTimingFunction": {
         "enter": "cubic-bezier(0.23, 1, 0.32, 1)",
         "expand": "cubic-bezier(0.32, 0.72, 0, 1)",
         "exit": "cubic-bezier(0.4, 0, 1, 1)",
-        "standard": "cubic-bezier(0.2, 0, 0, 1)"
+        "standard": "cubic-bezier(0.2, 0, 0, 1)",
+        "spring": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "spring-soft": "cubic-bezier(0.34, 1.7, 0.64, 1)",
+        "pour": "cubic-bezier(0.22, 1, 0.36, 1)"
       },
       "transitionDuration": {
-        "instant": "80ms",
-        "fast": "150ms",
-        "base": "200ms",
-        "slow": "300ms"
-      },
-      "screens": {
-        "sm": "640px",
-        "md": "768px",
-        "lg": "1024px",
-        "xl": "1280px",
-        "2xl": "1536px"
+        "instant": "var(--mz-duration-instant)",
+        "fast": "var(--mz-duration-fast)",
+        "base": "var(--mz-duration-base)",
+        "slow": "var(--mz-duration-slow)",
+        "moderate": "var(--mz-duration-moderate)",
+        "glide": "var(--mz-duration-glide)",
+        "reveal": "var(--mz-duration-reveal)",
+        "drift": "var(--mz-duration-drift)"
       },
       "zIndex": {
         "base": "0",
         "sticky": "10",
         "rail": "20",
+        "subnav": "29",
         "header": "30",
+        "dock": "35",
         "dropdown": "40",
         "drawer": "50",
+        "sheet": "50",
         "dialog": "60",
         "toast": "70",
-        "tooltip": "80"
+        "tooltip": "80",
+        "cursor": "90"
       }
     }
   }

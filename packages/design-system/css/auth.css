@@ -7,26 +7,26 @@
    inside Mizan Glass (`.mzg`, which bridges the core tokens through glass) and on the plain kit
    (apps/admin). Logical properties only; anything that slides uses `--mz-dir` (1, or -1 in RTL).
 
-   Motion tokens come from the design system (DS-1: --mz-ease, --mz-dur-*); until they land each
-   one has a local fallback with the same value, so this file works before and after. Only
+   Motion tokens come from the design system (DS-1: --mz-ease-*, --mz-duration-*, which also
+   carry the reduced-motion values); --au-ease-wipe is local, DS-1 has no wipe curve. Only
    `transform` and `opacity` animate, except stroke draws on small SVGs. */
 
-/* ───────────── 1. Root: motion tokens with fallbacks, direction ───────────── */
+/* ───────────── 1. Root: motion tokens, direction ───────────── */
 .mz-auth {
-  --au-instant: var(--mz-dur-instant, var(--mz-duration-instant, 80ms));
-  --au-fast: var(--mz-dur-fast, var(--mz-duration-fast, 150ms));
-  --au-base: var(--mz-dur-base, var(--mz-duration-base, 200ms));
-  --au-slow: var(--mz-dur-slow, var(--mz-duration-slow, 300ms));
-  --au-moderate: var(--mz-dur-moderate, var(--mz-duration-moderate, 450ms));
-  --au-glide: var(--mz-dur-glide, var(--mz-duration-glide, 600ms));
-  --au-reveal: var(--mz-dur-reveal, var(--mz-duration-reveal, 900ms));
-  --au-drift: var(--mz-dur-drift, var(--mz-duration-drift, 24000ms));
-  --au-ease: var(--mz-ease, var(--mz-ease-enter, cubic-bezier(.23, 1, .32, 1)));
-  --au-ease-exit: var(--mz-ease-exit, cubic-bezier(.4, 0, 1, 1));
-  --au-ease-std: var(--mz-ease-standard, cubic-bezier(.2, 0, 0, 1));
-  --au-ease-sheet: var(--mz-ease-sheet, var(--mz-ease-expand, cubic-bezier(.32, .72, 0, 1)));
-  --au-ease-spring: var(--mz-ease-spring, cubic-bezier(.34, 1.56, .64, 1));
-  --au-ease-spring-soft: var(--mz-ease-spring-soft, cubic-bezier(.34, 1.7, .64, 1));
+  --au-instant: var(--mz-duration-instant);
+  --au-fast: var(--mz-duration-fast);
+  --au-base: var(--mz-duration-base);
+  --au-slow: var(--mz-duration-slow);
+  --au-moderate: var(--mz-duration-moderate);
+  --au-glide: var(--mz-duration-glide);
+  --au-reveal: var(--mz-duration-reveal);
+  --au-drift: var(--mz-duration-drift);
+  --au-ease: var(--mz-ease);
+  --au-ease-exit: var(--mz-ease-exit);
+  --au-ease-std: var(--mz-ease-standard);
+  --au-ease-sheet: var(--mz-ease-sheet);
+  --au-ease-spring: var(--mz-ease-spring);
+  --au-ease-spring-soft: var(--mz-ease-spring-soft);
   --au-ease-wipe: var(--mz-ease-wipe, cubic-bezier(.65, 0, .35, 1));
   --au-gutter: clamp(16px, 4vw, 64px);
   --au-ctl: 48px;

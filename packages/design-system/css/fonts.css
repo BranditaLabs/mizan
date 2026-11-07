@@ -3,6 +3,9 @@
 @font-face { font-family: "Geist"; src: url("../fonts/web/Geist-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: "Geist"; src: url("../fonts/web/Geist-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
 @font-face { font-family: "Geist"; src: url("../fonts/web/Geist-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+/* 800 and 900: Brandita's display voice (type.displayHero). From the geist npm package 1.8.1, where the files are named Geist-UltraBlack (OS/2 weight 800, "Geist ExtraBold") and Geist-Black (900). */
+@font-face { font-family: "Geist"; src: url("../fonts/web/Geist-ExtraBold.woff2") format("woff2"); font-weight: 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Geist"; src: url("../fonts/web/Geist-Black.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("../fonts/web/GeistMono-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("../fonts/web/GeistMono-Medium.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
 @font-face { font-family: "Geist Mono"; src: url("../fonts/web/GeistMono-SemiBold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
