@@ -261,4 +261,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String deliverySaved(String number) {
     return 'Delivery for $number saved. It syncs when online.';
   }
+
+  @override
+  String get loading => 'Loading…';
+
+  @override
+  String get syncing => 'Syncing…';
+
+  @override
+  String get packProgress => 'Packing progress';
+
+  @override
+  String get pickListProgress => 'Orders packed';
+
+  @override
+  String lineReceived(int received, int expected) {
+    return '$received of $expected received';
+  }
 }

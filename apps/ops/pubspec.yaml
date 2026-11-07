@@ -21,6 +21,8 @@ dependencies:
     sdk: flutter
   sqlite3: 3.8.0
   mobile_scanner: 7.4.2
+  # Brand 2.0 loaders (pair, transfer, drop) from the pack's Lottie files, minified in assets/lottie.
+  lottie: 3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -32,6 +34,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/lottie/
   # The Brandita fonts (packages/design-system/fonts/ttf), copied into assets/fonts.
   fonts:
     - family: Geist

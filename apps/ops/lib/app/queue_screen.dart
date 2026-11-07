@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../l10n/app_localizations.dart';
+import '../motion/event_snack.dart';
+import '../motion/mizan_loader.dart';
 import '../sync/op.dart';
 import '../sync/op_store.dart';
 import '../sync/sync_api.dart';
@@ -57,26 +59,26 @@ class _QueueScreenState extends State<QueueScreen> {
     _code.clear();
     _qty.clear();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context).saved)));
+    // A count saved on the phone: the stock-adjusted motion (it settles; Mizan says later if it matched).
+    showEventSnack(context, 'stock.adjusted', AppLocalizations.of(context).saved);
     await _reload();
     if (widget.engine != null) await _sync();
   }
 
   Future<void> _sync() async {
     final t = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _syncing = true);
     final report = await widget.engine!.run();
     if (!mounted) return;
     setState(() => _syncing = false);
     await _reload();
     final f = report.failure;
-    if (f != null) {
-      messenger.showSnackBar(SnackBar(content: Text(switch (f.kind) {
+    if (f != null && mounted) {
+      showEventSnack(context, 'ops.sync_failed', switch (f.kind) {
         SyncFailureKind.offline => t.syncFailedOffline,
         SyncFailureKind.signedOut || SyncFailureKind.forbidden => t.signInToSync,
         _ => t.syncFailedServer,
-      })));
+      });
     }
   }
 
@@ -122,11 +124,18 @@ class _QueueScreenState extends State<QueueScreen> {
           ),
           if (widget.engine != null) ...[
             const SizedBox(height: MizanSpace.s3),
-            OutlinedButton(onPressed: _syncing ? null : _sync, child: Text(t.syncNow)),
+            // Syncing is two systems reconciling: the transfer loader, with its words.
+            OutlinedButton(
+              key: const Key('sync-now'),
+              onPressed: _syncing ? null : _sync,
+              child: _syncing
+                  ? Row(mainAxisSize: MainAxisSize.min, children: [const EventLoader('ops.syncing', height: 16), const SizedBox(width: MizanSpace.s2), Text(t.syncing)])
+                  : Text(t.syncNow),
+            ),
           ],
           const SizedBox(height: MizanSpace.s5),
           if (_recent.isEmpty) Text(t.nothingYet, style: MizanType.body.copyWith(color: scheme.outline)),
-          for (final op in _recent) _OpTile(op: op),
+          for (final op in _recent) _OpTile(op: op, syncing: _syncing),
         ],
       ),
     );
@@ -134,8 +143,11 @@ class _QueueScreenState extends State<QueueScreen> {
 }
 
 class _OpTile extends StatelessWidget {
-  const _OpTile({required this.op});
+  const _OpTile({required this.op, this.syncing = false});
   final Op op;
+
+  /// A pending op shows the transfer loader while the queue is being sent.
+  final bool syncing;
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +165,10 @@ class _OpTile extends StatelessWidget {
       // Codes and numbers read left to right inside Arabic text.
       title: Text(t.opCount('\u2066$code\u2069', op.payload['quantity'] as int? ?? 0)),
       subtitle: op.message == null ? null : Text(op.message!),
-      trailing: Text(status, style: MizanType.label),
+      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (syncing && op.status == OpStatus.pending) ...[const EventLoader('ops.syncing', height: 14), const SizedBox(width: MizanSpace.s2)],
+        Text(status, style: MizanType.label),
+      ]),
     );
   }
 }

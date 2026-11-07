@@ -8,13 +8,44 @@ import 'pick/pack_screen.dart';
 import 'pick/pick_api.dart';
 import 'receive/receive_api.dart';
 import 'l10n/app_localizations.dart';
+import 'motion/mizan_loader.dart';
 import 'sync/op_store.dart';
 import 'sync/sync_engine.dart';
 import 'theme/mizan_tokens.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MizanOpsApp(store: await openOpStore(), scanner: cameraScanner));
+  runApp(OpsBoot(open: openOpStore, scanner: cameraScanner));
+}
+
+/// The first Flutter frame (after the native splash): the pair loader on the theme's paper or ink
+/// until the phone's database opens, then the app.
+class OpsBoot extends StatefulWidget {
+  const OpsBoot({super.key, required this.open, this.scanner});
+
+  final Future<OpStore> Function() open;
+  final ScannerBuilder? scanner;
+
+  @override
+  State<OpsBoot> createState() => _OpsBootState();
+}
+
+class _OpsBootState extends State<OpsBoot> {
+  late final Future<OpStore> _store = widget.open();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<OpStore>(
+        future: _store,
+        builder: (context, snap) => snap.hasData
+            ? MizanOpsApp(store: snap.data!, scanner: widget.scanner)
+            // No words yet (the locale is not resolved): the loader is decorative; the OS reads the app's name.
+            : MaterialApp(
+                theme: mizanLightTheme,
+                darkTheme: mizanDarkTheme,
+                debugShowCheckedModeBanner: false,
+                home: const Scaffold(body: Center(child: EventLoader('ops.booting', height: 72, mono: false))),
+              ),
+      );
 }
 
 /// Mizan's ops app (M4, ADR-0005): Arabic first (right to left), English too; the Brandita theme.

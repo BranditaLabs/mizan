@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { BRAND_COPIES, ICO_SIZES, LAUNCH, PNGS, platformIcons, render, renderLaunch } from "../scripts/build-png.mjs";
+import { ANDROID_SPLASH, BRAND_COPIES, ICO_SIZES, LAUNCH, PNGS, platformIcons, render, renderLaunch } from "../scripts/build-png.mjs";
 import { isSafeSvg } from "../scripts/import-brand-pack.mjs";
 
 const ds = new URL("../", import.meta.url);
@@ -73,6 +73,16 @@ describe("platform icons (opaque, no alpha)", () => {
     const buf = readFileSync(new URL(l.out, repo));
     expect((await sharp(buf).metadata()).hasAlpha).toBe(false);
     const [have, want] = await Promise.all([pixels(buf), pixels(await renderLaunch(l))]);
+    expect(meanDiff(have, want)).toBeLessThan(2);
+  });
+});
+
+describe("Android splash marks (transparent, laid on paper or ink)", () => {
+  it.each(ANDROID_SPLASH.map((a) => [a.out, a]))("%s", async (_out, a) => {
+    const buf = readFileSync(new URL(a.out, repo));
+    const meta = await sharp(buf).metadata();
+    expect([meta.width, meta.height]).toEqual([a.size, a.size]);
+    const [have, want] = await Promise.all([pixels(buf), pixels(await render(a))]);
     expect(meanDiff(have, want)).toBeLessThan(2);
   });
 });

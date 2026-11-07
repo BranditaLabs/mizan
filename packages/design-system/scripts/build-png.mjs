@@ -9,6 +9,7 @@
 //   apps/web/src/app/apple-icon.png     180 px, opaque
 //   apps/{web,admin}/public/brand/*     the SVGs the apps serve (BRAND_COPIES) and the PWA icons
 //   apps/ops (Android mipmaps, iOS AppIcon set, LaunchImage)   opaque, no alpha
+//   apps/ops Android splash_mark (drawable-*dpi, drawable-night-*dpi)   transparent
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,6 +79,15 @@ export function platformIcons() {
 /** The ops splash (D3): the mark centred on paper, 1x/2x/3x of a 200 pt square. */
 export const LAUNCH = [1, 2, 3].map((k) => ({ svg: "mizan-mark.svg", out: `${IOS}/LaunchImage.imageset/LaunchImage${k > 1 ? `@${k}x` : ""}.png`, size: 200 * k, mark: 120 * k, flatten: PAPER }));
 
+/**
+ * The Android splash (D3): the mark as a transparent 120 dp bitmap laid on the window colour
+ * (launch_background.xml): paper by day with mizan-mark, ink at night with mizan-mark-on-ink.
+ */
+export const ANDROID_SPLASH = [["m", 1], ["h", 1.5], ["xh", 2], ["xxh", 3], ["xxxh", 4]].flatMap(([d, k]) => [
+  { svg: "mizan-mark.svg", out: `${ANDROID}/drawable-${d}dpi/splash_mark.png`, size: 120 * k },
+  { svg: "mizan-mark-on-ink.svg", out: `${ANDROID}/drawable-night-${d}dpi/splash_mark.png`, size: 120 * k },
+]);
+
 const svgPath = (f) => join(ds, "logo/svg", f);
 
 /** One square PNG rendered from its SVG at its size (density scales the vector, never the bitmap). */
@@ -121,6 +131,7 @@ if (process.argv[1]?.endsWith("build-png.mjs")) {
   write("packages/design-system/logo/favicon.ico", ico(ICO_SIZES.map((size) => ({ size, data: readFileSync(join(ds, `logo/png/mizan-favicon-${size}.png`)) }))));
   for (const i of platformIcons()) write(i.out, await render(i));
   for (const l of LAUNCH) write(l.out, await renderLaunch(l));
+  for (const a of ANDROID_SPLASH) write(a.out, await render(a));
   // public/brand holds exactly the served set: old 1.0 names are removed, never kept as copies.
   const keep = new Set(BRAND_COPIES.map((c) => c.to));
   for (const app of ["web", "admin"]) {

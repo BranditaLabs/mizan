@@ -8,6 +8,8 @@ import {
 import * as catalogue from "../src/motion/index.js";
 // @ts-expect-error -- a plain .mjs script without types
 import { DART_PATH, renderDart } from "../scripts/gen-dart-motion.mjs";
+// @ts-expect-error -- a plain .mjs script without types
+import { DOCS_PATH, renderMotionTable, withTable } from "../scripts/gen-motion-docs.mjs";
 
 const repo = new URL("../../../", import.meta.url);
 const read = (rel: string) => readFileSync(new URL(rel, repo), "utf8");
@@ -223,6 +225,20 @@ describe("copy (apps/web and apps/admin messages)", () => {
   it("Arabic copy is Arabic, not a copy of the English", () => {
     const en = messages("web", "en"), ar = messages("web", "ar");
     for (const rule of Object.values(EVENT_MOTION)) if (rule.copy) expect(at(ar, rule.copy), rule.copy).not.toBe(at(en, rule.copy));
+  });
+});
+
+describe("docs/13: the motion column", () => {
+  const doc = () => readFileSync(DOCS_PATH, "utf8").replace(/\r\n/g, "\n");
+
+  it("the Motion per event table is current (node packages/shared/scripts/gen-motion-docs.mjs)", () => {
+    expect(doc()).toBe(withTable(doc(), renderMotionTable(catalogue)));
+  });
+
+  it("lists every domain event once, including the registry-only ones", () => {
+    const rows = doc().split("\n").filter((l) => l.startsWith("| `")).map((l) => l.slice(3, l.indexOf("`", 3)));
+    expect(rows.filter((r) => r in EVENT_MOTION).sort()).toEqual([...DOMAIN_EVENT_TYPES].sort());
+    for (const type of ["settlement.matched", "settlement.gap_found"]) expect(rows, type).toContain(type);
   });
 });
 

@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../l10n/app_localizations.dart';
+import '../motion/event_glyph.dart';
+import '../motion/event_snack.dart';
+import '../motion/fill_bar.dart';
+import '../motion/motion.dart';
 import '../sync/op_store.dart';
 import '../sync/sync_engine.dart';
 import '../theme/mizan_tokens.dart';
@@ -37,6 +41,7 @@ class _PackScreenState extends State<PackScreen> {
   _Feedback _feedback = _Feedback.none;
   String _title = '';
   String _last = '';
+  int _scans = 0;
   DateTime _lastAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
@@ -55,6 +60,7 @@ class _PackScreenState extends State<PackScreen> {
     final r = _session.scan(code, manual: manual);
     if (r == ScanResult.wrongItem || r == ScanResult.tooMany) HapticFeedback.heavyImpact();
     setState(() {
+      _scans++;
       _title = line?.title ?? code;
       _feedback = switch (r) {
         ScanResult.counted => _Feedback.counted,
@@ -66,10 +72,10 @@ class _PackScreenState extends State<PackScreen> {
 
   Future<void> _finish() async {
     final t = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     await widget.store.enqueue(_session.toOp(opId: const Uuid().v4(), at: widget.now()));
-    messenger.showSnackBar(SnackBar(content: Text(t.packSaved('\u2066${widget.order.number}\u2069'))));
+    // The box is in: order.packed plays done, with a light tap.
+    if (mounted) showEventSnack(context, 'order.packed', t.packSaved('\u2066${widget.order.number}\u2069'));
     navigator.pop(true);
     if (widget.engine != null) await widget.engine!.run();
   }
@@ -91,32 +97,77 @@ class _PackScreenState extends State<PackScreen> {
         padding: const EdgeInsets.all(MizanSpace.s4),
         children: [
           if (widget.scanner != null)
-            ClipRRect(borderRadius: BorderRadius.circular(MizanRadius.md), child: SizedBox(height: 220, child: widget.scanner!(context, _scan))),
-          const SizedBox(height: MizanSpace.s3),
-          Text(message, key: const Key('feedback'), style: MizanType.headingSm.copyWith(color: color)),
-          const SizedBox(height: MizanSpace.s3),
-          Row(children: [
-            Expanded(
-              child: TextField(
-                key: const Key('typed-code'), controller: _code, textDirection: TextDirection.ltr,
-                decoration: InputDecoration(labelText: t.typeCode),
-                onSubmitted: (v) { _scan(v, manual: true); _code.clear(); },
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(MizanRadius.md),
+              child: SizedBox(height: 220, child: widget.scanner!(context, _scan)),
             ),
-            const SizedBox(width: MizanSpace.s2),
-            OutlinedButton(key: const Key('add-code'), onPressed: () { _scan(_code.text, manual: true); _code.clear(); }, child: Text(t.add)),
-          ]),
+          const SizedBox(height: MizanSpace.s3),
+          Row(
+            children: [
+              // Each scan plays its outcome once: counted settles, a blocked one tips and holds.
+              if (_feedback != _Feedback.none)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: MizanSpace.s3),
+                  child: EventGlyph(motionOf(_feedback == _Feedback.counted ? 'ops.scan_counted' : 'ops.scan_blocked').outcome, key: ValueKey('scan-$_scans'), size: 24),
+                ),
+              Expanded(
+                child: Text(
+                  message,
+                  key: const Key('feedback'),
+                  style: MizanType.headingSm.copyWith(color: color),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: MizanSpace.s3),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  key: const Key('typed-code'),
+                  controller: _code,
+                  textDirection: TextDirection.ltr,
+                  decoration: InputDecoration(labelText: t.typeCode),
+                  onSubmitted: (v) {
+                    _scan(v, manual: true);
+                    _code.clear();
+                  },
+                ),
+              ),
+              const SizedBox(width: MizanSpace.s2),
+              OutlinedButton(
+                key: const Key('add-code'),
+                onPressed: () {
+                  _scan(_code.text, manual: true);
+                  _code.clear();
+                },
+                child: Text(t.add),
+              ),
+            ],
+          ),
           const SizedBox(height: MizanSpace.s4),
-          Text(t.progress(_session.totalScanned, _session.totalWanted), key: const Key('progress'), style: MizanType.label),
+          // Known progress (order.packed is pending as fill): scanned of wanted. The box's one red.
+          Row(
+            children: [
+              Text(t.progress(_session.totalScanned, _session.totalWanted), key: const Key('progress'), style: MizanType.label),
+              const SizedBox(width: MizanSpace.s3),
+              Expanded(
+                child: FillBar(done: _session.totalScanned, total: _session.totalWanted, label: t.packProgress, height: 10),
+              ),
+            ],
+          ),
           for (final l in _session.lines)
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l.title),
               subtitle: Text('\u2066${l.barcode ?? l.sku ?? ''}\u2069', style: MizanType.mono),
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text('${_session.scanned(l)} / ${_session.wanted(l)}', style: MizanType.label),
-                IconButton(tooltip: t.removeOne, onPressed: _session.scanned(l) == 0 ? null : () => setState(() => _session.undo(l)), icon: const Icon(Icons.remove_circle_outline)),
-              ]),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('${_session.scanned(l)} / ${_session.wanted(l)}', style: MizanType.label),
+                  IconButton(tooltip: t.removeOne, onPressed: _session.scanned(l) == 0 ? null : () => setState(() => _session.undo(l)), icon: const Icon(Icons.remove_circle_outline)),
+                ],
+              ),
             ),
           const SizedBox(height: MizanSpace.s4),
           FilledButton(key: const Key('finish'), onPressed: _session.complete ? _finish : null, child: Text(t.finishPack)),
