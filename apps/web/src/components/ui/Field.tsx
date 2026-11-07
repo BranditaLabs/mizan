@@ -7,7 +7,7 @@ import { cx } from "./logic";
  * and marks the control invalid. `ltr` for phones, emails, codes and amounts (typed and shown left
  * to right in Arabic too, tabular digits).
  */
-type Common = { label: string; hint?: ReactNode; error?: string | null; className?: string };
+type Common = { label: ReactNode; hint?: ReactNode; error?: string | null; className?: string };
 
 function useFieldIds(hint: ReactNode, error: string | null | undefined) {
   const id = useId();

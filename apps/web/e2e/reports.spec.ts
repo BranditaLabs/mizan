@@ -23,10 +23,13 @@ test("owner in Arabic: dashboards from the metric layer, downloaded as Excel and
   const home = page.getByTestId("dashboard-home");
   await expect(home.getByTestId("tiles")).toContainText("2");
   await expect(home.getByTestId("series-orders")).toContainText("الإجمالي 2");
+  // FX-2: nothing delivered and no product costs: the profit tiles say "provisional", never final.
+  await expect(home.getByTestId("reports-provisional")).toContainText("ربح مبدئي");
+  await expect(home.getByTestId("tiles").locator("[data-provisional]").first()).toContainText("مبدئي");
   await page.getByRole("button", { name: "آخر 7 يوم" }).click();
   await expect(home.getByTestId("series-orders").getByRole("table").getByRole("row")).toHaveCount(8);
 
-  const [xlsx] = await Promise.all([page.waitForEvent("download"), home.getByRole("button", { name: "ملف Excel" }).click()]);
+  const [xlsx] = await Promise.all([page.waitForEvent("download"), home.getByRole("button", { name: "ملف إكسل" }).click()]);
   expect(xlsx.suggestedFilename()).toMatch(/^mizan-home-\d{4}-\d{2}-\d{2}-\d{4}-\d{2}-\d{2}\.xlsx$/);
   expect((await readFile((await xlsx.path())!)).subarray(0, 2).toString()).toBe("PK");
   const [csv] = await Promise.all([page.waitForEvent("download"), home.getByRole("button", { name: "ملف CSV" }).click()]);

@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 type Order = Schemas["OrderDetail"];
 const DECIDERS = rolesWith("orders.create");
@@ -54,7 +55,7 @@ export function DuplicateBanner({ order }: { order: Order }) {
         ) : null}
       </Alert>
       <ConfirmDialog open={confirm} onClose={() => setConfirm(false)} onConfirm={() => resolve.mutate("merge")} busy={resolve.isPending && resolve.variables === "merge"}
-        title={t("mergeTitle")} description={t.rich("mergeBody", { order: () => <IdCell>{of.number}</IdCell> })} confirmLabel={t("merge")} />
+        title={t("mergeTitle")} description={t.rich("mergeBody", { ...latin, order: () => <IdCell>{of.number}</IdCell> })} confirmLabel={t("merge")} />
     </div>
   );
 }

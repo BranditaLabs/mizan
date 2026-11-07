@@ -32,7 +32,7 @@ const order = (i: number) => ({ "--i": i }) as CSSProperties;
 
 const LEAK_LINK: Record<Leak["kind"], string> = {
   losing_orders: "/orders", refusals: "/orders", unallocated_ads: "/profit/spend", other_currency: "/settings/costs",
-  cost_missing: "/onboarding", shipping_rate_missing: "/settings/costs", cod_fee_missing: "/settings/costs", agent_cost_missing: "/settings/costs",
+  cost_missing: "/products?view=missing_cost", shipping_rate_missing: "/settings/costs", cod_fee_missing: "/settings/costs", agent_cost_missing: "/settings/costs",
   packaging_cost_missing: "/settings/costs", payment_fee_missing: "/settings/costs", fx_missing: "/settings/costs", ads_fx_missing: "/settings/costs", sync_gap: "/onboarding",
 };
 const LEAK_ICON: Record<Leak["kind"], IconProps["name"]> = {
@@ -102,11 +102,11 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
         </div>
       </Hero>
 
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-3">
         <ProfitChart home={h} />
         <PaymentMix days={days} />
       </div>
-      <div className="grid items-start gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-3">
         <ActivityLog />
         <Leaks leaks={h.leaks} />
       </div>
@@ -139,6 +139,11 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
   const kept = b.kept;
   const loss = negative(kept);
   const bar = useRef<HTMLDivElement>(null);
+  // FX-2 honesty rule (docs/16 §4.1): with a cost missing or nothing delivered the figure is
+  // "Provisional profit" with "~" and a dashed underline, chips say what is missing, and no share
+  // of revenue is shown for what was kept (a store with no costs would read 100%).
+  const q = p.quality;
+  const provisional = q.provisional;
 
   // The parts fill in turn the first time, and again when the period changes.
   useEffect(() => {
@@ -161,7 +166,7 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
         <span className="mz-orb -z-10 size-[420px] -bottom-48 end-[8%]" aria-hidden="true" />
         <span className="mz-orb mz-orb--quiet -z-10 size-[320px] -top-40 start-[18%]" aria-hidden="true" />
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 id="kept-title" className="text-body text-rail-text-2">{t("kept.title", { days: home.days })}</h2>
+          <h2 id="kept-title" className="text-body text-rail-text-2">{provisional ? t("kept.provisionalTitle", { days: home.days }) : t("kept.title", { days: home.days })}</h2>
           <p className="flex items-center gap-2 text-caption text-rail-text-2" aria-live="polite">
             <span className="relative flex size-2" aria-hidden="true">
               <span className={`absolute inline-flex size-full rounded-full bg-brand opacity-60 ${fetching ? "animate-ping" : ""}`} />
@@ -172,8 +177,10 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
         </div>
 
         <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
-          <p className={`font-display text-display-lg leading-none tabular-nums ${loss ? "text-brand" : "text-white"}`}>
-            <MoneyText money={p.kept} roll from="0" />
+          <p className={`font-display text-display-lg leading-none tabular-nums ${loss ? "text-brand" : "text-white"}`} data-testid="kept-figure" data-provisional={provisional ? "" : undefined}>
+            {provisional
+              ? <span className="mz-provisional mz-provisional--lg" title={t("provisional.hint")}><span aria-hidden="true">~</span><MoneyText money={p.kept} roll from="0" /></span>
+              : <MoneyText money={p.kept} roll from="0" />}
           </p>
           {p.change !== null ? (
             <p className="pb-1 text-body-sm text-rail-text-2">
@@ -185,10 +192,29 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
           ) : null}
         </div>
 
+        {provisional ? (
+          <ul className="flex flex-wrap gap-2" data-testid="provisional-chips" aria-label={t("provisional.hint")}>
+            {q.productsMissingCost > 0 ? (
+              <li><Link href="/products?view=missing_cost" className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption font-medium text-rail-text hover:underline pointer-coarse:min-h-11">
+                <Icon name="warning" size={14} className="text-brand" />{t("provisional.products", { count: q.productsMissingCost })}
+              </Link></li>
+            ) : q.ordersMissingCosts > 0 ? (
+              <li><Link href="/settings/costs" className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption font-medium text-rail-text hover:underline pointer-coarse:min-h-11">
+                <Icon name="warning" size={14} className="text-brand" />{t("provisional.orders", { count: q.ordersMissingCosts })}
+              </Link></li>
+            ) : null}
+            {!q.delivered ? (
+              <li className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption text-rail-text-2">
+                <Icon name="info" size={14} />{t("provisional.notDelivered")}
+              </li>
+            ) : null}
+          </ul>
+        ) : null}
+
         <div className="flex flex-col gap-1.5 text-body text-rail-text-2">
-          {p.keptPer100 ? (
+          {p.keptPer100 && q.costsComplete ? (
             <p>{t.rich("kept.per100", { hundred: () => <b className="text-rail-text"><MoneyText money={{ amount: "100.00", currency: home.baseCurrency }} /></b>, kept: () => <b className="text-rail-text"><MoneyText money={p.keptPer100!} /></b> })}</p>
-          ) : <p>{t("kept.noRevenue")}</p>}
+          ) : !p.keptPer100 ? <p>{t("kept.noRevenue")}</p> : null}
           {p.expectedKept.amount !== p.kept.amount ? (
             <p className="text-body-sm" data-testid="expected">{t.rich("kept.expected", { money: () => <b className="text-rail-text"><MoneyText money={p.expectedKept} /></b> })}</p>
           ) : null}
@@ -215,7 +241,7 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
               <span className={`text-body-sm font-medium tabular-nums ${r.k === "kept" && loss ? "text-brand" : "text-rail-text"}`}>
                 <MoneyText money={r.m} />
               </span>
-              {revenue > 0 ? <span className="text-caption text-rail-text-2">{tw("share", { pct: share(r.m).toFixed(1) })}</span> : null}
+              {revenue > 0 && !(r.k === "kept" && provisional) ? <span className="text-caption text-rail-text-2">{tw("share", { pct: share(r.m).toFixed(1) })}</span> : null}
             </li>
           ))}
         </ul>

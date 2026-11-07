@@ -88,7 +88,7 @@ export function TeamScreen() {
           <Segmented label={t("inviteBy")} value={via} options={(["phone", "email"] as const).map((v) => ({ value: v, label: t(`via.${v}`) }))} onChange={(v) => { setVia(v); setContact(""); }} />
         </div>
         <Field className="md:col-span-2" label={t(`via.${via}`)} type={via === "email" ? "email" : "tel"} ltr name="contact" value={contact} onChange={(e) => setContact(e.target.value)}
-          hint={via === "phone" ? t("phoneHint") : undefined} />
+          hint={via === "phone" ? t.rich("phoneHint", { n: (c) => <Bdi code>{c}</Bdi> }) : undefined} />
         <Select label={t("role")} value={inviteRole} onChange={(e) => setInviteRole(e.target.value as MemberRole)}>
           {ROLES.filter((r) => r !== "owner" || role === "owner").map((r) => <option key={r} value={r}>{tr(r)}</option>)}
         </Select>

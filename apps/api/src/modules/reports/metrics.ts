@@ -46,6 +46,35 @@ export interface MetricFacts {
    */
   confirmed: bigint;
   confirmedAuto: bigint;
+  /**
+   * Profit honesty (FX-2): the period's orders (not cancelled, base currency) whose profit misses an
+   * input (a product cost, a courier rate, a fee, an FX rate), and the distinct products in them that
+   * have no cost yet.
+   */
+  ordersMissingCosts: bigint;
+  productsMissingCost: bigint;
+}
+
+/** Order-profit flags that mean an input is missing: one list in @mizan/shared for the API and the screens. */
+export { COST_FLAGS } from "@mizan/shared";
+
+/** How far a profit figure can be trusted (docs/16 §4.1 honesty rule), the same on every screen. */
+export interface ProfitQuality {
+  /** No order of the period misses a cost. */
+  costsComplete: boolean;
+  /** At least one order of the period was delivered (money that is real). */
+  delivered: boolean;
+  /** Costs missing or nothing delivered: the screens say "Provisional profit" and never show a margin. */
+  provisional: boolean;
+  ordersMissingCosts: number;
+  productsMissingCost: number;
+}
+
+export function profitQuality(f: { ordersMissingCosts: bigint | number; productsMissingCost: bigint | number; delivered: bigint | number }): ProfitQuality {
+  const missing = Number(f.ordersMissingCosts);
+  const costsComplete = missing === 0;
+  const delivered = Number(f.delivered) > 0;
+  return { costsComplete, delivered, provisional: !costsComplete || !delivered, ordersMissingCosts: missing, productsMissingCost: Number(f.productsMissingCost) };
 }
 
 export type MetricUnit = "count" | "percent" | "money" | "days" | "multiple";
@@ -59,6 +88,8 @@ export interface MetricDefinition {
   definition: { en: string; ar: string };
   /** Roles that see it; the rest never get it (hidden, not zero). */
   roles: ReadonlySet<string>;
+  /** Built on order profit: provisional while costs are missing or nothing is delivered (FX-2). */
+  profit?: boolean;
   compute(f: MetricFacts): MetricValue;
 }
 
@@ -120,7 +151,7 @@ export const METRICS: readonly MetricDefinition[] = [
     compute: (f) => ratio(f.cod, f.live),
   },
   {
-    key: "net_profit", version: 1, unit: "money", module: "M5", roles: MONEY_READERS,
+    key: "net_profit", version: 1, unit: "money", module: "M5", roles: MONEY_READERS, profit: true,
     name: { en: "Net profit", ar: "صافي الربح" },
     definition: { en: "Sum of the period's orders' net profit (money that is real: COD once delivered).", ar: "مجموع صافي ربح أوردرات الفترة (الفلوس الحقيقية: الكاش بعد التسليم)." },
     compute: (f) => { const m = fromMinor(f.net, f.base); return { value: m.amount, money: m }; },
@@ -158,7 +189,7 @@ export const METRICS: readonly MetricDefinition[] = [
     },
   },
   {
-    key: "profit_per_completed_order", version: 1, unit: "money", module: "M5", roles: MONEY_READERS,
+    key: "profit_per_completed_order", version: 1, unit: "money", module: "M5", roles: MONEY_READERS, profit: true,
     name: { en: "Profit per completed order", ar: "الربح لكل أوردر خلص" },
     definition: {
       en: "Net profit of the period's orders that reached an end (delivered, or refused and returned) ÷ those orders: what each finished order really left, returns' losses included. Orders still moving are left out of both.",

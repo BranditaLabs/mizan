@@ -22,13 +22,13 @@ export function LegalCard() {
           {q.data.status === "draft" ? <p className="text-caption text-text-3">{t("card.draft")}</p> : null}
           <ul className="flex flex-col divide-y divide-line" data-testid="legal-card">
             {q.data.documents.map((d) => {
-              const date = d.acceptedAt ? format.dateTime(new Date(d.acceptedAt), { dateStyle: "medium" }) : "";
+              const date = d.acceptedAt ? format.dateTime(new Date(d.acceptedAt), { dateStyle: "medium", numberingSystem: "latn" }) : "";
               return (
                 <li key={d.document} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2.5">
                   <Link href={legalPath(d.document)} className="text-label underline underline-offset-2">{t(`docs.${d.document}`)}</Link>
                   <span className="text-body-sm text-text-2">
                     {!d.acceptedAt ? t("card.notAccepted")
-                      : d.acceptedBy?.name ? t.rich("card.acceptedBy", { version: d.version, date, name: d.acceptedBy.name, n })
+                      : d.acceptedBy?.name ? t.rich("card.acceptedBy", { version: d.version, date, name: d.acceptedBy.name, n, who: (c) => <bdi dir="auto">{c}</bdi> })
                       : t.rich("card.accepted", { version: d.version, date, n })}
                   </span>
                 </li>

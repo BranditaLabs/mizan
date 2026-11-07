@@ -33,3 +33,15 @@
 
 /* The app shell scrolls the page itself: the light fields stay put behind it instead of stretching with it. */
 .app-shell > .fields { position: fixed; }
+
+/* Sticky table header against the page (PG-6, docs/16 §2.5): `overflow: auto` on the wrap made the
+   header stick inside the wrap only, so it scrolled away with the page. A table that fits its width
+   (DataTable sets data-fits) clips sideways instead of scrolling, and its header sticks under the top
+   bar (12px + 56px + 8px). A wider table keeps scrolling sideways inside the wrap, as before. */
+.mz-table-wrap[data-fits] { overflow-x: clip; overflow-y: visible; }
+.mz-table-wrap[data-fits] .mz-table th { inset-block-start: var(--mz-table-sticky-top, 76px); }
+@media print { .mz-table-wrap[data-fits] .mz-table th { position: static; } }
+
+/* Provisional profit (FX-2, docs/16 §4.1): a dashed underline under a figure whose inputs are not all in. */
+.mz-provisional { text-decoration-line: underline; text-decoration-style: dashed; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.mz-provisional--lg { text-decoration-thickness: 2px; text-underline-offset: 8px; }

@@ -10,6 +10,7 @@ import { Card, EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 import { PlatformName, type SourcePlatform } from "./PlatformName";
 
 type Results = Schemas["CampaignResults"];
@@ -79,7 +80,7 @@ export function CampaignResults({ days }: { days: number }) {
       {r ? (
         <Card title={t(`tableTitle.${level}`)} bodyClassName="p-0">
           <DataTable label={t(`tableTitle.${level}`)} columns={columns} rows={r.rows} rowKey={rowKey} defaultSort={{ id: "spend", dir: "desc" }}
-            empty={<EmptyState icon="profit" title={t("empty.title")} body={t(`empty.${level}`)} />} />
+            empty={<EmptyState icon="profit" title={t("empty.title")} body={t.rich(`empty.${level}`, latin)} />} />
           <dl className="grid gap-x-6 gap-y-1 border-t border-line px-4 py-3 text-body-sm text-text-2 sm:grid-cols-2">
             <div className="flex justify-between gap-3">
               <dt>{t(`untagged.${level}`)}</dt>

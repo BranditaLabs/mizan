@@ -1,6 +1,6 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import type { ReactNode } from "react";
-import { cx, initials } from "./logic";
+import { cx, initials, LINK_TARGETS } from "./logic";
 
 /** Card (`.mz-card`): flat, 1px line, radius 8. Optional head with title and actions. */
 export function Card({ title, actions, children, className, bodyClassName }:
@@ -39,7 +39,7 @@ export function EmptyState({ icon, title, body, action }: { icon: IconProps["nam
       <Icon name={icon} size={24} />
       <h3 className="text-text">{title}</h3>
       <p className="max-w-[48ch] text-body-sm">{body}</p>
-      {action ? <div className="mt-2">{action}</div> : null}
+      {action ? <div className={cx("mt-2", LINK_TARGETS)}>{action}</div> : null}
     </div>
   );
 }

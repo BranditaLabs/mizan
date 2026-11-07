@@ -147,7 +147,7 @@ function DisputeRow({ dispute: d, showOrder = false }: { dispute: Dispute; showO
 
 function RecordDispute({ orderId, held, onClose }: { orderId: string; held: { amount: string; currency: string }; onClose(): void }) {
   const t = useTranslations("disputes");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const refresh = useRefresh();
   const toast = useToast();
@@ -193,7 +193,7 @@ function RecordDispute({ orderId, held, onClose }: { orderId: string; held: { am
 
 function SubmitEvidence({ dispute, onClose }: { dispute: Dispute; onClose(): void }) {
   const t = useTranslations("disputes");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const refresh = useRefresh();
   const toast = useToast();
@@ -220,7 +220,7 @@ function SubmitEvidence({ dispute, onClose }: { dispute: Dispute; onClose(): voi
 
 function CloseDispute({ dispute, onClose }: { dispute: Dispute; onClose(): void }) {
   const t = useTranslations("disputes");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const refresh = useRefresh();
   const toast = useToast();

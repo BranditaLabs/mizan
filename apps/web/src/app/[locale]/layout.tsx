@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { QueryProvider } from "@/lib/api/query";
 import { OutageProvider } from "@/lib/outage";
 import { SessionProvider } from "@/lib/session";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { parseTheme, THEME_COOKIE, themeAttribute } from "@/lib/theme";
 import "../globals.css";
 
@@ -25,13 +26,15 @@ export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
-  const theme = themeAttribute(parseTheme((await cookies()).get(THEME_COOKIE)?.value));
+  const chosen = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const theme = themeAttribute(chosen);
   // The public landing page has its own root layout ((marketing)); its copy stays out of the dashboard.
   const messages = Object.fromEntries(Object.entries(await getMessages()).filter(([ns]) => ns !== "landing"));
   return (
     <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider messages={messages}>
+          <ThemeProvider initial={chosen}>
           <ToastProvider>
             <OutageProvider>
               <QueryProvider>
@@ -39,6 +42,7 @@ export default async function LocaleLayout({ children, params }: Props) {
               </QueryProvider>
             </OutageProvider>
           </ToastProvider>
+          </ThemeProvider>
         </NextIntlClientProvider>
       </body>
     </html>

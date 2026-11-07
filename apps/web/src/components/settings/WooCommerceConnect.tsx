@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 const KEY = /^ck_[A-Za-z0-9_]{8,}$/;
 const SECRET = /^cs_[A-Za-z0-9_]{8,}$/;
@@ -66,12 +67,12 @@ export function WooCommerceConnect({ open, onClose, site = "" }: { open: boolean
         ) : (
           <>
             <ol className="list-decimal ps-5 text-body-sm text-text-2">
-              <li>{t("steps.one")}</li>
-              <li>{t("steps.two")}</li>
+              <li>{t.rich("steps.one", latin)}</li>
+              <li>{t.rich("steps.two", latin)}</li>
               <li>{t("steps.three")}</li>
             </ol>
-            <Field label={t("key")} value={consumerKey} onChange={(e) => setKey(e.target.value)} ltr autoComplete="off" spellCheck={false} error={keyBad ? t("keyInvalid") : null} />
-            <Field label={t("secret")} type="password" value={consumerSecret} onChange={(e) => setSecret(e.target.value)} ltr autoComplete="off" spellCheck={false} error={secretBad ? t("secretInvalid") : null} hint={t("secretHint")} />
+            <Field label={t.rich("key", latin)} value={consumerKey} onChange={(e) => setKey(e.target.value)} ltr autoComplete="off" spellCheck={false} error={keyBad ? t("keyInvalid") : null} />
+            <Field label={t.rich("secret", latin)} type="password" value={consumerSecret} onChange={(e) => setSecret(e.target.value)} ltr autoComplete="off" spellCheck={false} error={secretBad ? t("secretInvalid") : null} hint={t("secretHint")} />
             <Button variant="ghost" size="sm" className="self-start" onClick={() => setMode("approve")}>{t("useApprove")}</Button>
           </>
         )}

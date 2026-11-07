@@ -89,11 +89,11 @@ test("owner in Arabic: connects a WooCommerce store with its keys; it shows as b
   await dialog.getByLabel("عنوان المتجر").fill("shop.example.test");
   await dialog.getByRole("button", { name: "أو حط المفاتيح بإيدك" }).click();
   await expect(dialog).toContainText("Read/Write");
-  await dialog.getByLabel("الـ Consumer key").fill("pk_wrong");
-  await expect(dialog).toContainText("الـ consumer key بيبدأ بـ ck_");
+  await dialog.getByLabel("مفتاح المستهلك").fill("pk_wrong");
+  await expect(dialog).toContainText("مفتاح المستهلك بيبدأ بـ ck_");
   await expect(dialog.getByRole("button", { name: "اربط", exact: true })).toBeDisabled();
-  await dialog.getByLabel("الـ Consumer key").fill("ck_0123456789abcdef");
-  await dialog.getByLabel("الـ Consumer secret").fill("cs_0123456789abcdef");
+  await dialog.getByLabel("مفتاح المستهلك").fill("ck_0123456789abcdef");
+  await dialog.getByLabel("سر المستهلك").fill("cs_0123456789abcdef");
   await dialog.getByRole("button", { name: "اربط", exact: true }).click();
   await expect(page.locator(".mz-toast", { hasText: "ميزان بيتأكد من المفاتيح" })).toBeVisible();
   const list = page.getByTestId("connections");

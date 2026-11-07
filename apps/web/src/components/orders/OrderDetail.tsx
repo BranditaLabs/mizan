@@ -14,6 +14,7 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
+import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { DuplicateBanner } from "./DuplicateBanner";
@@ -47,7 +48,6 @@ const LEDGER_KINDS = new Set(["authorization", "capture", "sale", "cod_collectio
 const LEDGER_METHODS = new Set(["cod", "card", "wallet", "apple_pay", "bnpl", "bank_transfer", "instapay", "fawry_ref", "store_credit", "cash_pos", "marketplace"]);
 const SHIPMENT_STATUSES = new Set(["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"]);
 const ANSWER_CHANNELS = new Set(["link", "whatsapp", "sms", "voice_ivr", "voice_ai", "agent"]);
-const sourceName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const mapsUrl = (l: { lat: number; lng: number }) => `https://www.google.com/maps?q=${l.lat},${l.lng}`;
 const isZero = (m: { amount: string }) => Number(m.amount) === 0;
 
@@ -63,6 +63,9 @@ export function OrderDetail({ id }: { id: string }) {
   const tpr = useTranslations("problems");
   const ts = useTranslations("shipping");
   const locale = useLocale();
+  const providerName = useProviderName();
+  /** Where the order came from: a store's name from the catalogue; "manual" (typed in Mizan) translated. */
+  const sourceName = (s: string) => (!s || s === "manual" ? t("manual") : providerName(s));
   const { api, user, store } = useSession();
   const order = useQuery({
     queryKey: ["order", user?.uid ?? "", store?.tenantId ?? "", id],
@@ -117,8 +120,8 @@ export function OrderDetail({ id }: { id: string }) {
       case "refused": return t("events.refused");
       case "exchange_created": return e.data.into ? t("events.exchanged_into", { number: e.data.into }) : t("events.exchange_of", { number: e.data.of ?? "" });
       case "shipment_status": return t("events.shipment_status", { status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "" });
-      case "tagged": return t("events.tagged", { tags: tagList(e.data.tags) });
-      case "untagged": return t("events.untagged", { tags: tagList(e.data.tags) });
+      case "tagged": return t.rich("events.tagged", { tags: tagList(e.data.tags), b: (c) => <bdi>{c}</bdi> });
+      case "untagged": return t.rich("events.untagged", { tags: tagList(e.data.tags), b: (c) => <bdi>{c}</bdi> });
       case "note_added": return t("events.note_added");
       case "edit_requested": return t("events.edit_requested");
       case "edited": return t("events.edited");
@@ -172,7 +175,7 @@ export function OrderDetail({ id }: { id: string }) {
           {canEditOrder(o, store?.role) ? <EditOrderButton order={o} /> : null}
         </div>
         <p className="w-full text-body-sm text-text-2">
-          {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{o.store.provider ? sourceName(o.store.provider) : t("manual")}
+          {t("detail.placed")}{" "}<DateText value={o.placedAt} />{" · "}{t("detail.store")}{" "}{sourceName(o.store.provider ?? "")}
           {/* Made in Mizan and copied to the store: the same order there, or why not yet. */}
           {o.storeCopy ? <>{" · "}<span className={o.storeCopy.status === "failed" ? "text-danger-text" : undefined} data-testid="store-copy">
             {o.storeCopy.status === "created" ? t.rich("detail.copyCreated", { name: o.storeCopy.name ?? "", b: (c) => <bdi className="mz-id">{c}</bdi> })

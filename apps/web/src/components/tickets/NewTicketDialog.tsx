@@ -23,7 +23,7 @@ type Ticket = Schemas["Ticket"];
  */
 export function NewTicketDialog({ order, onClose, onCreated }: { order?: { id: string; number: string }; onClose(): void; onCreated(t: Ticket): void }) {
   const t = useTranslations("tickets");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

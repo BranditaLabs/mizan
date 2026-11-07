@@ -99,7 +99,7 @@ export function TagsCard({ orderId, tags }: { orderId: string; tags: string[] })
           <ul className="flex flex-wrap gap-1.5">
             {tags.map((g) => (
               <li key={g} className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-sunk py-0.5 ps-2.5 pe-1 text-body-sm">
-                {g}
+                <bdi>{g}</bdi>
                 {canWrite ? <IconButton icon="close" size="sm" label={t("remove", { tag: g })} disabled={change.isPending} onClick={() => change.mutate({ remove: [g] })} /> : null}
               </li>
             ))}

@@ -73,7 +73,7 @@ export function ReturnsCard({ orderId }: { orderId: string }) {
 
 function Inspect({ state, onClose }: { state: State; onClose(): void }) {
   const t = useTranslations("returns");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

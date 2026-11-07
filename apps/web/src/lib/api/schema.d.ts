@@ -4929,6 +4929,17 @@ export interface components {
             /** Format: date */
             to: string;
             currency: string;
+            quality: {
+                /** @description No order of the period misses a cost (product cost, courier rate, fee, FX rate) */
+                costsComplete: boolean;
+                /** @description At least one order of the period was delivered */
+                delivered: boolean;
+                /** @description Costs missing or nothing delivered: show "Provisional profit", never a margin */
+                provisional: boolean;
+                ordersMissingCosts: number;
+                /** @description Distinct products in those orders with no cost yet */
+                productsMissingCost: number;
+            };
             /** @description The dashboard's metrics the caller may see, from the metric layer */
             tiles: {
                 key: string;
@@ -4941,6 +4952,8 @@ export interface components {
                     amount: string;
                     currency: string;
                 } | null;
+                /** @description A profit figure whose inputs are not all there yet: shown as provisional */
+                provisional: boolean;
             }[];
             /** @description Daily values, every day of the period */
             series: {
@@ -5681,6 +5694,17 @@ export interface components {
             to: string;
             /** @description The store's base currency, for money metrics */
             currency: string;
+            quality: {
+                /** @description No order of the period misses a cost (product cost, courier rate, fee, FX rate) */
+                costsComplete: boolean;
+                /** @description At least one order of the period was delivered */
+                delivered: boolean;
+                /** @description Costs missing or nothing delivered: show "Provisional profit", never a margin */
+                provisional: boolean;
+                ordersMissingCosts: number;
+                /** @description Distinct products in those orders with no cost yet */
+                productsMissingCost: number;
+            };
             data: {
                 key: string;
                 version: number;
@@ -5692,6 +5716,8 @@ export interface components {
                     amount: string;
                     currency: string;
                 } | null;
+                /** @description A profit figure whose inputs are not all there yet (quality.provisional): never shown as final */
+                provisional: boolean;
                 numerator?: string;
                 denominator?: string;
             }[];
@@ -8197,8 +8223,10 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
-                /** @description Net ÷ revenue, percent with one decimal */
+                /** @description Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2) */
                 margin: string | null;
+                /** @description Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row "ناقص" */
+                costsMissing: number;
             }[];
             total: {
                 /** @description Day, store connection id, courier connection id, country code, variant id (or title:… for a one-off item), or a special key */
@@ -8251,8 +8279,10 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
-                /** @description Net ÷ revenue, percent with one decimal */
+                /** @description Net ÷ revenue, percent with one decimal; null while a cost is missing in the row (FX-2) */
                 margin: string | null;
+                /** @description Orders in the row whose profit misses an input (a cost, a rate, a fee): the screen marks the row "ناقص" */
+                costsMissing: number;
             };
         };
         ProfitHome: {
@@ -8317,7 +8347,7 @@ export interface components {
                     amount: string;
                     currency: string;
                 };
-                /** @description kept ÷ revenue */
+                /** @description kept ÷ revenue; null while costs are missing (FX-2) */
                 margin: string | null;
                 /** @description Of every 100 of revenue, what was kept */
                 keptPer100: {
@@ -8344,6 +8374,18 @@ export interface components {
                 adSpend: {
                     amount: string;
                     currency: string;
+                };
+                /** @description FX-2: provisional while costs are missing or nothing is delivered; the screens say "Provisional profit" */
+                quality: {
+                    /** @description No order of the period misses a cost (product cost, courier rate, fee, FX rate) */
+                    costsComplete: boolean;
+                    /** @description At least one order of the period was delivered */
+                    delivered: boolean;
+                    /** @description Costs missing or nothing delivered: show "Provisional profit", never a margin */
+                    provisional: boolean;
+                    ordersMissingCosts: number;
+                    /** @description Distinct products in those orders with no cost yet */
+                    productsMissingCost: number;
                 };
                 /** @description Where every pound of revenue went */
                 breakdown: {

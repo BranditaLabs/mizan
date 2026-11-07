@@ -27,7 +27,7 @@ const TONE: Record<string, BadgeTone> = { received: "info", in_progress: "warnin
  */
 export function PrivacyScreen() {
   const t = useTranslations("privacySettings");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const allowed = READERS.has(store?.role ?? "");
   const [now] = useState(() => Date.now());

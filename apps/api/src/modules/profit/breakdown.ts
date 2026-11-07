@@ -18,10 +18,17 @@ export interface OrderFact {
   /** Delivered, or refused / returned after shipping. */
   delivered: boolean;
   returned: boolean;
+  /** FX-2: the order's profit misses an input (a COST_FLAGS flag; never on a cancelled order). */
+  costsMissing?: boolean;
+  /** FX-2: the order is flagged `cost_missing` (a product has no cost): only the lines without one are marked. */
+  productCostMissing?: boolean;
+  /** FX-2: the order misses an input other than a product cost (a rate, a fee): every line is marked. */
+  otherMissing?: boolean;
   comps: Components;
 }
-export interface LineFact { key: string; label: string; valueMinor: bigint; costMinor: bigint }
-export interface Slice { key: string; label: string; orderId: string; delivered: boolean; returned: boolean; comps: Components }
+/** `costMissing`: this product has no cost yet (only that product's rows are marked, by product). */
+export interface LineFact { key: string; label: string; valueMinor: bigint; costMinor: bigint; costMissing?: boolean }
+export interface Slice { key: string; label: string; orderId: string; delivered: boolean; returned: boolean; costsMissing?: boolean; comps: Components }
 
 export interface BreakdownRow {
   key: string;
@@ -38,7 +45,10 @@ export interface BreakdownRow {
   fees: bigint;
   net: bigint;
   expectedNet: bigint;
+  /** Net ÷ revenue; null while a cost is missing in the row (FX-2: never a 100% margin on missing costs). */
   margin: string | null;
+  /** Orders in the row whose profit misses an input. */
+  costsMissing: number;
 }
 
 export const zeroComps = (): Components => Object.fromEntries(COMPONENTS.map((c) => [c, 0n])) as Components;
@@ -67,14 +77,23 @@ export function allocate(total: bigint, weights: readonly bigint[]): bigint[] {
 
 /** One order split over its lines (products); an order without lines stays whole as "no products". */
 export function splitByLines(order: OrderFact, lines: readonly LineFact[], none: { key: string; label: string }): Slice[] {
-  if (lines.length === 0) return [{ ...none, orderId: order.orderId, delivered: order.delivered, returned: order.returned, comps: order.comps }];
+  if (lines.length === 0) return [{ ...none, orderId: order.orderId, delivered: order.delivered, returned: order.returned, costsMissing: order.costsMissing ?? false, comps: order.comps }];
   const byValue = lines.map((l) => l.valueMinor);
   const byCost = lines.map((l) => l.costMinor);
   const parts = lines.map(() => zeroComps());
   for (const c of COMPONENTS) {
     allocate(order.comps[c], c === "cogs" ? byCost : byValue).forEach((v, i) => { parts[i]![c] = v; });
   }
-  return lines.map((l, i) => ({ key: l.key, label: l.label, orderId: order.orderId, delivered: order.delivered, returned: order.returned, comps: parts[i]! }));
+  // Only an order that misses an input marks its lines (a cancelled or fully returned one never does).
+  // A missing product cost marks that product's lines; any other input (a rate, a fee) marks every line.
+  // A product-cost flag with no line lacking a cost (set since) still marks every line: the profit was
+  // worked out without it.
+  const missing = order.costsMissing ?? false;
+  // Without the split (older callers), a missing input is read as a product cost.
+  const split = order.productCostMissing !== undefined || order.otherMissing !== undefined;
+  const productMissing = missing && (split ? Boolean(order.productCostMissing) : true);
+  const other = missing && ((order.otherMissing ?? false) || (productMissing && !lines.some((l) => l.costMissing)));
+  return lines.map((l, i) => ({ key: l.key, label: l.label, orderId: order.orderId, delivered: order.delivered, returned: order.returned, costsMissing: other || (productMissing && Boolean(l.costMissing)), comps: parts[i]! }));
 }
 
 export const netOf = (c: Components): bigint =>
@@ -82,16 +101,17 @@ export const netOf = (c: Components): bigint =>
 
 /** Slices summed per key; biggest profit first (by day: in date order). Orders count once per key. */
 export function aggregate(slices: readonly Slice[], dimension: Dimension): { rows: BreakdownRow[]; total: BreakdownRow } {
-  const groups = new Map<string, { label: string; comps: Components; orders: Set<string>; delivered: Set<string>; returned: Set<string> }>();
-  const all = { label: "", comps: zeroComps(), orders: new Set<string>(), delivered: new Set<string>(), returned: new Set<string>() };
+  const groups = new Map<string, { label: string; comps: Components; orders: Set<string>; delivered: Set<string>; returned: Set<string>; missing: Set<string> }>();
+  const all = { label: "", comps: zeroComps(), orders: new Set<string>(), delivered: new Set<string>(), returned: new Set<string>(), missing: new Set<string>() };
   for (const s of slices) {
     let g = groups.get(s.key);
-    if (!g) groups.set(s.key, (g = { label: s.label, comps: zeroComps(), orders: new Set(), delivered: new Set(), returned: new Set() }));
+    if (!g) groups.set(s.key, (g = { label: s.label, comps: zeroComps(), orders: new Set(), delivered: new Set(), returned: new Set(), missing: new Set() }));
     for (const target of [g, all]) {
       for (const c of COMPONENTS) target.comps[c] += s.comps[c];
       target.orders.add(s.orderId);
       if (s.delivered) target.delivered.add(s.orderId);
       if (s.returned) target.returned.add(s.orderId);
+      if (s.costsMissing) target.missing.add(s.orderId);
     }
   }
   const row = (key: string, g: typeof all): BreakdownRow => {
@@ -101,7 +121,8 @@ export function aggregate(slices: readonly Slice[], dimension: Dimension): { row
     return {
       key, label: g.label, orders: g.orders.size, delivered: g.delivered.size, returned: g.returned.size,
       revenue, productCost: c.cogs, shippingAndCod: c.shipping + c.cod_fee, ads: c.ads, returns: c.rto, team: c.agent,
-      fees: c.payment_fee + c.channel_fee + c.packaging + c.chargeback, net, expectedNet: c.expected_net, margin: percent(net, revenue),
+      fees: c.payment_fee + c.channel_fee + c.packaging + c.chargeback, net, expectedNet: c.expected_net,
+      margin: g.missing.size ? null : percent(net, revenue), costsMissing: g.missing.size,
     };
   };
   const rows = [...groups.entries()].map(([k, g]) => row(k, g));

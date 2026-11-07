@@ -27,7 +27,7 @@ import { GlassRoot } from "./GlassRoot";
 export function Shell({ children, theme }: { children: ReactNode; theme: Theme }) {
   const t = useTranslations("shell");
   return (
-    <GlassRoot theme={theme} className="app-shell min-h-dvh print:min-h-0">
+    <GlassRoot className="app-shell min-h-dvh print:min-h-0">
     {/* The page scrolls, not a panel inside it: links land at the top, the browser keeps each page's
         place on Back, phones can hide their address bar, and there is one scrollbar. */}
     <div className="grid min-h-dvh grid-cols-1 gap-3 lg:grid-cols-[248px_minmax(0,1fr)] lg:items-start lg:p-3 print:block print:min-h-0">

@@ -37,7 +37,7 @@ export function StoreSwitcher({ rail = false }: { rail?: boolean }) {
       {rail ? (
         <div className="flex items-center justify-between gap-2">
           <span className={`text-caption ${muted}`} data-testid="store-role">{tr(store.role)}</span>
-          <Link href="/welcome" className={`inline-flex items-center gap-1 text-caption ${muted} hover:text-text`}>
+          <Link href="/welcome" className={`inline-flex min-h-6 items-center gap-1 text-caption pointer-coarse:min-h-11 ${muted} hover:text-text`}>
             <Icon name="add" size={14} />
             {t("create")}
           </Link>

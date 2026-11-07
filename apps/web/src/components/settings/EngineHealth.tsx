@@ -99,7 +99,7 @@ export function unknownCity(error: string | null): string | null {
  */
 export function ResolveCityDialog({ jobId, text, onClose }: { jobId: string; text: string; onClose(): void }) {
   const t = useTranslations("integrationsSettings.city");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();

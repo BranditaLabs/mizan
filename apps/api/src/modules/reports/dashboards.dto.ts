@@ -1,6 +1,7 @@
 import { MoneySchema } from "@mizan/shared";
 import { z } from "zod";
 import { DASHBOARD_IDS, SERIES } from "./dashboards.js";
+import { ProfitQualitySchema } from "./metrics.dto.js";
 import { isWeekParam } from "./week.js";
 
 export const DashboardListSchema = z.object({ data: z.array(z.object({ id: z.enum(DASHBOARD_IDS), name: z.string() })) });
@@ -28,6 +29,7 @@ export const DashboardSchema = z.object({
   from: z.iso.date(),
   to: z.iso.date(),
   currency: z.string(),
+  quality: ProfitQualitySchema,
   tiles: z.array(z.object({
     key: z.string(),
     name: z.string(),
@@ -35,6 +37,7 @@ export const DashboardSchema = z.object({
     unit: z.enum(["count", "percent", "money", "days", "multiple"]),
     value: z.string().nullable(),
     money: MoneySchema.nullable().optional(),
+    provisional: z.boolean().describe("A profit figure whose inputs are not all there yet: shown as provisional"),
   })).describe("The dashboard's metrics the caller may see, from the metric layer"),
   series: z.array(z.object({
     key: z.enum(SERIES),
