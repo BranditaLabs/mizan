@@ -90,10 +90,13 @@ test("the exit copy of a step never shows the typed password (Forgot password?)"
 test("Email/Phone: an arrow key changes the method and keeps focus on the control", async ({ page }) => {
   await page.goto("/en/sign-in");
   const email = page.getByRole("radio", { name: "Email", exact: true });
-  await email.focus();
-  await page.keyboard.press("ArrowRight");
   const phone = page.getByRole("radio", { name: "Phone", exact: true });
-  await expect(phone).toHaveAttribute("aria-checked", "true");
+  // Before hydration the control has no key handler yet: press until the method changes.
+  await expect(async () => {
+    await email.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(phone).toHaveAttribute("aria-checked", "true", { timeout: 1000 });
+  }).toPass();
   await expect(phone).toBeFocused();
   await expect(page.getByLabel("Mobile number", { exact: true })).toBeVisible();
   await page.keyboard.press("ArrowLeft");
