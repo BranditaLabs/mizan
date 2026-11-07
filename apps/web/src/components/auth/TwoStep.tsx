@@ -4,7 +4,7 @@ import { normalizePhone } from "@mizan/shared";
 import { multiFactor, PhoneAuthProvider, PhoneMultiFactorGenerator, sendEmailVerification } from "firebase/auth";
 import { useLocale, useTranslations } from "next-intl";
 import { AuthProgress } from "@mizan/design-system/auth/react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AuthHeading, CodeField, Step } from "./kit";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
@@ -48,9 +48,12 @@ export function TwoStep() {
   const [error, setError] = useState<AuthErrorKey | "recentLogin" | null>(null);
 
   const enrolled = user ? multiFactor(user).enrolledFactors.length > 0 : false;
+  // Set while this screen enrols: the factor appears before the outcome has shown and signed out,
+  // and leaving here would take the resume path that sign-out must carry back (?next=).
+  const enrolling = useRef(false);
   useEffect(() => {
     // Already enrolled: this session predates it; the gate needs a sign-in with the code.
-    if (enrolled) router.replace(resume.take() ?? "/");
+    if (enrolled && !enrolling.current) router.replace(resume.take() ?? "/");
   }, [enrolled, router]);
 
   if (!user || !auth) return null;
@@ -143,7 +146,13 @@ export function TwoStep() {
     e.preventDefault();
     if (!verificationId) return;
     void run("enable", async () => {
-      await multiFactor(user).enroll(PhoneMultiFactorGenerator.assertion(PhoneAuthProvider.credential(verificationId, code.trim())));
+      enrolling.current = true;
+      try {
+        await multiFactor(user).enroll(PhoneMultiFactorGenerator.assertion(PhoneAuthProvider.credential(verificationId, code.trim())));
+      } catch (err) {
+        enrolling.current = false;
+        throw err;
+      }
       // The outcome first (DoneState: two-step is on), then sign in again with the code.
       setEnabledNow(true);
       await new Promise((r) => window.setTimeout(r, ENABLED_MS));
