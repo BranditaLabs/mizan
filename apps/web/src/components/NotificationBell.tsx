@@ -51,7 +51,7 @@ export function NotificationBell() {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/notifications", { params: { query: { limit: 20 } } })), enabled: Boolean(store), refetchInterval: 60_000 });
   useSurfaceMounted("bell");
   // A row that arrived since the last read plays its catalogue outcome once (fresh); the rest are still.
-  usePollMotion(q.data?.data, (n) => n.id, () => "seen", (from, _to, n) => (from === undefined ? `bell.${bellEvent(n.source, n.text) ?? "other"}` : null));
+  usePollMotion(q.data?.data, (n) => n.id, () => "seen", (from, _to, n) => (from === undefined ? `bell.${bellEvent(n.source, n.text) ?? "other"}` : null), { key: key.join("|") });
   const markAll = useMutation({
     mutationFn: () => ok(api.POST("/v1/notifications/read", { body: { all: true } })),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["notifications"] }),

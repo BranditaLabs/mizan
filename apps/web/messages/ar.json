@@ -5409,7 +5409,7 @@
     "toast": {
       "dismiss": "اقفل"
     },
-    "batched": "{count} تحديث جديد",
+    "batched": "{count, plural, =2 {تحديثين جداد} few {{count} تحديثات جديدة} many {{count} تحديث جديد} other {{count} تحديث جديد}}",
     "event": {
       "tenant": {
         "created": "المتجر اتعمل"
@@ -5434,7 +5434,7 @@
       },
       "connection": {
         "connected": "اتربط",
-        "disconnected": "{byUser, select, byUser {الربط اتفصل} other {الربط وقع}}",
+        "disconnected": "{byUser, select, byUser {إنت فصلت الربط} other {الربط وقع}}",
         "needs_attention": "الربط محتاج مراجعة",
         "sync_completed": "استيراد القديم خلص",
         "sync_failed": "استيراد القديم فشل"

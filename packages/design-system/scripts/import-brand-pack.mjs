@@ -7,7 +7,8 @@
  * and nothing in it is executed. This script:
  *   - copies logo/svg/*.svg to logo/svg/ and animated/svg/*.svg to logo/animated/ (refusing any SVG with
  *     scripts, event handlers, foreignObject or external references)
- *   - minifies the pair, transfer and drop Lottie files into apps/ops/assets/lottie/ (fill is painted natively)
+ *   - minifies the pair, transfer and drop on-paper Lottie files into apps/ops/assets/lottie/ at 1 decimal
+ *     (fill is painted natively; the on-ink files are not committed: the app recolours on ink)
  *   - writes logo/MANIFEST.json: name, bytes and SHA-256 of every pack file, and whether it is committed
  * Then run `npm run build:png` for the raster files.
  */
@@ -51,9 +52,9 @@ if (process.argv[1]?.endsWith("import-brand-pack.mjs")) {
   }
   const out = join(repo, "apps/ops/assets/lottie");
   mkdirSync(out, { recursive: true });
-  for (const kind of LOTTIE) for (const bg of ["paper", "ink"]) {
-    const name = `mizan-${kind}-on-${bg}.json`;
-    writeFileSync(join(out, name), minifyLottie(JSON.parse(readFileSync(join(pack, "animated/lottie", name), "utf8"))));
+  for (const kind of LOTTIE) {
+    const name = `mizan-${kind}-on-paper.json`;
+    writeFileSync(join(out, name), minifyLottie(JSON.parse(readFileSync(join(pack, "animated/lottie", name), "utf8")), 1));
     committed.add(`animated/lottie/${name}`);
   }
   const manifest = {

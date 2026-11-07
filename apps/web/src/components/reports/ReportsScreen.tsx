@@ -225,8 +225,8 @@ function Downloads({ d, days }: { d: Dashboard; days: Period }) {
   });
   return (
     <div className="flex gap-2">
-      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "xlsx"} onClick={() => download.mutate("xlsx")}>{t("excel")}</Button>
-      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "csv"} onClick={() => download.mutate("csv")}>{t("csv")}</Button>
+      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "xlsx"} pending="fill" onClick={() => download.mutate("xlsx")}>{t("excel")}</Button>
+      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "csv"} pending="fill" onClick={() => download.mutate("csv")}>{t("csv")}</Button>
     </div>
   );
 }

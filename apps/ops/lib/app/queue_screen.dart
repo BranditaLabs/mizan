@@ -146,7 +146,8 @@ class _OpTile extends StatelessWidget {
   const _OpTile({required this.op, this.syncing = false});
   final Op op;
 
-  /// A pending op shows the transfer loader while the queue is being sent.
+  /// A pending op shows the transfer loader's still frame while the queue is being sent (the
+  /// animated loader is on the Sync button only: one Lottie per view, none per row).
   final bool syncing;
 
   @override
@@ -166,7 +167,7 @@ class _OpTile extends StatelessWidget {
       title: Text(t.opCount('\u2066$code\u2069', op.payload['quantity'] as int? ?? 0)),
       subtitle: op.message == null ? null : Text(op.message!),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (syncing && op.status == OpStatus.pending) ...[const EventLoader('ops.syncing', height: 14), const SizedBox(width: MizanSpace.s2)],
+        if (syncing && op.status == OpStatus.pending) ...[const EventLoader('ops.syncing', height: 14, still: true), const SizedBox(width: MizanSpace.s2)],
         Text(status, style: MizanType.label),
       ]),
     );

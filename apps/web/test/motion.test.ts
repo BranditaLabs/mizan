@@ -5,7 +5,8 @@ import ar from "../messages/ar.json";
 import en from "../messages/en.json";
 import { successMotion } from "../src/lib/api/query";
 import { createEventMotion } from "../src/lib/motion/engine";
-import { bellEvent, pendingFor, resolveRule, timelineOutcome, toastsOnSuccess } from "../src/lib/motion/resolve";
+import { bellEvent, eventMotion, pendingFor, resolveRule, timelineOutcome, toastsOnSuccess } from "../src/lib/motion/resolve";
+import { diffPoll } from "../src/lib/motion/usePollMotion";
 
 type Tree = { [k: string]: string | Tree };
 const get = (t: Tree, key: string) => key.split(".").reduce<string | Tree | undefined>((n, k) => (n && typeof n === "object" ? n[k] : undefined), t);
@@ -76,6 +77,20 @@ describe("the motion engine", () => {
     m.dispose();
   });
 
+  it("a screen's toast.event goes through the engine: the DROP gap holds and the echo is recorded", () => {
+    const time = fakeTime();
+    const m = createEventMotion({ ...time, isReduced: () => false });
+    const toasts: { outcome?: string }[] = [];
+    m.setToaster((e) => toasts.push(e));
+    m.ownSuccess({ type: "payment.received", entityId: "p1", explicit: true });
+    time.advance(500);
+    m.ownSuccess({ type: "payment.received", entityId: "p2", explicit: true });
+    expect(toasts.map((t) => t.outcome ?? "catalogue")).toEqual(["catalogue", "done"]);
+    time.advance(1000);
+    expect(m.push({ type: "payment.received", entityId: "p2", at: time.now(), source: "poll" })).toBe("echo");
+    m.dispose();
+  });
+
   it("dispatches a poll fact to mounted surfaces only, and drops the echo of the viewer's own action", () => {
     const time = fakeTime();
     const m = createEventMotion({ ...time, isReduced: () => false });
@@ -134,5 +149,49 @@ describe("motion copy in both languages", () => {
       for (const s of SURFACES) expect(typeof get(msgs, `gallery.motion.surface.${s}`)).toBe("string");
       for (const k of ["pair", "transfer", "drop", "fill", "level"]) expect(typeof get(msgs, `gallery.motion.kind.${k}`)).toBe("string");
     }
+  });
+});
+
+describe("usePollMotion's diff", () => {
+  type Row = { id: string; s: string };
+  const ev = (from: string | null | undefined, to: string | null | undefined) => (from === "running" && to === "done" ? "connection.sync_completed" : null);
+  const diff = (before: Map<string, string | null | undefined> | null, rows: Row[], serial: number) => diffPoll(before, rows, (r) => r.id, (r) => r.s, ev, serial, 0);
+
+  it("the first read is history", () => {
+    expect(diff(null, [{ id: "c1", s: "done" }], 1).pushes).toEqual([]);
+  });
+
+  it("the same entity making the same move twice gets two distinct ids, so the scheduler plays both", () => {
+    let snap = diff(null, [{ id: "c1", s: "running" }], 1).now;
+    const a = diff(snap, [{ id: "c1", s: "done" }], 2); snap = a.now;
+    snap = diff(snap, [{ id: "c1", s: "running" }], 3).now;
+    const b = diff(snap, [{ id: "c1", s: "done" }], 4);
+    expect(a.pushes).toHaveLength(1);
+    expect(b.pushes).toHaveLength(1);
+    expect(a.pushes[0].id).not.toBe(b.pushes[0].id);
+    const t = fakeTime();
+    const out: string[] = [];
+    const m = createEventMotion({ now: t.now, setTimer: t.setTimer, clearTimer: t.clearTimer });
+    m.subscribe("sync", (d) => out.push(d.type));
+    m.push({ ...a.pushes[0], at: t.now() }); t.advance(5000);
+    m.push({ ...b.pushes[0], at: t.now() }); t.advance(5000);
+    expect(out).toEqual(["connection.sync_completed", "connection.sync_completed"]);
+  });
+
+  it("an unchanged status pushes nothing; a new row is pushed under its own id", () => {
+    const snap = diff(null, [{ id: "c1", s: "running" }], 1).now;
+    const r = diffPoll(snap, [{ id: "c1", s: "running" }, { id: "c2", s: "x" }], (x) => x.id, (x) => x.s, (from) => (from === undefined ? "bell.other" : null), 2, 0);
+    expect(r.pushes.map((p) => p.id)).toEqual(["c2"]);
+  });
+});
+
+describe("the variants the screens feed", () => {
+  it("a full PO receipt (data.complete, as PurchaseOrderDetail sends it) MERGEs; a partial one is done", () => {
+    expect(eventMotion("po.received", { data: { complete: true } }).outcome).toBe("merge");
+    expect(eventMotion("po.received", { data: { complete: false } }).outcome).toBe("done");
+  });
+  it("a stock count that matched (delta 0 in data.items, as StockScreen sends it) MERGEs", () => {
+    expect(eventMotion("stock.adjusted", { data: { items: { v1: 0 } } }).outcome).toBe("merge");
+    expect(eventMotion("stock.adjusted", { data: { items: { v1: -2 } } }).outcome).toBe("settle");
   });
 });

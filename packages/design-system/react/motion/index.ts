@@ -7,6 +7,6 @@ export { MizanLoader, type MizanLoaderProps } from "./MizanLoader";
 export { Mark, Wordmark, ThemedWordmark, Lockup, Bilingual, type LogoProps, type LogoTone } from "./Mark";
 export { EventGlyph, type EventGlyphProps } from "./EventGlyph";
 export { DoneState, type DoneStateProps } from "./DoneState";
-export { RedBudgetProvider, useRed, useRedBudget } from "./RedBudget";
+export { RedBudgetProvider, RedSwatch, useRed, useRedBudget, useRedTaken } from "./RedBudget";
 export { useReducedMotion } from "./useReducedMotion";
 export { useMotionClock, useSvgId, type PhysicsModule } from "./useMotionClock";

@@ -7,7 +7,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { buttonClass } from "@/components/ui/Button";
 import { SegThumb } from "@/components/ui/Choice";
-import { MizanLoader } from "@mizan/design-system/react/motion";
+import { RedSwatch } from "@mizan/design-system/react/motion";
+import { Waiting } from "@/components/ui/Loader";
 import { PageState } from "@/components/ui/QueryState";
 import { MoneyText } from "@/components/ui/Values";
 import { GlassRoot } from "@/components/GlassRoot";
@@ -19,6 +20,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 type Home = Schemas["ProfitHome"];
 type Money = Home["period"]["net"];
@@ -146,27 +148,24 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
     <GlassRoot ink fields={false} className="g mz-enter overflow-hidden">
     <section className="text-rail-text" aria-labelledby="kept-title" data-testid="kept">
       <div className="relative isolate flex flex-col gap-6 overflow-hidden p-6 lg:p-8">
-        {/* The brand's red point as light, drifting behind the glass tiles. */}
-        <span className="mz-orb -z-10 size-[420px] -bottom-48 end-[8%]" aria-hidden="true" />
-        <span className="mz-orb mz-orb--quiet -z-10 size-[320px] -top-40 start-[18%]" aria-hidden="true" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 id="kept-title" className="text-body text-rail-text-2">{t("kept.title", { days: home.days })}</h2>
           <p className="flex items-center gap-2 text-caption text-rail-text-2" aria-live="polite">
             {/* Live: a 10 px mono transfer while the figures refresh, the pair at rest otherwise (never red). */}
             <span className="inline-flex w-4 justify-center" aria-hidden="true">
-              <MizanLoader kind="transfer" size={16} still={!fetching} decorative />
+              <Waiting meaning="syncing" size={16} still={!fetching} />
             </span>
             {t("live", { time: updated })}
           </p>
         </div>
 
         <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
-          <p className={`font-display text-display-lg leading-none tabular-nums ${loss ? "text-brand" : "text-white"}`}>
-            <MoneyText money={p.kept} roll from="0" />
+          <p className={`font-display text-display-lg leading-none tabular-nums ${loss ? "text-danger-text" : "text-white"}`}>
+            <MotionSurface surface="kpi" inline><MoneyText money={p.kept} roll from="0" /></MotionSurface>
           </p>
           {p.change !== null ? (
             <p className="pb-1 text-body-sm text-rail-text-2">
-              <bdi dir="ltr" className={`me-1.5 rounded-full px-2 py-0.5 font-medium ${p.change.startsWith("-") ? "bg-brand text-on-brand" : "bg-rail-surface text-rail-text"}`}>
+              <bdi dir="ltr" className={`me-1.5 rounded-full px-2 py-0.5 font-medium ${p.change.startsWith("-") ? "bg-danger-soft text-danger-text" : "bg-rail-surface text-rail-text"}`}>
                 {t("kept.change", { pct: `${p.change.startsWith("-") ? "" : "+"}${p.change}` })}
               </bdi>
               {t("kept.vsPrev", { days: home.days })}
@@ -192,16 +191,17 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
         </h3>
         <div key={fillKey} className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-rail-line" aria-hidden="true">
           {rows.map((r, i) => <span key={r.k} className={`mz-grow-x h-full bg-rail-text ${r.shade}`} style={{ inlineSize: `${share(r.m)}%`, animationDelay: `${120 + i * 90}ms` }} />)}
-          {!loss && revenue > 0 ? <span className="mz-grow-x h-full bg-brand" style={{ inlineSize: `${share(kept)}%`, animationDelay: `${120 + rows.length * 90}ms` }} /> : null}
+          {/* What the store kept is the money side: the view's one red when the budget gives it (else ink). */}
+          {!loss && revenue > 0 ? <RedSwatch claim="kept" fallback="var(--mz-rail-text)" className="mz-grow-x h-full" style={{ inlineSize: `${share(kept)}%`, animationDelay: `${120 + rows.length * 90}ms` }} /> : null}
         </div>
         <ul className="mz-stagger grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4" data-testid="breakdown">
           {[...rows, { k: "kept" as const, m: kept, shade: "" }].map((r, i) => (
             <li key={r.k} className="flex min-w-0 flex-col gap-0.5" style={order(i)}>
               <span className="flex items-center gap-2 text-caption text-rail-text-2">
-                <span className={`size-2 shrink-0 rounded-full ${r.k === "kept" ? "bg-brand" : `bg-rail-text ${r.shade}`}`} aria-hidden="true" />
+                {r.k === "kept" ? <RedSwatch claim="kept" fallback="var(--mz-rail-text)" className="size-2 shrink-0 rounded-full" /> : <span className={`size-2 shrink-0 rounded-full bg-rail-text ${r.shade}`} aria-hidden="true" />}
                 <span className="truncate">{tw(r.k)}</span>
               </span>
-              <span className={`text-body-sm font-medium tabular-nums ${r.k === "kept" && loss ? "text-brand" : "text-rail-text"}`}>
+              <span className={`text-body-sm font-medium tabular-nums ${r.k === "kept" && loss ? "text-danger-text" : "text-rail-text"}`}>
                 <MoneyText money={r.m} />
               </span>
               {revenue > 0 ? <span className="text-caption text-rail-text-2">{tw("share", { pct: share(r.m).toFixed(1) })}</span> : null}

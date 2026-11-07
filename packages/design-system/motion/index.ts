@@ -9,7 +9,7 @@ export { getReduced, getServerReduced, subscribeReduced, forceReduced } from "./
 export { M as MOTION, SPRING, GOO, spring, springC, clamp, gooMatrix, type Attrs, type Spring } from "./spring";
 export { RedBudget, RED_PRIORITY, defaultRedBudget } from "./red-budget";
 export { createScheduler, LIMITS, BATCHED_COPY, type MotionDispatch, type MotionInput, type MotionScheduler, type MotionSource, type MergeKey, type PushResult, type ResolvedRule, type SchedulerOptions } from "./scheduler";
-export { formatInt, formatMoney, formatPct, formatDeg, MINUS } from "./format";
+export { formatInt, formatMoney, formatPct, formatDeg, isolate, MINUS } from "./format";
 export * as pair from "./physics/pair";
 export * as level from "./physics/level";
 export * as transfer from "./physics/transfer";

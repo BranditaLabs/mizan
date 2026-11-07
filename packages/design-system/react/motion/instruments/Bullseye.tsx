@@ -1,6 +1,6 @@
 "use client";
 import * as bullseye from "../../../motion/physics/bullseye";
-import { formatPct } from "../../../motion/format";
+import { formatPct, isolate } from "../../../motion/format";
 import { attrProps } from "../useMotionClock";
 import { Frame, GooFilter, useInstrument, Verdict } from "./shared";
 
@@ -38,7 +38,7 @@ export function Bullseye({ x, y, tolerance = bullseye.DEFAULT_TOLERANCE, locale,
   const input = { x, y, tolerance };
   const category = bullseye.verdict(input);
   const tol = formatPct(tolerance, locale, tolerance % 1 ? 1 : 0);
-  const verdict = category === "level" ? copy.level : category === "inside" ? copy.tolerance(tol) : category === "off" ? copy.off : copy.offScale;
+  const verdict = category === "level" ? copy.level : category === "inside" ? copy.tolerance(isolate(tol)) : category === "off" ? copy.off : copy.offScale;
   const { svg, fid, goo, red, rest } = useInstrument(bullseye, input, category === "level");
   const p = (k: string) => attrProps(rest, k);
   const signed = (n: number) => `${n > 0 ? "+" : ""}${formatPct(n, locale, 1)}`;
@@ -66,7 +66,9 @@ export function Bullseye({ x, y, tolerance = bullseye.DEFAULT_TOLERANCE, locale,
         <span className="mz-instrument-label" dir="auto" style={{ position: "absolute", top: "50%", right: 0, transform: "translateY(-50%)", fontSize: 10, opacity: 0.62 }}>{copy.labelX} +</span>
         <span className="mz-instrument-label" dir="auto" style={{ position: "absolute", top: "50%", left: 0, transform: "translateY(-50%)", fontSize: 10, opacity: 0.62 }}>{copy.labelX} −</span>
       </div>
-      <bdi className="mz-figure" style={{ textAlign: "center", fontSize: 15 }}>{`${copy.labelX} ${signed(x)} · ${copy.labelY} ${signed(y)}`}</bdi>
+      <p className="mz-instrument-label" style={{ margin: 0, textAlign: "center", fontSize: 15 }}>
+        {copy.labelX} <bdi className="mz-figure">{signed(x)}</bdi> · {copy.labelY} <bdi className="mz-figure">{signed(y)}</bdi>
+      </p>
       <Verdict category={category} text={verdict} red={red} />
     </Frame>
   );

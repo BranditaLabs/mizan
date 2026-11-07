@@ -5409,7 +5409,7 @@
     "toast": {
       "dismiss": "Dismiss"
     },
-    "batched": "{count} new updates",
+    "batched": "{count, plural, one {# new update} other {# new updates}}",
     "event": {
       "tenant": {
         "created": "Store created"

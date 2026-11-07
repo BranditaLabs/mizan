@@ -58,7 +58,7 @@ export function PicturesCard({ product: p }: { product: Product }) {
       <>
         <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" aria-label={t("choose")} data-testid="picture-input"
           onChange={(e) => { setError(null); const files = [...(e.target.files ?? [])]; if (files.length) upload.mutate(files); }} />
-        <Button size="sm" variant="secondary" icon="upload" busy={upload.isPending} onClick={() => input.current?.click()}>{t("add")}</Button>
+        <Button size="sm" variant="secondary" icon="upload" busy={upload.isPending} pending="fill" onClick={() => input.current?.click()}>{t("add")}</Button>
       </>
     ) : null}>
       <div className="flex flex-col gap-3" data-testid="pictures-card">

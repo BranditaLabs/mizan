@@ -517,3 +517,32 @@
     --mz-angle-tip-hold: 8deg;
   }
 }
+
+/* A forced reduced store (the gallery's toggle, tests): the same tokens on that element and below */
+[data-mz-reduced="true"] {
+  --mz-duration-instant: 0ms;
+  --mz-duration-fast: 0ms;
+  --mz-duration-base: 80ms;
+  --mz-duration-slow: 120ms;
+  --mz-duration-moderate: 120ms;
+  --mz-duration-glide: 120ms;
+  --mz-duration-reveal: 120ms;
+  --mz-duration-drift: 0ms;
+  --mz-duration-tip: 0ms;
+  --mz-duration-merge: 120ms;
+  --mz-duration-settle: 120ms;
+  --mz-duration-fall: 0ms;
+  --mz-duration-ripple: 0ms;
+  --mz-duration-roll: 0ms;
+  --mz-duration-route: 120ms;
+  --mz-duration-exit: 80ms;
+  --mz-distance-rise: 0px;
+  --mz-distance-reveal: 0px;
+  --mz-distance-row: 0px;
+  --mz-distance-lean: 0px;
+  --mz-stagger-list: 0ms;
+  --mz-stagger-grid: 0ms;
+  --mz-ease-settle: linear;
+  --mz-angle-tip: 0deg;
+  --mz-angle-tip-hold: 8deg;
+}

@@ -64,7 +64,7 @@ export function MotionGallery() {
 
   const outcomeName = (o: Outcome) => t(`outcome.${o}`);
   return (
-    <div className="flex flex-col gap-6" data-mz-reduced={reduced === "on" ? "true" : undefined} data-testid="gallery-motion">
+    <div className="flex flex-col gap-6" data-testid="gallery-motion">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-label">{t("reduced")}</span>
         <Segmented label={t("reduced")} value={reduced} onChange={(x) => setReduced(x as typeof reduced)}

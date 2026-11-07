@@ -27,6 +27,14 @@ export function attrProps(attrs: Attrs, key: string): Record<string, string> {
 
 type Writer = (attrs: Attrs) => void;
 
+/** One frame written straight to an SVG (no cache): a reduced-motion aim, outside the clock. */
+export function writeFrame(root: Element, attrs: Attrs) {
+  for (const key in attrs) {
+    const el = root.querySelector(`[data-k="${key}"]`);
+    if (el) for (const name in attrs[key]) el.setAttribute(name, attrs[key][name]);
+  }
+}
+
 /** A frame writer for one SVG: elements looked up once, unchanged values skipped. */
 function writer(root: Element): Writer {
   const els = new Map<string, Element>();
@@ -68,6 +76,7 @@ export function useMotionClock<St, I>(opts: {
   const { svg, physics, input, animate, reduced } = opts;
   const id = useId();
   const [goo, setGoo] = useState(true);
+  const [slot, setSlot] = useState(true);
   const inputRef = useRef(input);
   const ownState = useRef<St | null>(null);
   const stateRef = opts.stateRef ?? ownState;
@@ -95,10 +104,21 @@ export function useMotionClock<St, I>(opts: {
     if (!root || still) return;
     if (!stateRef.current) stateRef.current = physics.init(inputRef.current);
     const write = writer(root);
-    if (wantsGoo && !MotionClock.claimGoo(id)) { setGoo(false); write(physics.rest(inputRef.current)); return; }
-    const off = MotionClock.subscribe((dt) => { if (stateRef.current) write(physics.step(stateRef.current, dt, inputRef.current, false)); }, root);
-    return () => { off(); MotionClock.releaseGoo(id); };
+    let off: (() => void) | null = null;
+    let wait: (() => void) | null = null;
+    const start = () => {
+      setSlot(true);
+      off = MotionClock.subscribe((dt) => { if (stateRef.current) write(physics.step(stateRef.current, dt, inputRef.current, false)); }, root);
+    };
+    if (!wantsGoo || MotionClock.claimGoo(id)) start();
+    else {
+      // Refused a goo slot: the still frame for now, and the loader starts when a slot frees up.
+      setSlot(false);
+      write(physics.rest(inputRef.current));
+      wait = MotionClock.onGooFree(() => { if (MotionClock.claimGoo(id)) { wait?.(); wait = null; start(); } });
+    }
+    return () => { off?.(); wait?.(); MotionClock.releaseGoo(id); };
   }, [svg, physics, still, wantsGoo, id, stateRef]);
 
-  return { goo: goo && wantsGoo };
+  return { goo: goo && slot && wantsGoo };
 }

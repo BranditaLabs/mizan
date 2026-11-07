@@ -22,6 +22,7 @@ import { ProductImage } from "@/components/catalog/ProductImage";
 import { Icon } from "@mizan/design-system/icons/react";
 import { OrderFilters } from "./OrderFilters";
 import { FILTER_KEYS, filterQuery, viewFilters, type ListFilters } from "./order-filters";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 type Order = Schemas["OrderPage"]["data"][number];
 type Status = Order["status"];
@@ -176,8 +177,10 @@ export function OrdersScreen({ initialStatus, initialQuery, initialFilters = {} 
         ) : (
           <div className="flex flex-col gap-3">
             {bulkId ? <BulkProgress id={bulkId} onClose={() => setBulkId(null)} /> : null}
-            <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(o) => o.id} rowLabel={(o) => o.number} empty={empty}
-              selectable={canBulk} bulkActions={(keys, clear) => <BulkBar selected={keys} clear={clear} onStarted={setBulkId} />} />
+            <MotionSurface surface="list">
+              <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(o) => o.id} rowLabel={(o) => o.number} empty={empty}
+                selectable={canBulk} bulkActions={(keys, clear) => <BulkBar selected={keys} clear={clear} onStarted={setBulkId} />} />
+            </MotionSurface>
             {orders.hasNextPage ? (
               <div className="flex justify-center">
                 <Button variant="secondary" busy={orders.isFetchingNextPage} onClick={() => void orders.fetchNextPage()}>{t("more")}</Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { MizanLoader } from "@mizan/design-system/react/motion";
+import { Waiting } from "@/components/ui/Loader";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
@@ -54,10 +54,7 @@ export function ShopifyConnect({ install, error }: { install: string | null; err
           <div><Link href="/onboarding" className={buttonClass("secondary")}>{t("back")}</Link></div>
         </>
       ) : (
-        <p role="status" className="flex items-center gap-2.5 text-body-sm text-text-2">
-          <MizanLoader kind="transfer" size={28} decorative />
-          {t("working")}
-        </p>
+        <Waiting meaning="syncing" live>{t("working")}</Waiting>
       )}
     </div>
   );

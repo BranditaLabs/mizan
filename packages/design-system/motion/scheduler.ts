@@ -9,10 +9,13 @@
  *     `resync` sources, refresh data with no motion.
  *  3. Echo: a local success records type:entity; the same event within 8s plays nothing.
  *  4. Lookup: `resolve(type, data)` gives the outcome, surfaces, copy and merge key.
- *  5. Merge: the same surfaces and merge key within a 600ms trailing window give one dispatch with a count.
+ *  5. Merge: the same surfaces and merge key within a 600ms trailing window give one dispatch with a
+ *     count; a steady stream flushes at least every 1.5s (mergeMaxMs), so it never waits forever.
  *  6. Rate limits: 4 dispatches/s (burst 6); per surface one every 400ms (bell 2s); one DROP per 3s
- *     (later ones settle as "done"). Overflow starts a 5s storm: everything is counted, then one
- *     batched dispatch shows the end frame and an "N new" chip.
+ *     (later ones settle as "done"). A surface still inside its gap keeps its own events and shows
+ *     them as one batched end frame when the gap ends; the others are not affected. Only overflow
+ *     of the global bucket starts a 5s storm: everything is counted, then one batched dispatch shows
+ *     the end frame and an "N new" chip.
  *  7. Hidden tab: nothing plays; on return the bell gets one summary.
  *  8. Reduced motion: dispatches still happen, flagged `reduced`, and surfaces crossfade.
  *  9. Unmounted surfaces are dropped silently.
@@ -42,7 +45,7 @@ export interface MotionDispatch {
   summary?: boolean;
 }
 
-export type PushResult = "dispatched" | "merging" | "duplicate" | "history" | "echo" | "quiet" | "hidden" | "unmounted" | "storm";
+export type PushResult = "dispatched" | "merging" | "duplicate" | "history" | "echo" | "quiet" | "hidden" | "unmounted" | "storm" | "held";
 
 type Timer = ReturnType<typeof setTimeout>;
 
@@ -61,13 +64,13 @@ export interface SchedulerOptions {
 }
 
 export const LIMITS = {
-  seen: 2000, echoMs: 8000, mergeMs: 600, perSecond: 4, burst: 6,
+  seen: 2000, echoMs: 8000, mergeMs: 600, mergeMaxMs: 1500, perSecond: 4, burst: 6,
   surfaceGapMs: 400, bellGapMs: 2000, dropGapMs: 3000, stormMs: 5000, freshMs: 5000,
 } as const;
 
 export const BATCHED_COPY = "motion.batched";
 
-interface Pending { rule: ResolvedRule; type: string; entityId?: string; ids: string[]; count: number; surfaces: string[]; timer: Timer }
+interface Pending { rule: ResolvedRule; type: string; entityId?: string; ids: string[]; count: number; surfaces: string[]; timer: Timer; first: number }
 
 export function createScheduler(o: SchedulerOptions) {
   const now = o.now ?? (() => Date.now());
@@ -82,6 +85,8 @@ export function createScheduler(o: SchedulerOptions) {
   const lastSurface = new Map<string, number>();
   const pending = new Map<string, Pending>();
   const storm = new Map<string, number>();
+  /** Events that reached a surface inside its gap: shown as one batched end frame when it ends. */
+  const gapHeld = new Map<string, { count: number; ids: string[]; timer: Timer }>();
   let readyAt = o.ready === false ? Infinity : now();
   let tokens: number = LIMITS.burst;
   let refilled = now();
@@ -114,17 +119,38 @@ export function createScheduler(o: SchedulerOptions) {
     }, LIMITS.stormMs);
   }
 
+  function holdForGap(surfaces: string[], d: MotionDispatch, t: number) {
+    for (const s of surfaces) {
+      const held = gapHeld.get(s);
+      if (held) { held.count += d.count; held.ids.push(...d.ids); continue; }
+      const wait = Math.max(0, gapFor(s) - (t - (lastSurface.get(s) ?? -Infinity)));
+      const entry = { count: d.count, ids: [...d.ids], timer: setTimer(() => {
+        gapHeld.delete(s);
+        if (!mounted(s)) return;
+        emit({ ids: entry.ids, type: "held", outcome: "settle", surfaces: [s], copy: BATCHED_COPY, count: entry.count, batched: true, reduced: reduced() });
+      }, wait) };
+      gapHeld.set(s, entry);
+    }
+  }
+
+  function markFresh(ids: string[], t: number) {
+    for (const id of ids) { fresh.delete(id); fresh.set(id, t); }
+    // Bounded: ids older than freshMs are of no use to isFresh (a tab left open for days).
+    for (const [k, at] of fresh) { if (t - at < LIMITS.freshMs) break; fresh.delete(k); }
+  }
+
   function emit(d: MotionDispatch) {
     const t = now();
     if (stormTimer) { enterStorm(d.surfaces, d.count); return false; }
     refill(t);
     const open = d.surfaces.filter((s) => t - (lastSurface.get(s) ?? -Infinity) >= gapFor(s));
-    if (tokens < 1 || !open.length) { enterStorm(d.surfaces, d.count); return false; }
+    if (!open.length) { holdForGap(d.surfaces, d, t); return false; }
+    if (tokens < 1) { enterStorm(d.surfaces, d.count); return false; }
     tokens -= 1;
     for (const s of open) lastSurface.set(s, t);
     let outcome = d.outcome;
     if (outcome === "drop") { if (t - lastDrop < LIMITS.dropGapMs) outcome = "done"; else lastDrop = t; }
-    for (const id of d.ids) fresh.set(id, t);
+    markFresh(d.ids, t);
     o.dispatch({ ...d, surfaces: open, outcome });
     return true;
   }
@@ -159,13 +185,14 @@ export function createScheduler(o: SchedulerOptions) {
       if (p) {
         clearTimer(p.timer);
         p.count++; p.ids.push(...ids); p.type = ev.type; p.rule = rule;
-        p.timer = setTimer(() => flush(key), LIMITS.mergeMs);
+        // Trailing window, but never past mergeMaxMs from the first event of the window.
+        p.timer = setTimer(() => flush(key), Math.max(0, Math.min(LIMITS.mergeMs, p.first + LIMITS.mergeMaxMs - t)));
       } else {
-        pending.set(key, { rule, type: ev.type, entityId: ev.entityId, ids, count: 1, surfaces, timer: setTimer(() => flush(key), LIMITS.mergeMs) });
+        pending.set(key, { rule, type: ev.type, entityId: ev.entityId, ids, count: 1, surfaces, first: t, timer: setTimer(() => flush(key), LIMITS.mergeMs) });
       }
       return "merging";
     }
-    return emit({ ids, type: ev.type, outcome: rule.outcome, surfaces, copy: rule.copy, select: rule.select, count: 1, batched: false, reduced: reduced(), entityId: ev.entityId }) ? "dispatched" : "storm";
+    return emit({ ids, type: ev.type, outcome: rule.outcome, surfaces, copy: rule.copy, select: rule.select, count: 1, batched: false, reduced: reduced(), entityId: ev.entityId }) ? "dispatched" : stormTimer ? "storm" : "held";
   }
 
   return {
@@ -175,6 +202,16 @@ export function createScheduler(o: SchedulerOptions) {
       const t = now();
       echoes.set(`${type}:${entityId}`, t);
       for (const [k, at] of echoes) if (t - at > LIMITS.echoMs) echoes.delete(k);
+    },
+    /**
+     * The viewer's own DROP (its toast plays at once, outside the queue): true when the 3 s DROP gap
+     * allows it, and the gap restarts; false: show it as "done".
+     */
+    claimDrop(): boolean {
+      const t = now();
+      if (t - lastDrop < LIMITS.dropGapMs) return false;
+      lastDrop = t;
+      return true;
     },
     /** A live stream's "ready": events dated before it are history. */
     markReady(at = now()) { readyAt = at; },
@@ -193,6 +230,8 @@ export function createScheduler(o: SchedulerOptions) {
     dispose() {
       for (const p of pending.values()) clearTimer(p.timer);
       pending.clear();
+      for (const g of gapHeld.values()) clearTimer(g.timer);
+      gapHeld.clear();
       if (stormTimer) clearTimer(stormTimer);
       stormTimer = null;
     },

@@ -66,11 +66,35 @@ void main() {
   });
 
   group('motion', () {
-    testWidgets('the loader is the pack Lottie, on paper or on ink by the theme', (tester) async {
+    testWidgets('the loader is the pack Lottie on paper; the first frame is the still frame, never blank', (tester) async {
       await tester.pumpWidget(host(const MizanLoader(MotionPending.transfer)));
-      expect(find.byType(Lottie), findsOneWidget);
-      expect(MizanLoader.asset(MotionPending.transfer, dark: false), 'assets/lottie/mizan-transfer-on-paper.json');
-      expect(MizanLoader.asset(MotionPending.transfer, dark: true), 'assets/lottie/mizan-transfer-on-ink.json');
+      expect(find.byType(LottieBuilder), findsOneWidget);
+      // Before the JSON is parsed (the first frame at boot), the builder shows the still frame.
+      expect(find.descendant(of: find.byType(LottieBuilder), matching: find.byWidgetPredicate((w) => w is CustomPaint && w.painter is LoaderStillPainter)), findsOneWidget);
+      expect(MizanLoader.asset(MotionPending.transfer), 'assets/lottie/mizan-transfer-on-paper.json');
+    });
+
+    test('on ink, the colour matrix maps the file\'s ink and red onto the on-ink pair', () {
+      final m = MizanLoader.onInkFilter(MotionColors.onInk).toString();
+      expect(m, contains('matrix'));
+      // Applied by hand: ink (11) → paper (254, 247, 255); red (222) → red on ink (227, 50, 50).
+      List<int> apply(double r) {
+        final to = MotionColors.onInk;
+        final out = <int>[];
+        for (final (tInk, tRed) in [(to.ink.r, to.red.r), (to.ink.g, to.red.g), (to.ink.b, to.red.b)]) {
+          final a = (tRed - tInk) / ((222 - 11) / 255);
+          out.add(((a * r + (tInk - a * 11 / 255)) * 255).round());
+        }
+        return out;
+      }
+      expect(apply(11 / 255), [254, 247, 255]);
+      expect(apply(222 / 255), [227, 50, 50]);
+    });
+
+    testWidgets('a still EventLoader (a queue row) has no Lottie and no layer', (tester) async {
+      await tester.pumpWidget(host(const EventLoader('ops.syncing', still: true)));
+      expect(find.byType(Lottie), findsNothing);
+      expect(find.byType(ColorFiltered), findsNothing);
     });
 
     testWidgets('EventLoader picks the loader from the catalogue, never from the screen', (tester) async {
@@ -134,13 +158,7 @@ void main() {
     test('the loaders\' Lottie files are bundled', () {
       expect(File('pubspec.yaml').readAsStringSync(), contains('- assets/lottie/'));
       for (final kind in [MotionPending.pair, MotionPending.transfer, MotionPending.drop]) {
-        for (final dark in [false, true]) {
-          expect(
-            File(MizanLoader.asset(kind, dark: dark)).existsSync(),
-            isTrue,
-            reason: MizanLoader.asset(kind, dark: dark),
-          );
-        }
+        expect(File(MizanLoader.asset(kind)).existsSync(), isTrue, reason: MizanLoader.asset(kind));
       }
     });
 

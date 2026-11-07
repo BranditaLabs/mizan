@@ -13,13 +13,18 @@ const tester = new RuleTester({ languageOptions: { parserOptions: { ecmaFeatures
 describe("bannedClass / brandRed", () => {
   it.each(["animate-spin", "md:animate-ping", "animate-pulse", "mz-shimmer", "ld-scale", "ld-bars"])("%s is ad-hoc motion", (c) => expect(bannedClass(`flex ${c}`)).toBe(c));
   it.each(["mz-settle-in", "animate-none", "transition-colors", "mz-stagger", "bold-text"])("%s is fine", (c) => expect(bannedClass(c)).toBeNull());
-  it.each(["#DE0000", "#e33232", "var(--mz-red)", "var(--mz-red-ink)", "text-red-600", "hover:bg-red-500", "fill-red"])("%s paints the brand red", (c) => expect(brandRed(c)).not.toBeNull());
-  it.each(["text-danger-text", "bg-danger", "#B00000", "var(--mz-danger)", "text-brand-ink"])("%s is not the budgeted red", (c) => expect(brandRed(c)).toBeNull());
+  it.each(["#DE0000", "#e33232", "var(--mz-red)", "var(--mz-red-ink)", "text-red-600", "hover:bg-red-500", "fill-red",
+    "var(--mz-brand)", "var(--mz-brand-red)", "var(--mz-brand-red-hi)", "rgb(var(--mz-brand-rgb) / .2)", "bg-brand", "text-brand", "hover:bg-brand-hover", "bg-brand/20", "text-brand-text", "mz-orb", "mz-orb--quiet"])("%s paints the brand red", (c) => expect(brandRed(c)).not.toBeNull());
+  it.each(["text-danger-text", "bg-danger", "#B00000", "var(--mz-danger)", "text-brand-ink", "bg-brand-paper", "text-on-brand", "var(--mz-brand-ink)", "border-brand-line"])("%s is not the budgeted red", (c) => expect(brandRed(c)).toBeNull());
 });
 
 tester.run("no-adhoc-motion", motionRule, {
   valid: [
-    `<MizanLoader kind="pair" decorative />`,
+    { code: `<MizanLoader kind="pair" decorative />`, filename: "src/components/ui/Surface.tsx" },
+    `<MizanLoader kind={kind} decorative />`,
+    `<span className="mz-grow-x" style={{ animationDelay: "90ms" }} />`,
+    `<span className="animate-none" />`,
+    `const done = (m) => toast({ message: m }); copy(() => done("copied"));`,
     `useMutation({ onSuccess: () => toast.event({ type: "order.confirmed" }) })`,
     `useMutation({ onError: () => toast({ message: "x" }) })`,
     `copy(() => toast({ message: "copied" }))`,
@@ -34,6 +39,15 @@ tester.run("no-adhoc-motion", motionRule, {
     { code: `<mizan-loader type="pair" />`, errors: [{ messageId: "element" }] },
     { code: `<mz-gauge a="1" />`, errors: [{ messageId: "element" }] },
     { code: `useMutation({ onSuccess: (r) => { toast({ message: t("saved") }); } })`, errors: [{ messageId: "toast" }] },
+    { code: `<span className="animate-bounce" />`, errors: [{ messageId: "cls" }] },
+    { code: `<span className="animate-[spin_1s_linear_infinite]" />`, errors: [{ messageId: "cls" }] },
+    { code: `<span style={{ animation: "spin 1s linear infinite" }} />`, errors: [{ messageId: "style" }] },
+    { code: `<svg><circle><animateTransform attributeName="transform" /></circle></svg>`, errors: [{ messageId: "smil" }] },
+    { code: `<MizanLoader kind="transfer" decorative />`, filename: "src/components/home/ProfitHome.tsx", errors: [{ messageId: "pick" }] },
+    { code: `<MizanLoader tone="brand" decorative />`, filename: "src/components/orders/OrderDetail.tsx", errors: [{ messageId: "pick" }] },
+    { code: `<EventGlyph outcome="drop" />`, filename: "src/components/orders/OrderDetail.tsx", errors: [{ messageId: "pick" }] },
+    { code: `const done = (m) => { toast({ message: m }); }; useMutation({ onSuccess: () => done("saved") });`, errors: [{ messageId: "toast" }] },
+    { code: `async function go() { await save.mutateAsync(); toast({ message: "saved" }); }`, errors: [{ messageId: "toast" }] },
   ],
 });
 

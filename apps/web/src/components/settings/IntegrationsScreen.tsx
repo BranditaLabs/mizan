@@ -40,7 +40,8 @@ export function IntegrationsScreen() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get("woo") !== "returned") return;
-    toast({ message: t(q.get("success") === "1" ? "woo.approved" : "woo.denied") });
+    if (q.get("success") === "1") toast.event({ type: "connection.connected", message: t("woo.approved") });
+    else toast({ message: t("woo.denied") });
     void qc.invalidateQueries({ queryKey: ["connections"] });
     window.history.replaceState(null, "", window.location.pathname);
   }, [toast, t, qc]);

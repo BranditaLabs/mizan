@@ -79,11 +79,13 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
     const w = window.open("", "_blank");
     try {
       const r = await link.mutateAsync();
+      // eslint-disable-next-line mizan/no-adhoc-motion -- no phone to open: a note, not a catalogue event
       if (w && r.whatsappUrl) { w.opener = null; w.location.href = r.whatsappUrl; } else { w?.close(); toast({ message: t("noPhone") }); }
     } catch { w?.close(); }
   };
   const copyLink = async () => {
     const r = await link.mutateAsync();
+    // eslint-disable-next-line mizan/no-adhoc-motion -- copying the link is no catalogue event (the link's own event toasts through the mutation)
     try { await navigator.clipboard.writeText(r.url); toast({ message: t("copied") }); } catch { toast({ message: r.url }); }
   };
 

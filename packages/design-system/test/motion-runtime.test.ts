@@ -121,6 +121,35 @@ describe("the motion scheduler", () => {
     expect(out[0].surfaces).toEqual(["kpi"]);
   });
 
+  it("a surface inside its gap holds its own event; it does not start a storm for the others", () => {
+    const { s, out } = setup();
+    expect(s.push({ id: "g1", type: "stock.low", at: now(), source: "live" })).toBe("dispatched");
+    vi.advanceTimersByTime(300);
+    expect(s.push({ id: "g2", type: "stock.low", at: now(), source: "live" })).toBe("held");
+    expect(s.storming).toBe(false);
+    expect(s.push({ id: "g3", type: "payment.received", at: now(), source: "live" })).toBe("dispatched");
+    vi.advanceTimersByTime(LIMITS.bellGapMs);
+    const held = out.filter((d) => d.type === "held");
+    expect(held.map((d) => d.surfaces[0]).sort()).toEqual(["bell", "list"]);
+    expect(held.every((d) => d.batched && d.count === 1)).toBe(true);
+  });
+
+  it("a steady merge stream flushes within 1.5 s instead of waiting for a pause", () => {
+    const { s, out } = setup();
+    for (let i = 0; i < 30; i++) { s.push({ id: `st${i}`, type: "shipment.status_changed", entityId: `s${i}`, at: now(), source: "poll" }); vi.advanceTimersByTime(100); }
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    expect(out[0].count).toBeLessThanOrEqual(LIMITS.mergeMaxMs / 100 + 1);
+  });
+
+  it("the fresh map forgets ids older than 5 s", () => {
+    const { s } = setup();
+    s.push({ id: "f1", type: "stock.low", at: now(), source: "live" });
+    vi.advanceTimersByTime(LIMITS.freshMs + 10);
+    expect(s.isFresh("f1")).toBe(false);
+    s.push({ id: "f2", type: "payment.received", at: now(), source: "live" });
+    expect(s.isFresh("f2")).toBe(true);
+  });
+
   it("holds ids, types and times only: event data is never kept", () => {
     const { s, out } = setup();
     s.push({ id: "p1", type: "stock.low", at: now(), source: "live", data: { phone: "+201000000000", name: "Someone" } });

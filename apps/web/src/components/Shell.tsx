@@ -34,7 +34,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:start-2 focus:top-2 focus:z-50 focus:rounded-sm focus:bg-surface focus:px-3 focus:py-2">{t("skip")}</a>
       <aside className="g hidden print:hidden min-h-0 flex-col overflow-hidden pt-5 text-rail-text lg:sticky lg:top-3 lg:flex lg:h-[calc(100dvh-24px)]">
         <div className="px-6 pb-6">
-          <ThemedWordmark />
+          <ThemedWordmark tone="mono" />
           <p className="mt-2 text-caption text-rail-text-2">{t("tagline")}</p>
         </div>
         <div className="mx-6 mb-3 border-b border-rail-line pb-4">
@@ -46,7 +46,7 @@ export function Shell({ children, theme }: { children: ReactNode; theme: Theme }
       </aside>
       <div className="flex min-w-0 flex-col print:block">
         <header className="g print:hidden sticky top-3 z-30 mx-3 mt-3 flex h-14 items-center gap-2 px-3 sm:px-4 md:gap-3 md:px-5 lg:mx-0 lg:mt-0">
-          <ThemedWordmark className="shrink-0 lg:hidden" />
+          <ThemedWordmark tone="mono" className="shrink-0 lg:hidden" />
           <span className="hidden min-w-0 max-w-[30vw] sm:block lg:hidden"><StoreSwitcher /></span>
           <ShellCommands />
           <span className="flex-1" />

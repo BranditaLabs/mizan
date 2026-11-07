@@ -119,7 +119,8 @@ describe("Brand 2.0 SVGs", () => {
     for (const f of m.files) expect(f.sha256).toMatch(/^[0-9a-f]{64}$/);
     const committed = m.files.filter((f) => f.committed).map((f) => f.path);
     expect(committed.filter((p) => /\.(mov|webm|mp4|gif|png)$/.test(p))).toEqual([]);
-    expect(committed.filter((p) => p.startsWith("animated/lottie/"))).toHaveLength(6);
+    // The on-paper pair, transfer and drop only: the ops app recolours them on ink (1.2 MB budget).
+    expect(committed.filter((p) => p.startsWith("animated/lottie/"))).toEqual(["animated/lottie/mizan-drop-on-paper.json", "animated/lottie/mizan-pair-on-paper.json", "animated/lottie/mizan-transfer-on-paper.json"]);
     for (const p of committed.filter((x) => x.startsWith("animated/lottie/"))) expect(existsSync(new URL(`apps/ops/assets/lottie/${p.split("/").pop()}`, repo)), p).toBe(true);
   });
 });

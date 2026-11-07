@@ -3,7 +3,7 @@
 import type { MotionDispatch } from "@mizan/design-system/motion";
 import { RedBudgetProvider } from "@mizan/design-system/react/motion";
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useToast } from "@/components/ui/Toast";
 import { createEventMotion, type EventMotion } from "./engine";
 
@@ -30,7 +30,13 @@ const SILENT: EventMotion = {
 export function EventMotionProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const [motion] = useState(createEventMotion);
-  useEffect(() => { motion.setToaster(toast.event); return () => motion.setToaster(null); }, [motion, toast]);
+  // Both ways: the engine shows its toasts through toast.show, and every toast.event a screen calls
+  // comes back here (echo record, DROP gap, the event's other surfaces) instead of bypassing it.
+  useEffect(() => {
+    motion.setToaster(toast.show);
+    toast.route(({ type, entityId, data, values, message, action }) => motion.ownSuccess({ type, explicit: true, ...(entityId ? { entityId } : {}), ...(data ? { data } : {}), ...(values ? { values } : {}), ...(message ? { message } : {}), ...(action ? { action } : {}) }));
+    return () => { motion.setToaster(null); toast.route(null); };
+  }, [motion, toast]);
 
   // Hidden tab: nothing plays; on return the bell gets one summary.
   useEffect(() => {
@@ -67,9 +73,10 @@ export function useSurface(surface: string, filter?: (d: MotionDispatch) => bool
 /** True only when the scheduler dispatched this event id in the last 5 s (rows play their glyph then). */
 export function useFresh(id: string | undefined): boolean {
   const motion = useEventMotion();
-  const v = useSyncExternalStore(motion.onVersion, motion.version, () => 0);
-  void v;
-  return id ? motion.isFresh(id) : false;
+  // The snapshot is this row's boolean, not the global version: a dispatch to another surface or
+  // another row leaves it unchanged, so React bails out and the row does not re-render.
+  const snap = useCallback(() => (id ? motion.isFresh(id) : false), [motion, id]);
+  return useSyncExternalStore(motion.onVersion, snap, () => false);
 }
 
 /** Marks a surface as mounted (its rows read freshness with useFresh instead of a dispatch). */

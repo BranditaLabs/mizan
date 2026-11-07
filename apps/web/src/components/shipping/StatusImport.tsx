@@ -42,7 +42,7 @@ export function StatusImport({ open, onClose }: { open: boolean; onClose(): void
     <Dialog open={open} onClose={onClose} title={t("title")} description={t("body")}
       footer={(
         <ButtonGroup>
-          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button>
+          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>

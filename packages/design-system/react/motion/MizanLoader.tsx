@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, type CSSProperties, type KeyboardEvent } from "react";
-import { GOO, gooMatrix, M } from "../../motion/spring";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { clamp, GOO, gooMatrix, M } from "../../motion/spring";
 import { RED_PRIORITY } from "../../motion/red-budget";
 import * as pair from "../../motion/physics/pair";
 import * as level from "../../motion/physics/level";
@@ -8,7 +8,7 @@ import * as transfer from "../../motion/physics/transfer";
 import * as drop from "../../motion/physics/drop";
 import * as fill from "../../motion/physics/fill";
 import type { LoaderKind } from "../../motion/index";
-import { attrProps, useMotionClock, useSvgId, type PhysicsModule } from "./useMotionClock";
+import { attrProps, useMotionClock, useSvgId, writeFrame, type PhysicsModule } from "./useMotionClock";
 import { useReducedMotion } from "./useReducedMotion";
 import { useRed } from "./RedBudget";
 
@@ -41,7 +41,7 @@ export interface MizanLoaderProps {
 /**
  * <MizanLoader>: the Brand 2.0 loaders as one SSR-safe component. The server renders the still
  * frame as plain SVG; the client hydrates the same markup and then joins the shared clock. Reduced
- * motion shows each kind's deliberate still frame (pair: level and apart; transfer: equal volumes;
+ * motion shows each kind's deliberate still frame (pair: merged at level, the mark; transfer: equal volumes;
  * drop: at rest on the surface; fill: the width with its value as text; level: centred).
  */
 export function MizanLoader({ kind = "pair", size = 96, value, tone = "mono", decorative, label, valueText, interactive, still, className, style }: MizanLoaderProps) {
@@ -54,17 +54,32 @@ export function MizanLoader({ kind = "pair", size = 96, value, tone = "mono", de
   const stateRef = useRef<unknown>(null);
   const { goo } = useMotionClock({ svg, physics, input, animate: !still, reduced, stateRef });
   const [w, h] = VIEW[kind];
-  const at = physics.rest(input);
+  // The rest frame is rendered once per kind: afterwards the clock or the still effect owns the
+  // attributes, so a new value animates from the current one (React never writes the target first).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const at = useMemo(() => physics.rest(input), [kind]);
   const p = (k: string) => attrProps(at, k);
   const canAim = interactive && (kind === "pair" || kind === "level");
+  // The slider's value: the beam angle in whole degrees (aria-valuenow follows it).
+  const [angle, setAngle] = useState(0);
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
+  /** Aim the beam; reduced motion has no clock, so the frame is written here at once. */
+  const aimAt = useRef<(a: number | null) => void>(() => undefined);
+  aimAt.current = (a: number | null) => {
+    const s = stateRef.current as (pair.PairState & level.LevelState) | null;
+    if (!s) return;
+    (kind === "pair" ? pair.aim : level.aim)(s, a);
+    const deg = a == null ? 0 : kind === "pair" ? clamp(a * 9 * 2.2, -M.angle.tip, M.angle.tip) : a * 9;
+    setAngle(Math.round(deg));
+    if (reducedRef.current && svg.current) writeFrame(svg.current, physics.step(s, 0, input, true));
+  };
 
   // Interactive: listeners attached once and removed on cleanup; reduced sets the angle directly.
   useEffect(() => {
     const el = svg.current;
     if (!canAim || !el) return;
-    const aimer = kind === "pair" ? pair.aim : level.aim;
-    const st = () => stateRef.current as pair.PairState & level.LevelState;
-    const at = (x: number | null) => { if (st()) aimer(st(), x); };
+    const at = (x: number | null) => aimAt.current(x);
     const move = (e: globalThis.PointerEvent) => { const r = el.getBoundingClientRect(); at(Math.max(-1.4, Math.min(1.4, (e.clientX - (r.left + r.width / 2)) / (r.width / 2)))); };
     const leave = () => at(null);
     const up = (e: globalThis.PointerEvent) => { if (e.pointerType !== "mouse") at(null); };
@@ -79,11 +94,9 @@ export function MizanLoader({ kind = "pair", size = 96, value, tone = "mono", de
   }, [canAim, kind]);
 
   const onKey = (e: KeyboardEvent<SVGSVGElement>) => {
-    const s = stateRef.current as pair.PairState | null;
-    if (!s) return;
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); (kind === "pair" ? pair.aim : level.aim)(s as never, e.key === "ArrowLeft" ? -0.9 : 0.9); }
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); aimAt.current(e.key === "ArrowLeft" ? -0.9 : 0.9); }
   };
-  const onKeyUp = () => { const s = stateRef.current; if (s) (kind === "pair" ? pair.aim : level.aim)(s as never, null); };
+  const onKeyUp = () => aimAt.current(null);
 
   const redFill = red ? "var(--mz-red)" : "currentColor";
   const filter = goo ? `url(#${fid})` : undefined;
@@ -96,12 +109,16 @@ export function MizanLoader({ kind = "pair", size = 96, value, tone = "mono", de
     : role === "progressbar"
       ? { role, "aria-label": label, "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": pct, "aria-valuetext": valueText }
       : role === "slider"
-        ? { role, "aria-label": label, "aria-valuemin": -M.angle.tip, "aria-valuemax": M.angle.tip, "aria-valuenow": 0, tabIndex: 0, onKeyDown: onKey, onKeyUp }
-        : { role, "aria-label": label };
+        ? { role, "aria-label": label, "aria-valuemin": -M.angle.tip, "aria-valuemax": M.angle.tip, "aria-valuenow": angle, "aria-valuetext": `${angle}°`, tabIndex: 0, onKeyDown: onKey, onKeyUp }
+        : { "aria-hidden": true as const };
+  // A status loader: live regions announce their text, not an aria-label, so the label is a
+  // visually hidden text node inside the status wrapper (the SVG itself is hidden).
+  const status = role === "status";
 
   return (
-    <span className={className} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4, lineHeight: 0, verticalAlign: "middle", ...style }} data-mz-red={tone === "brand" ? (red ? "on" : "off") : undefined}>
-      <svg ref={svg} viewBox={`0 0 ${w} ${h}`} style={{ width: size, height: "auto", overflow: "visible", display: "block", touchAction: canAim ? "pan-y" : undefined, cursor: canAim ? "ew-resize" : undefined }} {...a11y}>
+    <span className={className} role={status ? "status" : undefined} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4, lineHeight: 0, verticalAlign: "middle", ...style }} data-mz-red={tone === "brand" ? (red ? "on" : "off") : undefined}>
+      {status && label ? <span className="mz-sr">{label}</span> : null}
+      <svg ref={svg} viewBox={`0 0 ${w} ${h}`} className={kind === "fill" ? "mz-fill-track" : undefined} style={{ width: size, height: "auto", overflow: "visible", display: "block", touchAction: canAim ? "pan-y" : undefined, cursor: canAim ? "ew-resize" : undefined }} {...a11y}>
         <defs>
           <filter id={fid} x={-20} y={-40} width={w + 40} height={h + 80} filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
             <feGaussianBlur in="SourceGraphic" stdDeviation={blur} />

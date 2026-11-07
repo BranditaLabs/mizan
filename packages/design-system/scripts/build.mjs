@@ -86,6 +86,13 @@ const typeClasses = entries(T.type).map(([k, t]) => {
 :lang(ar) .mz-text-${kebab(k)}, .mz-text-${kebab(k)}:lang(ar) { letter-spacing: 0; line-height: ${Math.round(t.lineHeight * 1.15)}px;${t.transform ? " text-transform: none;" : ""}${t.family === "display" ? " font-family: var(--mz-font-arabic-display);" : ""} }`;
 }).join("\n");
 
+const reducedTokens = (ind) => [
+  ...entries(M.reduced).map(([k, n]) => `${ind}--mz-duration-${k}: ${n}ms;`),
+  ...entries(M.distance).map(([k]) => `${ind}--mz-distance-${kebab(k)}: 0px;`),
+  ...withUnits(M.stagger).filter(([, s]) => s.endsWith("ms")).map(([k]) => `${ind}--mz-stagger-${kebab(k)}: 0ms;`),
+  ...entries(M.easingReduced).map(([k, s]) => `${ind}--mz-ease-${kebab(k)}: ${s};`),
+  ...entries(M.angleReduced).map(([k, n]) => `${ind}--mz-angle-${kebab(k)}: ${n}deg;`),
+].join("\n");
 out("tokens.css", `${HEADER}
 :root {
 ${staticVars}
@@ -129,12 +136,13 @@ ${typeClasses}
 /* Reduced motion: short fades instead of movement (tokens.json motion.reduced) */
 @media (prefers-reduced-motion: reduce) {
   :root {
-${entries(M.reduced).map(([k, n]) => `    --mz-duration-${k}: ${n}ms;`).join("\n")}
-${entries(M.distance).map(([k]) => `    --mz-distance-${kebab(k)}: 0px;`).join("\n")}
-${withUnits(M.stagger).filter(([, s]) => s.endsWith("ms")).map(([k]) => `    --mz-stagger-${kebab(k)}: 0ms;`).join("\n")}
-${entries(M.easingReduced).map(([k, s]) => `    --mz-ease-${kebab(k)}: ${s};`).join("\n")}
-${entries(M.angleReduced).map(([k, n]) => `    --mz-angle-${kebab(k)}: ${n}deg;`).join("\n")}
+${reducedTokens("    ")}
   }
+}
+
+/* A forced reduced store (the gallery's toggle, tests): the same tokens on that element and below */
+[data-mz-reduced="true"] {
+${reducedTokens("  ")}
 }
 `);
 

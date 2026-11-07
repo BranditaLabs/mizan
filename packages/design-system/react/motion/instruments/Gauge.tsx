@@ -1,8 +1,8 @@
 "use client";
 import * as gauge from "../../../motion/physics/gauge";
-import { formatDeg, formatMoney, formatPct } from "../../../motion/format";
+import { formatDeg, formatMoney, formatPct, isolate } from "../../../motion/format";
 import { attrProps } from "../useMotionClock";
-import { exactDelta, Frame, geo, GooFilter, Reading, useInstrument, Verdict } from "./shared";
+import { exactDelta, Frame, geo, GooFilter, Reading, ReadingRow, useInstrument, Verdict } from "./shared";
 
 export interface GaugeCopy {
   title: string;
@@ -39,7 +39,7 @@ const hair = { fill: "none", stroke: "currentColor", strokeWidth: 1, vectorEffec
 /** GAUGE: expected against collected (COD remittance, a settlement). Tips toward the heavier side. */
 export function Gauge({ a, b, currency, locale, copy, className }: GaugeProps) {
   const d = exactDelta(a, b, currency);
-  const pct = formatPct((Math.abs(geo(b) - geo(a)) / Math.max(Math.abs(geo(a)), 1)) * 100, locale, 2);
+  const pct = isolate(formatPct((Math.abs(geo(b) - geo(a)) / Math.max(Math.abs(geo(a)), 1)) * 100, locale, 2));
   const category = d.sign === 0 ? "balanced" : d.sign < 0 ? "short" : "over";
   const verdict = category === "balanced" ? copy.balanced : category === "short" ? copy.shortBy(pct) : copy.overBy(pct);
   const input = { a: geo(a), b: geo(b) };
@@ -48,10 +48,10 @@ export function Gauge({ a, b, currency, locale, copy, className }: GaugeProps) {
   const fa = formatMoney(a, currency, locale), fb = formatMoney(b, currency, locale);
   return (
     <Frame title={copy.title} className={className}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-        <Reading label={copy.labelA} value={fa} />
-        <Reading label={copy.labelB} value={fb} align="end" />
-      </div>
+      <ReadingRow>
+        <Reading label={copy.labelA} value={fa} side="a" />
+        <Reading label={copy.labelB} value={fb} side="b" />
+      </ReadingRow>
       <svg ref={svg} viewBox="0 30 400 160" role="img" aria-label={copy.summary({ labelA: copy.labelA, a: fa, labelB: copy.labelB, b: fb, verdict })} style={{ width: "100%", height: "auto", overflow: "visible" }}>
         <defs>
           <GooFilter id={`${fid}g`} blur="gauge" />
@@ -75,7 +75,7 @@ export function Gauge({ a, b, currency, locale, copy, className }: GaugeProps) {
       </svg>
       <div style={{ textAlign: "center", display: "grid", gap: 2 }}>
         <bdi className="mz-figure" style={{ fontSize: 19 }}>{`Δ ${d.sign < 0 ? "−" : d.sign > 0 ? "+" : ""}${formatMoney(d.amount, currency, locale)}`}</bdi>
-        <span className="mz-instrument-label" style={{ fontSize: 11, opacity: 0.7 }}>{copy.tilt(formatDeg(gauge.tilt(input), locale))}</span>
+        <span className="mz-instrument-label" style={{ fontSize: 11, opacity: 0.7 }}>{copy.tilt(isolate(formatDeg(gauge.tilt(input), locale)))}</span>
         <Verdict category={category} text={verdict} red={red} />
       </div>
     </Frame>

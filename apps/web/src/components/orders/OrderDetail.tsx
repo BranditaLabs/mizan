@@ -1,5 +1,6 @@
 "use client";
 
+import { isolate } from "@mizan/design-system/motion";
 import { Icon } from "@mizan/design-system/icons/react";
 import { EventGlyph } from "@mizan/design-system/react/motion";
 import { isOrderEventType } from "@mizan/shared/motion";
@@ -39,6 +40,7 @@ import { NotesCard, TagsCard } from "./NotesCard";
 import { EditBanner, EditOrderButton, canEditOrder } from "./EditOrder";
 import { printHref } from "./PrintDocuments";
 import { MODE_ICON, STATUS_TONE, isStatus, maskedLast4 } from "./order-ui";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 /** Risk reason codes the API writes (E6-1); an unknown code is shown as is. */
 const RISK_REASONS = new Set(["delivered_before", "refused_before", "cancelled_before", "first_order", "duplicate", "address_incomplete", "no_city", "phone_invalid", "high_value", "very_high_value", "bulk_quantity", "velocity", "chargeback_before", "bnpl", "awaiting_transfer", "paid"]);
@@ -117,16 +119,19 @@ export function OrderDetail({ id }: { id: string }) {
   // in @mizan/shared); its glyph is the catalogue outcome (TimelineGlyph), still unless fresh.
   const eventTitle = (e: Event) => {
     const statusMove = Boolean(e.fromStatus && e.toStatus && e.fromStatus !== e.toStatus);
+    // Shown values are isolated (FSI … PDI, the plain-text <bdi>): "#1234" or a Latin product name
+    // keeps its order inside the Arabic sentence. `kind` is a select argument and stays bare.
+    const iso = (v: string) => (v ? isolate(v) : v);
     const values = {
-      source: sourceName(e.data.source ?? o.store.provider ?? ""),
-      from: e.type === "payment_changed" ? paymentLabel(e.data.from ?? "") : statusLabel(e.fromStatus),
-      to: e.type === "payment_changed" ? paymentLabel(e.data.to ?? "") : statusLabel(e.toStatus),
+      source: iso(sourceName(e.data.source ?? o.store.provider ?? "")),
+      from: iso(e.type === "payment_changed" ? paymentLabel(e.data.from ?? "") : statusLabel(e.fromStatus)),
+      to: iso(e.type === "payment_changed" ? paymentLabel(e.data.to ?? "") : statusLabel(e.toStatus)),
       kind: e.type === "updated" ? (statusMove ? "status" : "other") : e.type === "exchange_created" && e.data.into ? "into" : "other",
-      channel: channelLabel(e.data.channel),
-      status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "",
-      tags: tagList(e.data.tags),
-      name: e.data.name ?? "",
-      number: e.data.into ?? e.data.of ?? "",
+      channel: iso(channelLabel(e.data.channel)),
+      status: iso(e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? ""),
+      tags: iso(tagList(e.data.tags)),
+      name: iso(e.data.name ?? ""),
+      number: iso(e.data.into ?? e.data.of ?? ""),
     };
     return isOrderEventType(e.type) ? tl(e.type, values) : tl("updated", { ...values, kind: "other" });
   };
@@ -219,7 +224,8 @@ export function OrderDetail({ id }: { id: string }) {
           <DisputesCard orderId={o.id} />
         </div>
 
-        <aside className="flex flex-col gap-4">
+        <aside>
+          <MotionSurface surface="card" entityId={o.id} className="flex flex-col gap-4">
           <CustomerCard order={o} />
           <NotesCard orderId={o.id} />
           <TagsCard orderId={o.id} tags={o.tags} />
@@ -243,6 +249,7 @@ export function OrderDetail({ id }: { id: string }) {
               }))} />
             )}
           </Card>
+          </MotionSurface>
         </aside>
       </div>
     </Page>

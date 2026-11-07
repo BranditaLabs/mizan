@@ -37,14 +37,22 @@ describe("pair (TIP + MERGE)", () => {
     expect(max).toBeGreaterThan(17);
   });
 
-  it("reduced: two balls level and apart (the mark), the trailing ball snapped", () => {
+  it("reduced and rest: the mark, two drops met at level (centres 2.19r apart), the trailing ball snapped", () => {
     const S = pair.init();
     for (let i = 0; i < 30; i++) pair.step(S, 1 / 60);
     const still = pair.step(S, 0, undefined, true);
     expect(still).toEqual(pair.rest());
-    expect(still.L0).toEqual({ cx: "39", cy: "36", r: "10.5" });
-    expect(still.R0).toEqual({ cx: "81", cy: "36", r: "10.5" });
+    expect(still.L0).toEqual({ cx: "47.75", cy: "36", r: "11.2" });
+    expect(still.R0).toEqual({ cx: "72.25", cy: "36", r: "11.2" });
+    expect((72.25 - 47.75) / 11.2).toBeCloseTo(2.19, 2);
     expect(still.R1.cx).toBe(still.R0.cx);
+  });
+
+  it("reduced: an aim tips the beam directly", () => {
+    const S = pair.init();
+    pair.aim(S, 1.4);
+    const f = pair.step(S, 0, undefined, true);
+    expect(Number(f.R0.cy)).toBeGreaterThan(Number(f.L0.cy));
   });
 });
 

@@ -56,7 +56,9 @@ export function Skeleton({ className }: { className?: string }) {
  */
 export function SkeletonRows({ rows = 5, label }: { rows?: number; label: string }) {
   return (
-    <div role="status" aria-label={label} className="flex flex-col gap-3 p-4" data-testid="page-state">
+    <div role="status" className="flex flex-col gap-3 p-4" data-testid="page-state">
+      {/* Live regions announce their text, not an aria-label. */}
+      <span className="sr-only">{label}</span>
       <span className="text-text-3"><MizanLoader kind="pair" size={20} decorative /></span>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3">

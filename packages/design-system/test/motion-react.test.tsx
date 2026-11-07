@@ -100,6 +100,45 @@ describe("the shared clock", () => {
   });
 });
 
+describe("goo slots and the loader", () => {
+  it("a loader refused a goo slot starts animating when one frees up", () => {
+    for (let i = 1; i <= 4; i++) MotionClock.claimGoo(`h${i}`);
+    const m = mount(<MizanLoader label="x" />);
+    expect(MotionClock.size).toBe(0);
+    act(() => MotionClock.releaseGoo("h1"));
+    expect(MotionClock.size).toBe(1);
+    m.unmount();
+    expect(MotionClock.size).toBe(0);
+  });
+
+  it("reduced motion: the keyboard tips the slider at once and aria-valuenow follows", () => {
+    forceReduced(true);
+    const m = mount(<MizanLoader interactive label="Tip" />);
+    const svg = m.host.querySelector("svg[role=slider]") as SVGSVGElement;
+    const before = svg.querySelector('[data-k="R0"]')?.getAttribute("cy");
+    act(() => { svg.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true })); });
+    expect(svg.getAttribute("aria-valuenow")).not.toBe("0");
+    expect(svg.querySelector('[data-k="R0"]')?.getAttribute("cy")).not.toBe(before);
+    act(() => { svg.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight", bubbles: true })); });
+    expect(svg.getAttribute("aria-valuenow")).toBe("0");
+    m.unmount();
+  });
+
+  it("a new fill value is not written by React: the clock moves the bar from where it was", () => {
+    MotionClock.manual(true);
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    act(() => root.render(<MizanLoader kind="fill" value={0.1} label="x" />));
+    const rect = () => host.querySelector('[data-k="rect"]')?.getAttribute("width");
+    const w0 = rect();
+    act(() => root.render(<MizanLoader kind="fill" value={0.9} label="x" />));
+    expect(rect()).toBe(w0);
+    act(() => { root.unmount(); });
+    host.remove();
+  });
+});
+
 function mount(el: ReactElement) {
   const host = document.createElement("div");
   document.body.appendChild(host);
@@ -220,8 +259,61 @@ describe("accessibility", () => {
 
   it("instruments label the SVG from the copy and keep figures in <bdi>", () => {
     const html = renderToString(<Gauge a="184250.00" b="181900.00" currency="EGP" locale="en" copy={{ title: "Gauge", labelA: "Expected", labelB: "Collected", balanced: "Balanced", shortBy: (p) => `short by ${p}`, overBy: (p) => `over by ${p}`, tilt: (d) => d, summary: (s) => `${s.labelA} ${s.a}, ${s.labelB} ${s.b}, ${s.verdict}` }} />);
-    expect(html).toMatch(/aria-label="Expected EGP\s?184,250\.00, Collected EGP\s?181,900\.00, short by 1\.28%"/);
+    expect(html).toMatch(/aria-label="Expected EGP\s?184,250\.00, Collected EGP\s?181,900\.00, short by ⁨1\.28%⁩"/);
     expect(html).toMatch(/<bdi class="mz-figure"[^>]*>Δ −EGP\s?2,350\.00<\/bdi>/);
     expect(html).toContain('aria-live="polite"');
+    // The visible verdict is the readable one; the live region starts empty (it speaks category changes).
+    expect(html).toMatch(/<p style="margin:0">short by ⁨1\.28%⁩<\/p><span aria-live="polite" class="mz-sr"><\/span>/);
+  });
+
+  it("instrument readings stay A-left, B-right in Arabic (the SVG does not mirror)", () => {
+    const html = renderToString(<div dir="rtl"><Gauge a="10.00" b="12.00" currency="EGP" locale="ar-EG" copy={{ title: "g", labelA: "المتوقع", labelB: "المحصل", balanced: "b", shortBy: (p) => p, overBy: (p) => p, tilt: (d) => d, summary: () => "s" }} /></div>);
+    expect(html).toMatch(/<div dir="ltr" style="display:flex;justify-content:space-between/);
+    expect(html.indexOf("المتوقع")).toBeLessThan(html.indexOf("المحصل"));
+    expect(html).toMatch(/text-align:left[^>]*><span[^>]*>المتوقع/);
+  });
+
+  it("bullseye isolates only the figures, the labels stay page text", () => {
+    const html = renderToString(<Bullseye x={1.2} y={-0.8} locale="en" copy={{ title: "b", labelX: "Cash", labelY: "Stock", level: "l", tolerance: (t) => t, off: "o", offScale: "s" }} />);
+    const summary = html.replace(/<!-- -->/g, "");
+    expect(summary).toMatch(/Cash <bdi class="mz-figure">\+1\.2%<\/bdi> · Stock <bdi class="mz-figure">−0\.8%<\/bdi>/);
+  });
+
+  it("vessels scale marks sit on the physical left, beside the drawn scale", () => {
+    const html = renderToString(<Vessels a={120} b={112} locale="en" copy={{ title: "v", labelA: "A", labelB: "B", matched: "m", gap: (p) => p }} />);
+    expect(html).toContain("position:absolute;left:0");
+    expect(html).not.toContain("inset-inline-start");
+  });
+
+  it("a status loader carries its label as text inside the live region, the SVG hidden", () => {
+    const html = renderToString(<MizanLoader label="Loading orders" />);
+    expect(html).toMatch(/role="status"[^>]*><span class="mz-sr">Loading orders<\/span><svg[^>]*aria-hidden="true"/);
+  });
+
+  it("the fill loader's track mirrors in RTL through its class", () => {
+    expect(renderToString(<MizanLoader kind="fill" value={0.3} label="x" />)).toContain('class="mz-fill-track"');
+  });
+
+  it("the interactive pair slider starts at 0° with a value text", () => {
+    const html = renderToString(<MizanLoader interactive label="Tip" />);
+    expect(html).toContain('role="slider"');
+    expect(html).toContain('aria-valuenow="0"');
+    expect(html).toContain('aria-valuetext="0°"');
+  });
+
+  it("DoneState: two pans that travel together and a bubble inside them, not a ball above", () => {
+    const html = renderToString(<DoneState label="Done" />);
+    expect(html).toContain('class="mz-pan-l"');
+    expect(html).toContain('class="mz-pan-r"');
+    expect(html).toMatch(/<circle cx="60" cy="50" r="5"[^>]*class="mz-drop-in"/);
+  });
+
+  it("EventGlyph: merge travels and grows a neck; fail stays ink", () => {
+    const merge = renderToString(<EventGlyph outcome="merge" />);
+    expect(merge).toContain("mz-pan-l");
+    expect(merge).toContain("mz-neck");
+    expect(merge).not.toContain("<rect x=\"3.5\"");
+    const fail = renderToString(<EventGlyph outcome="fail" />);
+    expect(fail).not.toContain("danger");
   });
 });

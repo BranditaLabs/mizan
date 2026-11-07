@@ -1,12 +1,20 @@
 import { createScheduler, getReduced, type MotionDispatch, type MotionInput, type PushResult, type SchedulerOptions } from "@mizan/design-system/motion";
 import type { EventData } from "@mizan/shared/motion";
 import type { ReactNode } from "react";
-import { resolveRule, toastsOnSuccess } from "./resolve";
+import { eventMotion, resolveRule, toastsOnSuccess } from "./resolve";
 
 export type Listener = (d: MotionDispatch) => void;
 
 /** A toast confirming the viewer's own action (the ToastProvider's `toast.event`). */
-export type EventToaster = (e: { type: string | null; data?: EventData; values?: Record<string, string | number>; message?: ReactNode }) => void;
+export type EventToaster = (e: {
+  type: string | null;
+  data?: EventData;
+  values?: Record<string, string | number>;
+  message?: ReactNode;
+  action?: { label: string; onClick(): void };
+  /** The engine's decision when it differs from the catalogue (a DROP inside the 3 s gap shows "done"). */
+  outcome?: "done";
+}) => void;
 
 /** What a mutation's success hands the motion engine (lib/api/query.tsx reads it from `meta.motion`). */
 export interface OwnSuccess {
@@ -17,6 +25,9 @@ export interface OwnSuccess {
   message?: ReactNode;
   /** false: the screen says nothing (it shows the result in place). */
   toast?: boolean;
+  /** The screen asked for the toast itself (toast.event): it shows even for a type that does not toast by default. */
+  explicit?: boolean;
+  action?: { label: string; onClick(): void };
 }
 
 export interface EventMotion {
@@ -60,11 +71,15 @@ export function createEventMotion(opts: Partial<Pick<SchedulerOptions, "now" | "
   });
   return {
     push: (ev) => scheduler.push(ev),
-    ownSuccess: ({ type, entityId, toast: say = true, data, values, message }) => {
+    ownSuccess: ({ type, entityId, toast: say = true, explicit, data, values, message, action }) => {
       if (entityId) scheduler.recordLocalSuccess(type, entityId);
-      // The viewer's own action is confirmed at once (not rate-limited); the rest of its surfaces
-      // (a card, a KPI, the timeline) go through the scheduler like any other fact.
-      if (say && (toastsOnSuccess(type) || message)) toaster?.({ type, ...(data ? { data } : {}), ...(values ? { values } : {}), ...(message ? { message } : {}) });
+      // The viewer's own action is confirmed at once (not queued), but a DROP still keeps the 3 s
+      // DROP gap (a second one settles as "done"); the rest of its surfaces (a card, a KPI, the
+      // timeline) go through the scheduler like any other fact.
+      if (say && (explicit || toastsOnSuccess(type) || message)) {
+        const done = eventMotion(type, data).outcome === "drop" && !scheduler.claimDrop();
+        toaster?.({ type, ...(data ? { data } : {}), ...(values ? { values } : {}), ...(message ? { message } : {}), ...(action ? { action } : {}), ...(done ? { outcome: "done" as const } : {}) });
+      }
       scheduler.push({ type, entityId, at: Date.now(), source: "mutation", data });
     },
     subscribe: (surface, fn) => {

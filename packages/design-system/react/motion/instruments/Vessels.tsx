@@ -1,8 +1,8 @@
 "use client";
 import * as vessels from "../../../motion/physics/vessels";
-import { formatInt, formatPct } from "../../../motion/format";
+import { formatInt, formatPct, isolate } from "../../../motion/format";
 import { attrProps } from "../useMotionClock";
-import { Frame, GooFilter, Reading, useInstrument, Verdict } from "./shared";
+import { Frame, GooFilter, Reading, ReadingRow, useInstrument, Verdict } from "./shared";
 
 export interface VesselsCopy {
   title: string;
@@ -24,13 +24,14 @@ const inner = (x: number) => `M${x + 4} 22 V176 Q${x + 4} 192 ${x + 20} 192 H${x
 export function Vessels({ a, b, locale, copy, className }: VesselsProps) {
   const input = { a, b };
   const category = a === b ? "matched" : "gap";
-  const pct = formatPct(vessels.gap(input), locale, 1);
+  const pct = isolate(formatPct(vessels.gap(input), locale, 1));
   const verdict = category === "matched" ? copy.matched : copy.gap(pct);
   const { svg, fid, goo, red, rest } = useInstrument(vessels, input, category === "matched");
   const p = (k: string) => attrProps(rest, k);
   const n = (v: number) => (copy.unit ? copy.unit(formatInt(v, locale)) : formatInt(v, locale));
   const top = vessels.scaleTop(input);
   // The scale shows the real values (bug 13): 0, half and the top of the scale, in the values' units.
+  // Physical left on purpose: the scale and its ticks are drawn at x=40..52 and do not mirror.
   const marks = [0, top / 2, top];
   return (
     <Frame title={copy.title} className={className}>
@@ -62,13 +63,13 @@ export function Vessels({ a, b, locale, copy, className }: VesselsProps) {
           </g>
         </svg>
         {marks.map((v) => (
-          <bdi key={v} className="mz-figure" aria-hidden="true" style={{ position: "absolute", insetInlineStart: 0, top: `${((vessels.scaleY(v, input) - 16) / 212) * 100}%`, transform: "translateY(-50%)", fontSize: 10, opacity: 0.62 }}>{formatInt(v, locale)}</bdi>
+          <bdi key={v} className="mz-figure" aria-hidden="true" style={{ position: "absolute", left: 0, top: `${((vessels.scaleY(v, input) - 16) / 212) * 100}%`, transform: "translateY(-50%)", fontSize: 10, opacity: 0.62 }}>{formatInt(v, locale)}</bdi>
         ))}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-around", gap: 12 }}>
-        <Reading label={copy.labelA} value={n(a)} align="center" />
-        <Reading label={copy.labelB} value={n(b)} align="center" />
-      </div>
+      <ReadingRow spread="around">
+        <Reading label={copy.labelA} value={n(a)} side="center" />
+        <Reading label={copy.labelB} value={n(b)} side="center" />
+      </ReadingRow>
       <Verdict category={category} text={verdict} red={red} />
     </Frame>
   );

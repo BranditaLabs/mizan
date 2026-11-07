@@ -18,9 +18,9 @@ export const LIMITS = {
   file: 500 * KB,
   logoSvg: 200 * KB,
   logoAnimated: 100 * KB,
-  // The traced pack Lottie files cannot reach the plan's 1.2 MB by rounding (3 decimals: 2.6 MB);
-  // the cap is their minified size, so they only shrink from here (BR-3 decides on re-tracing).
-  lottie: 2.7 * 1024 * KB,
+  // The plan's 1.2 MB (docs/16 §3): the on-paper files only (the ops app recolours them on ink with
+  // a colour matrix) and coordinates at 1 decimal of the 960 px canvas.
+  lottie: 1.2 * 1024 * KB,
   loadersGz: 14 * KB,
   instrumentsGz: 12 * KB,
 };

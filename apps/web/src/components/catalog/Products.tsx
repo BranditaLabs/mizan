@@ -172,7 +172,7 @@ export function Products() {
     </>,
     <ButtonGroup>
       {PRODUCT_EDITORS.has(store?.role ?? "") ? <Link href="/products/new" className={buttonClass("primary")}><Icon name="add" size={16} />{t("newProduct.open")}</Link> : null}
-      <Button variant="secondary" icon="download" busy={exporting} disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
+      <Button variant="secondary" icon="download" busy={exporting} pending="fill" disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
       <Button icon="upload" onClick={() => setImporting(true)}>{t("import.open")}</Button>
     </ButtonGroup>,
   );
@@ -245,7 +245,7 @@ function ImportCosts({ open, onClose }: { open: boolean; onClose(): void }) {
     <Dialog open={open} onClose={onClose} title={t("title")} description={t("body")}
       footer={(
         <ButtonGroup>
-          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button>
+          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>

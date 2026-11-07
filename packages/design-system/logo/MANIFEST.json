@@ -149,7 +149,7 @@
       "path": "animated/lottie/mizan-drop-on-ink.json",
       "bytes": 329724,
       "sha256": "b0e50235162557d0f6a416016cd2f4d9f4de50cb82473f583cfc0a56644c4a99",
-      "committed": true
+      "committed": false
     },
     {
       "path": "animated/lottie/mizan-drop-on-paper.json",
@@ -173,7 +173,7 @@
       "path": "animated/lottie/mizan-pair-on-ink.json",
       "bytes": 377807,
       "sha256": "befae6087e1a3ec0a7d05e153eddb5c7fa84578c4f3ec71ab09b2f22490245d1",
-      "committed": true
+      "committed": false
     },
     {
       "path": "animated/lottie/mizan-pair-on-paper.json",
@@ -185,7 +185,7 @@
       "path": "animated/lottie/mizan-transfer-on-ink.json",
       "bytes": 711454,
       "sha256": "a389ac380913b2d447bc545fe50f52601a80c9fb406b808269a96f6dbc68ef75",
-      "committed": true
+      "committed": false
     },
     {
       "path": "animated/lottie/mizan-transfer-on-paper.json",

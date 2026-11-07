@@ -40,3 +40,9 @@ export function formatPct(n: Num, locale: string, dp = 1) {
 export function formatDeg(n: number, locale: string, dp = 1) {
   return `${join(nf(locale, { minimumFractionDigits: dp, maximumFractionDigits: dp, signDisplay: "exceptZero" }).formatToParts(n))}°`;
 }
+
+/**
+ * A figure placed inside translated plain-text copy (a verdict, a tilt line, a toast): wrapped in
+ * FSI … PDI, the text equivalent of <bdi>, so "+3.2°" or "#1234" keeps its order inside Arabic.
+ */
+export const isolate = (s: string) => `⁨${s}⁩`;

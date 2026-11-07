@@ -202,7 +202,7 @@ function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onC
     mutationFn: () => ok(api.POST("/v1/purchase-orders/{id}/receipts", { params: { path: { id: po.id } }, body: { items, allowOver: over && allowOver } })),
     meta: { toast: false },
     onSuccess: (r) => {
-      toast.event({ type: "po.received", data: { data: { full: r.status === "received" } }, message: r.status === "received" ? t("receive.doneAll") : t("receive.done") });
+      toast.event({ type: "po.received", entityId: po.id, data: { data: { complete: r.status === "received" } }, message: r.status === "received" ? t("receive.doneAll") : t("receive.done") });
       void qc.invalidateQueries({ queryKey: ["purchaseOrder"] });
       void qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
       void qc.invalidateQueries({ queryKey: ["stock"] });

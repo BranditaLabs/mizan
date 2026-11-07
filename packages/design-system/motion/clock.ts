@@ -22,6 +22,7 @@ class Clock {
   private io: IntersectionObserver | null = null;
   private onVisibility: (() => void) | null = null;
   private goo = new Set<string>();
+  private gooWaiters = new Set<() => void>();
   /** Frames requested since the last reset (tests: "zero rAF when nothing is visible"). */
   requests = 0;
 
@@ -60,10 +61,15 @@ class Clock {
     this.goo.add(id);
     return true;
   }
-  releaseGoo(id: string) { this.goo.delete(id); }
+  releaseGoo(id: string) {
+    if (!this.goo.delete(id)) return;
+    for (const w of [...this.gooWaiters]) { if (this.goo.size >= GOO_SLOTS) break; w(); }
+  }
+  /** Called when a goo slot frees up (a refused loader retries its claim instead of staying frozen). */
+  onGooFree(fn: () => void): () => void { this.gooWaiters.add(fn); return () => { this.gooWaiters.delete(fn); }; }
 
   /** Tests only: forget everything. */
-  reset() { this.stop(true); this.subs.clear(); this.byEl.clear(); this.goo.clear(); this.requests = 0; this.io = null; this.isManual = false; }
+  reset() { this.stop(true); this.subs.clear(); this.byEl.clear(); this.goo.clear(); this.gooWaiters.clear(); this.requests = 0; this.io = null; this.isManual = false; }
 
   private hidden() { return typeof document !== "undefined" && document.hidden; }
   private anyVisible() { for (const s of this.subs) if (s.visible) return true; return false; }

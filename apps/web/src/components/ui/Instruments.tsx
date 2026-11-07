@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useLocale } from "next-intl";
 import type { ComponentProps } from "react";
 import { useBrandCopy } from "@/lib/motion/useBrandCopy";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 /**
  * The Brand 2.0 balance instruments, loaded lazily (their own chunk) with their copy from next-intl.
@@ -28,20 +29,20 @@ type BullseyeProps = ComponentProps<typeof import("@mizan/design-system/react/mo
 export function VesselsMeter({ labels, ...p }: Without<VesselsProps, never> & { labels?: { a: string; b: string; title?: string } }) {
   const copy = useBrandCopy().vessels;
   const locale = useLocale();
-  return <Vessels {...p} locale={locale} copy={labels ? { ...copy, labelA: labels.a, labelB: labels.b, title: labels.title ?? copy.title } : copy} />;
+  return <MotionSurface surface="instrument"><Vessels {...p} locale={locale} copy={labels ? { ...copy, labelA: labels.a, labelB: labels.b, title: labels.title ?? copy.title } : copy} /></MotionSurface>;
 }
 
 export function BreakevenMeter(p: Without<BreakevenProps, never>) {
   const copy = useBrandCopy().breakeven;
-  return <Breakeven {...p} locale={useLocale()} copy={copy} />;
+  return <MotionSurface surface="instrument"><Breakeven {...p} locale={useLocale()} copy={copy} /></MotionSurface>;
 }
 
 export function GaugeMeter(p: Without<GaugeProps, never>) {
   const copy = useBrandCopy().gauge;
-  return <Gauge {...p} locale={useLocale()} copy={copy} />;
+  return <MotionSurface surface="instrument"><Gauge {...p} locale={useLocale()} copy={copy} /></MotionSurface>;
 }
 
 export function BullseyeMeter(p: Without<BullseyeProps, never>) {
   const copy = useBrandCopy().bullseye;
-  return <Bullseye {...p} locale={useLocale()} copy={copy} />;
+  return <MotionSurface surface="instrument"><Bullseye {...p} locale={useLocale()} copy={copy} /></MotionSurface>;
 }

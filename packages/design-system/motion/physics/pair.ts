@@ -40,7 +40,8 @@ function frame(S: PairState, phi: number, kiss: number, dt: number): Attrs {
 }
 
 export function step(S: PairState, dt: number, _input?: unknown, reduced = false): Attrs {
-  if (reduced) return frame(S, S.aim != null ? clamp(S.aim * 2.2, -M.angle.tip, M.angle.tip) : 0, 0, 0);
+  // reduced: the aim sets the angle directly; at rest the two drops meet at level (the mark)
+  if (reduced) return frame(S, S.aim != null ? clamp(S.aim * 2.2, -M.angle.tip, M.angle.tip) : 0, S.aim != null ? 0 : 1, 0);
   S.t += dt; S.idle += dt;
   if (S.aim != null || S.idle < 1.8) {
     // hand-driven: spring the beam toward the pointer, merge when it rests level
@@ -55,8 +56,8 @@ export function step(S: PairState, dt: number, _input?: unknown, reduced = false
   return frame(S, phi, kiss, dt);
 }
 
-/** The still frame: two balls level and apart, as in the mark. */
-export const rest = (_input?: unknown): Attrs => frame(init(), 0, 0, 0);
+/** The still frame: the mark, the two drops met at level (kiss 1, centres 2.19r apart). */
+export const rest = (_input?: unknown): Attrs => frame(init(), 0, 1, 0);
 
 /** Pointer or key aim, -1.4..1.4 of the half width (null = released). */
 export function aim(S: PairState, a: number | null) { S.aim = a == null ? null : a * 9; S.idle = 0; }

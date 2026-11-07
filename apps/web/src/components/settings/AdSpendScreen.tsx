@@ -159,7 +159,7 @@ function ImportCsv() {
             </ul>
           </Alert>
         ) : null}
-        <div><Button icon="upload" disabled={!csv.trim()} busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button></div>
+        <div><Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button></div>
       </div>
     </Card>
   );

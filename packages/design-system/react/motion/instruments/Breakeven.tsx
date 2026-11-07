@@ -1,8 +1,8 @@
 "use client";
 import * as breakeven from "../../../motion/physics/breakeven";
-import { formatMoney } from "../../../motion/format";
+import { formatMoney, isolate } from "../../../motion/format";
 import { attrProps } from "../useMotionClock";
-import { exactDelta, Frame, geo, GooFilter, Reading, useInstrument, Verdict } from "./shared";
+import { exactDelta, Frame, geo, GooFilter, Reading, ReadingRow, useInstrument, Verdict } from "./shared";
 
 export interface BreakevenCopy {
   title: string;
@@ -33,8 +33,8 @@ export function Breakeven({ a, b, currency, locale, copy, className }: Breakeven
   const d = exactDelta(b, a, currency); // a − b
   const noSpend = geo(b) === 0;
   const category = noSpend ? "noSpend" : d.sign === 0 ? "exact" : d.sign > 0 ? "profitable" : "below";
-  const amount = formatMoney(d.amount, currency, locale);
-  const ratio = new Intl.NumberFormat(locale, { numberingSystem: "latn", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(noSpend ? 0 : geo(a) / geo(b));
+  const amount = isolate(formatMoney(d.amount, currency, locale));
+  const ratio = isolate(new Intl.NumberFormat(locale, { numberingSystem: "latn", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(noSpend ? 0 : geo(a) / geo(b)));
   const verdict = category === "noSpend" ? copy.noSpend : category === "exact" ? copy.exact : category === "profitable" ? copy.profitable({ amount, ratio }) : copy.below({ amount });
   const input = { a: geo(a), b: geo(b) };
   const { svg, fid, goo, red, rest } = useInstrument(breakeven, input, category === "exact");
@@ -42,10 +42,10 @@ export function Breakeven({ a, b, currency, locale, copy, className }: Breakeven
   const fa = formatMoney(a, currency, locale), fb = formatMoney(b, currency, locale);
   return (
     <Frame title={copy.title} className={className}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-        <Reading label={copy.labelA} value={fa} />
-        <Reading label={copy.labelB} value={fb} align="end" />
-      </div>
+      <ReadingRow>
+        <Reading label={copy.labelA} value={fa} side="a" />
+        <Reading label={copy.labelB} value={fb} side="b" />
+      </ReadingRow>
       <svg ref={svg} viewBox="0 34 400 74" role="img" aria-label={`${copy.labelA} ${fa}, ${copy.labelB} ${fb}, ${verdict}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
         <defs>
           <GooFilter id={`${fid}g`} blur="breakeven" />

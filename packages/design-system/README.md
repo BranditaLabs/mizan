@@ -83,7 +83,7 @@ Names describe meaning (`orders`, `verification`, `cod`, `bnpl`, `refund`, `cour
 
 ### Logo
 
-Use `<img src="/brand/mizan-wordmark.svg" alt="mizan">` (copy `logo/svg` to `apps/web/public/brand`). On ink surfaces and in dark mode use `*-on-dark.svg`. Favicon set: `logo/favicon.ico`, `logo/svg/mizan-favicon.svg`, `logo/png/mizan-appicon-180.png` (apple-touch-icon), `-192` and `-512` (manifest).
+Use `<img src="/brand/mizan-wordmark.svg" alt="mizan">` (copy `logo/svg` to `apps/web/public/brand`), or the `Mark`, `Wordmark`, `Lockup` and `Bilingual` components in `react/motion` (they pick the file by theme). On ink surfaces and in dark mode use `*-on-ink.svg`; in app chrome use `*-mono-ink.svg` / `*-mono-paper.svg` so the content keeps the view's one red. The files come from the Brand 2.0 pack through `scripts/import-brand-pack.mjs` (the Brand 1.0 Python generators are retired; re-running them would bring back the old names). Favicon set: `logo/favicon.ico`, `logo/svg/mizan-favicon.svg`, `logo/png/mizan-appicon-180.png` (apple-touch-icon), `-192` and `-512` (manifest).
 
 ## Use in Flutter (`apps/ops`)
 
