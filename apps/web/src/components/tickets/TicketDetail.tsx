@@ -118,7 +118,7 @@ function WorkOn({ ticket }: { ticket: Ticket }) {
   const save = useMutation({
     mutationFn: () => ok(api.PATCH("/v1/tickets/{id}", { params: { path: { id: ticket.id } }, body })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("saved") }); void qc.invalidateQueries({ queryKey: ["ticket"] }); void qc.invalidateQueries({ queryKey: ["tickets"] }); },
+    onSuccess: () => { toast.event({ type: "ticket.status_changed", message: t("saved") }); void qc.invalidateQueries({ queryKey: ["ticket"] }); void qc.invalidateQueries({ queryKey: ["tickets"] }); },
   });
   // Someone else's assignee stays selectable as it is, even when the caller may not pick them.
   const people = ticket.assignee && !ticket.assignees.some((a) => a.id === ticket.assignee!.id) ? [...ticket.assignees, { ...ticket.assignee, role: "" }] : ticket.assignees;

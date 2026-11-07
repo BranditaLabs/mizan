@@ -1,0 +1,629 @@
+{
+  "$description": "Brand 2.0 pack (Brandita). Committed files are listed with their repo path; the rest (videos, GIFs, 1200 px PNGs, the brand page, the component scripts) live in Brandita's brand drive and are identified here by SHA-256.",
+  "files": [
+    {
+      "path": "animated/components/mizan-breakeven-on-ink.mp4",
+      "bytes": 76659,
+      "sha256": "c2da5c289765e01c2ac44a100df8513bf8b55f6b15fc6dc505307088b155e515",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-breakeven-on-paper.mp4",
+      "bytes": 76918,
+      "sha256": "6b1a4601713fee43307de41a431ea8dc0e0d0a0cc256bb6d45b867528706bb68",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-bullseye-on-ink.mp4",
+      "bytes": 67498,
+      "sha256": "ed431132c9606d8fc2404801254e03b3efe7b09a71620d213d280d67d113fe84",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-bullseye-on-paper.mp4",
+      "bytes": 65799,
+      "sha256": "30d6613a7d3cdfc7a90554d6b8270f5c6ddbc3cadebac4f6dac821707f0ae4a6",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-gauge-on-ink.mp4",
+      "bytes": 156641,
+      "sha256": "0c943ee84c5088991a0629d87492bde84881c8e1c224cb8c5beb419466add0eb",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-gauge-on-paper.mp4",
+      "bytes": 160460,
+      "sha256": "1aaad14b9df2b4338fa2527393b2e5e1f9cd32368ce718d82a55699928f599cf",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-vessels-on-ink.mp4",
+      "bytes": 58883,
+      "sha256": "a585f08246c8f65742b3eefb1a284f554ee7a73972d6e4724e75f9546d327c52",
+      "committed": false
+    },
+    {
+      "path": "animated/components/mizan-vessels-on-paper.mp4",
+      "bytes": 59812,
+      "sha256": "9ced2a950c11d88253a9d4bfed89c3cfe3734f1ebfd798da6102411dfdc52e37",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-drop-on-ink.gif",
+      "bytes": 74505,
+      "sha256": "86d94531e6eea15144cc8435089566d2aa213b566ad500b6dab85d6d44a42fd6",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-drop-on-paper.gif",
+      "bytes": 77399,
+      "sha256": "a1ab952f531d75b724715f424626df77fb127160426ddc35e9a231e3da9dd4c3",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-fill-on-ink.gif",
+      "bytes": 59942,
+      "sha256": "714e42f6d873194466506fbd687e89b57a0e0820c1eeb07ccd8032af33bd70ab",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-fill-on-paper.gif",
+      "bytes": 59065,
+      "sha256": "248ca43073308a7c9be7391655959568eabbddece20710e590821c681fa005d8",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-pair-on-ink.gif",
+      "bytes": 86300,
+      "sha256": "9c72080fbae149af83fa119407b82de1b420a9846090d8c5e2cc0d06d5368cf1",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-pair-on-paper.gif",
+      "bytes": 107615,
+      "sha256": "2a505baa5c6fed2ce022f17d2e451a4bd70a883cd0c20de8b10ddfd5f93458ef",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-transfer-on-ink.gif",
+      "bytes": 113066,
+      "sha256": "c7ddfbc766ea30b756a261cb1c0447b28ded5f6a1fcf2f2b8e78dda00357f2a6",
+      "committed": false
+    },
+    {
+      "path": "animated/gif-transparent/mizan-transfer-on-paper.gif",
+      "bytes": 112718,
+      "sha256": "bb22c5f31ef801ba29f5489b34755dac5d6e27bd2d451aa0db1cffb50c097ddf",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-drop-on-ink.gif",
+      "bytes": 76986,
+      "sha256": "f757fd9f3261005cdb159e9405d164d4bc81d585a089a4a31458b02fb60c88e2",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-drop-on-paper.gif",
+      "bytes": 80733,
+      "sha256": "45ee906649fcade7149184ba79231433a9acde0492f618d40af5f76b62b379ec",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-fill-on-ink.gif",
+      "bytes": 75689,
+      "sha256": "ae54b7aa12b0a133dfb39c2b4ccda197e6e86319539e01b9a651a6e167c9f949",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-fill-on-paper.gif",
+      "bytes": 75467,
+      "sha256": "a23204e5dfd47196ac0b69b340b9d6f98ad01c978154236c415409817aaee19f",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-pair-on-ink.gif",
+      "bytes": 174773,
+      "sha256": "3f1fb43fc7b12226ab12a0a0026cc5527764586308fd4f321b58dd8d4e7ab701",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-pair-on-paper.gif",
+      "bytes": 197772,
+      "sha256": "0b6aaa657b2f41ff4e53bbbc87420169fcffd0d7835b93489ebd374f86b3005b",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-transfer-on-ink.gif",
+      "bytes": 265018,
+      "sha256": "ceacad72e8b9b923bd9819446113bd45e4dc41fb792b868499dda1cb8356a849",
+      "committed": false
+    },
+    {
+      "path": "animated/gif/mizan-transfer-on-paper.gif",
+      "bytes": 262040,
+      "sha256": "ef54a8ca3ed1cf3c152ab9f8eecd86dc7c5440125d8ee6c33aa45dfbbc69d033",
+      "committed": false
+    },
+    {
+      "path": "animated/lottie/mizan-drop-on-ink.json",
+      "bytes": 329724,
+      "sha256": "b0e50235162557d0f6a416016cd2f4d9f4de50cb82473f583cfc0a56644c4a99",
+      "committed": false
+    },
+    {
+      "path": "animated/lottie/mizan-drop-on-paper.json",
+      "bytes": 329230,
+      "sha256": "8f32b4906fdc8fa2e6bfbec551bbb09e69615190d8bacbf9f55e8531422e5132",
+      "committed": true
+    },
+    {
+      "path": "animated/lottie/mizan-fill-on-ink.json",
+      "bytes": 452326,
+      "sha256": "f033cd9bfb204564404b86b5ad0de9784d58b2677d0c96b9a951c8b109aabf38",
+      "committed": false
+    },
+    {
+      "path": "animated/lottie/mizan-fill-on-paper.json",
+      "bytes": 450970,
+      "sha256": "199c1bfae20b782fca51fc8c44aff725cc6d1cd4ff1e8d266e67fb735460aa28",
+      "committed": false
+    },
+    {
+      "path": "animated/lottie/mizan-pair-on-ink.json",
+      "bytes": 377807,
+      "sha256": "befae6087e1a3ec0a7d05e153eddb5c7fa84578c4f3ec71ab09b2f22490245d1",
+      "committed": false
+    },
+    {
+      "path": "animated/lottie/mizan-pair-on-paper.json",
+      "bytes": 377029,
+      "sha256": "3e2f81f47a3402f96b70439cc21f62c3d20f527eab761034b3ab6548435f7620",
+      "committed": true
+    },
+    {
+      "path": "animated/lottie/mizan-transfer-on-ink.json",
+      "bytes": 711454,
+      "sha256": "a389ac380913b2d447bc545fe50f52601a80c9fb406b808269a96f6dbc68ef75",
+      "committed": false
+    },
+    {
+      "path": "animated/lottie/mizan-transfer-on-paper.json",
+      "bytes": 710496,
+      "sha256": "80626962cf9abfe152cb96e794d70ce95c3ba8b7bc1ab511854c40bc2624686d",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-drop-on-ink.svg",
+      "bytes": 13772,
+      "sha256": "c06ac8d5056201420c357034e587b69a2ff77efaf0cf0702e98bef04aebcbdba",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-drop-on-paper.svg",
+      "bytes": 13772,
+      "sha256": "c5f4d4b7903a1ce41b7828216b1c4b2478afa8ed0727383ff00899a1518e22ac",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-fill-on-ink.svg",
+      "bytes": 8085,
+      "sha256": "65cb6693918131ccc8858cc6c4d66d7a9de02d0308bcc2cda67b90e41b62d1cd",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-fill-on-paper.svg",
+      "bytes": 8085,
+      "sha256": "7ae39fe1d08836d5abb3531720b383c794800621334b9229e2d102f9a22dc494",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-pair-on-ink.svg",
+      "bytes": 7355,
+      "sha256": "c6b85495df0ad610c62985525455301f6adf229deb972076ef0f7bbcdf0a238e",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-pair-on-paper.svg",
+      "bytes": 7355,
+      "sha256": "f6633acc760360f039b52b6a7cf22dcf6ac724b9b5da2a65421a02c2978c29aa",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-transfer-on-ink.svg",
+      "bytes": 10009,
+      "sha256": "ded31d42b13daa3d0034fe5ca63f5671d091294e15dc566c84e4a706ecd81b52",
+      "committed": true
+    },
+    {
+      "path": "animated/svg/mizan-transfer-on-paper.svg",
+      "bytes": 10009,
+      "sha256": "867a5450320839ebccc84c06fc3d57e521bb8bd646554c4fa5bef1cc2a849955",
+      "committed": true
+    },
+    {
+      "path": "animated/video-mp4/mizan-drop-on-ink.mp4",
+      "bytes": 110271,
+      "sha256": "056d952c7be7173cd2c57f6f3ce757052c91082e99ae2db5b5ad6ab2aac8cd9b",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-drop-on-paper.mp4",
+      "bytes": 109191,
+      "sha256": "c97e4a34c021bda18eac364a9f900c08f416fb689932a63bf6b3beb857b6fa71",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-fill-on-ink.mp4",
+      "bytes": 91350,
+      "sha256": "48378a367853729cbec7819202807288bac764ab8e14a8890723ea330968f39b",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-fill-on-paper.mp4",
+      "bytes": 87666,
+      "sha256": "153a9f134f84235b22a896b7aa9550d499b430396c22ed5e9a84bc66a07bdda8",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-pair-on-ink.mp4",
+      "bytes": 127296,
+      "sha256": "e65d292963a6cd490ae639536896d143d420e214b3572735c39c4b5217636e8c",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-pair-on-paper.mp4",
+      "bytes": 138123,
+      "sha256": "4cf827c683f883f1e948a680255986bfbd025b16e9cf1465fac98e1bc4f7d16d",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-transfer-on-ink.mp4",
+      "bytes": 262760,
+      "sha256": "4c58a1b5db72f98f008faa210e347575edb47f1efc4baffd0310bddeb5102903",
+      "committed": false
+    },
+    {
+      "path": "animated/video-mp4/mizan-transfer-on-paper.mp4",
+      "bytes": 262477,
+      "sha256": "3509aee2fbd24040589fb97daf73f9faf4f674debd381f3545a715be2a4078f9",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-drop-on-ink.mov",
+      "bytes": 1770988,
+      "sha256": "67926253e537794d0273e5dc624f4253c577c7be8c1b0c51c9c711d5b36337b0",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-drop-on-ink.webm",
+      "bytes": 52967,
+      "sha256": "38fd62315b3a18c3beefdea1490ff094d0270f65a762b6ba80e63d56691a03a3",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-drop-on-paper.mov",
+      "bytes": 1745567,
+      "sha256": "6709232c08652173b24e885437f383286b2155e074a91b2bc797ef0fe68e1c28",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-drop-on-paper.webm",
+      "bytes": 49579,
+      "sha256": "7144b336a55ad5636c180c671f3824e0ca4a6afb4d330d930ace6cd1e5500d4d",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-fill-on-ink.mov",
+      "bytes": 1484102,
+      "sha256": "993fe1586d756f0933d879aa7a32e2114af6fb648635b521447e22c121cf82bf",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-fill-on-ink.webm",
+      "bytes": 38513,
+      "sha256": "14fbdbfac166bb172f57f0a2081e4dec67d0eb0d08086baabcba2137d57ff878",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-fill-on-paper.mov",
+      "bytes": 1429774,
+      "sha256": "c6cf4d49ef60ea16f5f139cf5a248994fc10d360a1b131ac02c3bffe5c110762",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-fill-on-paper.webm",
+      "bytes": 36051,
+      "sha256": "b136a9c6ba8709024f6641f10e0f8950384282fff8298d59075dd1569dfc131e",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-pair-on-ink.mov",
+      "bytes": 3290938,
+      "sha256": "aab138953002f27fc28504f8cb565e8bc94addd1010f0c5e6b77e12667a8b09a",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-pair-on-ink.webm",
+      "bytes": 108170,
+      "sha256": "e342d4eb306aa51077558be7aea4ca56e08e499b73bcbdad19e99a7a1841e094",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-pair-on-paper.mov",
+      "bytes": 3439644,
+      "sha256": "f9bdc62c9bb3a37b0913d21a8aa7c7ba4c19ebb1cb7e4db8828b5ed3f28b5ae7",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-pair-on-paper.webm",
+      "bytes": 103598,
+      "sha256": "a6b012bca3c151fb70c1c20e021e58b2dd71096aae73eba60f348f9749ba97bb",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-transfer-on-ink.mov",
+      "bytes": 2284798,
+      "sha256": "61f4657539b6a4f826b80090595a6b122f5e3243d842badbff1acf35b65c9c50",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-transfer-on-ink.webm",
+      "bytes": 141080,
+      "sha256": "1d39727778982b3b30ed02a22833815f968410e89ffc98bc39c8746f9a35c049",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-transfer-on-paper.mov",
+      "bytes": 2209213,
+      "sha256": "a0aa3d3a15d9407fa62bd7fb8eb802c4aee31e8581e6d7300cc4392235e9f36c",
+      "committed": false
+    },
+    {
+      "path": "animated/video-transparent/mizan-transfer-on-paper.webm",
+      "bytes": 138706,
+      "sha256": "e3fb0e49f9870661bdf4725cbbb6486a826b9f98bc67da0acddcfdba7b5c6e2e",
+      "committed": false
+    },
+    {
+      "path": "components/mizan-balance.js",
+      "bytes": 22663,
+      "sha256": "5651c51cc3b56b4928e9ee79a93a5b187e42226a03d5708bed025468570c512d",
+      "committed": false
+    },
+    {
+      "path": "components/mizan-loader.js",
+      "bytes": 17209,
+      "sha256": "a5ac378ccfaca134e7ee2b77c8a6275124a1ec4d8d3397066391fa810797bc30",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-appicon-1200.png",
+      "bytes": 41433,
+      "sha256": "b907b76c6f27b62669bc098b8c54433f032dc8a22364c9cb428d8399dff9eb16",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-appicon-paper-1200.png",
+      "bytes": 39762,
+      "sha256": "654e377c2d9da2d1158489efee2a772fbd299abd9ad929830cdae85f291c1d62",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-appicon-red-1200.png",
+      "bytes": 39213,
+      "sha256": "de001bc4f2ad91ab6a023f45782dcfddef5ed71390cd9c1e0462ba53631d910e",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-bilingual-1200.png",
+      "bytes": 28484,
+      "sha256": "2940aee70f59a9474c28b9f622cf69c97492a9a434f691d7450dba70b726f877",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-bilingual-on-ink-1200.png",
+      "bytes": 29356,
+      "sha256": "203b035f29f65474f44d68fb01fd8462e111128e75cc29b1352413601c6013bd",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-lockup-1200.png",
+      "bytes": 23324,
+      "sha256": "ac83a6438e72a65a128449636164f70528b6fa04958e76b6c97e0b481e592f26",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-lockup-on-ink-1200.png",
+      "bytes": 23696,
+      "sha256": "d0a3afcfb06d29f5bf908af410bbce319c21e23f9cb3d452a9454d3911082171",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-mark-1200.png",
+      "bytes": 23174,
+      "sha256": "72d9949b8f21cd503c45429bbcad56f160d577d592d6f7aba6fbe5a0af7b6782",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-mark-mono-ink-1200.png",
+      "bytes": 19437,
+      "sha256": "9a25374c3a7fef7ff043563e32bd7664d6787b360840199ae2c4fc597e398647",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-mark-on-ink-1200.png",
+      "bytes": 24352,
+      "sha256": "c9997c49ff2d3a48e163811b930d474b9b5062c674accdf0b918f9585d832653",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-wordmark-1200.png",
+      "bytes": 22274,
+      "sha256": "42368edf83b9fff4ea0855ee22e91bd85a0fba71ea11dfdc26fc4ba6c26f2163",
+      "committed": false
+    },
+    {
+      "path": "logo/png/mizan-wordmark-ar-1200.png",
+      "bytes": 26445,
+      "sha256": "c1fe997b9fceb9cfa3654e2e873c954f1276abd921ab1a76781c1c75b28f8ef9",
+      "committed": false
+    },
+    {
+      "path": "logo/svg/mizan-appicon-paper.svg",
+      "bytes": 4854,
+      "sha256": "39ec2eee2ed4b52b375d8fbba9914764e4d2d90045afb865005aca121f01ea1a",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-appicon-red.svg",
+      "bytes": 4854,
+      "sha256": "a9458f579df12319c11b3d65ea608035b6293ae41081cc3f84e14583796973a7",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-appicon.svg",
+      "bytes": 4854,
+      "sha256": "cabbcb87d45ba0ba741baaac1d78d23e5fafc86b8db5325538cfc562ffe083dc",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-bilingual-mono-ink.svg",
+      "bytes": 8746,
+      "sha256": "decc366a223d90d6b039228abd2812e8ee39419acc545e1fe8aa64a6a7bb3d7d",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-bilingual-mono-paper.svg",
+      "bytes": 8746,
+      "sha256": "7996662de480136c17851007f17b8d9f69ccfff5f60566bb06689a3778362803",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-bilingual-on-ink.svg",
+      "bytes": 9005,
+      "sha256": "d8333285d2945c0144826b2e4491aa59989d56d224075024b58d7173fe32427a",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-bilingual.svg",
+      "bytes": 8956,
+      "sha256": "5aee80d02db01aa01bae9339c534e21a71a5e648f48ecf77e7beea4db98eb6ae",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-favicon.svg",
+      "bytes": 4838,
+      "sha256": "3d85cab081b3e41271898ba6ded0057304eb026e1fbea2c41b7ecb0806bca22a",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-lockup-mono-ink.svg",
+      "bytes": 5952,
+      "sha256": "4e91822e8868fda604f57ea4a17b7496172d740080ef690242afd6049c282641",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-lockup-mono-paper.svg",
+      "bytes": 5952,
+      "sha256": "4486ec437f464789846e2982148cc28d0fc0e54a3e4febba8da9d4597f13fc9f",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-lockup-on-ink.svg",
+      "bytes": 6210,
+      "sha256": "9cb91ff32bb3d6cda1a039d9f84b60c1cd7ad6f2f18dfdcf2de945a3248aa929",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-lockup.svg",
+      "bytes": 6162,
+      "sha256": "b9a9bfe9e4994932e2de443e9067d87a96bf90cd8bdc713285bbea208cf12420",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-mark-mono-ink.svg",
+      "bytes": 4531,
+      "sha256": "219b0434cb9ec7c372dab366141003ed0f61a8d10d851921edb7d511c935e6dd",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-mark-mono-paper.svg",
+      "bytes": 4531,
+      "sha256": "9b8ab246a39ffb28457a17d7a9c7745133b73ed545110c726c22dc17a17ff564",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-mark-on-ink.svg",
+      "bytes": 4806,
+      "sha256": "49084b3113e2b8ed1f69cd0ea7af19fcb1956d1371ccbb1d1b252a5fcdb05198",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-mark.svg",
+      "bytes": 4741,
+      "sha256": "1eb66d4cc6d9b8e2c06f71d6050f7b8135472054b94190de4aae8550a717341d",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-ar-mono-ink.svg",
+      "bytes": 2733,
+      "sha256": "4b4e4c574dfdc9532f34468ac35a7a636e8745bbfa41a02731b71b1bee8ec2bf",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-ar-mono-paper.svg",
+      "bytes": 2733,
+      "sha256": "bc5f774bab75ec88ca0750dbc618453d65c49c8d805d0dfc007b189ca830c0c6",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-ar-on-ink.svg",
+      "bytes": 2782,
+      "sha256": "49b17da6cf62223f8ef475f07a0c24e3b50630fbbe2a287da0e8350e9251cd22",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-ar.svg",
+      "bytes": 2733,
+      "sha256": "6e53ed225eaf9e08642840817b5109c10dba77c8ccc043f6635420f83164321e",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-mono-ink.svg",
+      "bytes": 1434,
+      "sha256": "01286953afc14577ff5757a321502fd5fd773c4064fdab81fd314a487354cd97",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-mono-paper.svg",
+      "bytes": 1434,
+      "sha256": "eee7800b2ec8a56671542ca38446d7ae5ea50f4fcfc88d954bff0961286da8c8",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark-on-ink.svg",
+      "bytes": 1482,
+      "sha256": "0db34f60b86c7cffddd714dab2827cdbe963e8a1798f74d8221483796e5a00e3",
+      "committed": true
+    },
+    {
+      "path": "logo/svg/mizan-wordmark.svg",
+      "bytes": 1434,
+      "sha256": "be732905b1b84259b7c7baca7ed8470f1444326eb3ec168ddbca27f849f563b1",
+      "committed": true
+    },
+    {
+      "path": "mizan-brand-2.0.html",
+      "bytes": 99706,
+      "sha256": "c0a1d42285e9dfc2ab2e9418de1f8890783da3c8cd30275ac432d6f96b8dcf5f",
+      "committed": false
+    },
+    {
+      "path": "README.md",
+      "bytes": 3006,
+      "sha256": "afb5b6e5a4fe549f9e2fda285801de278cc9cbf19bdab0ed2efb959fc9d8427c",
+      "committed": false
+    }
+  ]
+}

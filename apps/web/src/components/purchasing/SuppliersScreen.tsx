@@ -91,7 +91,7 @@ function SupplierDialog({ supplier, onClose }: { supplier: Supplier | null; onCl
       : ok(api.POST("/v1/suppliers", { body }))),
     meta: { toast: false },
     onSuccess: (_s, archived) => {
-      toast({ message: archived === true ? t("supplier.archivedDone") : archived === false ? t("supplier.restored") : t("supplier.saved") });
+      toast.event({ type: null, message: archived === true ? t("supplier.archivedDone") : archived === false ? t("supplier.restored") : t("supplier.saved") });
       void qc.invalidateQueries({ queryKey: ["suppliers"] });
       onClose();
     },

@@ -10,7 +10,7 @@ import { Button, buttonClass } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
-import { ErrorState, Pending } from "@/components/ui/QueryState";
+import { ErrorState, PageState } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -164,7 +164,7 @@ function RecordDispute({ orderId, held, onClose }: { orderId: string; held: { am
       ...(respondBy ? { respondBy: new Date(`${respondBy}T23:59:00`).toISOString() } : {}),
     } })),
     meta: { toast: false },
-    onSuccess: (d) => { toast({ message: t("recorded", { number: d.number }) }); refresh(); onClose(); },
+    onSuccess: (d) => { toast.event({ type: "dispute.opened", message: t("recorded", { number: d.number }) }); refresh(); onClose(); },
   });
   const err = save.error instanceof ApiError ? save.error : null;
   const message = err?.code === "over_chargeback" ? t("errors.overChargeback") : err?.code === "case_on_other_order" ? t("errors.otherOrder")
@@ -201,7 +201,7 @@ function SubmitEvidence({ dispute, onClose }: { dispute: Dispute; onClose(): voi
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/disputes/{disputeId}/evidence", { params: { path: { disputeId: dispute.id } }, body: note.trim() ? { note: note.trim() } : {} })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("sent") }); refresh(); onClose(); },
+    onSuccess: () => { toast.event({ type: "dispute.evidence_submitted", message: t("sent") }); refresh(); onClose(); },
   });
   return (
     <Dialog open onClose={onClose} title={t("sentTitle", { number: dispute.number })} footer={(
@@ -229,7 +229,7 @@ function CloseDispute({ dispute, onClose }: { dispute: Dispute; onClose(): void 
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/disputes/{disputeId}/close", { params: { path: { disputeId: dispute.id } }, body: { outcome, ...(note.trim() ? { note: note.trim() } : {}) } })),
     meta: { toast: false },
-    onSuccess: (d) => { toast({ message: t(`closed.${d.status as "won"}`) }); refresh(); onClose(); },
+    onSuccess: (d) => { toast.event({ type: "dispute.closed", data: { data: { outcome: d.status } }, message: t(`closed.${d.status as "won"}`) }); refresh(); onClose(); },
   });
   return (
     <Dialog open onClose={onClose} title={t("closeTitle", { number: dispute.number })} footer={(
@@ -271,7 +271,7 @@ export function EvidencePack({ disputeId }: { disputeId: string }) {
     <div className="mx-auto flex max-w-[860px] flex-col gap-4 px-4 pt-6 pb-14 md:px-6 print:max-w-none print:p-0" data-testid="evidence-pack">{body}</div>
   );
   if (!allowed) return frame(OPS_VIEWERS.has(store?.role ?? "") ? <DisputeSummary disputeId={disputeId} /> : <Alert tone="info">{t("notAllowed")}</Alert>);
-  if (!p) return frame(<Pending query={q}><p className="text-body-sm text-text-3">{t("loading")}</p></Pending>);
+  if (!p) return frame(<PageState query={q} variant="card" label={t("loading")} />);
   const d = p.dispute;
   const orderStatus = (s: string) => (s in STATUS_KEYS ? to(`status.${s as "new"}`) : s);
   const shipStatus = (s: string) => (SHIP_KEYS.has(s) ? ts(`status.${s as "delivered"}`) : s);
@@ -393,7 +393,7 @@ function DisputeSummary({ disputeId }: { disputeId: string }) {
     meta: { toast: false },
   });
   const d = q.data;
-  if (!d) return <Pending query={q}><p className="text-body-sm text-text-3">{t("loading")}</p></Pending>;
+  if (!d) return <PageState query={q} variant="card" label={t("loading")} />;
   return (
     <div className="flex flex-col gap-4" data-testid="dispute-summary">
       <Link href={`/orders/${d.order.id}`} className="text-body-sm text-text-2 underline">{t("backToOrder")}</Link>

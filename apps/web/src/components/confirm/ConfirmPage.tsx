@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@mizan/design-system/icons/react";
+import { DoneState } from "@mizan/design-system/react/motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -133,10 +134,22 @@ function Finished({ v }: { v: View }) {
   return <Done icon={icon} title={t(`done.${s}.title`)} body={t(`done.${s}.body`, { store: v.store })} />;
 }
 
+/**
+ * The customer's answer is in. Confirmed: the pair merges and the red drops once (DoneState, the
+ * page's one red, order.confirmed). Any other end: its icon, settling in (no red).
+ */
 function Done({ icon, title, body }: { icon: "success" | "close" | "call" | "info" | "error"; title: string; body: string }) {
+  if (icon === "success") {
+    return (
+      <DoneState label={title} testId="confirm-done" className="py-8 text-center">
+        <h1 className="font-display text-heading-md">{title}</h1>
+        <p className="max-w-[36ch] text-body text-text-2">{body}</p>
+      </DoneState>
+    );
+  }
   return (
     <div className="flex flex-col items-center gap-3 py-8 text-center" role="status" data-testid="confirm-done">
-      <Icon name={icon} size={32} />
+      <span className="mz-settle-in"><Icon name={icon} size={32} /></span>
       <h1 className="font-display text-heading-md">{title}</h1>
       <p className="max-w-[36ch] text-body text-text-2">{body}</p>
     </div>

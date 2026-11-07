@@ -14,6 +14,7 @@ import { CancelAtCourier } from "@/components/shipping/CancelAtCourier";
 import { Card } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useEventMutation } from "@/lib/motion/useEventMutation";
 import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 
@@ -38,10 +39,11 @@ export function ShippingCard({ order: o }: { order: Order }) {
   const FINAL = new Set(["delivered", "returned", "lost", "cancelled"]);
   const live = o.shipments.find(isLive);
   const [manual, setManual] = useState(false);
-  const ship = useMutation({
+  // Booking with the courier is two systems agreeing (pending: transfer); the courier's answer arrives by poll.
+  const ship = useEventMutation("shipment.created", {
     mutationFn: () => ok(api.POST("/v1/orders/{id}/ship", { params: { path: { id: o.id } } })),
     onSettled: () => qc.invalidateQueries({ queryKey: ["order"] }),
-  });
+  }, { entityId: () => o.id, toast: false });
   // Confirmed, or shipped with a delivery the courier cancelled: it can be booked (again).
   const offer = canShip && (o.status === "confirmed" || o.status === "shipped") && !live;
   if (!o.shipments.length && !offer) return null;
@@ -49,7 +51,7 @@ export function ShippingCard({ order: o }: { order: Order }) {
     <Card title={t("title")} actions={offer ? (
       <ButtonGroup>
         <Button size="sm" variant="secondary" onClick={() => setManual(true)}>{t("manual.open")}</Button>
-        <Button size="sm" icon="shipping" busy={ship.isPending} onClick={() => ship.mutate()}>{o.shipments.length ? t("again") : t("ship")}</Button>
+        <Button size="sm" icon="shipping" busy={ship} onClick={() => ship.mutate()}>{o.shipments.length ? t("again") : t("ship")}</Button>
       </ButtonGroup>
     ) : null}>
       <div className="flex flex-col gap-3" data-testid="shipping">

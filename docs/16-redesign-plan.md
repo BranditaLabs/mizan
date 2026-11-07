@@ -101,6 +101,8 @@ Notation:
 
 ## 2. Design system changes (`packages/design-system`)
 
+**Identity update (Nov 2026): Brand 2.0.** The palette and fonts stay (§2.1, §2.2); the mark becomes two fluid balls (ink left, red right, like scale pans) and the brand gains four motion rules. How that reaches every event: §2.6.
+
 ### 2.1 Palette (owner decision D1: **keep the current Mizan kit**; the table below is the rejected alternative, kept for the record)
 
 The site uses the designer's 2026-10 exports. Mizan still uses the older PDF kit (lavender paper). **Default:** move Mizan to the 2026-10 palette so the site and the app read as one brand.
@@ -246,6 +248,18 @@ Today `apps/admin/src/components/ui` copies the web kit, and the admin has its o
 - Below 1024px: centred, at `bottom: calc(88px + env(safe-area-inset-bottom))`.
 - Pause on hover or focus; exit by fading down over 200ms; swipe to dismiss; stacking motion.
 - Default: adopt Sonner pinned at an exact version, themed with tokens. It gives these behaviours for free.
+
+### 2.6 Brand 2.0 and event motion (BR-1)
+
+The owner's Brand 2.0 pack replaces the marks and adds motion: "use animated events for all the events, centralise them and use them systematically". Colours are unchanged (ink `#0B0B0B`, paper `#FEF7FF`, red `#DE0000`, red on ink `#E33232`); Geist, Geist Mono for every figure, Alexandria for Arabic.
+
+- **Catalogue model.** One map per event family in `packages/shared/src/motion`: `EVENT_MOTION` (every `DOMAIN_EVENT_TYPES` entry, checked by type and at runtime), `TIMELINE_MOTION` (every order timeline type), `ENGINE_MOTION` (the integration engine's own events, with an audience). Each rule names an **outcome** (`settle`, `done`, `merge`, `tip`, `fail`, `drop`, `quiet`), an optional **pending** loader (`pair`, `transfer`, `drop`, `fill`), its **surfaces**, its copy key (AR/EN) and, where the outcome depends on a non-PII field, a variant (`order.payment_changed` by state: paid drops, failed tips). `motionFor` resolves an event to its motion. The ops app gets a generated Dart copy (`apps/ops/lib/motion/event_motion.g.dart`); `docs/13` §2.1 gets a generated table. Both are checked by tests.
+- **Surfaces.** `button` (busy loader, then the outcome), `toast`, `bell`, `timeline`, `card`, `list`, `kpi` (roll), `sync` (`SyncPill`), `queue`, `instrument` (gauge, vessels, breakeven, bullseye), `banner`. A screen never picks an animation: it calls `useEventMutation(type)`, `toast.event(type)` or renders a primitive bound to the event (Flutter: `EventLoader(type)`, `showEventSnack(type)`), and the catalogue decides.
+- **Scheduler rules** (`packages/design-system/motion/scheduler.ts`): seen ids (an LRU of 2,000 drops replays); history and resync refresh data with no motion; an echo of the viewer's own success within 8 s plays nothing; the same surfaces and merge key within 600 ms merge into one dispatch with a count; rate limits (4/s, per surface 400 ms, the bell 2 s, one DROP per 3 s); overflow starts a 5 s storm that ends in one batched "N new"; a hidden tab plays nothing and the bell gets one summary on return; reduced motion still dispatches, flagged, and surfaces crossfade; unmounted surfaces drop silently. The scheduler holds ids, types and timestamps only: no event data, nothing in storage.
+- **Red budget.** One red per view. The shell uses mono marks, so the content owns the red; auth, splash, boot and outage use the full-colour mark as their one red. A DROP outranks a loader and releases the red after its ripple; a refused claimant renders mono. Money going out never gets red; DROP is only for the checked-in allowlist (confirmed orders, paid payments, …).
+- **Reduced motion.** Still frames chosen on purpose (pair level and apart, transfer balanced, drop at rest, fill with its percentage), no rAF or ticker, reduced durations ≤120 ms.
+- **Consumers to come.** CN-3 (the connections map) uses `SyncPill` and the edge states from the catalogue; A-11 (the Event Center) lists `EVENT_MOTION` and `ENGINE_MOTION` with `EventGlyph` rows and filter chips per outcome. BR-2 places the instruments on real screens, BR-4 feeds live events into the scheduler, BR-5 bridges engine events, BR-6 gives imports and exports real progress (`docs/10-backlog.md`).
+- **Ops app (§4.25).** Same catalogue and tokens: Lottie loaders from the pack, `FillBar`, `VesselsCount`, scan glyphs with haptics, event toasts, the splash and launcher icons from the new mark.
 
 ---
 
@@ -811,6 +825,7 @@ The ops app is part of "the whole system". It keeps its offline-first engine (dr
 - **Offline status bar** (OP-2), always visible at the top: "Offline · 12 waiting" / "Syncing 4…" / "All sent · 14:32"; tapping opens the queue (`lib/app/queue_screen.dart`) with per-op state; **conflicts and server rejects** open a sheet per item in merchant language with Retry / Discard (reason) / "Ask the office", and each reject is also recorded server-side as an `ops_device` event (§8.2).
 - **Scan screens** (`pick/pack_screen.dart`, `receive/receive_screen.dart`, count in `app/home_screen.dart`) (OP-3): 56px+ targets, one primary action per screen at thumb height, big Western-digit quantities, haptic feedback on scan success (light) and wrong item (heavy + red point + sound option), the camera view with a clear scan frame, AR/EN.
 - **Sign-in (E8-4b)** uses the same visual shell as the web sign-in.
+- **Brand 2.0 motion (✅ BR-1):** the queue, count, pick and receiving screens play events from the shared catalogue (§2.6): transfer while syncing, pair while refreshing, `FillBar` for scanned of wanted, `VesselsCount` per receiving line, a tip glyph with the heavy buzz on a wrong item, toasts with glyphs for a saved count, a packed box and a received delivery; reduced motion shows still frames.
 - Tests: widget tests per screen in AR and EN, the existing sync and flow tests stay green.
 
 ---

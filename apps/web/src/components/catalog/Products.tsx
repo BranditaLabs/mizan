@@ -173,7 +173,7 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
     </>,
     <ButtonGroup>
       {PRODUCT_EDITORS.has(store?.role ?? "") ? <Link href="/products/new" className={buttonClass("primary")}><Icon name="add" size={16} />{t("newProduct.open")}</Link> : null}
-      <Button variant="secondary" icon="download" busy={exporting} disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
+      <Button variant="secondary" icon="download" busy={exporting} pending="fill" disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
       <Button icon="upload" onClick={() => setImporting(true)}>{t("import.open")}</Button>
     </ButtonGroup>,
   );
@@ -194,7 +194,7 @@ export function EditVariant({ row, onClose }: { row: EditRow; onClose(): void })
   const barcodeOk = barcodeValue === "" || BARCODE.test(barcodeValue);
   const save = useMutation({
     mutationFn: (body: Schemas["UpdateVariant"]) => ok(api.PATCH("/v1/products/variants/{id}", { params: { path: { id: variant.id } }, body })),
-    onSuccess: () => { toast({ message: t("saved", { sku: variant.sku }) }); void qc.invalidateQueries({ queryKey: ["products"] }); onClose(); },
+    onSuccess: () => { toast.event({ type: "product.updated", message: t("saved", { sku: variant.sku }) }); void qc.invalidateQueries({ queryKey: ["products"] }); onClose(); },
   });
   const body: Schemas["UpdateVariant"] = {
     ...(costValue && costValue !== variant.cost?.amount ? { cost: costValue } : {}),
@@ -234,7 +234,7 @@ function ImportCosts({ open, onClose }: { open: boolean; onClose(): void }) {
     mutationFn: () => ok(api.POST("/v1/products/costs/import", { body: { csv } })),
     onSuccess: (r) => {
       setCsv("");
-      toast({ message: t("done", { costs: r.costs, barcodes: r.barcodes }) });
+      toast.event({ type: "costs.changed", message: t("done", { costs: r.costs, barcodes: r.barcodes }) });
       void qc.invalidateQueries({ queryKey: ["products"] });
       onClose();
     },
@@ -246,7 +246,7 @@ function ImportCosts({ open, onClose }: { open: boolean; onClose(): void }) {
     <Dialog open={open} onClose={onClose} title={t("title")} description={t("body")}
       footer={(
         <ButtonGroup>
-          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button>
+          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>

@@ -40,7 +40,7 @@ export function NewTicketDialog({ order, onClose, onCreated }: { order?: { id: s
     } })),
     meta: { toast: false },
     onSuccess: (ticket) => {
-      toast({ message: t("created", { number: ticket.number }) });
+      toast.event({ type: "ticket.created", message: t("created", { number: ticket.number }) });
       void qc.invalidateQueries({ queryKey: ["tickets"] });
       onCreated(ticket);
     },

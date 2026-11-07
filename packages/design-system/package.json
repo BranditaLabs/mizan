@@ -1,7 +1,7 @@
 {
   "name": "@mizan/design-system",
   "version": "1.0.0",
-  "description": "Mizan design system: Brandita palette, Geist + Alexandria type, tokens for web (CSS, Tailwind), TypeScript and Flutter, wordmark, icons and fonts.",
+  "description": "Mizan design system: Brandita palette, Geist + Alexandria type, tokens for web (CSS, Tailwind), TypeScript and Flutter, Brand 2.0 marks and motion (loaders, balance instruments, event motion), icons and fonts.",
   "type": "module",
   "private": true,
   "license": "UNLICENSED",
@@ -15,9 +15,13 @@
     "./components.css": "./css/components.css",
     "./glass.css": "./css/glass.css",
     "./glass-bridge.css": "./css/glass-bridge.css",
+    "./motion.css": "./css/motion.css",
     "./icons": "./icons/index.ts",
     "./package.json": "./package.json",
     "./icons/react": "./icons/react.tsx",
+    "./motion": "./motion/index.ts",
+    "./react/motion": "./react/motion/index.ts",
+    "./react/motion/instruments": "./react/motion/instruments/index.ts",
     "./partners": "./logos/partners/index.ts",
     "./partners/react": "./logos/partners/react.tsx",
     "./partners/*": "./logos/partners/*",
@@ -29,8 +33,10 @@
     "import:partners": "node scripts/import-partner-logos.mjs",
     "check:partners": "node scripts/check-partner-slugs.mjs",
     "build:png": "node scripts/build-png.mjs",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "test": "node scripts/asset-budget.mjs && vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "import:brand": "node scripts/import-brand-pack.mjs",
+    "budget": "node scripts/asset-budget.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -39,7 +45,10 @@
     "vitest": "^2.1.8",
     "lucide-react": "1.60.0",
     "react": "19.3.1",
-    "@types/react": "19.3.0"
+    "@types/react": "19.3.0",
+    "jsdom": "26.1.0",
+    "react-dom": "19.3.1",
+    "esbuild": "0.28.2"
   },
   "peerDependencies": {
     "lucide-react": ">=1.0.0",
@@ -52,5 +61,8 @@
     "react": {
       "optional": true
     }
+  },
+  "dependencies": {
+    "@mizan/shared": "0.1.0"
   }
 }

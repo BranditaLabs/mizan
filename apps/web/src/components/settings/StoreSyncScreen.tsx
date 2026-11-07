@@ -26,7 +26,7 @@ function StoreSyncCard({ id, shop }: { id: string; shop: string }) {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/connections/{id}/sync", { params: { path: { id } } })) });
   const save = useMutation({
     mutationFn: (change: Partial<Sync>) => ok(api.PUT("/v1/connections/{id}/sync", { params: { path: { id } }, body: change })),
-    onSuccess: (data) => { qc.setQueryData(key, data); toast({ message: t("saved") }); },
+    onSuccess: (data) => { qc.setQueryData(key, data); toast.event({ type: null, message: t("saved") }); },
   });
   return (
     <section className="mz-card p-5" data-testid="store-sync">

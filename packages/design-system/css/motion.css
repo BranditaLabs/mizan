@@ -1,0 +1,171 @@
+/*
+ * Brand 2.0 motion: the keyframes behind the four rules and the one reduced-motion block for them.
+ * Import once, after tokens.css (web and admin globals.css). Durations and easings come from tokens
+ * (--mz-duration-*, --mz-ease-settle, --mz-angle-*), so reduced motion is decided in one place.
+ *
+ *   SETTLE  arrive with a small overshoot and a damped wobble     .mz-settle-in
+ *   TIP     two sides compare; an off-balance badge holds 8°      .mz-tip-hold
+ *   MERGE   agreeing values flow into one (the neck forms)        .mz-merge
+ *           two pans travel together, the neck grows between     .mz-pan-l, .mz-pan-r, .mz-neck
+ *   DROP    red falls into the merged pans and rests as the bubble .mz-drop-in
+ *   DROP    red enters from above once, then ripples out          .mz-drop-fall, .mz-ripple
+ *   exit    a toast leaving                                       .mz-exit
+ *   fail    tips twice, damps out, rests level                    .mz-fail
+ *   draw    the check of a "done" glyph                           .mz-draw
+ *
+ * Screens never use these classes directly: the components in react/motion do, driven by the
+ * event-motion catalogue (@mizan/shared motion).
+ */
+
+@keyframes mz-settle-in {
+  0% { opacity: 0; transform: translateY(var(--mz-distance-rise)) scale(0.96); }
+  60% { opacity: 1; transform: translateY(-1.5px) scale(1.01); }
+  82% { transform: translateY(0.5px) scale(0.998); }
+  100% { opacity: 1; transform: none; }
+}
+
+/* The same frames under a second name: a surface that settles again restarts by alternating the two. */
+@keyframes mz-settle-in-b {
+  0% { opacity: 0; transform: translateY(var(--mz-distance-rise)) scale(0.96); }
+  60% { opacity: 1; transform: translateY(-1.5px) scale(1.01); }
+  82% { transform: translateY(0.5px) scale(0.998); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes mz-tip-hold {
+  0% { transform: rotate(0deg); }
+  45% { transform: rotate(calc(var(--mz-angle-tip-hold) * 1.4)); }
+  72% { transform: rotate(calc(var(--mz-angle-tip-hold) * 0.85)); }
+  100% { transform: rotate(var(--mz-angle-tip-hold)); }
+}
+
+@keyframes mz-merge {
+  0% { transform: scaleX(1.18); }
+  55% { transform: scaleX(0.96); }
+  100% { transform: scaleX(1); }
+}
+
+/* MERGE as travel: each pan starts --_pan apart (user units) and arrives with the settle overshoot. */
+@keyframes mz-pan-l { from { transform: translateX(calc(var(--_pan, 8px) * -1)); } to { transform: none; } }
+@keyframes mz-pan-r { from { transform: translateX(var(--_pan, 8px)); } to { transform: none; } }
+/* The neck: nothing for the first part of the travel, then it grows from the waist. */
+@keyframes mz-neck {
+  0%, 40% { opacity: 0; transform: scaleY(0); }
+  100% { opacity: 1; transform: none; }
+}
+/* DROP into a surface: from --_drop-from above, a small dip below its rest, then floats. */
+@keyframes mz-drop-in {
+  0% { opacity: 0; transform: translateY(var(--_drop-from, -30px)); }
+  15% { opacity: 1; }
+  78% { transform: translateY(1.5px); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes mz-drop-fall {
+  0% { opacity: 0; transform: translateY(-140%); }
+  15% { opacity: 1; }
+  80% { transform: translateY(6%); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes mz-ripple {
+  0% { opacity: 0.55; transform: scale(0.6); }
+  100% { opacity: 0; transform: scale(2.4); }
+}
+
+@keyframes mz-exit {
+  to { opacity: 0; transform: translateY(calc(var(--mz-distance-rise) * -0.5)) scale(0.98); }
+}
+
+@keyframes mz-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes mz-fail {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(calc(var(--mz-angle-tip-hold) * -1.5)); }
+  40% { transform: rotate(var(--mz-angle-tip-hold)); }
+  60% { transform: rotate(calc(var(--mz-angle-tip-hold) * -0.5)); }
+  80% { transform: rotate(calc(var(--mz-angle-tip-hold) * 0.2)); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes mz-grow-x {
+  from { opacity: 0.4; transform: scaleX(0); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes mz-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mz-fade-in-b { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mz-fade-out { to { opacity: 0; } }
+
+.mz-settle-in { animation: mz-settle-in var(--mz-duration-settle) var(--mz-ease-settle) both; }
+.mz-settle-in-b { animation: mz-settle-in-b var(--mz-duration-settle) var(--mz-ease-settle) both; }
+.mz-tip-hold { animation: mz-tip-hold var(--mz-duration-settle) var(--mz-ease-settle) both; transform-origin: 50% 60%; }
+.mz-merge { animation: mz-merge var(--mz-duration-merge) var(--mz-ease-settle) both; transform-origin: center; }
+.mz-pan-l { animation: mz-pan-l var(--mz-duration-merge) var(--mz-ease-settle) both; }
+.mz-pan-r { animation: mz-pan-r var(--mz-duration-merge) var(--mz-ease-settle) both; }
+.mz-neck { animation: mz-neck var(--mz-duration-merge) var(--mz-ease-standard) both; transform-box: fill-box; transform-origin: center; }
+.mz-drop-in { animation: mz-drop-in var(--mz-duration-fall) cubic-bezier(0.55, 0, 1, 0.45) both; }
+.mz-drop-fall { animation: mz-drop-fall var(--mz-duration-fall) cubic-bezier(0.55, 0, 1, 0.45) both; }
+.mz-ripple { animation: mz-ripple var(--mz-duration-ripple) var(--mz-ease-enter) both; transform-origin: center; transform-box: fill-box; }
+.mz-exit { animation: mz-exit var(--mz-duration-exit) var(--mz-ease-exit) both; }
+.mz-fail { animation: mz-fail calc(var(--mz-duration-settle) * 1.4) var(--mz-ease-standard) both; transform-origin: 50% 60%; }
+/* Inside an SVG, a keyframe's percentages and origin are the shape's own box. */
+svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-box: fill-box; transform-origin: center; }
+/* A part of a bar filling in from the start side (a breakdown, a share). */
+.mz-grow-x { animation: mz-grow-x var(--mz-duration-settle) var(--mz-ease-settle) backwards; transform-origin: left center; }
+/* Two rules, not one list: a browser without :dir() would drop the whole list. */
+[dir="rtl"] .mz-grow-x { transform-origin: right center; }
+.mz-grow-x:dir(rtl) { transform-origin: right center; }
+/* The fill loader's track fills from the inline start: mirrored in RTL (the liquid and the bubble travel right to left). */
+[dir="rtl"] .mz-fill-track { transform: scaleX(-1); }
+.mz-fill-track:dir(rtl) { transform: scaleX(-1); }
+.mz-draw { stroke-dasharray: 1; animation: mz-draw var(--mz-duration-merge) var(--mz-ease-enter) both; }
+
+/* Figures inside motion components: Geist Mono, never re-flowed by the bidi algorithm. */
+.mz-figure { font-family: var(--mz-mono); font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; }
+:lang(ar) .mz-figure, .mz-figure:lang(ar) { letter-spacing: 0; text-transform: none; }
+
+/*
+ * The only reduced-motion block for brand motion. Nothing travels, swings or overshoots: each
+ * rule shows its end frame, reached by a crossfade of at most 120ms (tokens.json motion.reduced).
+ * A held tilt stays (it is information, not motion).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .mz-pan-l, .mz-pan-r, .mz-neck { animation: none; }
+  .mz-settle-in-b { animation-name: mz-fade-in-b; animation-duration: var(--mz-duration-settle); animation-timing-function: linear; }
+  .mz-settle-in, .mz-merge, .mz-drop-fall, .mz-drop-in, .mz-grow-x {
+    animation-name: mz-fade-in;
+    animation-duration: var(--mz-duration-settle);
+    animation-timing-function: linear;
+  }
+  .mz-exit { animation: mz-fade-out var(--mz-duration-exit) linear both; }
+  .mz-tip-hold { animation: none; transform: rotate(var(--mz-angle-tip-hold)); }
+  .mz-ripple { animation: none; opacity: 0; }
+  .mz-fail { animation: none; transform: none; }
+  .mz-draw { animation: none; stroke-dashoffset: 0; }
+}
+
+/* A forced reduced store (the gallery's "reduced" toggle, tests) behaves exactly the same. */
+[data-mz-reduced="true"] .mz-pan-l, [data-mz-reduced="true"] .mz-pan-r, [data-mz-reduced="true"] .mz-neck { animation: none; }
+[data-mz-reduced="true"] .mz-settle-in, [data-mz-reduced="true"] .mz-merge, [data-mz-reduced="true"] .mz-drop-fall, [data-mz-reduced="true"] .mz-drop-in, [data-mz-reduced="true"] .mz-grow-x {
+  animation-name: mz-fade-in; animation-duration: var(--mz-duration-settle); animation-timing-function: linear;
+}
+[data-mz-reduced="true"] .mz-settle-in-b { animation-name: mz-fade-in-b; animation-duration: var(--mz-duration-settle); animation-timing-function: linear; }
+[data-mz-reduced="true"] .mz-tip-hold { animation: none; transform: rotate(var(--mz-angle-tip-hold)); }
+[data-mz-reduced="true"] .mz-ripple { animation: none; opacity: 0; }
+[data-mz-reduced="true"] .mz-fail { animation: none; transform: none; }
+[data-mz-reduced="true"] .mz-draw { animation: none; stroke-dashoffset: 0; }
+
+/* Brand marks with tone="auto" | "mono" (react/motion Mark, Wordmark, Lockup): the theme picks the file. */
+.mz-logo-dark { display: none; }
+/* The -on-ink files carry an ink plate: lighten lets the page's own dark (glass, fields) show through it. */
+.mz-logo-dark { mix-blend-mode: lighten; }
+[data-theme="dark"] .mz-logo-light { display: none; }
+[data-theme="dark"] .mz-logo-dark { display: inline; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .mz-logo-light { display: none; }
+  :root:not([data-theme="light"]) .mz-logo-dark { display: inline; }
+}

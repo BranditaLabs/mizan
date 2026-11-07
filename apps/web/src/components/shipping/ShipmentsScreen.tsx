@@ -134,7 +134,7 @@ function SetStatusDialog({ row, onClose }: { row: Row; onClose(): void }) {
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/shipments/{id}/status", { params: { path: { id: row.id } }, body: { status: status as Schemas["SetShipmentStatus"]["status"], ...(note.trim() ? { note: note.trim() } : {}) } })),
     onSuccess: () => {
-      toast({ message: t("saved") });
+      toast.event({ type: "shipment.status_changed", message: t("saved") });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
       void qc.invalidateQueries({ queryKey: ["scorecard"] });
       onClose();

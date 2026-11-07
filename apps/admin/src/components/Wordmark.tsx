@@ -1,16 +1,17 @@
+import { Wordmark as DsWordmark, type LogoTone } from "@mizan/design-system/react/motion";
 import { useLocale, useTranslations } from "next-intl";
 
-/** The wordmark (outlined SVG) with the back office label; dark-theme file in dark mode. */
-export function Wordmark() {
+/**
+ * The Brand 2.0 wordmark (outlined SVG, the page's script) with the back office label.
+ * tone="mono" in the app chrome (the content owns the view's one red); "auto" on sign-in, where the
+ * full-colour mark is the view's red.
+ */
+export function Wordmark({ tone = "mono" }: { tone?: LogoTone }) {
   const t = useTranslations("shell");
-  const ar = useLocale() === "ar";
-  const file = (dark: boolean) => `/brand/mizan-wordmark${ar ? "-ar" : ""}${dark ? "-on-dark" : ""}.svg`;
+  const locale = useLocale();
   return (
     <span className="inline-flex items-center gap-2">
-      {/* eslint-disable-next-line @next/next/no-img-element -- static brand SVG */}
-      <img src={file(false)} alt={t("logoAlt")} className="h-6 w-auto dark:hidden" />
-      {/* eslint-disable-next-line @next/next/no-img-element -- static brand SVG */}
-      <img src={file(true)} alt={t("logoAlt")} className="hidden h-6 w-auto dark:block" />
+      <DsWordmark locale={locale} alt={t("logoAlt")} tone={tone} height={24} />
       <span className="rounded-sm border border-line px-1.5 text-caption text-text-2">{t("backOffice")}</span>
     </span>
   );

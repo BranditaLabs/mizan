@@ -69,7 +69,7 @@ function PartialDialog({ order: o, onClose }: { order: Order; onClose(): void })
   const all = o.lines.every((l) => (kept[l.id] ?? 0) >= l.quantity);
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/partial-delivery", { params: { path: { id: o.id } }, body: { kept: items, ...(note.trim() ? { note: note.trim() } : {}) } })),
-    onSuccess: () => { toast({ message: t("saved") }); void qc.invalidateQueries({ queryKey: ["order"] }); void qc.invalidateQueries({ queryKey: ["returns"] }); onClose(); },
+    onSuccess: () => { toast.event({ type: "order.partially_delivered", message: t("saved") }); void qc.invalidateQueries({ queryKey: ["order"] }); void qc.invalidateQueries({ queryKey: ["returns"] }); onClose(); },
   });
   return (
     <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(
@@ -107,7 +107,7 @@ function RefusalDialog({ order: o, onClose }: { order: Order; onClose(): void })
   const [note, setNote] = useState("");
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/refusal", { params: { path: { id: o.id } }, body: { reason, openBox, ...(note.trim() ? { note: note.trim() } : {}) } })),
-    onSuccess: () => { toast({ message: t("saved") }); void qc.invalidateQueries({ queryKey: ["order"] }); onClose(); },
+    onSuccess: () => { toast.event({ type: "order.refused", message: t("saved") }); void qc.invalidateQueries({ queryKey: ["order"] }); onClose(); },
   });
   return (
     <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(

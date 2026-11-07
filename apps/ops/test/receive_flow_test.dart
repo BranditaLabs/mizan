@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mizan_ops/main.dart';
+import 'package:mizan_ops/motion/vessels_count.dart';
 import 'package:mizan_ops/receive/receive_api.dart';
 import 'package:mizan_ops/sync/op.dart';
 import 'package:mizan_ops/sync/op_store.dart';
@@ -68,6 +69,7 @@ void main() {
     camera!('6221000000099');
     await tester.pump();
     expect(find.text('Not on this purchase order. Put it aside.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('glyph-tip')), findsOneWidget); // a blocked scan tips and holds
     camera!('6221000000001');
     await tester.pump();
     expect(find.text('Received: Abaya'), findsOneWidget);
@@ -85,11 +87,15 @@ void main() {
     await tester.pump();
     expect(find.textContaining('More than ordered needs a manager'), findsOneWidget);
     expect(find.text('2 good · 1 damaged'), findsOneWidget);
+    expect(find.byType(VesselsCount), findsWidgets); // ordered against received, per line
     await tester.ensureVisible(find.byKey(const Key('save-delivery')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('save-delivery')));
     await settle(tester);
     await settle(tester);
+    // Goods in: the stock.received toast with its glyph (done).
+    expect(find.byKey(const ValueKey('event-snack-stock.received')), findsOneWidget);
+    expect(find.byKey(const ValueKey('glyph-done')), findsOneWidget);
 
     final ops = (await tester.runAsync(() => store.recent()))!;
     final receipt = ops.singleWhere((o) => o.type == OpTypes.poReceive);

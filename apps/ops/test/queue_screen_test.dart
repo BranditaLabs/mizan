@@ -40,6 +40,7 @@ void main() {
     expect(queued!.single.type, OpTypes.stockCount);
     expect(queued.single.payload, {'barcode': '6221234567890', 'quantity': 12});
     expect(find.text('مستني'), findsOneWidget);
+    expect(find.byKey(const ValueKey('event-snack-stock.adjusted')), findsOneWidget); // the count's toast
   });
 
   testWidgets('English, signed in: the count syncs and shows done; an unknown SKU shows why', (tester) async {

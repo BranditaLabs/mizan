@@ -12,7 +12,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Segmented } from "@/components/ui/Choice";
-import { LedgerBars } from "@/components/ui/Loader";
+import { BusyLabel, BusyLoader } from "@/components/ui/BusyLabel";
 import { useRouter } from "@/i18n/navigation";
 import { apiClient, ok } from "@/lib/api/client";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
@@ -187,10 +187,12 @@ export function SignIn({ next, enrolled, signup = false }: { next: string; enrol
 
   const errorAlert = error ? <Alert tone="danger">{t(`errors.${error}`)}</Alert> : null;
   const submit = (label: string, arrow = true) => (
-    <button type="submit" className="btn btn-primary btn-lg h-(--_ctl) w-full" disabled={busy} aria-busy={busy || undefined}>
-      {busy ? <LedgerBars /> : null}
-      {label}
-      {arrow && !busy ? <Icon name="forward" size={16} /> : null}
+    <button type="submit" className="btn btn-primary btn-lg relative h-(--_ctl) w-full" disabled={busy} aria-busy={busy || undefined}>
+      <BusyLabel busy={busy}>
+        {label}
+        {arrow ? <Icon name="forward" size={16} /> : null}
+      </BusyLabel>
+      {busy ? <span className="absolute inset-0 grid place-items-center"><BusyLoader pending="drop" /></span> : null}
     </button>
   );
   const emailField = (

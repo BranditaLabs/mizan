@@ -5,6 +5,9 @@ import { useTranslations } from "next-intl";
 import { Bdi } from "@/components/Bdi";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { EventGlyph } from "@mizan/design-system/react/motion";
+import { engineMotion } from "@mizan/shared/motion";
+import { PageState } from "@/components/ui/PageState";
 import { Card } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
@@ -13,6 +16,10 @@ import { useSession } from "@/lib/session";
 
 const secs = (s: number) => (s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${(s / 3600).toFixed(1)}h`);
 const mb = (b: number | null) => (b == null ? "—" : `${Math.round(b / 1_048_576)} MB`);
+
+/** Engine events on the staff surfaces: static glyphs from the catalogue (ENGINE_MOTION), never animated. */
+const DEAD = engineMotion("job.dead").outcome;
+const DRIFT = engineMotion("drift").outcome;
 
 /** A-4: the numbers /metrics reports, stores in trouble first, dead letters to replay, drift. */
 export function HealthScreen() {
@@ -85,7 +92,7 @@ export function HealthScreen() {
                   <thead><tr><th>{t("driftCol.where")}</th><th>{t("driftCol.kind")}</th><th>{t("driftCol.detail")}</th><th>{t("driftCol.count")}</th><th>{t("driftCol.last")}</th></tr></thead>
                   <tbody>
                     {d.drift.map((x, i) => (
-                      <tr key={i}><td><Bdi code>{[x.connector, x.entity, x.field].filter(Boolean).join(" / ")}</Bdi></td><td>{x.kind}</td><td className="max-w-md truncate"><Bdi>{x.detail}</Bdi></td><td><Bdi>{x.count}</Bdi></td><td><When value={x.lastAt} time /></td></tr>
+                      <tr key={i}><td><span className="inline-flex items-center gap-2"><EventGlyph outcome={DRIFT} size={14} static label={t("driftGlyph")} /><Bdi code>{[x.connector, x.entity, x.field].filter(Boolean).join(" / ")}</Bdi></span></td><td>{x.kind}</td><td className="max-w-md truncate"><Bdi>{x.detail}</Bdi></td><td><Bdi>{x.count}</Bdi></td><td><When value={x.lastAt} time /></td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -93,7 +100,7 @@ export function HealthScreen() {
             ) : <p className="text-body-sm text-text-2">{t("noDrift")}</p>}
           </Card>
         </>
-      ) : <p role="status" className="text-body-sm text-text-2">{t("loading")}</p>}
+      ) : <PageState variant="card" label={t("loading")} />}
       <Card title={t("deadLetters")}>
         {dead.data?.data.length ? (
           <div className="mz-table-wrap">
@@ -102,10 +109,10 @@ export function HealthScreen() {
               <tbody>
                 {dead.data.data.map((j) => (
                   <tr key={j.id}>
-                    <td><Link href={`/stores/${j.storeId}`} className="underline-offset-2 hover:underline">{j.storeName}</Link></td>
+                    <td><span className="inline-flex items-center gap-2"><EventGlyph outcome={DEAD} size={14} static label={t("deadGlyph")} /><Link href={`/stores/${j.storeId}`} className="underline-offset-2 hover:underline">{j.storeName}</Link></span></td>
                     <td><Bdi code>{j.kind}</Bdi></td><td><Bdi>{j.attempts}</Bdi></td>
                     <td className="max-w-xs truncate"><Bdi>{j.error ?? "—"}</Bdi></td><td><When value={j.failedAt} time /></td>
-                    <td><Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} onClick={() => replay.mutate(j.id)}>{t("replay")}</Button></td>
+                    <td><Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} pending="transfer" onClick={() => replay.mutate(j.id)}>{t("replay")}</Button></td>
                   </tr>
                 ))}
               </tbody>

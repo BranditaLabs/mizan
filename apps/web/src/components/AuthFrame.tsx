@@ -5,7 +5,7 @@ import { legalPath } from "@/lib/legal";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { ThemeSwitch } from "./ThemeSwitch";
-import { ThemedWordmark } from "./Wordmark";
+import { AuthWordmark } from "./AuthWordmark";
 import { GlassRoot } from "./GlassRoot";
 import { LanguageToggle, ThemeToggle } from "./auth/Toggles";
 import { BrandPanel } from "./auth/BrandPanel";
@@ -18,7 +18,7 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="flex h-14 items-center gap-3 px-4 md:px-6">
-        <ThemedWordmark />
+        <AuthWordmark />
         <span className="flex-1" />
         <span className="hidden sm:contents"><LocaleSwitch /></span>
         <ThemeSwitch initial={theme} />
@@ -44,7 +44,7 @@ export function AuthSplit({ theme, children }: { theme: Theme; children: ReactNo
       <div className="flex min-h-dvh flex-wrap gap-4 p-[clamp(8px,2vh,16px)]">
         <div className="flex min-w-0 flex-[1_1_440px] flex-col px-2 py-[clamp(8px,2.2vh,20px)] sm:px-[clamp(8px,4vw,56px)]">
           <header className="flex items-center justify-between gap-3">
-            <ThemedWordmark />
+            <AuthWordmark />
             <div className="flex gap-2">
               <LanguageToggle />
               <ThemeToggle initial={theme} />

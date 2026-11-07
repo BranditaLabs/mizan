@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx",
-    "strict": true, "noEmit": true, "skipLibCheck": true, "isolatedModules": true, "types": []
+    "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "jsx": "react-jsx", "customConditions": ["source"],
+    "strict": true, "noEmit": true, "skipLibCheck": true, "isolatedModules": true, "types": ["node"]
   },
-  "include": ["dist/tokens.ts", "icons/index.ts", "icons/react.tsx", "logos/partners/*.ts", "logos/partners/react.tsx"]
+  "include": ["dist/tokens.ts", "dist/motion-tokens.ts", "icons/index.ts", "icons/react.tsx", "logos/partners/*.ts", "logos/partners/react.tsx", "motion/**/*.ts", "react/motion/**/*.ts", "react/motion/**/*.tsx"]
 }

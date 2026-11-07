@@ -34,27 +34,31 @@ export function TeamScreen() {
   const role = store?.role ?? "";
   const key = ["team", user?.uid ?? "", store?.tenantId ?? ""];
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/members")), enabled: EDITORS.has(role) });
-  const done = (message: string) => { toast({ message }); void qc.invalidateQueries({ queryKey: key }); };
+  // Each save names its catalogue event (member.invited / updated / removed); revoking an invitation is none.
+  const done = (type: "member.invited" | "member.updated" | "member.removed" | null, message: string, entityId?: string) => {
+    toast.event({ type, message, ...(entityId ? { entityId } : {}) });
+    void qc.invalidateQueries({ queryKey: key });
+  };
 
   const [via, setVia] = useState<"email" | "phone">("phone");
   const [contact, setContact] = useState("");
   const [inviteRole, setInviteRole] = useState<MemberRole>("agent");
   const invite = useMutation({
     mutationFn: () => ok(api.POST("/v1/members/invite", { body: { [via]: contact.trim(), role: inviteRole } })),
-    onSuccess: () => { setContact(""); done(t("invited")); },
+    onSuccess: () => { setContact(""); done("member.invited", t("invited")); },
   });
   const update = useMutation({
     mutationFn: (b: { userId: string; role?: MemberRole; status?: "active" | "disabled" }) =>
       ok(api.PATCH("/v1/members/{userId}", { params: { path: { userId: b.userId } }, body: { ...(b.role ? { role: b.role } : {}), ...(b.status ? { status: b.status } : {}) } })),
-    onSuccess: () => done(t("saved")),
+    onSuccess: (_r, b) => done("member.updated", t("saved"), b.userId),
   });
   const remove = useMutation({
     mutationFn: (userId: string) => ok(api.DELETE("/v1/members/{userId}", { params: { path: { userId } } })),
-    onSuccess: () => done(t("removed")),
+    onSuccess: (_r, userId) => done("member.removed", t("removed"), userId),
   });
   const revoke = useMutation({
     mutationFn: (id: string) => ok(api.DELETE("/v1/invitations/{id}", { params: { path: { id } } })),
-    onSuccess: () => done(t("revoked")),
+    onSuccess: () => done(null, t("revoked")),
   });
   const onInvite = (e: FormEvent) => { e.preventDefault(); if (contact.trim()) invite.mutate(); };
   // Taking someone's access away, or changing what they can do, is asked first.

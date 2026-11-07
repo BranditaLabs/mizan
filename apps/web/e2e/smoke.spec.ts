@@ -52,8 +52,9 @@ test("Arabic is the default: / → /ar, right-to-left, Arabic copy, isolated num
   await expect(example).toContainText("1,150.00");
   // Direction icons mirror in Arabic (design system .mz-rtl-flip).
   expect(await flip(page)).toBe("matrix(-1, 0, 0, 1, 0, 0)");
-  // Brand: the Arabic wordmark on the glass rail (the one for the theme in use), fonts from the design system (self-hosted).
-  await expect(page.locator("aside img:visible")).toHaveAttribute("src", /\/brand\/mizan-wordmark-ar(-on-dark)?\.svg$/);
+  // Brand 2.0: the Arabic wordmark on the glass rail, one colour in the chrome (the content owns the
+  // view's one red), the file for the theme in use; fonts from the design system (self-hosted).
+  await expect(page.locator("aside img:visible")).toHaveAttribute("src", /\/brand\/mizan-wordmark-ar-mono-(ink|paper)\.svg$/);
   await expect(page.locator("aside img:visible")).toHaveAttribute("alt", "ميزان");
   expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check("14px 'IBM Plex Sans Arabic'", "ميزان"); })).toBe(true);
   // The rail sits on the start side: the right in Arabic.
@@ -78,14 +79,14 @@ test("English from the browser language, and the switch remembers the choice", a
   const rail = await page.locator("aside").boundingBox();
   expect(rail!.x).toBeLessThan(32); // start side: the left in English (a floating glass panel, inset from the edge)
   expect(await flip(page)).toBe("none");
-  await expect(page.locator("aside img:visible")).toHaveAttribute("src", /\/brand\/mizan-wordmark(-on-dark)?\.svg$/);
+  await expect(page.locator("aside img:visible")).toHaveAttribute("src", /\/brand\/mizan-wordmark-mono-(ink|paper)\.svg$/);
   expect(await page.evaluate(async () => { await document.fonts.ready; return document.fonts.check("14px Geist"); })).toBe(true);
   expect(await page.locator("h1").evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"?Geist"?/);
   await page.screenshot({ path: "test-results/home-en.png", fullPage: true });
   await page.getByRole("radio", { name: "Dark" }).click();
   await expect(page.getByRole("radio", { name: "Dark" })).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("body")).toHaveCSS("background-color", DARK_BG); // wait out the colour transition
-  await expect(page.locator("aside img:visible")).toHaveAttribute("src", "/brand/mizan-wordmark-on-dark.svg");
+  await expect(page.locator("aside img:visible")).toHaveAttribute("src", "/brand/mizan-wordmark-mono-paper.svg");
   await page.screenshot({ path: "test-results/home-en-dark.png", fullPage: true });
 
   // ⌘K / Ctrl+K: the command palette runs the same theme choice the switch shows.

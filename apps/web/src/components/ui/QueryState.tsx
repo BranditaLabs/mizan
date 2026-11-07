@@ -1,11 +1,13 @@
 "use client";
 
 import { Icon } from "@mizan/design-system/icons/react";
+import { MizanLoader } from "@mizan/design-system/react/motion";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "./Button";
 import { cx } from "./logic";
+import { SkeletonRows } from "./Surface";
 
 type Failed = { isError: boolean; error: unknown; data?: unknown; isRefetching?: boolean; refetch(): unknown };
 
@@ -38,13 +40,31 @@ export function ErrorState({ error, onRetry, retrying = false, compact = false, 
 }
 
 /**
- * Loading → its skeleton; a first load that failed → ErrorState with "try again". Wraps what a
- * screen shows while it has no data yet: `{!q.data ? <Pending query={q}><SkeletonRows …/></Pending> : …}`.
- * Once there is data, a later failed refresh keeps it on screen (the toast says so).
+ * What a screen shows while it has no data yet (Brand 2.0 "pair": page or data loading), and a
+ * first load that failed → ErrorState with "try again". Once there is data, a later failed refresh
+ * keeps it on screen (the toast says so).
+ *
+ *   variant="list"  still skeleton rows with a 20 px pair in the head (tables and lists)
+ *   variant="card"  a centred 48 px pair (a card's own data)
+ *   variant="page"  a 96 px pair in the brand tone (claims the view's one red)
+ * Children replace the variant's frame (a screen's own skeleton): `<PageState query={q}><SkeletonRows …/></PageState>`.
  */
-export function Pending({ query, children, compact = false }: { query: Failed; children: ReactNode; compact?: boolean }) {
-  if (query.isError && query.data === undefined) {
+export function PageState({ query, children, variant = "list", label, rows, compact = false, className }: {
+  query?: Failed; children?: ReactNode; variant?: "list" | "card" | "page"; label?: string; rows?: number; compact?: boolean; className?: string;
+}) {
+  const t = useTranslations("motion.loader");
+  if (query && query.isError && query.data === undefined) {
     return <ErrorState error={query.error} onRetry={() => void query.refetch()} retrying={query.isRefetching} compact={compact} />;
   }
-  return <>{children}</>;
+  if (children !== undefined) return <>{children}</>;
+  const text = label ?? t("loading");
+  if (variant === "list") return <SkeletonRows rows={rows} label={text} />;
+  return (
+    <div className={cx("grid place-items-center text-text", variant === "page" ? "min-h-[50dvh] py-10" : "py-6", className)} data-testid="page-state">
+      <MizanLoader kind="pair" size={variant === "page" ? 96 : 48} tone={variant === "page" ? "brand" : "mono"} label={text} />
+    </div>
+  );
 }
+
+/** The old name (one release): `Pending` is PageState. */
+export const Pending = PageState;

@@ -53,6 +53,8 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
       .replace(/<\/?\w+>/g, "")
       .replace(/\{\s*\w+\s*,\s*(?:plural|select|selectordinal|number|date|time)\s*,/g, "{")
       .replace(/(?:zero|one|two|few|many|other|=\d+)\s*\{/g, "{")
+      // A select's case keys are ICU syntax, not text ({manual, select, manual {…} other {…}}).
+      .replace(/([{}])\s*\w+\s*\{/g, "$1{").replace(/([{}])\s*\w+\s*\{/g, "$1{")
       .replace(/\{\s*\w+\s*\}/g, "");
     const found = Object.entries(A).filter(([k, v]) => !asIs.has(k) && /[A-Za-z]{4,}/.test(bare(v))).map(([k, v]) => `${k}: ${v}`);
     expect(found).toEqual([]);

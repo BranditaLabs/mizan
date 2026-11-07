@@ -51,11 +51,11 @@ export function Automations() {
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["automations"] }); void qc.invalidateQueries({ queryKey: ["recipes"] }); };
   const install = useMutation({
     mutationFn: (key: string) => ok(api.POST("/v1/automations/recipes/{key}/install", { params: { path: { key } }, body: { language: locale } })),
-    onSuccess: (a) => { toast({ message: t("installed", { name: a.name }) }); refresh(); },
+    onSuccess: (a) => { toast.event({ type: null, message: t("installed", { name: a.name }) }); refresh(); },
   });
   const toggle = useMutation({
     mutationFn: (v: { id: string; enabled: boolean }) => ok(api.PATCH("/v1/automations/{id}", { params: { path: { id: v.id } }, body: { enabled: v.enabled } })),
-    onSuccess: (a) => { toast({ message: a.enabled ? t("on", { name: a.name }) : t("off", { name: a.name }) }); refresh(); },
+    onSuccess: (a) => { toast.event({ type: null, message: a.enabled ? t("on", { name: a.name }) : t("off", { name: a.name }) }); refresh(); },
   });
 
   const trigger = (e: string) => (KNOWN_TRIGGERS.has(e) ? t(`trigger.${e.replace(".", "_")}` as "trigger.order_created") : e);

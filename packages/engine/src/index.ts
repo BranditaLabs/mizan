@@ -41,3 +41,5 @@ export {
   ANTHROPIC_VERSION, CLAUDE_DEFAULT_MODEL, ClaudeOfferWriter, OFFER_MESSAGE_MAX, validate as validateOfferPick,
   type ClaudeConfig, type OfferCandidateForAi, type OfferPick, type OfferRequest, type OfferResult,
 } from "./connectors/ai/claude.js";
+/** The engine's event types, catalogued with their motion in @mizan/shared (ENGINE_MOTION). */
+export type { EngineEventType } from "@mizan/shared";

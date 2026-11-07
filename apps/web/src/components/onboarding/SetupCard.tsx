@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { buttonClass, Button } from "@/components/ui/Button";
-import { Progress } from "@/components/ui/Surface";
+import { FillProgress } from "@/components/ui/Surface";
 import { Link } from "@/i18n/navigation";
 import { finished, STEP_ORDER, useOnboarding, useUpdateOnboarding } from "./useOnboarding";
 
@@ -26,7 +26,7 @@ export function SetupCard() {
         </div>
         <Button variant="ghost" size="sm" busy={hide.isPending} onClick={() => hide.mutate({ dismissed: true })}>{t("card.hide")}</Button>
       </div>
-      <Progress value={(done / STEP_ORDER.length) * 100} label={t("progress", { done, total: STEP_ORDER.length })} />
+      <FillProgress value={(done / STEP_ORDER.length) * 100} label={t("progress", { done, total: STEP_ORDER.length })} valueText={t("progress", { done, total: STEP_ORDER.length })} width={200} />
       <div><Link href="/onboarding" className={buttonClass("primary")}>{t("card.cta")}</Link></div>
     </section>
   );

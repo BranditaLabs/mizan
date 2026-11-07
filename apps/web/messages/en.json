@@ -544,6 +544,85 @@
       "ar": "Arabic chat",
       "en": "English chat",
       "label": "Sample chat: {lang}"
+    },
+    "motion": {
+      "title": "Motion",
+      "body": "Brand 2.0 motion in one place: four rules (TIP compares, MERGE agrees, SETTLE arrives, DROP confirms), one loader per meaning, red once per view. Screens never pick an animation: they name the event and the catalogue decides.",
+      "reduced": "Reduced motion",
+      "reducedSystem": "Follow the system",
+      "reducedOn": "Reduced",
+      "reducedOff": "Full motion",
+      "loaders": "Loaders, on paper and on ink",
+      "meanings": "Pair: a page or its data is loading. Transfer: syncing or reconciling two systems. Drop: saving, confirming, sending. Fill: known progress. Level: the gallery's spirit level.",
+      "kind": {
+        "pair": "Pair · loading",
+        "transfer": "Transfer · syncing",
+        "drop": "Drop · saving",
+        "fill": "Fill · progress",
+        "level": "Level"
+      },
+      "dir": {
+        "ltr": "Left to right",
+        "rtl": "Right to left"
+      },
+      "fillValue": "Fill value",
+      "interactive": "The interactive pair",
+      "interactiveLabel": "Tip the scale",
+      "buttons": "Busy buttons",
+      "outcomes": "Outcomes",
+      "replay": "Replay",
+      "outcome": {
+        "quiet": "Quiet",
+        "settle": "Settle",
+        "done": "Done",
+        "merge": "Merge",
+        "tip": "Tip",
+        "fail": "Fail",
+        "drop": "Drop"
+      },
+      "outcomeMeaning": {
+        "quiet": "The data refreshes, nothing moves",
+        "settle": "Arrives with a small overshoot",
+        "done": "Settles, then a check",
+        "merge": "Two values agree and join",
+        "tip": "Off balance: a warning holds its tilt",
+        "fail": "Tips twice and rests in the danger tone",
+        "drop": "The red falls once: confirmed, or money in"
+      },
+      "toastDrop": "Toast: order confirmed",
+      "toastMerge": "Toast: store connected",
+      "toastTip": "Toast: stock short",
+      "toastFailLabel": "Toast: failed",
+      "toastFail": "The courier refused the booking",
+      "doneTitle": "Order confirmed",
+      "instruments": "Balance instruments",
+      "instrumentsBody": "Gauge: expected against collected. Vessels: two counts that should match. Break-even: gross profit against ad spend. Bullseye: cash and stock inside a tolerance. One instrument per view on a real screen.",
+      "catalogue": "Event catalogue",
+      "catalogueBody": "Every domain event ({count}) and what it plays: the outcome, the copy, the loader while the viewer's own action runs, and the surfaces it reaches.",
+      "col": {
+        "outcome": "Outcome",
+        "event": "Event",
+        "copy": "Copy",
+        "pending": "While it runs",
+        "surfaces": "Surfaces"
+      },
+      "surface": {
+        "button": "Button",
+        "toast": "Toast",
+        "bell": "Bell",
+        "timeline": "Timeline",
+        "card": "Card",
+        "list": "List",
+        "kpi": "KPI",
+        "sync": "Sync",
+        "queue": "Queue",
+        "instrument": "Instrument",
+        "banner": "Banner"
+      },
+      "simulator": "Simulator (development only)",
+      "fireOne": "Fire one event",
+      "fireAll": "Fire the whole catalogue",
+      "batched": "{count} batched"
     }
   },
   "problems": {
@@ -925,7 +1004,6 @@
       "statusChanged": "Status: {from} → {to}",
       "payment_changed": "Payment: {from} → {to}",
       "awaiting_payment": "Waiting for the online payment",
-      "other": "Order updated",
       "changed": "Changed: {fields}",
       "confirmation_started": "Confirmation started",
       "confirmed": "Confirmed by {channel}",
@@ -4686,6 +4764,11 @@
       "quantity": "Quantity",
       "pack": "In packs of {n}",
       "draft": "{count, plural, =1{Draft a PO with 1 item} other{Draft a PO with # items}}"
+    },
+    "vessels": {
+      "title": "Ordered and received",
+      "ordered": "Ordered",
+      "received": "Received"
     }
   },
   "purchasingSettings": {
@@ -4964,7 +5047,10 @@
       "net": "Net profit, ads included"
     },
     "note": "Orders count on the day they were placed, like the profit screen. Money that arrived = paid before delivery, or cash delivered, less refunds.",
-    "timesUnit": "×"
+    "timesUnit": "×",
+    "breakeven": {
+      "title": "Break-even"
+    }
   },
   "sources": {
     "title": "Where orders came from",
@@ -5198,7 +5284,15 @@
     "color": "Colour",
     "mono": "One colour",
     "small": "Small",
-    "kinds": { "store": "Stores", "marketplace": "Marketplaces", "courier": "Couriers", "payment": "Payments", "messaging": "Messaging", "ads": "Ads", "government": "Government" }
+    "kinds": {
+      "store": "Stores",
+      "marketplace": "Marketplaces",
+      "courier": "Couriers",
+      "payment": "Payments",
+      "messaging": "Messaging",
+      "ads": "Ads",
+      "government": "Government"
+    }
   },
   "legal": {
     "home": "Mizan home",
@@ -5389,6 +5483,290 @@
     "notifyWho": "Who gets the notice",
     "alert": {
       "noCourier": "No Bosta connected: automatic booking won't run. <link>Connect a courier</link>"
+    }
+  },
+  "motion": {
+    "loader": {
+      "loading": "Loading…",
+      "syncing": "Syncing…",
+      "syncingWith": "Syncing with {system}…",
+      "saving": "Saving…",
+      "sending": "Sending…",
+      "confirming": "Confirming…",
+      "waitingReply": "Waiting for reply",
+      "progress": "{done} of {total}",
+      "percent": "{pct}%"
+    },
+    "boot": "Getting your store ready",
+    "gauge": {
+      "title": "Level gauge",
+      "labelA": "Expected",
+      "labelB": "Collected",
+      "balanced": "Balanced",
+      "shortBy": "Short by {pct}",
+      "overBy": "Over by {pct}",
+      "tilt": "Tilt {deg}",
+      "summary": "{labelA} {a}, {labelB} {b}, {verdict}"
+    },
+    "vessels": {
+      "title": "Connected vessels",
+      "labelA": "In system",
+      "labelB": "Counted",
+      "matched": "Counts match",
+      "gap": "Gap {pct}"
+    },
+    "breakeven": {
+      "title": "Break-even bar",
+      "axis": "Break-even",
+      "labelA": "Gross profit",
+      "labelB": "Ad spend",
+      "exact": "Exactly at break-even",
+      "profitable": "Profitable · {amount} · {ratio}×",
+      "below": "Below break-even · {amount}",
+      "noSpend": "No ad spend yet"
+    },
+    "bullseye": {
+      "title": "Cash and stock level",
+      "labelX": "Cash",
+      "labelY": "Stock",
+      "level": "Level",
+      "tolerance": "Inside tolerance · ±{tol}",
+      "off": "Off level · check now",
+      "offScale": "Off the scale"
+    },
+    "toast": {
+      "dismiss": "Dismiss"
+    },
+    "batched": "{count, plural, one {# new update} other {# new updates}}",
+    "event": {
+      "tenant": {
+        "created": "Store created"
+      },
+      "member": {
+        "invited": "Invite sent",
+        "joined": "A teammate joined",
+        "updated": "Role changed",
+        "removed": "Teammate removed"
+      },
+      "privacy": {
+        "requested": "{overdue, select, overdue {Privacy request is overdue} other {Privacy request received}}",
+        "completed": "Privacy request done"
+      },
+      "plan": {
+        "limit_reached": "Plan limit reached",
+        "upgrade_requested": "Upgrade requested"
+      },
+      "automation": {
+        "run_failed": "An automation run failed",
+        "paused": "Automation paused after failures"
+      },
+      "connection": {
+        "connected": "Connected",
+        "disconnected": "{byUser, select, byUser {You disconnected it} other {The connection dropped}}",
+        "needs_attention": "Connection needs attention",
+        "sync_completed": "History import done",
+        "sync_failed": "History import failed"
+      },
+      "sync": {
+        "recovered": "Sync fixed itself"
+      },
+      "order": {
+        "created": "{manual, select, manual {Order created} other {New order}}",
+        "cancelled": "Order cancelled",
+        "duplicate_found": "Possible duplicate",
+        "duplicate_resolved": "Duplicate resolved",
+        "assigned": "Assigned to a teammate",
+        "tagged": "Tag added",
+        "untagged": "Tag removed",
+        "note_added": "Note added",
+        "edited": "Edit applied",
+        "edit_failed": "Store refused the edit",
+        "store_cancel_failed": "Store refused to cancel",
+        "store_copy_failed": "Store copy failed",
+        "store_fulfilled": "Marked fulfilled in the store",
+        "store_fulfillment_cancelled": "Store fulfilment undone",
+        "cancelled_after_shipping": "Cancelled after shipping, needs a decision",
+        "payment_changed": "{state, select, paid {Order paid} failed {Payment failed} refunded {Money refunded} other {Payment status changed}}",
+        "awaiting_payment": "Waiting for payment",
+        "confirmed": "Order confirmed",
+        "confirmation_failed": "Confirmation failed",
+        "ready_to_ship": "Ready to ship",
+        "auto_ship_blocked": "Auto-booking stopped",
+        "packed": "Packed",
+        "partially_delivered": "Partly delivered, money still due",
+        "refused": "Refused at the door"
+      },
+      "orders": {
+        "reconciled": "Store day matches Mizan",
+        "reconciliation_gap": "Orders missing from Mizan",
+        "bulk_finished": "{failed, select, none {Bulk action done} some {{count} failed, the rest done} all {Bulk action failed} other {Bulk action done}}"
+      },
+      "confirmation": {
+        "started": "Confirmation started",
+        "sent": "Message sent, waiting for reply",
+        "escalated": "Needs a call",
+        "no_answer": "No answer"
+      },
+      "offer": {
+        "proposed": "Offer sent",
+        "accepted": "Customer accepted the offer",
+        "declined": "Customer declined the offer",
+        "expired": "Offer expired",
+        "applied": "Offer added to the order",
+        "failed": "Couldn't add the offer"
+      },
+      "whatsapp": {
+        "template_submitted": "First message sent to Meta"
+      },
+      "shipment": {
+        "created": "Booked with the courier",
+        "booking_failed": "Courier refused the booking",
+        "status_changed": "Courier status updated",
+        "needs_review": "Shipment needs review",
+        "delivered": "Delivered",
+        "returned": "Returned"
+      },
+      "picklist": {
+        "created": "Pick list opened",
+        "closed": "Pick list closed"
+      },
+      "stock": {
+        "short": "Not enough stock",
+        "received": "Goods received",
+        "adjusted": "{matched, select, matched {Count matches} other {Count adjusted}}",
+        "low": "Stock running low",
+        "out": "Out of stock",
+        "reorder_suggested": "Reorder suggested"
+      },
+      "pnl": {
+        "recomputed": "{final, select, final {Profit final} other {Profit updated}}"
+      },
+      "costs": {
+        "changed": "Costs saved"
+      },
+      "fx": {
+        "rate_overridden": "Rate set for the day"
+      },
+      "ads": {
+        "spend_changed": "Ad spend updated"
+      },
+      "payment": {
+        "received": "Money received",
+        "failed": "Payment didn't come in",
+        "link_sent": "Payment link sent",
+        "link_paid": "Paid by link"
+      },
+      "refund": {
+        "created": "Refund requested",
+        "approved": "Refund approved",
+        "rejected": "Refund rejected",
+        "completed": "Money returned to the customer"
+      },
+      "dispute": {
+        "opened": "Dispute opened",
+        "evidence_submitted": "Evidence sent",
+        "closed": "{result, select, won {Dispute won} lost {Dispute lost} other {Dispute closed}}"
+      },
+      "settlement": {
+        "matched": "Settlement matches",
+        "gap_found": "Settlement gap"
+      },
+      "ticket": {
+        "created": "Ticket opened",
+        "status_changed": "Ticket status changed",
+        "assigned": "Ticket assigned"
+      },
+      "return": {
+        "inspected": "Return checked"
+      },
+      "exchange": {
+        "created": "Replacement created",
+        "returned": "Original came back"
+      },
+      "po": {
+        "approved": "PO approved",
+        "sent": "PO sent to supplier",
+        "cancelled": "PO cancelled",
+        "received": "{full, select, full {All received} other {Partly received}}"
+      },
+      "product": {
+        "created": "Product created",
+        "updated": "Product saved",
+        "published": "Published to the store",
+        "publish_failed": "Store refused the product"
+      },
+      "channel": {
+        "order_received": "New marketplace order",
+        "payout_received": "Payout received"
+      },
+      "conversation": {
+        "created": "New conversation",
+        "sla_breached": "Reply is late"
+      },
+      "einvoice": {
+        "rejected": "E-invoice rejected"
+      },
+      "listing": {
+        "error": "Listing problem on the marketplace"
+      },
+      "metric": {
+        "threshold_crossed": "A number crossed its limit"
+      },
+      "period": {
+        "closed": "Period closed"
+      }
+    },
+    "timeline": {
+      "created": "Order received from <b>{source}</b>",
+      "payment_changed": "Payment: <b>{from}</b> → <b>{to}</b>",
+      "awaiting_payment": "Waiting for the online payment",
+      "confirmation_started": "Confirmation started",
+      "confirmed": "Confirmed by <b>{channel}</b>",
+      "cancelled": "Cancelled by <b>{channel}</b>",
+      "change_requested": "Change requested by <b>{channel}</b>",
+      "confirmation_escalated": "Handed to an agent",
+      "ship_requested": "Sent to the courier",
+      "shipped": "Shipped: the courier has it",
+      "ship_failed": "The courier booking failed",
+      "shipment_status": "Courier: <b>{status}</b>",
+      "partially_delivered": "Delivered in part: the rest comes back",
+      "refused": "Refused at the door",
+      "tagged": "Tagged <b>{tags}</b>",
+      "untagged": "Tag removed: <b>{tags}</b>",
+      "note_added": "Note added",
+      "edit_requested": "Edit sent to the store",
+      "edited": "Order edited",
+      "edit_failed": "The store refused the edit",
+      "store_copy_created": "Created in Shopify as <b>{name}</b>",
+      "store_copy_failed": "Shopify refused to create it",
+      "store_copy_synced": "The Shopify copy follows the edit",
+      "cancel_requested": "Asked the courier to cancel the delivery",
+      "updated": "{kind, select, status {Status: <b>{from}</b> → <b>{to}</b>} other {Updated from the store}}",
+      "exchange_created": "{kind, select, into {Exchanged: replacement <b>{number}</b>} other {Replacement for <b>{number}</b>}}",
+      "assigned": "Assigned to a teammate",
+      "call_no_answer": "Called, no answer",
+      "offer_accepted": "Offer accepted",
+      "offer_declined": "Offer declined",
+      "offer_expired": "Offer expired",
+      "offer_applied": "Offer added",
+      "offer_failed": "Offer not added",
+      "auto_book_blocked": "Auto-booking stopped",
+      "auto_book_skipped": "Auto-booking skipped for this order",
+      "auto_cancel_scheduled": "Will be cancelled if the customer doesn't reply",
+      "after_confirmation_scheduled": "Waiting a little before shipping",
+      "after_confirmation_released": "Released for shipping",
+      "change_note": "The customer sent a change",
+      "change_after_confirm": "The customer asked for a change after confirming",
+      "location_shared": "The customer shared a location",
+      "whatsapp_opted_in": "The customer agreed to WhatsApp messages",
+      "whatsapp_opted_out": "The customer stopped WhatsApp messages",
+      "duplicate_found": "Possible duplicate",
+      "duplicate_kept": "Kept as its own order",
+      "duplicate_merged": "Merged with its duplicate",
+      "store_cancel_failed": "Store refused to cancel",
+      "packed": "Packed",
+      "conversion_offered": "Payment link sent",
+      "conversion_paid": "Paid by link"
     }
   },
   "providerNames": {

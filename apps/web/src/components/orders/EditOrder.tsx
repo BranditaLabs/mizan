@@ -113,7 +113,7 @@ function EditOrderDialog({ order: o, onClose }: { order: Order; onClose(): void 
     mutationFn: () => ok(api.PATCH("/v1/orders/{id}", { params: { path: { id: o.id } }, body })),
     onSuccess: async (r) => {
       await Promise.all([qc.invalidateQueries({ queryKey: ["order"] }), qc.invalidateQueries({ queryKey: ["orders"] }), qc.invalidateQueries({ queryKey: ["profit"] })]);
-      toast({ message: r.status === "applied" ? t("applied") : t("sent", { store: o.store.provider === "woocommerce" ? "WooCommerce" : "Shopify" }) });
+      toast.event({ type: r.status === "applied" ? "order.edited" : null, message: r.status === "applied" ? t("applied") : t("sent", { store: o.store.provider === "woocommerce" ? "WooCommerce" : "Shopify" }) });
       onClose();
     },
     meta: { toast: false },

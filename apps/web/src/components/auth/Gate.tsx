@@ -13,7 +13,6 @@ export function Loading() {
   const t = useTranslations("gate");
   return (
     <BootLoader label={t("loading")} />
-
   );
 }
 

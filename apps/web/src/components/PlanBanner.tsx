@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 const READERS = rolesWith("billing.read");
 const key = (tenantId: string, level: string) => `mizan-plan-banner:${tenantId}:${level}`;
@@ -43,7 +44,7 @@ export function PlanBanner() {
   return (
     <div role="status" data-testid="plan-banner"
       className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-body-sm md:px-6 ${worst.level === "over" ? "border-danger bg-danger-soft text-danger-text" : "border-warning bg-warning-soft text-warning-text"}`}>
-      <span>{t.rich(`${worst.metric}.${worst.level}`, { used: worst.used, limit: worst.limit, plan: t(`plan.${q.data!.plan}`), n: (c) => <bdi dir="ltr" className="mz-num font-medium">{c}</bdi> })}</span>
+      <MotionSurface surface="banner" glyph inline>{t.rich(`${worst.metric}.${worst.level}`, { used: worst.used, limit: worst.limit, plan: t(`plan.${q.data!.plan}`), n: (c) => <bdi dir="ltr" className="mz-num font-medium">{c}</bdi> })}</MotionSurface>
       <Link href="/settings/usage" className="font-medium underline">{t("see")}</Link>
       <button type="button" className="ms-auto underline" onClick={hide}>{t("hide")}</button>
     </div>

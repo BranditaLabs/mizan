@@ -2,7 +2,7 @@
 
 import { fromMinor, normalizePhone, rolesWith, toAsciiDigits, toMinor, type Money, type PhoneCountry } from "@mizan/shared";
 import { Icon } from "@mizan/design-system/icons/react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Bdi } from "@/components/Bdi";
@@ -15,11 +15,11 @@ import { Field, Select } from "@/components/ui/Field";
 import { ErrorState } from "@/components/ui/QueryState";
 import { LeaveGuard } from "@/components/ui/SaveBar";
 import { EmptyState } from "@/components/ui/Surface";
-import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { cx } from "@/components/ui/logic";
 import { Link, useRouter } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useEventMutation } from "@/lib/motion/useEventMutation";
 import { useSession } from "@/lib/session";
 import { addressBody, addressLine, addressProblems, AddressFields, emptyAddress, type AddressValue } from "./AddressFields";
 
@@ -49,7 +49,6 @@ export function NewOrder() {
   const t = useTranslations("newOrder");
   const { api, user, store } = useSession();
   const router = useRouter();
-  const toast = useToast();
   const allowed = CREATORS.has(store?.role ?? "");
   const currency = store?.baseCurrency ?? "EGP";
   const country = store?.country ?? "EG";
@@ -88,10 +87,11 @@ export function NewOrder() {
     queryFn: () => ok(api.GET("/v1/orders/products")),
     enabled: Boolean(store) && allowed,
   });
-  const create = useMutation({
+  // A person made this order in Mizan: order.created's "manual" branch, the order's DROP.
+  const create = useEventMutation("order.created", {
     mutationFn: (body: NewOrderBody) => ok(api.POST("/v1/orders", { body })),
-    onSuccess: (r) => { setCreated(true); toast({ message: t("created", { number: r.number }) }); router.push(`/orders/${r.id}`); },
-  });
+    onSuccess: (r) => { setCreated(true); router.push(`/orders/${r.id}`); },
+  }, { entityId: (r) => r.id, data: () => ({ actor: { type: "user" } }), message: (r) => t("created", { number: r.number }) });
 
   if (!allowed) return <div className="mx-auto max-w-[860px] px-4 pt-6 md:px-6"><div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div></div>;
 
@@ -323,7 +323,7 @@ export function NewOrder() {
           footer={(
             <>
               <Button variant="secondary" onClick={() => setReviewing(false)}>{t("review.back")}</Button>
-              <Button busy={create.isPending} onClick={() => create.mutate(body())} data-autofocus>{t("submit")}</Button>
+              <Button busy={create} onClick={() => create.mutate(body())} data-autofocus>{t("submit")}</Button>
             </>
           )}>
           <div className="flex flex-col gap-4 text-body-sm" data-testid="order-review">

@@ -5,7 +5,7 @@ import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
-import { Pending } from "@/components/ui/QueryState";
+import { PageState } from "@/components/ui/QueryState";
 import { DateText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
@@ -60,14 +60,12 @@ export function ActivityLog() {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="activity-title" className="flex items-center gap-2 text-heading-sm">
           {t("title")}
-          <span className="relative flex size-1.5" aria-hidden="true">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-60" />
-            <span className="relative inline-flex size-1.5 rounded-full bg-success" />
-          </span>
+          {/* Live, quietly: a still ink dot (no ping, no red). */}
+          <span className="inline-flex size-1.5 rounded-full bg-text" aria-hidden="true" />
         </h2>
         {audit ? <Link href="/settings/audit" className="text-body-sm text-text-2 hover:underline">{t("all")}</Link> : null}
       </div>
-      {!feed.data ? <Pending query={feed} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending>
+      {!feed.data ? <PageState query={feed} compact variant="card" label={t("loading")} />
         : rows.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : (
           <ol className="mz-stagger relative flex flex-col">
             {rows.map((r, i) => (

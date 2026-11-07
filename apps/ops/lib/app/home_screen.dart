@@ -31,10 +31,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     return Scaffold(
+      // A hidden tab stays built but its loaders and springs are paused (TickerMode).
       body: IndexedStack(index: _tab, children: [
-        QueueScreen(store: widget.store, engine: widget.engine),
-        PickListsScreen(store: widget.store, api: widget.pickApi, engine: widget.engine, scanner: widget.scanner),
-        ReceivePosScreen(store: widget.store, api: widget.receiveApi, engine: widget.engine, scanner: widget.scanner),
+        for (final (i, tab) in [
+          QueueScreen(store: widget.store, engine: widget.engine),
+          PickListsScreen(store: widget.store, api: widget.pickApi, engine: widget.engine, scanner: widget.scanner),
+          ReceivePosScreen(store: widget.store, api: widget.receiveApi, engine: widget.engine, scanner: widget.scanner),
+        ].indexed)
+          TickerMode(enabled: i == _tab, child: tab),
       ]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,

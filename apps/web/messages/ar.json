@@ -544,6 +544,85 @@
       "ar": "شات عربي",
       "en": "شات إنجليزي",
       "label": "شات تجريبي: {lang}"
+    },
+    "motion": {
+      "title": "الحركة",
+      "body": "حركة هوية ميزان 2.0 في مكان واحد: أربع قواعد (الميل بيقارن، الدمج بيتفق، الاستقرار بيوصل، النقطة بتأكد)، لودر لكل معنى، والأحمر مرة واحدة في الشاشة. الشاشات عمرها ما بتختار حركة: بتسمّي الحدث والكتالوج هو اللي بيقرر.",
+      "reduced": "تقليل الحركة",
+      "reducedSystem": "زي إعدادات الجهاز",
+      "reducedOn": "حركة أقل",
+      "reducedOff": "حركة كاملة",
+      "loaders": "اللودرز، على الفاتح وعلى الغامق",
+      "meanings": "الكفتين: الصفحة أو بياناتها بتحمّل. النقل: بنزامن أو بنطابق بين سيستمين. النقطة: بنحفظ أو بنأكد أو بنبعت. الملء: تقدّم معروف. الميزان: ميزان المية بتاع المعرض.",
+      "kind": {
+        "pair": "الكفتين · تحميل",
+        "transfer": "النقل · مزامنة",
+        "drop": "النقطة · حفظ",
+        "fill": "الملء · تقدّم",
+        "level": "ميزان المية"
+      },
+      "dir": {
+        "ltr": "من الشمال لليمين",
+        "rtl": "من اليمين للشمال"
+      },
+      "fillValue": "نسبة الملء",
+      "interactive": "الكفتين التفاعلية",
+      "interactiveLabel": "ميّل الميزان",
+      "buttons": "زراير وهي شغالة",
+      "outcomes": "النتايج",
+      "replay": "اعرض تاني",
+      "outcome": {
+        "quiet": "هادي",
+        "settle": "استقرار",
+        "done": "خلص",
+        "merge": "دمج",
+        "tip": "ميل",
+        "fail": "فشل",
+        "drop": "نقطة"
+      },
+      "outcomeMeaning": {
+        "quiet": "البيانات بتتحدث من غير حركة",
+        "settle": "بيوصل بنطّة صغيرة",
+        "done": "بيستقر وبعدين علامة صح",
+        "merge": "قيمتين اتفقوا واتجمعوا",
+        "tip": "مش متوازن: التحذير بيفضل مايل",
+        "fail": "بيميل مرتين ويرتاح بلون الخطر",
+        "drop": "الأحمر بينزل مرة واحدة: اتأكد أو فلوس دخلت"
+      },
+      "toastDrop": "إشعار: الأوردر اتأكد",
+      "toastMerge": "إشعار: المتجر اتربط",
+      "toastTip": "إشعار: المخزون مش مكفي",
+      "toastFailLabel": "إشعار: فشل",
+      "toastFail": "شركة الشحن رفضت الحجز",
+      "doneTitle": "الأوردر اتأكد",
+      "instruments": "أدوات الميزان",
+      "instrumentsBody": "العدّاد: المتوقع قصاد المحصّل. الأواني: عدّين لازم يتطابقوا. نقطة التعادل: مجمل الربح قصاد مصاريف الإعلانات. الهدف: الكاش والمخزون جوه الهامش. أداة واحدة بس في كل شاشة حقيقية.",
+      "catalogue": "كتالوج الأحداث",
+      "catalogueBody": "كل أحداث السيستم ({count}) وبتعمل إيه: النتيجة، الكلام، اللودر وانت بتنفّذ، والأماكن اللي بتظهر فيها.",
+      "col": {
+        "outcome": "النتيجة",
+        "event": "الحدث",
+        "copy": "الكلام",
+        "pending": "وهو شغال",
+        "surfaces": "بيظهر في"
+      },
+      "surface": {
+        "button": "زرار",
+        "toast": "إشعار",
+        "bell": "الجرس",
+        "timeline": "السجل",
+        "card": "كارت",
+        "list": "ليستة",
+        "kpi": "مؤشر",
+        "sync": "المزامنة",
+        "queue": "طابور",
+        "instrument": "أداة",
+        "banner": "بانر"
+      },
+      "simulator": "المحاكي (للتطوير بس)",
+      "fireOne": "اطلق حدث واحد",
+      "fireAll": "اطلق الكتالوج كله",
+      "batched": "{count} متجمّعين"
     }
   },
   "problems": {
@@ -925,7 +1004,6 @@
       "statusChanged": "الحالة: {from} ← {to}",
       "payment_changed": "الدفع: {from} ← {to}",
       "awaiting_payment": "مستنيين الدفع أونلاين",
-      "other": "الأوردر اتحدّث",
       "changed": "اتغيّر: {fields}",
       "confirmation_started": "بدأ التأكيد",
       "confirmed": "اتأكّد عن طريق {channel}",
@@ -4686,6 +4764,11 @@
       "quantity": "الكمية",
       "pack": "بالكرتونة: {n}",
       "draft": "{count, plural, =1{اعمل أمر شراء بصنف واحد} =2{اعمل أمر شراء بصنفين} few{اعمل أمر شراء بـ # أصناف} other{اعمل أمر شراء بـ # صنف}}"
+    },
+    "vessels": {
+      "title": "المطلوب والمستلم",
+      "ordered": "المطلوب",
+      "received": "المستلم"
     }
   },
   "purchasingSettings": {
@@ -4964,7 +5047,10 @@
       "net": "صافي الربح، بالإعلانات"
     },
     "note": "الأوردر بيتحسب في اليوم اللي اتعمل فيه، زي شاشة الربح. الفلوس اللي وصلت = المدفوع قبل التسليم، أو الكاش اللي اتسلّم، ناقص المرتجع.",
-    "timesUnit": "ضعف"
+    "timesUnit": "ضعف",
+    "breakeven": {
+      "title": "نقطة التعادل"
+    }
   },
   "sources": {
     "title": "الأوردرات جت منين",
@@ -5198,7 +5284,15 @@
     "color": "بالألوان",
     "mono": "لون واحد",
     "small": "صغير",
-    "kinds": { "store": "المتاجر", "marketplace": "الأسواق", "courier": "شركات الشحن", "payment": "الدفع", "messaging": "الرسايل", "ads": "الإعلانات", "government": "جهات حكومية" }
+    "kinds": {
+      "store": "المتاجر",
+      "marketplace": "الأسواق",
+      "courier": "شركات الشحن",
+      "payment": "الدفع",
+      "messaging": "الرسايل",
+      "ads": "الإعلانات",
+      "government": "جهات حكومية"
+    }
   },
   "legal": {
     "home": "الرئيسية في ميزان",
@@ -5389,6 +5483,290 @@
     "notifyWho": "مين يوصله التنبيه",
     "alert": {
       "noCourier": "مفيش بوسطة متوصّلة، الحجز التلقائي مش هيشتغل. <link>وصّل شركة شحن</link>"
+    }
+  },
+  "motion": {
+    "loader": {
+      "loading": "بنحمّل…",
+      "syncing": "بنزامن…",
+      "syncingWith": "بنزامن مع {system}…",
+      "saving": "بنحفظ…",
+      "sending": "بنبعت…",
+      "confirming": "بنأكد…",
+      "waitingReply": "مستنيين الرد",
+      "progress": "{done} من {total}",
+      "percent": "{pct}٪"
+    },
+    "boot": "بنجهّز متجرك",
+    "gauge": {
+      "title": "ميزان الفرق",
+      "labelA": "المتوقع",
+      "labelB": "المحصّل",
+      "balanced": "متوازن",
+      "shortBy": "ناقص {pct}",
+      "overBy": "زيادة {pct}",
+      "tilt": "ميل {deg}",
+      "summary": "{labelA} {a}، {labelB} {b}، {verdict}"
+    },
+    "vessels": {
+      "title": "مقارنة الكميات",
+      "labelA": "في السيستم",
+      "labelB": "المعدود",
+      "matched": "العد مطابق",
+      "gap": "فرق {pct}"
+    },
+    "breakeven": {
+      "title": "نقطة التعادل",
+      "axis": "التعادل",
+      "labelA": "مجمل الربح",
+      "labelB": "مصاريف الإعلانات",
+      "exact": "على نقطة التعادل بالظبط",
+      "profitable": "كسبان · {amount} · {ratio}×",
+      "below": "تحت نقطة التعادل · {amount}",
+      "noSpend": "لسه مفيش مصاريف إعلانات"
+    },
+    "bullseye": {
+      "title": "ميزان الكاش والمخزون",
+      "labelX": "الكاش",
+      "labelY": "المخزون",
+      "level": "متوازن",
+      "tolerance": "جوه الهامش · ±{tol}",
+      "off": "بعيد عن التوازن · راجع دلوقتي",
+      "offScale": "برّه المقياس"
+    },
+    "toast": {
+      "dismiss": "اقفل"
+    },
+    "batched": "{count, plural, =2 {تحديثين جداد} few {{count} تحديثات جديدة} many {{count} تحديث جديد} other {{count} تحديث جديد}}",
+    "event": {
+      "tenant": {
+        "created": "المتجر اتعمل"
+      },
+      "member": {
+        "invited": "الدعوة اتبعتت",
+        "joined": "زميل جديد انضم",
+        "updated": "الصلاحية اتغيرت",
+        "removed": "الزميل اتشال"
+      },
+      "privacy": {
+        "requested": "{overdue, select, overdue {طلب الخصوصية اتأخر} other {وصل طلب خصوصية}}",
+        "completed": "طلب الخصوصية خلص"
+      },
+      "plan": {
+        "limit_reached": "وصلت لحد الباقة",
+        "upgrade_requested": "طلبت ترقية الباقة"
+      },
+      "automation": {
+        "run_failed": "تشغيل أوتوميشن فشل",
+        "paused": "الأوتوميشن وقف بعد أخطاء"
+      },
+      "connection": {
+        "connected": "اتربط",
+        "disconnected": "{byUser, select, byUser {إنت فصلت الربط} other {الربط وقع}}",
+        "needs_attention": "الربط محتاج مراجعة",
+        "sync_completed": "استيراد القديم خلص",
+        "sync_failed": "استيراد القديم فشل"
+      },
+      "sync": {
+        "recovered": "المزامنة رجعت تمام لوحدها"
+      },
+      "order": {
+        "created": "{manual, select, manual {الأوردر اتعمل} other {أوردر جديد}}",
+        "cancelled": "الأوردر اتلغى",
+        "duplicate_found": "غالبًا أوردر مكرر",
+        "duplicate_resolved": "المكرر اتحل",
+        "assigned": "اتسلّم لحد من الفريق",
+        "tagged": "اتضاف تاج",
+        "untagged": "اتشال تاج",
+        "note_added": "اتضافت ملاحظة",
+        "edited": "التعديل اتطبق",
+        "edit_failed": "المتجر رفض التعديل",
+        "store_cancel_failed": "المتجر رفض الإلغاء",
+        "store_copy_failed": "نسخة المتجر فشلت",
+        "store_fulfilled": "المتجر علّمه متجهز",
+        "store_fulfillment_cancelled": "المتجر رجّع التجهيز",
+        "cancelled_after_shipping": "اتلغى بعد الشحن ومحتاج قرار",
+        "payment_changed": "{state, select, paid {اتدفع} failed {الدفع فشل} refunded {الفلوس رجعت} other {حالة الدفع اتغيرت}}",
+        "awaiting_payment": "مستني الدفع",
+        "confirmed": "الأوردر اتأكد",
+        "confirmation_failed": "التأكيد فشل",
+        "ready_to_ship": "جاهز للشحن",
+        "auto_ship_blocked": "الحجز الأوتوماتيك وقف",
+        "packed": "اتغلّف",
+        "partially_delivered": "اتسلم جزء وفيه فلوس باقية",
+        "refused": "العميل رفض الاستلام"
+      },
+      "orders": {
+        "reconciled": "يوم المتجر مطابق لميزان",
+        "reconciliation_gap": "فيه أوردرات ناقصة في ميزان",
+        "bulk_finished": "{failed, select, none {التعديل الجماعي خلص} some {{count} فشلوا والباقي خلص} all {التعديل الجماعي فشل} other {التعديل الجماعي خلص}}"
+      },
+      "confirmation": {
+        "started": "بدأنا التأكيد",
+        "sent": "الرسالة اتبعتت ومستنيين الرد",
+        "escalated": "محتاج مكالمة",
+        "no_answer": "مفيش رد"
+      },
+      "offer": {
+        "proposed": "العرض اتبعت",
+        "accepted": "العميل وافق على العرض",
+        "declined": "العميل رفض العرض",
+        "expired": "العرض خلص وقته",
+        "applied": "العرض اتضاف للأوردر",
+        "failed": "مقدرناش نضيف العرض"
+      },
+      "whatsapp": {
+        "template_submitted": "رسالة التأكيد اتبعتت لميتا"
+      },
+      "shipment": {
+        "created": "اتحجز مع شركة الشحن",
+        "booking_failed": "شركة الشحن رفضت الحجز",
+        "status_changed": "حالة الشحنة اتحدثت",
+        "needs_review": "الشحنة محتاجة مراجعة",
+        "delivered": "اتسلّم",
+        "returned": "رجع"
+      },
+      "picklist": {
+        "created": "ليستة التجهيز اتفتحت",
+        "closed": "ليستة التجهيز اتقفلت"
+      },
+      "stock": {
+        "short": "المخزون مش مكفي",
+        "received": "البضاعة وصلت",
+        "adjusted": "{matched, select, matched {العد مطابق} other {العد اتعدل}}",
+        "low": "المخزون قرب يخلص",
+        "out": "المخزون خلص",
+        "reorder_suggested": "مقترح نطلب تاني"
+      },
+      "pnl": {
+        "recomputed": "{final, select, final {الربح اتقفل} other {الربح اتحدث}}"
+      },
+      "costs": {
+        "changed": "التكاليف اتحفظت"
+      },
+      "fx": {
+        "rate_overridden": "سعر الصرف اتحدد لليوم"
+      },
+      "ads": {
+        "spend_changed": "مصاريف الإعلانات اتحدثت"
+      },
+      "payment": {
+        "received": "الفلوس وصلت",
+        "failed": "الفلوس موصلتش",
+        "link_sent": "لينك الدفع اتبعت",
+        "link_paid": "اتدفع باللينك"
+      },
+      "refund": {
+        "created": "اتطلب استرجاع فلوس",
+        "approved": "الاسترجاع اتوافق عليه",
+        "rejected": "الاسترجاع اترفض",
+        "completed": "الفلوس رجعت للعميل"
+      },
+      "dispute": {
+        "opened": "اتفتح نزاع",
+        "evidence_submitted": "الإثباتات اتبعتت",
+        "closed": "{result, select, won {كسبنا النزاع} lost {خسرنا النزاع} other {النزاع اتقفل}}"
+      },
+      "settlement": {
+        "matched": "التسوية مطابقة",
+        "gap_found": "فيه فرق في التسوية"
+      },
+      "ticket": {
+        "created": "التذكرة اتفتحت",
+        "status_changed": "حالة التذكرة اتغيرت",
+        "assigned": "التذكرة اتسلّمت"
+      },
+      "return": {
+        "inspected": "المرتجع اتفحص"
+      },
+      "exchange": {
+        "created": "البديل اتعمل",
+        "returned": "الأصلي رجع"
+      },
+      "po": {
+        "approved": "أمر الشراء اتوافق عليه",
+        "sent": "أمر الشراء اتبعت للمورد",
+        "cancelled": "أمر الشراء اتلغى",
+        "received": "{full, select, full {كله وصل} other {وصل جزء}}"
+      },
+      "product": {
+        "created": "المنتج اتعمل",
+        "updated": "المنتج اتحفظ",
+        "published": "اتنشر في المتجر",
+        "publish_failed": "المتجر رفض المنتج"
+      },
+      "channel": {
+        "order_received": "أوردر جديد من الماركت بليس",
+        "payout_received": "التحويل وصل"
+      },
+      "conversation": {
+        "created": "محادثة جديدة",
+        "sla_breached": "الرد اتأخر"
+      },
+      "einvoice": {
+        "rejected": "الفاتورة الإلكترونية اترفضت"
+      },
+      "listing": {
+        "error": "مشكلة في المنتج على الماركت بليس"
+      },
+      "metric": {
+        "threshold_crossed": "رقم عدّى الحد"
+      },
+      "period": {
+        "closed": "الفترة اتقفلت"
+      }
+    },
+    "timeline": {
+      "created": "الأوردر وصل من <b>{source}</b>",
+      "payment_changed": "الدفع: <b>{from}</b> ← <b>{to}</b>",
+      "awaiting_payment": "مستنيين الدفع أونلاين",
+      "confirmation_started": "بدأ التأكيد",
+      "confirmed": "اتأكّد عن طريق <b>{channel}</b>",
+      "cancelled": "اتلغى عن طريق <b>{channel}</b>",
+      "change_requested": "طلب تعديل عن طريق <b>{channel}</b>",
+      "confirmation_escalated": "اتحوّل لموظف",
+      "ship_requested": "اتبعت لشركة الشحن",
+      "shipped": "اتشحن: الأوردر مع شركة الشحن",
+      "ship_failed": "حجز الشحن فشل",
+      "shipment_status": "شركة الشحن: <b>{status}</b>",
+      "partially_delivered": "اتسلّم جزء: الباقي راجع",
+      "refused": "رفض الاستلام عند الباب",
+      "tagged": "اتضاف وسم: <b>{tags}</b>",
+      "untagged": "اتشال وسم: <b>{tags}</b>",
+      "note_added": "اتضافت ملاحظة",
+      "edit_requested": "التعديل اتبعت للمتجر",
+      "edited": "الأوردر اتعدّل",
+      "edit_failed": "المتجر رفض التعديل",
+      "store_copy_created": "اتعمل في شوبيفاي باسم <b>{name}</b>",
+      "store_copy_failed": "شوبيفاي رفض يعمله",
+      "store_copy_synced": "نسخة شوبيفاي اتعدّلت زي الأوردر",
+      "cancel_requested": "طلبنا من شركة الشحن تلغي التوصيل",
+      "updated": "{kind, select, status {الحالة: <b>{from}</b> ← <b>{to}</b>} other {اتحدّث من المتجر}}",
+      "exchange_created": "{kind, select, into {اتبدّل: الأوردر البديل <b>{number}</b>} other {بديل لأوردر <b>{number}</b>}}",
+      "assigned": "اتسلّم لحد من الفريق",
+      "call_no_answer": "اتصلنا ومحدش رد",
+      "offer_accepted": "العرض اتوافق عليه",
+      "offer_declined": "العرض اترفض",
+      "offer_expired": "العرض خلص وقته",
+      "offer_applied": "العرض اتضاف",
+      "offer_failed": "العرض متضافش",
+      "auto_book_blocked": "الحجز الأوتوماتيك وقف",
+      "auto_book_skipped": "الحجز الأوتوماتيك اتلغى للأوردر ده",
+      "auto_cancel_scheduled": "هيتلغى لو العميل مردّش",
+      "after_confirmation_scheduled": "مستنيين شوية قبل الشحن",
+      "after_confirmation_released": "اتساب للشحن",
+      "change_note": "العميل بعت تعديل",
+      "change_after_confirm": "العميل طلب تعديل بعد ما أكد",
+      "location_shared": "العميل بعت اللوكيشن",
+      "whatsapp_opted_in": "العميل وافق على رسايل واتساب",
+      "whatsapp_opted_out": "العميل وقف رسايل واتساب",
+      "duplicate_found": "غالبًا أوردر مكرر",
+      "duplicate_kept": "اتساب كأوردر لوحده",
+      "duplicate_merged": "اتدمج مع المكرر",
+      "store_cancel_failed": "المتجر رفض الإلغاء",
+      "packed": "اتغلّف",
+      "conversion_offered": "لينك الدفع اتبعت",
+      "conversion_paid": "اتدفع باللينك"
     }
   },
   "providerNames": {

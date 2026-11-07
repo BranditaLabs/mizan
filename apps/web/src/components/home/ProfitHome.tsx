@@ -4,11 +4,12 @@ import { rolesWith } from "@mizan/shared";
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { buttonClass } from "@/components/ui/Button";
 import { SegThumb } from "@/components/ui/Choice";
-import { ScaleLoader } from "@/components/ui/Loader";
-import { Pending } from "@/components/ui/QueryState";
+import { RedSwatch } from "@mizan/design-system/react/motion";
+import { Waiting } from "@/components/ui/Loader";
+import { PageState } from "@/components/ui/QueryState";
 import { MoneyText } from "@/components/ui/Values";
 import { GlassRoot } from "@/components/GlassRoot";
 import { StoreName } from "@/components/StoreName";
@@ -19,6 +20,7 @@ import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
 import { useSession } from "@/lib/session";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 type Home = Schemas["ProfitHome"];
 type Money = Home["period"]["net"];
@@ -65,7 +67,7 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
   if (!store || !canRead) return <>{fallback}</>;
   // A failed first load says so (with "try again") instead of the new store's welcome; a failed
   // background refresh keeps the figures on screen (the toast says so).
-  if (!q.data) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><Pending query={q}><ScaleLoader label={t("loading")} /></Pending></div>;
+  if (!q.data) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><PageState query={q} variant="card" label={t("loading")} /></div>;
   const h = q.data;
   // Nothing yet (a new store): the welcome and setup instead of a page of zeros.
   if (h.period.orders === 0 && minor(h.period.previousKept) === 0 && minor(h.period.adSpend) === 0 && minor(h.period.fixedCosts) === 0) return <>{fallback}</>;
@@ -138,53 +140,42 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
   const rows = COSTS.map((k, i) => ({ k, m: b[k], shade: SHADE[i]! })).filter((r) => minor(r.m) !== 0);
   const kept = b.kept;
   const loss = negative(kept);
-  const bar = useRef<HTMLDivElement>(null);
   // FX-2 honesty rule (docs/16 §4.1): with a cost missing or nothing delivered the figure is
   // "Provisional profit" with "~" and a dashed underline, chips say what is missing, and no share
   // of revenue is shown for what was kept (a store with no costs would read 100%).
   const q = p.quality;
   const provisional = q.provisional;
 
-  // The parts fill in turn the first time, and again when the period changes.
-  useEffect(() => {
-    const el = bar.current;
-    if (!el?.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const origin = getComputedStyle(el).direction === "rtl" ? "right" : "left";
-    const parts = [...el.children] as HTMLElement[];
-    const anims = parts.map((part, i) => part.animate(
-      [{ transform: "scaleX(0)", transformOrigin: origin, opacity: 0.4 }, { transform: "scaleX(1)", transformOrigin: origin, opacity: 1 }],
-      { duration: 520, delay: 120 + i * 90, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "backwards" },
-    ));
-    return () => anims.forEach((a) => a.cancel());
-  }, [home.from, home.to, revenue]);
+  // The parts fill in turn (SETTLE, 90 ms apart: motion.css .mz-grow-x) the first time, and again
+  // when the period changes (the key restarts them).
+  const fillKey = `${home.from}|${home.to}|${revenue}`;
 
   return (
     <GlassRoot ink fields={false} className="g mz-enter overflow-hidden">
     <section className="text-rail-text" aria-labelledby="kept-title" data-testid="kept">
       <div className="relative isolate flex flex-col gap-6 overflow-hidden p-6 lg:p-8">
-        {/* The brand's red point as light, drifting behind the glass tiles. */}
-        <span className="mz-orb -z-10 size-[420px] -bottom-48 end-[8%]" aria-hidden="true" />
-        <span className="mz-orb mz-orb--quiet -z-10 size-[320px] -top-40 start-[18%]" aria-hidden="true" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 id="kept-title" className="text-body text-rail-text-2">{provisional ? t("kept.provisionalTitle", { days: home.days }) : t("kept.title", { days: home.days })}</h2>
           <p className="flex items-center gap-2 text-caption text-rail-text-2" aria-live="polite">
-            <span className="relative flex size-2" aria-hidden="true">
-              <span className={`absolute inline-flex size-full rounded-full bg-brand opacity-60 ${fetching ? "animate-ping" : ""}`} />
-              <span className="relative inline-flex size-2 rounded-full bg-brand" />
+            {/* Live: a 10 px mono transfer while the figures refresh, the pair at rest otherwise (never red). */}
+            <span className="inline-flex w-4 justify-center" aria-hidden="true">
+              <Waiting meaning="syncing" size={16} still={!fetching} />
             </span>
             {t("live", { time: updated })}
           </p>
         </div>
 
         <div className="flex flex-wrap items-end gap-x-5 gap-y-2">
-          <p className={`font-display text-display-lg leading-none tabular-nums ${loss ? "text-brand" : "text-white"}`} data-testid="kept-figure" data-provisional={provisional ? "" : undefined}>
-            {provisional
-              ? <span className="mz-provisional mz-provisional--lg" title={t("provisional.hint")}><span aria-hidden="true">~</span><MoneyText money={p.kept} roll from="0" /></span>
-              : <MoneyText money={p.kept} roll from="0" />}
+          <p className={`font-display text-display-lg leading-none tabular-nums ${loss ? "text-danger-text" : "text-white"}`} data-testid="kept-figure" data-provisional={provisional ? "" : undefined}>
+            <MotionSurface surface="kpi" inline>
+              {provisional
+                ? <span className="mz-provisional mz-provisional--lg" title={t("provisional.hint")}><span aria-hidden="true">~</span><MoneyText money={p.kept} roll from="0" /></span>
+                : <MoneyText money={p.kept} roll from="0" />}
+            </MotionSurface>
           </p>
           {p.change !== null ? (
             <p className="pb-1 text-body-sm text-rail-text-2">
-              <bdi dir="ltr" className={`me-1.5 rounded-full px-2 py-0.5 font-medium ${p.change.startsWith("-") ? "bg-brand text-on-brand" : "bg-rail-surface text-rail-text"}`}>
+              <bdi dir="ltr" className={`me-1.5 rounded-full px-2 py-0.5 font-medium ${p.change.startsWith("-") ? "bg-danger-soft text-danger-text" : "bg-rail-surface text-rail-text"}`}>
                 {t("kept.change", { pct: `${p.change.startsWith("-") ? "" : "+"}${p.change}` })}
               </bdi>
               {t("kept.vsPrev", { days: home.days })}
@@ -196,11 +187,11 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
           <ul className="flex flex-wrap gap-2" data-testid="provisional-chips" aria-label={t("provisional.hint")}>
             {q.productsMissingCost > 0 ? (
               <li><Link href="/products?view=missing_cost" className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption font-medium text-rail-text hover:underline pointer-coarse:min-h-11">
-                <Icon name="warning" size={14} className="text-brand" />{t("provisional.products", { count: q.productsMissingCost })}
+                <Icon name="warning" size={14} />{t("provisional.products", { count: q.productsMissingCost })}
               </Link></li>
             ) : q.ordersMissingCosts > 0 ? (
               <li><Link href="/settings/costs" className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption font-medium text-rail-text hover:underline pointer-coarse:min-h-11">
-                <Icon name="warning" size={14} className="text-brand" />{t("provisional.orders", { count: q.ordersMissingCosts })}
+                <Icon name="warning" size={14} />{t("provisional.orders", { count: q.ordersMissingCosts })}
               </Link></li>
             ) : null}
             {!q.delivered ? (
@@ -227,18 +218,19 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
           <span className="font-medium text-rail-text">{tw("title")}</span>
           <span className="text-rail-text-2">{tw("revenue")} <MoneyText money={b.revenue} /></span>
         </h3>
-        <div ref={bar} className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-rail-line" aria-hidden="true">
-          {rows.map((r) => <span key={r.k} className={`h-full bg-rail-text ${r.shade}`} style={{ inlineSize: `${share(r.m)}%` }} />)}
-          {!loss && revenue > 0 ? <span className="h-full bg-brand" style={{ inlineSize: `${share(kept)}%` }} /> : null}
+        <div key={fillKey} className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-rail-line" aria-hidden="true">
+          {rows.map((r, i) => <span key={r.k} className={`mz-grow-x h-full bg-rail-text ${r.shade}`} style={{ inlineSize: `${share(r.m)}%`, animationDelay: `${120 + i * 90}ms` }} />)}
+          {/* What the store kept is the money side: the view's one red when the budget gives it (else ink). */}
+          {!loss && revenue > 0 ? <RedSwatch claim="kept" fallback="var(--mz-rail-text)" className="mz-grow-x h-full" style={{ inlineSize: `${share(kept)}%`, animationDelay: `${120 + rows.length * 90}ms` }} /> : null}
         </div>
         <ul className="mz-stagger grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4" data-testid="breakdown">
           {[...rows, { k: "kept" as const, m: kept, shade: "" }].map((r, i) => (
             <li key={r.k} className="flex min-w-0 flex-col gap-0.5" style={order(i)}>
               <span className="flex items-center gap-2 text-caption text-rail-text-2">
-                <span className={`size-2 shrink-0 rounded-full ${r.k === "kept" ? "bg-brand" : `bg-rail-text ${r.shade}`}`} aria-hidden="true" />
+                {r.k === "kept" ? <RedSwatch claim="kept" fallback="var(--mz-rail-text)" className="size-2 shrink-0 rounded-full" /> : <span className={`size-2 shrink-0 rounded-full bg-rail-text ${r.shade}`} aria-hidden="true" />}
                 <span className="truncate">{tw(r.k)}</span>
               </span>
-              <span className={`text-body-sm font-medium tabular-nums ${r.k === "kept" && loss ? "text-brand" : "text-rail-text"}`}>
+              <span className={`text-body-sm font-medium tabular-nums ${r.k === "kept" && loss ? "text-danger-text" : "text-rail-text"}`}>
                 <MoneyText money={r.m} />
               </span>
               {revenue > 0 && !(r.k === "kept" && provisional) ? <span className="text-caption text-rail-text-2">{tw("share", { pct: share(r.m).toFixed(1) })}</span> : null}

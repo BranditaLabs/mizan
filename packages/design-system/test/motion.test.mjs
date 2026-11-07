@@ -160,3 +160,54 @@ describe("kebab names", () => {
     for (const k of keys(T.motion.scroll)) expect(css, k).toContain(`--mz-scroll-${kebab(k)}:`);
   });
 });
+
+describe("Brand 2.0 motion tokens (TIP, MERGE, SETTLE, DROP)", () => {
+  it("has the brand durations, angles and the settle easing", () => {
+    expect(T.motion.duration).toMatchObject({ tip: 2600, merge: 380, settle: 720, fall: 620, ripple: 1400, roll: 700, route: 280, exit: 150 });
+    expect(T.motion.angle).toMatchObject({ tip: 18, tipHold: 8 });
+    expect(T.motion.easing.settle).toBe("cubic-bezier(.34,1.32,.5,1)");
+    // the DS-1 spring stays (motion of the site's chrome), next to the brand's settle
+    expect(T.motion.easing.spring).toBe("cubic-bezier(0.34, 1.56, 0.64, 1)");
+  });
+
+  it("under reduced motion nothing swings or travels: tip, fall, ripple and roll are 0, crossfades ≤ 120ms, the held tilt stays", () => {
+    expect(T.motion.reduced).toMatchObject({ tip: 0, fall: 0, ripple: 0, roll: 0, merge: 120, settle: 120, route: 120, exit: 80 });
+    expect(T.motion.easingReduced.settle).toBe("linear");
+    expect(T.motion.angleReduced).toEqual({ $description: T.motion.angleReduced.$description, tip: 0, tipHold: 8 });
+    const css = read("dist/tokens.css").split("@media (prefers-reduced-motion: reduce)")[1];
+    expect(css).toContain("--mz-ease-settle: linear;");
+    expect(css).toContain("--mz-angle-tip: 0deg;");
+    expect(css).toContain("--mz-angle-tip-hold: 8deg;");
+  });
+
+  it("the components' theming hooks exist per theme (red, red on ink, tick, mono, sans)", () => {
+    const css = read("dist/tokens.css");
+    expect(css).toContain("--mz-red-ink: #E33232;");
+    expect(css).toContain("--mz-mono: var(--mz-font-mono);");
+    expect(css).toMatch(/:lang\(ar\) \{[^}]*--mz-sans: var\(--mz-font-arabic-display\);/);
+    expect(css.split("--mz-red: #DE0000;").length - 1).toBe(1);
+    expect(css.split("--mz-red: #E33232;").length - 1).toBe(2); // [data-theme=dark] and system dark
+    expect(css.split("--mz-tick:").length - 1).toBe(3);
+  });
+
+  it("springs and goo values reach TypeScript and Flutter", () => {
+    const ts = read("dist/motion-tokens.ts");
+    expect(ts).toContain('"pair": {\n      "k": 110,\n      "c": 13');
+    const dart = read("dist/mizan_tokens.dart");
+    for (const line of ["static const tip = Duration(milliseconds: 2600);", "static const settleCurve = Cubic(0.34, 1.32, 0.5, 1);", "static const reducedSettleCurve = Curves.linear;",
+      "static const double angleTip = 18.0;", "static const springLevelMassK = <double>[150.0, 95.0, 60.0];", "static const double gooLoaderMatrixB = -16.5;"]) expect(dart, line).toContain(line);
+  });
+
+  it("the ops app's copy of the Dart tokens is current", () => {
+    const ops = readFileSync(join(root, "../../apps/ops/lib/theme/mizan_tokens.dart"), "utf8").replace(/\r\n/g, "\n");
+    expect(ops).toBe(read("dist/mizan_tokens.dart"));
+  });
+
+  it("css/motion.css holds the brand keyframes and the only reduced-motion block for them", () => {
+    const css = read("css/motion.css");
+    for (const k of ["mz-settle-in", "mz-tip-hold", "mz-merge", "mz-drop-fall", "mz-ripple", "mz-exit", "mz-draw", "mz-fail"]) expect(css, k).toContain(`@keyframes ${k} `);
+    expect(css.split("@media (prefers-reduced-motion: reduce)").length - 1).toBe(1);
+    expect(css).not.toMatch(/animation-duration:\s*[1-9]\d*(\.\d+)?s/); // never a slower loop
+    expect(read("css/glass.css")).not.toContain("3.6s");
+  });
+});
