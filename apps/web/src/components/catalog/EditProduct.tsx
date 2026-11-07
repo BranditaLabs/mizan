@@ -85,7 +85,7 @@ export function EditProduct({ product: p, onClose }: { product: Product; onClose
     mutationFn: () => ok(api.PATCH("/v1/products/{id}", { params: { path: { id: p.id } }, body })),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ["products"] });
-      toast({ message: p.store ? t("savedStore", { store: woo ? "WooCommerce" : "Shopify" }) : t("saved") });
+      toast.event({ type: "product.updated", message: p.store ? t("savedStore", { store: woo ? "WooCommerce" : "Shopify" }) : t("saved") });
       onClose();
     },
     meta: { toast: false },

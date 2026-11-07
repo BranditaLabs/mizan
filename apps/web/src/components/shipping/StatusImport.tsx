@@ -29,7 +29,7 @@ export function StatusImport({ open, onClose }: { open: boolean; onClose(): void
     meta: { toast: false },
     onSuccess: (r) => {
       setCsv("");
-      toast({ message: t("done", { changed: r.changed, unchanged: r.unchanged }) });
+      toast.event({ type: null, message: t("done", { changed: r.changed, unchanged: r.unchanged }) });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
       void qc.invalidateQueries({ queryKey: ["scorecard"] });
       onClose();

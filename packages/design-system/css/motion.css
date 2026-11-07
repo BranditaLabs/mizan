@@ -65,6 +65,11 @@
   100% { transform: rotate(0deg); }
 }
 
+@keyframes mz-grow-x {
+  from { opacity: 0.4; transform: scaleX(0); }
+  to { opacity: 1; transform: none; }
+}
+
 @keyframes mz-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mz-fade-out { to { opacity: 0; } }
 
@@ -77,6 +82,9 @@
 .mz-fail { animation: mz-fail calc(var(--mz-duration-settle) * 1.4) var(--mz-ease-standard) both; transform-origin: 50% 60%; }
 /* Inside an SVG, a keyframe's percentages and origin are the shape's own box. */
 svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-box: fill-box; transform-origin: center; }
+/* A part of a bar filling in from the start side (a breakdown, a share). */
+.mz-grow-x { animation: mz-grow-x var(--mz-duration-settle) var(--mz-ease-settle) backwards; transform-origin: left center; }
+[dir="rtl"] .mz-grow-x, .mz-grow-x:dir(rtl) { transform-origin: right center; }
 .mz-draw { stroke-dasharray: 1; animation: mz-draw var(--mz-duration-merge) var(--mz-ease-enter) both; }
 
 /* Figures inside motion components: Geist Mono, never re-flowed by the bidi algorithm. */
@@ -89,7 +97,7 @@ svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-
  * A held tilt stays (it is information, not motion).
  */
 @media (prefers-reduced-motion: reduce) {
-  .mz-settle-in, .mz-merge, .mz-drop-fall {
+  .mz-settle-in, .mz-merge, .mz-drop-fall, .mz-grow-x {
     animation-name: mz-fade-in;
     animation-duration: var(--mz-duration-settle);
     animation-timing-function: linear;
@@ -102,7 +110,7 @@ svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-
 }
 
 /* A forced reduced store (the gallery's "reduced" toggle, tests) behaves exactly the same. */
-[data-mz-reduced="true"] .mz-settle-in, [data-mz-reduced="true"] .mz-merge, [data-mz-reduced="true"] .mz-drop-fall {
+[data-mz-reduced="true"] .mz-settle-in, [data-mz-reduced="true"] .mz-merge, [data-mz-reduced="true"] .mz-drop-fall, [data-mz-reduced="true"] .mz-grow-x {
   animation-name: mz-fade-in; animation-duration: var(--mz-duration-settle); animation-timing-function: linear;
 }
 [data-mz-reduced="true"] .mz-tip-hold { animation: none; transform: rotate(var(--mz-angle-tip-hold)); }
@@ -112,6 +120,8 @@ svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-
 
 /* Brand marks with tone="auto" | "mono" (react/motion Mark, Wordmark, Lockup): the theme picks the file. */
 .mz-logo-dark { display: none; }
+/* The -on-ink files carry an ink plate: lighten lets the page's own dark (glass, fields) show through it. */
+.mz-logo-dark { mix-blend-mode: lighten; }
 [data-theme="dark"] .mz-logo-light { display: none; }
 [data-theme="dark"] .mz-logo-dark { display: inline; }
 @media (prefers-color-scheme: dark) {

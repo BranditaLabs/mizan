@@ -50,6 +50,9 @@ export const BRAND_COPIES = [
   { from: "logo/svg/mizan-favicon.svg", to: "apps/admin/src/app/icon.svg" },
   { from: "logo/favicon.ico", to: "apps/web/src/app/favicon.ico" },
   { from: "logo/favicon.ico", to: "apps/admin/src/app/favicon.ico" },
+  // The no-JS fallback of the waiting screens (OutageScreen <noscript>): the SMIL pair, never used in the live app.
+  { from: "logo/animated/mizan-pair-on-paper.svg", to: "apps/web/public/motion/mizan-pair-on-paper.svg" },
+  { from: "logo/animated/mizan-pair-on-paper.svg", to: "apps/admin/public/motion/mizan-pair-on-paper.svg" },
 ];
 
 const IOS = "apps/ops/ios/Runner/Assets.xcassets";

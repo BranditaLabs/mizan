@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ViewRedBudget } from "@/lib/motion/ViewRedBudget";
 import { dirOf, routing } from "@/i18n/routing";
 import { QueryProvider } from "@/lib/api/query";
 import { OutageProvider } from "@/lib/outage";
@@ -30,13 +31,15 @@ export default async function LocaleLayout({ children, params }: Props) {
     <html lang={locale} dir={dirOf(locale)} data-theme={theme} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider>
-          <ToastProvider>
-            <OutageProvider>
-              <QueryProvider>
-                <SessionProvider>{children}</SessionProvider>
-              </QueryProvider>
-            </OutageProvider>
-          </ToastProvider>
+          <ViewRedBudget>
+            <ToastProvider>
+              <OutageProvider>
+                <QueryProvider>
+                  <SessionProvider>{children}</SessionProvider>
+                </QueryProvider>
+              </OutageProvider>
+            </ToastProvider>
+          </ViewRedBudget>
         </NextIntlClientProvider>
       </body>
     </html>

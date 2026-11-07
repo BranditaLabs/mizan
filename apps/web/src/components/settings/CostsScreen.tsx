@@ -135,7 +135,7 @@ function useSaveRule(onDone?: () => void) {
   const toast = useToast();
   return useMutation({
     mutationFn: (body: NewRule) => ok(api.POST("/v1/cost-rules", { body })),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["costRules"] }); toast({ message: t("saved") }); onDone?.(); },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["costRules"] }); toast.event({ type: "costs.changed", message: t("saved") }); onDone?.(); },
   });
 }
 
@@ -304,7 +304,7 @@ function FxCard({ canEdit, today }: { canEdit: boolean; today: string }) {
   const [invalid, setInvalid] = useState(false);
   const set = useMutation({
     mutationFn: (v: { day: string; quote: string; rate: string }) => ok(api.PUT("/v1/fx-rates/{day}/{quote}", { params: { path: { day: v.day, quote: v.quote } }, body: { rate: v.rate } })),
-    onSuccess: () => { setRate(""); void qc.invalidateQueries({ queryKey: ["fxRates"] }); toast({ message: tc("saved") }); },
+    onSuccess: () => { setRate(""); void qc.invalidateQueries({ queryKey: ["fxRates"] }); toast.event({ type: "fx.rate_overridden", message: tc("saved") }); },
   });
   const rows = fx.data?.rates ?? [];
   const chosen = quote || rows[0]?.quote || "";
@@ -381,7 +381,7 @@ function RecalculateCard({ today }: { today: string }) {
     },
     meta: { toast: false },
     onSuccess: (r) => {
-      toast({ message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
+      toast.event({ type: "costs.changed", message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
       void qc.invalidateQueries({ queryKey: ["profitHome"] });
       void qc.invalidateQueries({ queryKey: ["profitBreakdown"] });
       void qc.invalidateQueries({ queryKey: ["orderPnl"] });

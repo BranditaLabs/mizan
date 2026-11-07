@@ -6,8 +6,8 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { apiReady, nextCheckIn, useOutage } from "@/lib/outage";
 import { GlassRoot } from "./GlassRoot";
 import { buttonClass } from "./ui/Button";
-import { ScaleLoader } from "./ui/Loader";
-import { ThemedWordmark } from "./Wordmark";
+import { MizanLoader } from "@mizan/design-system/react/motion";
+import { BrandLockup } from "./Wordmark";
 
 const subscribeOnline = (cb: () => void) => {
   window.addEventListener("online", cb);
@@ -59,7 +59,12 @@ export function OutageScreen() {
   return (
     <GlassRoot className="fixed inset-0 z-[60]">
       <div role="alertdialog" aria-modal="true" aria-labelledby="outage-title" aria-describedby="outage-body" className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6 text-center">
-        <ScaleLoader />
+        {/* Waiting for Mizan to come back: the brand pair (this screen's one red); without JS the SMIL file. */}
+        <MizanLoader kind="pair" size={120} tone="brand" decorative />
+        <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element -- static SMIL fallback, no JS */}
+          <img src="/motion/mizan-pair-on-paper.svg" alt="" width={120} />
+        </noscript>
         <div className="flex max-w-[440px] flex-col items-center gap-3">
           <h1 id="outage-title" className="text-heading-lg text-text">{online ? t("title") : t("offlineTitle")}</h1>
           <p id="outage-body" className="text-body text-text-2">{online ? t("body") : t("offlineBody")}</p>
@@ -68,7 +73,7 @@ export function OutageScreen() {
           </p>
         </div>
         <button ref={button} type="button" className={buttonClass("secondary")} onClick={() => setRound((r) => r + 1)} disabled={checking || !online}>{t("checkNow")}</button>
-        <ThemedWordmark className="opacity-70" />
+        <BrandLockup tone="mono" className="opacity-70" height={22} />
       </div>
     </GlassRoot>
   );

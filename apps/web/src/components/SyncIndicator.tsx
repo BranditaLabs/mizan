@@ -1,11 +1,13 @@
 "use client";
 
 import { can } from "@mizan/shared";
-import { Icon } from "@mizan/design-system/icons/react";
+import { EventGlyph, MizanLoader } from "@mizan/design-system/react/motion";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useSurface } from "@/lib/motion/EventMotionProvider";
+import { usePollMotion } from "@/lib/motion/usePollMotion";
 import { useSession } from "@/lib/session";
 
 type StoreImport = Schemas["StoreImports"]["data"][number];
@@ -41,12 +43,22 @@ function stateOf(s: StoreImport, now: number): "running" | "failed" | "attention
  * The app frame's sync indicator (A3): while a store imports its history the team works in Mizan
  * and sees it come in ("Importing · 340 orders"); a failure or a store that refused Mizan shows in
  * red until it's fixed; a finished import says so for a few minutes. Opens setup, where Retry is.
+ *
+ * Brand 2.0 SyncPill: running with counts → fill (the count rises; no total yet, so it loops),
+ * running without counts → transfer (two systems reconciling); done → merge; failed or needs
+ * attention → fail, resting in the danger tone. A transition seen between two polls plays the
+ * catalogue outcome once (connection.sync_completed, sync_failed, needs_attention).
  */
 export function SyncIndicator() {
   const t = useTranslations("sync");
   const { store } = useSession();
   const q = useStoreImports();
   const now = q.dataUpdatedAt; // when the data was read (refetched on focus), so "just finished" fades without a clock in render
+  usePollMotion(q.data?.data, (s) => s.connectionId, (s) => stateOf(s, now) ?? "idle", (from, to) => {
+    if (from === undefined) return null;
+    return to === "done" ? "connection.sync_completed" : to === "failed" ? "connection.sync_failed" : to === "attention" ? "connection.needs_attention" : null;
+  });
+  const played = useSurface("sync");
   const shown = (q.data?.data ?? []).map((s) => ({ s, state: stateOf(s, now) })).filter((x) => x.state);
   if (!shown.length) return null;
   // The most urgent first: a problem, then a running import, then a finished one.
@@ -61,8 +73,8 @@ export function SyncIndicator() {
     <Link href={href} role="status" aria-live="polite" data-testid="sync-indicator"
       className={`hidden items-center gap-2 rounded-full border border-line px-3 py-1 text-caption hover:bg-surface-hover sm:inline-flex ${tone}`}>
       {state === "running"
-        ? <span aria-hidden="true" className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
-        : <Icon name={state === "done" ? "confirm" : "warning"} size={14} />}
+        ? <MizanLoader kind={(s.import?.orders ?? 0) + (s.import?.products ?? 0) > 0 ? "fill" : "transfer"} size={28} decorative />
+        : <EventGlyph key={played?.ids.join() ?? "rest"} outcome={state === "done" ? "merge" : "fail"} size={14} static={!played || played.entityId !== s.connectionId} />}
       <span className="max-w-[28ch] truncate">{label}</span>
       {shown.length > 1 ? <span className="text-text-3"><bdi>+{shown.length - 1}</bdi></span> : null}
     </Link>

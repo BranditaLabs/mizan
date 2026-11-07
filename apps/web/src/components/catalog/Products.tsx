@@ -193,7 +193,7 @@ export function EditVariant({ row, onClose }: { row: EditRow; onClose(): void })
   const barcodeOk = barcodeValue === "" || BARCODE.test(barcodeValue);
   const save = useMutation({
     mutationFn: (body: Schemas["UpdateVariant"]) => ok(api.PATCH("/v1/products/variants/{id}", { params: { path: { id: variant.id } }, body })),
-    onSuccess: () => { toast({ message: t("saved", { sku: variant.sku }) }); void qc.invalidateQueries({ queryKey: ["products"] }); onClose(); },
+    onSuccess: () => { toast.event({ type: "product.updated", message: t("saved", { sku: variant.sku }) }); void qc.invalidateQueries({ queryKey: ["products"] }); onClose(); },
   });
   const body: Schemas["UpdateVariant"] = {
     ...(costValue && costValue !== variant.cost?.amount ? { cost: costValue } : {}),
@@ -233,7 +233,7 @@ function ImportCosts({ open, onClose }: { open: boolean; onClose(): void }) {
     mutationFn: () => ok(api.POST("/v1/products/costs/import", { body: { csv } })),
     onSuccess: (r) => {
       setCsv("");
-      toast({ message: t("done", { costs: r.costs, barcodes: r.barcodes }) });
+      toast.event({ type: "costs.changed", message: t("done", { costs: r.costs, barcodes: r.barcodes }) });
       void qc.invalidateQueries({ queryKey: ["products"] });
       onClose();
     },

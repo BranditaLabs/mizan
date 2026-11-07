@@ -254,55 +254,9 @@
 @keyframes mzg-shimmer { to { transform: translateX(100%); } }
 
 /* ───────────── 13. Loaders ───────────── */
-/* 13a. The Scale: Mizan means "the scale". The beam weighs, the pans stay level, the red point is the fulcrum. */
-.ld-scale { position: relative; width: 168px; height: 120px; }
-.ld-scale .post { position: absolute; left: 82px; top: 26px; width: 4px; height: 78px; border-radius: 2px; background: var(--fg); }
-.ld-scale .base { position: absolute; left: 50px; bottom: 10px; width: 68px; height: 4px; border-radius: 2px; background: var(--fg); }
-.ld-scale .beam { position: absolute; left: 14px; top: 24px; width: 140px; height: 4px; border-radius: 2px; background: var(--fg); transform-origin: 70px 2px; animation: mzg-weigh 2.8s var(--ease-io) infinite; }
-.ld-scale .pan { position: absolute; top: 2px; width: 44px; height: 40px; transform-origin: 22px 0; animation: mzg-level 2.8s var(--ease-io) infinite; }
-.ld-scale .pan.l { left: -20px; } .ld-scale .pan.r { right: -20px; }
-.ld-scale .pan i { position: absolute; top: 0; width: 1.5px; height: 30px; background: var(--fg-3); }
-.ld-scale .pan i:nth-child(1) { left: 21px; transform: rotate(28deg); transform-origin: top; }
-.ld-scale .pan i:nth-child(2) { left: 21px; transform: rotate(-28deg); transform-origin: top; }
-.ld-scale .pan b { position: absolute; left: 4px; top: 26px; width: 36px; height: 8px; border-radius: 0 0 18px 18px; background: var(--fg); }
-.ld-scale .pivot { position: absolute; left: 78px; top: 20px; width: 12px; height: 12px; background: var(--red); box-shadow: 0 0 18px var(--red-glow); animation: mzg-pivot 2.8s var(--ease-io) infinite; }
-@keyframes mzg-weigh { 0%, 100% { transform: rotate(-9deg); } 50% { transform: rotate(9deg); } }
-@keyframes mzg-level { 0%, 100% { transform: rotate(9deg); } 50% { transform: rotate(-9deg); } }
-@keyframes mzg-pivot { 0%, 100% { box-shadow: 0 0 10px var(--red-glow); } 50% { box-shadow: 0 0 26px var(--red-glow); } }
-
-/* 13b. Wordmark reveal: outlines draw, fill rises, the red point drops in last. */
-.ld-word .stroke { fill: none; stroke: var(--fg); stroke-width: 6; stroke-dasharray: 1; stroke-dashoffset: 1; animation: mzg-word-draw 3.2s var(--ease-io) infinite; }
-.ld-word .fill { fill: var(--fg); opacity: 0; animation: mzg-word-fill 3.2s var(--ease-io) infinite; }
-.ld-word .tittle { fill: var(--red); animation: mzg-tittle 3.2s var(--ease-spring) infinite; transform-box: fill-box; transform-origin: center; }
-@keyframes mzg-word-draw { 0% { stroke-dashoffset: 1; opacity: 1; } 45% { stroke-dashoffset: 0; opacity: 1; } 70%, 100% { stroke-dashoffset: 0; opacity: 0; } }
-@keyframes mzg-word-fill { 0%, 38% { opacity: 0; } 60%, 88% { opacity: 1; } 100% { opacity: 0; } }
-@keyframes mzg-tittle { 0%, 52% { opacity: 0; transform: translateY(-260px) scale(.4); } 66% { opacity: 1; transform: translateY(0) scale(1.15); } 74%, 88% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: scale(.6); } }
-
-/* 13c. Red point orbit: the app splash. A glass "m." tile with the point circling and settling. */
-.ld-orbit { position: relative; width: 120px; height: 120px; display: grid; place-items: center; }
-.ld-orbit .ring { position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--line-2); }
-.ld-orbit .ring.r2 { inset: 14px; border-style: dashed; animation: mzg-spin 18s linear infinite; }
-.ld-orbit .sat { position: absolute; inset: 0; animation: mzg-spin 1.8s var(--ease-io) infinite; }
-.ld-orbit .sat i { position: absolute; left: 50%; top: -5px; width: 10px; height: 10px; margin-left: -5px; background: var(--red); box-shadow: 0 0 16px var(--red-glow); }
-.ld-orbit .core { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; }
-@keyframes mzg-spin { to { transform: rotate(360deg); } }
-
-/* 13d. Sync rail: a comet runs along a hairline (top-of-page loading) */
-.ld-rail { position: relative; height: 2px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.ld-rail::after { content: ""; position: absolute; top: 0; bottom: 0; width: 34%; border-radius: 2px; background: linear-gradient(90deg, transparent, var(--fg) 70%, var(--red)); box-shadow: 0 0 12px var(--red-glow); animation: mzg-comet 1.6s var(--ease-io) infinite; }
-@keyframes mzg-comet { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
-
-/* 13e. Ledger bars: three weights settling (inline, buttons, cells) */
-.ld-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 16px; }
-.ld-bars i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; transform-origin: bottom; animation: mzg-bars 1s var(--ease-io) infinite; }
-.ld-bars i:nth-child(2) { animation-delay: .15s; } .ld-bars i:nth-child(3) { animation-delay: .3s; background: var(--red); }
-@keyframes mzg-bars { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
-
-/* 13f. Progress ring with a glowing head */
-.ld-ring { width: 44px; height: 44px; animation: mzg-spin 1.1s linear infinite; }
-.ld-ring circle { fill: none; stroke-width: 3; stroke-linecap: round; }
-.ld-ring .trk { stroke: var(--line-2); }
-.ld-ring .arc { stroke: var(--fg); stroke-dasharray: 30 100; filter: drop-shadow(0 0 4px var(--red-glow)); }
+/* Brand 2.0 (BR-1): the loaders are MizanLoader (react/motion) and their keyframes live in motion.css,
+   with the one reduced-motion block. The 1.0 ld-scale, ld-word, ld-orbit, ld-rail, ld-bars and ld-ring
+   are gone; lint (mizan/no-adhoc-motion) keeps them from coming back. */
 
 /* ───────────── 14. Accessibility ───────────── */
 @media (prefers-reduced-motion: reduce) {

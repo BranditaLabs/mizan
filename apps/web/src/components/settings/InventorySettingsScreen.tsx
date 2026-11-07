@@ -37,7 +37,7 @@ function StoreSync() {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/settings/inventory")) });
   const save = useMutation({
     mutationFn: (pushToStore: boolean) => ok(api.PUT("/v1/settings/inventory", { body: { pushToStore } })),
-    onSuccess: (r) => { qc.setQueryData(key, r); toast({ message: r.pushToStore ? t("on") : t("off") }); },
+    onSuccess: (r) => { qc.setQueryData(key, r); toast.event({ type: null, message: r.pushToStore ? t("on") : t("off") }); },
   });
   // A failed load is not "off": say it could not be read instead of showing a switched-off toggle.
   if (q.isError && !q.data) {

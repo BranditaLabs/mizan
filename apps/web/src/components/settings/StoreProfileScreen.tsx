@@ -39,7 +39,7 @@ export function StoreProfileScreen() {
       qc.setQueryData(queryKeys.tenant(uid, tenantId), data);
       void qc.invalidateQueries({ queryKey: queryKeys.me(uid) }); // the store switcher shows the name
       setDraft({});
-      toast({ message: t("saved") });
+      toast.event({ type: null, message: t("saved") });
     },
   });
   const s = q.data;

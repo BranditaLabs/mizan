@@ -33,7 +33,7 @@ export function DuplicateBanner({ order }: { order: Order }) {
     mutationFn: (action: "keep" | "merge") => ok(api.POST("/v1/orders/{id}/duplicate", { params: { path: { id: order.id } }, body: { action } })),
     onSuccess: (r) => {
       setConfirm(false);
-      toast({ message: t(r.status === "merged" ? "merged" : "kept") });
+      toast.event({ type: "order.duplicate_resolved", message: t(r.status === "merged" ? "merged" : "kept") });
       void qc.invalidateQueries({ queryKey: ["order"] });
       void qc.invalidateQueries({ queryKey: ["orders"] });
     },

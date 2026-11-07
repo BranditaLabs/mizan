@@ -39,7 +39,7 @@ export function ConversionSettingsScreen() {
       return ok(api.PUT("/v1/settings/conversion", { body: { depositPct: Number(v("depositPct")), expiresHours: Number(v("expiresHours")), methods } }));
     },
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("saved") }); setDraft({}); void qc.invalidateQueries({ queryKey: ["conversionSettings"] }); void qc.invalidateQueries({ queryKey: ["conversion"] }); },
+    onSuccess: () => { toast.event({ type: null, message: t("saved") }); setDraft({}); void qc.invalidateQueries({ queryKey: ["conversionSettings"] }); void qc.invalidateQueries({ queryKey: ["conversion"] }); },
   });
   const editor = EDITORS.has(role);
   const body = !READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>

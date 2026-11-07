@@ -544,6 +544,85 @@
       "ar": "Arabic chat",
       "en": "English chat",
       "label": "Sample chat: {lang}"
+    },
+    "motion": {
+      "title": "Motion",
+      "body": "Brand 2.0 motion in one place: four rules (TIP compares, MERGE agrees, SETTLE arrives, DROP confirms), one loader per meaning, red once per view. Screens never pick an animation: they name the event and the catalogue decides.",
+      "reduced": "Reduced motion",
+      "reducedSystem": "Follow the system",
+      "reducedOn": "Reduced",
+      "reducedOff": "Full motion",
+      "loaders": "Loaders, on paper and on ink",
+      "meanings": "Pair: a page or its data is loading. Transfer: syncing or reconciling two systems. Drop: saving, confirming, sending. Fill: known progress. Level: the gallery's spirit level.",
+      "kind": {
+        "pair": "Pair · loading",
+        "transfer": "Transfer · syncing",
+        "drop": "Drop · saving",
+        "fill": "Fill · progress",
+        "level": "Level"
+      },
+      "dir": {
+        "ltr": "Left to right",
+        "rtl": "Right to left"
+      },
+      "fillValue": "Fill value",
+      "interactive": "The interactive pair",
+      "interactiveLabel": "Tip the scale",
+      "buttons": "Busy buttons",
+      "outcomes": "Outcomes",
+      "replay": "Replay",
+      "outcome": {
+        "quiet": "Quiet",
+        "settle": "Settle",
+        "done": "Done",
+        "merge": "Merge",
+        "tip": "Tip",
+        "fail": "Fail",
+        "drop": "Drop"
+      },
+      "outcomeMeaning": {
+        "quiet": "The data refreshes, nothing moves",
+        "settle": "Arrives with a small overshoot",
+        "done": "Settles, then a check",
+        "merge": "Two values agree and join",
+        "tip": "Off balance: a warning holds its tilt",
+        "fail": "Tips twice and rests in the danger tone",
+        "drop": "The red falls once: confirmed, or money in"
+      },
+      "toastDrop": "Toast: order confirmed",
+      "toastMerge": "Toast: store connected",
+      "toastTip": "Toast: stock short",
+      "toastFailLabel": "Toast: failed",
+      "toastFail": "The courier refused the booking",
+      "doneTitle": "Order confirmed",
+      "instruments": "Balance instruments",
+      "instrumentsBody": "Gauge: expected against collected. Vessels: two counts that should match. Break-even: gross profit against ad spend. Bullseye: cash and stock inside a tolerance. One instrument per view on a real screen.",
+      "catalogue": "Event catalogue",
+      "catalogueBody": "Every domain event ({count}) and what it plays: the outcome, the copy, the loader while the viewer's own action runs, and the surfaces it reaches.",
+      "col": {
+        "outcome": "Outcome",
+        "event": "Event",
+        "copy": "Copy",
+        "pending": "While it runs",
+        "surfaces": "Surfaces"
+      },
+      "surface": {
+        "button": "Button",
+        "toast": "Toast",
+        "bell": "Bell",
+        "timeline": "Timeline",
+        "card": "Card",
+        "list": "List",
+        "kpi": "KPI",
+        "sync": "Sync",
+        "queue": "Queue",
+        "instrument": "Instrument",
+        "banner": "Banner"
+      },
+      "simulator": "Simulator (development only)",
+      "fireOne": "Fire one event",
+      "fireAll": "Fire the whole catalogue",
+      "batched": "{count} batched"
     }
   },
   "problems": {
@@ -925,7 +1004,6 @@
       "statusChanged": "Status: {from} → {to}",
       "payment_changed": "Payment: {from} → {to}",
       "awaiting_payment": "Waiting for the online payment",
-      "other": "Order updated",
       "changed": "Changed: {fields}",
       "confirmation_started": "Confirmation started",
       "confirmed": "Confirmed by {channel}",
@@ -4558,6 +4636,11 @@
       "quantity": "Quantity",
       "pack": "In packs of {n}",
       "draft": "{count, plural, =1{Draft a PO with 1 item} other{Draft a PO with # items}}"
+    },
+    "vessels": {
+      "title": "Ordered and received",
+      "ordered": "Ordered",
+      "received": "Received"
     }
   },
   "purchasingSettings": {
@@ -4836,7 +4919,10 @@
       "net": "Net profit, ads included"
     },
     "note": "Orders count on the day they were placed, like the profit screen. Money that arrived = paid before delivery, or cash delivered, less refunds.",
-    "timesUnit": "×"
+    "timesUnit": "×",
+    "breakeven": {
+      "title": "Break-even"
+    }
   },
   "sources": {
     "title": "Where orders came from",

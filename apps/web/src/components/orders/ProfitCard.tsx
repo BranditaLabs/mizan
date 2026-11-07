@@ -4,7 +4,7 @@ import { rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
-import { Pending } from "@/components/ui/QueryState";
+import { PageState } from "@/components/ui/QueryState";
 import { Card, KeyValue } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
@@ -36,7 +36,7 @@ export function ProfitCard({ orderId, moving }: { orderId: string; moving: boole
   });
   if (!allowed) return null;
   const p = q.data;
-  if (!p) return <Card title={t("title")}><Pending query={q} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending></Card>;
+  if (!p) return <Card title={t("title")}><PageState query={q} compact variant="card" label={t("loading")} /></Card>;
 
   const headline = moving ? p.expectedNet : p.net;
   const base = moving ? p.expectedRevenue : p.revenue;

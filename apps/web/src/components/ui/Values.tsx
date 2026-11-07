@@ -1,5 +1,6 @@
 "use client";
 
+import { getReduced, MOTION } from "@mizan/design-system/motion";
 import type { Money } from "@mizan/shared";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
@@ -20,7 +21,12 @@ export function MoneyText({ money, digits, roll = false, from }: { money: Money;
   return <RollingMoney money={money} digits={digits} locale={locale} from={from} />;
 }
 
-const ROLL_MS = 700;
+/**
+ * KpiFigure motion (Brand 2.0 SETTLE): the roll lasts `duration.roll`; the figure itself eases out
+ * without overshoot (a money figure never shows an amount it isn't), then the settled figure lands
+ * with the settle easing (`mz-settle`). Reduced motion: the final value at once.
+ */
+const ROLL_MS = MOTION.duration.roll;
 const easeOut = (t: number) => 1 - Math.pow(2, -10 * t);
 
 function RollingMoney({ money, digits, locale, from }: { money: Money; digits?: Digits; locale: string; from?: string }) {
@@ -34,7 +40,7 @@ function RollingMoney({ money, digits, locale, from }: { money: Money; digits?: 
   useEffect(() => {
     const start = onScreen.current;
     if (start === target || !Number.isFinite(target)) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = getReduced();
     const t0 = performance.now();
     let raf = 0;
     const step = (now: number) => {

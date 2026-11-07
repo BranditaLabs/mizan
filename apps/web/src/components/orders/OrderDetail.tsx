@@ -1,6 +1,8 @@
 "use client";
 
 import { Icon } from "@mizan/design-system/icons/react";
+import { EventGlyph } from "@mizan/design-system/react/motion";
+import { isOrderEventType } from "@mizan/shared/motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -9,11 +11,15 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge, RiskMeter, Tag } from "@/components/ui/Badge";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
-import { Card, EmptyState, KeyValue, SkeletonRows, Timeline } from "@/components/ui/Surface";
+import { PageState } from "@/components/ui/QueryState";
+import { Card, EmptyState, KeyValue, Timeline } from "@/components/ui/Surface";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
+import { useFresh, useSurfaceMounted } from "@/lib/motion/EventMotionProvider";
+import { timelineOutcome } from "@/lib/motion/resolve";
+import { usePollMotion } from "@/lib/motion/usePollMotion";
 import { useSession } from "@/lib/session";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { DuplicateBanner } from "./DuplicateBanner";
@@ -61,6 +67,7 @@ export function OrderDetail({ id }: { id: string }) {
   const tm = useTranslations("payments.mode");
   const tp = useTranslations("payments.status");
   const tpr = useTranslations("problems");
+  const tl = useTranslations("motion.timeline");
   const ts = useTranslations("shipping");
   const locale = useLocale();
   const { api, user, store } = useSession();
@@ -73,13 +80,21 @@ export function OrderDetail({ id }: { id: string }) {
     // …and while an edit is on its way to the store (O3).
     refetchInterval: (q) => (q.state.data?.shipments.some((s) => s.booking === "pending") || q.state.data?.edit?.status === "sending" ? 2000 : false),
   });
+  useSurfaceMounted("timeline");
+  // What the polls saw happen (the motion provider plays the catalogue outcome): a new timeline row,
+  // a booking the courier answered, an edit the store applied or refused.
+  usePollMotion(order.data?.events, (e) => e.id, () => "row", (from, _to, e) => (from === undefined ? `timeline.${e.type}` : null));
+  usePollMotion(order.data?.shipments, (s) => s.id, (s) => s.booking, (from, to) =>
+    from !== "pending" ? null : to === "booked" ? "shipment.created" : to === "failed" ? "shipment.booking_failed" : null);
+  usePollMotion(order.data?.edit ? [order.data.edit] : undefined, () => id, (e) => e.status, (from, to) =>
+    from !== "sending" ? null : to === "applied" ? "order.edited" : to === "failed" ? "order.edit_failed" : null);
 
   const back = (
     <Link href="/orders" className="inline-flex items-center gap-1.5 text-body-sm text-text-2 hover:text-text">
       <Icon name="back" size={16} />{t("detail.back")}
     </Link>
   );
-  if (order.isPending) return <Page>{back}<div className="mz-card"><SkeletonRows rows={6} label={t("detail.loading")} /></div></Page>;
+  if (order.isPending) return <Page>{back}<div className="mz-card"><PageState variant="list" rows={6} label={t("detail.loading")} /></div></Page>;
   if (order.isError) {
     const missing = order.error instanceof ApiError && (order.error.status === 404 || order.error.status === 400);
     return (
@@ -98,37 +113,22 @@ export function OrderDetail({ id }: { id: string }) {
   const statusLabel = (s: string | null) => (isStatus(s) ? t(`status.${s}`) : s ?? "");
   const channelLabel = (c: string | undefined) => (c && ANSWER_CHANNELS.has(c) ? t(`answerChannel.${c as "link"}`) : t("answerChannel.other"));
   const tagList = (tags?: string[]) => new Intl.ListFormat(locale, { type: "unit" }).format(tags ?? []);
+  // Each timeline row's copy is `motion.timeline.<type>` (exhaustive over order_events types, test
+  // in @mizan/shared); its glyph is the catalogue outcome (TimelineGlyph), still unless fresh.
   const eventTitle = (e: Event) => {
-    switch (e.type) {
-      case "created": return t("events.created", { source: sourceName(e.data.source ?? o.store.provider ?? "") });
-      case "updated": return e.fromStatus && e.toStatus && e.fromStatus !== e.toStatus
-        ? t("events.statusChanged", { from: statusLabel(e.fromStatus), to: statusLabel(e.toStatus) }) : t("events.updated");
-      case "payment_changed": return t("events.payment_changed", { from: paymentLabel(e.data.from ?? ""), to: paymentLabel(e.data.to ?? "") });
-      case "awaiting_payment": return t("events.awaiting_payment");
-      case "confirmation_started": return t("events.confirmation_started");
-      case "confirmed": return t("events.confirmed", { channel: channelLabel(e.data.channel) });
-      case "cancelled": return t("events.cancelled", { channel: channelLabel(e.data.channel) });
-      case "change_requested": return t("events.change_requested", { channel: channelLabel(e.data.channel) });
-      case "confirmation_escalated": return t("events.confirmation_escalated");
-      case "ship_requested": return t("events.ship_requested");
-      case "shipped": return t("events.shipped");
-      case "ship_failed": return t("events.ship_failed");
-      case "partially_delivered": return t("events.partially_delivered");
-      case "refused": return t("events.refused");
-      case "exchange_created": return e.data.into ? t("events.exchanged_into", { number: e.data.into }) : t("events.exchange_of", { number: e.data.of ?? "" });
-      case "shipment_status": return t("events.shipment_status", { status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "" });
-      case "tagged": return t("events.tagged", { tags: tagList(e.data.tags) });
-      case "untagged": return t("events.untagged", { tags: tagList(e.data.tags) });
-      case "note_added": return t("events.note_added");
-      case "edit_requested": return t("events.edit_requested");
-      case "edited": return t("events.edited");
-      case "edit_failed": return t("events.edit_failed");
-      case "store_copy_created": return t("events.store_copy_created", { name: e.data.name ?? "" });
-      case "store_copy_failed": return t("events.store_copy_failed");
-      case "store_copy_synced": return t("events.store_copy_synced");
-      case "cancel_requested": return t("events.cancel_requested");
-      default: return t("events.other");
-    }
+    const statusMove = Boolean(e.fromStatus && e.toStatus && e.fromStatus !== e.toStatus);
+    const values = {
+      source: sourceName(e.data.source ?? o.store.provider ?? ""),
+      from: e.type === "payment_changed" ? paymentLabel(e.data.from ?? "") : statusLabel(e.fromStatus),
+      to: e.type === "payment_changed" ? paymentLabel(e.data.to ?? "") : statusLabel(e.toStatus),
+      kind: e.type === "updated" ? (statusMove ? "status" : "other") : e.type === "exchange_created" && e.data.into ? "into" : "other",
+      channel: channelLabel(e.data.channel),
+      status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "",
+      tags: tagList(e.data.tags),
+      name: e.data.name ?? "",
+      number: e.data.into ?? e.data.of ?? "",
+    };
+    return isOrderEventType(e.type) ? tl(e.type, values) : tl("updated", { ...values, kind: "other" });
   };
 
   const lineColumns: Column<Line>[] = [
@@ -237,7 +237,7 @@ export function OrderDetail({ id }: { id: string }) {
           <Card title={t("detail.timeline.title")}>
             {o.events.length === 0 ? <p className="text-body-sm text-text-2">{t("detail.timeline.empty")}</p> : (
               <Timeline label={t("detail.timeline.title")} items={o.events.map((e) => ({
-                id: e.id, title: eventTitle(e),
+                id: e.id, title: eventTitle(e), glyph: <TimelineGlyph id={e.id} type={e.type} />,
                 detail: e.type === "updated" && e.data.changed?.length ? t("events.changed", { fields: e.data.changed.join(", ") }) : undefined,
                 time: <span className="text-caption text-text-3"><DateText value={e.at} /></span>,
               }))} />
@@ -247,6 +247,13 @@ export function OrderDetail({ id }: { id: string }) {
       </div>
     </Page>
   );
+}
+
+/** A timeline row's glyph: its catalogue outcome (TIMELINE_MOTION), still unless the row just arrived. */
+function TimelineGlyph({ id, type }: { id: string; type: string }) {
+  const fresh = useFresh(id);
+  const outcome = timelineOutcome(type);
+  return <EventGlyph outcome={outcome === "quiet" ? "settle" : outcome} size={12} static={!fresh} />;
 }
 
 function Page({ children }: { children: React.ReactNode }) {

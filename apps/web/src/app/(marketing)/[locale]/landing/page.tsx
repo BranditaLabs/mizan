@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { MizanLoader } from "@mizan/design-system/react/motion";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { CSSProperties, ReactNode } from "react";
 import { Faq, LandingRoot, LanguageButton, PricingToggles, ThemeButton } from "@/components/landing/client";
@@ -58,7 +59,6 @@ const MODULES: [string, IconPath][] = [["warehouse", "warehouse"], ["inbox", "in
 const POINTS = ["screens", "dialect", "numbers"];
 const TOOLS = ["confirm", "couriers", "stock", "inbox", "profit"];
 const CHART = "M0 106C4 103 17 93 26 88C35 83 44 80 52 76C61 72 70 66 79 65C87 65 96 71 105 73C114 74 122 65 131 72C140 78 149 107 157 113C166 119 175 111 183 109C192 107 201 100 210 102C218 103 227 117 236 119C245 120 253 108 262 111C271 114 280 134 288 135C297 135 306 117 314 112C323 108 332 112 341 108C349 103 358 90 367 84C376 78 384 71 393 72C402 72 411 84 419 85C428 86 437 78 446 77C454 76 463 81 472 79C480 77 489 65 498 65C507 66 515 74 524 82C533 90 542 111 550 114C559 117 568 97 577 98C585 100 594 124 603 124C611 125 620 106 629 104C638 102 646 113 655 113C664 113 673 114 681 105C690 96 699 66 708 60C716 55 725 72 734 73C743 73 756 66 760 65";
-const MONO_M = "M66 0V536H201L204 449Q224 496 262.5 522.0Q301 548 350 548Q408 548 447.0 518.5Q486 489 503 439Q522 492 561.5 520.0Q601 548 654 548Q736 548 785.0 496.0Q834 444 834 345V0H684V303Q684 429 603 429Q562 429 539.5 395.5Q517 362 517 301V0H382V301Q382 363 364.0 396.0Q346 429 302 429Q261 429 238.5 395.0Q216 361 216 301V0Z";
 
 /** Order ids left to right in Geist Mono, amounts isolated, inside text of either direction. */
 const rich = {
@@ -394,16 +394,8 @@ export default async function LandingPage({ params }: Props) {
                 <LIcon name="arrow" size={28} flip className="faint lp-tools-arrow" />
                 <div className="g hero-tile lp-one">
                   <span className="halo" aria-hidden="true" />
-                  <div className="ld-orbit lp-orbit" aria-hidden="true">
-                    <span className="ring" />
-                    <span className="sat"><i /></span>
-                    <span className="core g lp-orbit-core">
-                      <svg viewBox="0 0 1060 560" aria-hidden="true">
-                        <g transform="translate(-66 548) scale(1 -1)"><path d={MONO_M} style={{ fill: "var(--fg)" }} /></g>
-                        <rect x="890" y="404" width="144" height="144" style={{ fill: "var(--red)" }} />
-                      </svg>
-                    </span>
-                  </div>
+                  {/* Two systems becoming one: the Brand 2.0 transfer loader (decorative here). */}
+                  <span className="lp-orbit"><MizanLoader kind="transfer" size={120} decorative /></span>
                   <b className="lp-one-name">{t("tools.one")}</b>
                 </div>
               </div>
@@ -433,11 +425,8 @@ export default async function LandingPage({ params }: Props) {
           <div className="wrap">
             <div className="g hero-tile reveal lp-cta">
               <span className="halo lp-cta-halo" aria-hidden="true" />
-              <div className="ld-scale lp-scale" aria-hidden="true">
-                <span className="post" /><span className="base" />
-                <div className="beam"><div className="pan l"><i /><i /><b /></div><div className="pan r"><i /><i /><b /></div></div>
-                <span className="pivot" />
-              </div>
+              {/* The scale itself: the Brand 2.0 pair, two pans weighing (decorative; the page's one red). */}
+              <span className="lp-scale"><MizanLoader kind="pair" size={150} tone="brand" decorative /></span>
               <h2 className="h2 disp lp-cta-title" id="lp-cta">{t("cta.title")}</h2>
               <p className="lead lp-center">{t("cta.lead")}</p>
               <div className="lp-ctas">

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageState } from "@/components/ui/PageState";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -48,7 +49,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
   });
 
   if (q.isError) return <Alert tone="danger">{t("loadFailed")}</Alert>;
-  if (!q.data) return <p role="status" className="text-body-sm text-text-2">{t("loading")}</p>;
+  if (!q.data) return <PageState variant="card" label={t("loading")} />;
   const s = q.data;
   const onNote = (e: FormEvent) => { e.preventDefault(); if (note.trim()) addNote.mutate(); };
   const onAccess = (e: FormEvent) => { e.preventDefault(); if (access.reason.trim().length >= 3) openAccess.mutate(); };

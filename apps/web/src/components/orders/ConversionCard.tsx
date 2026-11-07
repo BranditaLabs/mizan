@@ -50,12 +50,12 @@ export function ConversionCard({ orderId }: { orderId: string }) {
       purpose, method: (method || q.data!.methods[0]) as Method, ...(purpose === "deposit" && amount.trim() ? { amount: amount.trim() } : {}),
     } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("offered") }); setAmount(""); done(); },
+    onSuccess: () => { toast.event({ type: "payment.link_sent", message: t("offered") }); setAmount(""); done(); },
   });
   const cancel = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/conversion/cancel", { params: { path: { id: orderId } } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("cancelled") }); done(); },
+    onSuccess: () => { toast.event({ type: null, message: t("cancelled") }); done(); },
   });
   const c: Conversion | undefined = q.data;
   if (!allowed || !c || (!c.eligible && !c.current)) return null;

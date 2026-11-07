@@ -119,7 +119,7 @@ export function ResolveCityDialog({ jobId, text, onClose }: { jobId: string; tex
     mutationFn: () => ok(api.POST("/v1/admin/integrations/cities/resolve", { body: { text, cityId: picked!, jobId } })),
     meta: { toast: false },
     onSuccess: () => {
-      toast({ message: t("saved") });
+      toast.event({ type: null, message: t("saved") });
       void qc.invalidateQueries({ queryKey: ["deadLetters"] });
       void qc.invalidateQueries({ queryKey: ["integrationsHealth"] });
       onClose();

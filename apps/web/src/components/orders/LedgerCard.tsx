@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
-import { Pending } from "@/components/ui/QueryState";
+import { PageState } from "@/components/ui/QueryState";
 import { Card, KeyValue } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -59,7 +59,7 @@ export function LedgerCard({ orderId, fallback }: { orderId: string; fallback: R
   return (
     <Card title={t("title")} actions={l?.canRecord ? <Button size="sm" variant="secondary" icon="add" onClick={() => setOpen(true)}>{t("record")}</Button> : null}>
       <div className="flex flex-col gap-3" data-testid="ledger">
-        {!l ? <Pending query={q} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending> : (
+        {!l ? <PageState query={q} compact variant="card" label={t("loading")} /> : (
           <>
             {l.lines.length === 0 ? <p className="text-body-sm text-text-2">{t("empty")}</p> : (
               <ul className="flex flex-col divide-y divide-line">
@@ -103,11 +103,12 @@ function RecordPayment({ orderId, ledger, onClose }: { orderId: string; ledger: 
   const [method, setMethod] = useState<Body["method"]>("bank_transfer");
   const [amount, setAmount] = useState(isZero(ledger.balance) ? "" : ledger.balance.amount);
   const [note, setNote] = useState("");
+  // Money in by hand is payment.received (DROP); other entries settle.
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/payments", { params: { path: { id: orderId } }, body: { type, method, amount: amount.trim(), ...(note.trim() ? { note: note.trim() } : {}) } })),
     meta: { toast: false },
     onSuccess: () => {
-      toast({ message: t("recorded") });
+      toast.event({ type: type === "received" ? "payment.received" : null, message: t("recorded") });
       void qc.invalidateQueries({ queryKey: ["ledger"] });
       void qc.invalidateQueries({ queryKey: ["order"] });
       void qc.invalidateQueries({ queryKey: ["orderPnl"] });

@@ -1,5 +1,6 @@
 "use client";
 
+import { MizanLoader } from "@mizan/design-system/react/motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -216,7 +217,7 @@ export function CourierStep({ o }: { o: Onboarding }) {
   if (c.status === "checking") {
     return (
       <p role="status" className="flex items-center gap-2.5 text-body-sm text-text-2">
-        <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-transparent" />
+        <MizanLoader kind="transfer" size={28} decorative />
         {t("checking")}
       </p>
     );

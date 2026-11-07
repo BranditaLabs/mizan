@@ -4,11 +4,11 @@ import { rolesWith } from "@mizan/shared";
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { buttonClass } from "@/components/ui/Button";
 import { SegThumb } from "@/components/ui/Choice";
-import { ScaleLoader } from "@/components/ui/Loader";
-import { Pending } from "@/components/ui/QueryState";
+import { MizanLoader } from "@mizan/design-system/react/motion";
+import { PageState } from "@/components/ui/QueryState";
 import { MoneyText } from "@/components/ui/Values";
 import { GlassRoot } from "@/components/GlassRoot";
 import { StoreName } from "@/components/StoreName";
@@ -65,7 +65,7 @@ export function ProfitHome({ fallback, setup }: { fallback: ReactNode; setup: Re
   if (!store || !canRead) return <>{fallback}</>;
   // A failed first load says so (with "try again") instead of the new store's welcome; a failed
   // background refresh keeps the figures on screen (the toast says so).
-  if (!q.data) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><Pending query={q}><ScaleLoader label={t("loading")} /></Pending></div>;
+  if (!q.data) return <div className="mz-card flex min-h-[60dvh] items-center justify-center"><PageState query={q} variant="card" label={t("loading")} /></div>;
   const h = q.data;
   // Nothing yet (a new store): the welcome and setup instead of a page of zeros.
   if (h.period.orders === 0 && minor(h.period.previousKept) === 0 && minor(h.period.adSpend) === 0 && minor(h.period.fixedCosts) === 0) return <>{fallback}</>;
@@ -138,20 +138,9 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
   const rows = COSTS.map((k, i) => ({ k, m: b[k], shade: SHADE[i]! })).filter((r) => minor(r.m) !== 0);
   const kept = b.kept;
   const loss = negative(kept);
-  const bar = useRef<HTMLDivElement>(null);
-
-  // The parts fill in turn the first time, and again when the period changes.
-  useEffect(() => {
-    const el = bar.current;
-    if (!el?.animate || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const origin = getComputedStyle(el).direction === "rtl" ? "right" : "left";
-    const parts = [...el.children] as HTMLElement[];
-    const anims = parts.map((part, i) => part.animate(
-      [{ transform: "scaleX(0)", transformOrigin: origin, opacity: 0.4 }, { transform: "scaleX(1)", transformOrigin: origin, opacity: 1 }],
-      { duration: 520, delay: 120 + i * 90, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "backwards" },
-    ));
-    return () => anims.forEach((a) => a.cancel());
-  }, [home.from, home.to, revenue]);
+  // The parts fill in turn (SETTLE, 90 ms apart: motion.css .mz-grow-x) the first time, and again
+  // when the period changes (the key restarts them).
+  const fillKey = `${home.from}|${home.to}|${revenue}`;
 
   return (
     <GlassRoot ink fields={false} className="g mz-enter overflow-hidden">
@@ -163,9 +152,9 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 id="kept-title" className="text-body text-rail-text-2">{t("kept.title", { days: home.days })}</h2>
           <p className="flex items-center gap-2 text-caption text-rail-text-2" aria-live="polite">
-            <span className="relative flex size-2" aria-hidden="true">
-              <span className={`absolute inline-flex size-full rounded-full bg-brand opacity-60 ${fetching ? "animate-ping" : ""}`} />
-              <span className="relative inline-flex size-2 rounded-full bg-brand" />
+            {/* Live: a 10 px mono transfer while the figures refresh, the pair at rest otherwise (never red). */}
+            <span className="inline-flex w-4 justify-center" aria-hidden="true">
+              <MizanLoader kind="transfer" size={16} still={!fetching} decorative />
             </span>
             {t("live", { time: updated })}
           </p>
@@ -201,9 +190,9 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
           <span className="font-medium text-rail-text">{tw("title")}</span>
           <span className="text-rail-text-2">{tw("revenue")} <MoneyText money={b.revenue} /></span>
         </h3>
-        <div ref={bar} className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-rail-line" aria-hidden="true">
-          {rows.map((r) => <span key={r.k} className={`h-full bg-rail-text ${r.shade}`} style={{ inlineSize: `${share(r.m)}%` }} />)}
-          {!loss && revenue > 0 ? <span className="h-full bg-brand" style={{ inlineSize: `${share(kept)}%` }} /> : null}
+        <div key={fillKey} className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full bg-rail-line" aria-hidden="true">
+          {rows.map((r, i) => <span key={r.k} className={`mz-grow-x h-full bg-rail-text ${r.shade}`} style={{ inlineSize: `${share(r.m)}%`, animationDelay: `${120 + i * 90}ms` }} />)}
+          {!loss && revenue > 0 ? <span className="mz-grow-x h-full bg-brand" style={{ inlineSize: `${share(kept)}%`, animationDelay: `${120 + rows.length * 90}ms` }} /> : null}
         </div>
         <ul className="mz-stagger grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4" data-testid="breakdown">
           {[...rows, { k: "kept" as const, m: kept, shade: "" }].map((r, i) => (

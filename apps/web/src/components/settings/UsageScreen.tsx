@@ -49,7 +49,7 @@ function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
   const ask = useMutation({
     mutationFn: () => ok(api.POST("/v1/usage/upgrade", { body: { plan: next.plan } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("upgrade.sent") }); void qc.invalidateQueries({ queryKey: ["usage"] }); },
+    onSuccess: () => { toast.event({ type: "plan.upgrade_requested", message: t("upgrade.sent") }); void qc.invalidateQueries({ queryKey: ["usage"] }); },
   });
   const limit = (n: number | null) => (n === null ? t("upgrade.noLimit") : String(n));
   return (

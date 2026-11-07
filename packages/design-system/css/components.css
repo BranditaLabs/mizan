@@ -207,8 +207,9 @@
 @keyframes mz-draw { to { stroke-dashoffset: 0; } }
 @media (prefers-reduced-motion: reduce) { .mz-draw { stroke-dashoffset: 0; animation: none; } .mz-step { animation: mz-fade var(--mz-duration-fast) both; } }
 /* A value that just changed settles with a brief tint (RollingNumber adds it). */
-.mz-settle { animation: mz-settle 900ms var(--mz-ease-standard); border-radius: var(--mz-radius-xs); }
-@keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-brand) 12%, transparent); } }
+/* A figure that just settled (KpiFigure): a brief ink tint on the settle tokens (never red: the view's one red is the content's). */
+.mz-settle { animation: mz-settle var(--mz-duration-settle) var(--mz-ease-settle); border-radius: var(--mz-radius-xs); }
+@keyframes mz-settle { from { background-color: color-mix(in srgb, var(--mz-text) 10%, transparent); } }
 
 /* ───────────── Feedback ───────────── */
 .mz-alert { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--mz-radius-md); font-size: 13px; line-height: 19px; background: var(--mz-info-soft); color: var(--mz-info-text); }
@@ -219,8 +220,8 @@
 .mz-empty { display: grid; justify-items: center; gap: 8px; text-align: center; padding: 48px 24px; color: var(--mz-text-2); }
 .mz-empty .mz-icon { width: 24px; height: 24px; color: var(--mz-text-3); }
 .mz-empty h3 { font: 600 16px/24px var(--mz-font-display); }
-.mz-skeleton { background: linear-gradient(90deg, var(--mz-surface-sunk), var(--mz-surface-hover), var(--mz-surface-sunk)); background-size: 200% 100%; animation: mz-shimmer 1.4s linear infinite; border-radius: 4px; }
-@keyframes mz-shimmer { to { background-position: -200% 0; } }
+/* Brand 2.0: a still 6% ink, no shimmer (the list's pair loader says it is loading). */
+.mz-skeleton { background: color-mix(in srgb, var(--mz-text) 6%, transparent); border-radius: 4px; }
 .mz-progress { height: 6px; border-radius: 3px; background: var(--mz-line); overflow: hidden; }
 .mz-progress > i { display: block; height: 100%; background: var(--mz-primary); border-radius: 3px; }
 
@@ -231,7 +232,10 @@
 .mz-timeline { display: grid; gap: 0; }
 .mz-timeline__item { display: grid; grid-template-columns: 16px 1fr; gap: 10px; padding-block: 6px; position: relative; font-size: 13px; }
 .mz-timeline__item::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--mz-line-strong); margin-block-start: 6px; margin-inline-start: 4px; }
-.mz-timeline__item:first-child::before { background: var(--mz-brand); }
+.mz-timeline__item:first-child::before { background: var(--mz-text); }
+/* A row with its catalogue glyph (EventGlyph) in place of the dot. */
+.mz-timeline__item--glyph::before { content: none; }
+.mz-timeline__glyph { display: grid; place-items: center; inline-size: 16px; block-size: 18px; color: var(--mz-text-2); }
 .mz-timeline__item:not(:last-child)::after { content: ""; position: absolute; inset-inline-start: 7px; inset-block: 19px -7px; width: 1px; background: var(--mz-line); }
 .mz-timeline__item time { display: block; font-size: 12px; color: var(--mz-text-3); }
 

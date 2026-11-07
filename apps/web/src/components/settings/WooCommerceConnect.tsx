@@ -31,7 +31,7 @@ export function WooCommerceConnect({ open, onClose, site = "" }: { open: boolean
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/connections/woocommerce", { body: { siteUrl: siteUrl.trim(), consumerKey: consumerKey.trim(), consumerSecret: consumerSecret.trim() } })),
     onSuccess: () => {
-      toast({ message: t("saved") });
+      toast.event({ type: "connection.connected", message: t("saved") });
       setKey("");
       setSecret("");
       void qc.invalidateQueries({ queryKey: ["connections"] });

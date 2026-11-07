@@ -114,7 +114,7 @@ function NewExchange({ order: o, onClose }: { order: Order; onClose(): void }) {
       orderId: o.id, items, lines: [line], shipping: shipping.trim() || "0", reason, ...(note.trim() ? { note: note.trim() } : {}),
     } })),
     onSuccess: (x) => {
-      toast({ message: t("created", { number: x.replacement.number }) });
+      toast.event({ type: "exchange.created", message: t("created", { number: x.replacement.number }) });
       void qc.invalidateQueries({ queryKey: ["exchanges"] });
       void qc.invalidateQueries({ queryKey: ["order"] });
       onClose();

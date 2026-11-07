@@ -49,7 +49,7 @@ export function IntegrationsScreen() {
   const dead = useQuery({ queryKey: ["deadLetters", ...scope], queryFn: () => ok(api.GET("/v1/admin/integrations/dead-letters", { params: { query: { limit: 50 } } })), enabled: READERS.has(role) });
   const replay = useMutation({
     mutationFn: (id: string) => ok(api.POST("/v1/admin/integrations/jobs/{id}/replay", { params: { path: { id } } })),
-    onSuccess: () => { toast({ message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); void qc.invalidateQueries({ queryKey: ["integrationsHealth"] }); void qc.invalidateQueries({ queryKey: ["syncHealth"] }); },
+    onSuccess: () => { toast.event({ type: null, message: t("replayed") }); void qc.invalidateQueries({ queryKey: ["deadLetters"] }); void qc.invalidateQueries({ queryKey: ["integrationsHealth"] }); void qc.invalidateQueries({ queryKey: ["syncHealth"] }); },
   });
   const reasonText = (provider: string, reason: string) => {
     // A store platform's own words first (WooCommerce keys, Shopify's app access), then the shared ones.

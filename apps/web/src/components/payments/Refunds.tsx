@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { IdCell } from "@/components/ui/DataTable";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select, TextArea } from "@/components/ui/Field";
-import { ErrorState, Pending } from "@/components/ui/QueryState";
+import { ErrorState, PageState } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
@@ -50,7 +50,7 @@ export function RefundRow({ refund, showOrder = false }: { refund: Refund; showO
   const approve = useMutation({
     mutationFn: () => ok(api.POST("/v1/refunds/{refundId}/approve", { params: { path: { refundId: refund.id } } })),
     meta: { toast: false },
-    onSuccess: (r) => { toast({ message: t(r.status === "completed" ? "toast.completed" : "toast.approved", { number: r.number }) }); refresh(); },
+    onSuccess: (r) => { toast.event({ type: r.status === "completed" ? "refund.completed" : "refund.approved", message: t(r.status === "completed" ? "toast.completed" : "toast.approved", { number: r.number }) }); refresh(); },
   });
   return (
     <li className="flex flex-col gap-2 py-3" data-testid="refund">
@@ -100,7 +100,7 @@ function RefundStep({ refund, step, onClose }: { refund: Refund; step: "reject" 
       ? ok(api.POST("/v1/refunds/{refundId}/reject", { params: { path: { refundId: refund.id } }, body: { reason: text.trim() } }))
       : ok(api.POST("/v1/refunds/{refundId}/complete", { params: { path: { refundId: refund.id } }, body: text.trim() ? { reference: text.trim() } : {} }))),
     meta: { toast: false },
-    onSuccess: (r) => { toast({ message: t(step === "reject" ? "toast.rejected" : "toast.completed", { number: r.number }) }); refresh(); onClose(); },
+    onSuccess: (r) => { toast.event({ type: step === "reject" ? "refund.rejected" : "refund.completed", message: t(step === "reject" ? "toast.rejected" : "toast.completed", { number: r.number }) }); refresh(); onClose(); },
   });
   const ready = step === "complete" || text.trim().length > 0;
   return (
@@ -139,7 +139,7 @@ function RequestRefund({ orderId, onClose }: { orderId: string; onClose(): void 
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/refunds", { params: { path: { id: orderId } }, body: { amount: value.trim(), destination: dest as Destination, ...(reason.trim() ? { reason: reason.trim() } : {}) } })),
     meta: { toast: false },
-    onSuccess: (r) => { toast({ message: t(`toast.${r.status === "requested" ? "requested" : r.status === "completed" ? "completed" : "approved"}`, { number: r.number }) }); refresh(); onClose(); },
+    onSuccess: (r) => { toast.event({ type: r.status === "requested" ? "refund.created" : r.status === "completed" ? "refund.completed" : "refund.approved", message: t(`toast.${r.status === "requested" ? "requested" : r.status === "completed" ? "completed" : "approved"}`, { number: r.number }) }); refresh(); onClose(); },
   });
   const nothing = o && Number(o.refundable.amount) === 0;
   return (
@@ -149,7 +149,7 @@ function RequestRefund({ orderId, onClose }: { orderId: string; onClose(): void 
         <Button busy={save.isPending} disabled={!o || nothing || !value.trim() || !dest} onClick={() => save.mutate()}>{t("request")}</Button>
       </>
     )}>
-      {!o ? <Pending query={opts} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending> : (
+      {!o ? <PageState query={opts} compact variant="card" label={t("loading")} /> : (
         <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (!nothing && value.trim() && dest) save.mutate(); }}>
           {nothing ? <Alert tone="info">{t("nothingToRefund")}</Alert> : null}
           <Field label={t("amount", { currency: o.refundable.currency })} inputMode="decimal" ltr value={value} onChange={(e) => setAmount(e.target.value)}

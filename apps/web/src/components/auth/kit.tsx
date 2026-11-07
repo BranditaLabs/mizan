@@ -3,7 +3,7 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import { useTranslations } from "next-intl";
 import { useId, useState, type InputHTMLAttributes, type ReactNode } from "react";
-import { ScaleLoader } from "@/components/ui/Loader";
+import { DoneState } from "@mizan/design-system/react/motion";
 
 /**
  * Building blocks of the screens before a store, drawn as the "Sign in · glass" board of the Mizan
@@ -123,14 +123,12 @@ export function CodeField({ label, hint, value, onChange, length = 6, name = "co
   );
 }
 
-/** Signed in: the scale weighs while the store opens. */
+/** Signed in: the pair merges and the red drops once (DoneState, Brand 2.0) while the store opens. */
 export function Done({ title, text }: { title: string; text: string }) {
   return (
-    <div className="mz-step flex flex-col items-center gap-4 py-6 text-center" role="status">
-      <ScaleLoader />
+    <DoneState label={title} className="mz-step py-6 text-center">
       <h1 className="disp m-0 text-heading-lg">{title}</h1>
       <p className="muted m-0 text-body">{text}</p>
-      <div className="ld-rail w-48" aria-hidden="true" />
-    </div>
+    </DoneState>
   );
 }
