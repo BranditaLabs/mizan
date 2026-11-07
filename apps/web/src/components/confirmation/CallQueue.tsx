@@ -18,6 +18,7 @@ import { ok } from "@/lib/api/client";
 import { formatWhen } from "@/lib/format";
 import { useSession, useTimeZone } from "@/lib/session";
 import { ConfirmationResults } from "@/components/settings/ConfirmationResults";
+import { MotionSurface } from "@/components/ui/MotionSurface";
 
 const CALLERS = rolesWith("confirmation.work");
 const RESULT_READERS = rolesWith("confirmation.manage");
@@ -69,12 +70,12 @@ export function CallQueue() {
   const o = order.data;
   return frame(
     <>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4" data-testid="queue-counts">
+      <MotionSurface surface="queue" className="grid grid-cols-2 gap-3 md:grid-cols-4" testId="queue-counts">
         <StatCard label={t("waiting")} value={q?.waiting ?? "…"} />
         <StatCard label={t("mine")} value={q?.mine ?? "…"} />
         <StatCard label={t("later")} value={q?.later ?? "…"} period={q?.nextAt ? t("nextAt", { at: formatWhen(q.nextAt, locale, "latn", timeZone) }) : undefined} />
         <StatCard label={t("unreachable")} value={q?.unreachable ?? "…"} />
-      </div>
+      </MotionSurface>
       {queue.isError && !q ? <div className="mz-card"><ErrorState compact error={queue.error} onRetry={() => void queue.refetch()} retrying={queue.isRefetching} /></div> : null}
 
       {!current ? (

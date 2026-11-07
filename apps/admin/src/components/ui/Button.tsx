@@ -1,6 +1,8 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { Pending } from "@mizan/shared/motion";
 import { cx } from "./logic";
+import { BusyLabel, BusyLoader } from "./BusyLabel";
 
 /**
  * Buttons (components.md §2, `.mz-btn`). One `primary` (ink) action per screen; `brand` (red) at
@@ -15,21 +17,21 @@ export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize
   return cx("mz-btn", `mz-btn--${variant}`, size !== "md" && `mz-btn--${size}`, extra);
 }
 
-function Spinner() {
-  return <span aria-hidden="true" className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />;
-}
-
-export function Button({ variant = "primary", size = "md", busy = false, icon, iconEnd, className, children, disabled, ...rest }:
-  ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; busy?: boolean; icon?: IconName; iconEnd?: IconName }) {
-  // Busy keeps the width: the label stays (invisible) and the spinner sits on top.
+/**
+ * `busy` keeps the width: the label stays (invisible) and a 16 px mono Brand 2.0 loader sits on top
+ * (drop: saving or sending; `pending` names another meaning, e.g. "transfer" for a replay). Never red.
+ * When the work ends, the label settles back in (SETTLE).
+ */
+export function Button({ variant = "primary", size = "md", busy = false, pending, icon, iconEnd, className, children, disabled, ...rest }:
+  ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; busy?: boolean; pending?: Pending; icon?: IconName; iconEnd?: IconName }) {
   return (
     <button type="button" aria-busy={busy || undefined} disabled={disabled || busy} className={buttonClass(variant, size, cx("relative", className))} {...rest}>
-      <span className={cx("inline-flex items-center gap-2", busy && "invisible")}>
+      <BusyLabel busy={busy}>
         {icon ? <Icon name={icon} size={16} /> : null}
         {children}
         {iconEnd ? <Icon name={iconEnd} size={16} /> : null}
-      </span>
-      {busy ? <span className="absolute inset-0 grid place-items-center"><Spinner /></span> : null}
+      </BusyLabel>
+      {busy ? <span className="absolute inset-0 grid place-items-center"><BusyLoader pending={pending} /></span> : null}
     </button>
   );
 }

@@ -25,6 +25,15 @@ test("a merchant who is not staff is refused, with the reason", async ({ page })
   await expect(page).toHaveURL(/\/en\/sign-in$/);
 });
 
+test("after sign-in, back to the page asked for; never to another site (AU-1)", async ({ page }) => {
+  await signIn(page, boss, "?next=%2Fhealth");
+  await expect(page).toHaveURL(/\/en\/health$/);
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/en\/sign-in$/);
+  await signIn(page, boss, "?next=%2F%2Fevil.example");
+  await expect(page).toHaveURL(/localhost:\d+\/en(\/stores)?$/);
+});
+
 test("staff find a store, note it, suspend and reactivate it; the store sees it in its audit log", async ({ page }) => {
   await signIn(page, boss);
   await expect(page.getByRole("heading", { name: "Stores", exact: true })).toBeVisible();

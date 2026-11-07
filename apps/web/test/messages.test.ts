@@ -37,12 +37,31 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
   });
 
   it("Arabic copy is actually Arabic (no untranslated English left behind)", () => {
-    // The English name of English, and example data shown as is (an email address, a phone number, an order id).
-    const allowedLatin = new Set(["shell.language.en", "shell.language.short.en", "auth.emailPlaceholder", "auth.phonePlaceholder", "auth.brand.orderId"]);
+    // The English name of English, example data shown as is (an email address, a phone number, an order id),
+    // and the plan names, which are product names in Latin in both languages (pricing page, trial chip).
+    const allowedLatin = new Set(["shell.language.en", "shell.language.short.en", "auth.emailPlaceholder", "auth.phonePlaceholder", "auth.plans.growth", "auth.plans.scale"]);
     for (const [k, v] of Object.entries(A)) {
       if (allowedLatin.has(k)) continue;
       expect(/[؀-ۿ]/.test(v), `${k}: ${v}`).toBe(true);
     }
+  });
+
+  it("Arabic copy keeps every Latin word inside <l> or <n> (rendered in <bdi>), brand names in Arabic (docs/16 §1.4, FX-1)", () => {
+    // Shown as is: the English name of English (in <bdi> on the switch), input placeholders (attributes, not text)
+    // and the plan names, product names the trial chip and its picker render in <bdi>.
+    const asIs = new Set(["shell.language.en", "auth.emailPlaceholder", "integrationsSettings.woo.sitePlaceholder", "auth.plans.growth", "auth.plans.scale"]);
+    const bare = (s: string) => s
+      .replace(/<(l|n)>.*?<\/\1>/g, "") // <n> is the <bdi> for numbers and ids
+      .replace(/<\/?\w+>/g, "")
+      .replace(/\{\s*\w+\s*,\s*(?:plural|select|selectordinal|number|date|time)\s*,/g, "{")
+      .replace(/(?:zero|one|two|few|many|other|=\d+)\s*\{/g, "{")
+      // A select's case keys are ICU syntax, not text ({manual, select, manual {…} other {…}}).
+      .replace(/([{}])\s*\w+\s*\{/g, "$1{").replace(/([{}])\s*\w+\s*\{/g, "$1{")
+      .replace(/\{\s*\w+\s*\}/g, "");
+    const found = Object.entries(A).filter(([k, v]) => !asIs.has(k) && /[A-Za-z]{4,}/.test(bare(v))).map(([k, v]) => `${k}: ${v}`);
+    expect(found).toEqual([]);
+    // English carries the same <l> tags (checked above), so both languages render the same element.
+    expect(bare("مثال: <l>SKU,Cost,Barcode</l>")).toBe("مثال: ");
   });
 });
 

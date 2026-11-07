@@ -73,7 +73,7 @@ export function ReturnsCard({ orderId }: { orderId: string }) {
 
 function Inspect({ state, onClose }: { state: State; onClose(): void }) {
   const t = useTranslations("returns");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -88,7 +88,7 @@ function Inspect({ state, onClose }: { state: State; onClose(): void }) {
     mutationFn: () => ok(api.POST("/v1/orders/{id}/returns/inspect", { params: { path: { id: state.orderId } }, body: { items, ...(note.trim() ? { note: note.trim() } : {}) } })),
     meta: { toast: false },
     onSuccess: () => {
-      toast({ message: t("saved") });
+      toast.event({ type: "return.inspected", message: t("saved") });
       for (const k of ["returns", "orderPnl", "stock", "order"]) void qc.invalidateQueries({ queryKey: [k] });
       onClose();
     },

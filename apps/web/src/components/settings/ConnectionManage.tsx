@@ -42,7 +42,7 @@ function Rename({ c, onClose }: { c: Connection; onClose(): void }) {
   const [name, setName] = useState(c.displayName ?? "");
   const save = useMutation({
     mutationFn: () => ok(api.PATCH("/v1/connections/{id}", { params: { path: { id: c.id } }, body: { displayName: name.trim() || null } })),
-    onSuccess: () => { toast({ message: t("renamed") }); void qc.invalidateQueries({ queryKey: ["connections"] }); onClose(); },
+    onSuccess: () => { toast.event({ type: null, message: t("renamed") }); void qc.invalidateQueries({ queryKey: ["connections"] }); onClose(); },
   });
   const tooLong = name.trim().length > 60;
   return (
@@ -69,7 +69,7 @@ function Disconnect({ c, onClose }: { c: Connection; onClose(): void }) {
   const go = useMutation({
     mutationFn: () => ok(api.POST("/v1/connections/{id}/disconnect", { params: { path: { id: c.id } }, body: { confirm: typed.trim() } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("disconnected") }); void qc.invalidateQueries({ queryKey: ["connections"] }); void qc.invalidateQueries({ queryKey: ["onboarding"] }); onClose(); },
+    onSuccess: () => { toast.event({ type: "connection.disconnected", data: { actor: { type: "user" } }, message: t("disconnected") }); void qc.invalidateQueries({ queryKey: ["connections"] }); void qc.invalidateQueries({ queryKey: ["onboarding"] }); onClose(); },
   });
   const matches = typed.trim().toLowerCase() === expected.trim().toLowerCase();
   return (

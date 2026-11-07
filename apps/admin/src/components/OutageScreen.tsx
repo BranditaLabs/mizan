@@ -1,5 +1,6 @@
 "use client";
 
+import { MizanLoader } from "@mizan/design-system/react/motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -55,6 +56,12 @@ export function OutageScreen() {
   if (!down) return null;
   return (
     <div role="alertdialog" aria-modal="true" aria-labelledby="outage-title" aria-describedby="outage-body" className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-bg px-6 text-center">
+      {/* Waiting for Mizan to come back: the brand pair (this screen's one red); without JS the SMIL file. */}
+      <MizanLoader kind="pair" size={96} tone="brand" decorative />
+      <noscript>
+        {/* eslint-disable-next-line @next/next/no-img-element -- static SMIL fallback, no JS */}
+        <img src="/motion/mizan-pair-on-paper.svg" alt="" width={96} />
+      </noscript>
       <Wordmark />
       <div className="flex max-w-[440px] flex-col items-center gap-3">
         <h1 id="outage-title" className="text-heading-lg text-text">{online ? t("title") : t("offlineTitle")}</h1>

@@ -119,7 +119,7 @@ export function ConfirmationStudio({ chrome }: { chrome: Record<Lang, PhoneChrom
   const save = useMutation({
     mutationFn: (b: Settings) => ok(api.PUT("/v1/settings/confirmation", { body: b })),
     meta: { toast: false },
-    onSuccess: (r) => { qc.setQueryData(settingsKey, r); setDraft(null); setSaveIssues([]); setSaveError(null); toast({ message: t("saved") }); },
+    onSuccess: (r) => { qc.setQueryData(settingsKey, r); setDraft(null); setSaveIssues([]); setSaveError(null); toast.event({ type: null, message: t("saved") }); },
     onError: (e) => {
       if (e instanceof ApiError && e.status === 422 && e.errors?.length) {
         const found = toIssues(e.errors, false);

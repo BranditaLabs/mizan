@@ -17,6 +17,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { Link } from "@/i18n/navigation";
+import { latin } from "@/lib/rich";
 
 type Settings = Schemas["ConfirmationSettings"];
 type Script = NonNullable<Settings["script"]>;
@@ -47,7 +48,7 @@ export function ConfirmationSettingsScreen() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const save = useMutation({
     mutationFn: (body: Settings) => ok(api.PUT("/v1/settings/confirmation", { body })),
-    onSuccess: (r) => { qc.setQueryData(["confirmationSettings", user?.uid ?? "", store?.tenantId ?? ""], r); setDraft(null); toast({ message: t("saved") }); },
+    onSuccess: (r) => { qc.setQueryData(["confirmationSettings", user?.uid ?? "", store?.tenantId ?? ""], r); setDraft(null); toast.event({ type: null, message: t("saved") }); },
   });
 
   const frame = (body: React.ReactNode) => (
@@ -161,7 +162,7 @@ function WhatsAppConnect({ templates, choice, onChoice }: { templates: Template[
   const done = () => { void qc.invalidateQueries({ queryKey: ["connections"] }); void qc.invalidateQueries({ queryKey: ["confirmationSettings"] }); };
   const connect = useMutation({
     mutationFn: () => ok(api.POST("/v1/connections/whatsapp", { body: form })),
-    onSuccess: () => { setForm({ phoneNumberId: "", wabaId: "", accessToken: "" }); setEditing(false); toast({ message: t("saved") }); done(); },
+    onSuccess: () => { setForm({ phoneNumberId: "", wabaId: "", accessToken: "" }); setEditing(false); toast.event({ type: null, message: t("saved") }); done(); },
   });
   const check = useMutation({ mutationFn: () => ok(api.POST("/v1/connections/whatsapp/check")), onSuccess: done });
 
@@ -182,16 +183,16 @@ function WhatsAppConnect({ templates, choice, onChoice }: { templates: Template[
           <p className="text-body-sm">{t.rich("number", { id: wa.account ?? "", n: (c) => <bdi dir="ltr" className="mz-num">{c}</bdi> })}</p>
         ) : null}
         {wa?.status === "pending" ? <Alert tone="info">{t("checking")}</Alert> : null}
-        {reason ? <Alert tone="danger">{t(`reason.${reason}`)}</Alert> : null}
+        {reason ? <Alert tone="danger">{t.rich(`reason.${reason}`, latin)}</Alert> : null}
         {showForm ? (
           <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); connect.mutate(); }}>
             <div className="flex flex-wrap gap-3">
-              <Field label={t("phoneNumberId")} hint={t("phoneNumberIdHint")} ltr inputMode="numeric" autoComplete="off" required className="w-56"
+              <Field label={t.rich("phoneNumberId", latin)} hint={t.rich("phoneNumberIdHint", latin)} ltr inputMode="numeric" autoComplete="off" required className="w-56"
                 value={form.phoneNumberId} onChange={(e) => setForm({ ...form, phoneNumberId: e.target.value.trim() })} />
-              <Field label={t("wabaId")} ltr inputMode="numeric" autoComplete="off" required className="w-56"
+              <Field label={t.rich("wabaId", latin)} ltr inputMode="numeric" autoComplete="off" required className="w-56"
                 value={form.wabaId} onChange={(e) => setForm({ ...form, wabaId: e.target.value.trim() })} />
             </div>
-            <Field label={t("token")} hint={t("tokenHint")} ltr type="password" autoComplete="off" required
+            <Field label={t("token")} hint={t.rich("tokenHint", latin)} ltr type="password" autoComplete="off" required
               value={form.accessToken} onChange={(e) => setForm({ ...form, accessToken: e.target.value })} />
             <ButtonGroup>
               <Button type="submit" icon="channels" busy={connect.isPending}>{t(wa ? "replace" : "connect")}</Button>
@@ -228,7 +229,7 @@ function FirstMessage({ templates, choice, onChoice, canSubmit }: { templates: T
   const submit = useMutation({
     mutationFn: (variant: Template["variant"]) => ok(api.POST("/v1/settings/confirmation/templates/{variant}/submit", { params: { path: { variant } } })),
     onSuccess: (r) => {
-      toast({ message: t(r.queued ? "submitted" : "already") });
+      toast.event({ type: r.queued ? "whatsapp.template_submitted" : null, message: t(r.queued ? "submitted" : "already") });
       refresh(); // the job runs in the background: the row shows it on its way, polled until Meta answers
     },
   });

@@ -6,6 +6,11 @@ import 'package:intl/intl.dart' hide TextDirection;
 import 'package:uuid/uuid.dart';
 
 import '../l10n/app_localizations.dart';
+import '../motion/event_glyph.dart';
+import '../motion/event_snack.dart';
+import '../motion/mizan_loader.dart';
+import '../motion/motion.dart';
+import '../motion/vessels_count.dart';
 import '../pick/pack_screen.dart' show ScannerBuilder;
 import '../sync/op_store.dart';
 import '../sync/sync_api.dart';
@@ -54,7 +59,6 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
 
   Future<void> _refresh() async {
     final t = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _loading = true);
     try {
       await widget.engine?.run();
@@ -62,17 +66,17 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
       final pos = <Map<String, Object?>>[for (final id in ids) await widget.api!.po(id)];
       await widget.store.savePurchaseOrders(pos, widget.now());
     } on SyncFailure catch (f) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            f.kind == SyncFailureKind.offline
-                ? t.syncFailedOffline
-                : f.kind == SyncFailureKind.signedOut
-                ? t.receiveSignIn
-                : t.syncFailedServer,
-          ),
-        ),
-      );
+      if (mounted) {
+        showEventSnack(
+          context,
+          'ops.sync_failed',
+          f.kind == SyncFailureKind.offline
+              ? t.syncFailedOffline
+              : f.kind == SyncFailureKind.signedOut
+              ? t.receiveSignIn
+              : t.syncFailedServer,
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -87,7 +91,16 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(t.receiveTitle),
-        actions: [if (widget.api != null) IconButton(key: const Key('refresh-pos'), tooltip: t.refresh, onPressed: _loading ? null : _refresh, icon: const Icon(Icons.refresh))],
+        actions: [
+          // While the purchase orders come in, the pair loader takes the refresh button's place.
+          if (widget.api != null)
+            _loading
+                ? Padding(
+                    padding: const EdgeInsetsDirectional.only(end: MizanSpace.s4),
+                    child: Center(child: EventLoader('ops.loading', height: 20, label: t.loading)),
+                  )
+                : IconButton(key: const Key('refresh-pos'), tooltip: t.refresh, onPressed: _refresh, icon: const Icon(Icons.refresh)),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(MizanSpace.s4),
@@ -146,6 +159,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
   bool _lastDamaged = false;
   String _title = '';
   String _last = '';
+  int _scans = 0;
   DateTime _lastAt = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
@@ -163,6 +177,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     final r = _session.scan(code, damaged: _damagedMode);
     if (r != ReceiveResult.counted) HapticFeedback.heavyImpact();
     setState(() {
+      _scans++;
       _title = line?.title ?? code;
       _lastDamaged = _damagedMode;
       _feedback = switch (r) {
@@ -175,10 +190,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
 
   Future<void> _save() async {
     final t = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
     await widget.store.enqueue(_session.toOp(opId: const Uuid().v4(), at: widget.now()));
-    messenger.showSnackBar(SnackBar(content: Text(t.deliverySaved('\u2066${widget.po.number}\u2069'))));
+    // Goods are in: stock.received plays done, with a light tap.
+    if (mounted) showEventSnack(context, 'stock.received', t.deliverySaved('\u2066${widget.po.number}\u2069'));
     navigator.pop(true);
     if (widget.engine != null) await widget.engine!.run();
   }
@@ -214,10 +229,22 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
               child: SizedBox(height: 220, child: widget.scanner!(context, _scan)),
             ),
           const SizedBox(height: MizanSpace.s3),
-          Text(
-            message,
-            key: const Key('feedback'),
-            style: MizanType.headingSm.copyWith(color: color),
+          Row(
+            children: [
+              // Each scan plays its outcome once: counted settles, a blocked one tips and holds.
+              if (_feedback != _Feedback.none)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: MizanSpace.s3),
+                  child: EventGlyph(motionOf(_feedback == _Feedback.counted ? 'ops.scan_counted' : 'ops.scan_blocked').outcome, key: ValueKey('scan-$_scans'), size: 24),
+                ),
+              Expanded(
+                child: Text(
+                  message,
+                  key: const Key('feedback'),
+                  style: MizanType.headingSm.copyWith(color: color),
+                ),
+              ),
+            ],
           ),
           SwitchListTile(
             key: const Key('damaged-mode'),
@@ -258,6 +285,8 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
             ListTile(
               key: Key('line-${l.variantId}'),
               contentPadding: EdgeInsets.zero,
+              // Ordered against received: the level rises with each scan and joins when they match.
+              leading: VesselsCount(expected: _session.expected(l), received: _session.counted(l), label: t.lineReceived(_session.counted(l), _session.expected(l))),
               title: Text(l.title),
               subtitle: Text('\u2066${l.barcode ?? l.sku ?? ''}\u2069${_session.damaged(l) > 0 ? ' · ${t.damagedCount(_session.damaged(l))}' : ''}', style: MizanType.mono),
               trailing: Row(

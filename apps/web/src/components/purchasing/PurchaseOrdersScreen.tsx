@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { buttonClass } from "@/components/ui/Button";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { Pending } from "@/components/ui/QueryState";
-import { EmptyState, Progress, SkeletonRows } from "@/components/ui/Surface";
+import { EmptyState, FillProgress, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
@@ -47,7 +47,7 @@ export function PurchaseOrdersScreen() {
       id: "received", header: t("columns.received"),
       cell: (r) => {
         const pct = r.units ? Math.min(100, Math.round((r.receivedUnits / r.units) * 100)) : 0;
-        return <div className="flex min-w-24 items-center gap-2"><Progress value={pct} label={t("receivedPct", { pct })} className="w-16" /><span className="mz-num text-caption text-text-2">{pct}%</span></div>;
+        return <div className="flex min-w-24 items-center gap-2"><FillProgress value={pct} label={t("receivedPct", { pct })} valueText={t("receivedPct", { pct })} width={64} /><span className="mz-num text-caption text-text-2">{pct}%</span></div>;
       },
     },
     { id: "status", header: t("columns.status"), cell: (r) => <Badge tone={STATUS_TONE[r.status]}>{t(`status.${r.status}`)}</Badge> },

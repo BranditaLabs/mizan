@@ -1,7 +1,7 @@
 ---
 version: 1
 name: Mizan
-description: Mizan (ميزان) by Brandita — the commerce operating system for MENA brands. Ink on paper, flat surfaces, one red point. Arabic first (RTL), English equal. Calm, dense, premium ops UI where the profit number leads.
+description: Mizan (ميزان) by Brandita — the commerce operating system for MENA brands. Ink on paper, flat surfaces, one red point: the two-ball mark (ink left, red right, like scale pans). Arabic first (RTL), English equal. Calm, dense, premium ops UI where the profit number leads.
 source_of_truth: packages/design-system (tokens/tokens.json → dist/tokens.css, dist/tailwind.css). This file summarises it for AI agents; if they differ, the package wins.
 
 colors:            # light theme; dark values in dist/tokens.css ([data-theme="dark"])
@@ -29,7 +29,7 @@ colors:            # light theme; dark values in dist/tokens.css ([data-theme="d
 
 typography:
   latin: "Geist"                    # UI and display
-  arabic-display: "Alexandria"      # Arabic headings, Arabic wordmark
+  arabic-display: "Alexandria"      # Arabic headings; the Arabic wordmark is logo/svg/mizan-wordmark-ar.svg (outlined)
   arabic-body: "IBM Plex Sans Arabic"
   mono: "Geist Mono"                # order IDs, SKUs, tracking numbers, phones
   weights: [400, 500, 600, 700, 800, 900]   # Geist 800/900 for Brandita's display voice
@@ -49,6 +49,11 @@ motion:                    # ported from the Brandita site (docs/16 §2.3)
   press: scale(var(--mz-press-scale))   # 0.98 everywhere
   reduced-motion: every duration ≤120ms (drift 0), distances 0; gentler, never removed feedback
   island: shadow-island (1px rim + soft glow) keeps an ink island apart from the dark canvas
+  brand-2.0:               # docs/08 §2a; screens never pick an animation: they name the event, the catalogue decides
+    rules: { tip: "2.6s loop, ±18° (hold 8°)", merge: "neck in 380ms, nothing snaps", settle: "720ms cubic-bezier(.34,1.32,.5,1)", drop: "red falls once 620ms, ripple 1.4s; only when confirmed" }
+    loaders: { pair: loading (default), transfer: syncing two systems, drop: saving or confirming, fill: known progress }
+    catalogue: packages/shared/src/motion (EVENT_MOTION; ops app copy in apps/ops/lib/motion/event_motion.g.dart)
+    red: once per view; the chrome uses mono marks; reduced motion shows still frames
 
 partner-logos: "<PartnerLogo slug=… /> from @mizan/design-system/partners/react (web: components/ui/PartnerLogo). Real marks only (logos/partners/partners.json), never recoloured; a monogram tile otherwise"
 
@@ -58,7 +63,7 @@ icons: "<Icon name=… /> from @mizan/design-system/icons — 18px, stroke 1.75;
 # Mizan design language
 
 ## Feel
-Calm and premium: ink on paper, generous but dense where work happens, flat surfaces. Colour is for **status only**. **Red is a scalpel** — the logo's point, the active navigation indicator, the one number that matters on a screen, and errors. Never a red button, never decorative red.
+Calm and premium: ink on paper, generous but dense where work happens, flat surfaces. Colour is for **status only**. **Red is a scalpel, once per view** — the mark's right ball, the active navigation indicator, the one number that matters on a screen, and errors. Never a red button, never decorative red.
 
 ## Principles
 1. **Profit first.** Every screen answers "is this making money?"; on the home screen the profit number comes first.
@@ -81,3 +86,7 @@ Use the kit in `apps/web/src/components/ui` (gallery at `/ar/ui`, `/en/ui`) and 
 - No hex values or non-token classes in components (a unit test fails on them).
 - No red primary buttons; no colour that carries meaning without a label or icon.
 - Don't redesign the identity: refinements keep ink, paper and the red point.
+- Don't pick an animation on a screen: name the event (`useEventMutation`, `toast.event`, `EventLoader('ops.syncing')`) and the catalogue plays its outcome. No spinners, no ad hoc keyframes, no red outside the budget (lint: `mizan/no-adhoc-motion`, `mizan/no-brand-red`; Flutter: no `CircularProgressIndicator`).
+
+## Motion (Brand 2.0)
+Four rules from the brand pack: **TIP** (two sides compare by rising and falling), **MERGE** (agreeing values flow into one), **SETTLE** (arrive with a small overshoot), **DROP** (the red enters from above once, only when something is confirmed). Loaders by meaning: pair = loading, transfer = syncing, drop = saving or confirming, fill = known progress. Every event has one outcome (settle, done, merge, tip, fail, drop or quiet) in `packages/shared/src/motion`, shared by web, admin and the ops app. Reduced motion shows a deliberate still frame, never a slower loop. Details: `docs/08-design-system.md` §2a, the table in `docs/13` §2.1.

@@ -10,6 +10,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 const EDITORS = rolesWith("connections.manage");
 type Sync = Schemas["StoreSync"];
@@ -25,7 +26,7 @@ function StoreSyncCard({ id, shop }: { id: string; shop: string }) {
   const q = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/connections/{id}/sync", { params: { path: { id } } })) });
   const save = useMutation({
     mutationFn: (change: Partial<Sync>) => ok(api.PUT("/v1/connections/{id}/sync", { params: { path: { id } }, body: change })),
-    onSuccess: (data) => { qc.setQueryData(key, data); toast({ message: t("saved") }); },
+    onSuccess: (data) => { qc.setQueryData(key, data); toast.event({ type: null, message: t("saved") }); },
   });
   return (
     <section className="mz-card p-5" data-testid="store-sync">
@@ -33,7 +34,7 @@ function StoreSyncCard({ id, shop }: { id: string; shop: string }) {
       {!q.data ? <Pending query={q} compact><SkeletonRows rows={2} label={t("loading")} /></Pending> : (
         <div className="mt-3 flex flex-col gap-4">
           {SWITCHES.map((k) => (
-            <Switch key={k} label={t(`${k}.label`)} description={t(`${k}.hint`)} checked={q.data[k]} disabled={save.isPending}
+            <Switch key={k} label={t(`${k}.label`)} description={t.rich(`${k}.hint`, latin)} checked={q.data[k]} disabled={save.isPending}
               onChange={(e) => save.mutate({ [k]: e.target.checked })} />
           ))}
         </div>

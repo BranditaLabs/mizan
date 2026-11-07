@@ -1,6 +1,6 @@
 "use client";
 
-import { rolesWith } from "@mizan/shared";
+import { addMoney, rolesWith } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { buttonClass } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
+import { BreakevenMeter } from "@/components/ui/Instruments";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatDate } from "@/lib/format";
@@ -82,6 +83,14 @@ export function AdsRoas() {
               period={r.costPerOrder ? t.rich("kpi.perOrder", { cost: () => <MoneyText money={r.costPerOrder!} /> }) : null} />
           </div>
           <Gap r={r} />
+          {/* Gross profit (net + the spend that bought it) against ad spend: Brand 2.0 BREAKEVEN. */}
+          {r.money.net.currency === r.spend.currency ? (
+            <Card title={t("breakeven.title")}>
+              <div className="mx-auto w-full max-w-[520px]" data-testid="roas-breakeven">
+                <BreakevenMeter a={addMoney(r.money.net, r.spend).amount} b={r.spend.amount} currency={r.spend.currency} />
+              </div>
+            </Card>
+          ) : null}
           <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <Card title={t("daysTitle")} bodyClassName="p-0">
               <div className="mz-table-wrap border-0">

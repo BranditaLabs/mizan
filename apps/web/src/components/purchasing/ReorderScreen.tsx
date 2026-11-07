@@ -62,7 +62,7 @@ export function ReorderScreen() {
 
 function SupplierGroup({ supplier, rows, canDraft }: { supplier: Row["supplier"]; rows: Row[]; canDraft: boolean }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const router = useRouter();
@@ -75,7 +75,7 @@ function SupplierGroup({ supplier, rows, canDraft }: { supplier: Row["supplier"]
     mutationFn: () => ok(api.POST("/v1/purchase-orders/from-suggestions", { body: { supplierId: supplier!.id, items } })),
     meta: { toast: false },
     onSuccess: (po) => {
-      toast({ message: t("created", { number: po.number }) });
+      toast.event({ type: null, message: t("created", { number: po.number }) });
       void qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
       void qc.invalidateQueries({ queryKey: ["reorder"] });
       router.push(`/purchasing/${po.id}`);

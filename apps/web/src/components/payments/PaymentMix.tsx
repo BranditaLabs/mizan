@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_METHOD_SLUGS } from "@mizan/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
@@ -8,7 +9,8 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 
-const METHODS = new Set(["cod", "card", "wallet", "apple_pay", "bnpl", "bank_transfer", "instapay", "fawry_ref", "store_credit", "cash_pos", "marketplace"]);
+/** Method names come from the shared catalogue (X9). */
+const METHODS: ReadonlySet<string> = new Set(PAYMENT_METHOD_SLUGS);
 /** Ink shades from the largest share down; cash on delivery is never singled out by colour. */
 const SHADES = ["stroke-text", "stroke-text-2", "stroke-text-3", "stroke-line-strong", "stroke-line"] as const;
 const DOTS = ["bg-text", "bg-text-2", "bg-text-3", "bg-line-strong", "bg-line"] as const;

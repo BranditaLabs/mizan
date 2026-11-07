@@ -119,9 +119,8 @@
 .mzg .mz-dialog::backdrop { background: var(--mz-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 
 .mzg .mz-alert { border-radius: 14px; }
-.mzg .mz-skeleton { background: var(--glass-2); background-image: none; position: relative; overflow: hidden; animation: none; }
-.mzg .mz-skeleton::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .09), transparent); animation: mzg-shimmer 1.6s var(--ease-io) infinite; }
-.mzg.light .mz-skeleton::after { background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85), transparent); }
+/* Brand 2.0: skeletons are still (no shimmer); the pair loader beside them carries the wait. */
+.mzg .mz-skeleton { background: color-mix(in srgb, var(--fg) 6%, transparent); background-image: none; animation: none; }
 .mzg .mz-switch { background: var(--glass-2); border: 1px solid var(--line-2); }
 .mzg .mz-switch:checked { background: var(--solid); border-color: transparent; }
 .mzg .mz-switch::after { transition: transform .45s var(--ease-spring), background-color .3s; }

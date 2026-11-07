@@ -1,49 +1,50 @@
 "use client";
 
+import { MizanLoader } from "@mizan/design-system/react/motion";
+import { WAIT_MOTION, type WaitMeaning } from "@mizan/shared/motion";
 import type { ReactNode } from "react";
+import { useBrandCopy } from "@/lib/motion/useBrandCopy";
 import { GlassRoot } from "../GlassRoot";
-import { ThemedWordmark } from "../Wordmark";
+import { BrandLockup } from "../Wordmark";
 
 /**
- * Mizan's loaders, from Mizan Glass (packages/design-system/docs/glass.md "Loaders").
- *
- * - `<ScaleLoader>`: the scale (Mizan means "the scale") weighing, the pans level, the red point the
- *   fulcrum. For profit, reconciliation, reports and the app's first load.
- * - `<BootLoader>`: the whole screen while the session and the store open: the scale over the light
- *   fields, the wordmark and a sync rail.
- * - `<LedgerBars>`: three weights settling, inline (buttons, cells, chips).
- *
- * Reduced motion keeps them moving slowly rather than freezing (a wait still reads as a wait).
+ * The whole screen while the session and the store open (Brand 2.0): the 120 px pair loader in the
+ * brand tone (the view's one red), the lockup and "Getting your store ready". Reduced motion shows
+ * the pair at rest, the two drops met at level (the mark). Every other wait goes through PageState
+ * (QueryState.tsx), a busy Button or FillProgress: screens never draw their own spinner.
  */
-export function ScaleLoader({ label, size = 1 }: { label?: ReactNode; size?: number }) {
-  return (
-    <div role="status" aria-live="polite" className="flex flex-col items-center gap-5">
-      <div className="ld-scale" aria-hidden="true" style={size !== 1 ? { transform: `scale(${size})` } : undefined}>
-        <div className="post" />
-        <div className="base" />
-        <div className="beam">
-          <div className="pan l"><i /><i /><b /></div>
-          <div className="pan r"><i /><i /><b /></div>
-        </div>
-        <div className="pivot" />
-      </div>
-      {label ? <p className="text-body-sm text-text-2">{label}</p> : null}
-    </div>
-  );
-}
-
-export function BootLoader({ label }: { label: ReactNode }) {
+export function BootLoader({ label }: { label?: ReactNode }) {
+  const copy = useBrandCopy();
   return (
     <GlassRoot className="fixed inset-0 z-50">
-      <div className="ld-rail fixed inset-x-0 top-0" aria-hidden="true" />
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-8 px-6">
-        <ScaleLoader label={label} />
-        <ThemedWordmark className="opacity-70" />
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-text" data-testid="boot-loader">
+        <MizanLoader kind="pair" size={120} tone="brand" decorative />
+        {/* The visible line is the status (announced once), not a second hidden copy of it. */}
+        <p role="status" className="text-body-sm text-text-2">{label ?? copy.loader.boot}</p>
+        <BrandLockup tone="mono" className="opacity-70" height={22} />
       </div>
     </GlassRoot>
   );
 }
 
-export function LedgerBars() {
-  return <span className="ld-bars" aria-hidden="true"><i /><i /><i /></span>;
+/** What a wait is, in the brand's words: the loader follows the meaning (docs/16, Brand 2.0 loaders). */
+// The catalogue's meanings (@mizan/shared motion WAIT_MOTION), shared with the auth kit's AuthProgress.
+export type { WaitMeaning };
+const KIND = WAIT_MOTION;
+
+/**
+ * An inline wait next to its own words (a status line, a live mark): the surface picks the loader
+ * from what is happening, never the screen. loading = pair, syncing between two systems = transfer,
+ * saving or sending = drop. Mono and decorative: the line it sits in carries the text (role=status
+ * when `live`). `still` shows the end frame (a live mark at rest).
+ */
+export function Waiting({ meaning = "loading", size = 28, still, live, children, className }: { meaning?: WaitMeaning; size?: number; still?: boolean; live?: boolean; children?: ReactNode; className?: string }) {
+  const mark = <MizanLoader kind={KIND[meaning]} size={size} still={still} decorative />;
+  if (children === undefined) return <span className={className} aria-hidden="true">{mark}</span>;
+  return (
+    <p role={live ? "status" : undefined} className={className ?? "flex items-center gap-2.5 text-body-sm text-text-2"}>
+      {mark}
+      {children}
+    </p>
+  );
 }

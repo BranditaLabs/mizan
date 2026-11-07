@@ -30,11 +30,11 @@ export function AfterConfirmationBox({ orderId, after, onChange }: { orderId: st
   const mayAct = can(store?.role, "shipping.ship");
   const release = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/after-confirmation/release", { params: { path: { id: orderId } } })),
-    onSuccess: () => { toast({ message: t(retrying ? "retriedToast" : "releasedToast") }); onChange(); },
+    onSuccess: () => { toast.event({ type: null, message: t(retrying ? "retriedToast" : "releasedToast") }); onChange(); },
   });
   const skip = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/after-confirmation/skip", { params: { path: { id: orderId } } })),
-    onSuccess: () => { toast({ message: t("skippedToast") }); onChange(); },
+    onSuccess: () => { toast.event({ type: null, message: t("skippedToast") }); onChange(); },
   });
 
   if (!after) return null; // an API from before E6-23a: nothing to show, never a broken card

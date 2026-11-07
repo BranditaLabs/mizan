@@ -45,6 +45,7 @@ describe("brand fidelity", () => {
     expect(T.brand.ink.$value).toBe("#0B0B0B");
     expect(T.brand.paper.$value).toBe("#FEF7FF");
     expect(T.brand.red.$value).toBe("#DE0000");
+    expect(T.brand.redHi.$value).toBe("#E33232"); // Brand 2.0: red on ink
     expect(val("light", "bg")).toBe("#FEF7FF");
     expect(val("light", "brand")).toBe("#DE0000");
   });
@@ -61,7 +62,7 @@ describe("brand fidelity", () => {
 describe("CSS variable references", () => {
   it("every --mz-* variable used in css/ and the reference template is defined in dist/tokens.css", () => {
     const defined = new Set([...readFileSync(join(root, "dist/tokens.css"), "utf8").matchAll(/(--mz-[a-z0-9_-]+)\s*:/g)].map((m) => m[1]));
-    const sources = ["css/base.css", "css/components.css", "reference/template.html"].map((f) => readFileSync(join(root, f), "utf8")).join("\n");
+    const sources = ["css/base.css", "css/components.css", "css/motion.css", "reference/template.html"].map((f) => readFileSync(join(root, f), "utf8")).join("\n");
     const used = new Set([...sources.matchAll(/var\((--mz-[a-z0-9_-]+)/g)].map((m) => m[1]));
     const missing = [...used].filter((v) => !defined.has(v));
     expect(missing).toEqual([]);
@@ -70,7 +71,7 @@ describe("CSS variable references", () => {
 
 describe("generated files", () => {
   it("are up to date with tokens.json", () => {
-    const files = ["tokens.css", "tailwind.css", "tailwind-preset.cjs", "tokens.ts", "tokens.json", "mizan_tokens.dart"];
+    const files = ["tokens.css", "tailwind.css", "tailwind-preset.cjs", "tokens.ts", "motion-tokens.ts", "tokens.json", "mizan_tokens.dart"];
     // Line endings are not a change: a Windows checkout (CRLF) must match what the build writes (LF).
     const read = (f) => readFileSync(join(root, "dist", f), "utf8").replace(/\r\n/g, "\n");
     const before = files.map(read);

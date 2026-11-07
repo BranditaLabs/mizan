@@ -42,7 +42,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 /** The next plan's limits and a way to ask for it (E12-1); payment comes with E12-2. */
 function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
   const t = useTranslations("usage");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -50,7 +50,7 @@ function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
   const ask = useMutation({
     mutationFn: () => ok(api.POST("/v1/usage/upgrade", { body: { plan: next.plan } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("upgrade.sent") }); void qc.invalidateQueries({ queryKey: ["usage"] }); },
+    onSuccess: () => { toast.event({ type: "plan.upgrade_requested", message: t("upgrade.sent") }); void qc.invalidateQueries({ queryKey: ["usage"] }); },
   });
   const limit = (n: number | null) => (n === null ? t("upgrade.noLimit") : String(n));
   return (

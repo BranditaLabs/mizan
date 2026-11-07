@@ -48,7 +48,7 @@ export function AfterConfirmationScreen() {
   const [tab, setTab] = useState<Outcome>("confirmed");
   const save = useMutation({
     mutationFn: (body: After) => ok(api.PUT("/v1/settings/after-confirmation", { body })),
-    onSuccess: (r) => { qc.setQueryData(key, r); setDraft(null); toast({ message: t("saved") }); },
+    onSuccess: (r) => { qc.setQueryData(key, r); setDraft(null); toast.event({ type: null, message: t("saved") }); },
   });
 
   const frame = (body: ReactNode) => (

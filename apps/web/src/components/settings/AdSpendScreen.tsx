@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 type List = Schemas["AdSpendList"];
 type Platform = Schemas["SetAdSpend"]["platform"];
@@ -95,7 +96,7 @@ function AddDay({ baseCurrency, today }: { baseCurrency: string; today: string }
   const valid = AMOUNT.test(amount) && Boolean(form.day) && form.day <= today && /^[A-Z]{3}$/.test(form.currency);
   const save = useMutation({
     mutationFn: () => ok(api.PUT("/v1/ad-spend", { body: { day: form.day, platform: form.platform, amount, currency: form.currency } })),
-    onSuccess: () => { setForm({ ...form, amount: "" }); toast({ message: t("saved") }); void qc.invalidateQueries({ queryKey: ["adSpend"] }); },
+    onSuccess: () => { setForm({ ...form, amount: "" }); toast.event({ type: "ads.spend_changed", message: t("saved") }); void qc.invalidateQueries({ queryKey: ["adSpend"] }); },
   });
   const submit = (e: FormEvent) => { e.preventDefault(); if (valid) save.mutate(); };
   return (
@@ -129,7 +130,7 @@ function ImportCsv() {
   const run = useMutation({
     mutationFn: () => ok(api.POST("/v1/ad-spend/import", { body: { csv, ...(platform ? { platform } : {}) } })),
     meta: { toast: false },
-    onSuccess: (r) => { setCsv(""); toast({ message: t("done", { rows: r.rows, days: r.days }) }); void qc.invalidateQueries({ queryKey: ["adSpend"] }); },
+    onSuccess: (r) => { setCsv(""); toast.event({ type: "ads.spend_changed", message: t("done", { rows: r.rows, days: r.days }) }); void qc.invalidateQueries({ queryKey: ["adSpend"] }); },
     onError: (e) => { if (!(e instanceof ApiError && e.code === "csv_invalid")) toast({ message: e instanceof ApiError && e.title ? e.title : t("failed") }); },
   });
   const lines = run.error instanceof ApiError && run.error.code === "csv_invalid" ? run.error.errors ?? [] : [];
@@ -142,7 +143,7 @@ function ImportCsv() {
           <span className="font-medium">{t("file")}</span>
           <input type="file" accept=".csv,text/csv" className="text-body-sm" onChange={(e) => void readFile(e.target.files?.[0])} />
         </label>
-        <TextArea label={t("paste")} hint={t("pasteHint")} rows={4} dir="ltr" value={csv} onChange={(e) => setCsv(e.target.value)} />
+        <TextArea label={t("paste")} hint={t.rich("pasteHint", latin)} rows={4} dir="ltr" value={csv} onChange={(e) => setCsv(e.target.value)} />
         <Select label={t("platform")} value={platform} onChange={(e) => setPlatform(e.target.value as Platform | "")} className="max-w-xs">
           <option value="">{t("platformFromFile")}</option>
           {PLATFORMS.map((p) => <option key={p} value={p}>{tp(p)}</option>)}
@@ -159,7 +160,7 @@ function ImportCsv() {
             </ul>
           </Alert>
         ) : null}
-        <div><Button icon="upload" disabled={!csv.trim()} busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button></div>
+        <div><Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button></div>
       </div>
     </Card>
   );
@@ -193,7 +194,7 @@ function Entries({ list, canEdit }: { list: List; canEdit: boolean }) {
   const toast = useToast();
   const remove = useMutation({
     mutationFn: (r: { day: string; platform: Platform }) => ok(api.DELETE("/v1/ad-spend/{day}/{platform}", { params: { path: r } })),
-    onSuccess: () => { toast({ message: t("removed") }); void qc.invalidateQueries({ queryKey: ["adSpend"] }); },
+    onSuccess: () => { toast.event({ type: "ads.spend_changed", message: t("removed") }); void qc.invalidateQueries({ queryKey: ["adSpend"] }); },
   });
   const rows = list.data;
   return (

@@ -20,8 +20,8 @@
     "checkNow": "Check now"
   },
   "auth": {
-    "title": "Sign in to the back office",
-    "subtitle": "Mizan staff only. Use your Mizan account; two-step verification is required.",
+    "title": "Staff sign-in",
+    "subtitle": "Staff only. Every sign-in is recorded.",
     "email": "Email",
     "password": "Password",
     "signIn": "Sign in",
@@ -42,8 +42,34 @@
       "codeExpired": "The code expired. Start again.",
       "tooMany": "Too many attempts. Wait a little and try again.",
       "network": "No connection. Check the internet and try again.",
-      "generic": "Sign-in failed. Try again."
-    }
+      "generic": "Sign-in failed. Try again.",
+      "requiredEmail": "Write your email.",
+      "requiredPassword": "Write your password.",
+      "codeIncomplete": "Type all 6 digits.",
+      "mfaNoPhone": "This account has no phone for the second step. Ask a platform admin to add one."
+    },
+    "badge": "Back office",
+    "kicker": "Staff only",
+    "show": "Show",
+    "hide": "Hide",
+    "capsLock": "Caps Lock is on.",
+    "resendIn": "Resend in <n>{time}</n>",
+    "resend": "Send a new code",
+    "sent": "Sent",
+    "resendReady": "You can send a new code now.",
+    "codeResent": "New code sent.",
+    "back": "Back",
+    "doneTitle": "You're in",
+    "done": "Opening the back office…",
+    "skip": "Skip to the form",
+    "language": "العربية",
+    "theme": "Theme",
+    "dismiss": "Dismiss",
+    "recaptcha": "This page is protected by reCAPTCHA. Google's <privacy>Privacy Policy</privacy> and <terms>Terms of Service</terms> apply.",
+    "themeSystem": "Same as device",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "by": "by Brandita"
   },
   "shell": {
     "logoAlt": "Mizan",
@@ -244,7 +270,9 @@
       "attempts": "Attempts",
       "error": "Error",
       "at": "Failed"
-    }
+    },
+    "driftGlyph": "Drift: off balance",
+    "deadGlyph": "Failed job"
   },
   "users": {
     "title": "Users",
@@ -379,5 +407,234 @@
     "newer": "Newer",
     "older": "Older",
     "loadFailed": "We couldn't load the feedback. Try again."
+  },
+  "motion": {
+    "loader": {
+      "loading": "Loading…",
+      "syncing": "Syncing…",
+      "syncingWith": "Syncing with {system}…",
+      "saving": "Saving…",
+      "sending": "Sending…",
+      "confirming": "Confirming…",
+      "waitingReply": "Waiting for reply",
+      "progress": "{done} of {total}",
+      "percent": "{pct}%"
+    },
+    "boot": "Getting your store ready",
+    "gauge": {
+      "title": "Level gauge",
+      "labelA": "Expected",
+      "labelB": "Collected",
+      "balanced": "Balanced",
+      "shortBy": "Short by {pct}",
+      "overBy": "Over by {pct}",
+      "tilt": "Tilt {deg}",
+      "summary": "{labelA} {a}, {labelB} {b}, {verdict}"
+    },
+    "vessels": {
+      "title": "Connected vessels",
+      "labelA": "In system",
+      "labelB": "Counted",
+      "matched": "Counts match",
+      "gap": "Gap {pct}"
+    },
+    "breakeven": {
+      "title": "Break-even bar",
+      "axis": "Break-even",
+      "labelA": "Gross profit",
+      "labelB": "Ad spend",
+      "exact": "Exactly at break-even",
+      "profitable": "Profitable · {amount} · {ratio}×",
+      "below": "Below break-even · {amount}",
+      "noSpend": "No ad spend yet"
+    },
+    "bullseye": {
+      "title": "Cash and stock level",
+      "labelX": "Cash",
+      "labelY": "Stock",
+      "level": "Level",
+      "tolerance": "Inside tolerance · ±{tol}",
+      "off": "Off level · check now",
+      "offScale": "Off the scale"
+    },
+    "toast": {
+      "dismiss": "Dismiss"
+    },
+    "batched": "{count} new updates",
+    "event": {
+      "tenant": {
+        "created": "Store created"
+      },
+      "member": {
+        "invited": "Invite sent",
+        "joined": "A teammate joined",
+        "updated": "Role changed",
+        "removed": "Teammate removed"
+      },
+      "privacy": {
+        "requested": "{overdue, select, overdue {Privacy request is overdue} other {Privacy request received}}",
+        "completed": "Privacy request done"
+      },
+      "plan": {
+        "limit_reached": "Plan limit reached",
+        "upgrade_requested": "Upgrade requested"
+      },
+      "automation": {
+        "run_failed": "An automation run failed",
+        "paused": "Automation paused after failures"
+      },
+      "connection": {
+        "connected": "Connected",
+        "disconnected": "{byUser, select, byUser {You disconnected it} other {The connection dropped}}",
+        "needs_attention": "Connection needs attention",
+        "sync_completed": "History import done",
+        "sync_failed": "History import failed"
+      },
+      "sync": {
+        "recovered": "Sync fixed itself"
+      },
+      "order": {
+        "created": "{manual, select, manual {Order created} other {New order}}",
+        "cancelled": "Order cancelled",
+        "duplicate_found": "Possible duplicate",
+        "duplicate_resolved": "Duplicate resolved",
+        "assigned": "Assigned to a teammate",
+        "tagged": "Tag added",
+        "untagged": "Tag removed",
+        "note_added": "Note added",
+        "edited": "Edit applied",
+        "edit_failed": "Store refused the edit",
+        "store_cancel_failed": "Store refused to cancel",
+        "store_copy_failed": "Store copy failed",
+        "store_fulfilled": "Marked fulfilled in the store",
+        "store_fulfillment_cancelled": "Store fulfilment undone",
+        "cancelled_after_shipping": "Cancelled after shipping, needs a decision",
+        "payment_changed": "{state, select, paid {Order paid} failed {Payment failed} refunded {Money refunded} other {Payment status changed}}",
+        "awaiting_payment": "Waiting for payment",
+        "confirmed": "Order confirmed",
+        "confirmation_failed": "Confirmation failed",
+        "ready_to_ship": "Ready to ship",
+        "auto_ship_blocked": "Auto-booking stopped",
+        "packed": "Packed",
+        "partially_delivered": "Partly delivered, money still due",
+        "refused": "Refused at the door"
+      },
+      "orders": {
+        "reconciled": "Store day matches Mizan",
+        "reconciliation_gap": "Orders missing from Mizan",
+        "bulk_finished": "{failed, select, none {Bulk action done} some {{count} failed, the rest done} all {Bulk action failed} other {Bulk action done}}"
+      },
+      "confirmation": {
+        "started": "Confirmation started",
+        "sent": "Message sent, waiting for reply",
+        "escalated": "Needs a call",
+        "no_answer": "No answer"
+      },
+      "offer": {
+        "proposed": "Offer sent",
+        "accepted": "Customer accepted the offer",
+        "declined": "Customer declined the offer",
+        "expired": "Offer expired",
+        "applied": "Offer added to the order",
+        "failed": "Couldn't add the offer"
+      },
+      "shipment": {
+        "created": "Booked with the courier",
+        "booking_failed": "Courier refused the booking",
+        "status_changed": "Courier status updated",
+        "needs_review": "Shipment needs review",
+        "delivered": "Delivered",
+        "returned": "Returned"
+      },
+      "picklist": {
+        "created": "Pick list opened",
+        "closed": "Pick list closed"
+      },
+      "stock": {
+        "short": "Not enough stock",
+        "received": "Goods received",
+        "adjusted": "{matched, select, matched {Count matches} other {Count adjusted}}",
+        "low": "Stock running low",
+        "out": "Out of stock",
+        "reorder_suggested": "Reorder suggested"
+      },
+      "pnl": {
+        "recomputed": "{final, select, final {Profit final} other {Profit updated}}"
+      },
+      "costs": {
+        "changed": "Costs saved"
+      },
+      "fx": {
+        "rate_overridden": "Rate set for the day"
+      },
+      "ads": {
+        "spend_changed": "Ad spend updated"
+      },
+      "payment": {
+        "received": "Money received",
+        "failed": "Payment didn't come in",
+        "link_sent": "Payment link sent",
+        "link_paid": "Paid by link"
+      },
+      "refund": {
+        "created": "Refund requested",
+        "approved": "Refund approved",
+        "rejected": "Refund rejected",
+        "completed": "Money returned to the customer"
+      },
+      "dispute": {
+        "opened": "Dispute opened",
+        "evidence_submitted": "Evidence sent",
+        "closed": "{result, select, won {Dispute won} lost {Dispute lost} other {Dispute closed}}"
+      },
+      "settlement": {
+        "matched": "Settlement matches",
+        "gap_found": "Settlement gap"
+      },
+      "ticket": {
+        "created": "Ticket opened",
+        "status_changed": "Ticket status changed",
+        "assigned": "Ticket assigned"
+      },
+      "return": {
+        "inspected": "Return checked"
+      },
+      "exchange": {
+        "created": "Replacement created",
+        "returned": "Original came back"
+      },
+      "po": {
+        "approved": "PO approved",
+        "sent": "PO sent to supplier",
+        "cancelled": "PO cancelled",
+        "received": "{full, select, full {All received} other {Partly received}}"
+      },
+      "product": {
+        "created": "Product created",
+        "updated": "Product saved",
+        "published": "Published to the store",
+        "publish_failed": "Store refused the product"
+      },
+      "channel": {
+        "order_received": "New marketplace order",
+        "payout_received": "Payout received"
+      },
+      "conversation": {
+        "created": "New conversation",
+        "sla_breached": "Reply is late"
+      },
+      "einvoice": {
+        "rejected": "E-invoice rejected"
+      },
+      "listing": {
+        "error": "Listing problem on the marketplace"
+      },
+      "metric": {
+        "threshold_crossed": "A number crossed its limit"
+      },
+      "period": {
+        "closed": "Period closed"
+      }
+    }
   }
 }

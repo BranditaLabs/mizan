@@ -6,6 +6,7 @@ import { Bdi } from "@/components/Bdi";
 import { buttonClass } from "@/components/ui/Button";
 import { Link } from "@/i18n/navigation";
 import { formatMoney } from "@/lib/format";
+import { useSession } from "@/lib/session";
 import { useCanSetUp, useOnboarding, type Onboarding } from "@/components/onboarding/useOnboarding";
 
 type State = "connect" | "importing" | "importFailed" | "waiting" | "manual" | "team";
@@ -27,6 +28,7 @@ const CTA: Partial<Record<State, string>> = { connect: "/onboarding", importFail
 export function HomeWelcome() {
   const t = useTranslations("home");
   const locale = useLocale();
+  const { store } = useSession();
   const canSetUp = useCanSetUp();
   const q = useOnboarding();
   // Until the setup state is known, nothing that could be wrong (no "connect" flash for a connected store).
@@ -49,7 +51,8 @@ export function HomeWelcome() {
           <p className="mt-3 text-body-sm text-text-3" data-testid="example">
             {t.rich("example", {
               number: "#1042",
-              amount: formatMoney({ amount: "1150.00", currency: "EGP" }, locale),
+              // The example in the store's own currency (a Saudi store sees SAR, not EGP).
+              amount: formatMoney({ amount: "1150.00", currency: store?.baseCurrency?.trim() || "EGP" }, locale),
               num: (chunks) => <Bdi code>{chunks}</Bdi>,
               money: (chunks) => <Bdi>{chunks}</Bdi>,
             })}

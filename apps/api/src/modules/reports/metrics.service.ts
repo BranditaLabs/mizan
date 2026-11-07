@@ -6,7 +6,7 @@ import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { AdSpendService } from "../profit/ads/ad-spend.service.js";
 import { addDays, asDate, localDay, storeClock } from "../profit/store-day.js";
-import { METRICS, metricByKey, type MetricFacts } from "./metrics.js";
+import { COST_FLAGS, METRICS, metricByKey, profitQuality, type MetricFacts } from "./metrics.js";
 import type { MetricValuesQuery } from "./metrics.dto.js";
 import { isoWeekRange, lastFullWeek } from "./week.js";
 
@@ -14,6 +14,25 @@ const PREPAID = ["prepaid", "bnpl", "bank_transfer", "store_credit"];
 const COD = ["cod", "partial"];
 /** Confirmation channels with no person on Mizan's side: the routing rule, the bot, the link page, an SMS link, an automated or AI call. */
 export const AUTOMATED_CONFIRMATION = ["auto", "whatsapp", "link", "sms", "voice_ivr", "voice_ai", "voice_bot"];
+
+/**
+ * Profit honesty (FX-2): for store days `from`…`to`, the orders (not cancelled; base currency, as the
+ * home, or any currency when its exchange rate is missing) whose profit misses an input, and the distinct products in them with no cost yet. One query
+ * pair shared by the home, the metric layer and the reports, so every screen agrees.
+ */
+export async function costGaps(trx: Transaction<DB>, base: string, from: string, to: string): Promise<{ ordersMissingCosts: bigint; productsMissingCost: bigint }> {
+  const flagged = trx.selectFrom("order_pnl as p").innerJoin("orders as o", "o.id", "p.order_id").select("p.order_id")
+    .where("p.day", ">=", asDate(from)).where("p.day", "<=", asDate(to)).where("o.status", "<>", "cancelled")
+    // An order with no exchange rate stays in its own currency (pnl.ts), so fx_missing counts whatever the currency.
+    .where((eb) => eb.or([eb("p.currency", "=", base), sql<boolean>`'fx_missing' = any(p.flags)`]))
+    .where(sql<boolean>`p.flags && array[${sql.join([...COST_FLAGS])}]::text[]`);
+  const orders = await trx.selectFrom(flagged.as("f")).select(sql<string>`count(*)`.as("n")).executeTakeFirstOrThrow();
+  const products = await trx.selectFrom("order_lines as l").leftJoin("variants as v", "v.id", "l.variant_id")
+    .select(sql<string>`count(distinct coalesce(l.variant_id::text, 'title:' || l.title))`.as("n"))
+    .where("l.order_id", "in", flagged).where("l.cost_set_at", "is", null).where((eb) => eb.or([eb("v.id", "is", null), eb("v.cogs_set_at", "is", null)]))
+    .executeTakeFirstOrThrow();
+  return { ordersMissingCosts: BigInt(orders.n), productsMissingCost: BigInt(products.n) };
+}
 
 /**
  * Serves the metric layer (E15-1): the catalogue in the reader's language, and values for a
@@ -39,9 +58,12 @@ export class MetricsService {
       const { base, timezone } = await storeClock(trx, tenantId);
       const { from, to } = this.period(q, timezone, now);
       const f = await this.facts(trx, tenantId, base, timezone, from, to);
+      const quality = profitQuality(f);
       return {
         from, to, currency: base,
-        data: keys.map((k) => { const m = metricByKey.get(k)!; return { key: m.key, version: m.version, unit: m.unit, ...m.compute(f) }; }),
+        // FX-2: whether the money figures are final; screens mark them "provisional" otherwise.
+        quality,
+        data: keys.map((k) => { const m = metricByKey.get(k)!; return { key: m.key, version: m.version, unit: m.unit, provisional: Boolean(m.profit) && quality.provisional, ...m.compute(f) }; }),
       };
     });
   }
@@ -87,6 +109,7 @@ export class MetricsService {
       spend: (await this.adSpend.spendInBase(trx, tenantId, base, from, to)).total,
       available: BigInt(stock.n), unitsShipped: BigInt(shipped.n),
       confirmed: BigInt(c.confirmed), confirmedAuto: BigInt(c.auto),
+      ...(await costGaps(trx, base, from, to)),
     };
   }
 

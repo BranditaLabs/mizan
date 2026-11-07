@@ -58,9 +58,9 @@ export async function mizan<T>(token: string, method: string, path: string, body
   return { status: res.status, body: (res.status === 204 ? undefined : await res.json()) as T };
 }
 
-/** Sign in through the back office's UI: email, password, then the texted code. */
-export async function signIn(page: Page, person: { email: string; phone: string }) {
-  await page.goto("/en/sign-in");
+/** Sign in through the back office's UI: email, password, then the texted code (`query`: e.g. "?next=%2Fstores"). */
+export async function signIn(page: Page, person: { email: string; phone: string }, query = "") {
+  await page.goto(`/en/sign-in${query}`);
   await page.getByLabel("Email", { exact: true }).fill(person.email);
   await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
   const seen = (await codes({ phone: person.phone })).length;

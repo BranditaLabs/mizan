@@ -1,7 +1,7 @@
 /*
  * The public landing page (L1-9): what the "Landing page · glass" board adds on top of Mizan Glass.
- * The glass itself (.mzg tokens, .g, .btn, .chip, .tag, .seg, .live, .icon-tile, .hero-tile, .ld-orbit,
- * .ld-scale, .rise, .draw …) comes from @mizan/design-system/css/glass.css; nothing here redefines it.
+ * The glass itself (.mzg tokens, .g, .btn, .chip, .tag, .seg, .live, .icon-tile, .hero-tile,
+ * .rise, .draw …) comes from @mizan/design-system/css/glass.css; nothing here redefines it.
  * Everything is scoped to .landing, logical properties only, so Arabic mirrors without extra rules.
  */
 @layer components {
@@ -121,7 +121,8 @@
   .landing .step-line { position: absolute; inset-inline: 12%; top: 31px; height: 1px; background: linear-gradient(90deg, transparent, var(--line-2) 10%, var(--line-2) 90%, transparent); overflow: hidden; }
   /* The comet runs in the reading direction (01 → 04), right to left in Arabic; the gradient is symmetric. */
   .landing[dir="rtl"] .step-line { transform: scaleX(-1); }
-  .landing .step-line::after { content: ""; position: absolute; inset-block: 0; width: 30%; background: linear-gradient(90deg, transparent, var(--red), transparent); animation: mzg-comet 3.2s var(--ease-io) infinite; }
+  .landing .step-line::after { content: ""; position: absolute; inset-block: 0; width: 30%; background: linear-gradient(90deg, transparent, var(--red), transparent); animation: lp-comet 3.2s var(--ease-io) infinite; }
+  @keyframes lp-comet { from { transform: translateX(-110%); } to { transform: translateX(310%); } }
   .landing .lp-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 32px 16px; }
   .landing .lp-steps li { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding-inline: 8px; }
   .landing .lp-step-icon { width: 62px; height: 62px; border-radius: 20px; display: grid; place-items: center; }
@@ -193,9 +194,7 @@
   .landing .lp-tools-list s { text-decoration-color: var(--red); text-decoration-thickness: 1.5px; }
   .landing .lp-tools-arrow { color: var(--fg-3); }
   .landing .lp-one { flex: 1 1 160px; padding: 28px; border-radius: 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; overflow: hidden; }
-  .landing .lp-orbit { width: 96px; height: 96px; }
-  .landing .lp-orbit-core { width: 52px; height: 52px; border-radius: 15px; }
-  .landing .lp-orbit-core svg { width: 28px; height: auto; }
+  .landing .lp-orbit { display: grid; place-items: center; min-height: 72px; color: var(--fg); }
   .landing .lp-one-name { font-size: 18px; }
 
   /* ───── Pricing ───── */
@@ -234,7 +233,7 @@
   .landing .lp-cta-sec { padding-block-start: 24px; }
   .landing .lp-cta { border-radius: 36px; padding: clamp(40px, 7vw, 88px) 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 24px; overflow: hidden; }
   .landing .hero-tile .lp-cta-halo { width: 420px; height: 420px; inset-inline: calc(50% - 210px) auto; top: -260px; }
-  .landing .lp-scale { transform: scale(.8); direction: ltr; }
+  .landing .lp-scale { display: grid; place-items: center; color: var(--fg); direction: ltr; }
   .landing .lp-cta-title { font-size: clamp(34px, 5.4vw, 68px); max-width: 820px; }
   .landing .lp-launch { height: auto; min-height: 30px; padding-block: 6px; font-size: 13.5px; white-space: normal; text-align: start; }
 
@@ -296,7 +295,6 @@
   /* ───── Less motion when asked ───── */
   @media (prefers-reduced-motion: reduce) {
     .landing .reveal, .landing .float, .landing .flow, .landing .step-line::after, .landing .live::after,
-    .landing .ld-orbit *, .landing .ld-scale * { animation: none !important; }
     .landing .tilt { transform: none; }
   }
 }

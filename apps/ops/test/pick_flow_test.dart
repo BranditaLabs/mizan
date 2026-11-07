@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mizan_ops/main.dart';
+import 'package:mizan_ops/motion/fill_bar.dart';
 import 'package:mizan_ops/pick/pick_api.dart';
 import 'package:mizan_ops/sync/op.dart';
 import 'package:mizan_ops/sync/op_store.dart';
@@ -84,11 +85,13 @@ void main() {
     camera!('6221000000099');
     await tester.pump();
     expect(find.text('Not on this order. Keep it out of the box.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('glyph-tip')), findsOneWidget); // a blocked scan tips and holds
     camera!('6221000000002');
     camera!('6221000000002'); // the same read twice in a second: one item
     await tester.pump();
     expect(find.text('Added: Scarf'), findsOneWidget);
     expect(find.text('1 of 3 items'), findsOneWidget);
+    expect(find.byType(FillBar), findsOneWidget); // scanned of wanted
     expect(tester.widget<FilledButton>(find.byKey(const Key('finish'))).onPressed, isNull);
     await tester.enterText(find.byKey(const Key('typed-code')), 'SC-1');
     await tester.tap(find.byKey(const Key('add-code')));
@@ -101,6 +104,9 @@ void main() {
     await tester.tap(find.byKey(const Key('finish')));
     await settle(tester);
     await settle(tester);
+    // The box is in: the order.packed toast with its glyph (done).
+    expect(find.byKey(const ValueKey('event-snack-order.packed')), findsOneWidget);
+    expect(find.byKey(const ValueKey('glyph-done')), findsOneWidget);
 
     final ops = (await tester.runAsync(() => store.recent()))!;
     final pack = ops.singleWhere((o) => o.type == OpTypes.orderPack);

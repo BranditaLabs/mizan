@@ -14,7 +14,11 @@ import { randomUUID } from "node:crypto";
  * SqlStore (PostgreSQL in production; PGlite in tests).
  */
 
-export type JobStatus = "pending" | "running" | "done" | "dead";
+/**
+ * `dropped`: the connection ended while the job waited (FX-3a). Kept, never deleted, so the
+ * Event Center can show it; the same idempotency key enqueued again (after a reconnect) revives it.
+ */
+export type JobStatus = "pending" | "running" | "done" | "dead" | "dropped";
 
 export interface OutboxJob<P = unknown> {
   id: string;
@@ -43,9 +47,22 @@ export interface NewJob<P = unknown> {
   runAt?: number;
 }
 
+/** What `markAndEnqueue` did: `marked` false means the key was seen before (a duplicate) and nothing was queued. */
+export interface IntakeResult {
+  marked: boolean;
+  jobs: Array<{ job: OutboxJob; created: boolean }>;
+}
+
 export interface Store {
   /** Returns true the first time a key is seen. */
   markInbound(key: string, at: number): Promise<boolean>;
+
+  /**
+   * FX-3a W1, atomic intake: mark the inbound key and enqueue its jobs as one unit. Either both
+   * are saved or neither is, so a crash between the two never turns the provider's retry into a
+   * "duplicate" whose work was never queued. A key seen before queues nothing.
+   */
+  markAndEnqueue(key: string, at: number, jobs: NewJob[], now: number): Promise<IntakeResult>;
 
   /** Enqueue unless a job with the same idempotency key exists; returns the existing job then. */
   enqueue<P>(job: NewJob<P>, now: number): Promise<{ job: OutboxJob<P>; created: boolean }>;
@@ -73,9 +90,31 @@ export class MemoryStore implements Store {
     return true;
   }
 
+  async markAndEnqueue(key: string, at: number, jobs: NewJob[], now: number): Promise<IntakeResult> {
+    // Marked before the first await, so a concurrent delivery of the same key sees it (one is a
+    // duplicate); unmarked again if an enqueue fails, so the provider's retry is processed.
+    if (this.inbound.has(key)) return { marked: false, jobs: [] };
+    this.inbound.set(key, at);
+    const out: IntakeResult["jobs"] = [];
+    try {
+      for (const j of jobs) out.push(await this.enqueue(j, now));
+    } catch (e) {
+      this.inbound.delete(key);
+      throw e;
+    }
+    return { marked: true, jobs: out };
+  }
+
   async enqueue<P>(j: NewJob<P>, now: number) {
     const existingId = this.byKey.get(j.idempotencyKey);
-    if (existingId) return { job: structuredClone(this.outbox.get(existingId)!) as OutboxJob<P>, created: false };
+    const existing = existingId ? this.outbox.get(existingId) : undefined;
+    if (existing && existing.status === "dropped") {
+      // A job dropped with its connection, asked for again (reconnected): it runs again, once the
+      // lease of a run still in progress when it was dropped is over.
+      Object.assign(existing, { status: "pending", attempts: 0, nextAttemptAt: Math.max(j.runAt ?? now, existing.lockedUntil ?? 0), lockedUntil: null, lastError: null, payload: structuredClone(j.payload), updatedAt: now });
+      return { job: structuredClone(existing) as OutboxJob<P>, created: true };
+    }
+    if (existing) return { job: structuredClone(existing) as OutboxJob<P>, created: false };
     const job: OutboxJob<P> = {
       id: randomUUID(), kind: j.kind, connection: j.connection, payload: structuredClone(j.payload), idempotencyKey: j.idempotencyKey,
       status: "pending", attempts: 0, nextAttemptAt: j.runAt ?? now, lockedUntil: null, lastError: null, createdAt: now, updatedAt: now,
@@ -99,19 +138,20 @@ export class MemoryStore implements Store {
     return due.map((j) => structuredClone(j));
   }
 
+  // The end of a run changes only a job still running: dropped stays dropped, revived is not the old run's (FX-3a).
   async complete(id: string, now: number) {
     const j = this.outbox.get(id);
-    if (j) Object.assign(j, { status: "done", lockedUntil: null, lastError: null, updatedAt: now });
+    if (j?.status === "running") Object.assign(j, { status: "done", lockedUntil: null, lastError: null, updatedAt: now });
   }
 
   async retryLater(id: string, error: string, at: number, now: number) {
     const j = this.outbox.get(id);
-    if (j) Object.assign(j, { status: "pending", lockedUntil: null, lastError: error, nextAttemptAt: at, updatedAt: now });
+    if (j?.status === "running") Object.assign(j, { status: "pending", lockedUntil: null, lastError: error, nextAttemptAt: at, updatedAt: now });
   }
 
   async bury(id: string, error: string, now: number) {
     const j = this.outbox.get(id);
-    if (j) Object.assign(j, { status: "dead", lockedUntil: null, lastError: error, updatedAt: now });
+    if (j?.status === "running") Object.assign(j, { status: "dead", lockedUntil: null, lastError: error, updatedAt: now });
   }
 
   async replay(id: string, now: number) {
@@ -119,6 +159,18 @@ export class MemoryStore implements Store {
     if (!j || j.status !== "dead") return false;
     Object.assign(j, { status: "pending", attempts: 0, nextAttemptAt: now, updatedAt: now });
     return true;
+  }
+
+  /** Drop a provider's waiting jobs, as a disconnect does (tests; the platform does it in ConnectionLifecycle). */
+  async dropWaiting(connection: string, reason: string, now: number) {
+    let n = 0;
+    for (const j of this.outbox.values()) {
+      if (j.connection === connection && (j.status === "pending" || j.status === "running")) {
+        Object.assign(j, { status: "dropped", lastError: reason, updatedAt: now }); // the lease kept, as in ConnectionLifecycle
+        n++;
+      }
+    }
+    return n;
   }
 
   async jobs(filter: { status?: JobStatus; kind?: string } = {}) {

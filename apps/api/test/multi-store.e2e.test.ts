@@ -110,6 +110,25 @@ describe("several Shopify stores in one account (E2-7)", () => {
     await http().post(`/webhooks/bosta/${conn.bosta}?token=wrong`).set("Content-Type", "application/json").send(bosta.webhook(deltaTn)).expect(401);
   });
 
+  it("W9: a verified Bosta update for a shipment no store has is unrouted, never handed to the first store", async () => {
+    const orphan = JSON.stringify({ trackingNumber: "TN-NO-STORE", state: { code: 45, value: "Delivered" }, timeStamp: Date.now() });
+    const res = await http().post(`/webhooks/bosta/${conn.bosta}?token=${WEBHOOK_TOKEN}`).set("Content-Type", "application/json").send(orphan).expect(200);
+    expect(res.body).toEqual({ ignored: "no store has this shipment" });
+    const queued = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select("id").where("idempotency_key", "like", "bosta:TN-NO-STORE:%").execute());
+    expect(queued).toEqual([]);
+    await http().post(`/webhooks/bosta/${conn.bosta}?token=wrong`).set("Content-Type", "application/json").send(orphan).expect(401); // still checked first
+  });
+
+  it("W6: a Bosta update naming no shipment nudges a poll of active shipments in every store, not only the first", async () => {
+    const res = await http().post(`/webhooks/bosta/${conn.bosta}?token=${WEBHOOK_TOKEN}`).set("Content-Type", "application/json").send(JSON.stringify({ state: 45 })).expect(200);
+    expect(res.body).toEqual({ ignored: "unrecognised payload; recorded as drift" });
+    const polls = await db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select(["scope", "status"])
+      .where("kind", "=", "bosta.pollActive").where("idempotency_key", "like", "bosta.pollActive:nudge:%").execute());
+    expect(polls.map((p) => p.scope).sort()).toEqual([conn.nile, conn.delta].sort());
+    expect(polls.every((p) => p.status === "pending")).toBe(true);
+    await settle();
+  });
+
   it("a cancel reaches the order's own store; admin views cover every store", async () => {
     const extra = nile.addOrder({ tags: [] });
     await send(conn.nile!, nile.webhook("orders/create", extra));

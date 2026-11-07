@@ -7,7 +7,7 @@ import { ProblemError } from "../http/problem.js";
 import { RateLimiter } from "../http/rate-limit.js";
 import { AuthService, SSO_PROVIDER } from "./auth.service.js";
 import type { AuthedRequest, SupportGrant } from "./auth.types.js";
-import { IS_PUBLIC, NO_SUPPORT, NO_TENANT, ROLES } from "./decorators.js";
+import { IS_PUBLIC, NO_SUPPORT, NO_TENANT, ROLES, SUPPORT_MAY_READ } from "./decorators.js";
 import { TOKEN_VERIFIER, type TokenVerifier } from "./token-verifier.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -101,7 +101,7 @@ export class AuthGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(NO_SUPPORT, targets)) {
       throw new ProblemError(403, "support_not_allowed", "support access does not reach this");
     }
-    if (grant.mode === "read" && !READ_METHODS.has(req.method)) {
+    if (grant.mode === "read" && !READ_METHODS.has(req.method) && !this.reflector.getAllAndOverride<boolean>(SUPPORT_MAY_READ, targets)) {
       throw new ProblemError(403, "support_read_only", "support access to this store is read-only");
     }
     const allowed = this.reflector.getAllAndOverride<MemberRole[] | undefined>(ROLES, targets);

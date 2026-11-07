@@ -10,11 +10,12 @@ import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button, ButtonGroup } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Select } from "@/components/ui/Field";
-import { Pending } from "@/components/ui/QueryState";
+import { PageState } from "@/components/ui/QueryState";
 import { Card } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useEventMutation } from "@/lib/motion/useEventMutation";
 import { useSession } from "@/lib/session";
 import { AfterConfirmationBox } from "./AfterConfirmationBox";
 
@@ -51,17 +52,22 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["orderConfirmation"] }); void qc.invalidateQueries({ queryKey: ["order"] }); void qc.invalidateQueries({ queryKey: ["orders"] }); };
 
   const link = useMutation({ mutationFn: () => ok(api.POST("/v1/orders/{id}/confirmation/link", { params: { path: { id: orderId } } })), onSuccess: refresh });
-  const answer = useMutation({
+  // The confirmation is the order's DROP (red once, the toast's glyph); a cancel settles.
+  const answer = useEventMutation("order.confirmed", {
     mutationFn: (a: "confirm" | "cancel") => ok(api.POST("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } }, body: { answer: a, byCall: true, ...(a === "cancel" && cancelReason ? { reason: cancelReason } : {}) } })),
-    onSuccess: (_r, a) => { setCancelOpen(false); toast({ message: t(a === "confirm" ? "confirmedToast" : "cancelledToast") }); refresh(); },
+    onSuccess: () => { setCancelOpen(false); refresh(); },
+  }, {
+    pick: (_r, a) => (a === "confirm" ? "order.confirmed" : "order.cancelled"),
+    entityId: () => orderId,
+    message: (_r, a) => t(a === "confirm" ? "confirmedToast" : "cancelledToast"),
   });
   const offerDecision = useMutation({
     mutationFn: (decision: "accept" | "decline") => ok(api.POST("/v1/orders/{id}/offer", { params: { path: { id: orderId } }, body: { decision } })),
-    onSuccess: (r) => { toast({ message: t(`offer.toast.${r.status}`) }); refresh(); },
+    onSuccess: (r) => { toast.event({ type: "offer.proposed", message: t(`offer.toast.${r.status}`) }); refresh(); },
   });
   const noAnswer = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/confirmation/no-answer", { params: { path: { id: orderId } } })),
-    onSuccess: (r) => { toast({ message: r.unreachable ? t("calls.unreachableToast") : t("calls.retryToast") }); refresh(); },
+    onSuccess: (r) => { toast.event({ type: null, message: r.unreachable ? t("calls.unreachableToast") : t("calls.retryToast") }); refresh(); },
   });
 
   if (!allowed) return null;
@@ -73,11 +79,13 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
     const w = window.open("", "_blank");
     try {
       const r = await link.mutateAsync();
+      // eslint-disable-next-line mizan/no-adhoc-motion -- no phone to open: a note, not a catalogue event
       if (w && r.whatsappUrl) { w.opener = null; w.location.href = r.whatsappUrl; } else { w?.close(); toast({ message: t("noPhone") }); }
     } catch { w?.close(); }
   };
   const copyLink = async () => {
     const r = await link.mutateAsync();
+    // eslint-disable-next-line mizan/no-adhoc-motion -- copying the link is no catalogue event (the link's own event toasts through the mutation)
     try { await navigator.clipboard.writeText(r.url); toast({ message: t("copied") }); } catch { toast({ message: r.url }); }
   };
 
@@ -88,7 +96,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   return (
     <Card title={t("title")} actions={run ? <Badge tone={TONE[run.status]}>{t(`status.${run.status}`)}</Badge> : null}>
       <div className="flex flex-col gap-4" data-testid="confirmation-card">
-        {!s ? <Pending query={summary} compact><p className="text-body-sm text-text-3">{t("loading")}</p></Pending> : !run ? (
+        {!s ? <PageState query={summary} compact variant="card" label={t("loading")} /> : !run ? (
           <p className="text-body-sm text-text-2">{t("none")}</p>
         ) : (
           <>
@@ -162,7 +170,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
             <p className="text-caption text-text-3">{t("calls.phoneHint")}</p>
             {run?.calls.after ? <p className="text-caption text-text-2">{t("calls.after")}{" "}<DateText relative value={run.calls.after} /></p> : null}
             <ButtonGroup>
-              <Button size="sm" icon="confirm" busy={answer.isPending && answer.variables === "confirm"} onClick={() => answer.mutate("confirm")}>{t("calls.confirmed")}</Button>
+              <Button size="sm" icon="confirm" busy={{ isPending: answer.isPending && answer.variables === "confirm", motion: answer.motion }} onClick={() => answer.mutate("confirm")}>{t("calls.confirmed")}</Button>
               <Button size="sm" variant="secondary" icon="call" busy={noAnswer.isPending} onClick={() => noAnswer.mutate()}>{t("calls.noAnswer")}</Button>
               <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("calls.cancelled")}</Button>
             </ButtonGroup>
@@ -178,7 +186,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
         ) : null}
         {unanswered && !calling ? (
           <ButtonGroup>
-            <Button size="sm" variant="secondary" icon="confirm" busy={answer.isPending && answer.variables === "confirm"} onClick={() => answer.mutate("confirm")}>{t("markConfirmed")}</Button>
+            <Button size="sm" variant="secondary" icon="confirm" busy={{ isPending: answer.isPending && answer.variables === "confirm", motion: answer.motion }} onClick={() => answer.mutate("confirm")}>{t("markConfirmed")}</Button>
             <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("markCancelled")}</Button>
           </ButtonGroup>
         ) : null}
@@ -187,7 +195,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
         footer={(
           <>
             <Button variant="secondary" onClick={() => setCancelOpen(false)} data-autofocus>{t("keepOrder")}</Button>
-            <Button variant="danger-solid" busy={answer.isPending} disabled={!cancelReason} onClick={() => answer.mutate("cancel")}>{t("markCancelled")}</Button>
+            <Button variant="danger-solid" busy={{ isPending: answer.isPending, motion: "order.cancelled" }} disabled={!cancelReason} onClick={() => answer.mutate("cancel")}>{t("markCancelled")}</Button>
           </>
         )}>
         <Select label={t("cancelReasonLabel")} value={cancelReason} onChange={(e) => setCancelReason(e.target.value as (typeof CANCEL_REASONS)[number])} data-testid="cancel-reason">

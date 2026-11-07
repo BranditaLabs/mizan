@@ -1,7 +1,8 @@
 "use client";
 
+import { PageState } from "./ui/PageState";
 import { useTranslations } from "next-intl";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
@@ -32,12 +33,18 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { status, check, staff, user, can, retry, signOut } = useSession();
 
+  // Signed out: to sign-in, then back here (`next`, checked again by safeNext there). A deliberate
+  // sign-out lands on the bare sign-in page.
+  const leaving = useRef(false);
+  const out = () => { leaving.current = true; void signOut(); };
   useEffect(() => {
-    if (status === "signed-out") router.replace("/sign-in");
-  }, [status, router]);
+    if (status !== "signed-out") return;
+    const here = pathname + window.location.search;
+    router.replace(leaving.current || here === "/" ? "/sign-in" : `/sign-in?next=${encodeURIComponent(here)}`);
+  }, [status, router, pathname]);
 
   if (status !== "signed-in" || check === "checking" || check === "idle") {
-    return <p role="status" className="p-8 text-center text-body-sm text-text-2">{t("loading")}</p>;
+    return <PageState variant="page" label={t("loading")} />;
   }
   if (check !== "ok") {
     return (
@@ -46,7 +53,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Alert tone={check === "unavailable" ? "warning" : "danger"}>{t(`refused.${check}`)}</Alert>
         <div className="flex gap-2">
           {check === "unavailable" ? <Button onClick={retry}>{t("retry")}</Button> : null}
-          <Button variant="secondary" onClick={() => void signOut()}>{t("signOut")}</Button>
+          <Button variant="secondary" onClick={out}>{t("signOut")}</Button>
         </div>
       </main>
     );
@@ -57,7 +64,7 @@ export function Shell({ children }: { children: ReactNode }) {
       <aside className="border-b border-line bg-surface px-4 py-3 md:w-56 md:shrink-0 md:border-b-0 md:border-e md:py-5">
         <div className="flex items-center justify-between gap-2 md:block">
           <Wordmark />
-          <Button variant="ghost" className="md:hidden" onClick={() => void signOut()}>{t("signOut")}</Button>
+          <Button variant="ghost" className="md:hidden" onClick={out}>{t("signOut")}</Button>
         </div>
         <nav aria-label={t("navLabel")} className="mt-3 flex gap-1 overflow-x-auto md:mt-6 md:flex-col">
           {items.map((n) => {
@@ -73,7 +80,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="mt-6 hidden text-caption text-text-2 md:block">
           <p className="truncate" dir="ltr">{user?.email}</p>
           <p>{t(`roles.${staff!.role}`)}</p>
-          <Button variant="ghost" className="mt-2 px-0" onClick={() => void signOut()}>{t("signOut")}</Button>
+          <Button variant="ghost" className="mt-2 px-0" onClick={out}>{t("signOut")}</Button>
         </div>
       </aside>
       <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8">{children}</main>

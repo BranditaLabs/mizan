@@ -6,6 +6,8 @@ import { useState, type ReactNode } from "react";
 import { OutageScreen } from "@/components/OutageScreen";
 import { useToast } from "@/components/ui/Toast";
 import { isOutage, useOutage } from "../outage";
+import { useEventMotion, type OwnSuccess } from "../motion/EventMotionProvider";
+import type { MotionMeta } from "../motion/useEventMutation";
 import { ApiError } from "./client";
 
 /**
@@ -35,8 +37,27 @@ export function problemText(error: unknown, t: (key: "network" | "generic") => s
   return t("generic");
 }
 
-/** `outage` hears every final failure first; an outage (lib/outage) shows the waiting screen instead of a toast. */
-export function makeQueryClient(notify: (error: unknown) => void, outage?: (error: unknown) => void): QueryClient {
+/**
+ * A mutation that names its catalogue event (useEventMutation, `meta.motion`) → what its success
+ * hands the motion provider: the event, the entity it touched and the non-PII facts its variant reads.
+ */
+export function successMotion(meta: MotionMeta | undefined, data: unknown, variables: unknown): OwnSuccess | null {
+  if (!meta) return null;
+  const message = meta.message?.(data, variables);
+  return {
+    type: typeof meta.type === "function" ? meta.type(data, variables) : meta.type,
+    ...(meta.entityId ? { entityId: meta.entityId(data, variables) } : {}),
+    ...(meta.data ? { data: meta.data(data, variables) } : {}),
+    ...(message !== undefined && message !== null ? { message } : {}),
+    ...(meta.toast === false ? { toast: false } : {}),
+  };
+}
+
+/**
+ * `outage` hears every final failure first; an outage (lib/outage) shows the waiting screen instead of a toast.
+ * `success` hears every mutation that named its event (the event-motion provider plays the outcome).
+ */
+export function makeQueryClient(notify: (error: unknown) => void, outage?: (error: unknown) => void, success?: (s: OwnSuccess) => void): QueryClient {
   const down = (error: unknown) => { outage?.(error); return Boolean(outage) && isOutage(error); };
   return new QueryClient({
     queryCache: new QueryCache({
@@ -46,6 +67,10 @@ export function makeQueryClient(notify: (error: unknown) => void, outage?: (erro
       },
     }),
     mutationCache: new MutationCache({
+      onSuccess: (data, variables, _c, mutation: Mutation<unknown, unknown, unknown, unknown>) => {
+        const s = successMotion(mutation.meta?.motion, data, variables);
+        if (s) success?.(s);
+      },
       onError: (error, _v, _c, mutation: Mutation<unknown, unknown, unknown, unknown>) => {
         if (down(error)) return;
         if (mutation.meta?.toast !== false) notify(error);
@@ -61,7 +86,7 @@ export function makeQueryClient(notify: (error: unknown) => void, outage?: (erro
 declare module "@tanstack/react-query" {
   interface Register {
     queryMeta: { toast?: boolean };
-    mutationMeta: { toast?: boolean };
+    mutationMeta: { toast?: boolean; motion?: MotionMeta };
   }
 }
 
@@ -69,7 +94,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const t = useTranslations("problems");
   const { report } = useOutage();
-  const [client] = useState(() => makeQueryClient((error) => toast({ message: problemText(error, (k) => t(k)) }), report));
+  const motion = useEventMotion();
+  // A failed action plays the catalogue's "fail" (tips twice, rests in the danger tone).
+  const [client] = useState(() => makeQueryClient((error) => toast({ message: problemText(error, (k) => t(k)), outcome: "fail" }), report, (s) => motion.ownSuccess(s)));
   return (
     <QueryClientProvider client={client}>
       {children}

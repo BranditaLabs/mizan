@@ -76,21 +76,25 @@ const spot = (e: React.MouseEvent<HTMLElement>) => {
 | `.seg-in` | Donut segments spring in. |
 | `.slide-in` | Rows and feed items. |
 
-Curves: `--ease-out` (enter), `--ease-io` (charts, loaders), `--ease-spring` (thumbs, switches, the red point). Only opacity and transform animate. `prefers-reduced-motion` turns entrances off and slows loaders.
+Curves: `--ease-out` (enter), `--ease-io` (charts, loaders), `--ease-spring` (thumbs, switches, the red point). Only opacity and transform animate. `prefers-reduced-motion` turns entrances off; loaders show their still frame (never a slower loop).
 
 ## Loaders
 
-| Loader | Use | Markup |
-| --- | --- | --- |
-| **The Scale** `.ld-scale` | Profit, reconciliation, reports | `.ld-scale` > `.post` `.base` `.beam`(> `.pan.l`, `.pan.r`, each `<i></i><i></i><b></b>`) `.pivot` |
-| **Wordmark reveal** `.ld-word` | First launch, sign-in, splash | The wordmark SVG with three paths: `.stroke` (`pathLength="1"`), `.fill`, `.tittle` |
-| **Red point orbit** `.ld-orbit` | App splash (Flutter ops app, PWA) | `.ld-orbit` > `.ring` `.ring.r2` `.sat > i` `.core.g` (the *m.* mark) |
-| **Sync rail** `.ld-rail` | Top-of-page and in-card indeterminate progress | `<div class="ld-rail"></div>` |
-| **Ledger bars** `.ld-bars` | Inside buttons, cells, chips (`aria-busy`) | `<span class="ld-bars"><i></i><i></i><i></i></span>` |
-| **Ring** `.ld-ring` | Small blocking waits | SVG with `circle.trk` + `circle.arc[pathLength=100]` |
+Brand 2.0 replaced the glass loaders (`.ld-scale`, `.ld-word`, `.ld-orbit`, `.ld-rail`, `.ld-bars`, `.ld-ring` are gone).
+Every wait is `MizanLoader` from `@mizan/design-system/react/motion`, one kind per meaning:
 
-Skeletons (`.skel`), not spinners, for content that is about to appear.
+| Kind | Meaning | Where |
+| --- | --- | --- |
+| `pair` | A page or its data is loading | `PageState`, `BootLoader`, the outage screen |
+| `transfer` | Syncing or reconciling two systems | The sync pill, onboarding checks, a busy button whose event syncs |
+| `drop` | Saving, confirming, sending | Busy buttons (the default) |
+| `fill` | Known progress | `FillProgress`: bulk actions, onboarding, purchase orders received |
+
+Screens never pick one: a busy button reads its event's `pending` from the catalogue (`@mizan/shared/motion`).
+Keyframes and the one reduced-motion block are in `css/motion.css`. Lint (`mizan/no-adhoc-motion`) blocks the old classes.
+
+Skeletons (`.skel`, `.mz-skeleton`) are still (no shimmer), with a 20 px pair beside them, for content that is about to appear.
 
 ## Flutter (ops app)
 
-Glass in Flutter is `BackdropFilter(filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24))` over a `DecoratedBox` with a 7%→3% white gradient and a 1px border at 8% white. Keep the light fields as two blurred circles in a `Stack` behind the content and animate them with a 24–32s `AnimationController` that reverses. Recreate the splash from the Orbit loader.
+Glass in Flutter is `BackdropFilter(filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24))` over a `DecoratedBox` with a 7%→3% white gradient and a 1px border at 8% white. Keep the light fields as two blurred circles in a `Stack` behind the content and animate them with a 24–32s `AnimationController` that reverses. The splash is the Brand 2.0 mark (BR-3 adds the Lottie pair loader).

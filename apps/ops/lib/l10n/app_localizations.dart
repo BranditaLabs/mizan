@@ -481,6 +481,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delivery for {number} saved. It syncs when online.'**
   String deliverySaved(String number);
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get loading;
+
+  /// No description provided for @syncing.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing…'**
+  String get syncing;
+
+  /// No description provided for @packProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Packing progress'**
+  String get packProgress;
+
+  /// No description provided for @pickListProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Orders packed'**
+  String get pickListProgress;
+
+  /// No description provided for @lineReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'{received} of {expected} received'**
+  String lineReceived(int received, int expected);
 }
 
 class _AppLocalizationsDelegate

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageState } from "@/components/ui/PageState";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -8,7 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Choice";
-import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { EmptyState } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
@@ -46,7 +47,7 @@ export function FeedbackScreen() {
           options={[...STATUSES.map((s) => ({ value: s, label: t(`status.${s}`) })), { value: "all" as const, label: t("all") }]} />
         {list.data ? <p className="text-caption text-text-2" role="status">{t.rich("total", { n: list.data.total, b: (c) => <Bdi>{c}</Bdi> })}</p> : null}
       </div>
-      {list.isPending ? <SkeletonRows rows={4} label={t("loading")} />
+      {list.isPending ? <PageState variant="list" rows={4} label={t("loading")} />
         : list.isError && !list.data ? <Alert tone="danger">{t("loadFailed")}</Alert>
         : rows.length === 0 ? <EmptyState icon="inbox" title={t("empty.title")} body={t("empty.body")} />
         : (

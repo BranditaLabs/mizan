@@ -21,13 +21,14 @@ export function ProfitChart({ home }: { home: Home }) {
   const t = useTranslations("profitHome.trend");
   const locale = useLocale();
   const [at, setAt] = useState<number | null>(null);
-  // Drawn at its real width (no stretched viewBox): lines keep their weight and draw evenly.
+  // Drawn at its real width (the viewBox follows the box, so lines keep their weight); the svg itself
+  // is fluid (width 100%), so it never pushes a phone screen sideways before the first measure.
   const box = useRef<HTMLDivElement>(null);
   const [W, setW] = useState(720);
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setW(Math.max(240, Math.round(e!.contentRect.width))));
+    const ro = new ResizeObserver(([e]) => setW(Math.max(1, Math.round(e!.contentRect.width))));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -53,7 +54,7 @@ export function ProfitChart({ home }: { home: Home }) {
   };
 
   return (
-    <section className="mz-card flex flex-col gap-4 p-5 lg:col-span-2" aria-labelledby="trend-title">
+    <section className="mz-card flex min-w-0 flex-col gap-4 p-5 lg:col-span-2" aria-labelledby="trend-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="trend-title" className="text-heading-sm">{t("title")}</h2>
@@ -65,14 +66,14 @@ export function ProfitChart({ home }: { home: Home }) {
         </ul>
       </div>
 
-      <div ref={box} className="relative" dir="ltr" tabIndex={0} role="group" aria-label={t("explore")}
+      <div ref={box} className="relative min-w-0" dir="ltr" tabIndex={0} role="group" aria-label={t("explore")}
         onMouseMove={(e) => pick(e.clientX, e.currentTarget)} onMouseLeave={() => setAt(null)}
         onKeyDown={(e) => {
           if (e.key === "ArrowRight") setAt((i) => Math.min(days.length - 1, (i ?? -1) + 1));
           else if (e.key === "ArrowLeft") setAt((i) => Math.max(0, (i ?? days.length) - 1));
           else if (e.key === "Escape") setAt(null);
         }} onBlur={() => setAt(null)}>
-        <svg key={W > 0 ? "chart" : "x"} viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="block overflow-visible" role="img" aria-label={t("title")} data-testid="trend">
+        <svg key={W > 0 ? "chart" : "x"} viewBox={`0 0 ${W} ${H}`} width="100%" height={H} className="block max-w-full overflow-visible" role="img" aria-label={t("title")} data-testid="trend">
           <line x1="0" x2={W} y1={y(avg)} y2={y(avg)} className="stroke-line-strong" strokeDasharray="3 4" strokeWidth="1" />
           <line x1="0" x2={W} y1={zero} y2={zero} className="stroke-line-strong" strokeWidth="1" />
           <path d={area} className="mz-reveal-y fill-text-3 opacity-15" />

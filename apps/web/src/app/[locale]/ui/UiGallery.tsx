@@ -13,7 +13,7 @@ import { ConfirmDialog, Drawer } from "@/components/ui/Dialog";
 import { Field, SearchInput, Select, TextArea } from "@/components/ui/Field";
 import { MenuButton } from "@/components/ui/Menu";
 import { StatCard } from "@/components/ui/StatCard";
-import { Avatar, Card, EmptyState, KeyValue, Progress, SkeletonRows, Timeline } from "@/components/ui/Surface";
+import { Avatar, Card, EmptyState, FillProgress, KeyValue, SkeletonRows, Timeline } from "@/components/ui/Surface";
 import { PartnerLogo } from "@/components/ui/PartnerLogo";
 import { Tabs } from "@/components/ui/Tabs";
 import { PARTNERS, partnerMarkMinSize } from "@mizan/design-system/partners";
@@ -22,6 +22,8 @@ import { Tooltip } from "@/components/ui/Tooltip";
 import { DateText, MoneyText, PhoneText } from "@/components/ui/Values";
 import { formatMoney } from "@/lib/format";
 import { WhatsAppPhone, type PhoneChrome } from "@/components/studio/WhatsAppPhone";
+import { AuthGallery } from "@/components/auth/Gallery";
+import { MotionGallery } from "./MotionGallery";
 import { CITIES, ORDERS, PHONE_CHATS, PROFIT_TREND, RTO_TREND, type OrderStatus, type SampleOrder } from "./sample";
 
 const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
@@ -215,7 +217,7 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
           <Alert tone="danger" title={t("feedback.dangerLead")}>{t("feedback.danger")}</Alert>
         </div>
         <ButtonGroup>
-          <Button variant="secondary" onClick={() => toast({ message: t("toast.saved") })}>{t("feedback.showToast")}</Button>
+          <Button variant="secondary" onClick={() => toast.event({ type: null, message: t("toast.saved") })}>{t("feedback.showToast")}</Button>
           <Button variant="danger" onClick={() => setConfirming(true)}>{t("feedback.cancelOrder")}</Button>
         </ButtonGroup>
         <div className="grid gap-4 md:grid-cols-2">
@@ -223,7 +225,7 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
           <Card title={t("feedback.progress")}>
             <div className="flex flex-col gap-2">
               <p className="text-body-sm text-text-2">{t("feedback.progressBody", { done: 18, total: 24 })}</p>
-              <Progress value={75} label={t("feedback.progress")} />
+              <FillProgress value={75} label={t("feedback.progress")} valueText={t("feedback.progressBody", { done: 18, total: 24 })} width={240} />
             </div>
           </Card>
         </div>
@@ -243,7 +245,15 @@ export function UiGallery({ chrome }: { chrome: Record<"ar" | "en", PhoneChrome>
         </div>
       </Section>
 
+      <Section id="motion" title={t("motion.title")} body={t("motion.body")}>
+        <MotionGallery />
+      </Section>
+
       <PartnerLogos />
+
+      <Section id="auth" title={t("auth.title")} body={t("auth.description")}>
+        <AuthGallery />
+      </Section>
 
       <ConfirmDialog open={confirming} onClose={() => setConfirming(false)}
         onConfirm={() => { setConfirming(false); toast({ message: t("toast.cancelled", { id: ORDERS[0]!.id }) }); }}

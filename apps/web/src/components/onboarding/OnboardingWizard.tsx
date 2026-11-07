@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
-import { Progress, SkeletonRows } from "@/components/ui/Surface";
+import { FillProgress, SkeletonRows } from "@/components/ui/Surface";
 import { Link, useRouter } from "@/i18n/navigation";
 import { CostsStep, CourierStep, FirstOrderStep, GrowStep, StoreStep } from "./Steps";
 import { finished, GROW_ORDER, STEP_ORDER, useCanSetUp, useOnboarding, type Onboarding, type StepKey } from "./useOnboarding";
@@ -70,7 +70,7 @@ export function OnboardingWizard() {
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="mt-1 text-body text-text-2">{t("subtitle")}</p>
         <div className="mt-4 flex max-w-[420px] items-center gap-3">
-          <Progress value={(done / STEP_ORDER.length) * 100} label={t("progress", { done, total: STEP_ORDER.length })} className="flex-1" />
+          <FillProgress value={(done / STEP_ORDER.length) * 100} label={t("progress", { done, total: STEP_ORDER.length })} valueText={t("progress", { done, total: STEP_ORDER.length })} width={200} />
           <span className="text-caption text-text-2" data-testid="onboarding-progress">{t("progress", { done, total: STEP_ORDER.length })}</span>
         </div>
       </header>
@@ -82,8 +82,8 @@ export function OnboardingWizard() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
-        <nav aria-label={t("stepsLabel")} className="flex flex-col gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
+        <nav aria-label={t("stepsLabel")} className="flex min-w-0 flex-col gap-4">
           <ol className="flex gap-2 overflow-x-auto md:flex-col">{STEP_ORDER.map((s, i) => item(s, i + 1))}</ol>
           <div className="flex flex-col gap-2">
             <h2 className="px-1 text-caption font-semibold text-text-2">
@@ -93,7 +93,7 @@ export function OnboardingWizard() {
           </div>
         </nav>
 
-        <section aria-labelledby="step-title" className="mz-card p-5 sm:p-6">
+        <section aria-labelledby="step-title" className="mz-card min-w-0 p-5 sm:p-6">
           <h2 id="step-title" className="text-heading-sm">{t(STEP_TITLES[step])}</h2>
           {BODY[step] ? <p className="mt-1 mb-5 max-w-[60ch] text-body-sm text-text-2">{t(BODY[step])}</p> : <div className="mb-4" />}
           {step === "store" ? <StoreStep o={o} /> : step === "courier" ? <CourierStep o={o} /> : step === "costs" ? <CostsStep o={o} />

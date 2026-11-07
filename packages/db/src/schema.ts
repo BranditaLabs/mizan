@@ -525,6 +525,18 @@ export interface Listings {
   synced_at: Timestamp | null;
 }
 
+export interface LiveTokens {
+  token_hash: Buffer;
+  tenant_id: string;
+  user_id: string;
+  role: string;
+  support_grant_id: string | null;
+  topics: ArrayType<string>;
+  expires_at: Timestamp;
+  used_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+}
+
 export interface MediaObjects {
   id: Generated<string>;
   tenant_id: string;
@@ -1661,6 +1673,7 @@ export interface DB {
   landed_costs: LandedCosts;
   legal_acceptances: LegalAcceptances;
   listings: Listings;
+  live_tokens: LiveTokens;
   media_objects: MediaObjects;
   memberships: Memberships;
   messages: Messages;

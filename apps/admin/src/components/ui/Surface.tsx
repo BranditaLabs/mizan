@@ -1,4 +1,5 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
+import { MizanLoader } from "@mizan/design-system/react/motion";
 import type { ReactNode } from "react";
 import { cx, initials } from "./logic";
 
@@ -49,10 +50,11 @@ export function Skeleton({ className }: { className?: string }) {
   return <span aria-hidden="true" className={cx("mz-skeleton block", className)} />;
 }
 
-/** Skeleton rows for a table or list while it loads; announces "loading" once. */
+/** Skeleton rows while a list loads (still, no shimmer) with a 20 px Brand 2.0 pair in the head; announces "loading" once. */
 export function SkeletonRows({ rows = 5, label }: { rows?: number; label: string }) {
   return (
-    <div role="status" aria-label={label} className="flex flex-col gap-3 p-4">
+    <div role="status" aria-label={label} className="flex flex-col gap-3 p-4" data-testid="page-state">
+      <span className="text-text-3"><MizanLoader kind="pair" size={20} decorative /></span>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3">
           <Skeleton className="h-4 w-20" />
@@ -64,15 +66,18 @@ export function SkeletonRows({ rows = 5, label }: { rows?: number; label: string
   );
 }
 
-/** Progress bar (`.mz-progress`), 0–100, with an accessible label. */
-export function Progress({ value, label, className }: { value: number; label: string; className?: string }) {
+/** Known progress (Brand 2.0 "fill"), 0–100, with progressbar semantics; reduced motion shows the value as text. */
+export function FillProgress({ value, label, valueText, width = 160, className }: { value: number; label: string; valueText?: string; width?: number; className?: string }) {
   const v = Math.max(0, Math.min(100, value));
   return (
-    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v)} className={cx("mz-progress", className)}>
-      <i style={{ width: `${v}%` }} />
-    </div>
+    <span className={cx("inline-flex text-text", className)}>
+      <MizanLoader kind="fill" value={v / 100} size={width} label={label} valueText={valueText ?? `${Math.round(v)}%`} />
+    </span>
   );
 }
+
+/** The old name (one release). */
+export const Progress = FillProgress;
 
 /** Avatar with initials (no photos of customers). The name is the accessible label. */
 export function Avatar({ name, className }: { name: string; className?: string }) {

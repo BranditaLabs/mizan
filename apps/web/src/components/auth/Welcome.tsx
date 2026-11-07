@@ -11,9 +11,11 @@ import { Checkbox } from "@/components/ui/Choice";
 import { LegalLink } from "@/components/legal/LegalLink";
 import { Field } from "@/components/ui/Field";
 import { useRouter } from "@/i18n/navigation";
+import { TrialChip } from "./fields";
 import { AuthHeading, Step } from "./kit";
 import { ApiError, idempotency, ok, type MyInvitation, type Schemas } from "@/lib/api/client";
 import { isLegalVersionChanged } from "@/lib/legal";
+import { signupIntent } from "@/lib/auth/intent";
 import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 
@@ -41,6 +43,8 @@ export function Welcome() {
   const [name, setName] = useState(shop ?? "");
   const [country, setCountry] = useState<Schemas["CreateTenant"]["country"]>("EG");
   const [agreed, setAgreed] = useState(false);
+  // The plan and billing the pricing page chose (kept in this tab since sign-up, re-validated on read).
+  const [intent] = useState(() => (typeof window === "undefined" ? null : signupIntent.read()));
   // One key per attempt: a retried create (network, 5xx) never makes two stores.
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
@@ -59,8 +63,11 @@ export function Welcome() {
   const create = useMutation({
     mutationFn: () => ok(api.POST("/v1/tenants", { body: {
       name: name.trim(), country, language: locale === "en" ? "en" : "ar", acceptLegal: { terms: LEGAL_VERSIONS.terms, dpa: LEGAL_VERSIONS.dpa },
+      // HAND-OFF (claude/rd-e12-trial): CreateTenant has no plan/interval yet. Once the regenerated
+      // types carry them, send `plan: intent?.plan ?? "growth", interval: intent?.interval ?? "month"`
+      // here (Enterprise arrives as Scale). Until then the intent stays in this tab only.
     }, headers: idempotency(idempotencyKey) })),
-    onSuccess: (tenant) => open(tenant.id, true),
+    onSuccess: (tenant) => { signupIntent.clear(); return open(tenant.id, true); },
     // A refused create (4xx) is final for this key; the next try is a new attempt.
     onError: (err) => { if (err instanceof ApiError && err.status >= 400 && err.status < 500) setIdempotencyKey(crypto.randomUUID()); },
     meta: { toast: false }, // shown in the form
@@ -92,7 +99,7 @@ export function Welcome() {
                   <p className="text-caption text-text-3">
                     {tr(inv.role)}
                     <span aria-hidden="true" className="mx-1.5">{"·"}</span>
-                    {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium" }) })}
+                    {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium", numberingSystem: "latn" }) })}
                   </p>
                 </div>
                 <Button variant="secondary" busy={busy === inv.id} disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>
@@ -104,6 +111,7 @@ export function Welcome() {
 
       <section aria-labelledby="create">
         <h2 id="create" className="text-heading-sm">{t("create.title")}</h2>
+        {intent ? <div className="mt-2"><TrialChip plan={intent.plan} interval={intent.interval} enterprise={intent.enterprise} /></div> : null}
         <form onSubmit={onCreate} className="mt-(--_gap) flex flex-col gap-(--_gap)">
           <Field label={t("create.name")} hint={t(fromShopify ? "create.nameFromShopify" : "create.nameHint")} required minLength={2} maxLength={80} name="store" autoComplete="organization"
             value={name} onChange={(e) => setName(e.target.value)} />

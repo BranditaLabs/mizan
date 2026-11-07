@@ -17,6 +17,7 @@ import { DateText, MoneyText } from "@/components/ui/Values";
 import { Pending } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 import { ReadyToShip, useReadyToShip } from "./ReadyToShip";
 import { Scorecard } from "./Scorecard";
@@ -33,7 +34,6 @@ const SETTABLE = STATUSES.filter((s) => s !== "unknown");
 const isStatus = (s: string): s is Status => (STATUSES as readonly string[]).includes(s);
 const ERRORS = new Set(["city_unknown", "address_invalid", "payment_blocks", "cancelled", "not_found", "courier_refused_key", "courier_failed"]);
 const TONE: Partial<Record<Status, "success" | "danger" | "warning" | "info">> = { delivered: "success", returned: "danger", lost: "danger", returning: "warning", failed_attempt: "warning", out_for_delivery: "info", unknown: "warning" };
-const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * M3 shipping: what is ready to ship, shipped in one go (E7-2), then every shipment with the
@@ -43,6 +43,7 @@ const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  */
 export function ShipmentsScreen() {
   const t = useTranslations("shipments");
+  const providerName = useProviderName();
   const ts = useTranslations("shipping");
   const { api, user, store } = useSession();
   const [view, setView] = useState<View>("ready");
@@ -133,7 +134,7 @@ function SetStatusDialog({ row, onClose }: { row: Row; onClose(): void }) {
   const save = useMutation({
     mutationFn: () => ok(api.POST("/v1/shipments/{id}/status", { params: { path: { id: row.id } }, body: { status: status as Schemas["SetShipmentStatus"]["status"], ...(note.trim() ? { note: note.trim() } : {}) } })),
     onSuccess: () => {
-      toast({ message: t("saved") });
+      toast.event({ type: "shipment.status_changed", message: t("saved") });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
       void qc.invalidateQueries({ queryKey: ["scorecard"] });
       onClose();

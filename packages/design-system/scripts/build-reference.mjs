@@ -12,11 +12,16 @@ const M = JSON.parse(r("icons/manifest.json"));
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
 const fonts = r("css/fonts.css").replace(/url\("\.\.\/fonts\/web\/([^"]+)"\)/g, (_, f) => `url("data:font/woff2;base64,${b64(`fonts/web/${f}`)}")`);
-const logo = (f) => `data:image/svg+xml;base64,${b64(`logo/svg/${f}.svg`)}`;
+const logo = (f, dir = "svg") => `data:image/svg+xml;base64,${b64(`logo/${dir}/${f}.svg`)}`;
+// Brand 2.0: the reference picks `<key>-on-ink` on ink and in the dark theme (see paintLogos in the template).
 const LOGOS = {
-  wordmark: logo("mizan-wordmark"), "on-dark": logo("mizan-wordmark-on-dark"), ar: logo("mizan-wordmark-ar"), "ar-on-dark": logo("mizan-wordmark-ar-on-dark"),
-  "ar-mono-white": logo("mizan-wordmark-ar-mono-white"), endorsed: logo("mizan-endorsed"), "endorsed-on-dark": logo("mizan-endorsed-on-dark"),
-  "bilingual-on-dark": logo("mizan-bilingual-on-dark"), appicon: logo("mizan-appicon"), favicon: logo("mizan-favicon"),
+  ...Object.fromEntries(["mark", "wordmark", "lockup", "bilingual"].flatMap((k) => [
+    [k, logo(`mizan-${k}`)], [`${k}-on-ink`, logo(`mizan-${k}-on-ink`)], [`${k}-mono-ink`, logo(`mizan-${k}-mono-ink`)], [`${k}-mono-paper`, logo(`mizan-${k}-mono-paper`)],
+  ])),
+  ar: logo("mizan-wordmark-ar"), "ar-on-ink": logo("mizan-wordmark-ar-on-ink"), "ar-mono-paper": logo("mizan-wordmark-ar-mono-paper"),
+  endorsed: logo("mizan-endorsed"), "endorsed-on-dark": logo("mizan-endorsed-on-dark"),
+  appicon: logo("mizan-appicon"), "appicon-paper": logo("mizan-appicon-paper"), "appicon-red": logo("mizan-appicon-red"), favicon: logo("mizan-favicon"),
+  ...Object.fromEntries(["pair", "transfer", "drop", "fill"].flatMap((k) => ["paper", "ink"].map((bg) => [`anim-${k}-on-${bg}`, logo(`mizan-${k}-on-${bg}`, "animated")]))),
 };
 
 const brandSw = [["ink", "Ink", "Primary actions, display type, the rail"], ["paper", "Paper", "The app canvas"], ["red", "Red", "The red point, active state, errors"], ["redHi", "Red · on dark", "Red on ink surfaces"],

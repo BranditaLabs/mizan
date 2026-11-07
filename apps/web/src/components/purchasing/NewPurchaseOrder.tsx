@@ -28,7 +28,7 @@ const QTY = /^[1-9]\d{0,5}$/;
  */
 export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {}) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const router = useRouter();
   const qc = useQueryClient();
@@ -63,7 +63,7 @@ export function NewPurchaseOrder({ po }: { po?: Schemas["PurchaseOrder"] } = {})
     },
     meta: { toast: false },
     onSuccess: (saved) => {
-      toast({ message: po ? t("saved") : t("created", { number: saved.number }) });
+      toast.event({ type: null, message: po ? t("saved") : t("created", { number: saved.number }) });
       void qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
       void qc.invalidateQueries({ queryKey: ["purchaseOrder"] });
       router.push(`/purchasing/${saved.id}`);
