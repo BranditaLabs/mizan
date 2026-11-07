@@ -1,13 +1,22 @@
 "use client";
 
 import { MizanLoader } from "@mizan/design-system/react/motion";
-import type { Pending } from "@mizan/shared/motion";
+import { WAIT_MOTION, type Pending, type WaitMeaning } from "@mizan/shared/motion";
 import { useState, type ReactNode } from "react";
 import { cx } from "./logic";
 
-/** The loader inside a busy control: mono (currentColor), decorative (the control carries aria-busy). */
-export function BusyLoader({ pending = "drop", size }: { pending?: Pending; size?: number }) {
-  return <MizanLoader kind={pending} size={size ?? (pending === "fill" ? 44 : 24)} tone="mono" decorative />;
+/** A loader a busy control can play: a wait has no value, so never FILL (that is FillProgress). */
+export type BusyKind = Exclude<Pending, "fill">;
+
+/** The loader for what a busy control is doing (WAIT_MOTION): no default, never FILL. */
+export const busyKind = (as: WaitMeaning): BusyKind => WAIT_MOTION[as];
+
+/**
+ * The loader inside a busy control: mono (currentColor), decorative (the control carries
+ * aria-busy). `pending` is required: a busy control says what it is doing (Button `as`).
+ */
+export function BusyLoader({ pending, size }: { pending: BusyKind; size?: number }) {
+  return <MizanLoader kind={pending} size={size ?? 24} tone="mono" decorative />;
 }
 
 /**

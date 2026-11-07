@@ -16,6 +16,7 @@ import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { Icon } from "@mizan/design-system/icons/react";
 import { printHref } from "./PrintDocuments";
+import { Waiting } from "@/components/ui/Loader";
 
 type Bulk = Schemas["BulkAction"];
 type Request = Schemas["BulkRequest"];
@@ -52,7 +53,7 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
 
   const footer = (submit: () => void, label: string, disabled = false, danger = false) => (
     <ButtonGroup>
-      <Button variant={danger ? "danger" : "primary"} busy={start.isPending} disabled={disabled} onClick={submit}>{label}</Button>
+      <Button variant={danger ? "danger" : "primary"} busy={start.isPending} as="saving" disabled={disabled} onClick={submit}>{label}</Button>
       <Button variant="ghost" onClick={() => setOpen(null)}>{t("close")}</Button>
     </ButtonGroup>
   );
@@ -139,7 +140,12 @@ export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
         <div className="min-w-0 flex-1"><Pending query={q} compact>{null}</Pending></div>
         <Button size="sm" variant="ghost" onClick={onClose}>{t("close")}</Button>
       </section>
-    ) : null;
+    ) : (
+      // Before the first answer there is no total yet: a compact PAIR (waiting), never an empty FILL.
+      <section className="mz-card p-4" data-testid="bulk-progress" data-state="waiting">
+        <Waiting meaning="loading" size={22} live>{t("progress")}</Waiting>
+      </section>
+    );
   }
   const finished = b.done + b.skipped + b.failed;
   const pct = Math.round((finished / b.total) * 100);

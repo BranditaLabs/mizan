@@ -216,5 +216,22 @@
         "type": "int"
       }
     }
-  }
+  },
+  "packSynced": "Order {number} packed and in Mizan.",
+  "@packSynced": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "deliverySynced": "Delivery for {number} is in Mizan.",
+  "@deliverySynced": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "receiveProgress": "Received of expected"
 }

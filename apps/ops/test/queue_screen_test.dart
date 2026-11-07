@@ -53,11 +53,14 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pumpAndSettle();
     expect(find.text('Done'), findsOneWidget);
+    expect(find.byKey(const ValueKey('op-glyph-ops.op_applied')), findsOneWidget); // Mizan agreed: merge
+    expect(find.byKey(const ValueKey('event-snack-ops.syncing')), findsOneWidget); // the sync's own merge
     await count(tester, 'NOPE', '1');
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pumpAndSettle();
     expect(find.text('Not accepted'), findsOneWidget);
     expect(find.text('no item with this SKU'), findsOneWidget);
+    expect(find.byKey(const ValueKey('op-glyph-ops.op_rejected')), findsOneWidget); // refused: fail
     expect(server.calls, 2);
   });
 }

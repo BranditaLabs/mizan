@@ -98,7 +98,7 @@ function Inspect({ state, onClose }: { state: State; onClose(): void }) {
     <Dialog open onClose={onClose} title={t("inspectTitle")} description={t("inspectHint")} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!items.length || over} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!items.length || over} onClick={() => save.mutate()}>{t("save")}</Button>
       </>
     )}>
       <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (items.length && !over) save.mutate(); }}>

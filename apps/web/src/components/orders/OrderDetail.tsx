@@ -10,6 +10,7 @@ import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge, RiskMeter, Tag } from "@/components/ui/Badge";
 import { Button, buttonClass } from "@/components/ui/Button";
+import { Waiting } from "@/components/ui/Loader";
 import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable";
 import { PageState } from "@/components/ui/QueryState";
 import { Card, EmptyState, KeyValue, Timeline } from "@/components/ui/Surface";
@@ -183,7 +184,7 @@ export function OrderDetail({ id }: { id: string }) {
           {/* Made in Mizan and copied to the store: the same order there, or why not yet. */}
           {o.storeCopy ? <>{" · "}<span className={o.storeCopy.status === "failed" ? "text-danger-text" : undefined} data-testid="store-copy">
             {o.storeCopy.status === "created" ? t.rich("detail.copyCreated", { name: o.storeCopy.name ?? "", b: (c) => <bdi className="mz-id">{c}</bdi> })
-              : o.storeCopy.status === "pending" ? t("detail.copyPending") : t("detail.copyFailed")}
+              : o.storeCopy.status === "pending" ? <span className="inline-flex items-center gap-1.5"><Waiting meaning="sending" size={16} />{t("detail.copyPending")}</span> : t("detail.copyFailed")}
           </span></> : null}
         </p>
       </header>
@@ -320,7 +321,7 @@ export function CustomerCard({ order: o }: { order: Order }) {
             : failure?.status === 429 ? <Alert tone="warning">{t("tooMany")}</Alert>
             : reveal.isError ? <Alert tone="danger">{problemText(reveal.error, tpr)}</Alert> : null}
           <div>
-            <Button variant="secondary" size="sm" icon="visible" busy={reveal.isPending} onClick={() => reveal.mutate()}>{t("show")}</Button>
+            <Button variant="secondary" size="sm" icon="visible" busy={reveal.isPending} as="checking" onClick={() => reveal.mutate()}>{t("show")}</Button>
           </div>
           <p className="text-caption text-text-3">{t("recorded")}</p>
         </div>

@@ -33,7 +33,9 @@ class PickListsScreen extends StatefulWidget {
 class _PickListsScreenState extends State<PickListsScreen> {
   List<(PickList, DateTime)> _lists = const [];
   Set<String> _packedHere = const {};
-  bool _loading = false;
+
+  /// What the refresh is doing: sending the queue (ops.syncing), then reading lists (ops.loading).
+  String? _busy;
 
   @override
   void initState() {
@@ -55,17 +57,18 @@ class _PickListsScreenState extends State<PickListsScreen> {
 
   Future<void> _refresh() async {
     final t = AppLocalizations.of(context);
-    setState(() => _loading = true);
+    setState(() => _busy = widget.engine == null ? 'ops.loading' : 'ops.syncing');
     try {
-      // Send what was packed offline first, so the lists come back up to date.
+      // Send what was packed offline first (TRANSFER), so the lists come back up to date (PAIR).
       await widget.engine?.run();
+      if (mounted) setState(() => _busy = 'ops.loading');
       final ids = await widget.api!.openListIds();
       final lists = <Map<String, Object?>>[for (final id in ids) await widget.api!.list(id)];
       await widget.store.savePickLists(lists, widget.now());
     } on SyncFailure catch (f) {
       if (mounted) showEventSnack(context, 'ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.pickListsSignIn : t.syncFailedServer);
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _busy = null);
     }
     await _load();
   }
@@ -77,10 +80,10 @@ class _PickListsScreenState extends State<PickListsScreen> {
     final time = DateFormat.Hm(Localizations.localeOf(context).toLanguageTag());
     return Scaffold(
       appBar: AppBar(title: Text(t.pickListsTitle), actions: [
-        // While the lists come in, the pair loader takes the refresh button's place.
+        // Sending the queue (transfer), then the lists coming in (pair), in the refresh button's place.
         if (widget.api != null)
-          _loading
-              ? Padding(padding: const EdgeInsetsDirectional.only(end: MizanSpace.s4), child: Center(child: EventLoader('ops.loading', height: 20, label: t.loading)))
+          _busy != null
+              ? Padding(padding: const EdgeInsetsDirectional.only(end: MizanSpace.s4), child: Center(child: EventLoader(_busy!, key: ValueKey('busy-$_busy'), height: 20, label: _busy == 'ops.syncing' ? t.syncing : t.loading)))
               : IconButton(key: const Key('refresh'), tooltip: t.refresh, onPressed: _refresh, icon: const Icon(Icons.refresh)),
       ]),
       body: ListView(
@@ -127,6 +130,27 @@ class PickListScreen extends StatefulWidget {
 
 class _PickListScreenState extends State<PickListScreen> {
   Set<String> _packedHere = const {};
+  bool _syncing = false;
+
+  /// A box saved on the phone: send it (TRANSFER), then order.packed (done) once Mizan applied
+  /// it, or ops.sync_failed (it stays queued and goes later).
+  Future<void> _syncSaved(PickOrder o) async {
+    final engine = widget.engine;
+    if (engine == null || !mounted) return;
+    final t = AppLocalizations.of(context);
+    setState(() => _syncing = true);
+    final report = await engine.run();
+    if (!mounted) return;
+    setState(() => _syncing = false);
+    final f = report.failure;
+    // The outcome replaces "saved on the phone" at once (the queued toast would hold it back).
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (f != null) {
+      showEventSnack(context, 'ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.pickListsSignIn : t.syncFailedServer);
+    } else if (report.applied > 0) {
+      showEventSnack(context, 'order.packed', t.packSynced('\u2066${o.number}\u2069'));
+    }
+  }
 
   @override
   void initState() {
@@ -144,7 +168,9 @@ class _PickListScreenState extends State<PickListScreen> {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text(t.pickListLabel(widget.list.number))),
+      appBar: AppBar(title: Text(t.pickListLabel(widget.list.number)), actions: [
+        if (_syncing) Padding(padding: const EdgeInsetsDirectional.only(end: MizanSpace.s4), child: Center(child: EventLoader('ops.syncing', key: const Key('pack-syncing'), height: 20, label: t.syncing))),
+      ]),
       body: ListView(
         padding: const EdgeInsets.all(MizanSpace.s4),
         children: [
@@ -169,8 +195,9 @@ class _PickListScreenState extends State<PickListScreen> {
                   ? Text(t.packed, style: MizanType.label)
                   : FilledButton(
                       onPressed: () async {
-                        await Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => PackScreen(order: o, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now)));
+                        final saved = await Navigator.of(context).push(MaterialPageRoute<bool>(builder: (_) => PackScreen(order: o, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now)));
                         await _load();
+                        if (saved == true) await _syncSaved(o);
                       },
                       child: Text(t.pack),
                     ),

@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../l10n/app_localizations.dart';
 import '../motion/event_glyph.dart';
 import '../motion/event_snack.dart';
+import '../motion/fill_bar.dart';
 import '../motion/mizan_loader.dart';
 import '../motion/motion.dart';
 import '../motion/vessels_count.dart';
@@ -39,7 +40,10 @@ class ReceivePosScreen extends StatefulWidget {
 
 class _ReceivePosScreenState extends State<ReceivePosScreen> {
   List<(PurchaseOrder, DateTime, Map<String, int>)> _pos = const [];
-  bool _loading = false;
+
+  /// What the refresh is doing: sending the phone's queue (ops.syncing), then reading the purchase
+  /// orders (ops.loading); null at rest.
+  String? _busy;
 
   @override
   void initState() {
@@ -59,9 +63,10 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
 
   Future<void> _refresh() async {
     final t = AppLocalizations.of(context);
-    setState(() => _loading = true);
+    setState(() => _busy = widget.engine == null ? 'ops.loading' : 'ops.syncing');
     try {
       await widget.engine?.run();
+      if (mounted) setState(() => _busy = 'ops.loading');
       final ids = await widget.api!.openPoIds();
       final pos = <Map<String, Object?>>[for (final id in ids) await widget.api!.po(id)];
       await widget.store.savePurchaseOrders(pos, widget.now());
@@ -78,9 +83,29 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _busy = null);
     }
     await _load();
+  }
+
+  /// A delivery saved on the phone: send it (TRANSFER), then stock.received (done) once Mizan
+  /// applied it, or ops.sync_failed (it stays queued and goes later).
+  Future<void> _syncSaved(PurchaseOrder po) async {
+    final engine = widget.engine;
+    if (engine == null || !mounted) return;
+    final t = AppLocalizations.of(context);
+    setState(() => _busy = 'ops.syncing');
+    final report = await engine.run();
+    if (!mounted) return;
+    setState(() => _busy = null);
+    final f = report.failure;
+    // The outcome replaces "saved on the phone" at once (the queued toast would hold it back).
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (f != null) {
+      showEventSnack(context, 'ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.receiveSignIn : t.syncFailedServer);
+    } else if (report.applied > 0) {
+      showEventSnack(context, 'stock.received', t.deliverySynced('\u2066${po.number}\u2069'));
+    }
   }
 
   @override
@@ -92,12 +117,12 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
       appBar: AppBar(
         title: Text(t.receiveTitle),
         actions: [
-          // While the purchase orders come in, the pair loader takes the refresh button's place.
-          if (widget.api != null)
-            _loading
+          // Sending the queue (transfer), then reading the purchase orders (pair), in the refresh button's place.
+          if (widget.api != null || _busy != null)
+            _busy != null
                 ? Padding(
                     padding: const EdgeInsetsDirectional.only(end: MizanSpace.s4),
-                    child: Center(child: EventLoader('ops.loading', height: 20, label: t.loading)),
+                    child: Center(child: EventLoader(_busy!, key: ValueKey('busy-$_busy'), height: 20, label: _busy == 'ops.syncing' ? t.syncing : t.loading)),
                   )
                 : IconButton(key: const Key('refresh-pos'), tooltip: t.refresh, onPressed: _refresh, icon: const Icon(Icons.refresh)),
         ],
@@ -118,11 +143,12 @@ class _ReceivePosScreenState extends State<ReceivePosScreen> {
                 title: Text('\u2066${po.number}\u2069 · ${po.supplier}', style: MizanType.headingSm),
                 subtitle: Text('${t.stillExpected(max(0, po.left - here.values.fold(0, (a, b) => a + b)))} · ${t.fetchedAt(time.format(at.toLocal()))}'),
                 onTap: () async {
-                  await Navigator.of(context).push(
+                  final saved = await Navigator.of(context).push(
                     MaterialPageRoute<bool>(
                       builder: (_) => ReceiveScreen(po: po, alreadyHere: here, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now),
                     ),
                   );
+                  if (saved == true) await _syncSaved(po);
                   await _load();
                 },
               ),
@@ -192,10 +218,10 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
     final t = AppLocalizations.of(context);
     final navigator = Navigator.of(context);
     await widget.store.enqueue(_session.toOp(opId: const Uuid().v4(), at: widget.now()));
-    // Goods are in: stock.received plays done, with a light tap.
-    if (mounted) showEventSnack(context, 'stock.received', t.deliverySaved('\u2066${widget.po.number}\u2069'));
+    // Saved on the phone (ops.queued settles); the list screen sends it and plays stock.received
+    // (done) only once Mizan has applied it.
+    if (mounted) showEventSnack(context, 'ops.queued', t.deliverySaved('\u2066${widget.po.number}\u2069'));
     navigator.pop(true);
-    if (widget.engine != null) await widget.engine!.run();
   }
 
   @override
@@ -217,7 +243,18 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(MizanSpace.s4),
-          child: FilledButton(key: const Key('save-delivery'), onPressed: _session.hasAny ? _save : null, child: Text(t.saveDelivery)),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            // Known progress with a real value: counted of expected on the whole delivery.
+            FillBar(
+              key: const Key('receive-fill'),
+              done: widget.po.lines.fold(0, (s, l) => s + _session.counted(l)),
+              total: widget.po.lines.fold(0, (s, l) => s + _session.expected(l)),
+              label: t.receiveProgress,
+              height: 10,
+            ),
+            const SizedBox(height: MizanSpace.s3),
+            FilledButton(key: const Key('save-delivery'), onPressed: _session.hasAny ? _save : null, child: Text(t.saveDelivery)),
+          ]),
         ),
       ),
       body: ListView(
@@ -281,6 +318,7 @@ class _ReceiveScreenState extends State<ReceiveScreen> {
           ),
           const SizedBox(height: MizanSpace.s4),
           Text(t.receiveTotals(_session.totalGood, _session.totalDamaged), key: const Key('totals'), style: MizanType.label),
+
           for (final l in widget.po.lines)
             ListTile(
               key: Key('line-${l.variantId}'),

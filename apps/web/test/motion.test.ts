@@ -48,12 +48,14 @@ describe("resolve: the surfaces' side of the catalogue", () => {
     expect(timelineOutcome("ship_failed")).toBe("fail");
   });
 
-  it("picks each busy button's loader from the event (drop by default)", () => {
+  it("picks each busy button's loader from the event's action, never a default", () => {
     expect(pendingFor("connection.connected")).toBe("transfer");
     expect(pendingFor("shipment.created")).toBe("transfer");
     expect(pendingFor("order.confirmed")).toBe("drop");
-    expect(pendingFor(undefined)).toBe("drop");
-    expect(pendingFor("not.an.event")).toBe("drop");
+    expect(pendingFor("tenant.created")).toBe("drop");
+    expect(pendingFor("shipment.delivered")).toBeUndefined();
+    expect(pendingFor(undefined)).toBeUndefined();
+    expect(pendingFor("not.an.event")).toBeUndefined();
   });
 
   it("maps the bell's alert sources to their events", () => {

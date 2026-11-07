@@ -511,6 +511,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{received} of {expected} received'**
   String lineReceived(int received, int expected);
+
+  /// No description provided for @packSynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Order {number} packed and in Mizan.'**
+  String packSynced(String number);
+
+  /// No description provided for @deliverySynced.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery for {number} is in Mizan.'**
+  String deliverySynced(String number);
+
+  /// No description provided for @receiveProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Received of expected'**
+  String get receiveProgress;
 }
 
 class _AppLocalizationsDelegate

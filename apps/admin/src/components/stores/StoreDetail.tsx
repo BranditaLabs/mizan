@@ -84,10 +84,10 @@ export function StoreDetail({ storeId }: { storeId: string }) {
             ) : null}
             <div className="flex flex-wrap items-end gap-2">
               {can("super_admin") && s.status !== "suspended" && s.status !== "deleted" ? (
-                <Button variant="danger" busy={suspend.isPending} disabled={reason.trim().length < 3} onClick={() => suspend.mutate()}>{t("suspend")}</Button>
+                <Button variant="danger" busy={suspend.isPending} as="saving" disabled={reason.trim().length < 3} onClick={() => suspend.mutate()}>{t("suspend")}</Button>
               ) : null}
               {can("super_admin") && s.status === "suspended" ? (
-                <Button busy={reactivate.isPending} onClick={() => reactivate.mutate()}>{t("reactivate")}</Button>
+                <Button busy={reactivate.isPending} as="saving" onClick={() => reactivate.mutate()}>{t("reactivate")}</Button>
               ) : null}
               {can("super_admin", "finance") && s.status !== "deleted" ? (
                 <>
@@ -95,7 +95,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
                     <option value="">{t("choosePlan")}</option>
                     {PLANS.filter((p) => p !== s.plan).map((p) => <option key={p} value={p}>{tp(p)}</option>)}
                   </Select>
-                  <Button variant="secondary" disabled={!plan} busy={changePlan.isPending} onClick={() => plan && changePlan.mutate(plan)}>{t("applyPlan")}</Button>
+                  <Button variant="secondary" disabled={!plan} busy={changePlan.isPending} as="saving" onClick={() => plan && changePlan.mutate(plan)}>{t("applyPlan")}</Button>
                 </>
               ) : null}
             </div>
@@ -116,7 +116,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
               {can("super_admin") ? <option value="write">{t("access.write")}</option> : null}
             </Select>
             <div className="md:col-span-4 flex flex-wrap items-center gap-3">
-              <Button type="submit" variant="secondary" busy={openAccess.isPending} disabled={access.reason.trim().length < 3}>{t("access.open")}</Button>
+              <Button type="submit" variant="secondary" busy={openAccess.isPending} as="saving" disabled={access.reason.trim().length < 3}>{t("access.open")}</Button>
               <p className="text-caption text-text-2">{t("access.hint")}</p>
             </div>
             {openAccess.data ? <Alert tone="success">{t.rich("access.opened", { until: openAccess.data.expiresAt.slice(11, 16), b: (c) => <Bdi>{c}</Bdi> })}</Alert> : null}
@@ -178,7 +178,7 @@ export function StoreDetail({ storeId }: { storeId: string }) {
         <Card title={t("notes")}>
           <form onSubmit={onNote} className="flex flex-col gap-2">
             <TextArea label={t("addNote")} value={note} maxLength={2000} rows={3} name="note" onChange={(e) => setNote(e.target.value)} />
-            <div><Button type="submit" variant="secondary" busy={addNote.isPending} disabled={!note.trim()}>{t("saveNote")}</Button></div>
+            <div><Button type="submit" variant="secondary" busy={addNote.isPending} as="saving" disabled={!note.trim()}>{t("saveNote")}</Button></div>
           </form>
           <ul className="mt-3 flex flex-col gap-3" data-testid="store-notes">
             {s.notes.map((n) => (

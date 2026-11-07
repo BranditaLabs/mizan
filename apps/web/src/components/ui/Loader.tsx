@@ -33,10 +33,12 @@ export type { WaitMeaning };
 const KIND = WAIT_MOTION;
 
 /**
- * An inline wait next to its own words (a status line, a live mark): the surface picks the loader
- * from what is happening, never the screen. loading = pair, syncing between two systems = transfer,
- * saving or sending = drop. Mono and decorative: the line it sits in carries the text (role=status
- * when `live`). `still` shows the end frame (a live mark at rest).
+ * An inline wait next to its own words (a status line, a live mark): the screen names what is
+ * happening, the catalogue picks the loader (WAIT_MOTION). Loading, signing in and checking = pair
+ * (waiting for an answer); syncing two systems and sending something out (a code, a link, a push
+ * to the store or the courier) = transfer; saving and creating = drop (a write in Mizan). Known
+ * progress is FillProgress with a value, never a Waiting. Mono and decorative: the line it sits in
+ * carries the text (role=status when `live`). `still` shows the end frame (a live mark at rest).
  */
 export function Waiting({ meaning = "loading", size = 28, still, live, children, className }: { meaning?: WaitMeaning; size?: number; still?: boolean; live?: boolean; children?: ReactNode; className?: string }) {
   const mark = <MizanLoader kind={KIND[meaning]} size={size} still={still} decorative />;

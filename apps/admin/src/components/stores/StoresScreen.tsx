@@ -12,6 +12,8 @@ import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
 import { StoreStatus } from "./StoreStatus";
+import { PageState } from "@/components/ui/PageState";
+import { BusyLoader, busyKind } from "@/components/ui/BusyLabel";
 
 const PLANS = ["free", "growth", "scale", "enterprise"] as const;
 const STATUSES = ["active", "suspended", "deleted"] as const;
@@ -67,6 +69,9 @@ export function StoresScreen() {
         </Select>
       </div>
       {list.isError ? <Alert tone="danger">{t("loadFailed")}</Alert> : null}
+      {!list.data ? <PageState variant="list" rows={5} /> : null}
+      {/* A new page or filter is being read while the old rows stay: a small PAIR, never a blank table. */}
+      {list.data && list.isPlaceholderData ? <span className="inline-flex items-center gap-2 text-caption text-text-2" role="status"><BusyLoader pending={busyKind("loading")} size={18} /></span> : null}
       <div className="mz-table-wrap">
         <table className="mz-table" data-testid="stores-table">
           <thead>
@@ -93,8 +98,8 @@ export function StoresScreen() {
       </div>
       {list.data && !list.data.data.length ? <p className="text-body-sm text-text-2">{t("empty")}</p> : null}
       <div className="flex gap-2">
-        {offset > 0 ? <Button variant="secondary" onClick={() => setOffset(Math.max(0, offset - PAGE))}>{t("previous")}</Button> : null}
-        {list.data?.nextOffset != null ? <Button variant="secondary" onClick={() => setOffset(list.data!.nextOffset!)}>{t("next")}</Button> : null}
+        {offset > 0 ? <Button variant="secondary" busy={list.isPlaceholderData} as="loading" onClick={() => setOffset(Math.max(0, offset - PAGE))}>{t("previous")}</Button> : null}
+        {list.data?.nextOffset != null ? <Button variant="secondary" busy={list.isPlaceholderData} as="loading" onClick={() => setOffset(list.data!.nextOffset!)}>{t("next")}</Button> : null}
       </div>
     </div>
   );

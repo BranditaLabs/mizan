@@ -278,4 +278,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String lineReceived(int received, int expected) {
     return 'وصل $received من $expected';
   }
+
+  @override
+  String packSynced(String number) {
+    return 'أوردر $number اتقفل ووصل ميزان.';
+  }
+
+  @override
+  String deliverySynced(String number) {
+    return 'تسليم $number وصل ميزان.';
+  }
+
+  @override
+  String get receiveProgress => 'اللي وصل من المطلوب';
 }

@@ -57,7 +57,7 @@ export function CallQueue() {
           <h1 className="font-display text-heading-lg">{t("title")}</h1>
           <p className="mt-1 max-w-[70ch] text-body-sm text-text-2">{t("subtitle")}</p>
         </div>
-        {allowed ? <Button icon="call" busy={next.isPending} onClick={() => next.mutate()}>{current ? t("next") : t("start")}</Button> : null}
+        {allowed ? <Button icon="call" busy={next.isPending} as="checking" onClick={() => next.mutate()}>{current ? t("next") : t("start")}</Button> : null}
       </header>
       {body}
       {/* How confirmation is going (moved here from settings, U4): for the people who run it. */}

@@ -9,6 +9,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Bdi } from "@/components/Bdi";
 import { buttonClass } from "@/components/ui/Button";
 import { DateText } from "@/components/ui/Values";
+import { PageState } from "@/components/ui/QueryState";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useFresh, useSurfaceMounted } from "@/lib/motion/EventMotionProvider";
@@ -118,6 +119,7 @@ export function NotificationBell() {
       {open ? (
         <div id={id} role="region" aria-label={t("title")} className="mz-card absolute end-0 top-11 z-40 w-[min(92vw,380px)] p-0 shadow-overlay" data-testid="notifications">
           <p className="border-b border-line px-4 py-3 text-label">{t("title")}</p>
+          {!q.data ? <PageState query={q} variant="card" compact /> : null}
           {q.data && q.data.data.length === 0 ? <p className="px-4 py-6 text-body-sm text-text-2">{t("empty")}</p> : null}
           <ul className="max-h-[60vh] divide-y divide-line overflow-y-auto">
             {(q.data?.data ?? []).map((n, i) => {

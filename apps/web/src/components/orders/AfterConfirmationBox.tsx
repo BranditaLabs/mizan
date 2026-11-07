@@ -72,8 +72,8 @@ export function AfterConfirmationBox({ orderId, after, onChange }: { orderId: st
       </ul>
       {mayAct && (held || waiting || stopped) ? (
         <ButtonGroup>
-          {held || retrying ? <Button size="sm" variant="secondary" busy={release.isPending} onClick={() => release.mutate()}>{t(held ? "release" : "retry")}</Button> : null}
-          {rel?.autoBook && (waiting || stopped) ? <Button size="sm" variant="ghost" busy={skip.isPending} onClick={() => skip.mutate()}>{t("skip")}</Button> : null}
+          {held || retrying ? <Button size="sm" variant="secondary" busy={release.isPending} as="saving" onClick={() => release.mutate()}>{t(held ? "release" : "retry")}</Button> : null}
+          {rel?.autoBook && (waiting || stopped) ? <Button size="sm" variant="ghost" busy={skip.isPending} as="saving" onClick={() => skip.mutate()}>{t("skip")}</Button> : null}
         </ButtonGroup>
       ) : null}
     </section>

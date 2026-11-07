@@ -157,9 +157,9 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h2 id="kept-title" className="text-body text-rail-text-2">{provisional ? t("kept.provisionalTitle", { days: home.days }) : t("kept.title", { days: home.days })}</h2>
           <p className="flex items-center gap-2 text-caption text-rail-text-2" aria-live="polite">
-            {/* Live: a 10 px mono transfer while the figures refresh, the pair at rest otherwise (never red). */}
+            {/* Live: reading the figures again is a wait for an answer (PAIR), its still frame at rest (never red). */}
             <span className="inline-flex w-4 justify-center" aria-hidden="true">
-              <Waiting meaning="syncing" size={16} still={!fetching} />
+              <Waiting meaning="loading" size={16} still={!fetching} />
             </span>
             {t("live", { time: updated })}
           </p>

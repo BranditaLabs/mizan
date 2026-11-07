@@ -12,6 +12,7 @@ import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { PageState } from "@/components/ui/PageState";
 
 /** A-5: find a person, see their stores, stop or allow their sign-in (super admin). */
 export function UsersScreen() {
@@ -38,6 +39,7 @@ export function UsersScreen() {
       <SearchInput label={t("search")} placeholder={t("search")} value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="grid gap-5 lg:grid-cols-5">
         <div className="mz-table-wrap lg:col-span-3">
+          {!list.data ? <PageState variant="list" rows={5} /> : null}
           <table className="mz-table" data-testid="users-table">
             <thead><tr><th>{t("col.person")}</th><th>{t("col.stores")}</th><th>{t("col.status")}</th><th>{t("col.joined")}</th></tr></thead>
             <tbody>
@@ -76,17 +78,17 @@ export function UsersScreen() {
                 </ul>
                 {can("super_admin") ? (
                   u.disabled ? (
-                    <Button busy={enable.isPending} onClick={() => enable.mutate(u.id)}>{t("enable")}</Button>
+                    <Button busy={enable.isPending} as="saving" onClick={() => enable.mutate(u.id)}>{t("enable")}</Button>
                   ) : (
                     <>
                       <Field label={t("reason")} hint={t("reasonHint")} value={reason} maxLength={500} name="reason" onChange={(e) => setReason(e.target.value)} />
-                      <Button variant="danger" disabled={reason.trim().length < 3} busy={disable.isPending} onClick={() => disable.mutate(u.id)}>{t("disable")}</Button>
+                      <Button variant="danger" disabled={reason.trim().length < 3} busy={disable.isPending} as="saving" onClick={() => disable.mutate(u.id)}>{t("disable")}</Button>
                     </>
                   )
                 ) : null}
               </div>
             </Card>
-          ) : <p className="text-body-sm text-text-2">{t("pick")}</p>}
+          ) : open && detail.isPending ? <PageState variant="card" /> : <p className="text-body-sm text-text-2">{t("pick")}</p>}
         </div>
       </div>
     </div>

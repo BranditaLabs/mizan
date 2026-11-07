@@ -10,6 +10,7 @@ import { Field, Select, TextArea } from "@/components/ui/Field";
 import { When } from "@/components/ui/When";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { PageState } from "@/components/ui/PageState";
 
 const TONE: Record<string, BadgeTone> = { info: "info", warning: "warning", critical: "danger" };
 const empty = { level: "info" as "info" | "warning" | "critical", titleAr: "", titleEn: "", bodyAr: "", bodyEn: "", link: "", hours: "24", countries: "" };
@@ -59,9 +60,10 @@ export function AnnouncementsScreen() {
           </Select>
           <Field label={t("link")} ltr placeholder="https://" value={d.link} name="link" onChange={(e) => setD({ ...d, link: e.target.value })} />
           <Field label={t("countries")} hint={t("countriesHint")} ltr value={d.countries} name="countries" onChange={(e) => setD({ ...d, countries: e.target.value })} />
-          <div className="md:col-span-2"><Button type="submit" busy={create.isPending} disabled={!d.titleAr.trim() || !d.titleEn.trim()}>{t("post")}</Button></div>
+          <div className="md:col-span-2"><Button type="submit" busy={create.isPending} as="saving" disabled={!d.titleAr.trim() || !d.titleEn.trim()}>{t("post")}</Button></div>
         </form>
       ) : null}
+      {!q.data ? <PageState variant="list" rows={3} /> : null}
       <ul className="flex flex-col gap-3" data-testid="announcements-list">
         {(q.data?.data ?? []).map((a) => (
           <li key={a.id} className="rounded-lg border border-line bg-surface p-4">
@@ -73,7 +75,7 @@ export function AnnouncementsScreen() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge tone={TONE[a.level] ?? "neutral"}>{t(`levels.${a.level}`)}</Badge>
-                {editable && live(a.endsAt) ? <Button size="sm" variant="secondary" onClick={() => end.mutate(a.id)}>{t("end")}</Button> : null}
+                {editable && live(a.endsAt) ? <Button size="sm" variant="secondary" busy={end.isPending && end.variables === a.id} as="saving" onClick={() => end.mutate(a.id)}>{t("end")}</Button> : null}
               </div>
             </div>
           </li>

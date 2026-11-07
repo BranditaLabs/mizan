@@ -9,6 +9,7 @@ import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { PageState } from "@/components/ui/PageState";
 
 /**
  * A-3: my open support access. Inside a store, the dashboard (apps/web) is where the work happens:
@@ -30,6 +31,7 @@ export function AccessScreen() {
         <h1 className="font-display text-heading-lg">{t("title")}</h1>
         <p className="text-body-sm text-text-2">{t("subtitle")}</p>
       </header>
+      {!q.data ? <PageState variant="list" rows={2} /> : null}
       {q.data && !grants.length ? <p className="text-body-sm text-text-2">{t("none")}</p> : null}
       <ul className="flex flex-col gap-3" data-testid="my-access">
         {grants.map((g) => (
@@ -41,7 +43,7 @@ export function AccessScreen() {
             </div>
             <div className="flex items-center gap-2">
               <Badge tone={g.mode === "write" ? "warning" : "info"}>{t(`mode.${g.mode}`)}</Badge>
-              <Button variant="secondary" busy={end.isPending && end.variables === g.storeId} onClick={() => end.mutate(g.storeId)}>{t("end")}</Button>
+              <Button variant="secondary" busy={end.isPending && end.variables === g.storeId} as="saving" onClick={() => end.mutate(g.storeId)}>{t("end")}</Button>
             </div>
           </li>
         ))}

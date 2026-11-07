@@ -4,6 +4,7 @@ import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFormatter, useTranslations } from "next-intl";
 import { ok } from "@/lib/api/client";
+import { Waiting } from "@/components/ui/Loader";
 import { useSession } from "@/lib/session";
 
 const ENDERS = rolesWith("support.end");
@@ -46,7 +47,10 @@ export function SupportBanner() {
             })}
           </span>
           {ENDERS.has(store.role) && (
-            <button type="button" className="ms-auto font-medium underline disabled:opacity-60" disabled={end.isPending} onClick={() => end.mutate(g.id)}>{t("end")}</button>
+            <button type="button" className="ms-auto inline-flex items-center gap-1.5 font-medium underline disabled:opacity-60" disabled={end.isPending} aria-busy={(end.isPending && end.variables === g.id) || undefined} onClick={() => end.mutate(g.id)}>
+              {end.isPending && end.variables === g.id ? <Waiting meaning="saving" size={16} /> : null}
+              {t("end")}
+            </button>
           )}
         </p>
       ))}

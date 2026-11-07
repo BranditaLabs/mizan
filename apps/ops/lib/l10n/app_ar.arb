@@ -68,5 +68,8 @@
   "syncing": "بنزامن…",
   "packProgress": "التغليف ماشي لحد فين",
   "pickListProgress": "الأوردرات اللي اتغلّفت",
-  "lineReceived": "وصل {received} من {expected}"
+  "lineReceived": "وصل {received} من {expected}",
+  "packSynced": "أوردر {number} اتقفل ووصل ميزان.",
+  "deliverySynced": "تسليم {number} وصل ميزان.",
+  "receiveProgress": "اللي وصل من المطلوب"
 }

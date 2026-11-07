@@ -95,9 +95,9 @@ export function ConfirmPage({ token }: { token: string }) {
 
       {mode === "main" ? (
         <div className="flex flex-col gap-3">
-          <Button size="lg" icon="confirm" busy={answer.isPending && answer.variables?.answer === "confirm"} onClick={() => send({ answer: "confirm" })}>{t("confirm")}</Button>
+          <Button size="lg" icon="confirm" busy={answer.isPending && answer.variables?.answer === "confirm"} as="saving" onClick={() => send({ answer: "confirm" })}>{t("confirm")}</Button>
           {!v.hasLocation ? (
-            <Button variant="secondary" icon="pin" busy={locating === "asking"} disabled={Boolean(location)} onClick={shareLocation}>
+            <Button variant="secondary" icon="pin" busy={locating === "asking"} as="checking" disabled={Boolean(location)} onClick={shareLocation}>
               {location ? t("location.added") : t("location.share")}
             </Button>
           ) : null}
@@ -110,7 +110,7 @@ export function ConfirmPage({ token }: { token: string }) {
       ) : mode === "change" ? (
         <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (note.trim()) send({ answer: "change", note: note.trim() }); }}>
           <TextArea label={t("changeLabel")} hint={t("changeHint")} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={3} />
-          <Button type="submit" busy={answer.isPending} disabled={!note.trim()}>{t("sendChange")}</Button>
+          <Button type="submit" busy={answer.isPending} as="saving" disabled={!note.trim()}>{t("sendChange")}</Button>
           <Button variant="ghost" onClick={() => setMode("main")}>{t("back")}</Button>
         </form>
       ) : (
@@ -118,7 +118,7 @@ export function ConfirmPage({ token }: { token: string }) {
           <Select label={t("reasonLabel")} value={reason} onChange={(e) => setReason(e.target.value as Reason)}>
             {REASONS.map((r) => <option key={r} value={r}>{t(`reasons.${r}`)}</option>)}
           </Select>
-          <Button type="submit" variant="danger" busy={answer.isPending}>{t("sendCancel")}</Button>
+          <Button type="submit" variant="danger" busy={answer.isPending} as="saving">{t("sendCancel")}</Button>
           <Button variant="ghost" onClick={() => setMode("main")}>{t("back")}</Button>
         </form>
       )}

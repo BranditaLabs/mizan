@@ -101,7 +101,7 @@ export function Welcome() {
                     {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium", numberingSystem: "latn" }) })}
                   </p>
                 </div>
-                <Button variant="secondary" busy={busy === inv.id} disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>
+                <Button variant="secondary" busy={busy === inv.id} as="saving" disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>
               </li>
             ))}
           </ul>
@@ -125,7 +125,7 @@ export function Welcome() {
           <Checkbox required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="accept-legal"
             label={<span className="text-body-sm">{tl.rich("agree", { terms: (c) => <LegalLink doc="terms">{c}</LegalLink>, dpa: (c) => <LegalLink doc="dpa">{c}</LegalLink> })}</span>} />
           {versionChanged ? <Alert tone="warning">{tl("versionChanged")}</Alert> : createError ? <Alert tone="danger">{t(`errors.${createError}`)}</Alert> : null}
-          <Button type="submit" size="lg" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2 || !agreed}>{t("create.submit")}</Button>
+          <Button type="submit" size="lg" busy={{ isPending: busy === "create", motion: "tenant.created" }} disabled={busy !== null || name.trim().length < 2 || !agreed}>{t("create.submit")}</Button>
         </form>
       </section>
 

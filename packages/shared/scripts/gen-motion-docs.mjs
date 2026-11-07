@@ -19,9 +19,9 @@ export function renderMotionTable({ EVENT_MOTION }) {
     const outcome = r.variant ? `${r.outcome}; by \`${r.variant.arg}\`: ${branches.map(([b, o]) => `${b} → ${o}`).join(", ")}` : r.outcome;
     const reds = r.variant ? branches.filter(([, o]) => o === "drop").map(([b]) => b) : r.outcome === "drop" ? ["always"] : [];
     const red = reds.length ? `yes (${reds.join(", ")})` : "no";
-    return `| \`${type}\` | ${outcome} | ${r.pending ?? "—"} | ${red} | ${r.surfaces.join(", ") || "—"} |`;
+    return `| \`${type}\` | ${outcome} | ${r.action ?? "—"} | ${r.pending ?? "—"} | ${red} | ${r.surfaces.join(", ") || "—"} |`;
   });
-  return [BEGIN, "| Event | Motion (outcome) | While on its way | Red | Surfaces |", "| --- | --- | --- | --- | --- |", ...rows, END].join("\n");
+  return [BEGIN, "| Event | Motion (outcome) | Action | While on its way | Red | Surfaces |", "| --- | --- | --- | --- | --- | --- |", ...rows, END].join("\n");
 }
 
 /** The docs file with its table replaced. */

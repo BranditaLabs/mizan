@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/Choice";
 import { Field } from "@/components/ui/Field";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { PageState } from "@/components/ui/PageState";
+import { BusyLoader, busyKind } from "@/components/ui/BusyLabel";
 
 /** A-6: flags for everyone and per store (a store's own setting wins). Super admins and engineers change them. */
 export function FlagsScreen() {
@@ -41,9 +43,10 @@ export function FlagsScreen() {
         <form onSubmit={onCreate} className="grid gap-3 rounded-lg border border-line bg-surface p-4 md:grid-cols-3" noValidate>
           <Field label={t("key")} hint={t("keyHint")} ltr value={draft.key} name="key" onChange={(e) => setDraft({ ...draft, key: e.target.value })} />
           <Field label={t("description")} value={draft.description} maxLength={500} name="description" onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
-          <div className="flex items-end"><Button type="submit" variant="secondary" busy={put.isPending} disabled={!/^[a-z][a-z0-9_.]{2,60}$/.test(draft.key.trim())}>{t("create")}</Button></div>
+          <div className="flex items-end"><Button type="submit" variant="secondary" busy={put.isPending && put.variables?.description !== undefined} as="creating" disabled={!/^[a-z][a-z0-9_.]{2,60}$/.test(draft.key.trim())}>{t("create")}</Button></div>
         </form>
       ) : null}
+      {!q.data ? <PageState variant="list" rows={3} /> : null}
       <ul className="flex flex-col gap-3" data-testid="flags">
         {(q.data?.data ?? []).map((f) => (
           <li key={f.key} className="rounded-lg border border-line bg-surface p-4">
@@ -53,23 +56,24 @@ export function FlagsScreen() {
                 {f.description ? <p className="text-body-sm text-text-2">{f.description}</p> : null}
               </div>
               <div className="flex items-center gap-3">
-                <Switch label={t("everyone")} checked={f.enabled} disabled={!editable} onChange={(e) => put.mutate({ key: f.key, enabled: e.target.checked })} />
-                {editable ? <Button size="sm" variant="ghost" onClick={() => remove.mutate(f.key)}>{t("delete")}</Button> : null}
+                <Switch label={t("everyone")} checked={f.enabled} disabled={!editable || (put.isPending && put.variables?.key === f.key)} aria-busy={(put.isPending && put.variables?.key === f.key && put.variables.description === undefined) || undefined} onChange={(e) => put.mutate({ key: f.key, enabled: e.target.checked })} />
+                {put.isPending && put.variables?.key === f.key && put.variables.description === undefined ? <BusyLoader pending={busyKind("saving")} size={18} /> : null}
+                {editable ? <Button size="sm" variant="ghost" busy={remove.isPending && remove.variables === f.key} as="saving" onClick={() => remove.mutate(f.key)}>{t("delete")}</Button> : null}
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {f.stores.map((s) => (
                 <span key={s.storeId} className="inline-flex items-center gap-1">
                   <Badge tone={s.enabled ? "success" : "neutral"}>{t(s.enabled ? "storeOn" : "storeOff", { store: s.storeName })}</Badge>
-                  {editable ? <Button size="sm" variant="ghost" onClick={() => clearStore.mutate({ key: f.key, storeId: s.storeId })}>{t("clear")}</Button> : null}
+                  {editable ? <Button size="sm" variant="ghost" busy={clearStore.isPending && clearStore.variables?.key === f.key && clearStore.variables.storeId === s.storeId} as="saving" onClick={() => clearStore.mutate({ key: f.key, storeId: s.storeId })}>{t("clear")}</Button> : null}
                 </span>
               ))}
             </div>
             {editable ? (
               <div className="mt-3 flex flex-wrap items-end gap-2">
                 <Field label={t("storeId")} ltr value={storeFor[f.key] ?? ""} name={`store-${f.key}`} onChange={(e) => setStoreFor({ ...storeFor, [f.key]: e.target.value })} />
-                <Button size="sm" variant="secondary" disabled={!(storeFor[f.key] ?? "").trim()} onClick={() => putStore.mutate({ key: f.key, storeId: storeFor[f.key]!.trim(), enabled: true })}>{t("onForStore")}</Button>
-                <Button size="sm" variant="secondary" disabled={!(storeFor[f.key] ?? "").trim()} onClick={() => putStore.mutate({ key: f.key, storeId: storeFor[f.key]!.trim(), enabled: false })}>{t("offForStore")}</Button>
+                <Button size="sm" variant="secondary" busy={putStore.isPending && putStore.variables?.key === f.key && putStore.variables.enabled} as="saving" disabled={!(storeFor[f.key] ?? "").trim()} onClick={() => putStore.mutate({ key: f.key, storeId: storeFor[f.key]!.trim(), enabled: true })}>{t("onForStore")}</Button>
+                <Button size="sm" variant="secondary" busy={putStore.isPending && putStore.variables?.key === f.key && !putStore.variables.enabled} as="saving" disabled={!(storeFor[f.key] ?? "").trim()} onClick={() => putStore.mutate({ key: f.key, storeId: storeFor[f.key]!.trim(), enabled: false })}>{t("offForStore")}</Button>
               </div>
             ) : null}
           </li>

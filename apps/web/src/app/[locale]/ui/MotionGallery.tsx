@@ -2,7 +2,7 @@
 
 import { forceReduced, type MotionDispatch } from "@mizan/design-system/motion";
 import { DoneState, EventGlyph, MizanLoader } from "@mizan/design-system/react/motion";
-import { EVENT_MOTION, OUTCOMES, SURFACES, type Outcome } from "@mizan/shared/motion";
+import { EVENT_MOTION, OUTCOMES, SURFACES, WAIT_ACTION, type Outcome, type WaitMeaning } from "@mizan/shared/motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
 import { Bdi } from "@/components/Bdi";
@@ -15,6 +15,8 @@ import { useEventMotion } from "@/lib/motion/EventMotionProvider";
 import { useBrandCopy } from "@/lib/motion/useBrandCopy";
 
 const KINDS = ["pair", "transfer", "drop", "fill", "level"] as const;
+/** One busy sample per meaning (WAIT_ACTION): screens name what the press does, the loader follows. */
+const MEANINGS = Object.keys(WAIT_ACTION) as WaitMeaning[];
 const EVENTS = Object.keys(EVENT_MOTION).sort();
 const DEV = process.env.NODE_ENV !== "production";
 
@@ -77,7 +79,9 @@ export function MotionGallery() {
           <Panel key={String(ink)} ink={ink}>
             {KINDS.map((k) => (
               <figure key={k} className="flex flex-col items-center gap-2">
-                <MizanLoader kind={k} size={k === "fill" ? 180 : 96} value={k === "fill" ? fill : undefined} label={t(`kind.${k}`)} valueText={copy.loader.percent(Math.round(fill * 100))} tone={!ink && k === "pair" ? "brand" : "mono"} />
+                {k === "fill"
+                  ? <MizanLoader kind="fill" size={180} value={fill} label={t(`kind.${k}`)} valueText={copy.loader.percent(Math.round(fill * 100))} />
+                  : <MizanLoader kind={k} size={96} label={t(`kind.${k}`)} tone={!ink && k === "pair" ? "brand" : "mono"} />}
                 <figcaption className="text-caption opacity-70">{t(`kind.${k}`)}</figcaption>
               </figure>
             ))}
@@ -106,12 +110,15 @@ export function MotionGallery() {
       </Panel>
 
       <h3 className="text-heading-sm">{t("buttons")}</h3>
-      <ButtonGroup>
-        <Button busy pending="drop">{t("kind.drop")}</Button>
-        <Button busy pending="transfer" variant="secondary">{t("kind.transfer")}</Button>
-        <Button busy pending="fill" variant="secondary">{t("kind.fill")}</Button>
-        <Button busy pending="pair" variant="ghost">{t("kind.pair")}</Button>
-      </ButtonGroup>
+      <p className="text-body-sm text-text-2">{t("buttonsBody")}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="gallery-busy-meanings">
+        {MEANINGS.map((m) => (
+          <figure key={m} className="flex flex-col items-start gap-2" data-meaning={m}>
+            <Button busy as={m} variant={m === "saving" || m === "creating" ? "primary" : "secondary"}>{t(`meaning.${m}`)}</Button>
+            <figcaption className="text-caption text-text-3">{t(`meaning.${m}`)}</figcaption>
+          </figure>
+        ))}
+      </div>
 
       <h3 className="text-heading-sm">{t("outcomes")}</h3>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7" key={replay}>

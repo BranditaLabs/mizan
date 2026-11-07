@@ -143,7 +143,7 @@ export function OrdersScreen({ initialStatus, initialQuery, initialFilters = {} 
   const importing = imports.data?.data.find((x) => x.import?.status === "running")?.import;
   const filtered = FILTER_KEYS.some((k) => filters[k]);
   const empty = q || filtered ? <EmptyState icon="search" title={t("noMatch.title")} body={t("noMatch.body")} />
-    : counts?.all === 0 && importing ? <EmptyState icon="sync" title={t("importing.title")} body={t("importing.body", { orders: importing.orders })} />
+    : counts?.all === 0 && importing ? <EmptyState icon="sync" wait="syncing" title={t("importing.title")} body={t("importing.body", { orders: importing.orders })} />
     : counts?.all === 0 ? (
       <EmptyState icon="orders" title={t("empty.title")} body={t("empty.body")}
         action={canSetUp ? <Link href="/onboarding" className={buttonClass("primary")}>{t("empty.cta")}</Link> : undefined} />
@@ -185,7 +185,7 @@ export function OrdersScreen({ initialStatus, initialQuery, initialFilters = {} 
             </MotionSurface>
             {orders.hasNextPage ? (
               <div className="flex justify-center">
-                <Button variant="secondary" busy={orders.isFetchingNextPage} onClick={() => void orders.fetchNextPage()}>{t("more")}</Button>
+                <Button variant="secondary" busy={orders.isFetchingNextPage} as="loading" onClick={() => void orders.fetchNextPage()}>{t("more")}</Button>
               </div>
             ) : null}
           </div>

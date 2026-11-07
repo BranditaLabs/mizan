@@ -140,7 +140,7 @@ function WorkOn({ ticket }: { ticket: Ticket }) {
           {people.map((p) => <option key={p.id} value={p.id}>{p.name ?? t("member")}</option>)}
         </Select>
         {save.isError ? <Alert tone="danger">{save.error instanceof ApiError && save.error.code === "ticket_closed" ? t("closedHint") : problemText(save.error, tpr)}</Alert> : null}
-        <Button type="submit" busy={save.isPending} disabled={!changed}>{t("save")}</Button>
+        <Button type="submit" busy={save.isPending} as="saving" disabled={!changed}>{t("save")}</Button>
       </form>
     </Card>
   );
@@ -161,7 +161,7 @@ function AddNote({ id }: { id: string }) {
     <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); if (note.trim()) add.mutate(); }}>
       <TextArea label={t("noteLabel")} hint={t("noteHint")} maxLength={2000} rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       {add.isError ? <Alert tone="danger">{problemText(add.error, tpr)}</Alert> : null}
-      <div><Button type="submit" variant="secondary" size="sm" busy={add.isPending} disabled={!note.trim()}>{t("addNote")}</Button></div>
+      <div><Button type="submit" variant="secondary" size="sm" busy={add.isPending} as="saving" disabled={!note.trim()}>{t("addNote")}</Button></div>
     </form>
   );
 }

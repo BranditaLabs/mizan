@@ -112,7 +112,7 @@ export function HealthScreen() {
                     <td><span className="inline-flex items-center gap-2"><EventGlyph outcome={DEAD} size={14} static label={t("deadGlyph")} /><Link href={`/stores/${j.storeId}`} className="underline-offset-2 hover:underline">{j.storeName}</Link></span></td>
                     <td><Bdi code>{j.kind}</Bdi></td><td><Bdi>{j.attempts}</Bdi></td>
                     <td className="max-w-xs truncate"><Bdi>{j.error ?? "—"}</Bdi></td><td><When value={j.failedAt} time /></td>
-                    <td><Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} pending="transfer" onClick={() => replay.mutate(j.id)}>{t("replay")}</Button></td>
+                    <td><Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} as="syncing" onClick={() => replay.mutate(j.id)}>{t("replay")}</Button></td>
                   </tr>
                 ))}
               </tbody>

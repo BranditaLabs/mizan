@@ -278,4 +278,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String lineReceived(int received, int expected) {
     return '$received of $expected received';
   }
+
+  @override
+  String packSynced(String number) {
+    return 'Order $number packed and in Mizan.';
+  }
+
+  @override
+  String deliverySynced(String number) {
+    return 'Delivery for $number is in Mizan.';
+  }
+
+  @override
+  String get receiveProgress => 'Received of expected';
 }

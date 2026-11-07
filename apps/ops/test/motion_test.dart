@@ -169,4 +169,29 @@ void main() {
       }
     });
   });
+
+  group('meanings: what each wait and outcome is (Brand 2.0)', () {
+    test('saved on the phone settles; done waits for Mizan; each op answer has its glyph', () {
+      expect(motionOf('ops.queued').outcome, MotionOutcome.settle);
+      expect(motionOf('order.packed').outcome, MotionOutcome.done);
+      expect(motionOf('stock.received').outcome, MotionOutcome.done);
+      expect(motionOf('ops.op_applied').outcome, MotionOutcome.merge);
+      expect(motionOf('ops.op_conflict').outcome, MotionOutcome.tip);
+      expect(motionOf('ops.op_rejected').outcome, MotionOutcome.fail);
+    });
+
+    test('refresh is two phases: sending the queue transfers, reading the lists pairs', () {
+      expect(motionOf('ops.syncing').pending, MotionPending.transfer);
+      expect(motionOf('ops.loading').pending, MotionPending.pair);
+    });
+
+    test('the catalogue names an action for every pending row, and never fill', () {
+      for (final e in eventMotion.entries) {
+        expect(e.value.pending == null, e.value.action == null, reason: e.key);
+        expect(e.value.pending, isNot(MotionPending.fill), reason: e.key);
+      }
+      expect(eventMotion['order.packed']!.action, MotionAction.write);
+      expect(eventMotion['tenant.created']!.pending, MotionPending.drop);
+    });
+  });
 }
