@@ -136,8 +136,9 @@ describe("dispatcher", () => {
 
   it("a crash after the consumer committed but before the event was marked done does not deliver twice", async () => {
     const { tenantId, eventId } = await newStore("Crash Store B");
-    const [claimed] = await dispatcher.claim(10);
-    expect(claimed!.event.id).toBe(eventId);
+    // Signup's subscription events share tenant.created's timestamp (E12-2a2), so the claim order among them is the ids'.
+    const claimed = (await dispatcher.claim(10)).find((c) => c.event.id === eventId);
+    expect(claimed?.event.type).toBe("tenant.created");
     expect(await dispatcher.process(claimed!.event)).toBeUndefined(); // consumer committed…
     // …and the worker dies here: no finish(). The lease is still held:
     expect(await dispatcher.claim(10)).toEqual([]);
