@@ -153,14 +153,14 @@ function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): 
           <>
             <p className="text-body-sm text-text-2">{po.needsOwner ? t("next.draftOwner") : t("next.draft")}</p>
             {manager ? <Link href={`/purchasing/${po.id}/edit`} className={buttonClass("secondary")}>{t("actions.edit")}</Link> : null}
-            {canApprove ? <Button icon="confirm" busy={act.isPending && act.variables === "approve"} onClick={() => act.mutate("approve")}>{t("actions.approve")}</Button>
+            {canApprove ? <Button icon="confirm" busy={act.isPending && act.variables === "approve"} as="saving" onClick={() => act.mutate("approve")}>{t("actions.approve")}</Button>
               : manager ? <Alert tone="info">{t("needsOwner")}</Alert> : null}
           </>
         ) : null}
         {po.status === "approved" ? (
           <>
             <p className="text-body-sm text-text-2">{t("next.approved")}</p>
-            {manager ? <Button icon="send" variant={RECEIVERS.has(role) ? "secondary" : "primary"} busy={act.isPending && act.variables === "send"} onClick={() => act.mutate("send")}>{t("actions.send")}</Button> : null}
+            {manager ? <Button icon="send" variant={RECEIVERS.has(role) ? "secondary" : "primary"} busy={act.isPending && act.variables === "send"} as="saving" onClick={() => act.mutate("send")}>{t("actions.send")}</Button> : null}
           </>
         ) : null}
         {RECEIVABLE.has(po.status) && po.status !== "approved" ? <p className="text-body-sm text-text-2">{t("next.receive")}</p> : null}
@@ -173,7 +173,7 @@ function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): 
           <div className="flex flex-col gap-2 rounded-md border border-line p-3">
             <p className="text-body-sm">{t("cancelConfirm", { number: po.number })}</p>
             <div className="flex gap-2">
-              <Button variant="danger" size="sm" busy={act.isPending && act.variables === "cancel"} onClick={() => act.mutate("cancel")}>{t("actions.cancelYes")}</Button>
+              <Button variant="danger" size="sm" busy={act.isPending && act.variables === "cancel"} as="saving" onClick={() => act.mutate("cancel")}>{t("actions.cancelYes")}</Button>
               <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>{t("actions.keep")}</Button>
             </div>
           </div>
@@ -215,7 +215,7 @@ function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onC
     <Dialog open onClose={onClose} title={t("receive.title", { number: po.number })} description={t("receive.description")} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!items.length || invalid || (over && !allowOver)} onClick={() => save.mutate()}>{t("receive.save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!items.length || invalid || (over && !allowOver)} onClick={() => save.mutate()}>{t("receive.save")}</Button>
       </>
     )}>
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (items.length && !invalid && (!over || allowOver)) save.mutate(); }}>
@@ -306,7 +306,7 @@ function LandedCosts({ po, role }: { po: Po; role: string }) {
             </Select>
             <TextArea label={t("landed.description")} maxLength={200} rows={1} value={description} onChange={(e) => setDescription(e.target.value)} />
             {add.isError || remove.isError ? <Alert tone="danger">{problemText(add.error ?? remove.error, tpr)}</Alert> : null}
-            <div><Button type="submit" variant="secondary" size="sm" icon="add" busy={add.isPending} disabled={!valid}>{t("landed.add")}</Button></div>
+            <div><Button type="submit" variant="secondary" size="sm" icon="add" busy={add.isPending} as="saving" disabled={!valid}>{t("landed.add")}</Button></div>
           </form>
         ) : null}
       </div>

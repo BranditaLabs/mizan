@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/Surface";
 import { When } from "@/components/ui/When";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
 
 const secs = (s: number) => (s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)}m` : `${(s / 3600).toFixed(1)}h`);
@@ -28,8 +29,10 @@ export function HealthScreen() {
   const { api } = useSession();
   const h = useQuery({ queryKey: ["health"], queryFn: () => ok(api.GET("/v1/platform/health")), refetchInterval: 30_000 });
   const dead = useQuery({ queryKey: ["dead-letters"], queryFn: () => ok(api.GET("/v1/platform/health/dead-letters", { params: { query: { limit: 50 } } })) });
+  const done = useStaffDone();
   const replay = useMutation({
     mutationFn: (id: string) => ok(api.POST("/v1/platform/health/dead-letters/{id}/replay", { params: { path: { id } } })),
+    onSuccess: () => done("deadletter.replayed", t("done.replayed")),
     onSettled: () => { void qc.invalidateQueries({ queryKey: ["dead-letters"] }); void qc.invalidateQueries({ queryKey: ["health"] }); },
   });
   const d = h.data;
@@ -112,7 +115,7 @@ export function HealthScreen() {
                     <td><span className="inline-flex items-center gap-2"><EventGlyph outcome={DEAD} size={14} static label={t("deadGlyph")} /><Link href={`/stores/${j.storeId}`} className="underline-offset-2 hover:underline">{j.storeName}</Link></span></td>
                     <td><Bdi code>{j.kind}</Bdi></td><td><Bdi>{j.attempts}</Bdi></td>
                     <td className="max-w-xs truncate"><Bdi>{j.error ?? "—"}</Bdi></td><td><When value={j.failedAt} time /></td>
-                    <td><Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} pending="transfer" onClick={() => replay.mutate(j.id)}>{t("replay")}</Button></td>
+                    <td><Button size="sm" variant="secondary" busy={replay.isPending && replay.variables === j.id} as="syncing" onClick={() => replay.mutate(j.id)}>{t("replay")}</Button></td>
                   </tr>
                 ))}
               </tbody>

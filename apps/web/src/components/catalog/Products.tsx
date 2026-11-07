@@ -12,7 +12,8 @@ import { Cell, DataTable, IdCell, type Column } from "@/components/ui/DataTable"
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, SearchInput, TextArea } from "@/components/ui/Field";
 import { StatCard } from "@/components/ui/StatCard";
-import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
+import { EmptyState, FillProgress, SkeletonRows } from "@/components/ui/Surface";
+import { useBrandCopy } from "@/lib/motion/useBrandCopy";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { MoneyText } from "@/components/ui/Values";
@@ -53,7 +54,9 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
   const [q, setQ] = useState("");
   const [editing, setEditing] = useState<Row | null>(null);
   const [importing, setImporting] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  /** Export progress: rows read, of the total the list's counts give (null: no total known, e.g. a search). */
+  const [exporting, setExporting] = useState<{ done: number; total: number | null } | null>(null);
+  const copy = useBrandCopy();
   const toast = useToast();
 
   useEffect(() => {
@@ -74,13 +77,15 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
 
   /** The whole list as a sheet (up to 5,000 products): fill the cost column and import it back. */
   const exportCsv = async () => {
-    setExporting(true);
+    const total = q ? null : filter === "all" ? counts?.products ?? null : filter === "cost" ? counts?.missingCost ?? null : counts?.missingBarcode ?? null;
+    setExporting({ done: 0, total });
     try {
       const all: Product[] = [];
       let cursor = "";
       for (let i = 0; i < 50; i++) {
         const page = await ok(api.GET("/v1/products", { params: { query: query(cursor, 100) } }));
         all.push(...page.data);
+        setExporting({ done: all.length, total });
         if (!page.nextCursor) break;
         cursor = page.nextCursor;
       }
@@ -90,7 +95,7 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
     } catch {
       toast({ message: t("exportFailed") });
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -162,7 +167,7 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
           {products.data ? <DataTable label={t("label")} columns={columns} rows={rows} rowKey={(r) => r.variant.id} rowLabel={(r) => r.variant.sku} empty={empty} /> : null}
           {products.hasNextPage ? (
             <div className="flex justify-center">
-              <Button variant="secondary" busy={products.isFetchingNextPage} onClick={() => void products.fetchNextPage()}>{t("more")}</Button>
+              <Button variant="secondary" busy={products.isFetchingNextPage} as="loading" onClick={() => void products.fetchNextPage()}>{t("more")}</Button>
             </div>
           ) : null}
           <p className="text-caption text-text-3">{t("ownership")}</p>
@@ -173,7 +178,10 @@ export function Products({ initialFilter = "all" }: { initialFilter?: Filter } =
     </>,
     <ButtonGroup>
       {PRODUCT_EDITORS.has(store?.role ?? "") ? <Link href="/products/new" className={buttonClass("primary")}><Icon name="add" size={16} />{t("newProduct.open")}</Link> : null}
-      <Button variant="secondary" icon="download" busy={exporting} pending="fill" disabled={!counts?.products} onClick={() => void exportCsv()}>{t("download")}</Button>
+      {/* One wait, one loader: a PAIR on the button only until a total is known (a search); with a
+          total the FillProgress beside it is the wait, and the button just holds still. */}
+      <Button variant="secondary" icon="download" busy={exporting !== null && !exporting.total} as="loading" disabled={!counts?.products || Boolean(exporting?.total)} aria-busy={exporting !== null || undefined} onClick={() => void exportCsv()}>{t("download")}</Button>
+      {exporting?.total ? <FillProgress value={(Math.min(exporting.done, exporting.total) / exporting.total) * 100} label={t("download")} valueText={copy.loader.progress(Math.min(exporting.done, exporting.total), exporting.total)} width={140} /> : null}
       <Button icon="upload" onClick={() => setImporting(true)}>{t("import.open")}</Button>
     </ButtonGroup>,
   );
@@ -205,7 +213,7 @@ export function EditVariant({ row, onClose }: { row: EditRow; onClose(): void })
     <Dialog open onClose={onClose} title={t("title", { sku: variant.sku })} description={[product.title, variant.title].filter(Boolean).join(" · ")}
       footer={(
         <ButtonGroup>
-          <Button busy={save.isPending} disabled={!costOk || !barcodeOk || Object.keys(body).length === 0} onClick={() => save.mutate(body)}>{t("save")}</Button>
+          <Button busy={save.isPending} as="saving" disabled={!costOk || !barcodeOk || Object.keys(body).length === 0} onClick={() => save.mutate(body)}>{t("save")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>
@@ -215,7 +223,7 @@ export function EditVariant({ row, onClose }: { row: EditRow; onClose(): void })
         <Field label={t("barcode")} hint={variant.barcodeOwner === "mizan" ? t("barcodeMizan") : t("barcodeStore")} ltr value={barcode}
           onChange={(e) => setBarcode(e.target.value)} error={!barcodeOk ? t("barcodeInvalid") : taken ? t("barcodeTaken") : null} />
         {variant.barcodeOwner === "mizan" ? (
-          <div><Button size="sm" variant="ghost" busy={save.isPending} onClick={() => save.mutate({ barcode: null })}>{t("useStore")}</Button></div>
+          <div><Button size="sm" variant="ghost" busy={save.isPending} as="saving" onClick={() => save.mutate({ barcode: null })}>{t("useStore")}</Button></div>
         ) : null}
         <p className="text-caption text-text-3">{t("storeFields")}</p>
       </div>
@@ -246,7 +254,7 @@ function ImportCosts({ open, onClose }: { open: boolean; onClose(): void }) {
     <Dialog open={open} onClose={onClose} title={t("title")} description={t("body")}
       footer={(
         <ButtonGroup>
-          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button>
+          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} as="saving" onClick={() => run.mutate()}>{t("run")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>

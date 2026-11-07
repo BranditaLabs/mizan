@@ -2,7 +2,8 @@
 
 import { resendWait } from "@mizan/design-system/auth-code";
 import {
-  announce, BackButton, CodeField, FormAlert, PasswordField, PrimaryCta, ResendTimer, StepHeader, StepHost, SuccessMark, TextField,
+  announce, AuthProgress, BackButton, CodeField, FormAlert, PasswordField, PrimaryCta, ResendTimer, StepHeader, StepHost, SuccessMark, TextField,
+  type AuthWait,
 } from "@mizan/design-system/auth/react";
 import {
   getMultiFactorResolver, PhoneAuthProvider, PhoneMultiFactorGenerator, signInWithEmailAndPassword,
@@ -20,6 +21,8 @@ import { useSession } from "@/lib/session";
 /** The reCAPTCHA container: a direct child of the staff frame (StaffFrame), outside the animated steps. */
 const RECAPTCHA = "sms-verifier";
 type Mfa = { resolver: MultiFactorResolver; verificationId: string; hint: string; phone: PhoneMultiFactorInfo };
+/** The control whose press is running (only it animates; the others are aria-disabled). */
+type BusyKey = "primary" | "resend";
 
 /**
  * Staff sign-in (AU-1, auth spec §2.16) on the shared auth kit: the same Mizan account as the
@@ -30,6 +33,7 @@ type Mfa = { resolver: MultiFactorResolver; verificationId: string; hint: string
  */
 export function SignIn() {
   const t = useTranslations("auth");
+  const tl = useTranslations("motion.loader");
   const router = useRouter();
   const { status } = useSession();
   const auth = firebaseAuth();
@@ -38,7 +42,9 @@ export function SignIn() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [mfa, setMfa] = useState<Mfa | null>(null);
-  const [busy, setBusy] = useState(false);
+  // One control, one busy: the running press and what it is doing now (signing in, then sending the SMS).
+  const [busy, setBusy] = useState<BusyKey | null>(null);
+  const [phase, setPhase] = useState<AuthWait | null>(null);
   const [error, setError] = useState<{ key: AuthErrorKey; at: number } | null>(null);
   const [fieldError, setFieldError] = useState<{ email?: AuthErrorKey; password?: AuthErrorKey; code?: AuthErrorKey }>({});
   const [sends, setSends] = useState({ count: 0, at: 0, just: false });
@@ -60,10 +66,13 @@ export function SignIn() {
   }, [error?.key, error?.at]);
 
   if (!auth) return <FormAlert tone="warning" focusOnShow={false}>{t("notConfigured")}</FormAlert>;
+  // The session is still being read: a wait for an answer (PAIR), never the form flashing in.
+  if (status === "loading") return <div className="grid place-items-center py-10" data-testid="staff-session-loading"><AuthProgress kind="loading" size={56} label={tl("loading")} /></div>;
 
-  async function run(work: () => Promise<void>) {
+  async function run(work: () => Promise<void>, key: BusyKey = "primary") {
     if (busy) return;
-    setBusy(true);
+    setBusy(key);
+    setPhase(null);
     setError(null);
     setFieldError({});
     try {
@@ -72,7 +81,8 @@ export function SignIn() {
       setError({ key: authErrorKey(e), at: Date.now() });
       staffStage.signal("error");
     } finally {
-      setBusy(false);
+      setBusy(null);
+      setPhase(null);
     }
   }
 
@@ -96,6 +106,8 @@ export function SignIn() {
         const resolver = getMultiFactorResolver(auth, err as MultiFactorError);
         const hint = resolver.hints.find((h) => h.factorId === PhoneMultiFactorGenerator.FACTOR_ID) as PhoneMultiFactorInfo | undefined;
         if (!hint) throw Object.assign(new Error("mfa"), { code: "auth/unsupported-first-factor" });
+        // The password passed: the press now sends the SMS code out (TRANSFER).
+        setPhase("sending");
         const verificationId = await sendCode(resolver, hint);
         setCode("");
         setSends({ count: 1, at: Date.now(), just: false });
@@ -120,7 +132,7 @@ export function SignIn() {
     setCode("");
     setSends((s) => ({ count: s.count + 1, at: Date.now(), just: true }));
     announce(t("codeResent"));
-  });
+  }, "resend");
 
   // A refused code or password puts focus in its field (value selected); role=alert still announces the message.
   const fieldTakesFocus = error?.key === "invalidCode" || error?.key === "invalidCredential";
@@ -136,16 +148,16 @@ export function SignIn() {
         <>
           <BackButton label={t("back")} onClick={() => { setMfa(null); setError(null); }} />
           <StepHeader id={headingId} icon="locked" title={t("mfa.title")} body={<span id={`${headingId}-sent`}>{t.rich("mfa.body", { hint: mfa.hint, n })}</span>} />
-          <form onSubmit={onMfa} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
-            <CodeField label={t("code")} value={code} busy={busy} describedBy={`${headingId}-sent`} invalid={error?.key === "invalidCode"}
+          <form onSubmit={onMfa} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
+            <CodeField label={t("code")} value={code} busy={Boolean(busy)} describedBy={`${headingId}-sent`} invalid={error?.key === "invalidCode"}
               // Each refusal is new (no auto-submit here): the field re-selects its value every time.
               rejected={error?.key === "invalidCode" ? `${error.at}` : null}
               error={fieldError.code ? t(`errors.${fieldError.code}`) : undefined}
               onChange={(v) => { setCode(v); setFieldError({}); }} />
-            <ResendTimer seconds={resendWait(sends.count)} startedAt={sends.at} busy={busy} justSent={sends.just} sentLabel={t("sent")}
+            <ResendTimer seconds={resendWait(sends.count)} startedAt={sends.at} busy={busy === "resend"} justSent={sends.just} sentLabel={t("sent")}
               resendLabel={t("resend")} readyMessage={t("resendReady")} onResend={resend} countdown={(time) => t.rich("resendIn", { time: "", n: () => time })} />
             {alert}
-            <PrimaryCta label={t("mfa.submit")} busy={busy} icon="confirm" />
+            <PrimaryCta label={t("mfa.submit")} busy={busy === "primary"} busyAs="checking" disabled={busy === "resend"} icon="confirm" />
             <p className="mz-auth-note">
               {t.rich("recaptcha", {
                 privacy: (c) => <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">{c}</a>,
@@ -157,18 +169,18 @@ export function SignIn() {
       ) : (
         <>
           <StepHeader id={headingId} kicker={t("kicker")} title={t("title")} body={t("subtitle")} />
-          <form onSubmit={onEmail} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
+          <form onSubmit={onEmail} noValidate aria-labelledby={headingId} aria-busy={Boolean(busy) || undefined}>
             <div className="mz-auth-group">
               <TextField label={t("email")} type="email" name="email" dir="ltr" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username"
-                required aria-required="true" inputRef={emailRef} readOnly={busy} value={email} error={fieldError.email ? t(`errors.${fieldError.email}`) : undefined}
+                required aria-required="true" inputRef={emailRef} readOnly={Boolean(busy)} value={email} error={fieldError.email ? t(`errors.${fieldError.email}`) : undefined}
                 onChange={(e) => { setEmail(e.target.value); setFieldError((f) => ({ ...f, email: undefined })); }} />
-              <PasswordField label={t("password")} name="password" autoComplete="current-password" required aria-required="true" inputRef={passwordRef} readOnly={busy}
+              <PasswordField label={t("password")} name="password" autoComplete="current-password" required aria-required="true" inputRef={passwordRef} readOnly={Boolean(busy)}
                 value={password} showLabel={t("show")} hideLabel={t("hide")} capsLabel={t("capsLock")}
                 error={fieldError.password ? t(`errors.${fieldError.password}`) : undefined}
                 onChange={(e) => { setPassword(e.target.value); setFieldError((f) => ({ ...f, password: undefined })); }} />
             </div>
             {alert}
-            <PrimaryCta label={t("signIn")} busy={busy} />
+            <PrimaryCta label={t("signIn")} busy={busy === "primary"} busyAs={phase ?? "signingIn"} />
           </form>
         </>
       )}

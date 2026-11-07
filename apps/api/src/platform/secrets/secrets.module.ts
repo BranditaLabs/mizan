@@ -4,6 +4,7 @@ import { KEY_WRAPPER, LocalKeyWrapper, type KeyWrapper } from "./key-wrapper.js"
 import { KeyVaultKeyWrapper } from "./keyvault-wrapper.js";
 import { SecretsService } from "./secrets.service.js";
 import { PiiCipher } from "../pii/pii-cipher.js";
+import { PlatformSecrets } from "./platform-secrets.js";
 
 /** KEY_VAULT_KEY_ID → Azure Key Vault; else SECRETS_DEV_KEY → local key; else (non-production) an ephemeral key. */
 export function keyWrapperFor(config: AppConfig, logger = new Logger("Secrets"), env: NodeJS.ProcessEnv = process.env): KeyWrapper {
@@ -27,9 +28,10 @@ export class SecretsModule {
       providers: [
         SecretsService,
         PiiCipher,
+        PlatformSecrets,
         wrapper ? { provide: KEY_WRAPPER, useValue: wrapper } : { provide: KEY_WRAPPER, inject: [APP_CONFIG], useFactory: (c: AppConfig) => keyWrapperFor(c) },
       ],
-      exports: [SecretsService, PiiCipher],
+      exports: [SecretsService, PiiCipher, PlatformSecrets],
     };
   }
 }

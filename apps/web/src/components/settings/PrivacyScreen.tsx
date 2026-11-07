@@ -52,7 +52,7 @@ export function PrivacyScreen() {
     { id: "due", header: t("columns.due"), cell: (r) => r.completedAt ? <Cell main={t("completed")} sub={<DateText value={r.completedAt} />} />
       : <span className={Date.parse(r.dueAt) < now ? "text-danger-text" : undefined}><DateText value={r.dueAt} relative now={now} /></span> },
     { id: "export", header: t("columns.export"), cell: (r) => r.hasExport
-      ? <Button size="sm" variant="secondary" icon="download" busy={download.isPending && download.variables === r.id} onClick={() => download.mutate(r.id)}>{t("download")}</Button>
+      ? <Button size="sm" variant="secondary" icon="download" busy={download.isPending && download.variables === r.id} as="checking" onClick={() => download.mutate(r.id)}>{t("download")}</Button>
       : <span className="text-text-3">—</span> },
   ];
   const body = !allowed ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>

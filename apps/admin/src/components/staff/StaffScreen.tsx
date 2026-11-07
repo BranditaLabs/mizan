@@ -8,7 +8,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { ok, type StaffRole } from "@/lib/api/client";
+import { useStaffDone } from "@/lib/motion/staffMotion";
 import { useSession } from "@/lib/session";
+import { PageState } from "@/components/ui/PageState";
+import { BusyLoader, busyKind } from "@/components/ui/BusyLabel";
 
 const ROLES: StaffRole[] = ["super_admin", "support", "finance", "engineer"];
 
@@ -22,9 +25,12 @@ export function StaffScreen() {
   const refresh = () => qc.invalidateQueries({ queryKey: ["staff"] });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<StaffRole>("support");
-  const add = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/staff", { body: { email: email.trim(), role } })), onSuccess: () => { setEmail(""); void refresh(); } });
+  const done = useStaffDone();
+  const add = useMutation({ mutationFn: () => ok(api.POST("/v1/platform/staff", { body: { email: email.trim(), role } })), onSuccess: () => { setEmail(""); void refresh(); done("staff.added", t("done.added")); } });
   const update = useMutation({
     mutationFn: (b: { id: string; role?: StaffRole; status?: "active" | "disabled" }) => ok(api.PATCH("/v1/platform/staff/{id}", { params: { path: { id: b.id } }, body: { ...(b.role ? { role: b.role } : {}), ...(b.status ? { status: b.status } : {}) } })),
+    // Disabling someone takes their access away (done); a role or re-enabling settles (STAFF_MOTION).
+    onSuccess: (_, b) => (b.status === "disabled" ? done("staff.disabled", t("done.disabled")) : b.status === "active" ? done("staff.enabled", t("done.enabled")) : done("staff.role_changed", t("done.roleChanged"))),
     onSettled: refresh,
   });
   const onAdd = (e: FormEvent) => { e.preventDefault(); if (email.trim()) add.mutate(); };
@@ -40,8 +46,9 @@ export function StaffScreen() {
         <Select label={t("role")} value={role} onChange={(e) => setRole(e.target.value as StaffRole)}>
           {ROLES.map((r) => <option key={r} value={r}>{tr(r)}</option>)}
         </Select>
-        <div className="flex items-end"><Button type="submit" variant="secondary" busy={add.isPending} disabled={!email.trim()}>{t("add")}</Button></div>
+        <div className="flex items-end"><Button type="submit" variant="secondary" busy={add.isPending} as="saving" disabled={!email.trim()}>{t("add")}</Button></div>
       </form>
+      {!q.data ? <PageState variant="list" rows={3} /> : null}
       <div className="mz-table-wrap">
         <table className="mz-table" data-testid="staff-table">
           <thead><tr><th>{t("col.person")}</th><th>{t("col.role")}</th><th>{t("col.status")}</th><th /></tr></thead>
@@ -50,14 +57,17 @@ export function StaffScreen() {
               <tr key={s.id}>
                 <td><span className="font-medium">{s.name ?? "—"}</span> <Bdi code>{s.email ?? ""}</Bdi></td>
                 <td>
-                  <Select label={t("role")} value={s.role} disabled={s.id === me?.id} onChange={(e) => update.mutate({ id: s.id, role: e.target.value as StaffRole })}>
-                    {ROLES.map((r) => <option key={r} value={r}>{tr(r)}</option>)}
-                  </Select>
+                  <span className="inline-flex items-end gap-2">
+                    <Select label={t("role")} value={s.role} disabled={s.id === me?.id || (update.isPending && update.variables?.id === s.id)} onChange={(e) => update.mutate({ id: s.id, role: e.target.value as StaffRole })}>
+                      {ROLES.map((r) => <option key={r} value={r}>{tr(r)}</option>)}
+                    </Select>
+                    {update.isPending && update.variables?.id === s.id && update.variables.role ? <span className="pb-2.5"><BusyLoader pending={busyKind("saving")} size={18} /></span> : null}
+                  </span>
                 </td>
                 <td><Badge tone={s.status === "active" ? "success" : "neutral"}>{t(`status.${s.status}`)}</Badge></td>
                 <td>
                   {s.id !== me?.id ? (
-                    <Button size="sm" variant="secondary" onClick={() => update.mutate({ id: s.id, status: s.status === "active" ? "disabled" : "active" })}>
+                    <Button size="sm" variant="secondary" busy={update.isPending && update.variables?.id === s.id && Boolean(update.variables.status)} as="saving" onClick={() => update.mutate({ id: s.id, status: s.status === "active" ? "disabled" : "active" })}>
                       {s.status === "active" ? t("disable") : t("enable")}
                     </Button>
                   ) : null}

@@ -31,7 +31,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const t = useTranslations("shell");
   const router = useRouter();
   const pathname = usePathname();
-  const { status, check, staff, user, can, retry, signOut } = useSession();
+  const { status, check, staff, user, can, retry, fetching, signOut } = useSession();
 
   // Signed out: to sign-in, then back here (`next`, checked again by safeNext there). A deliberate
   // sign-out lands on the bare sign-in page.
@@ -52,7 +52,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <Wordmark />
         <Alert tone={check === "unavailable" ? "warning" : "danger"}>{t(`refused.${check}`)}</Alert>
         <div className="flex gap-2">
-          {check === "unavailable" ? <Button onClick={retry}>{t("retry")}</Button> : null}
+          {check === "unavailable" ? <Button busy={fetching} as="loading" onClick={retry}>{t("retry")}</Button> : null}
           <Button variant="secondary" onClick={out}>{t("signOut")}</Button>
         </div>
       </main>

@@ -8,6 +8,8 @@ import { MoneyText } from "@/components/ui/Values";
 import { Link } from "@/i18n/navigation";
 import { ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { Waiting } from "@/components/ui/Loader";
+import { PageState } from "@/components/ui/QueryState";
 
 /** Method names come from the shared catalogue (X9). */
 const METHODS: ReadonlySet<string> = new Set(PAYMENT_METHOD_SLUGS);
@@ -35,7 +37,8 @@ export function PaymentMix({ days }: { days: 7 | 30 | 90 }) {
     meta: { toast: false },
   });
   const mix = q.data;
-  if (!mix || mix.orders === 0) return null;
+  if (!mix) return <section className="mz-card p-5" data-testid="payment-mix"><PageState query={q} variant="card" compact /></section>;
+  if (mix.orders === 0) return null;
   const modes = [...mix.modes].sort((a, b) => b.orders - a.orders);
   // Each arc starts where the ones before it end.
   const lens = modes.map((m) => (m.orders / mix.orders) * C);
@@ -46,7 +49,7 @@ export function PaymentMix({ days }: { days: 7 | 30 | 90 }) {
   return (
     <section className="mz-card flex flex-col gap-4 p-5" aria-labelledby="mix-title" data-testid="payment-mix">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="mix-title" className="text-heading-sm">{t("title", { days: mix.days })}</h2>
+        <h2 id="mix-title" className="flex items-center gap-2 text-heading-sm">{t("title", { days: mix.days })}{q.isPlaceholderData ? <Waiting meaning="loading" size={18} /> : null}</h2>
         <Link href="/payments" className="text-body-sm text-text-2 hover:underline">{t("open")}</Link>
       </div>
       <div className="grid items-center gap-5 sm:grid-cols-[auto_minmax(0,1fr)] lg:grid-cols-1 2xl:grid-cols-[auto_minmax(0,1fr)]">

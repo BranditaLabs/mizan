@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mizan_ops/main.dart';
+import 'package:mizan_ops/motion/event_glyph.dart';
 import 'package:mizan_ops/sync/op.dart';
 import 'package:mizan_ops/sync/op_store.dart';
 import 'package:mizan_ops/sync/sync_engine.dart';
@@ -53,11 +54,19 @@ void main() {
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pumpAndSettle();
     expect(find.text('Done'), findsOneWidget);
+    expect(find.byKey(const ValueKey('op-glyph-ops.op_applied')), findsOneWidget); // Mizan agreed: merge
+    // A past answer is a still glyph: it never replays when the list opens or reloads.
+    expect(tester.widget<EventGlyph>(find.byKey(const ValueKey('op-glyph-ops.op_applied'))).still, isTrue);
+    expect(find.byKey(const ValueKey('event-snack-ops.syncing')), findsOneWidget); // the sync's own merge
     await count(tester, 'NOPE', '1');
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pumpAndSettle();
     expect(find.text('Not accepted'), findsOneWidget);
     expect(find.text('no item with this SKU'), findsOneWidget);
+    expect(find.byKey(const ValueKey('op-glyph-ops.op_rejected')), findsOneWidget); // refused: fail
+    // The run's own answer: a refusal is an outcome too (fail), not silence.
+    expect(find.byKey(const ValueKey('event-snack-ops.op_rejected')), findsOneWidget);
+    expect(find.text('Synced, but 1 operation was not accepted. See the list.'), findsOneWidget);
     expect(server.calls, 2);
   });
 }

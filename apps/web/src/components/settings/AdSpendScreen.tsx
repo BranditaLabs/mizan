@@ -112,7 +112,7 @@ function AddDay({ baseCurrency, today }: { baseCurrency: string; today: string }
             error={form.amount && !AMOUNT.test(amount) ? t("amountInvalid") : null} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
           <Field label={t("currency")} hint={t("currencyHint")} ltr maxLength={3} value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })} />
         </div>
-        <div><Button type="submit" icon="success" disabled={!valid} busy={save.isPending}>{t("save")}</Button></div>
+        <div><Button type="submit" icon="success" disabled={!valid} busy={save.isPending} as="saving">{t("save")}</Button></div>
       </form>
     </Card>
   );
@@ -160,7 +160,7 @@ function ImportCsv() {
             </ul>
           </Alert>
         ) : null}
-        <div><Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button></div>
+        <div><Button icon="upload" disabled={!csv.trim()} busy={run.isPending} as="saving" onClick={() => run.mutate()}>{t("run")}</Button></div>
       </div>
     </Card>
   );
@@ -209,7 +209,7 @@ function Entries({ list, canEdit }: { list: List; canEdit: boolean }) {
           { id: "source", header: t("source"), cell: (r) => <Badge tone="neutral">{t(`sources.${r.source}`)}</Badge> },
           ...(canEdit ? [{ id: "remove", header: t("actions"), cell: (r: List["data"][number]) => (
             <Button size="sm" variant="ghost" icon="delete" aria-label={t("removeLabel", { day: r.day, platform: tp(r.platform) })}
-              busy={remove.isPending && remove.variables?.day === r.day && remove.variables.platform === r.platform}
+              busy={remove.isPending && remove.variables?.day === r.day && remove.variables.platform === r.platform} as="saving"
               onClick={() => remove.mutate({ day: r.day, platform: r.platform })}>{t("remove")}</Button>
           ) }] : []),
         ]} />

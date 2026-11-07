@@ -12,24 +12,22 @@ import { attrProps, useMotionClock, useSvgId, writeFrame, type PhysicsModule } f
 import { useReducedMotion } from "./useReducedMotion";
 import { useRed } from "./RedBudget";
 
+const warned = new Set<string>();
+const dev = () => { try { return process.env.NODE_ENV !== "production"; } catch { return false; } };
+const warnOnce = (msg: string) => { if (!warned.has(msg)) { warned.add(msg); console.warn(msg); } };
+
 const PHYSICS = { pair, level, transfer, drop, fill } as unknown as Record<LoaderKind, PhysicsModule<unknown, fill.FillInput>>;
 const VIEW: Record<LoaderKind, readonly [number, number]> = { pair: pair.VIEW, level: level.VIEW, transfer: transfer.VIEW, drop: drop.VIEW, fill: fill.VIEW };
 
-export interface MizanLoaderProps {
-  /** What is happening (picked by a surface from the catalogue or state, never by a screen). */
-  kind?: LoaderKind;
+interface LoaderCommon {
   /** Rendered width in px; the height follows the kind's aspect. */
   size?: number;
-  /** fill: progress 0..1 (omit for an indeterminate loop). */
-  value?: number | null;
   /** mono (default): red becomes currentColor. brand: claims the view's one red; refused → mono. */
   tone?: "brand" | "mono";
   /** Inside a busy button or a row: aria-hidden, the host carries the state. */
   decorative?: boolean;
   /** Required unless decorative (role="status" / progressbar / slider label). */
   label?: string;
-  /** fill with a value: the spoken and shown value ("3 of 10", "30%"). */
-  valueText?: string;
   /** Landing hero only (pair, level): the pointer and arrow keys tip the balance. */
   interactive?: boolean;
   /** A list row, a bell item: the still frame, no clock. */
@@ -39,12 +37,24 @@ export interface MizanLoaderProps {
 }
 
 /**
+ * What is happening (picked by a surface from the catalogue or state, never by a screen). FILL is
+ * known progress with a real value: `kind="fill"` requires `value` (0..1) and `valueText` ("3 of
+ * 10", "30%"), so an indeterminate fill is a type error. A wait with no value is pair, transfer or drop.
+ */
+export type MizanLoaderProps = LoaderCommon & (
+  | { kind?: Exclude<LoaderKind, "fill">; value?: undefined; valueText?: undefined }
+  | { kind: "fill"; value: number; valueText: string }
+);
+
+/**
  * <MizanLoader>: the Brand 2.0 loaders as one SSR-safe component. The server renders the still
  * frame as plain SVG; the client hydrates the same markup and then joins the shared clock. Reduced
  * motion shows each kind's deliberate still frame (pair: merged at level, the mark; transfer: equal volumes;
  * drop: at rest on the surface; fill: the width with its value as text; level: centred).
  */
-export function MizanLoader({ kind = "pair", size = 96, value, tone = "mono", decorative, label, valueText, interactive, still, className, style }: MizanLoaderProps) {
+export function MizanLoader(props: MizanLoaderProps) {
+  const { kind = "pair", size = 96, value, tone = "mono", decorative, label, valueText, interactive, still, className, style } = props;
+  if (kind === "fill" && typeof value !== "number" && dev()) warnOnce("[mizan motion] <MizanLoader kind=\"fill\"> needs a real value: an indeterminate wait is pair, transfer or drop");
   const svg = useRef<SVGSVGElement>(null);
   const fid = useSvgId();
   const reduced = useReducedMotion();
@@ -116,7 +126,7 @@ export function MizanLoader({ kind = "pair", size = 96, value, tone = "mono", de
   const status = role === "status";
 
   return (
-    <span className={className} role={status ? "status" : undefined} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4, lineHeight: 0, verticalAlign: "middle", ...style }} data-mz-red={tone === "brand" ? (red ? "on" : "off") : undefined}>
+    <span className={className} role={status ? "status" : undefined} style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 4, lineHeight: 0, verticalAlign: "middle", ...style }} data-loader={kind} data-mz-red={tone === "brand" ? (red ? "on" : "off") : undefined}>
       {status && label ? <span className="mz-sr">{label}</span> : null}
       <svg ref={svg} viewBox={`0 0 ${w} ${h}`} className={kind === "fill" ? "mz-fill-track" : undefined} style={{ width: size, height: "auto", overflow: "visible", display: "block", touchAction: canAim ? "pan-y" : undefined, cursor: canAim ? "ew-resize" : undefined }} {...a11y}>
         <defs>

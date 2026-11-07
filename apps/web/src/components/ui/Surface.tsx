@@ -1,4 +1,6 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
+import type { WaitMeaning } from "@mizan/shared/motion";
+import { Waiting } from "./Loader";
 import { MizanLoader } from "@mizan/design-system/react/motion";
 import type { ReactNode } from "react";
 import { cx, initials, LINK_TARGETS } from "./logic";
@@ -34,10 +36,11 @@ export function KeyValue({ items, className }: { items: ReadonlyArray<{ label: R
 }
 
 /** Empty state (components.md §6): 24px icon, one-line title, one sentence, one action. */
-export function EmptyState({ icon, title, body, action }: { icon: IconProps["name"]; title: ReactNode; body: ReactNode; action?: ReactNode }) {
+export function EmptyState({ icon, title, body, action, wait }: { icon: IconProps["name"]; title: ReactNode; body: ReactNode; action?: ReactNode; wait?: WaitMeaning }) {
   return (
     <div className="mz-empty">
-      <Icon name={icon} size={24} />
+      {/* Something is still on its way (an import running): its loader in place of the icon. */}
+      {wait ? <Waiting meaning={wait} size={32} /> : <Icon name={icon} size={24} />}
       <h3 className="text-text">{title}</h3>
       <p className="max-w-[48ch] text-body-sm">{body}</p>
       {action ? <div className={cx("mt-2", LINK_TARGETS)}>{action}</div> : null}

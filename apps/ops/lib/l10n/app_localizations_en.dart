@@ -278,4 +278,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String lineReceived(int received, int expected) {
     return '$received of $expected received';
   }
+
+  @override
+  String packSynced(String number) {
+    return 'Order $number packed and in Mizan.';
+  }
+
+  @override
+  String deliverySynced(String number) {
+    return 'Delivery for $number is in Mizan.';
+  }
+
+  @override
+  String get receiveProgress => 'Received of expected';
+
+  @override
+  String packConflict(String number, String reason) {
+    return 'Order $number: Mizan kept its own version ($reason).';
+  }
+
+  @override
+  String packRejected(String number, String reason) {
+    return 'Order $number was not accepted: $reason';
+  }
+
+  @override
+  String deliveryConflict(String number, String reason) {
+    return 'Delivery for $number: Mizan kept its own numbers ($reason).';
+  }
+
+  @override
+  String deliveryRejected(String number, String reason) {
+    return 'Delivery for $number was not accepted: $reason';
+  }
+
+  @override
+  String syncedSomeRejected(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced, but $count operations were not accepted. See the list.',
+      one: 'Synced, but 1 operation was not accepted. See the list.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncedSomeConflict(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced. For $count operations Mizan\'s count won. See the list.',
+      one: 'Synced. For 1 operation Mizan\'s count won. See the list.',
+    );
+    return '$_temp0';
+  }
 }

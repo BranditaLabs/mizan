@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
+import { Waiting } from "@/components/ui/Loader";
 import { SaveBar } from "@/components/ui/SaveBar";
 import { Switch } from "@/components/ui/Choice";
 import { Field, Select } from "@/components/ui/Field";
@@ -195,13 +196,13 @@ function WhatsAppConnect({ templates, choice, onChoice }: { templates: Template[
             <Field label={t("token")} hint={t.rich("tokenHint", latin)} ltr type="password" autoComplete="off" required
               value={form.accessToken} onChange={(e) => setForm({ ...form, accessToken: e.target.value })} />
             <ButtonGroup>
-              <Button type="submit" icon="channels" busy={connect.isPending}>{t(wa ? "replace" : "connect")}</Button>
+              <Button type="submit" icon="channels" busy={connect.isPending} as="syncing">{t(wa ? "replace" : "connect")}</Button>
               {wa ? <Button variant="ghost" onClick={() => setEditing(false)}>{t("cancel")}</Button> : null}
             </ButtonGroup>
           </form>
         ) : wa ? (
           <ButtonGroup>
-            {wa.status !== "pending" ? <Button size="sm" variant="secondary" icon="refresh" busy={check.isPending} onClick={() => check.mutate()}>{t("check")}</Button> : null}
+            {wa.status !== "pending" ? <Button size="sm" variant="secondary" icon="refresh" busy={check.isPending} as="syncing" onClick={() => check.mutate()}>{t("check")}</Button> : null}
             {canConnect ? <Button size="sm" variant="ghost" icon="edit" onClick={() => setEditing(true)}>{t("change")}</Button> : null}
           </ButtonGroup>
         ) : failed ? null : <p className="text-body-sm text-text-3">{t("ownerOnly")}</p>}
@@ -249,10 +250,10 @@ function FirstMessage({ templates, choice, onChoice, canSubmit }: { templates: T
               <span className="block font-medium">{t(`variant.${x.variant}`)}</span>
               <bdi dir="ltr" className="mz-num text-caption text-text-3">{x.name}</bdi>
             </span>
-            {x.submitting ? <Badge tone="info">{t("submitting")}</Badge> : <Badge tone={TEMPLATE_TONE[x.status]}>{t(`status.${x.status}`)}</Badge>}
+            {x.submitting ? <Badge tone="info"><Waiting meaning="sending" size={16} />{t("submitting")}</Badge> : <Badge tone={TEMPLATE_TONE[x.status]}>{t(`status.${x.status}`)}</Badge>}
             {x.effective ? <Badge tone="ink">{t("inUse")}</Badge> : null}
             {x.submittable && canSubmit ? (
-              <Button size="sm" variant="secondary" icon="send" busy={submit.isPending && submit.variables === x.variant} onClick={() => submit.mutate(x.variant)}>{t("submit")}</Button>
+              <Button size="sm" variant="secondary" icon="send" busy={submit.isPending && submit.variables === x.variant} as="sending" onClick={() => submit.mutate(x.variant)}>{t("submit")}</Button>
             ) : null}
           </li>
         ))}

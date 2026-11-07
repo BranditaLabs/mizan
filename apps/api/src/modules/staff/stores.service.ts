@@ -9,11 +9,12 @@ import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { scrubText } from "../../platform/logging/redact.js";
 import type { Plan } from "../billing/plans.js";
+import { SubscriptionService } from "../billing/subscription.service.js";
 import type { StoreDetailSchema, StoresQuerySchema } from "./stores.dto.js";
 
 type Trx = Transaction<DB>;
 type Query = z.output<typeof StoresQuerySchema>;
-type Status = "trial" | "active" | "suspended" | "deleted";
+type Status = "active" | "suspended" | "deleted"; // a trial is the subscription's status, not the store's (E12-2a3)
 type UsageRow = { month: Date | string; orders: number; whatsapp_messages: number; ai_offers: number; plan: string };
 
 /**
@@ -28,6 +29,7 @@ export class StoresService {
     @Inject(Database) private readonly db: Database,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(AuthService) private readonly auth: AuthService,
+    @Inject(SubscriptionService) private readonly subscriptions: SubscriptionService,
   ) {}
 
   async list(q: Query) {
@@ -107,11 +109,28 @@ export class StoresService {
     }, reason);
   }
 
-  changePlan(auth: AuthContext, storeId: string, plan: Plan, reason?: string) {
-    return this.change(auth, storeId, "store.plan_changed", (t) => {
+  /**
+   * Staff set a store's plan through the subscription service (E12-2a), never by writing
+   * tenants.plan: the store becomes active on it, comped (no payment path yet), or Free. Runs in the
+   * store's own context (subscriptions are the store's rows); written to its audit log as staff.
+   */
+  async changePlan(auth: AuthContext, storeId: string, plan: Plan, reason?: string) {
+    const out = await this.db.tenant(storeId, async (trx) => {
+      const t = await trx.selectFrom("tenants").select(["id", "plan", "status", "updated_at"]).where("id", "=", storeId).forUpdate().executeTakeFirst();
+      if (!t) throw new ProblemError(404, "not_found", "no such store");
       if (t.status === "deleted") throw new ProblemError(409, "store_deleted", "this store was deleted");
-      return t.plan === plan ? null : { plan };
-    }, reason);
+      const changed = await this.subscriptions.override(trx, storeId, plan, { actor: { type: "mizan_staff", id: auth.staff!.id }, ...(reason ? { reason } : {}) });
+      const row = await trx.selectFrom("tenants").select(["id", "plan", "status", "updated_at"]).where("id", "=", storeId).executeTakeFirstOrThrow();
+      if (changed) {
+        await this.audit.record(trx, {
+          action: "store.plan_changed", tenantId: storeId, actor: { type: "mizan_staff", id: auth.staff!.id }, entity: { type: "store", id: storeId },
+          before: { plan: t.plan }, after: { plan: row.plan, subscription: changed.status, ...(reason ? { reason } : {}) },
+        });
+      }
+      return { id: row.id, plan: row.plan as Plan, status: row.status as Status, updatedAt: row.updated_at.toISOString() };
+    });
+    this.auth.invalidateMembership(storeId);
+    return out;
   }
 
   async addNote(auth: AuthContext, storeId: string, body: string) {
@@ -123,15 +142,15 @@ export class StoresService {
   }
 
   /** One staff change to a store: lock it, apply, and write it to the store's own audit log. null = nothing to change. */
-  private async change(auth: AuthContext, storeId: string, action: "store.suspended" | "store.reactivated" | "store.plan_changed",
-    next: (t: { plan: string; status: string }) => { status?: Status; plan?: Plan } | null, reason?: string) {
+  private async change(auth: AuthContext, storeId: string, action: "store.suspended" | "store.reactivated",
+    next: (t: { plan: string; status: string }) => { status?: Status } | null, reason?: string) {
     const out = await this.db.staff(async (trx) => {
       const t = await this.store(trx, storeId, true);
       const set = next(t);
       if (!set) return { id: t.id, plan: t.plan as Plan, status: t.status as Status, updatedAt: t.updated_at.toISOString() };
       const row = await trx.updateTable("tenants").set({ ...set, updated_at: new Date() }).where("id", "=", storeId)
         .returning(["id", "plan", "status", "updated_at"]).executeTakeFirstOrThrow();
-      const keys = Object.keys(set) as ("status" | "plan")[];
+      const keys = Object.keys(set) as "status"[];
       await this.audit.record(trx, {
         action, tenantId: storeId, actor: { type: "mizan_staff", id: auth.staff!.id }, entity: { type: "store", id: storeId },
         before: Object.fromEntries(keys.map((k) => [k, t[k]])), after: { ...set, ...(reason ? { reason } : {}) },

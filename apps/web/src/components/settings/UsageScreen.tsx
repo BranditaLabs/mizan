@@ -14,6 +14,7 @@ import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
 import { useSession } from "@/lib/session";
+import { TrialCard } from "./TrialCard";
 
 type Usage = Schemas["Usage"];
 type Row = Usage["history"][number];
@@ -59,7 +60,7 @@ function Upgrade({ usage, canAsk }: { usage: Usage; canAsk: boolean }) {
       {usage.upgradeRequest ? (
         <p className="text-body-sm">{t("upgrade.requested", { plan: t(`plan.${usage.upgradeRequest.plan}`) })}{" "}<DateText value={usage.upgradeRequest.at} /></p>
       ) : canAsk ? (
-        <div><Button busy={ask.isPending} onClick={() => ask.mutate()}>{t("upgrade.ask", { plan: t(`plan.${next.plan}`) })}</Button></div>
+        <div><Button busy={ask.isPending} as="saving" onClick={() => ask.mutate()}>{t("upgrade.ask", { plan: t(`plan.${next.plan}`) })}</Button></div>
       ) : <p className="text-body-sm text-text-2">{t("upgrade.ownerOnly")}</p>}
       {ask.isError ? <Alert tone="danger">{problemText(ask.error, tpr)}</Alert> : null}
     </section>
@@ -90,6 +91,7 @@ export function UsageScreen() {
     : !u ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={4} label={t("loading")} /></Pending></div>
     : (
       <>
+        <TrialCard />
         <section className="mz-card flex flex-col gap-4 p-5" data-testid="usage">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-heading-sm">{t("thisMonth", { month: u.month })}</h2>

@@ -12,6 +12,7 @@ import {
 } from "./purchasing.dto.js";
 import { PurchasingService } from "./purchasing.service.js";
 import { ReorderService } from "./reorder.service.js";
+import { Entitled } from "../billing/entitled.js";
 
 
 const SettingsViewSchema = z.object({
@@ -21,6 +22,7 @@ const SettingsViewSchema = z.object({
 
 /** M16 suppliers (M16-1). */
 @ApiTags("purchasing")
+@Entitled("purchasing")
 @Controller("suppliers")
 export class SuppliersController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
@@ -54,6 +56,7 @@ export class SuppliersController {
 
 /** M16 purchase orders and receiving (M16-1). */
 @ApiTags("purchasing")
+@Entitled("purchasing")
 @Controller("purchase-orders")
 export class PurchaseOrdersController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
@@ -132,6 +135,7 @@ export class PurchaseOrdersController {
 
 /** M16-4b reorder suggestions and a draft PO from them. */
 @ApiTags("purchasing")
+@Entitled("purchasing")
 @Controller()
 export class ReorderController {
   constructor(@Inject(ReorderService) private readonly reorder: ReorderService) {}
@@ -156,6 +160,7 @@ export class ReorderController {
 
 /** M16-4a landed costs on a purchase order. */
 @ApiTags("purchasing")
+@Entitled("purchasing")
 @Controller("purchase-orders/:id/landed-costs")
 export class LandedCostsController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}
@@ -180,6 +185,7 @@ export class LandedCostsController {
 
 /** Settings → Purchasing (M16-1). */
 @ApiTags("purchasing")
+@Entitled("purchasing")
 @Controller("settings/purchasing")
 export class PurchasingSettingsController {
   constructor(@Inject(PurchasingService) private readonly purchasing: PurchasingService) {}

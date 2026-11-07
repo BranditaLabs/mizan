@@ -29,7 +29,7 @@ describe("the auth stage is part of the page: a short intro, then still, then it
   });
 
   it("a send is one bounded TRANSFER pass with the catalogue's meaning, then still even if the work goes on", () => {
-    expect(STAGE_WAIT).toBe(WAIT_MOTION.syncing);
+    expect(STAGE_WAIT).toBe(WAIT_MOTION.sending);
     expect(STAGE_WAIT).toBe("transfer");
     expect(BEAT_MS.transfer).toBeLessThanOrEqual(5000);
     const s = run(["introEnd", "send"]);

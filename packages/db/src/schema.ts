@@ -124,6 +124,23 @@ export interface Automations {
   last_run_at: Timestamp | null;
 }
 
+export interface BillingSettings {
+  id: Generated<boolean>;
+  trial_days: Generated<number>;
+  trial_requires_card: Generated<boolean>;
+  end_of_trial: Generated<string>;
+  free_tier_public: Generated<boolean>;
+  self_extend_days: Generated<number>;
+  grace_days: Generated<number>;
+  restricted_days: Generated<number>;
+  locked_preview_days: Generated<number>;
+  reminder_days: Generated<ArrayType<number>>;
+  dunning_retry_days: Generated<ArrayType<number>>;
+  existing_store_policy: Generated<string>;
+  updated_by: string | null;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface BulkActionItems {
   bulk_id: string;
   tenant_id: string;
@@ -250,6 +267,38 @@ export interface CostRules {
   valid_to: Timestamp | null;
   fixed_minor: Int8 | null;
   return_minor: Int8 | null;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+}
+
+export interface CouponInvites {
+  coupon_code: string;
+  tenant_id: string;
+  invited_by: string | null;
+  created_at: Generated<Timestamp>;
+}
+
+export interface CouponRedemptions {
+  coupon_code: string;
+  tenant_id: string;
+  redeemed_at: Generated<Timestamp>;
+}
+
+export interface Coupons {
+  code: string;
+  campaign: string | null;
+  percent_off: number | null;
+  amount_off_minor: Int8 | null;
+  currency: string | null;
+  duration: string;
+  duration_periods: number | null;
+  max_redemptions: number | null;
+  redeemed: Generated<number>;
+  plans: ArrayType<string> | null;
+  by_invitation: Generated<boolean>;
+  agreement_ref: string | null;
+  valid_until: Timestamp | null;
+  active: Generated<boolean>;
   created_by: string | null;
   created_at: Generated<Timestamp>;
 }
@@ -895,6 +944,31 @@ export interface PickLists {
   closed_at: Timestamp | null;
 }
 
+export interface PlanPrices {
+  id: Generated<string>;
+  plan_code: string;
+  kind: string;
+  addon_code: string | null;
+  currency: string;
+  billing_interval: string;
+  amount_minor: Generated<Int8>;
+  included_units: number | null;
+  unit_amount_minor: Int8 | null;
+  country: string | null;
+  valid_from: Generated<Timestamp>;
+  valid_to: Timestamp | null;
+  created_by: string | null;
+  created_at: Generated<Timestamp>;
+}
+
+export interface Plans {
+  code: string;
+  name_ar: string;
+  name_en: string;
+  rank: number;
+  is_public: Generated<boolean>;
+}
+
 export interface PlatformAudit {
   id: Generated<Int8>;
   staff_id: string | null;
@@ -908,6 +982,13 @@ export interface PlatformAudit {
   ip: string | null;
   data: Json | null;
   created_at: Generated<Timestamp>;
+}
+
+export interface PlatformHolidays {
+  country: string;
+  date: Timestamp;
+  name_ar: string;
+  name_en: string;
 }
 
 export interface PlatformStaff {
@@ -1309,6 +1390,56 @@ export interface StoreCreditLedger {
   created_at: Generated<Timestamp>;
 }
 
+export interface SubscriptionEvents {
+  id: Generated<Int8>;
+  tenant_id: string;
+  subscription_id: string;
+  event: string;
+  from_status: string | null;
+  to_status: string;
+  from_plan: string | null;
+  to_plan: string;
+  version: number;
+  actor_type: string;
+  actor_id: string | null;
+  reason: string | null;
+  data: Generated<Json>;
+  at: Generated<Timestamp>;
+}
+
+export interface SubscriptionOverrides {
+  id: Generated<string>;
+  tenant_id: string;
+  key: string;
+  value: Json;
+  reason: string;
+  staff_id: string | null;
+  expires_at: Timestamp | null;
+  created_at: Generated<Timestamp>;
+}
+
+export interface Subscriptions {
+  id: Generated<string>;
+  tenant_id: string;
+  plan_code: string;
+  billing_interval: Generated<string>;
+  status: string;
+  previous_status: string | null;
+  price_id: string | null;
+  currency: string | null;
+  comp_percent: Generated<number>;
+  trial_started_at: Timestamp | null;
+  trial_ends_at: Timestamp | null;
+  current_period_start: Timestamp | null;
+  current_period_end: Timestamp | null;
+  cancel_at_period_end: Generated<boolean>;
+  started_at: Generated<Timestamp>;
+  ended_at: Timestamp | null;
+  version: Generated<number>;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface Suppliers {
   id: Generated<string>;
   tenant_id: string;
@@ -1400,6 +1531,13 @@ export interface Tickets {
   due_at: Timestamp | null;
   closed_at: Timestamp | null;
   updated_at: Generated<Timestamp>;
+}
+
+export interface TrialsUsed {
+  key_hash: string;
+  kind: string;
+  tenant_id: string;
+  claimed_at: Generated<Timestamp>;
 }
 
 export interface UsageMonths {
@@ -1506,6 +1644,7 @@ export interface DB {
   audit_log: AuditLog;
   automation_runs: AutomationRuns;
   automations: Automations;
+  billing_settings: BillingSettings;
   bulk_action_items: BulkActionItems;
   bulk_actions: BulkActions;
   confirmation_runs: ConfirmationRuns;
@@ -1514,6 +1653,9 @@ export interface DB {
   connections: Connections;
   conversations: Conversations;
   cost_rules: CostRules;
+  coupon_invites: CouponInvites;
+  coupon_redemptions: CouponRedemptions;
+  coupons: Coupons;
   customers: Customers;
   disputes: Disputes;
   domain_events: DomainEvents;
@@ -1556,7 +1698,10 @@ export interface DB {
   payments: Payments;
   pick_list_orders: PickListOrders;
   pick_lists: PickLists;
+  plan_prices: PlanPrices;
+  plans: Plans;
   platform_audit: PlatformAudit;
+  platform_holidays: PlatformHolidays;
   platform_staff: PlatformStaff;
   platform_store_notes: PlatformStoreNotes;
   pos_shifts: PosShifts;
@@ -1584,12 +1729,16 @@ export interface DB {
   stock_levels: StockLevels;
   stock_movements: StockMovements;
   store_credit_ledger: StoreCreditLedger;
+  subscription_events: SubscriptionEvents;
+  subscription_overrides: SubscriptionOverrides;
+  subscriptions: Subscriptions;
   suppliers: Suppliers;
   support_access: SupportAccess;
   tax_documents: TaxDocuments;
   tenants: Tenants;
   ticket_events: TicketEvents;
   tickets: Tickets;
+  trials_used: TrialsUsed;
   usage_months: UsageMonths;
   users: Users;
   variants: Variants;

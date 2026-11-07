@@ -324,7 +324,8 @@
       "wrong": "Wrong email? Sign out and start again"
     },
     "doneBody": "Your store is protected.",
-    "codeSentTo": "We texted a code to <n>{phone}</n>."
+    "codeSentTo": "We texted a code to <n>{phone}</n>.",
+    "enabledTitle": "Two-step verification is on"
   },
   "welcome": {
     "title": "Welcome",
@@ -639,10 +640,10 @@
       "reducedOn": "Reduced",
       "reducedOff": "Full motion",
       "loaders": "Loaders, on paper and on ink",
-      "meanings": "Pair: a page or its data is loading. Transfer: syncing or reconciling two systems. Drop: saving, confirming, sending. Fill: known progress. Level: the gallery's spirit level.",
+      "meanings": "Pair: waiting for an answer (a page loading, signing in, checking a code). Transfer: syncing two systems, or sending something out (a code, a link, a push to the store or the courier). Drop: a write in Mizan (save, create, confirm). Fill: known progress, always with its value. Level: the gallery's spirit level.",
       "kind": {
         "pair": "Pair · loading",
-        "transfer": "Transfer · syncing",
+        "transfer": "Transfer · syncing, sending out",
         "drop": "Drop · saving",
         "fill": "Fill · progress",
         "level": "Level"
@@ -708,7 +709,17 @@
       "simulator": "Simulator (development only)",
       "fireOne": "Fire one event",
       "fireAll": "Fire the whole catalogue",
-      "batched": "{count} batched"
+      "batched": "{count} batched",
+      "buttonsBody": "A busy button names what the press does, never an animation: the loader follows the meaning.",
+      "meaning": {
+        "loading": "Loading · pair",
+        "signingIn": "Signing in · pair",
+        "checking": "Checking a code · pair",
+        "syncing": "Syncing · transfer",
+        "sending": "Sending a code · transfer",
+        "saving": "Saving · drop",
+        "creating": "Creating · drop"
+      }
     }
   },
   "problems": {
@@ -5571,6 +5582,25 @@
       "noCourier": "No Bosta connected: automatic booking won't run. <link>Connect a courier</link>"
     }
   },
+  "trial": {
+    "title": "Your plan: {plan}",
+    "daysLeft": "{days, plural, =1 {<n>1</n> day} other {<n>#</n> days}} left in your {plan} trial. After that the store moves to Free, and orders keep coming in as usual.",
+    "lastDay": "Today is the last day of your {plan} trial. Tomorrow the store moves to Free, and orders keep coming in as usual.",
+    "endsOn": "The trial ends:",
+    "after": "No card needed. Payment and subscriptions are coming soon; until then, talk to us to stay on this plan.",
+    "ended": "Your {plan} trial is over. The store is on Free now, and orders still come in as usual.",
+    "comped": "Mizan covers this plan.",
+    "status": {
+      "trialing": "Trial",
+      "active": "Active",
+      "past_due": "Payment late",
+      "restricted": "Restricted",
+      "paused": "Paused",
+      "cancelled": "Cancelled",
+      "expired": "Ended",
+      "incomplete": "Payment pending"
+    }
+  },
   "frame": {
     "skip": "Skip to the form",
     "help": "Need help?",
@@ -5693,6 +5723,11 @@
       "plan": {
         "limit_reached": "Plan limit reached",
         "upgrade_requested": "Upgrade requested"
+      },
+      "subscription": {
+        "trial_started": "Trial started",
+        "trial_ended": "Trial ended: the store is on Free",
+        "plan_changed": "Plan changed"
       },
       "automation": {
         "run_failed": "An automation run failed",

@@ -13,10 +13,11 @@ export const DART_PATH = join(dirname(fileURLToPath(import.meta.url)), "../../..
 const q = (s) => `'${String(s).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\$/g, "\\$")}'`;
 
 /** The Dart source for the three catalogues. Pure: the test calls it with the TypeScript catalogue. */
-export function renderDart({ EVENT_MOTION, TIMELINE_MOTION, ENGINE_MOTION, OUTCOMES, PENDINGS }) {
+export function renderDart({ EVENT_MOTION, TIMELINE_MOTION, ENGINE_MOTION, OUTCOMES, PENDINGS, ACTIONS }) {
   const outcome = (o) => `MotionOutcome.${o}`;
   const events = Object.entries(EVENT_MOTION).map(([type, r]) => {
     const parts = [`outcome: ${outcome(r.outcome)}`];
+    if (r.action) parts.push(`action: MotionAction.${r.action === "sync" ? "sync_" : r.action}`);
     if (r.pending) parts.push(`pending: MotionPending.${r.pending}`);
     parts.push(`surfaces: <String>[${r.surfaces.map(q).join(", ")}]`);
     parts.push(`copy: ${r.copy ? q(r.copy) : "null"}`);
@@ -32,10 +33,14 @@ enum MotionOutcome { ${OUTCOMES.join(", ")} }
 
 enum MotionPending { ${PENDINGS.join(", ")} }
 
+/// What the viewer's action does; the loader is derived from it (read = pair, send/sync = transfer, write = drop, progress = fill).
+enum MotionAction { ${ACTIONS.map((a) => (a === "sync" ? "sync_" : a)).join(", ")} }
+
 class EventMotion {
-  const EventMotion({required this.outcome, this.pending, required this.surfaces, required this.copy, this.variantArg, this.variants});
+  const EventMotion({required this.outcome, this.action, this.pending, required this.surfaces, required this.copy, this.variantArg, this.variants});
 
   final MotionOutcome outcome;
+  final MotionAction? action;
   final MotionPending? pending;
   final List<String> surfaces;
 

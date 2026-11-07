@@ -10,6 +10,8 @@ export const DOMAIN_EVENT_TYPES = [
   "connection.connected", "connection.disconnected", "connection.needs_attention", "connection.sync_completed", "connection.sync_failed",
   "privacy.requested", "privacy.completed",
   "automation.run_failed", "automation.paused", "plan.limit_reached", "plan.upgrade_requested",
+  // Billing (E12-2a): the store's subscription
+  "subscription.trial_started", "subscription.trial_ended", "subscription.plan_changed",
   // M1 Orders
   "order.created", "order.updated", "order.cancelled", "order.duplicate_found", "order.duplicate_resolved", "orders.reconciled", "orders.reconciliation_gap",
   "order.assigned", "order.tagged", "order.untagged", "order.note_added", "order.edited", "order.edit_failed", "product.updated", "product.created", "product.published", "product.publish_failed", "order.store_cancel_failed", "order.store_fulfilled", "order.cancelled_after_shipping", "order.store_fulfillment_cancelled", "order.store_copy_failed", "sync.recovered", "orders.bulk_requested", "orders.bulk_continue", "orders.bulk_finished",

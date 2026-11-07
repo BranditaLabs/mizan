@@ -104,7 +104,7 @@ export function PaymentsScreen() {
             </div>
           ) : null}
           <DataTable label={t("title")} columns={columns} rows={rows} rowKey={(r) => r.order.id} rowLabel={(r) => r.order.number} empty={empty} />
-          {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
+          {list.hasNextPage ? <div className="flex justify-center"><Button variant="secondary" busy={list.isFetchingNextPage} as="loading" onClick={() => void list.fetchNextPage()}>{t("more")}</Button></div> : null}
         </div>
       )}
     </Tabs>

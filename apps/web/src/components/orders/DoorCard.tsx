@@ -74,7 +74,7 @@ function PartialDialog({ order: o, onClose }: { order: Order; onClose(): void })
   return (
     <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(
       <ButtonGroup>
-        <Button busy={save.isPending} disabled={!items.length || all} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!items.length || all} onClick={() => save.mutate()}>{t("save")}</Button>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>
@@ -112,7 +112,7 @@ function RefusalDialog({ order: o, onClose }: { order: Order; onClose(): void })
   return (
     <Dialog open onClose={onClose} title={t("title")} description={t("body")} footer={(
       <ButtonGroup>
-        <Button busy={save.isPending} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" onClick={() => save.mutate()}>{t("save")}</Button>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
       </ButtonGroup>
     )}>

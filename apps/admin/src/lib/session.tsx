@@ -22,6 +22,8 @@ export interface Session {
   api: ApiClient;
   can(...roles: StaffRole[]): boolean;
   retry(): void;
+  /** /me is being read again (a retry on its way). */
+  fetching: boolean;
   signOut(): Promise<void>;
 }
 
@@ -60,7 +62,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
-  const value: Session = { status: user === undefined ? "loading" : user ? "signed-in" : "signed-out", user: user ?? null, staff, check, api, can, retry, signOut };
+  const value: Session = { status: user === undefined ? "loading" : user ? "signed-in" : "signed-out", user: user ?? null, staff, check, api, can, retry, fetching: me.isFetching, signOut };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

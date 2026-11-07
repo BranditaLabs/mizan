@@ -30,11 +30,11 @@ export type StageEvent =
 export type StageState = { phase: StagePhase; /** Bumps on every beat so the same beat can replay. */ seq: number; signedIn: boolean };
 
 /**
- * The map draws two systems (the store's channels and Mizan), so the card's work shows on it with
- * the catalogue's meaning for moving data between systems (syncing = transfer). The wait itself
- * belongs to the CTA's AuthProgress (sending and signingIn = drop); the stage only echoes it once.
+ * The card's work leaves the browser toward Mizan, so the map echoes it with the catalogue's
+ * meaning for sending something out (WAIT_MOTION.sending = transfer), the same motion the CTA's
+ * key plays while it sends. The wait itself belongs to the key; the stage echoes it once.
  */
-export const STAGE_WAIT = WAIT_MOTION.syncing;
+export const STAGE_WAIT = WAIT_MOTION.sending;
 
 /** The intro's length: the map builds, one transfer passes, and it settles (≤ 5s). */
 export const INTRO_MS = 4200;

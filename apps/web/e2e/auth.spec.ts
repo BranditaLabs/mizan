@@ -130,6 +130,21 @@ test("agent in Arabic: phone number and code, joins the store they were invited 
   await expect(page.locator("aside").getByTestId("store-role")).toHaveText("موظف تأكيد");
 });
 
+test("sign-up from the pricing page: Welcome sends the chosen plan and billing with the new store", async ({ page }) => {
+  await page.goto("/en/sign-in?mode=signup&plan=scale&billing=annual");
+  await page.getByLabel("Email").fill(newEmail("owner"));
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+
+  await expect(page).toHaveURL(/\/en\/welcome$/);
+  await expect(page.getByTestId("trial-chip")).toContainText("Scale");
+  await page.getByLabel("Store name").fill("Scale Threads");
+  await page.getByTestId("accept-legal").check();
+  const create = page.waitForRequest((r) => r.method() === "POST" && new URL(r.url()).pathname === "/v1/tenants");
+  await page.getByRole("button", { name: "Create store" }).click();
+  expect((await create).postDataJSON()).toMatchObject({ name: "Scale Threads", plan: "scale", interval: "year" });
+});
+
 test("switching stores: the choice is remembered after a reload", async ({ page }) => {
   const phone = newPhone();
   await agentIn(phone, "Cairo Shoes", "Alex Bags");

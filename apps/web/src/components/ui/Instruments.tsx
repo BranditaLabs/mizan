@@ -5,6 +5,12 @@ import { useLocale } from "next-intl";
 import type { ComponentProps } from "react";
 import { useBrandCopy } from "@/lib/motion/useBrandCopy";
 import { MotionSurface } from "@/components/ui/MotionSurface";
+import { Waiting } from "@/components/ui/Loader";
+
+/** While an instrument's chunk loads: the pair's still frame (a wait for an answer, no clock). */
+function Still() {
+  return <span className="grid min-h-24 place-items-center text-text-3"><Waiting meaning="loading" size={48} still /></span>;
+}
 
 /**
  * The Brand 2.0 balance instruments, loaded lazily (their own chunk) with their copy from next-intl.
@@ -15,10 +21,10 @@ import { MotionSurface } from "@/components/ui/MotionSurface";
  *   GaugeMeter       expected against collected (COD remittance, a settlement)
  *   BullseyeMeter    cash and stock off by a percentage, inside a tolerance
  */
-const Vessels = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Vessels), { ssr: false });
-const Breakeven = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Breakeven), { ssr: false });
-const Gauge = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Gauge), { ssr: false });
-const Bullseye = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Bullseye), { ssr: false });
+const Vessels = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Vessels), { ssr: false, loading: Still });
+const Breakeven = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Breakeven), { ssr: false, loading: Still });
+const Gauge = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Gauge), { ssr: false, loading: Still });
+const Bullseye = dynamic(() => import("@mizan/design-system/react/motion/instruments").then((m) => m.Bullseye), { ssr: false, loading: Still });
 
 type Without<T, K extends string> = Omit<T, K | "locale" | "copy">;
 type VesselsProps = ComponentProps<typeof import("@mizan/design-system/react/motion/instruments").Vessels>;

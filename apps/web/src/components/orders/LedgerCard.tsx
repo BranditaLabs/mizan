@@ -123,7 +123,7 @@ function RecordPayment({ orderId, ledger, onClose }: { orderId: string; ledger: 
     <Dialog open onClose={onClose} title={t("dialogTitle")} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} disabled={!amount.trim()} onClick={() => save.mutate()}>{t("save")}</Button>
+        <Button busy={save.isPending} as="saving" disabled={!amount.trim()} onClick={() => save.mutate()}>{t("save")}</Button>
       </>
     )}>
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); if (amount.trim()) save.mutate(); }}>

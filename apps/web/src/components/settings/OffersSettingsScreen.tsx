@@ -145,7 +145,7 @@ function Rules() {
                   {t.rich("line", { trigger: r.trigger?.title ?? t("anyOrder"), offer: r.offer.title, pct: r.discountPct, b: (c) => <strong>{c}</strong>, n: (c) => <bdi dir="ltr" className="mz-num">{c}</bdi> })}
                 </span>
                 {!r.active ? <Badge tone="neutral">{t("stopped")}</Badge> : null}
-                <Button size="sm" variant="ghost" className="ms-auto" busy={toggle.isPending && toggle.variables?.id === r.id} onClick={() => toggle.mutate({ id: r.id, active: !r.active })}>
+                <Button size="sm" variant="ghost" className="ms-auto" busy={toggle.isPending && toggle.variables?.id === r.id} as="saving" onClick={() => toggle.mutate({ id: r.id, active: !r.active })}>
                   {t(r.active ? "stop" : "start")}
                 </Button>
               </li>
@@ -166,7 +166,7 @@ function Rules() {
             <Field label={t("discount")} ltr inputMode="decimal" value={form.discountPct} className="w-36" onChange={(e) => setForm({ ...form, discountPct: e.target.value.trim() })} />
             <Field label={t("message")} hint={t("messageHint")} maxLength={300} value={form.messageAr} className="min-w-64 flex-1" onChange={(e) => setForm({ ...form, messageAr: e.target.value })} />
           </div>
-          <div><Button type="submit" size="sm" icon="add" disabled={!canAdd} busy={add.isPending}>{t("add")}</Button></div>
+          <div><Button type="submit" size="sm" icon="add" disabled={!canAdd} busy={add.isPending} as="saving">{t("add")}</Button></div>
         </form>
       </div>
     </Card>

@@ -39,7 +39,8 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL: must be a postgres:\/\/ URL or pglite:<dir>/);
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan" })).toThrow(/FIREBASE_PROJECT_ID: is required in production/);
     expect(() => loadConfig({ ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", KEY_VAULT_KEY_ID: "k" })).toThrow(/LINK_SIGNING_KEY: is required in production/);
-    const prod = { ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64") };
+    const prod = { ...valid, NODE_ENV: "production", DATABASE_URL: "postgres://db/mizan", FIREBASE_PROJECT_ID: "mizan-prod", LINK_SIGNING_KEY: Buffer.alloc(32, 3).toString("base64"), TRIAL_KEY_PEPPER: Buffer.alloc(32, 4).toString("base64") };
+    expect(() => loadConfig({ ...prod, KEY_VAULT_KEY_ID: "k", TRIAL_KEY_PEPPER: undefined })).toThrow(/TRIAL_KEY_PEPPER: is required in production/);
     expect(() => loadConfig(prod)).toThrow(/KEY_VAULT_KEY_ID: is required in production/);
     const kms = "https://mizan-prod-kv.vault.azure.net/keys/tenant-secrets";
     expect(loadConfig({ ...prod, KEY_VAULT_KEY_ID: kms }).NODE_ENV).toBe("production");

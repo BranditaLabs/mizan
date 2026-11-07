@@ -73,7 +73,7 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{t("cancel")}</Button>
-          <Button variant="primary" icon="send" busy={send.isPending} disabled={empty} onClick={() => send.mutate()} data-testid="feedback-send">{t("send")}</Button>
+          <Button variant="primary" icon="send" busy={send.isPending} as="saving" disabled={empty} onClick={() => send.mutate()} data-testid="feedback-send">{t("send")}</Button>
         </>
       )}>
       <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); if (!empty) send.mutate(); }} data-testid="feedback-dialog">

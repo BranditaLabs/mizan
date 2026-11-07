@@ -51,7 +51,9 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   const summary = useQuery({ queryKey: key, queryFn: () => ok(api.GET("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } } })), enabled: allowed, meta: { toast: false } });
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["orderConfirmation"] }); void qc.invalidateQueries({ queryKey: ["order"] }); void qc.invalidateQueries({ queryKey: ["orders"] }); };
 
-  const link = useMutation({ mutationFn: () => ok(api.POST("/v1/orders/{id}/confirmation/link", { params: { path: { id: orderId } } })), onSuccess: refresh });
+  // Keyed by which button asked (variables), so only the pressed one animates (PAIR: waiting for the link).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the variable only keys which button animates
+  const link = useMutation({ mutationFn: (_for: "whatsapp" | "copy") => ok(api.POST("/v1/orders/{id}/confirmation/link", { params: { path: { id: orderId } } })), onSuccess: refresh });
   // The confirmation is the order's DROP (red once, the toast's glyph); a cancel settles.
   const answer = useEventMutation("order.confirmed", {
     mutationFn: (a: "confirm" | "cancel") => ok(api.POST("/v1/orders/{id}/confirmation", { params: { path: { id: orderId } }, body: { answer: a, byCall: true, ...(a === "cancel" && cancelReason ? { reason: cancelReason } : {}) } })),
@@ -63,7 +65,8 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
   });
   const offerDecision = useMutation({
     mutationFn: (decision: "accept" | "decline") => ok(api.POST("/v1/orders/{id}/offer", { params: { path: { id: orderId } }, body: { decision } })),
-    onSuccess: (r) => { toast.event({ type: "offer.proposed", message: t(`offer.toast.${r.status}`) }); refresh(); },
+    // The outcome is the decision's own event: accepted merges, declined settles (never "proposed").
+    onSuccess: (r, decision) => { toast.event({ type: decision === "accept" ? "offer.accepted" : "offer.declined", message: t(`offer.toast.${r.status}`) }); refresh(); },
   });
   const noAnswer = useMutation({
     mutationFn: () => ok(api.POST("/v1/orders/{id}/confirmation/no-answer", { params: { path: { id: orderId } } })),
@@ -78,13 +81,13 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
     // Opened before the request, so the browser treats it as the click's own window (no pop-up block).
     const w = window.open("", "_blank");
     try {
-      const r = await link.mutateAsync();
+      const r = await link.mutateAsync("whatsapp");
       // eslint-disable-next-line mizan/no-adhoc-motion -- no phone to open: a note, not a catalogue event
       if (w && r.whatsappUrl) { w.opener = null; w.location.href = r.whatsappUrl; } else { w?.close(); toast({ message: t("noPhone") }); }
     } catch { w?.close(); }
   };
   const copyLink = async () => {
-    const r = await link.mutateAsync();
+    const r = await link.mutateAsync("copy");
     // eslint-disable-next-line mizan/no-adhoc-motion -- copying the link is no catalogue event (the link's own event toasts through the mutation)
     try { await navigator.clipboard.writeText(r.url); toast({ message: t("copied") }); } catch { toast({ message: r.url }); }
   };
@@ -143,8 +146,8 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
             </p>
             {s.offer.status === "proposed" && open ? (
               <ButtonGroup>
-                <Button size="sm" variant="secondary" icon="add" busy={offerDecision.isPending && offerDecision.variables === "accept"} onClick={() => offerDecision.mutate("accept")}>{t("offer.accept")}</Button>
-                <Button size="sm" variant="ghost" busy={offerDecision.isPending && offerDecision.variables === "decline"} onClick={() => offerDecision.mutate("decline")}>{t("offer.decline")}</Button>
+                <Button size="sm" variant="secondary" icon="add" busy={offerDecision.isPending && offerDecision.variables === "accept"} as="saving" onClick={() => offerDecision.mutate("accept")}>{t("offer.accept")}</Button>
+                <Button size="sm" variant="ghost" busy={offerDecision.isPending && offerDecision.variables === "decline"} as="saving" onClick={() => offerDecision.mutate("decline")}>{t("offer.decline")}</Button>
               </ButtonGroup>
             ) : null}
             {s.offer.status === "accepted" || s.offer.status === "applying" || s.offer.status === "applied" ? (
@@ -171,7 +174,7 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
             {run?.calls.after ? <p className="text-caption text-text-2">{t("calls.after")}{" "}<DateText relative value={run.calls.after} /></p> : null}
             <ButtonGroup>
               <Button size="sm" icon="confirm" busy={{ isPending: answer.isPending && answer.variables === "confirm", motion: answer.motion }} onClick={() => answer.mutate("confirm")}>{t("calls.confirmed")}</Button>
-              <Button size="sm" variant="secondary" icon="call" busy={noAnswer.isPending} onClick={() => noAnswer.mutate()}>{t("calls.noAnswer")}</Button>
+              <Button size="sm" variant="secondary" icon="call" busy={noAnswer.isPending} as="saving" onClick={() => noAnswer.mutate()}>{t("calls.noAnswer")}</Button>
               <Button size="sm" variant="ghost" icon="close" onClick={askCancel}>{t("calls.cancelled")}</Button>
             </ButtonGroup>
           </section>
@@ -180,8 +183,8 @@ export function ConfirmationCard({ orderId, orderStatus }: { orderId: string; or
         {s && !s.channels.whatsapp ? <p className="text-caption text-text-3">{t("noVendor")}</p> : null}
         {unanswered && s && !s.channels.whatsapp ? (
           <ButtonGroup>
-            <Button size="sm" variant="secondary" icon="message" busy={link.isPending} onClick={() => void sendWhatsApp()}>{t("sendWhatsApp")}</Button>
-            <Button size="sm" variant="ghost" icon="copy" busy={link.isPending} onClick={() => void copyLink()}>{t("copyLink")}</Button>
+            <Button size="sm" variant="secondary" icon="message" busy={link.isPending && link.variables === "whatsapp"} as="checking" disabled={link.isPending} onClick={() => void sendWhatsApp()}>{t("sendWhatsApp")}</Button>
+            <Button size="sm" variant="ghost" icon="copy" busy={link.isPending && link.variables === "copy"} as="checking" disabled={link.isPending} onClick={() => void copyLink()}>{t("copyLink")}</Button>
           </ButtonGroup>
         ) : null}
         {unanswered && !calling ? (

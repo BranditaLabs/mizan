@@ -107,7 +107,7 @@ function SupplierGroup({ supplier, rows, canDraft }: { supplier: Row["supplier"]
           ))}
         </ul>
         {draft.isError ? <Alert tone="danger">{problemText(draft.error, tpr)}</Alert> : null}
-        {supplier && canDraft ? <div><Button icon="purchasing" busy={draft.isPending} disabled={!valid} onClick={() => draft.mutate()}>{t("reorder.draft", { count: items.length })}</Button></div> : null}
+        {supplier && canDraft ? <div><Button icon="purchasing" busy={draft.isPending} as="saving" disabled={!valid} onClick={() => draft.mutate()}>{t("reorder.draft", { count: items.length })}</Button></div> : null}
       </div>
     </Card>
   );

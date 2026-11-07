@@ -15,7 +15,7 @@ import { TrialChip } from "./fields";
 import { AuthHeading, Step } from "./kit";
 import { ApiError, idempotency, ok, type MyInvitation, type Schemas } from "@/lib/api/client";
 import { isLegalVersionChanged } from "@/lib/legal";
-import { signupIntent } from "@/lib/auth/intent";
+import { signupIntent, trialChoice } from "@/lib/auth/intent";
 import { resume } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
 
@@ -63,9 +63,8 @@ export function Welcome() {
   const create = useMutation({
     mutationFn: () => ok(api.POST("/v1/tenants", { body: {
       name: name.trim(), country, language: locale === "en" ? "en" : "ar", acceptLegal: { terms: LEGAL_VERSIONS.terms, dpa: LEGAL_VERSIONS.dpa },
-      // HAND-OFF (claude/rd-e12-trial): CreateTenant has no plan/interval yet. Once the regenerated
-      // types carry them, send `plan: intent?.plan ?? "growth", interval: intent?.interval ?? "month"`
-      // here (Enterprise arrives as Scale). Until then the intent stays in this tab only.
+      // The tier and billing the pricing page chose (E12-2a2): nothing without a choice (a Growth monthly trial).
+      ...trialChoice(intent),
     }, headers: idempotency(idempotencyKey) })),
     onSuccess: (tenant) => { signupIntent.clear(); return open(tenant.id, true); },
     // A refused create (4xx) is final for this key; the next try is a new attempt.
@@ -102,7 +101,7 @@ export function Welcome() {
                     {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium", numberingSystem: "latn" }) })}
                   </p>
                 </div>
-                <Button variant="secondary" busy={busy === inv.id} disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>
+                <Button variant="secondary" busy={busy === inv.id} as="saving" disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>
               </li>
             ))}
           </ul>
@@ -126,7 +125,7 @@ export function Welcome() {
           <Checkbox required checked={agreed} onChange={(e) => setAgreed(e.target.checked)} data-testid="accept-legal"
             label={<span className="text-body-sm">{tl.rich("agree", { terms: (c) => <LegalLink doc="terms">{c}</LegalLink>, dpa: (c) => <LegalLink doc="dpa">{c}</LegalLink> })}</span>} />
           {versionChanged ? <Alert tone="warning">{tl("versionChanged")}</Alert> : createError ? <Alert tone="danger">{t(`errors.${createError}`)}</Alert> : null}
-          <Button type="submit" size="lg" busy={busy === "create"} disabled={busy !== null || name.trim().length < 2 || !agreed}>{t("create.submit")}</Button>
+          <Button type="submit" size="lg" busy={{ isPending: busy === "create", motion: "tenant.created" }} disabled={busy !== null || name.trim().length < 2 || !agreed}>{t("create.submit")}</Button>
         </form>
       </section>
 

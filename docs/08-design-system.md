@@ -42,7 +42,16 @@ The pack ("Mizan Brand 2.0", Nov 2026; `mizan-brand-2.0.zip` SHA-256 `03c40adb8e
 | **SETTLE** | Arrive with a small overshoot and a damped wobble | `duration.settle` 720 ms, `easing.settle` `cubic-bezier(.34,1.32,.5,1)`, `duration.roll`, `spring.*` | `settle` outcome, toasts, KPI roll, instruments |
 | **DROP** | The red enters from above **once**, only when something is confirmed | `duration.fall` 620 ms, `duration.ripple` 1.4 s | `drop` outcome (an allowlist: order confirmed, payment paid, …); the drop loader |
 
-**Loaders by meaning:** `pair` = page or data loading (the default), `transfer` = syncing or reconciling two systems, `drop` = saving, confirming an order, sending a payment link, `fill` = known progress (scanned of wanted, imports, exports, payouts). `level` is gallery-only. Instruments (`Gauge`, `Vessels`, `Breakeven`, `Bullseye`) compare two values; one instrument per view.
+**Loaders by meaning.** A screen names what the press does, never an animation; the loader is derived from it (`ACTIONS` and `LOADER_FOR` in `packages/shared/src/motion`), so nothing can fall back to the save animation:
+
+| Loader | Meaning | Wait meanings (`as=`, `busyAs=`, `Waiting meaning=`) |
+| --- | --- | --- |
+| `pair` | read, wait for an answer: a page or data loading, signing in, checking a code, searching, a download being prepared | `loading`, `signingIn`, `checking` |
+| `transfer` | sync two systems, or send something out: an SMS code, an email link, a push to Shopify/WooCommerce/the courier/Meta, an upload, an OAuth hand-off | `syncing`, `sending` |
+| `drop` | a write in Mizan: save, create, confirm, delete, a payment link (red only on the DROP allowlist, only when confirmed) | `saving`, `creating` |
+| `fill` | known progress with a **real value** (done of total), never indeterminate | none: only `FillProgress`/`FillBar` with `done`/`total`, or `MizanLoader kind="fill"` with `value` |
+
+A confirmed outcome (signed in, two-step on) is `DoneState`. Busy controls take `busy` with `as` (or a `useEventMutation` result whose event has an action); a bare `busy` is a type error and fails `mizan/busy-needs-meaning`. Rows in a list key busy by `mutation.variables`, and a screen with several controls keeps one busy key so only the pressed one animates. `level` is gallery-only. Instruments (`Gauge`, `Vessels`, `Breakeven`, `Bullseye`) compare two values; one instrument per view.
 
 **Red once per view.** The red ball is the view's single red point: the shell uses the mono marks, so the content owns it; auth, splash, boot and outage use the full-colour mark as their one red. A `RedBudget` at the layout root grants it to one claimant at a time (a DROP outranks a loader); a refused claimant renders mono. Money going out never gets red. Danger text and badges are not budgeted (D5).
 

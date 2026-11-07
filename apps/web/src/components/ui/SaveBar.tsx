@@ -23,7 +23,7 @@ export function SaveBar({ dirty, busy = false, canSave = true, onSave, onDiscard
           className="g sticky bottom-[calc(88px+env(safe-area-inset-bottom,0px))] z-20 flex flex-wrap items-center gap-3 px-4 py-3 lg:bottom-4">
           <p className="min-w-0 flex-1 text-body-sm">{t("unsaved")}</p>
           <Button variant="ghost" disabled={busy} onClick={onDiscard}>{t("discard")}</Button>
-          <Button busy={busy} disabled={!canSave} onClick={onSave}>{t("save")}</Button>
+          <Button busy={busy} as="saving" disabled={!canSave} onClick={onSave}>{t("save")}</Button>
         </div>
       ) : null}
       <LeaveGuard when={dirty} onLeave={onDiscard} />

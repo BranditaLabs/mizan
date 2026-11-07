@@ -40,7 +40,7 @@ export class UsageCloser implements OnApplicationBootstrap, OnApplicationShutdow
 
   /** Close last month for every store that has not been closed yet. Returns how many were closed. */
   async runOnce(now = new Date()): Promise<number> {
-    const tenants = await this.db.platform((trx) => trx.selectFrom("tenants").select(["id", "timezone", "plan"]).where("status", "in", ["trial", "active", "suspended"]).execute());
+    const tenants = await this.db.platform((trx) => trx.selectFrom("tenants").select(["id", "timezone", "plan"]).where("status", "in", ["active", "suspended"]).execute());
     let closed = 0;
     for (const t of tenants) {
       const month = previousMonth(monthOf(now, t.timezone));

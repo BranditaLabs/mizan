@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
+import { SubscriptionService } from "../src/modules/billing/subscription.service.js";
 import { MessagingRegistry } from "../src/modules/confirmation/messaging.registry.js";
 import { UsageCloser } from "../src/modules/billing/usage-closer.service.js";
 import { monthOf } from "../src/modules/billing/plans.js";
@@ -39,6 +40,8 @@ beforeAll(async () => {
   fake.add("owner", { uid: "fb-owner-usage", email: "owner@usage.test", emailVerified: true, secondFactor: "phone" });
   store = (await http().post("/v1/tenants").set({ Authorization: "Bearer owner" }).send({ name: "Riyadh Usage", country: "SA" }).expect(201)).body.id;
   await db.tenant(store, (trx) => trx.updateTable("tenants").set({ timezone: "Asia/Riyadh" }).where("id", "=", store).execute());
+  // Measured against Free's limits: the store leaves its signup trial (E12-2a2) for Free.
+  await db.tenant(store, (trx) => app.get(SubscriptionService).override(trx, store, "free", { actor: { type: "system" } }));
   for (const [token, role, phone] of [["finance", "finance", "+966501110001"], ["ops", "ops_manager", "+966501110002"]] as const) {
     const inv = await http().post("/v1/members/invite").set(as("owner")).send({ phone, role }).expect(201);
     fake.add(token, { uid: `fb-${token}-usage`, phone: inv.body.phone });
@@ -130,7 +133,7 @@ describe("usage (E12-3)", () => {
     const ev = await db.tenant(store, (trx) => trx.selectFrom("domain_events").select(["type", "data"]).where("type", "in", ["plan.upgrade_requested", "plan.limit_reached"]).orderBy("type").execute());
     expect(ev.map((e) => e.type)).toEqual(["plan.limit_reached", "plan.limit_reached", "plan.upgrade_requested"]);
     // Once on Growth, the request is done and the limits move.
-    await db.tenant(store, (trx) => trx.updateTable("tenants").set({ plan: "growth" }).where("id", "=", store).execute());
+    await app.get(Database).tenant(store, (trx) => app.get(SubscriptionService).override(trx, store, "growth", { actor: { type: "system" } }));
     expect(await usage()).toMatchObject({ plan: "growth", upgradeRequest: null, alerts: [], nextPlan: { plan: "scale" } });
   });
 });

@@ -52,7 +52,7 @@ export function NewTicketDialog({ order, onClose, onCreated }: { order?: { id: s
     <Dialog open onClose={onClose} title={t("new.title")} description={order ? t("new.forOrder", { number: order.number }) : undefined} footer={(
       <>
         <Button variant="ghost" onClick={onClose}>{t("cancel")}</Button>
-        <Button busy={save.isPending} onClick={() => save.mutate()}>{t("new.save")}</Button>
+        <Button busy={save.isPending} as="saving" onClick={() => save.mutate()}>{t("new.save")}</Button>
       </>
     )}>
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>

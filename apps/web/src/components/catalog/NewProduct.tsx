@@ -168,7 +168,7 @@ export function NewProduct() {
       {create.isError ? <Alert tone="danger">{create.error instanceof ApiError && ERRORS.has(create.error.code) ? t(`errors.${create.error.code as "sku_taken"}`, { detail: create.error.detail ?? "" }) : problemText(create.error, tpr)}</Alert> : null}
       <div className="flex justify-end gap-2">
         <Link href="/products" className="mz-btn mz-btn--secondary">{t("cancel")}</Link>
-        <Button busy={create.isPending} disabled={invalid} onClick={() => create.mutate()}>{t("create")}</Button>
+        <Button busy={create.isPending} as="saving" disabled={invalid} onClick={() => create.mutate()}>{t("create")}</Button>
       </div>
     </div>
   );

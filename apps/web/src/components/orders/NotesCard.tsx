@@ -53,7 +53,7 @@ export function NotesCard({ orderId }: { orderId: string }) {
           <form className="flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) add.mutate(); }}>
             <TextArea label={t("label")} hint={t("hint")} value={text} maxLength={2000} rows={2} onChange={(e) => setText(e.target.value)} />
             {add.isError ? <Alert tone="danger">{problemText(add.error, tpr)}</Alert> : null}
-            <div><Button type="submit" size="sm" variant="secondary" icon="note" busy={add.isPending} disabled={!text.trim()}>{t("add")}</Button></div>
+            <div><Button type="submit" size="sm" variant="secondary" icon="note" busy={add.isPending} as="saving" disabled={!text.trim()}>{t("add")}</Button></div>
           </form>
         ) : null}
         {notes.isError && !notes.data ? <ErrorState compact error={notes.error} onRetry={() => void notes.refetch()} retrying={notes.isRefetching} /> : null}
@@ -67,7 +67,7 @@ export function NotesCard({ orderId }: { orderId: string }) {
                   {n.mine ? t("you") : n.author?.name ?? t("someone")}{" · "}<DateText value={n.createdAt} />
                 </p>
               </div>
-              {n.mine || lead ? <IconButton icon="delete" size="sm" label={t("remove")} onClick={() => remove.mutate(n.id)} disabled={remove.isPending} /> : null}
+              {n.mine || lead ? <IconButton icon="delete" size="sm" label={t("remove")} onClick={() => remove.mutate(n.id)} busy={remove.isPending && remove.variables === n.id} as="saving" disabled={remove.isPending} /> : null}
             </li>
           ))}
         </ul>
@@ -100,7 +100,7 @@ export function TagsCard({ orderId, tags }: { orderId: string; tags: string[] })
             {tags.map((g) => (
               <li key={g} className="inline-flex items-center gap-1 rounded-full border border-line bg-surface-sunk py-0.5 ps-2.5 pe-1 text-body-sm">
                 <bdi>{g}</bdi>
-                {canWrite ? <IconButton icon="close" size="sm" label={t("remove", { tag: g })} disabled={change.isPending} onClick={() => change.mutate({ remove: [g] })} /> : null}
+                {canWrite ? <IconButton icon="close" size="sm" label={t("remove", { tag: g })} busy={change.isPending && Boolean(change.variables?.remove?.includes(g))} as="saving" disabled={change.isPending} onClick={() => change.mutate({ remove: [g] })} /> : null}
               </li>
             ))}
           </ul>
@@ -109,7 +109,7 @@ export function TagsCard({ orderId, tags }: { orderId: string; tags: string[] })
           <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); if (valid && !tags.includes(tag)) change.mutate({ add: [tag] }); }}>
             <Field label={t("label")} value={text} maxLength={40} onChange={(e) => setText(e.target.value)} className="min-w-0 flex-1"
               error={text && !valid ? t("invalid") : null} />
-            <Button type="submit" size="sm" variant="secondary" icon="tag" busy={change.isPending} disabled={!valid || tags.includes(tag)}>{t("add")}</Button>
+            <Button type="submit" size="sm" variant="secondary" icon="tag" busy={change.isPending} as="saving" disabled={!valid || tags.includes(tag)}>{t("add")}</Button>
           </form>
         ) : null}
         {change.isError ? <Alert tone="danger">{problemText(change.error, tpr)}</Alert> : null}

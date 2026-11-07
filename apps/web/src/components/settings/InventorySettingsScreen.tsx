@@ -45,7 +45,7 @@ function StoreSync() {
   }
   return (
     <div className="mz-card p-4" data-testid="stock-sync">
-      <Switch label={t("label")} description={t("description")} checked={q.data?.pushToStore ?? false} disabled={!q.data || save.isPending}
+      <Switch label={t("label")} description={t("description")} checked={q.data?.pushToStore ?? false} disabled={!q.data || save.isPending} busy={save.isPending} as="syncing"
         onChange={(e) => save.mutate(e.target.checked)} />
     </div>
   );
