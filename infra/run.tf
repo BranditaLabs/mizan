@@ -121,6 +121,10 @@ resource "azurerm_container_app" "api" {
     }
   }
 
+  # GET /v1/live is a Server-Sent Events stream (LV-1a) whose token travels in the query string: no
+  # access log may keep query strings (Container Apps' ingress writes none to Log Analytics; the API
+  # strips `token` from its own logs). If Front Door is added, keep compression and caching off for
+  # /v1/live and log paths without query strings. [CONFIRM] unbuffered delivery on staging.
   ingress {
     external_enabled           = true
     allow_insecure_connections = false

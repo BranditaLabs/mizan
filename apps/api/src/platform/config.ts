@@ -47,6 +47,16 @@ export const ConfigSchema = z.object({
   /** Auth hot-path caches (H-6). A member disabled on another instance loses access within the membership TTL. */
   AUTH_USER_CACHE_MS: z.coerce.number().int().min(0).max(600_000).default(60_000),
   AUTH_MEMBERSHIP_CACHE_MS: z.coerce.number().int().min(0).max(60_000).default(10_000),
+  /**
+   * Live updates (LV-1a): how often each store's stream reads new events, the heartbeat (Azure
+   * Container Apps drops idle connections), the token's life, how long one stream lasts before the
+   * client reconnects with a new token, and how often an open stream re-checks the person's access.
+   */
+  LIVE_POLL_MS: z.coerce.number().int().min(50).max(10_000).default(1_000),
+  LIVE_HEARTBEAT_MS: z.coerce.number().int().min(50).max(60_000).default(15_000),
+  LIVE_TOKEN_TTL_S: z.coerce.number().int().min(1).max(300).default(60),
+  LIVE_MAX_STREAM_MS: z.coerce.number().int().min(1_000).max(4 * 3_600_000).default(30 * 60_000),
+  LIVE_RECHECK_MS: z.coerce.number().int().min(50).max(600_000).default(60_000),
   /** Retention of high-churn tables (H-7), in days. */
   RETENTION_JOBS_DAYS: z.coerce.number().int().min(1).max(365).default(7),
   RETENTION_WEBHOOK_KEYS_DAYS: z.coerce.number().int().min(3).max(365).default(14),

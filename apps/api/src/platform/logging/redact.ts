@@ -51,9 +51,19 @@ function scrubPhones(text: string): string {
   });
 }
 
-/** Mask phones, emails, bearer tokens and API keys inside free text. Order IDs and amounts are left alone. */
+// Tokens in query strings (GET /v1/live?token=…, LV-1a): the parameter is removed from URLs
+// outright, and any other `token=…` in free text is masked, so "token=" never reaches a log line.
+const TOKEN_PARAM = /([?&;])(?:access_token|id_token|live_token|token)=[^&#\s"'<>]*(&?)/gi;
+const TOKEN_ASSIGN = /\b(?:access_token|id_token|live_token|token)=[^&#\s"'<>]*/gi;
+
+/** A URL or text without token query parameters ("/v1/live?topics=orders&token=…" → "/v1/live?topics=orders"). */
+export function stripTokens(text: string): string {
+  return text.replace(TOKEN_PARAM, (_m, sep: string, amp: string) => (amp ? sep : "")).replace(TOKEN_ASSIGN, "[redacted-token]");
+}
+
+/** Mask phones, emails, bearer tokens, token parameters and API keys inside free text. Order IDs and amounts are left alone. */
 export function scrubText(text: string): string {
-  return scrubPhones(text.replace(BEARER, "Bearer [redacted]").replace(KEYS, "[redacted-key]").replace(EMAIL, "[redacted-email]"));
+  return scrubPhones(stripTokens(text).replace(BEARER, "Bearer [redacted]").replace(KEYS, "[redacted-key]").replace(EMAIL, "[redacted-email]"));
 }
 
 /** Scrub a request URL: percent-decoded first so encoded phones and emails are caught too. */
