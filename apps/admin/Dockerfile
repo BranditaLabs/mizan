@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/root/.npm --mount=type=secret,id=ca,required=fals
  && npm run build -w @mizan/shared -w @mizan/design-system \
  && NEXT_OUTPUT=standalone npm run build -w @mizan/admin \
  && cp -r apps/admin/.next/static apps/admin/.next/standalone/apps/admin/.next/static \
- && if [ -d apps/admin/public ]; then cp -r apps/admin/public apps/admin/.next/standalone/apps/admin/public; fi
+ && if [ -d apps/admin/public ]; then mkdir -p apps/admin/.next/standalone/apps/admin/public && cp -r apps/admin/public/. apps/admin/.next/standalone/apps/admin/public/; fi
 
 FROM ${RUNTIME_IMAGE} AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=8080 HOSTNAME=0.0.0.0
