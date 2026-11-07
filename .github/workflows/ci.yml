@@ -162,6 +162,9 @@ jobs:
           curl -fsS http://127.0.0.1:8080/ar | grep -q 'dir="rtl"'
           css=$(curl -fsS http://127.0.0.1:8080/ar | grep -oE '/_next/static/[^"]+\.css' | head -1)
           curl -fsS -o /dev/null "http://127.0.0.1:8080${css}"
+          # Files under public/ are served from the root (a nested public/public would 404 here).
+          curl -fsS -o /dev/null http://127.0.0.1:8080/motion/mizan-pair-on-paper.svg
+          curl -fsS -o /dev/null http://127.0.0.1:8080/partners/bosta-mark@1x.png
           test "$(docker inspect -f '{{.Config.User}}' mizan-web:local)" = "65532:65532"
       - name: Logs
         if: failure()
