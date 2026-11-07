@@ -187,11 +187,11 @@ function Hero({ home, updated, fetching, children }: { home: Home; updated: stri
           <ul className="flex flex-wrap gap-2" data-testid="provisional-chips" aria-label={t("provisional.hint")}>
             {q.productsMissingCost > 0 ? (
               <li><Link href="/products?view=missing_cost" className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption font-medium text-rail-text hover:underline pointer-coarse:min-h-11">
-                <Icon name="warning" size={14} className="text-brand" />{t("provisional.products", { count: q.productsMissingCost })}
+                <Icon name="warning" size={14} />{t("provisional.products", { count: q.productsMissingCost })}
               </Link></li>
             ) : q.ordersMissingCosts > 0 ? (
               <li><Link href="/settings/costs" className="inline-flex min-h-6 items-center gap-1.5 rounded-full bg-rail-surface px-3 py-1 text-caption font-medium text-rail-text hover:underline pointer-coarse:min-h-11">
-                <Icon name="warning" size={14} className="text-brand" />{t("provisional.orders", { count: q.ordersMissingCosts })}
+                <Icon name="warning" size={14} />{t("provisional.orders", { count: q.ordersMissingCosts })}
               </Link></li>
             ) : null}
             {!q.delivered ? (

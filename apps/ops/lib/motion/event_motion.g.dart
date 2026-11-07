@@ -77,6 +77,7 @@ const Map<String, EventMotion> eventMotion = <String, EventMotion>{
   'offer.expired': EventMotion(outcome: MotionOutcome.settle, surfaces: <String>['card', 'timeline'], copy: 'motion.event.offer.expired'),
   'offer.applied': EventMotion(outcome: MotionOutcome.merge, pending: MotionPending.transfer, surfaces: <String>['card', 'timeline'], copy: 'motion.event.offer.applied'),
   'offer.failed': EventMotion(outcome: MotionOutcome.fail, surfaces: <String>['card', 'timeline'], copy: 'motion.event.offer.failed'),
+  'whatsapp.template_submitted': EventMotion(outcome: MotionOutcome.settle, pending: MotionPending.drop, surfaces: <String>['button', 'toast'], copy: 'motion.event.whatsapp.template_submitted'),
   'order.packed': EventMotion(outcome: MotionOutcome.done, pending: MotionPending.fill, surfaces: <String>['timeline', 'list'], copy: 'motion.event.order.packed'),
   'order.partially_delivered': EventMotion(outcome: MotionOutcome.tip, surfaces: <String>['card', 'timeline'], copy: 'motion.event.order.partially_delivered'),
   'order.refused': EventMotion(outcome: MotionOutcome.fail, surfaces: <String>['card', 'timeline'], copy: 'motion.event.order.refused'),

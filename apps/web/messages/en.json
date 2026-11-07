@@ -5615,6 +5615,9 @@
         "applied": "Offer added to the order",
         "failed": "Couldn't add the offer"
       },
+      "whatsapp": {
+        "template_submitted": "First message sent to Meta"
+      },
       "shipment": {
         "created": "Booked with the courier",
         "booking_failed": "Courier refused the booking",

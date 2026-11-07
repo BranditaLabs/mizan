@@ -5615,6 +5615,9 @@
         "applied": "العرض اتضاف للأوردر",
         "failed": "مقدرناش نضيف العرض"
       },
+      "whatsapp": {
+        "template_submitted": "رسالة التأكيد اتبعتت لميتا"
+      },
       "shipment": {
         "created": "اتحجز مع شركة الشحن",
         "booking_failed": "شركة الشحن رفضت الحجز",
@@ -5734,9 +5737,9 @@
       "edit_requested": "التعديل اتبعت للمتجر",
       "edited": "الأوردر اتعدّل",
       "edit_failed": "المتجر رفض التعديل",
-      "store_copy_created": "اتعمل في Shopify باسم {name}",
-      "store_copy_failed": "Shopify رفض يعمله",
-      "store_copy_synced": "نسخة Shopify اتعدّلت زي الأوردر",
+      "store_copy_created": "اتعمل في شوبيفاي باسم {name}",
+      "store_copy_failed": "شوبيفاي رفض يعمله",
+      "store_copy_synced": "نسخة شوبيفاي اتعدّلت زي الأوردر",
       "cancel_requested": "طلبنا من شركة الشحن تلغي التوصيل",
       "updated": "{kind, select, status {الحالة: {from} ← {to}} other {اتحدّث من المتجر}}",
       "exchange_created": "{kind, select, into {اتبدّل: الأوردر البديل {number}} other {بديل لأوردر {number}}}",

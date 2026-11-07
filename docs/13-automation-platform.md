@@ -93,6 +93,7 @@ Outcomes: **settle** (arrives with a small overshoot), **done** (settles, merges
 | `offer.expired` | settle | — | no | card, timeline |
 | `offer.applied` | merge | transfer | no | card, timeline |
 | `offer.failed` | fail | — | no | card, timeline |
+| `whatsapp.template_submitted` | settle | drop | no | button, toast |
 | `order.packed` | done | fill | no | timeline, list |
 | `order.partially_delivered` | tip | — | no | card, timeline |
 | `order.refused` | fail | — | no | card, timeline |

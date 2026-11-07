@@ -115,6 +115,7 @@ const SPECS = {
   "offer.expired": m(null, "settle", S(card, tl)),
   "offer.applied": m("transfer", "merge", S(card, tl)),
   "offer.failed": m(null, "fail", S(card, tl)),
+  "whatsapp.template_submitted": m("drop", "settle", S(btn, tst)),
   "order.packed": m("fill", "done", S(tl, list)),
   "order.partially_delivered": m(null, "tip", S(card, tl)),
   "order.refused": m(null, "fail", S(card, tl)),

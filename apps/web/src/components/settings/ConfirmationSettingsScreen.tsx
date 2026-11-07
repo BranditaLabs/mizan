@@ -229,7 +229,7 @@ function FirstMessage({ templates, choice, onChoice, canSubmit }: { templates: T
   const submit = useMutation({
     mutationFn: (variant: Template["variant"]) => ok(api.POST("/v1/settings/confirmation/templates/{variant}/submit", { params: { path: { variant } } })),
     onSuccess: (r) => {
-      toast({ message: t(r.queued ? "submitted" : "already") });
+      toast.event({ type: r.queued ? "whatsapp.template_submitted" : null, message: t(r.queued ? "submitted" : "already") });
       refresh(); // the job runs in the background: the row shows it on its way, polled until Meta answers
     },
   });
