@@ -79,9 +79,12 @@ CREATE TABLE IF NOT EXISTS mz_records (
 /**
  * A job dropped with its connection (FX-3a) and asked for again under the same key, after a
  * reconnect, runs again from scratch; any other existing job is left as it is (idempotency).
+ * A job dropped while it ran kept its lease: the revived one waits it out, so the old run and the
+ * new one never overlap (and the old run's end, finding it pending, changes nothing).
  */
 const REVIVE_DROPPED = `SET status = 'pending', attempts = 0, locked_until = NULL, last_error = NULL,
-  payload = EXCLUDED.payload, connection_id = EXCLUDED.connection_id, next_attempt_at = EXCLUDED.next_attempt_at, updated_at = EXCLUDED.updated_at
+  payload = EXCLUDED.payload, connection_id = EXCLUDED.connection_id,
+  next_attempt_at = GREATEST(EXCLUDED.next_attempt_at, COALESCE(mz_outbox.locked_until, 0)), updated_at = EXCLUDED.updated_at
   WHERE mz_outbox.status = 'dropped'`;
 
 type JobRow = {
@@ -191,17 +194,19 @@ export class SqlStore implements Store {
     return r.rows.map(toJob).sort((a, b) => a.nextAttemptAt - b.nextAttemptAt);
   }
 
+  // The end of a run changes only a job still running (FX-3a): one dropped while it ran stays dropped,
+  // and one revived meanwhile (pending again under its key) is never marked done, retried or buried by the old run.
+
   async complete(id: string, now: number) {
-    await this.db.query(`UPDATE mz_outbox SET status='done', locked_until=NULL, last_error=NULL, updated_at=$2 WHERE id=$1 AND tenant_id=$3`, [id, now, this.tenant]);
+    await this.db.query(`UPDATE mz_outbox SET status='done', locked_until=NULL, last_error=NULL, updated_at=$2 WHERE id=$1 AND tenant_id=$3 AND status = 'running'`, [id, now, this.tenant]);
   }
 
   async retryLater(id: string, error: string, at: number, now: number) {
-    // A dropped job stays dropped: its connection ended while it ran.
-    await this.db.query(`UPDATE mz_outbox SET status='pending', locked_until=NULL, last_error=$2, next_attempt_at=$3, updated_at=$4 WHERE id=$1 AND tenant_id=$5 AND status <> 'dropped'`, [id, error, at, now, this.tenant]);
+    await this.db.query(`UPDATE mz_outbox SET status='pending', locked_until=NULL, last_error=$2, next_attempt_at=$3, updated_at=$4 WHERE id=$1 AND tenant_id=$5 AND status = 'running'`, [id, error, at, now, this.tenant]);
   }
 
   async bury(id: string, error: string, now: number) {
-    await this.db.query(`UPDATE mz_outbox SET status='dead', locked_until=NULL, last_error=$2, updated_at=$3 WHERE id=$1 AND tenant_id=$4 AND status <> 'dropped'`, [id, error, now, this.tenant]);
+    await this.db.query(`UPDATE mz_outbox SET status='dead', locked_until=NULL, last_error=$2, updated_at=$3 WHERE id=$1 AND tenant_id=$4 AND status = 'running'`, [id, error, now, this.tenant]);
   }
 
   async replay(id: string, now: number) {

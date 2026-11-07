@@ -11,7 +11,12 @@ import { WebhookRouter } from "./webhook-router.js";
  * revoked: the connection becomes `disconnected` (reason kept), its credential is deleted, and its
  * queued jobs are dropped — they cannot run, and a reinstall syncs again. Orders and history stay.
  * FX-3a: dropped jobs are kept with status `dropped` and the reason (never deleted), so support can
- * see what the disconnect stopped; the same job asked for again after a reconnect runs again.
+ * see what the disconnect stopped. A job whose key is asked for again after a reconnect runs again
+ * (keys made from the work, such as `ship:{orderId}` or `bosta:ship:{shipmentId}`, which the
+ * re-read orders and the sync guardian ask for). A webhook's ingest job is never asked for again by
+ * its key (the provider does not resend a webhook it had a 200 for): the reconnect's import and the
+ * scheduled poll read those orders again under their own keys. A job dropped while it ran keeps
+ * its lease, so a revived copy waits until that run is over.
  * Idempotent: a second call for a disconnected connection does nothing.
  */
 @Injectable()
@@ -49,7 +54,8 @@ export class ConnectionLifecycle {
         .where("id", "=", connectionId).execute();
       if (c.secret_ref) await this.secrets.delete(trx, tenantId, c.secret_ref, by);
       const dropped = await trx.updateTable("mz_outbox")
-        .set({ status: "dropped", locked_until: null, last_error: `connection disconnected (${reason})`, updated_at: Date.now() })
+        // locked_until kept: a run still in progress holds its lease; a revival waits it out (REVIVE_DROPPED).
+        .set({ status: "dropped", last_error: `connection disconnected (${reason})`, updated_at: Date.now() })
         .where("connection_id", "=", connectionId).where("status", "in", ["pending", "running"]).executeTakeFirst();
       // Products made in Mizan on their way to this store (P3): their job went with it.
       await trx.updateTable("products").set({ publish_status: "failed", publish_error: "the store disconnected Mizan before it had the product" })

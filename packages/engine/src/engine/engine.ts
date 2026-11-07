@@ -295,6 +295,8 @@ const iso = (v: string | number | undefined) => (v === undefined ? undefined : n
  */
 const RETRY_WINDOW_MS = { shopify: 4 * 3_600_000, bosta: 2 * 60_000 } as const;
 const hash = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).digest("hex").slice(0, 16);
+/** The last Bosta webhook without a time accepted for a shipment (W8): its key, body hash and when. */
+type BostaLastHook = { key: string; body: string; at: number };
 
 /**
  * The Mizan integration engine.
@@ -416,9 +418,14 @@ export class MizanEngine {
     this.drift.record({ connector, entity: `webhook:${entity}`, kind: "missing_field", field: "id", detail: `none of ${paths.join(", ")}`, at: this.now() });
   }
 
-  /** A poll for this connection within the next minute; one per minute however many webhooks ask (W6). */
+  /**
+   * A poll for this connection at the next minute boundary (W6), keyed by that boundary: every
+   * webhook in a minute shares one poll that has not started yet and runs after all of them, so a
+   * webhook arriving after a nudged poll ran gets the next one, never the finished one.
+   */
   private nudge(kind: "shopify.pollOrders" | "woocommerce.pollOrders" | "bosta.pollActive"): NewJob {
-    return this.job(kind, {}, `${kind}:nudge:${Math.floor(this.now() / 60_000)}`);
+    const at = (Math.floor(this.now() / 60_000) + 1) * 60_000;
+    return { ...this.job(kind, {}, `${kind}:nudge:${at / 60_000}`), runAt: at };
   }
 
   private job(kind: string, payload: unknown, idempotencyKey: string): NewJob {
@@ -534,14 +541,39 @@ export class MizanEngine {
     } catch (e) {
       if (!(e instanceof SchemaDriftError)) throw e;
       // W6: nothing to re-read; the next poll of active shipments soon instead.
-      const nudged = (await this.store.enqueue(this.nudge("bosta.pollActive"), this.now())).job.id;
-      return this.intake(200, ignored, "no_resource_id", { nudged });
+      return this.intake(200, ignored, "no_resource_id", { nudged: await this.nudgeBostaPoll() });
     }
     // W8: Bosta sends no delivery id [CONFIRM]. The state and its time tell events apart (a reversal
-    // delivered → returned → delivered has three times); without a time, the body within the retry window.
-    const when = hint.at ?? `body:${hash(rawBody)}:${Math.floor(this.now() / RETRY_WINDOW_MS.bosta)}`;
-    const key = `bosta:${hint.trackingNumber}:${hint.code ?? hint.label ?? ""}:${when}`;
-    return this.accept(key, [this.job("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, key)]);
+    // delivered → returned → delivered has three times); without a time, see bostaUntimedKey.
+    const state = `bosta:${hint.trackingNumber}:${hint.code ?? hint.label ?? ""}`;
+    if (hint.at) return this.accept(`${state}:${hint.at}`, [this.job("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, `${state}:${hint.at}`)]);
+    const untimed = await this.bostaUntimedKey(hint.trackingNumber, state, rawBody);
+    const r = await this.accept(untimed.key, [this.job("bosta.ingestStatus", { trackingNumber: hint.trackingNumber, hint }, untimed.key)]);
+    if (r.fresh) await this.store.put<BostaLastHook>("bosta_hook", hint.trackingNumber, { key: untimed.key, body: untimed.body, at: this.now() }, this.now());
+    return r;
+  }
+
+  /**
+   * W8, a Bosta webhook without a time: the same bytes again within the retry window, with no other
+   * webhook for that shipment in between, is Bosta's retry (the same key, so "duplicate"). Anything
+   * else is a new event: its key names the shipment's previous webhook, so a loop that comes back to
+   * the same state (out for delivery → customer not available → out for delivery), even within two
+   * minutes, is three events. A retry that arrives after another event is read again (safe: fat fetch).
+   */
+  private async bostaUntimedKey(trackingNumber: string, state: string, rawBody: string): Promise<{ key: string; body: string }> {
+    const body = hash(rawBody);
+    const last = await this.store.get<BostaLastHook>("bosta_hook", trackingNumber);
+    if (last && last.body === body && this.now() - last.at < RETRY_WINDOW_MS.bosta) return { key: last.key, body };
+    const after = last ? hash(last.key).slice(0, 8) : "first";
+    return { key: `${state}:body:${body}:${Math.floor(this.now() / RETRY_WINDOW_MS.bosta)}:after:${after}`, body };
+  }
+
+  /**
+   * W6: a poll of this store's active Bosta shipments at the next minute boundary (one per minute
+   * however many ask); the platform asks every store of a tenant when a webhook names no shipment.
+   */
+  async nudgeBostaPoll(): Promise<string> {
+    return (await this.store.enqueue(this.nudge("bosta.pollActive"), this.now())).job.id;
   }
 
   /**

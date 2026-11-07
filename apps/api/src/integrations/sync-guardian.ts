@@ -170,9 +170,10 @@ export class SyncGuardian implements OnApplicationBootstrap, OnApplicationShutdo
     if (stuck.length) {
       const first = (await trx.selectFrom("connections").select("id").where("kind", "=", "store").where("provider", "in", ["shopify", "woocommerce"])
         .where("status", "!=", "disconnected").orderBy("created_at").executeTakeFirst())?.id;
-      // A job counts only where it can run: one left in a disconnected store's queue never will.
+      // A job counts only where it can run: one left in a disconnected store's queue never will, nor one dropped
+      // with its courier (FX-3a); enqueued again below under its own key, a dropped job is revived.
       const queued = new Set((await trx.selectFrom("mz_outbox as j").leftJoin("connections as q", (jn) => jn.on(sql<boolean>`q.id::text = j.scope`))
-        .select("j.idempotency_key").where("j.idempotency_key", "in", stuck.map((s) => `bosta:ship:${s.id}`))
+        .select("j.idempotency_key").where("j.idempotency_key", "in", stuck.map((s) => `bosta:ship:${s.id}`)).where("j.status", "!=", "dropped")
         .where((w) => w.or([w("q.id", "is", null), w("q.status", "!=", "disconnected")])).execute()).map((r) => r.idempotency_key));
       for (const s of stuck) {
         if (queued.has(`bosta:ship:${s.id}`)) continue; // a job exists (running, retrying, or dead and revived on its own)

@@ -91,11 +91,17 @@ export class MemoryStore implements Store {
   }
 
   async markAndEnqueue(key: string, at: number, jobs: NewJob[], now: number): Promise<IntakeResult> {
-    // Single-threaded: nothing runs between these steps, so the pair is atomic here.
+    // Marked before the first await, so a concurrent delivery of the same key sees it (one is a
+    // duplicate); unmarked again if an enqueue fails, so the provider's retry is processed.
     if (this.inbound.has(key)) return { marked: false, jobs: [] };
-    const out: IntakeResult["jobs"] = [];
-    for (const j of jobs) out.push(await this.enqueue(j, now));
     this.inbound.set(key, at);
+    const out: IntakeResult["jobs"] = [];
+    try {
+      for (const j of jobs) out.push(await this.enqueue(j, now));
+    } catch (e) {
+      this.inbound.delete(key);
+      throw e;
+    }
     return { marked: true, jobs: out };
   }
 
@@ -103,8 +109,9 @@ export class MemoryStore implements Store {
     const existingId = this.byKey.get(j.idempotencyKey);
     const existing = existingId ? this.outbox.get(existingId) : undefined;
     if (existing && existing.status === "dropped") {
-      // A job dropped with its connection, asked for again (reconnected): it runs again.
-      Object.assign(existing, { status: "pending", attempts: 0, nextAttemptAt: j.runAt ?? now, lockedUntil: null, lastError: null, payload: structuredClone(j.payload), updatedAt: now });
+      // A job dropped with its connection, asked for again (reconnected): it runs again, once the
+      // lease of a run still in progress when it was dropped is over.
+      Object.assign(existing, { status: "pending", attempts: 0, nextAttemptAt: Math.max(j.runAt ?? now, existing.lockedUntil ?? 0), lockedUntil: null, lastError: null, payload: structuredClone(j.payload), updatedAt: now });
       return { job: structuredClone(existing) as OutboxJob<P>, created: true };
     }
     if (existing) return { job: structuredClone(existing) as OutboxJob<P>, created: false };
@@ -131,19 +138,20 @@ export class MemoryStore implements Store {
     return due.map((j) => structuredClone(j));
   }
 
+  // The end of a run changes only a job still running: dropped stays dropped, revived is not the old run's (FX-3a).
   async complete(id: string, now: number) {
     const j = this.outbox.get(id);
-    if (j) Object.assign(j, { status: "done", lockedUntil: null, lastError: null, updatedAt: now });
+    if (j?.status === "running") Object.assign(j, { status: "done", lockedUntil: null, lastError: null, updatedAt: now });
   }
 
   async retryLater(id: string, error: string, at: number, now: number) {
     const j = this.outbox.get(id);
-    if (j && j.status !== "dropped") Object.assign(j, { status: "pending", lockedUntil: null, lastError: error, nextAttemptAt: at, updatedAt: now });
+    if (j?.status === "running") Object.assign(j, { status: "pending", lockedUntil: null, lastError: error, nextAttemptAt: at, updatedAt: now });
   }
 
   async bury(id: string, error: string, now: number) {
     const j = this.outbox.get(id);
-    if (j && j.status !== "dropped") Object.assign(j, { status: "dead", lockedUntil: null, lastError: error, updatedAt: now });
+    if (j?.status === "running") Object.assign(j, { status: "dead", lockedUntil: null, lastError: error, updatedAt: now });
   }
 
   async replay(id: string, now: number) {
@@ -158,7 +166,7 @@ export class MemoryStore implements Store {
     let n = 0;
     for (const j of this.outbox.values()) {
       if (j.connection === connection && (j.status === "pending" || j.status === "running")) {
-        Object.assign(j, { status: "dropped", lockedUntil: null, lastError: reason, updatedAt: now });
+        Object.assign(j, { status: "dropped", lastError: reason, updatedAt: now }); // the lease kept, as in ConnectionLifecycle
         n++;
       }
     }
