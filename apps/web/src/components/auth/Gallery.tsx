@@ -14,7 +14,8 @@ import { EmailField, OfflineBanner, PhoneField, ReasonBanner, TrialChip } from "
  * language and theme, inside `.mz-auth` so the auth stylesheet and its motion tokens apply.
  * The one motion slot (AuthProgress) in its kinds, on the Brand 2.0 loaders: loading (pair),
  * sending in the key (drop), confirmed (DoneState, small and with its copy). And the auth stage's
- * mark (FluidMark) with the beats the stage plays: still by default, each beat once on a press.
+ * mark (FluidMark) with the beats the stage plays: still by default, each beat once on a press
+ * (signed in is the card's DROP, DoneState above, not a stage beat).
  */
 export function AuthGallery() {
   const t = useTranslations("auth");
@@ -45,7 +46,7 @@ export function AuthGallery() {
             <span className="inline-grid place-items-center p-4" style={{ background: "var(--au-ink)", color: "var(--au-paper)", borderRadius: 16 }} role="img" aria-label={ts("beats.label")}>
               <FluidMark beat={beat.beat} beatKey={beat.key} size={72} claim={false} />
             </span>
-            {(["settle", "tip", "drop"] as const).map((b) => (
+            {(["settle", "tip"] as const).map((b) => (
               <button key={b} type="button" className="mz-auth-btn" style={{ inlineSize: "auto", paddingInline: 14 }} onClick={() => setBeat((s) => ({ beat: b, key: s.key + 1 }))}>{ts(`beats.${b}`)}</button>
             ))}
           </div>

@@ -13,6 +13,7 @@ import { useRouter } from "@/i18n/navigation";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
 import { firebaseAuth, smsVerifier } from "@/lib/firebase";
 import { resume } from "@/lib/next-path";
+import { authUi } from "@/lib/auth/ui-store";
 import { useSession } from "@/lib/session";
 
 /** The reCAPTCHA container lives in the persistent frame (Frame.tsx), outside every animated subtree. */
@@ -61,12 +62,17 @@ export function TwoStep() {
   async function run(work: () => Promise<void>) {
     setBusy(true);
     setError(null);
+    // The stage answers as on the sign-in card: one pass toward Mizan while it sends, a tip if it fails.
+    authUi.signal("send");
+    let erred = false;
     try {
       await work();
     } catch (e) {
+      erred = true;
       setError(authErrorCode(e) === "auth/requires-recent-login" ? "recentLogin" : authErrorKey(e));
     } finally {
       setBusy(false);
+      authUi.signal(erred ? "error" : "idle");
     }
   }
 
@@ -116,6 +122,7 @@ export function TwoStep() {
       const p = normalizePhone(phone, "EG");
       if (!p) {
         setError("invalidPhone");
+        authUi.signal("error");
         return;
       }
       auth.languageCode = locale;

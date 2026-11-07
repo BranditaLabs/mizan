@@ -385,7 +385,7 @@ export function SignIn({ params }: { params: AuthParams }) {
   });
 
   const verifyCode = (value: string, el?: HTMLElement | null) => {
-    if (checkCode(value)) { setFieldErrors({ code: "codeIncomplete" }); return; }
+    if (checkCode(value)) { setFieldErrors({ code: "codeIncomplete" }); authUi.signal("error"); return; }
     void run(async () => {
       try {
         if (s.step === "mfa" && mfa) {

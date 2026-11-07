@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GEOMETRY, lane } from "../src/components/auth/stage/geometry";
-import { BEAT_MS, INTRO_MS, initialStage, markBeat, moving, stage, type StageEvent, type StageState } from "../src/components/auth/stage/machine";
+import { WAIT_MOTION } from "@mizan/shared/motion";
+import { BEAT_MS, INTRO_MS, STAGE_WAIT, initialStage, markBeat, moving, stage, type StageEvent, type StageState } from "../src/components/auth/stage/machine";
 
 const run = (events: StageEvent["type"][], reduced = false, from: StageState = initialStage(reduced)) =>
   events.reduce((s, type) => stage(s, { type } as StageEvent, reduced), from);
@@ -27,6 +28,19 @@ describe("the auth stage is part of the page: a short intro, then still, then it
     expect(stage(s, { type: "idle" }).phase).toBe("settled");
   });
 
+  it("a send is one bounded TRANSFER pass with the catalogue's meaning, then still even if the work goes on", () => {
+    expect(STAGE_WAIT).toBe(WAIT_MOTION.syncing);
+    expect(STAGE_WAIT).toBe("transfer");
+    expect(BEAT_MS.transfer).toBeLessThanOrEqual(5000);
+    const s = run(["introEnd", "send"]);
+    expect(stage(s, { type: "beatEnd" }).phase).toBe("settled");
+    // A second send while the pass runs does not restart it; after it, a new send passes again.
+    expect(stage(s, { type: "send" })).toEqual(s);
+    const again = run(["beatEnd", "send"], false, s);
+    expect(again.phase).toBe("transfer");
+    expect(again.seq).toBeGreaterThan(s.seq);
+  });
+
   it("an error tips the mark, a second one tips it again, and it settles after the beat", () => {
     const one = run(["introEnd", "send", "error"]);
     expect(one.phase).toBe("tip");
@@ -43,14 +57,14 @@ describe("the auth stage is part of the page: a short intro, then still, then it
     expect(run(["error"]).phase).toBe("tip");
   });
 
-  it("signed in drops the red once, then settles and ignores everything after", () => {
+  it("signed in: the stage settles and stays still (the card's DoneState owns the one red DROP)", () => {
     const s = run(["introEnd", "send", "signedIn"]);
-    expect(s.phase).toBe("drop");
-    expect(markBeat(s.phase)).toBe("drop");
-    expect(run(["signedIn"], false, s)).toEqual(s);
+    expect(s.phase).toBe("settled");
+    expect(s.signedIn).toBe(true);
+    expect(markBeat(s.phase)).toBeNull();
     const after = run(["beatEnd", "error", "send", "signedIn"], false, s);
-    expect(after.phase).toBe("settled");
-    expect(after.signedIn).toBe(true);
+    expect(after).toEqual(s);
+    expect(run(["signedIn"]).phase).toBe("settled"); // even during the intro
   });
 
   it("reduced motion: no intro and no beats, the settled frame throughout", () => {
@@ -73,11 +87,21 @@ describe("no pause control is left", () => {
     }
     expect(readFileSync(join(__dirname, "../../../packages/design-system/css/auth.css"), "utf8")).not.toContain("mz-auth-pause");
   });
-  it("the animator has no infinite loop but the transfer that runs while the card works", () => {
+  it("the animator has no loop at all: the intro plays once, each send is one pass", () => {
     const src = read("src/components/auth/stage/animator.ts");
-    expect(src.match(/Infinity/g)?.length).toBe(1);
-    expect(src).toMatch(/spawn\(Infinity/);
+    expect(src).not.toMatch(/Infinity|iterations/);
     expect(src).not.toContain("drift");
+  });
+  it("a late animator is brought to the current phase, and the intro is timed from mount", () => {
+    const src = read("src/components/auth/stage/AuthStage.tsx");
+    expect(src).toMatch(/buildStage\(root\.current, \{ elapsed: performance\.now\(\) - mountedAt\.current/);
+    expect(src).toMatch(/if \(at !== "intro"\) c\.finishIntro\(\)/);
+    expect(src).toMatch(/c\.transfer\(at === "transfer" && seen\)/);
+  });
+  it("the stage's mark lets the red go once signed in and while the stage is hidden", () => {
+    const src = read("src/components/auth/stage/AuthStage.tsx");
+    expect(src).toMatch(/markRed = scene !== "outage" && !hidden && !st\.signedIn/);
+    expect(src).not.toMatch(/"drop"/);
   });
 });
 

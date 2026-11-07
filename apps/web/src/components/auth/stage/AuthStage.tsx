@@ -4,7 +4,7 @@ import { Words } from "@mizan/design-system/auth/react";
 import { onReducedMotionChange, pauseWhenHidden, prefersReducedMotion } from "@mizan/design-system/auth-motion";
 import { Icon } from "@mizan/design-system/icons/react";
 import { RED_PRIORITY } from "@mizan/design-system/motion";
-import { FluidMark, useRed } from "@mizan/design-system/react/motion";
+import { FluidMark, useRed, useStageHidden } from "@mizan/design-system/react/motion";
 import { planPartnerLogo } from "@mizan/design-system/partners";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState, useSyncExternalStore } from "react";
@@ -12,19 +12,10 @@ import { usePathname } from "@/i18n/navigation";
 import { TRIAL_DAYS } from "@/lib/auth/intent";
 import { authUi, useAuthUi, type Scene } from "@/lib/auth/ui-store";
 import { GEOMETRY, lane, nodeWidth, type Geometry, type MapNode, type NodeId, type Variant } from "./geometry";
-import { BEAT_MS, INTRO_MS, initialStage, markBeat, stage, type StageEvent, type StageState } from "./machine";
+import { BEAT_MS, INTRO_MS, initialStage, markBeat, stage, type StageEvent, type StagePhase, type StageState } from "./machine";
 import type { StageController } from "./animator";
 
 const subscribeReduced = (cb: () => void) => onReducedMotionChange(cb);
-/** Landscape phones hide the stage (auth.css §12): nothing there may claim the view's red. */
-const SHORT = "(max-height: 500px) and (orientation: landscape)";
-const subscribeShort = (cb: () => void) => {
-  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return () => {};
-  const q = window.matchMedia(SHORT);
-  q.addEventListener("change", cb);
-  return () => q.removeEventListener("change", cb);
-};
-const isShort = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(SHORT).matches;
 
 /** The scene a route implies before the card says more (sign-up, Shopify, outage come from the card). */
 function sceneOf(pathname: string): Scene {
@@ -38,7 +29,8 @@ function sceneOf(pathname: string): Scene {
  * Brand 2.0 mark, the headline, a mini connections map (Mizan in the middle, the store, couriers,
  * WhatsApp and cash on delivery around it) and one example outcome. It plays a short intro (≤ 5s),
  * then stays still and moves only when the card says something happened (machine.ts): sending
- * flows dots toward Mizan, an error tips the mark, signing in drops the red. Server-rendered as
+ * passes dots toward Mizan once, an error tips the mark; signing in is the card's DROP (DoneState
+ * takes the red, so the mark lets it go). Server-rendered as
  * its settled frame; the animator chunk loads on idle (never under reduced motion or Save-Data).
  * Out of sight or in a hidden tab nothing runs. The SVG is decorative; a sentence says the same
  * for screen readers.
@@ -49,10 +41,8 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   const ui = useAuthUi();
   const scene: Scene = variant === "staff" ? "staff" : ui.scene ?? sceneOf(pathname);
   const reduced = useSyncExternalStore(subscribeReduced, prefersReducedMotion, () => false);
-  const short = useSyncExternalStore(subscribeShort, isShort, () => false);
-  // One red: the outage dot while the hub is down, else the mark's ball (while the stage shows).
-  const red = useRed("auth-stage:outage", RED_PRIORITY.dot, scene === "outage");
-  const markRed = scene !== "outage" && !short && !ui.keyboard;
+  // Landscape phones (and the phone strip while typing) hide the stage: nothing there may claim the red.
+  const hidden = useStageHidden(ui.keyboard);
   const root = useRef<HTMLElement>(null);
   const ctrl = useRef<StageController | null>(null);
   const [visible, setVisible] = useState(true);
@@ -62,6 +52,15 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   const [st, dispatch] = useReducer((s: StageState, a: { e: StageEvent; reduced: boolean }) => stage(s, a.e, a.reduced), false, initialStage);
   const send = useCallback((e: StageEvent) => dispatch({ e, reduced: reducedRef.current }), []);
   const { phase, seq } = st;
+  // One red: the outage dot while the hub is down, else the mark's ball (while the stage shows and
+  // until signed in: then the card's DoneState plays the DROP with it).
+  const red = useRed("auth-stage:outage", RED_PRIORITY.dot, scene === "outage");
+  const markRed = scene !== "outage" && !hidden && !st.signedIn;
+  // What a late animator must catch up with (it loads on idle, maybe after the intro or a send).
+  const mountedAt = useRef(0);
+  const now = useRef<{ phase: StagePhase; visible: boolean }>({ phase, visible });
+  useEffect(() => { now.current = { phase, visible }; }, [phase, visible]);
+  useEffect(() => { mountedAt.current = performance.now(); }, []);
 
   // The card's news (signals carry no PII: send, idle, error, signed in).
   useEffect(() => authUi.onSignal((s) => send({ type: s })), [send]);
@@ -78,7 +77,12 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
     const start = () => {
       void import("./animator").then(({ buildStage }) => {
         if (cancelled || !root.current) return;
-        ctrl.current = buildStage(root.current);
+        const { phase: at, visible: seen } = now.current;
+        const c = buildStage(root.current, { elapsed: performance.now() - mountedAt.current, intro: at === "intro" && seen });
+        ctrl.current = c;
+        // The effects below ran before it existed: bring it to the current phase now.
+        if (at !== "intro") c.finishIntro();
+        c.transfer(at === "transfer" && seen);
       });
     };
     const ric = (window as Window & { requestIdleCallback?(cb: () => void, o?: { timeout: number }): number }).requestIdleCallback;
@@ -104,11 +108,11 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
     return () => window.clearTimeout(id);
   }, [phase, visible, send]);
   useEffect(() => { if (phase !== "intro") ctrl.current?.finishIntro(); }, [phase]);
-  // TRANSFER only while the work runs and someone can see it.
-  useEffect(() => { ctrl.current?.transfer(phase === "transfer" && visible); }, [phase, visible]);
-  // A beat (tip, drop) settles by itself.
+  // TRANSFER: one pass per send, while someone can see it.
+  useEffect(() => { ctrl.current?.transfer(phase === "transfer" && visible); }, [phase, seq, visible]);
+  // A beat (tip, the transfer pass) settles by itself, even if the work goes on.
   useEffect(() => {
-    if (phase !== "tip" && phase !== "drop") return;
+    if (phase !== "tip" && phase !== "transfer") return;
     const id = window.setTimeout(() => send({ type: "beatEnd" }), BEAT_MS[phase]);
     return () => window.clearTimeout(id);
   }, [phase, seq, send]);

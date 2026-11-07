@@ -10,4 +10,5 @@ export { DoneState, type DoneStateProps } from "./DoneState";
 export { FluidMark, type FluidMarkProps, type FluidBeat } from "./FluidMark";
 export { RedBudgetProvider, RedSwatch, useRed, useRedBudget, useRedTaken } from "./RedBudget";
 export { useReducedMotion } from "./useReducedMotion";
+export { useStageHidden, STAGE_HIDDEN_QUERY } from "./useStageHidden";
 export { useMotionClock, useSvgId, type PhysicsModule } from "./useMotionClock";

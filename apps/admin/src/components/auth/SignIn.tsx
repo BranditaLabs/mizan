@@ -12,6 +12,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { authErrorCode, authErrorKey, type AuthErrorKey } from "@/lib/auth-errors";
+import { staffStage } from "@/lib/auth-stage";
 import { firebaseAuth, smsVerifier } from "@/lib/firebase";
 import { safeNext } from "@/lib/next-path";
 import { useSession } from "@/lib/session";
@@ -45,6 +46,9 @@ export function SignIn() {
   const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (status === "signed-in") staffStage.signal("signedIn");
+  }, [status]);
+  useEffect(() => {
     if (status === "signed-in") router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
   }, [status, router]);
 
@@ -66,6 +70,7 @@ export function SignIn() {
       await work();
     } catch (e) {
       setError({ key: authErrorKey(e), at: Date.now() });
+      staffStage.signal("error");
     } finally {
       setBusy(false);
     }
@@ -79,6 +84,7 @@ export function SignIn() {
     const missing = { email: email.trim() ? undefined : "requiredEmail" as const, password: password ? undefined : "requiredPassword" as const };
     if (missing.email || missing.password) {
       setFieldError(missing);
+      staffStage.signal("error");
       (missing.email ? emailRef : passwordRef).current?.focus();
       return;
     }
@@ -101,7 +107,7 @@ export function SignIn() {
   const onMfa = (e: FormEvent) => {
     e.preventDefault();
     if (!mfa) return;
-    if (code.length !== 6) { setFieldError({ code: "codeIncomplete" }); return; }
+    if (code.length !== 6) { setFieldError({ code: "codeIncomplete" }); staffStage.signal("error"); return; }
     void run(async () => {
       await mfa.resolver.resolveSignIn(PhoneMultiFactorGenerator.assertion(PhoneAuthProvider.credential(mfa.verificationId, code)));
     });

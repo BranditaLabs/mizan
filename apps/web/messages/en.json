@@ -5611,7 +5611,7 @@
     "waitingShopify": "Waiting for Shopify",
     "inviteNode": "A store invited you",
     "staffKicker": "Staff only",
-    "beats": {"label": "The stage's mark", "settle": "Intro: arrives", "tip": "Error: tips, then settles", "drop": "Signed in: the red drops"},
+    "beats": {"label": "The stage's mark", "settle": "Intro: arrives", "tip": "Error: tips, then settles"},
     "srSummary": "Mizan connects your store, couriers, WhatsApp and payments, and shows the real profit on every order.",
     "nodes": {
       "hub": "Mizan",

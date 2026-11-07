@@ -10,7 +10,7 @@ import * as transfer from "../motion/physics/transfer";
 import * as drop from "../motion/physics/drop";
 import * as fill from "../motion/physics/fill";
 import * as level from "../motion/physics/level";
-import { MizanLoader, EventGlyph, DoneState, FluidMark, RedBudgetProvider, Mark, Wordmark, useRedTaken } from "../react/motion";
+import { MizanLoader, EventGlyph, DoneState, FluidMark, RedBudgetProvider, Mark, Wordmark, useRedTaken, useStageHidden, STAGE_HIDDEN_QUERY } from "../react/motion";
 import { Gauge, Vessels, Breakeven, Bullseye } from "../react/motion/instruments";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -365,5 +365,35 @@ describe("FluidMark: the live mark, still unless a beat plays once", () => {
     const { host, unmount } = mount(<RedBudgetProvider><FluidMark claim={false} /></RedBudgetProvider>);
     expect(host.querySelector('[data-mz-red="on"]')).toBeNull();
     unmount();
+  });
+
+  it("the red never hops: a logo beside the stage's mark renders taken (mono) on the server, the mark claims after hydration", () => {
+    const Logo = ({ staged }: { staged: boolean }) => <i data-taken={String(useRedTaken(staged))} />;
+    expect(renderToString(<RedBudgetProvider><Logo staged /><FluidMark /></RedBudgetProvider>)).toContain('data-taken="true"');
+    expect(renderToString(<RedBudgetProvider><Logo staged={false} /></RedBudgetProvider>)).toContain('data-taken="false"');
+    const { host, unmount } = mount(<RedBudgetProvider><Logo staged /><FluidMark /></RedBudgetProvider>);
+    expect(host.querySelector("i")?.getAttribute("data-taken")).toBe("true");
+    expect(host.querySelector("svg[data-beat]")?.getAttribute("data-mz-red")).toBe("on");
+    unmount();
+  });
+});
+
+describe("useStageHidden: a hidden auth stage claims no red", () => {
+  const withMedia = (matches: (q: string) => boolean) => {
+    const prev = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ matches: matches(q), media: q, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    return () => { window.matchMedia = prev; };
+  };
+  const Probe = ({ keyboard = false }: { keyboard?: boolean }) => <i data-hidden={String(useStageHidden(keyboard))} />;
+  it("a landscape phone hides it; a phone hides it only while the keyboard is open; the server says shown", () => {
+    expect(renderToString(<Probe />)).toContain('data-hidden="false"');
+    let restore = withMedia((q) => q === STAGE_HIDDEN_QUERY);
+    let m = mount(<Probe />);
+    expect(m.host.querySelector("i")?.getAttribute("data-hidden")).toBe("true");
+    m.unmount(); restore();
+    restore = withMedia((q) => q.includes("max-width"));
+    m = mount(<><Probe /><Probe keyboard /></>);
+    expect([...m.host.querySelectorAll("i")].map((i) => i.getAttribute("data-hidden"))).toEqual(["false", "true"]);
+    m.unmount(); restore();
   });
 });

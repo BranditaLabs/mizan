@@ -33,11 +33,13 @@ export function useRed(id: string, priority: number, want = true, ttlMs?: number
 
 /**
  * Whether anybody holds the view's red. A full-colour logo that is the view's red when nothing else
- * is (the auth header) turns mono while a DROP or a verdict holds it. False on the server.
+ * is (the auth header) turns mono while a DROP or a verdict holds it. `serverTaken`: what the server
+ * (and hydration) render. False by default; true where a claimant is expected after hydration (the
+ * auth stage's mark), so the logo starts mono and the red never hops from the logo to the mark.
  */
-export function useRedTaken(): boolean {
+export function useRedTaken(serverTaken = false): boolean {
   const budget = useRedBudget();
-  return useSyncExternalStore(budget.subscribe, () => budget.holder() !== null, () => false);
+  return useSyncExternalStore(budget.subscribe, () => budget.holder() !== null, () => serverTaken);
 }
 
 /**
