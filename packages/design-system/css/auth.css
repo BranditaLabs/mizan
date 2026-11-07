@@ -1,7 +1,16 @@
 /* Mizan auth: the screens before a store (sign-in, create account, reset, two-step, welcome) and
    the back office's staff sign-in. "Focus card on a living stage": one card that never remounts,
-   an ink stage beside it (an island on desktop, a band on tablets, a strip on phones), a Brandita
-   top bar, and Brandita motion.
+   an ink stage beside it, a Brandita top bar, and Brandita motion. The stage follows the screen's
+   shape, not only its width:
+     island  landscape from 1024px: a column beside the card (the layout caps at 1840px, so an
+             ultrawide never stretches it)
+     band    tablets, and portrait screens from 1024px: a strip above the card
+     hero    tall portrait (from 768px wide, 4:5 or taller, 1400px high): the band grown into a
+             panel with the full map; it takes the height the card leaves, so a tall screen has
+             no empty half and the card (sign-up included) still fits
+     strip   phones; landscape phones hide the stage
+   The map keeps its aspect ratio (SVG meet) and fills the room its box has (container query units),
+   up to a maximum; at short heights the copy around it gets smaller first, so labels stay legible.
 
    Framework-neutral and scoped under `.mz-auth`; it reads only the core tokens (--mz-*), so it works
    inside Mizan Glass (`.mzg`, which bridges the core tokens through glass) and on the plain kit
@@ -84,6 +93,12 @@
 /* Opaque (the surface over the page colour), so the pill is one tone over paper and ink alike. */
 @media (min-width: 1024px) { .mz-auth-bar__in { border-color: var(--mz-line); box-shadow: 0 8px 24px -16px rgb(0 0 0 / .35); } .mz-auth-bar__in::before { opacity: 1; background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper)); -webkit-backdrop-filter: none; backdrop-filter: none; } }
 @media (min-width: 768px) { .mz-auth-bar { inset-block-start: calc(env(safe-area-inset-top, 0px) + 14px); } .mz-auth-bar__in { block-size: 56px; } }
+/* Island: the bar spans the layout (capped at 1840px, 16px in from its edges like the ink panel), so
+   it lines up with the card's column and the panel at every width, an ultrawide included. */
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) {
+  .mz-auth-bar { padding-inline: 16px; } .mz-auth-bar__in { inline-size: min(1808px, 100%); }
+  .mz-auth:has(.mz-auth-stage[data-variant="staff"]) .mz-auth-bar__in { inline-size: min(1248px, 100%); }
+}
 .mz-auth-bar__start { display: flex; align-items: center; gap: 10px; min-inline-size: 0; }
 .mz-auth-bar__mid { display: flex; align-items: center; color: var(--mz-text-2); font-size: 13px; }
 .mz-auth-bar__end { display: flex; align-items: center; justify-content: flex-end; gap: 4px; min-inline-size: 0; }
@@ -142,36 +157,45 @@
 .mz-auth-confirm { padding: 12px; display: flex; flex-direction: column; gap: 10px; max-inline-size: 300px; }
 .mz-auth-confirm p { margin: 0; font-size: 14px; color: var(--mz-text-2); }
 
-/* ───────────── 3. Layout: form column + stage (island ≥1024, band 768–1023, strip <768) ───────────── */
+/* ───────────── 3. Layout: form column + stage (island, band, hero, strip: see the header) ───────────── */
 .mz-auth-layout { position: relative; display: flex; flex-direction: column; flex: 1; min-inline-size: 0; }
 .mz-auth-form { position: relative; display: flex; flex-direction: column; flex: 1; min-inline-size: 0; padding-inline: 16px; padding-block-end: 24px; }
 .mz-auth-main { display: flex; flex-direction: column; align-items: stretch; min-inline-size: 0; }
-@media (min-width: 768px) and (max-width: 1023.98px) {
+@media (min-width: 768px) and (max-width: 1023.98px), (min-width: 1024px) and (max-aspect-ratio: 999/1000) {
   .mz-auth-form { padding-inline: var(--au-gutter); align-items: center; }
   .mz-auth-main { inline-size: min(520px, 100%); margin-block-start: -40px; position: relative; z-index: 2; }
   /* The card overlaps the band: a solid surface, so the ink never shows through its top. */
   .mz-auth .mz-auth-card__surface { background: linear-gradient(var(--mz-surface), var(--mz-surface)), var(--mz-bg, var(--au-paper)); -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
-@media (max-width: 1023.98px) { .mz-auth-layout > .mz-auth-stage { order: -1; } }
+@media not all and (min-width: 1024px) and (min-aspect-ratio: 1/1) { .mz-auth-layout > .mz-auth-stage { order: -1; } }
 .mz-auth[data-keyboard] .mz-auth-form { padding-block-start: 70px; }
-@media (min-width: 1024px) {
-  .mz-auth-layout { display: grid; grid-template-columns: minmax(480px, 44%) 1fr; align-items: stretch; }
-  .mz-auth-form { grid-column: 1; grid-row: 1; padding-inline: clamp(24px, 4vw, 64px); padding-block-start: clamp(104px, 18vh, 168px); }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) {
+  /* An ultrawide (21:9 and wider) keeps the pair together: capped and centred, never stretched. */
+  .mz-auth-layout { display: grid; grid-template-columns: minmax(480px, 44%) 1fr; align-items: stretch; inline-size: 100%; max-inline-size: 1840px; margin-inline: auto; }
+  /* Top-anchored (the card grows downward), and centred-ish when the screen is taller than the card needs. */
+  .mz-auth-form { grid-column: 1; grid-row: 1; padding-inline: clamp(24px, 4vw, 64px); padding-block-start: max(clamp(104px, 18vh, 168px), calc((100dvh - 820px) / 2)); }
   .mz-auth-main { inline-size: min(440px, 100%); margin-inline: auto; }
   .mz-auth-main[data-wide] { inline-size: min(480px, 100%); }
   .mz-auth-layout > .mz-auth-stage { grid-column: 2; grid-row: 1; }
 }
-@media (min-width: 1024px) and (max-width: 1279.98px) { .mz-auth-layout { grid-template-columns: 1fr 46%; } }
-/* The staff island holds a kicker, the scale and one word: narrower, its copy centred. */
-@media (min-width: 1024px) {
-  .mz-auth-layout:has(> .mz-auth-stage[data-variant="staff"]) { grid-template-columns: 1fr minmax(360px, 40%); }
-  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { justify-content: center; padding-block: 96px; }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) and (max-width: 1279.98px) { .mz-auth-layout { grid-template-columns: 1fr 50%; } }
+/* Laptops 720-800px high: the card starts just under the bar, so its actions (Google, SSO) fit. */
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) and (max-height: 800px) {
+  .mz-auth-form { padding-block-start: 84px; }
+  .mz-auth .mz-auth-card { padding: 24px 28px; }
+}
+/* The staff island holds a kicker, the mark and one word: narrower, its copy centred, and the pair
+   capped at 1280px so an ultrawide keeps the card and the panel together. */
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) {
+  .mz-auth-layout:has(> .mz-auth-stage[data-variant="staff"]) { grid-template-columns: minmax(480px, 1fr) minmax(360px, 560px); max-inline-size: 1280px; }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { justify-content: center; align-items: center; text-align: center; padding-block: 96px; }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__copy { align-items: center; }
 }
 
 /* ───────────── 4. The focus card: a surface layer behind content (FLIPs its height), top-anchored ───────────── */
 .mz-auth-card { --_gap: 16px; --_ctl: max(44px, var(--au-ctl)); position: relative; isolation: isolate; margin-block-start: 12px; padding: clamp(20px, 3.5vw, 36px); border-radius: 20px; }
 @media (min-width: 480px) { .mz-auth-card { border-radius: 28px; } }
-@media (min-width: 1024px) { .mz-auth-card { margin-block-start: 0; } }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) { .mz-auth-card { margin-block-start: 0; } }
 .mz-auth-card__surface {
   position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none; transform-origin: 50% 0;
   background: var(--mz-surface); border: 1px solid var(--mz-line); box-shadow: var(--mz-shadow-overlay, 0 24px 48px -28px rgba(11, 11, 11, .3));
@@ -444,56 +468,69 @@
   background: radial-gradient(40% 40% at 70% 20%, color-mix(in srgb, var(--au-paper) 12%, transparent), transparent 70%),
               radial-gradient(50% 50% at 20% 90%, color-mix(in srgb, var(--au-paper) 8%, transparent), transparent 70%); }
 .mz-auth-stage__content { position: relative; display: flex; align-items: center; gap: 12px; block-size: 100%; padding-inline: 14px; }
-.mz-auth-stage__copy, .mz-auth-stage__ticker, .mz-auth-stage__scale, .mz-auth-stage__kicker { display: none; }
+/* Phones (the strip): the mark at the start, the map after it; no headline, no ticker. */
+.mz-auth-stage__ticker, .mz-auth-stage__kicker, .mz-auth-stage__headline { display: none; }
+.mz-auth-stage__copy { display: flex; flex: none; align-items: center; }
+.mz-auth-stage__mark { display: block; flex: none; inline-size: 44px; color: var(--au-paper); line-height: 0; }
+.mz-auth-stage__mark > svg { inline-size: 100%; block-size: auto; }
 .mz-auth-stage__map { flex: 1; min-inline-size: 0; block-size: 100%; display: grid; place-items: center; }
 .mz-auth-stage__map > svg { inline-size: 100%; block-size: 100%; max-block-size: 56px; }
-.mz-auth-stage__scale > svg { display: block; inline-size: 100%; block-size: 100%; }
-.mz-auth-pause {
-  position: relative; flex: none; display: grid; place-items: center; inline-size: 40px; block-size: 40px; border-radius: 999px; border: 1px solid var(--st-line);
-  background: color-mix(in srgb, var(--au-paper) 6%, transparent); color: var(--st-fg); cursor: pointer;
-}
-.mz-auth-pause::after { content: ""; position: absolute; inset: -2px; }
-@media (max-width: 767.98px) { .mz-auth-stage .mz-auth-pause::after { inset: -6px; } }
-.mz-auth-pause:hover { background: color-mix(in srgb, var(--au-paper) 12%, transparent); }
-@media (max-width: 767.98px) {
-  .mz-auth[data-keyboard] .mz-auth-stage { display: none; }
-  .mz-auth-stage .mz-auth-pause { inline-size: 32px; block-size: 32px; }
-}
-@media (min-width: 768px) and (max-width: 1023.98px) {
+@media (max-width: 767.98px) { .mz-auth[data-keyboard] .mz-auth-stage { display: none; } }
+@media (min-width: 768px) and (max-width: 1023.98px), (min-width: 1024px) and (max-aspect-ratio: 999/1000) {
   .mz-auth-stage { margin-inline: var(--au-gutter); margin-block-start: 80px; block-size: 220px; border-radius: 28px; }
   .mz-auth-stage__content { flex-direction: column; align-items: stretch; justify-content: center; gap: 10px; padding: 24px 28px 52px; }
-  .mz-auth-stage__copy { display: flex; align-items: center; gap: 14px; }
-  .mz-auth-stage__scale { display: block; inline-size: 40px; block-size: 40px; flex: none; }
-  .mz-auth-stage__headline { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; }
+  .mz-auth-stage__copy { gap: 14px; }
+  .mz-auth-stage__mark { inline-size: 56px; }
+  .mz-auth-stage__headline { display: block; margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; }
   .mz-auth-stage__headline .au-line2 { display: none; }
-  .mz-auth-stage__map > svg { max-block-size: 96px; }
-  .mz-auth-stage .mz-auth-pause { position: absolute; inset-block-end: 56px; inset-inline-end: 20px; }
+  .mz-auth-stage__map > svg { max-block-size: 96px; max-inline-size: 640px; }
 }
-@media (min-width: 1024px) {
+/* Tall portrait: the band becomes a panel with the full map and both headline lines. It takes the
+   height the card and the footer leave (flex), 520-1100px, so the active card (sign-up is the
+   tallest) always fits under it and the footer follows the card with no empty paper between. */
+@media (min-width: 768px) and (max-aspect-ratio: 4/5) and (min-height: 1400px) {
+  .mz-auth-stage { display: flex; flex-direction: column; flex: 1 0 auto; block-size: auto; min-block-size: 520px; max-block-size: 1100px; }
+  .mz-auth-layout > .mz-auth-form { flex: 0 0 auto; }
+  .mz-auth-stage__content { flex: 1; block-size: auto; justify-content: center; gap: 20px; padding: 48px 48px 88px; }
+  .mz-auth-stage__headline { font-family: var(--mz-font-display, "Geist"), sans-serif; font-size: clamp(28px, 3.6vw, 44px); line-height: 1.12; font-weight: 700; letter-spacing: -.02em; max-inline-size: 22ch; text-wrap: balance; }
+  :lang(ar) .mz-auth-stage__headline { font-family: "Alexandria", sans-serif; letter-spacing: 0; line-height: 1.3; }
+  .mz-auth-stage__headline .au-line2 { display: block; color: var(--st-fg-2); }
+  .mz-auth-stage__mark { inline-size: 72px; }
+  /* The map takes the rest of the panel (its height is only known after flexing, so the SVG fills
+     the box and `meet` keeps the network's 22:15 aspect, centred), at most 760 by 520px. */
+  .mz-auth-stage__map { position: relative; flex: 1; inline-size: 100%; max-inline-size: 760px; block-size: auto; max-block-size: 520px; min-block-size: 0; margin-inline: auto; }
+  .mz-auth-stage__map > svg { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; max-inline-size: none; max-block-size: none; }
+}
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) {
   .mz-auth-stage { position: sticky; inset-block-start: 16px; margin: 16px; margin-inline-start: 0; block-size: calc(100dvh - 32px); min-block-size: 560px; border-radius: 28px; }
   .mz-auth-stage__content { flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 20px; padding: 96px 48px 40px; }
   .mz-auth-stage__kicker { display: block; color: var(--st-fg-2); font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
   :lang(ar) .mz-auth-stage__kicker { letter-spacing: 0; text-transform: none; font-size: 13px; }
-  .mz-auth-stage__copy { display: flex; flex-direction: column; gap: 18px; }
-  .mz-auth-stage__scale { display: block; inline-size: 64px; block-size: 64px; }
-  .mz-auth-stage__headline { margin: 0; font-family: var(--mz-font-display, "Geist"), sans-serif; font-weight: 800; font-size: clamp(34px, 3.2vw, 52px); line-height: 1.04; letter-spacing: -.035em; max-inline-size: 15ch; text-wrap: balance; }
+  .mz-auth-stage__copy { flex-direction: column; align-items: flex-start; gap: 18px; }
+  .mz-auth-stage__mark { inline-size: 96px; }
+  .mz-auth-stage__headline { display: block; margin: 0; font-family: var(--mz-font-display, "Geist"), sans-serif; font-weight: 800; font-size: clamp(34px, 3.2vw, 52px); line-height: 1.04; letter-spacing: -.035em; max-inline-size: 15ch; text-wrap: balance; }
   :lang(ar) .mz-auth-stage__headline { font-family: "Alexandria", sans-serif; font-weight: 700; letter-spacing: 0; line-height: 1.25; max-inline-size: 18ch; }
   .mz-auth-stage__headline .au-line2 { display: block; color: var(--st-fg-2); }
   .mz-auth-stage__headline .au-w { display: inline-block; }
-  .mz-auth-stage__map { flex: 1; inline-size: 100%; min-block-size: 0; }
-  .mz-auth-stage__map > svg { max-block-size: 300px; max-inline-size: 440px; }
-  .mz-auth-stage__ticker { display: flex; align-items: center; gap: 12px; inline-size: calc(100% - 56px); min-block-size: 48px; font-size: 15px; color: var(--st-fg); }
-  .mz-auth-stage .mz-auth-pause { position: absolute; inset-block-end: 40px; inset-inline-end: 40px; }
+  /* The map fills the box the copy and the ticker leave (a size container): as wide as the box
+     allows at its 22:15 aspect, up to 720px. Short screens shrink the copy first (below). */
+  .mz-auth-stage__map { flex: 1; inline-size: 100%; min-block-size: 0; container: au-map / size; }
+  .mz-auth-stage__map > svg { inline-size: min(100cqi, 100cqb * 1.4667, 720px); max-inline-size: none; block-size: auto; max-block-size: none; }
+  .mz-auth-stage__ticker { display: flex; align-items: center; gap: 12px; inline-size: 100%; max-inline-size: 640px; min-block-size: 48px; font-size: 15px; color: var(--st-fg); }
 }
-@media (min-width: 1024px) and (max-height: 759.98px) { .mz-auth-stage__headline .au-line2 { display: none; } .mz-auth-stage__content { padding-block-start: 80px; } }
-@media (min-width: 1024px) and (max-height: 639.98px) { .mz-auth-stage__map { display: none; } }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) and (max-width: 1279.98px) { .mz-auth-stage__content { padding-inline: 32px; } }
+/* Laptop heights: a smaller mark and headline (by the screen's height too), so the map keeps its labels legible. */
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) and (max-height: 860px) {
+  .mz-auth-stage__content { padding-block: 88px 32px; }
+  .mz-auth-stage__copy { gap: 14px; }
+  .mz-auth-stage__mark { inline-size: 64px; }
+  .mz-auth-stage__headline { font-size: clamp(30px, min(3.2vw, 5.2vh), 52px); }
+}
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) and (max-height: 800px) { .mz-auth-stage__headline .au-line2 { display: none; } }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) and (max-height: 639.98px) { .mz-auth-stage__map { display: none; } }
 .mz-auth-tag { flex: none; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--st-line); color: var(--st-fg-2); font-size: 11px; font-weight: 600; }
 .mz-auth-roll { position: relative; display: grid; flex: 1; min-inline-size: 0; overflow: clip; }
 .mz-auth-roll > span { grid-area: 1 / 1; }
-.mz-auth-roll > span[data-out] { animation: au-tick-out var(--au-slow) var(--au-ease-exit) both; }
-.mz-auth-roll > span[data-in] { animation: au-tick-in var(--au-moderate) var(--au-ease) 120ms both; }
-@keyframes au-tick-out { to { opacity: 0; transform: translateY(-110%); } }
-@keyframes au-tick-in { from { opacity: 0; transform: translateY(110%); } to { opacity: 1; transform: none; } }
 
 /* Map pieces (shared geometry with onboarding's connections map). */
 /* Labels sit after their monogram in both languages (the map itself is not mirrored). */
@@ -519,10 +556,10 @@
 .mz-auth-map .st-badge rect { fill: var(--au-paper); } .mz-auth-map .st-badge text { fill: var(--au-ink); font: 700 11px var(--mz-font-sans, "Geist"), sans-serif; }
 .mz-auth-map .st-icon { color: var(--st-fg); }
 .mz-auth-map .st-tile { fill: var(--au-paper); }
-/* Scene deltas: no rebuild, a property flip with a transition. */
+/* Scene deltas: no rebuild, a property flip with a transition (the Shopify halo pulses twice, then rests). */
 .mz-auth-stage[data-scene="signup"] .st-badge.trial { opacity: 1; transform: none; transition-delay: 200ms; }
 .mz-auth-stage[data-scene="shopify"] .st-node:not([data-node="shopify"]) { opacity: .45; }
-.mz-auth-stage[data-scene="shopify"] [data-node="shopify"] .st-halo { animation: au-halo 1800ms ease-out infinite; }
+.mz-auth-stage[data-scene="shopify"] [data-node="shopify"] .st-halo { animation: au-halo 1800ms ease-out 2; }
 @keyframes au-halo { from { opacity: .6; transform: scale(1); } to { opacity: 0; transform: scale(1.25); } }
 .mz-auth-stage:not([data-scene="invite"]):not([data-scene="welcome"]) .st-ghost { opacity: 0; }
 .mz-auth-stage[data-scene="outage"] .st-hub circle.ring { fill: none; stroke: var(--au-paper); stroke-dasharray: 4 3; }
@@ -541,13 +578,22 @@
 
 /* One map per screen size: the strip on phones, the band on tablets, the island on desktop. */
 .mz-auth-map.au-v-band, .mz-auth-map.au-v-island { display: none; }
-@media (min-width: 768px) and (max-width: 1023.98px) { .mz-auth-map.au-v-strip { display: none; } .mz-auth-map.au-v-band { display: block; } }
-@media (min-width: 1024px) { .mz-auth-map.au-v-strip, .mz-auth-map.au-v-band { display: none; } .mz-auth-map.au-v-island { display: block; } }
+@media (min-width: 768px) and (max-width: 1023.98px), (min-width: 1024px) and (max-aspect-ratio: 999/1000) { .mz-auth-map.au-v-strip { display: none; } .mz-auth-map.au-v-band { display: block; } }
+@media (min-width: 768px) and (max-aspect-ratio: 4/5) and (min-height: 1400px) { .mz-auth-map.au-v-band { display: none; } .mz-auth-map.au-v-island { display: block; } }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) { .mz-auth-map.au-v-strip, .mz-auth-map.au-v-band { display: none; } .mz-auth-map.au-v-island { display: block; } }
 .mz-auth-map .st-particle { fill: var(--au-paper); opacity: 0; }
-/* The staff stage (back office): the scale, the kicker and the drift only. */
+/* The staff stage (back office): the mark, the kicker and one word. */
+/* It has no map: on a tall portrait it stays a band (no empty panel), its copy centred. */
+@media (min-width: 768px) and (max-aspect-ratio: 4/5) and (min-height: 1400px) {
+  .mz-auth-stage[data-variant="staff"] { flex: none; block-size: 220px; min-block-size: 0; }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { justify-content: center; padding-block: 24px 52px; }
+  /* The staff card is short: the band and the card sit together in the middle of a tall screen. */
+  .mz-auth-layout:has(> .mz-auth-stage[data-variant="staff"]) { justify-content: center; padding-block-end: 80px; }
+  .mz-auth-layout:has(> .mz-auth-stage[data-variant="staff"]) > .mz-auth-form { flex: 0 0 auto; }
+}
 .mz-auth-stage[data-variant="staff"] .mz-auth-stage__copy { display: flex; }
 @media (max-width: 767.98px) {
-  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__scale { display: block; inline-size: 36px; block-size: 36px; }
+  .mz-auth-stage[data-variant="staff"] .mz-auth-stage__mark { inline-size: 44px; }
   .mz-auth-stage[data-variant="staff"] .mz-auth-stage__kicker { display: block; font-size: 13px; font-weight: 600; color: var(--st-fg); }
   .mz-auth-stage[data-variant="staff"] .mz-auth-stage__content { flex-direction: row; }
   .mz-auth-stage[data-variant="staff"] .mz-auth-stage__headline { display: none; }
@@ -562,7 +608,7 @@
 .mz-auth-foot nav { display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; }
 .mz-auth-foot a { color: inherit; text-decoration: none; position: relative; }
 .mz-auth-foot a:hover { color: var(--mz-text); text-decoration: underline; text-underline-offset: 3px; }
-@media (min-width: 1024px) { .mz-auth-foot { justify-content: space-between; flex-wrap: nowrap; padding-block-end: 0; } }
+@media (min-width: 1024px) and (min-aspect-ratio: 1/1) { .mz-auth-foot { justify-content: space-between; flex-wrap: nowrap; padding-block-end: 0; } }
 
 /* ───────────── 11. First paint: the H1 is painted on frame 0 (LCP), the rest rises in a short stagger ───────────── */
 .mz-auth-bar__in { animation: au-bar-in var(--au-slow) var(--au-ease) both; }
@@ -591,6 +637,8 @@
 @media (max-height: 500px) and (orientation: landscape) {
   .mz-auth-bar { position: static; padding-block-start: 8px; } .mz-auth-bar__in { block-size: 44px; }
   .mz-auth-stage { display: none; }
+  /* The bar is in the flow here: the keyboard's room under a fixed bar is not needed. */
+  .mz-auth[data-keyboard] .mz-auth-form { padding-block-start: 0; }
   .mz-auth-form { align-items: center; }
   .mz-auth-main { inline-size: min(560px, 100%); }
   .mz-auth-main { margin-block-start: 0; }

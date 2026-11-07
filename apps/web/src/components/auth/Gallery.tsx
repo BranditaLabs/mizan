@@ -3,6 +3,7 @@
 import {
   AuthProgress, CodeField, FormAlert, PasswordField, PrimaryCta, ResendTimer, StepProgress, StrengthMeter, TextField,
 } from "@mizan/design-system/auth/react";
+import { FluidMark, type FluidBeat } from "@mizan/design-system/react/motion";
 import type { PhoneCountry } from "@mizan/shared";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,7 +14,9 @@ import { EmailField, OfflineBanner, PhoneField, ReasonBanner, TrialChip } from "
  * language and theme, inside `.mz-auth` so the auth stylesheet and its motion tokens apply.
  * The one motion slot (AuthProgress), one labelled sample per meaning, on the Brand 2.0 loaders:
  * loading, signing in and checking a code (pair), sending a code or a link (transfer), creating
- * and saving (drop), confirmed (DoneState, small and with its copy).
+ * and saving (drop), confirmed (DoneState, small and with its copy). And the auth stage's
+ * mark (FluidMark) with the beats the stage plays: still by default, each beat once on a press
+ * (signed in is the card's DROP, DoneState above, not a stage beat).
  */
 const WAITS = ["loading", "signingIn", "checking", "sending", "creating", "saving"] as const;
 export function AuthGallery() {
@@ -28,6 +31,8 @@ export function AuthGallery() {
   const [country, setCountry] = useState<PhoneCountry>("EG");
   const [busy, setBusy] = useState(false);
   const [startedAt] = useState(() => Date.now());
+  const ts = useTranslations("authStage");
+  const [beat, setBeat] = useState<{ beat: FluidBeat | null; key: number }>({ beat: null, key: 0 });
   const card = "mz-auth-card flex flex-col gap-4";
   return (
     <div className="mz-auth" dir={dir} style={{ minHeight: 0, background: "transparent" }} data-testid="gallery-auth">
@@ -47,6 +52,15 @@ export function AuthGallery() {
               <AuthProgress kind="confirmed" size={24} />
               <figcaption className="text-caption opacity-70">{t("doneTitle")}</figcaption>
             </figure>
+          </div>
+          <div className="flex flex-wrap items-center gap-3" data-testid="auth-stage-mark">
+            {/* On ink, as on the stage (the auth tokens: --au-ink, --au-paper). */}
+            <span className="inline-grid place-items-center p-4" style={{ background: "var(--au-ink)", color: "var(--au-paper)", borderRadius: 16 }} role="img" aria-label={ts("beats.label")}>
+              <FluidMark beat={beat.beat} beatKey={beat.key} size={72} claim={false} />
+            </span>
+            {(["settle", "tip"] as const).map((b) => (
+              <button key={b} type="button" className="mz-auth-btn" style={{ inlineSize: "auto", paddingInline: 14 }} onClick={() => setBeat((s) => ({ beat: b, key: s.key + 1 }))}>{ts(`beats.${b}`)}</button>
+            ))}
           </div>
           <TrialChip plan="growth" interval="year" onPlan={() => {}} />
           <ReasonBanner tone="info" onDismiss={() => {}}>{t("reason.expired")}</ReasonBanner>

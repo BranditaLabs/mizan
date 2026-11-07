@@ -5,6 +5,7 @@
  *
  *   SETTLE  arrive with a small overshoot and a damped wobble     .mz-settle-in
  *   TIP     two sides compare; an off-balance badge holds 8°      .mz-tip-hold
+ *           a passing warning: tips, holds, then settles level     .mz-tip-settle
  *   MERGE   agreeing values flow into one (the neck forms)        .mz-merge
  *           two pans travel together, the neck grows between     .mz-pan-l, .mz-pan-r, .mz-neck
  *   DROP    red falls into the merged pans and rests as the bubble .mz-drop-in
@@ -37,6 +38,16 @@
   45% { transform: rotate(calc(var(--mz-angle-tip-hold) * 1.4)); }
   72% { transform: rotate(calc(var(--mz-angle-tip-hold) * 0.85)); }
   100% { transform: rotate(var(--mz-angle-tip-hold)); }
+}
+
+/* TIP that passes (a form's error on the auth stage's mark): off balance, held, then level again. */
+@keyframes mz-tip-settle {
+  0% { transform: rotate(0deg); }
+  14% { transform: rotate(calc(var(--mz-angle-tip-hold) * 1.4)); }
+  24% { transform: rotate(calc(var(--mz-angle-tip-hold) * 0.85)); }
+  30%, 66% { transform: rotate(var(--mz-angle-tip-hold)); }
+  86% { transform: rotate(calc(var(--mz-angle-tip-hold) * -0.15)); }
+  100% { transform: rotate(0deg); }
 }
 
 @keyframes mz-merge {
@@ -103,6 +114,7 @@
 .mz-settle-in { animation: mz-settle-in var(--mz-duration-settle) var(--mz-ease-settle) both; }
 .mz-settle-in-b { animation: mz-settle-in-b var(--mz-duration-settle) var(--mz-ease-settle) both; }
 .mz-tip-hold { animation: mz-tip-hold var(--mz-duration-settle) var(--mz-ease-settle) both; transform-origin: 50% 60%; }
+.mz-tip-settle { animation: mz-tip-settle var(--mz-duration-tip) var(--mz-ease-standard) both; transform-origin: 50% 60%; }
 .mz-merge { animation: mz-merge var(--mz-duration-merge) var(--mz-ease-settle) both; transform-origin: center; }
 .mz-pan-l { animation: mz-pan-l var(--mz-duration-merge) var(--mz-ease-settle) both; }
 .mz-pan-r { animation: mz-pan-r var(--mz-duration-merge) var(--mz-ease-settle) both; }
@@ -114,6 +126,7 @@
 .mz-fail { animation: mz-fail calc(var(--mz-duration-settle) * 1.4) var(--mz-ease-standard) both; transform-origin: 50% 60%; }
 /* Inside an SVG, a keyframe's percentages and origin are the shape's own box. */
 svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-box: fill-box; transform-origin: center; }
+svg .mz-tip-settle { transform-box: fill-box; }
 /* A part of a bar filling in from the start side (a breakdown, a share). */
 .mz-grow-x { animation: mz-grow-x var(--mz-duration-settle) var(--mz-ease-settle) backwards; transform-origin: left center; }
 /* Two rules, not one list: a browser without :dir() would drop the whole list. */
@@ -143,6 +156,7 @@ svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-
   }
   .mz-exit { animation: mz-fade-out var(--mz-duration-exit) linear both; }
   .mz-tip-hold { animation: none; transform: rotate(var(--mz-angle-tip-hold)); }
+  .mz-tip-settle { animation: none; transform: none; }
   .mz-ripple { animation: none; opacity: 0; }
   .mz-fail { animation: none; transform: none; }
   .mz-draw { animation: none; stroke-dashoffset: 0; }
@@ -155,6 +169,7 @@ svg .mz-settle-in, svg .mz-merge, svg .mz-drop-fall, svg .mz-ripple { transform-
 }
 [data-mz-reduced="true"] .mz-settle-in-b { animation-name: mz-fade-in-b; animation-duration: var(--mz-duration-settle); animation-timing-function: linear; }
 [data-mz-reduced="true"] .mz-tip-hold { animation: none; transform: rotate(var(--mz-angle-tip-hold)); }
+[data-mz-reduced="true"] .mz-tip-settle { animation: none; transform: none; }
 [data-mz-reduced="true"] .mz-ripple { animation: none; opacity: 0; }
 [data-mz-reduced="true"] .mz-fail { animation: none; transform: none; }
 [data-mz-reduced="true"] .mz-draw { animation: none; stroke-dashoffset: 0; }

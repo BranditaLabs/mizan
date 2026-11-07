@@ -48,7 +48,7 @@ export function AuthTopBar() {
     <header className="mz-auth-bar" data-glass={glass ? "" : undefined} data-hidden={hidden ? "" : undefined}>
       <div className="mz-auth-bar__in">
         <div className="mz-auth-bar__start">
-          <Link href="/" className="mz-auth-bar__wordmark" aria-label={t("home")}><AuthWordmark /></Link>
+          <Link href="/" className="mz-auth-bar__wordmark" aria-label={t("home")}><AuthWordmark staged /></Link>
         </div>
         <div className="mz-auth-bar__mid"><span className="mz-auth-bar__by">{t("by")}</span></div>
         <div className="mz-auth-bar__end">

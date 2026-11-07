@@ -5638,19 +5638,12 @@
     "headline": "Every order, every method.",
     "headline2": "Real profit on each one.",
     "example": "Example",
-    "outcomes": {
-      "0": "Order confirmed on WhatsApp in 4 minutes, before it shipped.",
-      "1": "The courier collected exactly <n>EGP 1,800</n>: not more, not less.",
-      "2": "A risky order paid a deposit link first.",
-      "3": "Net profit on this order: <n>EGP 512</n> after shipping, fees and ads.",
-      "4": "Shopify, Bosta and payments in one place."
-    },
+    "outcome": "Order confirmed on WhatsApp in <n>4</n> minutes, before it shipped.",
     "trialTag": "{days}-day trial",
     "waitingShopify": "Waiting for Shopify",
     "inviteNode": "A store invited you",
     "staffKicker": "Staff only",
-    "pause": "Pause animation",
-    "play": "Play animation",
+    "beats": {"label": "The stage's mark", "settle": "Intro: arrives", "tip": "Error: tips, then settles"},
     "srSummary": "Mizan connects your store, couriers, WhatsApp and payments, and shows the real profit on every order.",
     "nodes": {
       "hub": "Mizan",
