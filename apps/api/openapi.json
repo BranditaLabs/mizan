@@ -1,6 +1,227 @@
 {
   "openapi": "3.1.0",
   "paths": {
+    "/v1/live/token": {
+      "post": {
+        "operationId": "LiveController_token",
+        "parameters": [
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "A single-use token for one GET /v1/live, valid for LIVE_TOKEN_TTL_S (60 s); mint a new one for every reconnect",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveToken"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (rate_limited; see Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "live"
+        ]
+      }
+    },
+    "/v1/live": {
+      "get": {
+        "operationId": "LiveController_stream",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "From POST /v1/live/token"
+            },
+            "description": "From POST /v1/live/token"
+          },
+          {
+            "name": "topics",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "description": "Comma-separated; must be among the token's topics (default: all of them)",
+              "type": "string",
+              "maxLength": 2000
+            },
+            "description": "Comma-separated; must be among the token's topics (default: all of them)"
+          },
+          {
+            "name": "Accept-Language",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ar",
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": false,
+            "description": "Store id; required on store routes",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream: `event: ready` (LiveReady) first, then `event: change` (LiveChange, `id:` = the event id) for each change under the topics, a `:` comment line every heartbeatMs, and `event: end` (LiveEnd) before the server closes. Never compressed or buffered.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/LiveReady"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LiveChange"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LiveEnd"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in or token expired",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed (not_a_member, insufficient_role, mfa_required)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Understood but refused (a business rule)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests (rate_limited; see Retry-After)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem (RFC 9457) with a stable `code`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "live"
+        ]
+      }
+    },
     "/v1/orders/{id}/payments": {
       "get": {
         "operationId": "PaymentsController_get",
@@ -29214,6 +29435,155 @@
           "balance",
           "canRecord",
           "lines"
+        ],
+        "additionalProperties": false
+      },
+      "LiveChange": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "description": "A domain event type, notification.created, or resync (refetch every topic)"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "orders, shipments, confirmation, tickets, refunds, connections, notifications, or order:<uuid>"
+            }
+          },
+          "entity": {
+            "nullable": true,
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "additionalProperties": false
+          },
+          "orderId": {
+            "nullable": true,
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "topics",
+          "entity",
+          "orderId",
+          "at"
+        ],
+        "additionalProperties": false
+      },
+      "LiveEnd": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "expired",
+              "revoked",
+              "shutdown"
+            ],
+            "description": "Mint a new token and reconnect"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "LiveReady": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "orders, shipments, confirmation, tickets, refunds, connections, notifications, or order:<uuid>"
+            }
+          },
+          "heartbeatMs": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "A comment line arrives at least this often"
+          },
+          "endsAt": {
+            "type": "string",
+            "description": "When the server ends the stream with `end` (reason expired)"
+          }
+        },
+        "required": [
+          "topics",
+          "heartbeatMs",
+          "endsAt"
+        ],
+        "additionalProperties": false
+      },
+      "LiveToken": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Single-use, for one GET /v1/live within expiresAt; bound to this store, this person and these topics"
+          },
+          "expiresAt": {
+            "type": "string",
+            "description": "ISO time; a token not used by then is refused"
+          },
+          "topics": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "orders, shipments, confirmation, tickets, refunds, connections, notifications, or order:<uuid>"
+            }
+          },
+          "url": {
+            "type": "string",
+            "description": "The path to open with EventSource (topics and token in the query string)"
+          }
+        },
+        "required": [
+          "token",
+          "expiresAt",
+          "topics",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "LiveTokenRequest": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "description": "What the stream should carry; each needs the permission that reads the same data"
+          }
+        },
+        "required": [
+          "topics"
         ],
         "additionalProperties": false
       },
