@@ -110,6 +110,16 @@ export function run(el: Element, keyframes: Keyframe[], opts: KeyframeAnimationO
   return a;
 }
 
+/**
+ * One plain WAAPI animation (fill both), not interrupting what else runs on the element: the
+ * stage's build and loops (apps/web auth/stage/animator.ts), which own and cancel their own list.
+ * App code never calls element.animate itself (mizan/no-adhoc-motion); it comes through here.
+ */
+export function play(el: Element, keyframes: Keyframe[], opts: KeyframeAnimationOptions): Animation | null {
+  if (typeof (el as HTMLElement).animate !== "function") return null;
+  return (el as HTMLElement).animate(keyframes, { fill: "both", ...opts });
+}
+
 function isDev(): boolean {
   try { return (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.NODE_ENV === "development"; } catch { return false; }
 }

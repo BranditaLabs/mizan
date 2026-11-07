@@ -3,6 +3,8 @@
 import { ScaleMark, Words } from "@mizan/design-system/auth/react";
 import { onReducedMotionChange, pauseWhenHidden, prefersReducedMotion } from "@mizan/design-system/auth-motion";
 import { Icon } from "@mizan/design-system/icons/react";
+import { RED_PRIORITY } from "@mizan/design-system/motion";
+import { useRed } from "@mizan/design-system/react/motion";
 import { planPartnerLogo } from "@mizan/design-system/partners";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -40,6 +42,8 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   const pathname = usePathname();
   const ui = useAuthUi();
   const scene: Scene = variant === "staff" ? "staff" : ui.scene ?? sceneOf(pathname);
+  // The outage scene's red dot is the view's one red only while it holds the budget (else paper).
+  const red = useRed("auth-stage:outage", RED_PRIORITY.dot, scene === "outage");
   const root = useRef<HTMLElement>(null);
   const ctrl = useRef<StageController | null>(null);
   const reduced = useSyncExternalStore(subscribeReduced, prefersReducedMotion, () => false);
@@ -103,7 +107,7 @@ export function AuthStage({ variant = "app" }: { variant?: "app" | "staff" }) {
   const headline = t("headline");
 
   return (
-    <aside ref={root} className="mz-auth-stage" data-testid="auth-stage" data-scene={scene} data-variant={variant} aria-label={t("kicker")}>
+    <aside ref={root} className="mz-auth-stage" data-testid="auth-stage" data-scene={scene} data-variant={variant} data-mz-red={red ? "on" : "off"} aria-label={t("kicker")}>
       <span className="mz-auth-stage__ambient" aria-hidden="true" data-drift="" />
       <div className="mz-auth-stage__content">
         <span className="mz-auth-stage__kicker">{variant === "staff" ? t("staffKicker") : t("kicker")}</span>

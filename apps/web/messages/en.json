@@ -231,7 +231,7 @@
     "trial": {
       "chip": "{days}-day trial of <b>{plan}</b>",
       "yearly": "then yearly",
-      "enterprise": "{days}-day trial of <b>Scale</b> · we'll contact you about Enterprise",
+      "enterprise": "{days}-day trial of <b><l>Scale</l></b> · we'll contact you about <l>Enterprise</l>",
       "note": "Nothing is charged during the trial. On the last day you choose whether to continue.",
       "change": "Change",
       "pickLabel": "Plan for your trial",
@@ -5591,7 +5591,7 @@
     "langSwitchBody": "If you switch now, you'll need to ask for a new code.",
     "langSwitchGo": "Switch language",
     "langSwitchStay": "Stay",
-    "recaptcha": "This page is protected by reCAPTCHA. Google's <privacy>Privacy Policy</privacy> and <terms>Terms of Service</terms> apply.",
+    "recaptcha": "This page is protected by <l>reCAPTCHA</l>. Google's <privacy>Privacy Policy</privacy> and <terms>Terms of Service</terms> apply.",
     "offline": "You're offline. You can carry on once the internet is back.",
     "offlineCta": "Waiting for connection…",
     "online": "You're back online.",

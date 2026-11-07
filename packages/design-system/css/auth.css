@@ -332,8 +332,6 @@
 }
 .mz-auth-cta:focus-visible .mz-auth-cta__key { transform: rotate(calc(-45deg * var(--mz-dir))); }
 .mz-auth-cta:focus-visible { outline-offset: 3px; }
-.mz-auth-spin { inline-size: 16px; block-size: 16px; border-radius: 50%; border: 2px solid currentColor; border-inline-end-color: transparent; animation: au-spin 720ms linear infinite; }
-@keyframes au-spin { to { transform: rotate(360deg); } }
 .mz-auth-cta[data-done] .mz-auth-cta__key { animation: au-pop-in var(--au-slow) var(--au-ease-spring) both; }
 .mz-auth-cta--secondary { background: transparent; color: var(--mz-text); box-shadow: inset 0 0 0 1px var(--mz-line-strong); }
 .mz-auth-cta--secondary .mz-auth-cta__key { background: var(--mz-primary); color: var(--mz-on-primary); }
@@ -390,7 +388,8 @@
   display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-block-size: 32px; padding-inline: 12px 4px; border-radius: 999px;
   background: var(--mz-surface-sunk); border: 1px solid var(--mz-line); font-size: 13px; font-weight: 600; animation: au-alert-in var(--au-base) var(--au-ease) both;
 }
-.mz-auth-trial__dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: var(--au-red); animation: au-dot-in var(--au-slow) var(--au-ease-spring) 120ms both; }
+/* The trial's dot is a RedSwatch (the view's red budget sets its background: red, or the ink it sits among). */
+.mz-auth-trial__dot { inline-size: 7px; block-size: 7px; border-radius: 50%; background: currentColor; animation: au-dot-in var(--au-slow) var(--au-ease-spring) 120ms both; }
 @keyframes au-dot-in { from { transform: scale(0); } to { transform: none; } }
 @media (pointer: coarse) { .mz-auth-chip button::after { content: ""; position: absolute; inset: -6px -2px; } }
 .mz-auth-trial__more { position: relative; display: inline-grid; place-items: center; inline-size: 28px; block-size: 28px; border: 0; border-radius: 999px; background: none; color: var(--mz-text-2); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; }
@@ -404,22 +403,19 @@
 /* ───────────── 8. Success: the mark, the wipe, the skeleton ───────────── */
 .mz-auth-success { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-block: 24px; text-align: center; }
 .mz-auth-success svg { overflow: visible; }
-.mz-draw { stroke-dasharray: var(--au-len, 100); stroke-dashoffset: var(--au-len, 100); animation: au-draw var(--au-glide) var(--au-ease) both; }
-@keyframes au-draw { to { stroke-dashoffset: 0; } }
 .mz-auth-wipe { position: fixed; z-index: 90; border-radius: 50%; background: var(--mz-bg); pointer-events: none; transform: scale(.001); }
 .mz-auth-overlay { position: fixed; inset: 0; z-index: 91; display: grid; place-items: center; pointer-events: none; }
 .mz-auth-skel { display: flex; flex-direction: column; gap: 16px; }
 .mz-auth-skel > i { display: block; block-size: 48px; border-radius: 14px; background: var(--mz-surface-sunk); animation: au-pulse 1200ms ease-in-out 3 alternate; }
-.mz-auth-skel > i:first-child { block-size: 34px; inline-size: 70%; }
+.mz-auth-skel > .mz-auth-progress-slot { align-self: center; color: var(--mz-text-2); }
+.mz-auth-skel > i:first-of-type { block-size: 34px; inline-size: 70%; }
 .mz-auth-skel > i:last-child { block-size: var(--au-cta); border-radius: 999px; }
 @keyframes au-pulse { from { opacity: .55; } to { opacity: 1; } }
 
-/* ScaleMark: the beam and the pans move on their own pivots. */
+/* ScaleMark (the stage's art): the beam and the pans move on their own pivots. */
 .mz-auth-scale .au-beam, .mz-auth-scale .au-pan { transform-box: fill-box; }
 .mz-auth-scale .au-beam { transform-origin: 50% 50%; }
 .mz-auth-scale .au-pan { transform-origin: 50% 0; }
-.mz-auth-scale[data-rock] .au-beam { animation: au-rock 1400ms var(--au-ease-std) infinite alternate; }
-@keyframes au-rock { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
 .mz-auth-scale[data-settle] .au-beam { animation: au-settle var(--au-reveal) var(--au-ease-spring) both; }
 .mz-auth-scale[data-settle] .au-pan { animation: au-pan var(--au-reveal) var(--au-ease-spring) both; }
 .mz-auth-scale[data-settle] .au-pan + .au-pan { animation-delay: 60ms; }
@@ -444,7 +440,8 @@
   :root:not([data-theme="light"]) .mz-auth:not(.mzg) .mz-auth-stage { box-shadow: inset 0 0 0 1px var(--st-line); background: color-mix(in srgb, var(--au-paper) 3%, var(--au-ink)); }
 }
 .mz-auth-stage__ambient { position: absolute; inset: -20%; z-index: -1; pointer-events: none;
-  background: radial-gradient(40% 40% at 70% 20%, color-mix(in srgb, var(--au-red) 22%, transparent), transparent 70%),
+  /* Paper light only: the red is budgeted (one per view), so the stage never tints itself with it. */
+  background: radial-gradient(40% 40% at 70% 20%, color-mix(in srgb, var(--au-paper) 12%, transparent), transparent 70%),
               radial-gradient(50% 50% at 20% 90%, color-mix(in srgb, var(--au-paper) 8%, transparent), transparent 70%); }
 .mz-auth-stage__content { position: relative; display: flex; align-items: center; gap: 12px; block-size: 100%; padding-inline: 14px; }
 .mz-auth-stage__copy, .mz-auth-stage__ticker, .mz-auth-stage__scale, .mz-auth-stage__kicker { display: none; }
@@ -513,7 +510,9 @@
 .mz-auth-map .st-hub text { fill: var(--au-ink); font: 700 13px var(--mz-font-sans, "Geist"), sans-serif; }
 .mz-auth-map.au-v-strip .st-hub text { font-size: 8px; }
 .mz-auth-map .st-dot { fill: var(--au-paper); }
-.mz-auth-map .st-red { fill: var(--au-red); opacity: 0; transition: opacity var(--au-base); }
+/* The outage dot: red only while it holds the view's red (data-mz-red on the stage), else paper. */
+.mz-auth-map .st-red { fill: var(--au-paper); opacity: 0; transition: opacity var(--au-base); }
+.mz-auth-stage[data-mz-red="on"] .mz-auth-map .st-red { fill: var(--au-red); }
 .mz-auth-map .st-halo { fill: none; stroke: var(--au-paper); stroke-width: 1.5; opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
 .mz-auth-map .st-ghost rect { fill: none; stroke: var(--st-fg-2); stroke-dasharray: 4 4; }
 .mz-auth-map .st-badge { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; transition: opacity var(--au-moderate) var(--au-ease), transform var(--au-slow) var(--au-ease-spring-soft); transform: scale(.9); }
@@ -615,9 +614,7 @@
   .mz-auth-foot, .mz-auth-alert, .mz-auth-trial, .mz-auth-menu,
   .mz-auth-help .au-roll, .mz-auth-resend > .au-roll, .mz-auth-roll > span, .mz-auth-code__box { animation: none !important; }
   .mz-auth-alert, .mz-auth-help > span, .mz-auth-menu { animation: au-fade 120ms linear both !important; }
-  .mz-auth-code__caret, .mz-auth-spin, .mz-auth-scale .au-beam, .mz-auth-scale .au-pan, .mz-auth-map .st-halo, .mz-auth-trial__dot, .mz-auth-help svg, .mz-auth-alert > svg { animation: none !important; }
-  .mz-draw { animation: none !important; stroke-dashoffset: 0; }
-  .mz-auth-spin { border-inline-end-color: currentColor; opacity: .5; }
+  .mz-auth-code__caret, .mz-auth-scale .au-beam, .mz-auth-scale .au-pan, .mz-auth-map .st-halo, .mz-auth-trial__dot, .mz-auth-help svg, .mz-auth-alert > svg { animation: none !important; }
   .mz-auth-bar { transition: none; } .mz-auth-bar[data-hidden] { transform: none; }
   .mz-auth-cta__key, .mz-auth-cta__key > svg, .mz-auth-navlink::after, .mz-auth-progress__bar > i, .mz-auth-meter__bars > i::after, .mz-auth-map *, .mz-auth-skip { transition-duration: 120ms !important; transition-delay: 0ms !important; }
   .mz-auth-cta:hover .mz-auth-cta__key, .mz-auth-cta:focus-visible .mz-auth-cta__key { transform: none !important; }

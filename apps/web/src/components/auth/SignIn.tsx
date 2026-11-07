@@ -428,8 +428,9 @@ export function SignIn({ params }: { params: AuthParams }) {
   const blocked = held || !online;
   // Sent here by a Shopify install: "Create an account" is a full-width pill under the primary.
   const promoted = !creating && (params.reason === "shopify" || params.reason === "shopifyGeneric");
-  const cta = (label: string, icon?: Parameters<typeof PrimaryCta>[0]["icon"]) => (
-    <PrimaryCta label={held && formError?.key === "tooMany" ? <>{label} · <bdi dir="ltr">{mmss(holdLeft)}</bdi></> : label} busy={busy}
+  // What the busy key means (AuthProgress picks the loader): sending a code or a link, or signing in.
+  const cta = (label: string, icon?: Parameters<typeof PrimaryCta>[0]["icon"], busyAs: "sending" | "signingIn" = "signingIn") => (
+    <PrimaryCta busyAs={busyAs} label={held && formError?.key === "tooMany" ? <>{label} · <bdi dir="ltr">{mmss(holdLeft)}</bdi></> : label} busy={busy}
       disabled={blocked} icon={icon} aria-describedby={!online ? "offline-reason" : undefined} />
   );
   const emailField = (autoComplete: "username" | "email" = "username") => (
@@ -493,7 +494,7 @@ export function SignIn({ params }: { params: AuthParams }) {
               onChange={(v) => { setPhone(v); if (fieldErrors.phone && !checkPhone(v, country, "blur")) setFieldErrors((x) => ({ ...x, phone: undefined })); }}
               onBlur={() => { const k = checkPhone(phone, country, "blur"); if (k) setFieldErrors((x) => ({ ...x, phone: k })); else if (phone.trim()) setPhone(groupPhone(phone, country)); }} />
             {alert}
-            {cta(t("continue"))}
+            {cta(t("continue"), undefined, "sending")}
             <RecaptchaNote />
           </form>
         )}
@@ -560,7 +561,7 @@ export function SignIn({ params }: { params: AuthParams }) {
         <form onSubmit={onReset} noValidate aria-labelledby={headingId} aria-busy={busy || undefined}>
           {emailField()}
           {alert}
-          {cta(t("resetSend"))}
+          {cta(t("resetSend"), undefined, "sending")}
         </form>
       </>
     );

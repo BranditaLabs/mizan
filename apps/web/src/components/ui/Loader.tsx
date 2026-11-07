@@ -1,7 +1,7 @@
 "use client";
 
 import { MizanLoader } from "@mizan/design-system/react/motion";
-import type { Pending } from "@mizan/shared/motion";
+import { WAIT_MOTION, type WaitMeaning } from "@mizan/shared/motion";
 import type { ReactNode } from "react";
 import { useBrandCopy } from "@/lib/motion/useBrandCopy";
 import { GlassRoot } from "../GlassRoot";
@@ -28,8 +28,9 @@ export function BootLoader({ label }: { label?: ReactNode }) {
 }
 
 /** What a wait is, in the brand's words: the loader follows the meaning (docs/16, Brand 2.0 loaders). */
-export type WaitMeaning = "loading" | "syncing" | "saving";
-const KIND: Record<WaitMeaning, Pending> = { loading: "pair", syncing: "transfer", saving: "drop" };
+// The catalogue's meanings (@mizan/shared motion WAIT_MOTION), shared with the auth kit's AuthProgress.
+export type { WaitMeaning };
+const KIND = WAIT_MOTION;
 
 /**
  * An inline wait next to its own words (a status line, a live mark): the surface picks the loader

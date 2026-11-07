@@ -3,6 +3,7 @@
 import { FormAlert, ResendTimer, TextField } from "@mizan/design-system/auth/react";
 import { mmss } from "@mizan/design-system/auth-code";
 import { Icon } from "@mizan/design-system/icons/react";
+import { RedSwatch } from "@mizan/design-system/react/motion";
 import type { PhoneCountry } from "@mizan/shared";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useRef, useState, type ReactNode, type Ref } from "react";
@@ -10,6 +11,7 @@ import { Segmented } from "@/components/ui/Choice";
 import { TRIAL_DAYS } from "@/lib/auth/intent";
 import type { Interval, Plan } from "@/lib/auth/params";
 import { emailSuggestion, PHONE_DIAL, PHONE_PLACEHOLDER, phoneFromPaste } from "@/lib/auth/validate";
+import { latin } from "@/lib/rich";
 import { announce } from "@mizan/design-system/auth/react";
 
 /**
@@ -210,11 +212,12 @@ export function TrialChip({ plan, interval, enterprise = false, onPlan }: { plan
     return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
   }, [pop]);
   if (!TRIAL_DAYS) return null;
-  const days = { days: TRIAL_DAYS, n: String(TRIAL_DAYS), b: strongBdi };
+  const days = { days: TRIAL_DAYS, n: String(TRIAL_DAYS), b: strongBdi, ...latin };
   return (
     <div ref={box} className="mz-auth-pop" data-testid="trial-chip" style={{ alignSelf: "flex-start" }}>
       <span className="mz-auth-trial">
-        <span className="mz-auth-trial__dot" aria-hidden="true" />
+        {/* The trial dot takes its turn in the view's red budget (the header wordmark turns mono meanwhile). */}
+        <RedSwatch claim="auth-trial" className="mz-auth-trial__dot" />
         <span>
           {enterprise ? t.rich("trial.enterprise", days) : t.rich("trial.chip", { ...days, plan: t(`plans.${plan}`) })}
           {interval === "year" ? <> · {t("trial.yearly")}</> : null}
@@ -274,6 +277,7 @@ export function RecaptchaNote() {
   return (
     <p className="mz-auth-note" data-stagger="">
       {t.rich("recaptcha", {
+        ...latin,
         privacy: (c) => <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">{c}</a>,
         terms: (c) => <a href="https://policies.google.com/terms" rel="noopener noreferrer" target="_blank">{c}</a>,
       })}

@@ -2,6 +2,7 @@
 
 import { ScaleMark, ThemeMenu as SharedThemeMenu } from "@mizan/design-system/auth/react";
 import { Icon } from "@mizan/design-system/icons/react";
+import { useRedTaken } from "@mizan/design-system/react/motion";
 import { useLocale, useTranslations } from "next-intl";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { Wordmark } from "@/components/Wordmark";
@@ -26,7 +27,7 @@ export function StaffFrame({ children }: { children: ReactNode }) {
       <a href="#main" className="mz-auth-skip">{t("skip")}</a>
       <header className="mz-auth-bar">
         <div className="mz-auth-bar__in">
-          <div className="mz-auth-bar__start"><span className="mz-auth-bar__wordmark"><Wordmark /></span></div>
+          <div className="mz-auth-bar__start"><span className="mz-auth-bar__wordmark"><StaffWordmark /></span></div>
           <div className="mz-auth-bar__mid"><span className="mz-auth-bar__by">{t("by")}</span></div>
           <div className="mz-auth-bar__end">
             {/* The query is dropped on purpose: only `next` matters here and it is re-read after sign-in. */}
@@ -70,4 +71,13 @@ function ThemeMenu() {
   const t = useTranslations("auth");
   const theme = useSyncExternalStore(subscribeTheme, currentTheme, () => "system" as Theme);
   return <SharedThemeMenu value={theme} onPick={chooseTheme} labels={{ label: t("theme"), system: t("themeSystem"), light: t("themeLight"), dark: t("themeDark") }} />;
+}
+
+/**
+ * The staff sign-in's wordmark: full colour (the view's one red) until something holds the red
+ * (DoneState's DROP when signed in), then mono until it is released.
+ */
+function StaffWordmark() {
+  const taken = useRedTaken();
+  return <Wordmark tone={taken ? "mono" : "auto"} />;
 }

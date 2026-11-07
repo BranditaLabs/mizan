@@ -11,7 +11,8 @@ import { EmailField, OfflineBanner, PhoneField, ReasonBanner, TrialChip } from "
 /**
  * The auth kit in the UI gallery (/ui#auth): every piece of the sign-in card in the current
  * language and theme, inside `.mz-auth` so the auth stylesheet and its motion tokens apply.
- * The one motion slot (AuthProgress) is shown in its three kinds: Brand 2.0 replaces them there.
+ * The one motion slot (AuthProgress) in its kinds, on the Brand 2.0 loaders: loading (pair),
+ * sending in the key (drop), confirmed (DoneState, small and with its copy).
  */
 export function AuthGallery() {
   const t = useTranslations("auth");
@@ -33,8 +34,7 @@ export function AuthGallery() {
           <div className="flex items-center gap-6" data-testid="auth-progress-kinds">
             <AuthProgress kind="loading" size={40} label={t("live.checking")} />
             <span className="mz-auth-cta" style={{ inlineSize: 64, justifyContent: "center", paddingInline: 0 }}><span className="mz-auth-cta__key"><AuthProgress kind="sending" /></span></span>
-            <AuthProgress kind="confirmed" size={22} />
-            <AuthProgress kind="confirmed" mark="shield" />
+            <AuthProgress kind="confirmed" size={24} />
           </div>
           <TrialChip plan="growth" interval="year" onPlan={() => {}} />
           <ReasonBanner tone="info" onDismiss={() => {}}>{t("reason.expired")}</ReasonBanner>
@@ -56,7 +56,7 @@ export function AuthGallery() {
           <ResendTimer seconds={60} startedAt={startedAt} resendLabel={t("resend")} onResend={() => {}} countdown={(time) => t.rich("resendIn", { time: "", n: () => time })} />
           <FormAlert focusOnShow={false}>{t("errors.invalidCode")}</FormAlert>
           {/* The success mark without its h1 (the gallery has one heading of level 1). */}
-          <div className="mz-auth-success"><AuthProgress kind="confirmed" mark="scale" /><p className="mz-auth-sub">{t("doneTitle")}{" · "}{t("opening")}</p></div>
+          <div className="mz-auth-success"><AuthProgress kind="confirmed" label={t("doneTitle")} size={96}><p className="mz-auth-sub">{t("doneTitle")}{" · "}{t("opening")}</p></AuthProgress></div>
         </div>
       </div>
     </div>

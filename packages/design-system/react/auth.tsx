@@ -3,7 +3,9 @@
 /**
  * The auth kit shared by the dashboard (apps/web) and the back office (apps/admin): the persistent
  * step host with its motion, the step header, fields (text, password, one-time code), the resend
- * timer, the primary key button, alerts, the scale mark and the success mark. Styled by
+ * timer, the primary key button, alerts, the scale mark and the success mark. Every wait and
+ * every "done" draws through AuthProgress, which plays the Brand 2.0 loaders and DoneState
+ * (./motion) by the catalogue's meanings (@mizan/shared motion WAIT_MOTION). Styled by
  * css/auth.css (`.mz-auth-*`), animated by js/auth-motion.ts. No i18n library here: every visible
  * word comes in as a prop, so each app keeps its own messages and e2e labels.
  */
@@ -12,9 +14,12 @@ import {
   Children, isValidElement, useCallback, useEffect, useId, useLayoutEffect, useRef, useState,
   type ButtonHTMLAttributes, type InputHTMLAttributes, type KeyboardEvent, type ReactNode, type Ref,
 } from "react";
+import { WAIT_MOTION } from "@mizan/shared/motion";
 import { Icon } from "../icons/react";
 import { mmss, normalizeCode, shouldAutoSubmit } from "../js/auth-code";
 import { flipSurface, interrupt, ms, prefersReducedMotion, revealWords, run, scrubGhostFields, stepEnter, stepExit, type Direction } from "../js/auth-motion";
+import { DoneState } from "./motion/DoneState";
+import { MizanLoader } from "./motion/MizanLoader";
 
 const useIso = typeof window === "undefined" ? useEffect : useLayoutEffect;
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
@@ -381,8 +386,8 @@ export function ResendTimer({ seconds, startedAt, countdown, resendLabel, readyM
  * arrow at the end (it turns on hover and focus). Busy and done keep the width; `aria-disabled`
  * (never `disabled`) so the button stays focusable and its reason can be read.
  */
-export function PrimaryCta({ label, busy = false, done = false, disabled = false, secondary = false, icon = "forward", className, onClick, type = "submit", ...rest }: {
-  label: ReactNode; busy?: boolean; done?: boolean; disabled?: boolean; secondary?: boolean; icon?: Parameters<typeof Icon>[0]["name"];
+export function PrimaryCta({ label, busy = false, busyAs = "signingIn", done = false, disabled = false, secondary = false, icon = "forward", className, onClick, type = "submit", ...rest }: {
+  label: ReactNode; busy?: boolean; busyAs?: "sending" | "signingIn"; done?: boolean; disabled?: boolean; secondary?: boolean; icon?: Parameters<typeof Icon>[0]["name"];
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "disabled">) {
   const ref = useRef<HTMLButtonElement>(null);
   const [width, setWidth] = useState<number | null>(null);
@@ -402,18 +407,9 @@ export function PrimaryCta({ label, busy = false, done = false, disabled = false
       }}>
       <span className="mz-auth-cta__label">{label}</span>
       <span className="mz-auth-cta__key" aria-hidden="true">
-        {busy ? <AuthProgress kind="sending" /> : done ? <AuthProgress kind="confirmed" /> : <Icon name={icon} size={16} />}
+        {busy ? <AuthProgress kind={busyAs} /> : done ? <AuthProgress kind="confirmed" size={24} /> : <Icon name={icon} size={16} />}
       </span>
     </button>
-  );
-}
-
-/** A check that draws itself (CTA success, confirmed email). */
-export function CheckDraw({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path className="mz-draw" style={{ ["--au-len" as string]: 24 }} d="M5 12.5l4.5 4.5L19 7.5" />
-    </svg>
   );
 }
 
@@ -521,31 +517,28 @@ export function FormAlert({ tone = "danger", children, action, onDismiss, dismis
 
 /* ───────────── The one motion slot for waiting and confirming ───────────── */
 
-export type ProgressKind = "loading" | "sending" | "confirmed";
+export type ProgressKind = "loading" | "sending" | "signingIn" | "confirmed";
 
 /**
- * Every loading, sending-a-code and confirmed moment of the auth flow draws through this one
- * component, so the brand's fluid loaders (Brand 2.0, lane BR-1) can replace them in one place:
- * `loading` (the scale rocks: the session, a route), `sending` (a 16px arc in the busy button),
- * `confirmed` (a check that draws, or the shield, or the scale settling). Decorative: the words
- * next to it carry the state; pass `label` only where it stands alone (it becomes role=status).
- * Under reduced motion each is a still mark (css/auth.css).
+ * Every loading, sending-a-code, signing-in and confirmed moment of the auth flow (both apps)
+ * draws through this one slot, with the Brand 2.0 loaders picked by the catalogue's meaning
+ * (WAIT_MOTION): `loading` is the pair (the session, a route), `sending` and `signingIn` are the
+ * drop (in the busy key button), `confirmed` is DoneState (the pans MERGE and the red DROPs once).
+ * The loaders are mono (currentColor): the auth header's full-colour wordmark stays the view's one
+ * red, and DoneState takes the red through the view's budget (the wordmark turns mono meanwhile).
+ * Reduced motion: each kind's still frame (MizanLoader, DoneState). Decorative unless `label` is
+ * given: then it stands alone as role=status (a `confirmed` slot with a label carries `children`
+ * under the mark, the success copy).
  */
-export function AuthProgress({ kind, size, mark = "check", label }: { kind: ProgressKind; size?: number; mark?: "check" | "shield" | "scale"; label?: string }) {
-  const art = kind === "loading" ? <ScaleMark size={size ?? 48} mode="rock" />
-    : kind === "sending" ? <i className="mz-auth-spin" style={size ? { inlineSize: size, blockSize: size } : undefined} />
-    : mark === "scale" ? <ScaleMark size={size ?? 64} mode="settle" />
-    : mark === "shield" ? (
-      <span className="mz-auth-tile">
-        <svg width={size ?? 24} height={size ?? 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path className="mz-draw" style={{ ["--au-len" as string]: 60 }} d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" />
-          <path className="mz-draw" style={{ ["--au-len" as string]: 14, animationDelay: "300ms" }} d="M9 12l2 2 4-4" />
-        </svg>
-      </span>
-    ) : size && size > 16 ? <span className="mz-auth-tile"><CheckDraw size={size} /></span> : <CheckDraw size={size ?? 16} />;
+export function AuthProgress({ kind, size, label, children }: { kind: ProgressKind; size?: number; label?: string; children?: ReactNode }) {
+  if (kind === "confirmed") {
+    if (label) return <DoneState label={label} size={size ?? 96} className="mz-auth-progress-slot" testId="auth-done">{children}</DoneState>;
+    return <span className="mz-auth-progress-slot" data-kind={kind} aria-hidden="true"><DoneState label="" size={size ?? 24} /></span>;
+  }
+  const loader = <MizanLoader kind={WAIT_MOTION[kind]} size={size ?? (kind === "loading" ? 72 : 22)} tone="mono" decorative={!label} label={label} />;
   return label
-    ? <span className="mz-auth-progress-slot" data-kind={kind} role="status"><span aria-hidden="true">{art}</span><span className="au-sr">{label}</span></span>
-    : <span className="mz-auth-progress-slot" data-kind={kind} aria-hidden="true">{art}</span>;
+    ? <span className="mz-auth-progress-slot" data-kind={kind}>{loader}</span>
+    : <span className="mz-auth-progress-slot" data-kind={kind} aria-hidden="true">{loader}</span>;
 }
 
 /**
@@ -577,11 +570,11 @@ export function StepProgress({ at, total, text }: { at: number; total: number; t
 
 /* ───────────── Marks ───────────── */
 
-/** Mizan's scale: the beam and the two pans on their own pivots (settles once, or rocks while loading). */
-export function ScaleMark({ size = 48, mode = "still", className }: { size?: number; mode?: "still" | "settle" | "rock"; className?: string }) {
+/** Mizan's scale, the stage's art (never a loader: waits are AuthProgress): the beam and the two pans on their own pivots, still or settling once. */
+export function ScaleMark({ size = 48, mode = "still", className }: { size?: number; mode?: "still" | "settle"; className?: string }) {
   return (
     <svg className={cx("mz-auth-scale", className)} width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.4"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-settle={mode === "settle" ? "" : undefined} data-rock={mode === "rock" ? "" : undefined}>
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" data-settle={mode === "settle" ? "" : undefined}>
       <path d="M32 10v44M22 54h20" />
       <circle cx="32" cy="10" r="2.6" fill="currentColor" stroke="none" />
       <g className="au-beam">
@@ -593,16 +586,20 @@ export function ScaleMark({ size = 48, mode = "still", className }: { size?: num
   );
 }
 
-/** A finished moment: check, shield or the scale, a heading and one line. role=status with an h1. */
-export function SuccessMark({ title, text, variant = "scale", children }: { title: string; text?: ReactNode; variant?: "check" | "shield" | "scale"; children?: ReactNode }) {
+/**
+ * A finished moment (signed in): DoneState through AuthProgress, the heading and one line under
+ * the mark. DoneState is the role=status; the h1 is focusable for the step host.
+ */
+export function SuccessMark({ title, text, children }: { title: string; text?: ReactNode; children?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { revealWords(ref.current?.querySelector("h1") ?? null, 200); }, []);
   return (
-    <div ref={ref} className="mz-auth-success" role="status" data-testid="auth-success">
-      <AuthProgress kind="confirmed" mark={variant} size={variant === "scale" ? 64 : 22} />
-      <h1 className="mz-auth-h1" tabIndex={-1}><Words text={title} /></h1>
-      {text ? <p className="mz-auth-sub">{text}</p> : null}
-      {children}
+    <div ref={ref} className="mz-auth-success" data-testid="auth-success">
+      <AuthProgress kind="confirmed" label={title} size={96}>
+        <h1 className="mz-auth-h1" tabIndex={-1}><Words text={title} /></h1>
+        {text ? <p className="mz-auth-sub">{text}</p> : null}
+        {children}
+      </AuthProgress>
     </div>
   );
 }
@@ -613,7 +610,8 @@ export function CardSkeleton({ label, delay = 300 }: { label?: string; delay?: n
   useEffect(() => { const t = window.setTimeout(() => setShown(true), delay); return () => window.clearTimeout(t); }, [delay]);
   if (!shown) return null;
   return (
-    <div className="mz-auth-skel" role="status" aria-label={label}>
+    <div className="mz-auth-skel">
+      <AuthProgress kind="loading" label={label} size={56} />
       <i /><i /><i /><i />
     </div>
   );

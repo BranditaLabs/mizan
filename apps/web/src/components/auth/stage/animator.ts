@@ -8,7 +8,7 @@
  * (geometry.ts), at most 6 per lane and 30 in total on fine pointers, 2 and 8 on touch, none on the
  * tablet band. Only transform and opacity animate, plus the edges' stroke draw.
  */
-import { ease, ms, parseMs, setPlaying } from "@mizan/design-system/auth-motion";
+import { ease, ms, parseMs, play, setPlaying } from "@mizan/design-system/auth-motion";
 import { PARTICLES, type Variant } from "./geometry";
 
 export type StageController = { play(): void; pause(): void; destroy(): void };
@@ -25,8 +25,8 @@ export function buildStage(root: HTMLElement): StageController {
   const anims: Animation[] = [];
   const made: Element[] = [];
   const add = (el: Element | null, frames: Keyframe[], opts: KeyframeAnimationOptions) => {
-    if (!el || typeof (el as HTMLElement).animate !== "function") return;
-    anims.push((el as HTMLElement).animate(frames, { fill: "both", ...opts }));
+    const a = el ? play(el, frames, opts) : null;
+    if (a) anims.push(a);
   };
   const enter = ease("ease", root);
   const spring = ease("ease-spring", root);

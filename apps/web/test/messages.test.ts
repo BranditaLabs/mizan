@@ -47,8 +47,9 @@ describe("messages (CLAUDE.md rule 11: Arabic and English are equal)", () => {
   });
 
   it("Arabic copy keeps every Latin word inside <l> or <n> (rendered in <bdi>), brand names in Arabic (docs/16 §1.4, FX-1)", () => {
-    // Shown as is: the English name of English (in <bdi> on the switch) and input placeholders (attributes, not text).
-    const asIs = new Set(["shell.language.en", "auth.emailPlaceholder", "integrationsSettings.woo.sitePlaceholder"]);
+    // Shown as is: the English name of English (in <bdi> on the switch), input placeholders (attributes, not text)
+    // and the plan names, product names the trial chip and its picker render in <bdi>.
+    const asIs = new Set(["shell.language.en", "auth.emailPlaceholder", "integrationsSettings.woo.sitePlaceholder", "auth.plans.growth", "auth.plans.scale"]);
     const bare = (s: string) => s
       .replace(/<(l|n)>.*?<\/\1>/g, "") // <n> is the <bdi> for numbers and ids
       .replace(/<\/?\w+>/g, "")
