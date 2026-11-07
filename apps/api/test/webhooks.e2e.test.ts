@@ -4,13 +4,15 @@ import { Writable } from "node:stream";
 import type { INestApplication } from "@nestjs/common";
 import { FakeBosta, FakeClock, FakeShopify, seeded, testRuntime } from "@mizan/engine/testing";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { SecretsService } from "../src/platform/secrets/secrets.service.js";
 import { EngineJobRunner } from "../src/integrations/engine-runner.js";
 import { WebhookRouter } from "../src/integrations/webhook-router.js";
+import { ConnectionLifecycle } from "../src/integrations/connection-lifecycle.js";
+import { EngineRegistry } from "../src/integrations/engine-registry.js";
 
 const T = "aaaaaaaa-0000-4000-8000-000000000001";
 const FAKE_WEBHOOK_TOKEN = ["whsec", "bosta", "hooks", "0123456789"].join("-");
@@ -100,5 +102,66 @@ describe("webhook ingress", () => {
     expect((await router.route(conn.shopify!))!.provider).toBe("changed");
     await db.kysely.updateTable("connections").set({ provider: "shopify" }).where("id", "=", conn.shopify!).execute();
     router.forget(conn.shopify!);
+  });
+
+  it("W3/W4: a reconnect in another process during a burst loses nothing (no cached 'no route')", async () => {
+    const router = app.get(WebhookRouter);
+    const status = (s: "active" | "disconnected") => db.kysely.updateTable("connections").set({ status: s }).where("id", "=", conn.shopify!).execute();
+    await status("disconnected");
+    router.forget(conn.shopify!); // this process saw the disconnect
+    const answers: unknown[] = [];
+    for (let i = 0; i < 6; i++) {
+      if (i === 3) await status("active"); // reconnected by another API process: nobody told this one
+      const wh = shop.webhook("orders/create", shop.addOrder({ tags: [] }));
+      answers.push((await send(`/webhooks/shopify/${conn.shopify}`, wh).expect(200)).body);
+    }
+    expect(answers).toEqual([
+      { ignored: "disconnected" }, { ignored: "disconnected" }, { ignored: "disconnected" },
+      { accepted: true }, { accepted: true }, { accepted: true },
+    ]);
+    // A connection that does not exist yet, then does: the first answer is not remembered either.
+    const id = crypto.randomUUID();
+    const wh = shop.webhook("orders/create", shop.addOrder({ tags: [] }));
+    await send(`/webhooks/shopify/${id}`, wh).expect(404);
+    await db.tenant(T, (trx) => trx.insertInto("connections").values({ id, tenant_id: T, kind: "store", provider: "shopify", external_account: "new.myshopify.com", status: "disconnected" }).execute());
+    expect((await send(`/webhooks/shopify/${id}`, wh).expect(200)).body).toEqual({ ignored: "disconnected" });
+    await db.tenant(T, (trx) => trx.deleteFrom("connections").where("id", "=", id).execute());
+  });
+
+  it("FX-3a: a Bosta token replaced by another process (a reconnect) is taken at once, not after the engine cache expires", async () => {
+    const registry = app.get(EngineRegistry);
+    const [tn] = [...bosta.deliveries.keys()];
+    const body = (n: number) => JSON.stringify({ trackingNumber: tn, state: { code: 24, value: "In transit" }, timestamp: Date.now() + n });
+    const hook = (token: string, n: number) => http().post(`/webhooks/bosta/${conn.bosta}?token=${token}`).set("Content-Type", "application/json").send(body(n));
+    await hook(FAKE_WEBHOOK_TOKEN, 1).expect(200); // this process has an engine with the old token
+    for (const e of registry.all()) e.builtAt -= 60_000; // built a minute ago, well inside its 10-minute life
+    // Another API process reconnects Bosta: a new credential with a new webhook token. Nobody tells this process.
+    const fresh = ["whsec", "bosta", "reconnected", "0123456789"].join("-");
+    await db.tenant(T, async (trx) => {
+      const ref = await app.get(SecretsService).create(trx, T, JSON.stringify({ apiKey: bosta.apiKey, webhookToken: fresh }), { actor: { type: "system" as const } });
+      await trx.updateTable("connections").set({ secret_ref: ref }).where("id", "=", conn.bosta!).execute();
+    });
+    expect((await hook(fresh, 2).expect(200)).body).toEqual({ accepted: true }); // rejected by the cached engine, accepted by one built now
+    const rebuilt = registry.cached(T);
+    expect(Date.now() - rebuilt!.builtAt).toBeLessThan(5_000);
+    await hook(FAKE_WEBHOOK_TOKEN, 3).expect(401); // the old token is refused
+    await hook("forged", 4).expect(401);
+    expect(registry.cached(T)).toBe(rebuilt); // a run of bad tokens does not rebuild the engines again (throttled)
+  });
+
+  // Last in the file: it disconnects the store.
+  it("app/uninstalled: when the disconnect fails after the mark, Shopify's retry (a duplicate) still disconnects", async () => {
+    const lifecycle = app.get(ConnectionLifecycle);
+    const spy = vi.spyOn(lifecycle, "providerRevoked").mockRejectedValueOnce(new Error("lock timeout"));
+    const wh = shop.uninstall();
+    await send(`/webhooks/shopify/${conn.shopify}`, wh).expect(500); // Shopify retries a 5xx
+    const still = await db.tenant(T, (trx) => trx.selectFrom("connections").select("status").where("id", "=", conn.shopify!).executeTakeFirstOrThrow());
+    expect(still.status).not.toBe("disconnected");
+    // The retry: same event id, already marked, so the engine answers "duplicate"; the uninstall still runs.
+    expect((await send(`/webhooks/shopify/${conn.shopify}`, wh).expect(200)).body).toEqual({ duplicate: true });
+    expect(spy).toHaveBeenCalledTimes(2);
+    const row = await db.tenant(T, (trx) => trx.selectFrom("connections").select(["status", "status_reason", "secret_ref"]).where("id", "=", conn.shopify!).executeTakeFirstOrThrow());
+    expect(row).toEqual({ status: "disconnected", status_reason: "app_uninstalled", secret_ref: null });
+    spy.mockRestore();
   });
 });
