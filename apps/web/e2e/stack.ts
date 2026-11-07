@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { API, EMULATOR, PROJECT } from "./env.mjs";
+import { API, EMULATOR, PROJECT, STAFF } from "./env.mjs";
 
 /**
  * Helpers for the end-to-end stack: read SMS codes and email links from the Firebase Auth emulator,
@@ -70,7 +70,11 @@ export async function ownerWithTwoStep(email: string, phoneE164: string): Promis
   const start = await post<{ phoneSessionInfo: { sessionInfo: string } }>(`${ID}/v2/accounts/mfaEnrollment:start`, { idToken: fresh.idToken, phoneEnrollmentInfo: { phoneNumber: phoneE164 } });
   const sessionInfo = start.phoneSessionInfo.sessionInfo;
   await post(`${ID}/v2/accounts/mfaEnrollment:finalize`, { idToken: fresh.idToken, phoneVerificationInfo: { sessionInfo, code: await smsCode({ sessionInfo }) } });
+  return signInTwoStep(email);
+}
 
+/** Sign in an account that has the SMS second factor: password, then the texted code. Its ID token. */
+export async function signInTwoStep(email: string): Promise<string> {
   const first = await post<{ mfaPendingCredential: string; mfaInfo: Array<{ mfaEnrollmentId: string }> }>(`${ID}/v1/accounts:signInWithPassword`, { email, password: PASSWORD, returnSecureToken: true });
   const challenge = await post<{ phoneResponseInfo: { sessionInfo: string } }>(`${ID}/v2/accounts/mfaSignIn:start`,
     { mfaPendingCredential: first.mfaPendingCredential, mfaEnrollmentId: first.mfaInfo[0]!.mfaEnrollmentId, phoneSignInInfo: {} });
@@ -123,7 +127,22 @@ export async function signInWithPhone(page: Page, phone: { national: string; e16
   await page.getByRole("button", { name: L.verify, exact: true }).click();
 }
 
-/** An owner (two-step on) with a store, ready to sign in through the UI. */
+let staff: Promise<string> | undefined;
+/** The run's Mizan staff member (PLATFORM_BOOTSTRAP_EMAILS in env.mjs), two-step on; made once, signed in by any worker after. */
+export function staffToken(): Promise<string> {
+  staff ??= ownerWithTwoStep(STAFF, newPhone().e164).catch((err: Error) => {
+    if (!/EMAIL_EXISTS/.test(err.message)) throw err;
+    return signInTwoStep(STAFF); // another worker made it
+  });
+  return staff;
+}
+
+/** End a store's trial the way staff would (PUT /v1/platform/stores/{id}/plan, through the subscription service): the store is on Free. */
+export async function endTrial(storeId: string): Promise<void> {
+  await mizan(await staffToken(), "PUT", `/platform/stores/${storeId}/plan`, { plan: "free", reason: "e2e: the trial is over" });
+}
+
+/** An owner (two-step on) with a store, ready to sign in through the UI. New stores start a 7-day Growth trial (E12-2a2). */
 export async function ownerWithStore(name: string) {
   const email = newEmail("owner");
   const phone = newPhone();

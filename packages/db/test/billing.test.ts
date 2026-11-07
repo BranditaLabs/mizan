@@ -32,13 +32,13 @@ const asTenant = <T>(tenant: string, fn: () => Promise<T>) => inTx(`SET LOCAL RO
 const asRole = <T>(role: string, fn: () => Promise<T>) => inTx(`SET LOCAL ROLE ${role};`, fn);
 
 beforeAll(async () => {
-  // Stores that exist before subscriptions launch: two on Free, one staff moved to Scale, one deleted.
+  // Stores that exist before subscriptions launch: two on Free, one staff moved to Scale, one deleted (staff had moved it to Growth).
   const before = mkdtempSync(join(tmpdir(), "mizan-billing-"));
   for (const f of readdirSync(MIGRATIONS_DIR).filter((f) => f < "0075")) copyFileSync(join(MIGRATIONS_DIR, f), join(before, f));
   await migrate(pgliteMigrationClient(db), { dir: before });
   await db.exec(`INSERT INTO tenants (id, name, slug, timezone) VALUES ('${T1}', 'A', 'a', 'Africa/Cairo'), ('${T2}', 'B', 'b', 'Asia/Riyadh');
                  INSERT INTO tenants (id, name, slug, plan) VALUES ('${T3}', 'C', 'c', 'scale');
-                 INSERT INTO tenants (id, name, slug, status) VALUES ('${T4}', 'D', 'd', 'deleted');`);
+                 INSERT INTO tenants (id, name, slug, status, plan) VALUES ('${T4}', 'D', 'd', 'deleted', 'growth');`);
   await migrate(pgliteMigrationClient(db));
 });
 
@@ -66,6 +66,9 @@ describe("billing schema (E12-2a1)", () => {
     const none = await db.query(`SELECT id FROM tenants t WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.tenant_id = t.id AND s.status NOT IN ('cancelled','expired'))`);
     expect(none.rows).toEqual([]);
     expect((await db.query<{ plan: string }>(`SELECT plan FROM tenants WHERE id = $1`, [T1])).rows[0].plan).toBe("growth");
+    // tenants.plan = the plan the subscription entitles, for every store: the deleted paid one is Free.
+    const plans = await db.query<{ id: string; plan: string }>(`SELECT id, plan FROM tenants ORDER BY id`);
+    expect(plans.rows).toEqual([{ id: T1, plan: "growth" }, { id: T2, plan: "growth" }, { id: T3, plan: "scale" }, { id: T4, plan: "free" }]);
     expect((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM subscription_events WHERE event = 'backfill'`)).rows[0].n).toBe(4);
   });
 
@@ -83,10 +86,24 @@ describe("billing schema (E12-2a1)", () => {
     await expect(asTenant(T1, () => db.query(`DELETE FROM subscription_events WHERE id = $1`, [ev.rows[0].id]))).rejects.toThrow(/permission denied/);
     await expect(asTenant(T1, () => db.query(`INSERT INTO subscription_events (tenant_id, subscription_id, event, to_status, to_plan, version, actor_type)
       SELECT $1, id, 'start', 'active', 'free', 1, 'system' FROM subscriptions LIMIT 1`, [T2]))).rejects.toThrow(/row-level security/);
+    // A subscription ends (cancelled, expired); it is never deleted, so its history cannot go with it.
+    await expect(asTenant(T1, () => db.query(`DELETE FROM subscriptions WHERE tenant_id = $1`, [T1]))).rejects.toThrow(/permission denied/);
+    await expect(db.query(`DELETE FROM subscriptions WHERE tenant_id = $1`, [T1])).rejects.toThrow(/subscription_events_subscription_id_fkey/);
+    // Overrides are what staff changed by hand: the store reads its own, never writes one.
+    await expect(asTenant(T1, () => db.query(`INSERT INTO subscription_overrides (tenant_id, key, value, reason) VALUES ($1, 'limits.users', '50', 'self-service')`, [T1]))).rejects.toThrow(/permission denied/);
+    await asRole("mizan_platform", () => db.query(`INSERT INTO subscription_overrides (tenant_id, key, value, reason) VALUES ($1, 'limits.users', '12', 'pilot team')`, [T1]));
+    expect((await asTenant(T1, () => db.query(`SELECT key FROM subscription_overrides`))).rows).toEqual([{ key: "limits.users" }]);
+    await expect(asTenant(T1, () => db.query(`DELETE FROM subscription_overrides WHERE tenant_id = $1`, [T1]))).rejects.toThrow(/permission denied/);
+    await expect(asTenant(T1, () => db.query(`UPDATE subscription_overrides SET value = '99'`))).rejects.toThrow(/permission denied/);
     // The scheduler sees due trials across stores, ids and times only.
     const due = await asRole("mizan_worker", () => db.query(`SELECT id, tenant_id, trial_ends_at FROM subscriptions WHERE status = 'trialing'`));
     expect(due.rows).toHaveLength(2);
     await expect(asRole("mizan_worker", () => db.query(`SELECT plan_code FROM subscriptions`))).rejects.toThrow(/permission denied/);
+    // ...and the backfilled paid or trial subscriptions whose trial keys are still to claim: ids and event names only.
+    const toClaim = await asRole("mizan_worker", () => db.query(`SELECT e.tenant_id FROM subscription_events e WHERE e.event = 'backfill' AND e.to_plan <> 'free'
+      AND NOT EXISTS (SELECT 1 FROM subscription_events m WHERE m.subscription_id = e.subscription_id AND m.event = 'trial_keys_claimed') ORDER BY e.tenant_id`));
+    expect(toClaim.rows).toEqual([{ tenant_id: T1 }, { tenant_id: T2 }, { tenant_id: T3 }]);
+    await expect(asRole("mizan_worker", () => db.query(`SELECT reason, data FROM subscription_events`))).rejects.toThrow(/permission denied/);
     const staff = await asRole("mizan_platform", () => db.query(`SELECT tenant_id FROM subscriptions`));
     expect(staff.rows.length).toBeGreaterThanOrEqual(4);
   });

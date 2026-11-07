@@ -10,6 +10,7 @@ describe("subscription state machine", () => {
     [null, "start_trial", "trialing"],
     [null, "start", "active"],
     ["trialing", "trial_end", "expired"],
+    ["incomplete", "trial_end", "expired", "trialing"], // a checkout opened during the trial: the trial still ends on time
     ["trialing", "pay_ok", "active"],
     ["past_due", "pay_ok", "active"],
     ["restricted", "pay_ok", "active"],
@@ -60,6 +61,12 @@ describe("subscription state machine", () => {
   it("returns from an open checkout only to a state it can hold", () => {
     expect(() => nextStatus("incomplete", "checkout_expired", null)).toThrow(TransitionError);
     expect(() => nextStatus("incomplete", "checkout_expired", "expired")).toThrow(TransitionError);
+  });
+
+  it("ends a trial from an open checkout only when the checkout opened during the trial", () => {
+    for (const previous of ["active", "past_due", "restricted", "paused", null] as const) {
+      expect(() => nextStatus("incomplete", "trial_end", previous), String(previous)).toThrow(TransitionError);
+    }
   });
 
   it("covers every event in the table", () => {

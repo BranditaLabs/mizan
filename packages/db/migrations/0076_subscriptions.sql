@@ -31,14 +31,16 @@ CREATE TABLE subscriptions (
 );
 -- One live subscription per store; the scheduler's due queues.
 CREATE UNIQUE INDEX subscriptions_live ON subscriptions (tenant_id) WHERE status NOT IN ('cancelled','expired');
-CREATE INDEX subscriptions_trial_due ON subscriptions (trial_ends_at) WHERE status = 'trialing';
+-- A trial with a checkout open (incomplete, previous_status trialing) still ends at trial_ends_at.
+CREATE INDEX subscriptions_trial_due ON subscriptions (trial_ends_at) WHERE status IN ('trialing','incomplete');
 CREATE INDEX subscriptions_period_due ON subscriptions (current_period_end) WHERE status IN ('active','past_due','restricted');
 
--- Every change, append-only (kept 10 years with invoices, docs/16 §7.5).
+-- Every change, append-only (kept 10 years with invoices, docs/16 §7.5). NO ACTION, not CASCADE: a
+-- subscription with history cannot be deleted, so the history cannot vanish through the key.
 CREATE TABLE subscription_events (
   id               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   tenant_id        UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  subscription_id  UUID NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
+  subscription_id  UUID NOT NULL REFERENCES subscriptions(id) ON DELETE NO ACTION,
   event            TEXT NOT NULL CHECK (event ~ '^[a-z_]{3,40}$'),
   from_status      TEXT,
   to_status        TEXT NOT NULL,
@@ -53,6 +55,8 @@ CREATE TABLE subscription_events (
 );
 CREATE INDEX subscription_events_sub ON subscription_events (subscription_id, id);
 CREATE INDEX subscription_events_tenant ON subscription_events (tenant_id, at DESC);
+-- The scheduler's one-off claim of backfilled trials' keys (BillingScheduler.claimBackfilledKeys).
+CREATE INDEX subscription_events_backfill ON subscription_events (subscription_id) WHERE event IN ('backfill','trial_keys_claimed');
 
 -- What staff changed by hand for a store (a limit raised, a trial granted), with why and until when.
 CREATE TABLE subscription_overrides (
@@ -81,16 +85,21 @@ BEGIN
   END LOOP;
 END $$;
 
--- The history is append-only for the store's own role.
+-- The history is append-only for the store's own role, and a subscription is never deleted (it
+-- ends: cancelled or expired). Overrides are what staff changed by hand: the store only reads them.
 REVOKE UPDATE, DELETE ON subscription_events FROM mizan_app;
-REVOKE UPDATE ON subscription_overrides FROM mizan_app;
+REVOKE DELETE ON subscriptions FROM mizan_app;
+REVOKE INSERT, UPDATE, DELETE ON subscription_overrides FROM mizan_app;
 GRANT INSERT ON subscription_overrides TO mizan_platform;
 CREATE POLICY platform_write ON subscription_overrides FOR INSERT TO mizan_platform WITH CHECK (true);
 
 -- The scheduler (worker role) finds due trials across stores: ids and times only, then acts in each store's own context.
 REVOKE ALL ON subscriptions, subscription_events, subscription_overrides FROM mizan_worker;
-GRANT SELECT (id, tenant_id, status, trial_ends_at, current_period_end) ON subscriptions TO mizan_worker;
+GRANT SELECT (id, tenant_id, status, previous_status, trial_ends_at, current_period_end) ON subscriptions TO mizan_worker;
 CREATE POLICY worker_due ON subscriptions FOR SELECT TO mizan_worker USING (true);
+-- ...and the backfilled subscriptions whose trial keys are not claimed yet: ids and event names only.
+GRANT SELECT (tenant_id, subscription_id, event, to_plan) ON subscription_events TO mizan_worker;
+CREATE POLICY worker_due ON subscription_events FOR SELECT TO mizan_worker USING (true);
 
 -- One trial per owner, phone and shop domain (docs/16 §7.6). key_hash = '<kind>:' + HMAC-SHA256 with
 -- the platform pepper (TRIAL_KEY_PEPPER), never a plain hash. No role but the owner can read it.
@@ -149,7 +158,10 @@ GRANT UPDATE (status, updated_at) ON tenants TO mizan_platform;
 --   * every other store: a fresh trial of Growth from today (day 1) to 23:59:59 on day 7 in the
 --     store's time zone, or Free when the migration runs with mizan.existing_store_policy = 'free'
 --     (PGOPTIONS='-c mizan.existing_store_policy=free'), which grandfathers them instead;
---   * deleted stores: Free.
+--   * deleted stores: Free (tenants.plan follows, so tenants.plan = the plan the subscription entitles).
+-- trials_used cannot be filled here (the HMAC pepper lives only in the app): the billing scheduler
+-- claims the owner's and connected shops' keys for every backfilled paid or trial subscription on its
+-- first tick, once (a trial_keys_claimed history line), so a backfilled owner gets no second trial.
 -- Pilots move to comped Scale by a staff action before gating is turned on.
 DO $$
 DECLARE
@@ -172,6 +184,9 @@ BEGIN
   INSERT INTO subscriptions (tenant_id, plan_code, status, current_period_start)
     SELECT t.id, 'free', 'active', now() FROM tenants t
     WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.tenant_id = t.id);
+  -- A deleted store staff had moved to a paid plan is Free now: tenants.plan follows its subscription.
+  UPDATE tenants t SET plan = 'free' WHERE t.plan <> 'free'
+    AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.tenant_id = t.id AND s.plan_code = 'free' AND s.status = 'active');
 
   INSERT INTO subscription_events (tenant_id, subscription_id, event, to_status, to_plan, version, actor_type, reason, data)
     SELECT tenant_id, id, 'backfill', status, plan_code, 1, 'system', 'subscriptions launched (D18)', jsonb_build_object('policy', policy)

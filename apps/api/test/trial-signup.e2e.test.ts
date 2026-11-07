@@ -8,6 +8,8 @@ import { createApp } from "../src/bootstrap.js";
 import { loadConfig } from "../src/platform/config.js";
 import { Database } from "../src/platform/db/database.js";
 import { TrialDomainConsumer } from "../src/modules/billing/trial-domain.consumer.js";
+import { BillingScheduler } from "../src/modules/billing/billing.scheduler.js";
+import { SubscriptionService } from "../src/modules/billing/subscription.service.js";
 import { FakeVerifier } from "./support/fake-auth.js";
 
 /**
@@ -122,5 +124,80 @@ describe("signup and trial (E12-2a2)", () => {
     } finally {
       await setSettings("trial_days = 7");
     }
+  });
+});
+
+describe("stores that existed before subscriptions (D18 backfill)", () => {
+  /** A store as migration 0076 leaves it: a Growth trial and a `backfill` history line, nothing in trials_used. */
+  async function backfilled(token: string, shop: string | null) {
+    await http().get("/v1/me").set(as(token)).expect(200); // the account, as at its last sign-in
+    const uid = fake.identities.get(token)!.uid;
+    const user = await db.kysely.selectFrom("users").select("id").where("firebase_uid", "=", uid).executeTakeFirstOrThrow();
+    const id = crypto.randomUUID();
+    await db.kysely.insertInto("tenants").values({ id, name: `Old ${token}`, slug: `old-${token}-${id.slice(0, 6)}`, plan: "growth" }).execute();
+    await db.kysely.insertInto("memberships").values({ tenant_id: id, user_id: user.id, role: "owner", status: "active" }).execute();
+    if (shop) await db.kysely.insertInto("connections").values({ tenant_id: id, kind: "store", provider: "shopify", external_account: shop }).execute();
+    const sub = await db.kysely.insertInto("subscriptions").values({
+      tenant_id: id, plan_code: "growth", status: "trialing", trial_started_at: new Date(), trial_ends_at: new Date(Date.now() + 6 * 86_400_000),
+    }).returning(["id", "status", "plan_code"]).executeTakeFirstOrThrow();
+    await db.kysely.insertInto("subscription_events").values({
+      tenant_id: id, subscription_id: sub.id, event: "backfill", to_status: sub.status, to_plan: sub.plan_code, version: 1, actor_type: "system", data: JSON.stringify({ policy: "trial" }),
+    }).execute();
+    return id;
+  }
+  const marks = (tenant: string) => db.tenant(tenant, (trx) => trx.selectFrom("subscription_events").select(["event", "data"]).where("event", "=", "trial_keys_claimed").execute());
+
+  it("claims the owner's and the shop's keys once, so the owner's next store starts on Free (trial_used)", async () => {
+    fake.add("old", { uid: "fb-old-owner", email: "old.owner+shop1@gmail.com", emailVerified: true, phone: "+201009998877" });
+    fake.add("alias", { uid: "fb-old-alias", email: "oldowner@gmail.com", emailVerified: true }); // the same mailbox, another account
+    fake.add("buyer", { uid: "fb-shop-buyer", email: "buyer@trial.test", emailVerified: true });
+    const old = await backfilled("old", "Old-Shop.myshopify.com");
+    const scheduler = app.get(BillingScheduler);
+    expect(await scheduler.claimBackfilledKeys()).toBe(1);
+    expect(await scheduler.claimBackfilledKeys()).toBe(0); // never twice
+    await scheduler.runOnce();
+    expect(await marks(old)).toEqual([{ event: "trial_keys_claimed", data: { keys: 4, refused: 0 } }]);
+    expect(await subOf(old)).toMatchObject({ plan_code: "growth", status: "trialing" }); // its own trial carries on
+
+    const second = (await signup("old", { name: "Old Owner Second" })).body;
+    expect(second.plan).toBe("free");
+    const audit = await db.tenant(second.id, (trx) => trx.selectFrom("audit_log").select("after").where("action", "=", "tenant.created").executeTakeFirstOrThrow());
+    expect(audit.after).toMatchObject({ plan: "free", trialRefused: "trial_used" });
+    expect((await signup("alias", { name: "Alias Store" })).body.plan).toBe("free"); // a Gmail alias of the same inbox
+
+    // Another account bringing the backfilled store's shop loses its trial at once.
+    const buyer = (await signup("buyer", { name: "Buyer Store" })).body;
+    const c = await db.tenant(buyer.id, (trx) => trx.insertInto("connections").values({ tenant_id: buyer.id, kind: "store", provider: "shopify", external_account: "old-shop.myshopify.com" }).returning("id").executeTakeFirstOrThrow());
+    await db.tenant(buyer.id, (trx) => app.get(TrialDomainConsumer).handle({
+      id: crypto.randomUUID(), type: "connection.connected", tenantId: buyer.id, occurredAt: new Date().toISOString(), actor: null,
+      entity: { type: "connection", id: c.id }, data: { provider: "shopify", kind: "store" }, version: 1,
+    }, trx));
+    expect(await subOf(buyer.id)).toMatchObject({ plan_code: "free", status: "active" });
+  });
+
+  it("two old stores with one owner both keep their trials; the second's refused keys are noted", async () => {
+    fake.add("twice", { uid: "fb-twice-owner", email: "twice@trial.test", emailVerified: true });
+    const a = await backfilled("twice", null);
+    const b = await backfilled("twice", null);
+    expect(await app.get(BillingScheduler).claimBackfilledKeys()).toBe(2);
+    const lines = [...(await marks(a)), ...(await marks(b))].map((m) => m.data);
+    expect(lines).toEqual(expect.arrayContaining([{ keys: 2, refused: 0 }, { keys: 2, refused: 2 }]));
+    expect(await subOf(a)).toMatchObject({ status: "trialing" });
+    expect(await subOf(b)).toMatchObject({ status: "trialing" });
+  });
+
+  it("ends a trial on time even with a checkout open since the trial (incomplete)", async () => {
+    const fresh = fake.add("checkout", { uid: "fb-checkout-trial", email: "checkout@trial.test", emailVerified: true });
+    const t = (await http().post("/v1/tenants").set(as(fresh)).send({ country: "EG", name: "Checkout Open" }).expect(201)).body;
+    const svc = app.get(SubscriptionService);
+    const sub = await subOf(t.id);
+    await db.tenant(t.id, (trx) => svc.transition(trx, t.id, sub.id, "checkout_open", { actor: { type: "system" } }));
+    expect(await subOf(t.id)).toMatchObject({ status: "incomplete", previous_status: "trialing" });
+    expect((await db.tenant(t.id, (trx) => trx.selectFrom("tenants").select("plan").executeTakeFirstOrThrow())).plan).toBe("growth");
+    await app.get(BillingScheduler).runOnce(new Date(Date.now() + 8 * 86_400_000));
+    expect(await subOf(t.id)).toMatchObject({ plan_code: "free", status: "active" });
+    const history = await db.tenant(t.id, (trx) => trx.selectFrom("subscription_events").select(["event", "from_status", "to_status"]).orderBy("id").execute());
+    expect(history.map((h) => h.event)).toEqual(["start_trial", "checkout_open", "trial_end", "start"]);
+    expect(history[2]).toMatchObject({ from_status: "incomplete", to_status: "expired" });
   });
 });

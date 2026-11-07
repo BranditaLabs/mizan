@@ -6,6 +6,7 @@ import type { Plan } from "./plans.js";
  * that writes; everything here is pure, so every edge is unit-tested.
  *
  *   (none) ─start_trial─► trialing ─trial_end─► expired (a new Free subscription opens: D3)
+ *   incomplete (a checkout opened during the trial) ─trial_end─► expired: the trial still ends on time
  *   (none) ─start─► active                      trialing / past_due / restricted / incomplete ─pay_ok─► active
  *   active ─renewal_fail─► past_due ─grace_end─► restricted ─restricted_end─► expired
  *   active ─period_end_cancel─► cancelled       active ─pause─► paused ─resume─► active
@@ -35,7 +36,7 @@ const RESTORABLE: readonly SubscriptionStatus[] = ["trialing", "active", "past_d
 export const TRANSITIONS: Record<SubscriptionEvent, { from: From; to: To }> = {
   start_trial: { from: "none", to: "trialing" },
   start: { from: "none", to: "active" },
-  trial_end: { from: ["trialing"], to: "expired" },
+  trial_end: { from: ["trialing", "incomplete"], to: "expired" }, // from incomplete only when the checkout opened during a trial
   pay_ok: { from: ["trialing", "past_due", "restricted", "incomplete"], to: "active" },
   renewal_fail: { from: ["active"], to: "past_due" },
   grace_end: { from: ["past_due"], to: "restricted" },
@@ -63,6 +64,7 @@ export function nextStatus(from: SubscriptionStatus | null, event: SubscriptionE
   const t = TRANSITIONS[event];
   const allowed = t.from === "none" ? from === null : from !== null && t.from.includes(from);
   if (!allowed) throw new TransitionError(event, from);
+  if (event === "trial_end" && from === "incomplete" && previous !== "trialing") throw new TransitionError(event, from);
   if (t.to === "same") return from!;
   if (t.to === "previous") {
     if (!previous || !RESTORABLE.includes(previous)) throw new TransitionError(event, from);

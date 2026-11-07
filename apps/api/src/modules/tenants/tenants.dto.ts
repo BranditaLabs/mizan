@@ -14,9 +14,9 @@ export const CreateTenantSchema = z.strictObject({
   language: z.enum(["ar", "en"]).default("ar"),
   /** The terms and DPA versions the owner ticked; recorded with the store (L1-3). */
   acceptLegal: LegalVersionsSchema.optional().describe("The terms of service and DPA versions the owner accepted; 409 legal_version_changed when not current"),
-  /** The tier to try (E12-2a2), e.g. from the landing's ?plan=; Growth when absent. Enterprise leads try Scale. Free only when sold publicly. */
-  plan: z.enum(SIGNUP_PLANS).optional().describe("The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly)"),
-  interval: z.enum(["month", "year"]).optional().describe("Monthly or yearly billing after the trial (the landing's ?billing=); monthly when absent"),
+  /** The tier to try (E12-2a2); Growth when absent. Enterprise leads try Scale. Free only when sold publicly. The dashboard sends it once OB-3 carries the landing's choice to signup; nothing sends it yet. */
+  plan: z.enum(SIGNUP_PLANS).optional().describe("The tier to try for trial_days (Growth when absent; enterprise = a Scale trial; free only when Free is sold publicly). Not sent by the dashboard yet (OB-3)"),
+  interval: z.enum(["month", "year"]).optional().describe("Monthly or yearly billing after the trial; monthly when absent. Not sent by the dashboard yet (OB-3)"),
 });
 export type CreateTenantBody = z.infer<typeof CreateTenantSchema>;
 

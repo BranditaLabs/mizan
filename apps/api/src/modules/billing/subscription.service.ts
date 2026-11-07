@@ -10,6 +10,8 @@ import { entitlementPlan, nextStatus, TransitionError, type SubscriptionEvent, t
 type Trx = Transaction<DB>;
 export type SubscriptionRow = Selectable<Subscriptions>;
 export type BillingInterval = "month" | "year";
+/** History lines that are not a transition. */
+export type HistoryNote = "trial_keys_claimed";
 
 /** Who changed a subscription: a member, Mizan staff (their staff id), or the platform itself. */
 export interface SubscriptionActor { type: "user" | "mizan_staff" | "system"; id?: string }
@@ -150,7 +152,12 @@ export class SubscriptionService {
     return this.transition(trx, tenantId, cur.id, "staff_override", { ...change, plan, compPercent: comp, data: { ...change.data, comp } });
   }
 
-  private async history(trx: Trx, row: SubscriptionRow, event: SubscriptionEvent, fromStatus: SubscriptionStatus | null, fromPlan: Plan | null, c: Change) {
+  /** A history line that changes nothing (the row stays as it is): a fact about the subscription, such as its trial keys being claimed. */
+  async note(trx: Trx, row: SubscriptionRow, event: HistoryNote, c: Change): Promise<void> {
+    await this.history(trx, row, event, statusOf(row), planOf(row), c);
+  }
+
+  private async history(trx: Trx, row: SubscriptionRow, event: SubscriptionEvent | HistoryNote, fromStatus: SubscriptionStatus | null, fromPlan: Plan | null, c: Change) {
     await trx.insertInto("subscription_events").values({
       tenant_id: row.tenant_id, subscription_id: row.id, event, from_status: fromStatus, to_status: row.status, from_plan: fromPlan, to_plan: row.plan_code,
       version: row.version, actor_type: c.actor.type, actor_id: c.actor.id ?? null, reason: c.reason ?? null, data: JSON.stringify(c.data ?? {}),
