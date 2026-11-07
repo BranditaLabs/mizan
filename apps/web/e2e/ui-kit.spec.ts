@@ -12,8 +12,11 @@ function watch(page: Page) {
   return problems;
 }
 
+/** The kit's table rows (the motion section's catalogue table is not part of the kit). */
+const kitRows = (page: Page) => page.locator("table:not([data-testid='motion-catalogue']) tbody tr");
+
 const firstColumn = (page: Page, header: string) =>
-  page.locator("table tbody tr").evaluateAll((rows, h) => {
+  kitRows(page).evaluateAll((rows, h) => {
     const table = rows[0]!.closest("table")!;
     const i = [...table.querySelectorAll("thead th")].findIndex((th) => th.textContent?.trim() === h);
     return rows.map((r) => r.querySelectorAll("td")[i]!.textContent!.replace(/\s+/g, " ").trim());
@@ -31,7 +34,7 @@ test("gallery in Arabic: right to left, tabs follow the screen, combobox finds A
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByRole("tab", { name: /محتاج تأكيد/ })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tab", { name: /محتاج تأكيد/ })).toBeFocused();
-  await expect(page.locator("table tbody tr")).toHaveCount(2);
+  await expect(kitRows(page)).toHaveCount(2);
   await page.keyboard.press("ArrowRight");
   await expect(all).toHaveAttribute("aria-selected", "true");
 

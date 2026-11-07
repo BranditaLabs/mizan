@@ -1,12 +1,11 @@
 "use client";
 
-import { isolate } from "@mizan/design-system/motion";
 import { Icon } from "@mizan/design-system/icons/react";
 import { EventGlyph } from "@mizan/design-system/react/motion";
 import { isOrderEventType } from "@mizan/shared/motion";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Bdi } from "@/components/Bdi";
 import { Alert } from "@/components/ui/Alert";
 import { Badge, RiskMeter, Tag } from "@/components/ui/Badge";
@@ -122,21 +121,21 @@ export function OrderDetail({ id }: { id: string }) {
   // in @mizan/shared); its glyph is the catalogue outcome (TimelineGlyph), still unless fresh.
   const eventTitle = (e: Event) => {
     const statusMove = Boolean(e.fromStatus && e.toStatus && e.fromStatus !== e.toStatus);
-    // Shown values are isolated (FSI … PDI, the plain-text <bdi>): "#1234" or a Latin product name
-    // keeps its order inside the Arabic sentence. `kind` is a select argument and stays bare.
-    const iso = (v: string) => (v ? isolate(v) : v);
+    // Shown values sit in <b> in the copy, rendered as <bdi>: "#1234" or a Latin product name keeps its
+    // order inside the Arabic sentence (FX-1). `kind` is a select argument and stays bare.
+    const b = (c: ReactNode) => <bdi>{c}</bdi>;
     const values = {
-      source: iso(sourceName(e.data.source ?? o.store.provider ?? "")),
-      from: iso(e.type === "payment_changed" ? paymentLabel(e.data.from ?? "") : statusLabel(e.fromStatus)),
-      to: iso(e.type === "payment_changed" ? paymentLabel(e.data.to ?? "") : statusLabel(e.toStatus)),
+      source: sourceName(e.data.source ?? o.store.provider ?? ""),
+      from: e.type === "payment_changed" ? paymentLabel(e.data.from ?? "") : statusLabel(e.fromStatus),
+      to: e.type === "payment_changed" ? paymentLabel(e.data.to ?? "") : statusLabel(e.toStatus),
       kind: e.type === "updated" ? (statusMove ? "status" : "other") : e.type === "exchange_created" && e.data.into ? "into" : "other",
-      channel: iso(channelLabel(e.data.channel)),
-      status: iso(e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? ""),
-      tags: iso(tagList(e.data.tags)),
-      name: iso(e.data.name ?? ""),
-      number: iso(e.data.into ?? e.data.of ?? ""),
+      channel: channelLabel(e.data.channel),
+      status: e.data.status && SHIPMENT_STATUSES.has(e.data.status) ? ts(`status.${e.data.status as "delivered"}`) : e.data.status ?? "",
+      tags: tagList(e.data.tags),
+      name: e.data.name ?? "",
+      number: e.data.into ?? e.data.of ?? "",
     };
-    return isOrderEventType(e.type) ? tl(e.type, values) : tl("updated", { ...values, kind: "other" });
+    return isOrderEventType(e.type) ? tl.rich(e.type, { ...values, b }) : tl.rich("updated", { ...values, kind: "other", b });
   };
 
   const lineColumns: Column<Line>[] = [

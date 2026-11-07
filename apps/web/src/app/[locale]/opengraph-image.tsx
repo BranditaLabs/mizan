@@ -16,10 +16,8 @@ export default async function OpengraphImage({ params }: { params: Promise<{ loc
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 56, background: "#FEF7FF", flexDirection: ar ? "row-reverse" : "row" }}>
-        {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- ImageResponse draws plain <img> */}
-        <img src={mark} width={260} height={151} />
-        {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text -- ImageResponse draws plain <img> */}
-        <img src={word} width={ar ? 380 : 520} height={ar ? 169 : 143} />
+        <img src={mark} alt="" width={260} height={151} />
+        <img src={word} alt="" width={ar ? 380 : 520} height={ar ? 169 : 143} />
       </div>
     ),
     size,

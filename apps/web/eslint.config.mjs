@@ -23,8 +23,9 @@ const config = [
     },
   },
   { files: ["test/**", "e2e/**", "eslint-rules/**", "*.config.*"], rules: { "react/jsx-no-literals": "off", "mizan/no-adhoc-motion": "off", "mizan/no-brand-red": "off" } },
-  // The Open Graph card is an image drawn on the server (no theme, no red budget): the brand hexes are its paint.
-  { files: ["src/app/**/opengraph-image.tsx"], rules: { "mizan/no-brand-red": "off" } },
+  // The Open Graph card is an image drawn on the server (no theme, no red budget): the brand hexes are its paint,
+  // and ImageResponse draws plain <img> (next/image does not exist there).
+  { files: ["src/app/**/opengraph-image.tsx"], rules: { "mizan/no-brand-red": "off", "@next/next/no-img-element": "off" } },
 ];
 
 export default config;
