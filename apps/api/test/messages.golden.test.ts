@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Money } from "@mizan/shared";
-import { callPrompts, callScript, CHAT_MESSAGES, chatContent, linkText, whatsappParams, type MessageFacts, type OfferFacts } from "../src/modules/confirmation/messages.js";
+import { callPrompts, callScript, CHAT_MESSAGES, chatContent, linkText, TEMPLATE_SPECS, whatsappParams, type MessageFacts, type OfferFacts } from "../src/modules/confirmation/messages.js";
 import type { Script } from "../src/modules/confirmation/script.js";
 
 /**
@@ -93,5 +93,13 @@ describe("messages golden (E6-16a baseline)", () => {
     expect(callScript(CASES.paid!("ar"))).toContain("الإجمالي 1,250 ج.م.");
     const formal = callScript({ ...CASES.plain!("ar"), items: [], script: SCRIPTS.formal });
     expect(formal).toContain("نتصل لتأكيد طلبك رقم #1001.");
+  });
+
+  it("pins the first message per template (E6-16d): the wave first (Meta refuses a body that starts with a variable), the same four parameters", () => {
+    const fill = (v: keyof typeof TEMPLATE_SPECS, f: MessageFacts) => { const p = whatsappParams(f); return TEMPLATE_SPECS[v].body.replace(/\{\{(\d)\}\}/g, (_, i: string) => p[Number(i) - 1]!); };
+    expect(fill("ar_egyptian", CASES.plain!("ar"))).toBe("👋 أهلاً منى\nأوردرك رقم #1001 من متجر النيل وصلنا.\nالإجمالي 1,250 ج.م. عند الاستلام.\nأكّد الأوردر عشان نجهّزه ونشحنه لك.");
+    expect(fill("ar_formal", { ...CASES.plain!("ar"), script: SCRIPTS.formal })).toBe("👋 أهلاً منى\nاستلمنا طلبك رقم #1001 من متجر النيل.\nالإجمالي 1,250 ج.م. عند الاستلام.\nيُرجى تأكيد الطلب لنجهّزه ونشحنه إليك.");
+    expect(fill("ar_gulf", { ...CASES.plain!("ar"), script: { pack: "gulf", texts: { ar: {}, en: {} } } })).toBe("👋 هلا منى\nوصلنا طلبك رقم #1001 من متجر النيل.\nالإجمالي 1,250 ج.م. عند الاستلام.\nأكّد طلبك عشان نجهّزه ونشحنه لك.");
+    expect(fill("en", CASES.plain!("en"))).toBe("👋 Hi Mona\nWe received your order #1001 from Nile Store.\nTotal: EGP 1,250 on delivery.\nPlease confirm so we can prepare and ship it.");
   });
 });

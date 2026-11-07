@@ -32,18 +32,25 @@ typography:
   arabic-display: "Alexandria"      # Arabic headings, Arabic wordmark
   arabic-body: "IBM Plex Sans Arabic"
   mono: "Geist Mono"                # order IDs, SKUs, tracking numbers, phones
-  scale: [display-*, heading-lg, heading-md, heading-sm, body-lg, body, body-sm, label, caption, overline, kpi, kpi-sm, mono]
+  weights: [400, 500, 600, 700, 800, 900]   # Geist 800/900 for Brandita's display voice
+  scale: [display-*, heading-lg, heading-md, heading-sm, body-lg, body, body-sm, label, caption, overline, kpi, kpi-sm, mono, display-hero, kicker, nav-link]
 
 shape:
-  radius: { xs: 4px, sm: 6px, md: 8px, lg: 12px, xl: 16px }
+  radius: { xs: 4px, sm: 6px, md: 8px, lg: 12px, xl: 16px, pill: 9999px, island: 20px, island-lg: 28px }   # pill: top bar, dock, chips; island: ink islands only
   elevation: flat            # no shadows on cards, buttons or shapes; only menus, dialogs, toasts use shadow-overlay
   glass: mizan-glass        # the web app renders through css/glass.css (docs/glass.md) via css/glass-bridge.css: frosted surfaces, light fields, rim light (owner's decision, Oct 2026)
 
-motion:
+motion:                    # ported from the Brandita site (docs/16 §2.3)
   properties: [transform, opacity]
+  durations: { instant: 80, fast: 150, base: 200, slow: 300, moderate: 450, glide: 600, reveal: 900, drift: 24000 }   # ms
+  easings: [enter (= --mz-ease), expand (= --mz-ease-sheet), exit, standard, spring, spring-soft, pour]
   enter: 200ms ease-enter
   exit: 150ms ease-exit
-  reduced-motion: gentler, never removed feedback
+  press: scale(var(--mz-press-scale))   # 0.98 everywhere
+  reduced-motion: every duration ≤120ms (drift 0), distances 0; gentler, never removed feedback
+  island: shadow-island (1px rim + soft glow) keeps an ink island apart from the dark canvas
+
+partner-logos: "<PartnerLogo slug=… /> from @mizan/design-system/partners/react (web: components/ui/PartnerLogo). Real marks only (logos/partners/partners.json), never recoloured; a monogram tile otherwise"
 
 icons: "<Icon name=… /> from @mizan/design-system/icons — 18px, stroke 1.75; directional icons mirror in RTL"
 ---

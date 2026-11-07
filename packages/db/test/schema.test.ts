@@ -668,4 +668,18 @@ describe("schema", () => {
     const idx = await db.query(`SELECT indexname FROM pg_indexes WHERE tablename = 'mz_outbox' AND indexname = 'mz_outbox_dropped'`);
     expect(idx.rows).toHaveLength(1);
   });
+
+  it("records which first-message template went out, and lets the worker find numbers to check again by time only (0074, E6-16d)", async () => {
+    const msg = (template: string | null) => asTenant(T1, () => db.query(`INSERT INTO whatsapp_messages (tenant_id, direction, wamid, kind, status, template) VALUES ($1, 'out', $2, 'template', 'accepted', $3)`, [T1, `wamid.T${Math.random()}`, template]));
+    await msg("ar_gulf");
+    await msg(null);
+    await expect(msg("ar_shami")).rejects.toThrow(/check/);
+    await asTenant(T1, () => db.query(`INSERT INTO connections (tenant_id, kind, provider, external_account, status, check_after, config) VALUES ($1, 'whatsapp', 'whatsapp_cloud', '1098765432', 'active', now(), '{"wabaId":"1"}')`, [T1]));
+    await db.exec("BEGIN; SET LOCAL ROLE mizan_worker;");
+    try {
+      const due = await db.query<{ tenant_id: string }>(`SELECT id, tenant_id, status FROM connections WHERE provider = 'whatsapp_cloud' AND check_after <= now()`);
+      expect(due.rows.map((r) => r.tenant_id)).toEqual([T1]);
+      await expect(db.query(`SELECT config FROM connections`)).rejects.toThrow(/permission denied/);
+    } finally { await db.exec("ROLLBACK;"); }
+  });
 });

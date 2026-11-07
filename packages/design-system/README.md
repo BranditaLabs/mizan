@@ -5,7 +5,7 @@ Mizan's design system, built on Brandita's identity: **ink, paper and one red po
 Open **`reference/index.html`** in a browser to see everything: logo, colour, type, icons, components and a full orders screen, in light and dark, Arabic and English.
 
 ```
-npm test  -w @mizan/design-system    # 70 tests: WCAG contrast in both themes, brand fidelity, generated files up to date, no undefined CSS variables
+npm test  -w @mizan/design-system    # WCAG contrast in both themes, brand fidelity, motion and reduced motion, island rim, Geist faces, partner logos, generated files up to date, no undefined CSS variables
 npm run build -w @mizan/design-system  # regenerate dist/, icons and the reference page after editing tokens.json or icons/manifest.json
 ```
 
@@ -13,7 +13,7 @@ npm run build -w @mizan/design-system  # regenerate dist/, icons and the referen
 
 | Path | What it is |
 | --- | --- |
-| `tokens/tokens.json` | **The source of truth.** Brand colours, semantic colours (light + dark), data colours, type scale, spacing, radius, motion, sizes, layout, z-index |
+| `tokens/tokens.json` | **The source of truth.** Brand colours, semantic colours (light + dark), data colours, type scale, spacing, radius, motion (durations, easings, reduced map, distance, stagger, scroll), glass, sizes, layout, z-index |
 | `dist/tokens.css` | CSS variables `--mz-*` for light, dark (`[data-theme="dark"]`) and system dark; `.mz-text-*` type classes with Arabic adjustments |
 | `dist/tailwind.css` | Tailwind v4 `@theme` mapping (`bg-surface`, `text-text-2`, `font-display`, `text-kpi`, `ease-enter` …) |
 | `dist/tailwind-preset.cjs` | The same for Tailwind v3 |
@@ -23,7 +23,8 @@ npm run build -w @mizan/design-system  # regenerate dist/, icons and the referen
 | `css/glass.css` · `docs/glass.md` | **Mizan Glass**: the premium layer (frosted surfaces, light fields, spotlight, sliding indicators, 6 animated loaders), dark and light |
 | `icons/` | `manifest.json` (source), `svg/*.svg`, `sprite.svg`, `index.ts` (names, labels, RTL flags), `react.tsx` (`<Icon name="cod" />`) |
 | `logo/` | `svg/` wordmarks and lockups, `png/` app icons and favicons, `favicon.ico`, `source/` scripts that outline the type |
-| `fonts/` | `web/*.woff2`, `ttf/*.ttf` (Flutter), `licenses/` (all SIL OFL 1.1) |
+| `fonts/` | `web/*.woff2` (Geist 400–900), `ttf/*.ttf` (Flutter, Geist 400–700), `licenses/` (all SIL OFL 1.1) |
+| `logos/partners/` | Partner logos (docs/16 §5.9): `partners.json` (source, guide, allowed variants, minimum size, clear space per brand), the SVGs, generated `data.ts`, `index.ts` (`planPartnerLogo`) and `react.tsx` (`<PartnerLogo>`) |
 | `reference/` | `template.html` + generated self-contained `index.html` |
 | `docs/components.md` | Component catalogue with Tailwind recipes and UX rules |
 
@@ -32,7 +33,8 @@ npm run build -w @mizan/design-system  # regenerate dist/, icons and the referen
 - **Colours:** ink `#0B0B0B`, paper `#FEF7FF`, red `#DE0000` (red-hi `#E33232` on dark). Lines `#EDEDED` / `#D9D9D9`. These are Brandita's, unchanged.
 - **Red is a scalpel.** It marks the logo's red point, the active navigation indicator, the one number that matters, and errors. **Primary actions are ink, never red.** A screen with red in four places has three too many.
 - **Flat.** No shadows on cards, buttons or shapes. Only floating layers (menus, dialogs, toasts) use `--mz-shadow-overlay`.
-- **Type:** Geist (Latin UI and display), Geist Mono (IDs, tracking numbers, SKUs), Alexandria (Arabic display and the Arabic wordmark), IBM Plex Sans Arabic (Arabic body). All open-source (OFL).
+- **Type:** Geist (Latin UI and display; 800/900 for the Brandita display voice, `mz-text-display-hero`), Geist Mono (IDs, tracking numbers, SKUs), Alexandria (Arabic display and the Arabic wordmark), IBM Plex Sans Arabic (Arabic body). All open-source (OFL).
+- **Motion:** Brandita's site: `--mz-ease` (enter), `--mz-ease-spring`, `--mz-ease-sheet` (expand), durations up to `glide` 600ms and `reveal` 900ms. Under reduced motion every duration drops to ≤120ms and every distance and stagger delay to 0 (CSS overrides; Dart `reduced*` constants, e.g. `reducedDistanceRise`, `reducedStaggerList`). Press is `scale(var(--mz-press-scale))` (0.98).
 - **Logo:** type only. *mizan* in Geist Bold, *ميزان* in Alexandria Bold, outlined to paths. The dot of the **i** and the dot of the **ن** are red. Never set it in live type, recolour it, outline it, rotate it, add effects, or move the red point.
 
 ## Use in the Next.js web app (`apps/web`)
@@ -106,6 +108,17 @@ MaterialApp(theme: mizanLightTheme, darkTheme: mizanDarkTheme, themeMode: ThemeM
 
 Icons in Flutter: render `icons/svg/*.svg` with `flutter_svg` (colour via `ColorFilter`), or use the `lucide_icons` package with the glyph names in `icons/manifest.json`.
 
+### Partner logos
+
+```tsx
+import { PartnerLogo } from "@mizan/design-system/partners/react"; // in apps/web: @/components/ui/PartnerLogo
+<PartnerLogo slug="woocommerce" size={40} />                 // colour on a light tile, labelled with the name
+<PartnerLogo slug="woocommerce" size={20} variant="mono" decorative />  // the brand's own black/white file, by theme
+<PartnerLogo slug="bosta" size={32} />                       // no usable mark yet: a monogram tile
+```
+
+Marks are copied, never drawn: simple-icons paths at the version pinned in `partners.json`, or a partner's press-kit file. An entry ships a mark only with `guideUrl`, `guideCheckedAt` (the date someone read the guide), `permission` (`"not-required"` or `"granted:<date>"`; `"required"` while a guide's written OK is pending, as for Shopify), `allowedVariants` and `minPx`; a size under the guide's minimum falls back to the monogram (`partnerMarkMinSize(slug)` gives the smallest size that draws the mark). Monograms are distinct within a kind (`monogramText`: Tp/Tb/Tm, Pm/PP …). To refresh: `npm pack simple-icons@<version>` in a scratch folder, `npm run import:partners -w @mizan/design-system -- <folder>/package`, `npm run check:partners -w @mizan/design-system` (network, or pass the folder), then build.
+
 ## Changing the system
 
 1. Edit `tokens/tokens.json` (or `icons/manifest.json`).
@@ -113,4 +126,4 @@ Icons in Flutter: render `icons/svg/*.svg` with `flutter_svg` (colour via `Color
 3. `npm test -w @mizan/design-system`. Contrast tests fail if any text/background pair drops below WCAG AA in either theme.
 4. Commit the source and the generated files together (CI fails if they differ).
 
-Licences: fonts SIL OFL 1.1 (`fonts/licenses`); icon glyphs from Lucide, ISC (`icons/LUCIDE-LICENSE.txt`). Wordmark and app icons © Brandita.
+Licences: fonts SIL OFL 1.1 (`fonts/licenses`; Geist 800/900 from the `geist` npm package 1.8.1, where they are named `Geist-UltraBlack` (OS/2 weight 800) and `Geist-Black` (900)); icon glyphs from Lucide, ISC (`icons/LUCIDE-LICENSE.txt`). Wordmark and app icons © Brandita. Partner path data from Simple Icons (CC0); each mark is a trademark of its owner, used nominatively.
