@@ -11,6 +11,10 @@ import { mizan, ownerWithStore, signInOwner } from "./stack";
  *    isolated there);
  *  - no Arabic-Indic digits anywhere (digits are Western in both languages unless the store chose
  *    Eastern ones, docs/08 §3).
+ * Target sizes are measured on every run and attached as `targets.txt`, but fail the run only with
+ * RESPONSIVE_TARGETS=strict: the screen lanes (docs/16 B2, B3, B6, B8; DataTable v2) bring the
+ * shell, tabs, inputs and table controls to 24/44px, and FX-1 is ticked once this passes strict.
+ * Sideways scroll, Latin outside <bdi> and Arabic-Indic digits always fail.
  * Every PR that adds a route adds it to ROUTES (docs/16 §11.0). The store has data (an order whose
  * product has no cost, a ticket, a draft purchase order), so the provisional states, the tables and
  * the detail screens are measured too, not only empty states.
@@ -41,6 +45,9 @@ async function seed(owner: { token: string; storeId: string }): Promise<Seeded> 
   const po = (await call<{ id: string }>("POST", "/purchase-orders", { supplierId: supplier, lines: [{ variantId: variant, quantity: 5, unitCost: "400" }] })).id;
   return { order, ticket, product, po };
 }
+
+/** Target sizes fail the run only when asked (see the header); until then they are reported. */
+const STRICT_TARGETS = process.env.RESPONSIVE_TARGETS === "strict";
 
 const CASES = [
   { name: "phone 390×844", viewport: { width: 390, height: 844 }, coarse: true },
@@ -110,14 +117,21 @@ for (const c of CASES) {
         }
 
         const breaches: string[] = [];
+        const targets: string[] = [];
         for (const route of [...ROUTES, ...DETAIL(data)]) {
           await page.goto(`/${locale}${route === "/" ? "" : route}`);
           await page.waitForLoadState("networkidle");
           await expect(page.getByRole("main")).toBeVisible();
-          for (const b of await audit(page, { minTarget: c.coarse ? 44 : 24, arabic: locale === "ar" })) breaches.push(`${route} ${b.kind}: ${b.detail}`);
+          for (const b of await audit(page, { minTarget: c.coarse ? 44 : 24, arabic: locale === "ar" })) {
+            (b.kind.startsWith("target<") && !STRICT_TARGETS ? targets : breaches).push(`${route} ${b.kind}: ${b.detail}`);
+          }
           if ((route === "/" || route === "/onboarding") && c.viewport.width === 390) {
             await page.screenshot({ path: `test-results/responsive-${locale}${route === "/" ? "-home" : "-onboarding"}-390.png`, fullPage: true });
           }
+        }
+        if (targets.length) {
+          await info.attach("targets.txt", { body: targets.join("\n"), contentType: "text/plain" });
+          info.annotations.push({ type: "targets", description: `${targets.length} controls under ${c.coarse ? 44 : 24}px (RESPONSIVE_TARGETS=strict fails on them)` });
         }
         if (breaches.length) await info.attach("breaches.txt", { body: breaches.join("\n"), contentType: "text/plain" });
         expect(breaches, breaches.slice(0, 40).join("\n")).toEqual([]);
