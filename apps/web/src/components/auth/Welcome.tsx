@@ -99,7 +99,7 @@ export function Welcome() {
                   <p className="text-caption text-text-3">
                     {tr(inv.role)}
                     <span aria-hidden="true" className="mx-1.5">{"·"}</span>
-                    {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium" }) })}
+                    {t("invitations.expires", { date: format.dateTime(new Date(inv.expiresAt), { dateStyle: "medium", numberingSystem: "latn" }) })}
                   </p>
                 </div>
                 <Button variant="secondary" busy={busy === inv.id} disabled={busy !== null} onClick={() => accept.mutate(inv)}>{t("invitations.accept")}</Button>

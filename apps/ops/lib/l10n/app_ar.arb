@@ -63,5 +63,10 @@
   "receiveTotals": "{good} سليم · {damaged} تالف",
   "damagedCount": "{count} تالف",
   "saveDelivery": "احفظ التسليم",
-  "deliverySaved": "تسليم {number} اتحفظ. هيتبعت لما يبقى فيه نت."
+  "deliverySaved": "تسليم {number} اتحفظ. هيتبعت لما يبقى فيه نت.",
+  "loading": "بنحمّل…",
+  "syncing": "بنزامن…",
+  "packProgress": "التغليف ماشي لحد فين",
+  "pickListProgress": "الأوردرات اللي اتغلّفت",
+  "lineReceived": "وصل {received} من {expected}"
 }

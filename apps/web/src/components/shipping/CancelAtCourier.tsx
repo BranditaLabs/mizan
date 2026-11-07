@@ -26,7 +26,7 @@ export function CancelAtCourier({ shipmentId }: { shipmentId: string }) {
     mutationFn: () => ok(api.POST("/v1/shipments/{id}/cancel", { params: { path: { id: shipmentId } } })),
     meta: { toast: false },
     onSuccess: (r) => {
-      toast({ message: r.queued ? t("queued") : t("already") });
+      toast.event({ type: null, message: r.queued ? t("queued") : t("already") });
       void qc.invalidateQueries({ queryKey: ["order"] });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
       setOpen(false);

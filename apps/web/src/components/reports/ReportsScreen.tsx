@@ -4,11 +4,13 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { StatCard } from "@/components/ui/StatCard";
 import { EmptyState, SkeletonRows } from "@/components/ui/Surface";
 import { Tabs } from "@/components/ui/Tabs";
 import { MoneyText } from "@/components/ui/Values";
+import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { formatMoney } from "@/lib/format";
 import { useSession } from "@/lib/session";
@@ -90,6 +92,15 @@ function DashboardView({ d, days }: { d: Dashboard; days: Period }) {
         <p className="text-body-sm text-text-2">{t.rich("range", { from: () => <bdi dir="ltr">{d.from}</bdi>, to: () => <bdi dir="ltr">{d.to}</bdi> })}</p>
         <Downloads d={d} days={days} />
       </div>
+      {/* FX-2: the same honesty rule as Today — a profit with missing inputs is never shown as final. */}
+      {d.quality.provisional && d.tiles.some((tile) => tile.provisional) ? (
+        <div data-testid="reports-provisional">
+          <Alert tone="warning">
+            {t("provisional", { count: d.quality.ordersMissingCosts, delivered: d.quality.delivered || d.quality.ordersMissingCosts === 0 ? "yes" : "no" })}{" "}
+            {d.quality.ordersMissingCosts > 0 ? <Link href={d.quality.productsMissingCost > 0 ? "/products?view=missing_cost" : "/settings/costs"} className="font-medium underline underline-offset-2">{t("fixCosts")}</Link> : null}
+          </Alert>
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" data-testid="tiles">
         {d.tiles.map((tile) => (
           // A unit word ("days", "ضعف") stays outside the left-to-right number, so Arabic reads in order.
@@ -140,7 +151,7 @@ function MetricsView({ days }: { days: Period }) {
                     <span className="text-caption text-text-2">{m.definition}</span>
                   </dt>
                   <dd className="text-body-lg font-medium">
-                    <TileValue tile={{ key: m.key, name: m.name, definition: m.definition, unit: m.unit, value: v?.value ?? null, ...(v?.money ? { money: v.money } : {}) }} />
+                    <TileValue tile={{ key: m.key, name: m.name, definition: m.definition, unit: m.unit, value: v?.value ?? null, ...(v?.money ? { money: v.money } : {}), provisional: v?.provisional ?? false }} />
                   </dd>
                 </div>
               );
@@ -155,7 +166,15 @@ function MetricsView({ days }: { days: Period }) {
 function TileValue({ tile }: { tile: Tile }) {
   const t = useTranslations("reports");
   if (tile.value === null) return <>—</>;
-  if (tile.unit === "money" && tile.money) return <MoneyText money={tile.money} />;
+  if (tile.unit === "money" && tile.money) {
+    if (!tile.provisional) return <MoneyText money={tile.money} />;
+    return (
+      <span className="inline-flex flex-wrap items-baseline gap-2" data-provisional="">
+        <span className="mz-provisional"><span aria-hidden="true">~</span><MoneyText money={tile.money} /></span>
+        <Badge tone="warning" dot={false}>{t("provisionalTile")}</Badge>
+      </span>
+    );
+  }
   if (tile.unit === "percent") return <>{t("pct", { v: tile.value })}</>;
   if (tile.unit === "days") return <>{t("days", { v: tile.value })}</>;
   if (tile.unit === "multiple") return <>{t.rich("times", { v: tile.value, n: (c) => <bdi className="mz-num">{c}</bdi> })}</>;
@@ -225,8 +244,8 @@ function Downloads({ d, days }: { d: Dashboard; days: Period }) {
   });
   return (
     <div className="flex gap-2">
-      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "xlsx"} onClick={() => download.mutate("xlsx")}>{t("excel")}</Button>
-      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "csv"} onClick={() => download.mutate("csv")}>{t("csv")}</Button>
+      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "xlsx"} pending="fill" onClick={() => download.mutate("xlsx")}>{t("excel")}</Button>
+      <Button variant="secondary" icon="download" busy={download.isPending && download.variables === "csv"} pending="fill" onClick={() => download.mutate("csv")}>{t("csv")}</Button>
     </div>
   );
 }

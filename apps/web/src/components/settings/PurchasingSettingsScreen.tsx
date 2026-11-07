@@ -20,7 +20,7 @@ const EDITORS = rolesWith("purchasing.settings");
 /** Settings → Purchasing (M16-2): the amount over which a purchase order needs the owner or an admin to approve. */
 export function PurchasingSettingsScreen() {
   const t = useTranslations("purchasingSettings");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -38,7 +38,7 @@ export function PurchasingSettingsScreen() {
   const save = useMutation({
     mutationFn: () => ok(api.PUT("/v1/settings/purchasing", { body: { approveOver: current.trim(), safetyDays: Number(day("safetyDays")), targetCoverDays: Number(day("targetCoverDays")), velocityDays: Number(day("velocityDays")) } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("saved") }); setValue(null); setDays({}); void qc.invalidateQueries({ queryKey: ["reorder"] }); void qc.invalidateQueries({ queryKey: ["purchasingSettings"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); },
+    onSuccess: () => { toast.event({ type: null, message: t("saved") }); setValue(null); setDays({}); void qc.invalidateQueries({ queryKey: ["reorder"] }); void qc.invalidateQueries({ queryKey: ["purchasingSettings"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); },
   });
   const body = !READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
     : !q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={2} label={t("loading")} /></Pending></div>

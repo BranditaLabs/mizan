@@ -1,5 +1,6 @@
 "use client";
 
+import { Waiting } from "@/components/ui/Loader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, type FormEvent } from "react";
@@ -215,10 +216,7 @@ export function CourierStep({ o }: { o: Onboarding }) {
   }
   if (c.status === "checking") {
     return (
-      <p role="status" className="flex items-center gap-2.5 text-body-sm text-text-2">
-        <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-transparent" />
-        {t("checking")}
-      </p>
+      <Waiting meaning="syncing" live>{t("checking")}</Waiting>
     );
   }
   if (c.status === "done" && !replacing) {
@@ -379,7 +377,7 @@ export function GrowStep({ o, step }: { o: Onboarding; step: string }) {
         ? <p className="text-body-sm text-text-2">{t("team.count", { members: o.steps.team.members, invited: o.steps.team.invited })}</p> : null}
       {st === "done" ? <Alert tone="success">{t(`${key}.done`)}</Alert> : null}
       {st === "skipped" ? <p className="text-body-sm text-text-2">{t("skipped")}</p> : null}
-      {st === "checking" ? <p role="status" className="text-body-sm text-text-2">{t("whatsapp.checking")}</p> : null}
+      {st === "checking" ? <Waiting meaning="syncing" live>{t("whatsapp.checking")}</Waiting> : null}
       {st === "needs_attention" ? <Alert tone="danger">{t("whatsapp.attention")}</Alert> : null}
       <ButtonGroup>
         <Link href={GROW_HREF[key]} className={buttonClass(st === "done" ? "secondary" : "primary")}>{t(`${key}.cta`)}</Link>

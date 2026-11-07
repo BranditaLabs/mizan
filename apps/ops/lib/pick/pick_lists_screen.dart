@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../l10n/app_localizations.dart';
+import '../motion/event_snack.dart';
+import '../motion/fill_bar.dart';
+import '../motion/mizan_loader.dart';
 import '../sync/op_store.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_engine.dart';
@@ -48,9 +51,10 @@ class _PickListsScreenState extends State<PickListsScreen> {
     });
   }
 
+  int _packedCount(PickList list) => list.orders.where((o) => o.packed || _packedHere.contains(o.id)).length;
+
   Future<void> _refresh() async {
     final t = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() => _loading = true);
     try {
       // Send what was packed offline first, so the lists come back up to date.
@@ -59,7 +63,7 @@ class _PickListsScreenState extends State<PickListsScreen> {
       final lists = <Map<String, Object?>>[for (final id in ids) await widget.api!.list(id)];
       await widget.store.savePickLists(lists, widget.now());
     } on SyncFailure catch (f) {
-      messenger.showSnackBar(SnackBar(content: Text(f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.pickListsSignIn : t.syncFailedServer)));
+      if (mounted) showEventSnack(context, 'ops.sync_failed', f.kind == SyncFailureKind.offline ? t.syncFailedOffline : f.kind == SyncFailureKind.signedOut ? t.pickListsSignIn : t.syncFailedServer);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -73,7 +77,11 @@ class _PickListsScreenState extends State<PickListsScreen> {
     final time = DateFormat.Hm(Localizations.localeOf(context).toLanguageTag());
     return Scaffold(
       appBar: AppBar(title: Text(t.pickListsTitle), actions: [
-        if (widget.api != null) IconButton(key: const Key('refresh'), tooltip: t.refresh, onPressed: _loading ? null : _refresh, icon: const Icon(Icons.refresh)),
+        // While the lists come in, the pair loader takes the refresh button's place.
+        if (widget.api != null)
+          _loading
+              ? Padding(padding: const EdgeInsetsDirectional.only(end: MizanSpace.s4), child: Center(child: EventLoader('ops.loading', height: 20, label: t.loading)))
+              : IconButton(key: const Key('refresh'), tooltip: t.refresh, onPressed: _refresh, icon: const Icon(Icons.refresh)),
       ]),
       body: ListView(
         padding: const EdgeInsets.all(MizanSpace.s4),
@@ -85,7 +93,12 @@ class _PickListsScreenState extends State<PickListsScreen> {
               child: ListTile(
                 key: Key('list-${list.id}'),
                 title: Text(t.pickListLabel(list.number), style: MizanType.headingSm),
-                subtitle: Text('${t.pickListSummary(list.orders.length, list.orders.where((o) => o.packed || _packedHere.contains(o.id)).length)} · ${t.fetchedAt(time.format(at.toLocal()))}'),
+                subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('${t.pickListSummary(list.orders.length, _packedCount(list))} · ${t.fetchedAt(time.format(at.toLocal()))}'),
+                  const SizedBox(height: MizanSpace.s2),
+                  // Known progress: orders packed of the list (mono: a list holds many bars).
+                  FillBar(done: _packedCount(list), total: list.orders.length, label: t.pickListProgress, mono: true, height: 8),
+                ]),
                 onTap: () async {
                   await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PickListScreen(list: list, store: widget.store, engine: widget.engine, scanner: widget.scanner, now: widget.now)));
                   await _load();
@@ -151,7 +164,7 @@ class _PickListScreenState extends State<PickListScreen> {
               key: Key('order-${o.id}'),
               contentPadding: EdgeInsets.zero,
               title: Text('\u2066${o.number}\u2069'),
-              subtitle: Text(t.progress(0, o.lines.fold(0, (s, l) => s + l.quantity))),
+              subtitle: Text(t.progress(o.packed || _packedHere.contains(o.id) ? o.lines.fold(0, (s, l) => s + l.quantity) : 0, o.lines.fold(0, (s, l) => s + l.quantity))),
               trailing: o.packed || _packedHere.contains(o.id)
                   ? Text(t.packed, style: MizanType.label)
                   : FilledButton(

@@ -102,7 +102,7 @@ export function PickListDetail({ id }: { id: string }) {
   });
   const close = useMutation({
     mutationFn: () => ok(api.POST("/v1/picklists/{id}/close", { params: { path: { id } } })),
-    onSuccess: () => { toast({ message: t("closed") }); setClosing(false); void qc.invalidateQueries({ queryKey: ["pickLists"] }); },
+    onSuccess: () => { toast.event({ type: "picklist.closed", message: t("closed") }); setClosing(false); void qc.invalidateQueries({ queryKey: ["pickLists"] }); },
   });
   const frame = (body: React.ReactNode) => (
     <div className="mx-auto flex max-w-[960px] flex-col gap-4 px-4 pt-6 pb-14 md:px-6 print:max-w-none print:p-0" data-testid="pick-list">{body}</div>

@@ -39,7 +39,7 @@ export function SupportBanner() {
         <p key={g.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span>
             {t.rich(g.mode, {
-              until: format.dateTime(new Date(g.expiresAt), { timeStyle: "short" }),
+              until: format.dateTime(new Date(g.expiresAt), { timeStyle: "short", numberingSystem: "latn" }),
               reason: g.reason,
               n: (c) => <bdi dir="ltr" className="mz-num font-medium">{c}</bdi>,
               r: (c) => <bdi className="font-medium">{c}</bdi>,

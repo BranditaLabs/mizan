@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { Theme } from "@/lib/theme";
 import { LocaleSwitch } from "./LocaleSwitch";
 import { ThemeSwitch } from "./ThemeSwitch";
-import { ThemedWordmark } from "./Wordmark";
+import { AuthWordmark } from "./AuthWordmark";
 
 /**
  * Frame for pages outside a store (sign-in, two-step, welcome): the wordmark and the language and
@@ -12,7 +12,7 @@ export function AuthFrame({ theme, children }: { theme: Theme; children: ReactNo
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
       <header className="flex h-14 items-center gap-3 px-4 md:px-6">
-        <ThemedWordmark />
+        <AuthWordmark />
         <span className="flex-1" />
         <span className="hidden sm:contents"><LocaleSwitch /></span>
         <ThemeSwitch initial={theme} />

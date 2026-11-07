@@ -20,7 +20,7 @@ const EDITORS = rolesWith("refunds.settings");
 /** Settings → Refunds (E14-4): the amount over which a refund needs owner, admin or finance to approve. */
 export function RefundSettingsScreen() {
   const t = useTranslations("refundSettings");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -35,7 +35,7 @@ export function RefundSettingsScreen() {
   const save = useMutation({
     mutationFn: () => ok(api.PUT("/v1/settings/refunds", { body: { approveOver: current.trim() } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("saved") }); setValue(null); void qc.invalidateQueries({ queryKey: ["refundSettings"] }); void qc.invalidateQueries({ queryKey: ["refunds"] }); },
+    onSuccess: () => { toast.event({ type: null, message: t("saved") }); setValue(null); void qc.invalidateQueries({ queryKey: ["refundSettings"] }); void qc.invalidateQueries({ queryKey: ["refunds"] }); },
   });
   const body = !READERS.has(role) ? <div className="mz-card"><EmptyState icon="locked" title={t("notAllowed.title")} body={t("notAllowed.body")} /></div>
     : !q.data ? <div className="mz-card"><Pending query={q}><SkeletonRows rows={2} label={t("loading")} /></Pending></div>

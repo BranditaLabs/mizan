@@ -3,12 +3,14 @@
 import { rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button, ButtonGroup, buttonClass } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Select } from "@/components/ui/Field";
 import { ErrorState, Pending } from "@/components/ui/QueryState";
+import { FillProgress } from "@/components/ui/Surface";
+import { useEventMotion } from "@/lib/motion/EventMotionProvider";
 import { Link } from "@/i18n/navigation";
 import { ok, type Schemas } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
@@ -102,6 +104,7 @@ export function BulkBar({ selected, clear, onStarted }: { selected: ReadonlySet<
 /** Follows a bulk action until it is done; then the list refreshes. */
 export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
   const t = useTranslations("orders.bulk");
+  const tm = useTranslations("motion.loader");
   const { api, user, store } = useSession();
   const qc = useQueryClient();
   const q = useQuery({
@@ -118,6 +121,17 @@ export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
     refetchInterval: (query) => (query.state.data?.status === "done" || (query.state.status === "error" && query.state.data === undefined) ? false : 1000),
   });
   const b: Bulk | undefined = q.data;
+  // The job this viewer started finished: the catalogue's orders.bulk_finished (done, or tip when
+  // some failed, fail when all did) confirms it once.
+  const motion = useEventMotion();
+  const was = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const status = b?.status;
+    if (was.current === "running" && status === "done" && b) {
+      motion.ownSuccess({ type: "orders.bulk_finished", entityId: id, data: { data: { failed: b.failed, total: b.total } }, values: { count: b.failed } });
+    }
+    was.current = status;
+  }, [b, id, motion]);
   // A first look that failed says so (with "try again"); before the first answer, nothing.
   if (!b) {
     return q.isError ? (
@@ -135,9 +149,7 @@ export function BulkProgress({ id, onClose }: { id: string; onClose(): void }) {
         <h2 className="text-label">{t(b.status === "done" ? "finished" : "running", { action: t(`name.${b.action}`) })}</h2>
         {b.status === "done" ? <Button size="sm" variant="ghost" onClick={onClose}>{t("close")}</Button> : null}
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-surface-sunk" role="progressbar" aria-valuemin={0} aria-valuemax={b.total} aria-valuenow={finished} aria-label={t("progress")}>
-        <div className="h-full rounded-full bg-text transition-[inline-size]" style={{ inlineSize: `${pct}%` }} />
-      </div>
+      <FillProgress value={pct} label={t("progress")} valueText={tm("progress", { done: finished, total: b.total })} width={240} />
       <p className="text-body-sm text-text-2">{t("counts", { done: b.done, skipped: b.skipped, failed: b.failed, total: b.total })}</p>
       {b.issues.length ? (
         <ul className="flex flex-col gap-1 text-body-sm">

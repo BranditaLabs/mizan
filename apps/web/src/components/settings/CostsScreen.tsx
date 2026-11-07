@@ -1,6 +1,6 @@
 "use client";
 
-import { toAsciiDigits, rolesWith } from "@mizan/shared";
+import { FEE_METHOD_SLUGS, toAsciiDigits, rolesWith } from "@mizan/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -27,7 +27,8 @@ const RATE = /^\d{1,10}(\.\d{1,8})?$/;
 const decimal = (v: string) => toAsciiDigits(v).replace(/[٫,]/g, ".").trim();
 const isPercent = (v: string) => PERCENT.test(v) && Number(v) <= 100;
 
-const FEE_METHODS = ["card", "wallet", "apple_pay", "bnpl", "instapay", "bank_transfer"] as const;
+/** Methods with a fee percentage, from the shared catalogue (X9). */
+const FEE_METHODS = FEE_METHOD_SLUGS;
 const COURIERS = ["bosta", "jt", "aramex", "mylerz", "other"] as const;
 const EDITORS = rolesWith("profit.manage");
 const READERS = rolesWith("profit.read");
@@ -135,7 +136,7 @@ function useSaveRule(onDone?: () => void) {
   const toast = useToast();
   return useMutation({
     mutationFn: (body: NewRule) => ok(api.POST("/v1/cost-rules", { body })),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["costRules"] }); toast({ message: t("saved") }); onDone?.(); },
+    onSuccess: () => { void qc.invalidateQueries({ queryKey: ["costRules"] }); toast.event({ type: "costs.changed", message: t("saved") }); onDone?.(); },
   });
 }
 
@@ -304,7 +305,7 @@ function FxCard({ canEdit, today }: { canEdit: boolean; today: string }) {
   const [invalid, setInvalid] = useState(false);
   const set = useMutation({
     mutationFn: (v: { day: string; quote: string; rate: string }) => ok(api.PUT("/v1/fx-rates/{day}/{quote}", { params: { path: { day: v.day, quote: v.quote } }, body: { rate: v.rate } })),
-    onSuccess: () => { setRate(""); void qc.invalidateQueries({ queryKey: ["fxRates"] }); toast({ message: tc("saved") }); },
+    onSuccess: () => { setRate(""); void qc.invalidateQueries({ queryKey: ["fxRates"] }); toast.event({ type: "fx.rate_overridden", message: tc("saved") }); },
   });
   const rows = fx.data?.rates ?? [];
   const chosen = quote || rows[0]?.quote || "";
@@ -363,7 +364,7 @@ const RECALC_ROUNDS = 10;
  */
 function RecalculateCard({ today }: { today: string }) {
   const t = useTranslations("costs.recalc");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -381,7 +382,7 @@ function RecalculateCard({ today }: { today: string }) {
     },
     meta: { toast: false },
     onSuccess: (r) => {
-      toast({ message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
+      toast.event({ type: "costs.changed", message: r.more ? t("doneMore", { n: r.total }) : t("done", { n: r.total }) });
       void qc.invalidateQueries({ queryKey: ["profitHome"] });
       void qc.invalidateQueries({ queryKey: ["profitBreakdown"] });
       void qc.invalidateQueries({ queryKey: ["orderPnl"] });

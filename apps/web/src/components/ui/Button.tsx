@@ -1,7 +1,8 @@
 import { Icon, type IconProps } from "@mizan/design-system/icons/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { Pending } from "@mizan/shared/motion";
 import { cx } from "./logic";
-import { LedgerBars } from "./Loader";
+import { BusyLabel, BusyLoader } from "./BusyLabel";
 
 /**
  * Buttons (components.md §2, `.mz-btn`). One `primary` (ink) action per screen; `brand` (red) at
@@ -16,21 +17,28 @@ export function buttonClass(variant: ButtonVariant = "primary", size: ButtonSize
   return cx("mz-btn", `mz-btn--${variant}`, size !== "md" && `mz-btn--${size}`, extra);
 }
 
-function Spinner() {
-  return <LedgerBars />;
-}
+/** `busy`: a flag, or the running mutation (useEventMutation names its event, so its loader is the event's). */
+export type Busy = boolean | { isPending: boolean; motion?: string };
 
-export function Button({ variant = "primary", size = "md", busy = false, icon, iconEnd, className, children, disabled, ...rest }:
-  ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; busy?: boolean; icon?: IconName; iconEnd?: IconName }) {
-  // Busy keeps the width: the label stays (invisible) and the spinner sits on top.
+/**
+ * `busy` keeps the width: the label stays (invisible) and a 16 px mono Brand 2.0 loader sits on
+ * top. Which loader is the catalogue's call, not the screen's: the event's `pending` (drop for
+ * saving, confirming or sending; transfer for syncing; fill for known progress), drop by default.
+ * `pending` overrides it only for an action without an event (a CSV import: "fill"). Never red.
+ * When the work ends, the label settles back in (SETTLE).
+ */
+export function Button({ variant = "primary", size = "md", busy = false, pending, icon, iconEnd, className, children, disabled, ...rest }:
+  ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize; busy?: Busy; pending?: Pending; icon?: IconName; iconEnd?: IconName }) {
+  const on = typeof busy === "boolean" ? busy : busy.isPending;
+  const event = typeof busy === "boolean" ? undefined : busy.motion;
   return (
-    <button type="button" aria-busy={busy || undefined} disabled={disabled || busy} className={buttonClass(variant, size, cx("relative", className))} {...rest}>
-      <span className={cx("inline-flex items-center gap-2", busy && "invisible")}>
+    <button type="button" aria-busy={on || undefined} disabled={disabled || on} className={buttonClass(variant, size, cx("relative", className))} {...rest}>
+      <BusyLabel busy={on}>
         {icon ? <Icon name={icon} size={16} /> : null}
         {children}
         {iconEnd ? <Icon name={iconEnd} size={16} /> : null}
-      </span>
-      {busy ? <span className="absolute inset-0 grid place-items-center"><Spinner /></span> : null}
+      </BusyLabel>
+      {on ? <span className="absolute inset-0 grid place-items-center"><BusyLoader event={event} pending={pending} /></span> : null}
     </button>
   );
 }

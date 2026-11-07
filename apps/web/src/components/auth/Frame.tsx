@@ -15,17 +15,18 @@ import { AuthTopBar, FrameWatch } from "./TopBar";
  * content changes. DOM order is the reading order: skip link, bar, the form (main), the stage, the
  * footer. `#sms-verifier` is a direct child, outside every animated subtree (security invariant S4).
  */
-export function AuthShell({ theme, wide = false, children }: { theme: Theme; wide?: boolean; children: ReactNode }) {
+// `theme` stays for callers; ThemeProvider (the locale layout) is the one theme source.
+export function AuthShell({ wide = false, children }: { theme?: Theme; wide?: boolean; children: ReactNode }) {
   const t = useTranslations("frame");
   const ta = useTranslations("auth");
   return (
-    <GlassRoot theme={theme} fields={false} className="mz-auth">
+    <GlassRoot fields={false} className="mz-auth">
       {/* A repeat visit within 10 minutes (a language switch included) gets a 150ms fade, no rise. */}
       <script dangerouslySetInnerHTML={{ __html: SEEN_SCRIPT }} />
       {/* The stage's build: its pieces wait unpainted until the animator takes over (never a flash of the poster). */}
       <script dangerouslySetInnerHTML={{ __html: STAGE_BUILD_SCRIPT }} />
       <a href="#main" className="mz-auth-skip">{t("skip")}</a>
-      <AuthTopBar theme={theme} />
+      <AuthTopBar />
       <div className="mz-auth-layout">
         <div className="mz-auth-form">
           <main id="main" className="mz-auth-main" data-wide={wide ? "" : undefined} tabIndex={-1}>

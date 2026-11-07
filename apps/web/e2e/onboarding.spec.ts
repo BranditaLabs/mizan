@@ -36,7 +36,7 @@ test("owner in Arabic: setup card on home → wizard; steps wait for the store; 
   const address = page.getByLabel("عنوان المتجر");
   await address.fill("nileabayas.com");
   await page.getByRole("button", { name: "اربط شوبيفاي" }).click();
-  await expect(page.getByText("العنوان ده مش شكل متجر شوبيفاي.")).toBeVisible();
+  await expect(page.getByText("العنوان ده مش شكل متجر شوبيفاي")).toBeVisible();
   await address.fill("nile-abayas");
   await page.getByRole("button", { name: "اربط شوبيفاي" }).click();
   await expect(page.locator(".mz-toast")).toContainText("ربط شوبيفاي مش متفعّل على السيرفر");

@@ -16,6 +16,7 @@ import { ErrorState } from "@/components/ui/QueryState";
 import { Card, EmptyState, KeyValue, SkeletonRows } from "@/components/ui/Surface";
 import { useToast } from "@/components/ui/Toast";
 import { DateText, MoneyText } from "@/components/ui/Values";
+import { VesselsMeter } from "@/components/ui/Instruments";
 import { Link } from "@/i18n/navigation";
 import { ApiError, ok, type Schemas } from "@/lib/api/client";
 import { problemText } from "@/lib/api/query";
@@ -88,6 +89,12 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
           </Card>
           <DataTable label={t("lines")} columns={columns} rows={po.lines} rowKey={(l) => l.id} rowLabel={(l) => l.title} empty={null} />
           <Card title={t("receipts.title")}>
+            {/* Ordered against received (Brand 2.0 VESSELS): equal counts join into one horizon. */}
+            {po.receipts.length && po.units > 0 ? (
+              <div className="mx-auto mb-3 w-full max-w-[320px]" data-testid="po-vessels">
+                <VesselsMeter a={po.units} b={po.lines.reduce((n, l) => n + l.received, 0)} labels={{ a: t("vessels.ordered"), b: t("vessels.received"), title: t("vessels.title") }} />
+              </div>
+            ) : null}
             {po.receipts.length ? (
               <ul className="flex flex-col divide-y divide-line" data-testid="po-receipts">
                 {po.receipts.map((r) => (
@@ -121,7 +128,7 @@ export function PurchaseOrderDetail({ id }: { id: string }) {
 /** The one thing to do next, for whoever may do it. */
 function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): void }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -133,7 +140,7 @@ function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): 
         : api.POST("/v1/purchase-orders/{id}/cancel", { params: { path: { id: po.id } } }),
     ),
     meta: { toast: false },
-    onSuccess: (_r, a) => { setConfirming(false); toast({ message: t(`done.${a}`) }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrders"] }); },
+    onSuccess: (_r, a) => { setConfirming(false); toast.event({ type: a === "approve" ? "po.approved" : a === "send" ? "po.sent" : "po.cancelled", message: t(`done.${a}`) }); void qc.invalidateQueries({ queryKey: ["purchaseOrder"] }); void qc.invalidateQueries({ queryKey: ["purchaseOrders"] }); },
   });
   const manager = MANAGERS.has(role);
   const canApprove = manager && (!po.needsOwner || OWNERS.has(role));
@@ -179,7 +186,7 @@ function NextStep({ po, role, onReceive }: { po: Po; role: string; onReceive(): 
 /** Take a delivery in: good and damaged units per line; more than ordered only with a manager's tick. */
 function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onClose(): void }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -195,7 +202,7 @@ function ReceiveDialog({ po, manager, onClose }: { po: Po; manager: boolean; onC
     mutationFn: () => ok(api.POST("/v1/purchase-orders/{id}/receipts", { params: { path: { id: po.id } }, body: { items, allowOver: over && allowOver } })),
     meta: { toast: false },
     onSuccess: (r) => {
-      toast({ message: r.status === "received" ? t("receive.doneAll") : t("receive.done") });
+      toast.event({ type: "po.received", entityId: po.id, data: { data: { complete: r.status === "received" } }, message: r.status === "received" ? t("receive.doneAll") : t("receive.done") });
       void qc.invalidateQueries({ queryKey: ["purchaseOrder"] });
       void qc.invalidateQueries({ queryKey: ["purchaseOrders"] });
       void qc.invalidateQueries({ queryKey: ["stock"] });
@@ -241,7 +248,7 @@ const LANDED_EDITORS = rolesWith("purchasing.plan");
 /** Freight, customs and fees (M16-4a): spread into the unit cost of the units received after them. */
 function LandedCosts({ po, role }: { po: Po; role: string }) {
   const t = useTranslations("purchasing");
-  const tpr = useTranslations("problem");
+  const tpr = useTranslations("problems");
   const { api, store } = useSession();
   const qc = useQueryClient();
   const toast = useToast();
@@ -258,12 +265,12 @@ function LandedCosts({ po, role }: { po: Po; role: string }) {
       kind, amount: amount.trim(), currency, allocateBy, ...(description.trim() ? { description: description.trim() } : {}),
     } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("landed.added") }); setAmount(""); setDescription(""); done(); },
+    onSuccess: () => { toast.event({ type: null, message: t("landed.added") }); setAmount(""); setDescription(""); done(); },
   });
   const remove = useMutation({
     mutationFn: (costId: string) => ok(api.DELETE("/v1/purchase-orders/{id}/landed-costs/{costId}", { params: { path: { id: po.id, costId } } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("landed.removed") }); done(); },
+    onSuccess: () => { toast.event({ type: null, message: t("landed.removed") }); done(); },
   });
   if (!po.landedCosts.length && !editor) return null;
   const valid = AMOUNT.test(amount.trim()) && Number(amount) > 0 && /^[A-Z]{3}$/.test(currency);

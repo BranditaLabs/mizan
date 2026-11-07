@@ -2,7 +2,8 @@
 
 import { useLocale } from "next-intl";
 import { useSyncExternalStore, type PointerEvent, type ReactNode } from "react";
-import { subscribeTheme, type Theme } from "@/lib/theme";
+import { currentTheme, subscribeTheme } from "@/lib/theme";
+import { useTheme } from "./ThemeProvider";
 
 const DARK = "(prefers-color-scheme: dark)";
 
@@ -22,10 +23,10 @@ function spotlight(e: PointerEvent<HTMLDivElement>) {
   card.style.setProperty("--my", `${e.clientY - r.top}px`);
 }
 
-/** The theme in force: the person's choice, else the system's. */
+/** The theme in force, from the one source (ThemeProvider / lib/theme): the choice, else the system's. */
 const isLight = () => {
-  const chosen = document.documentElement.dataset.theme;
-  return chosen ? chosen === "light" : !window.matchMedia(DARK).matches;
+  const chosen = currentTheme();
+  return chosen === "system" ? !window.matchMedia(DARK).matches : chosen === "light";
 };
 
 /**
@@ -35,10 +36,11 @@ const isLight = () => {
  * whatever the theme (the dashboard hero, the sign-in brand side), without fields of its own unless
  * asked.
  */
-export function GlassRoot({ children, theme = "system", ink = false, fields = !ink, className = "" }: {
-  children: ReactNode; theme?: Theme; ink?: boolean; fields?: boolean; className?: string;
+export function GlassRoot({ children, ink = false, fields = !ink, className = "" }: {
+  children: ReactNode; ink?: boolean; fields?: boolean; className?: string;
 }) {
   const dir = useLocale() === "ar" ? "rtl" : "ltr";
+  const theme = useTheme();
   const light = useSyncExternalStore(subscribe, isLight, () => theme === "light");
   return (
     <div className={`mzg ${light && !ink ? "light" : ""} ${className}`} dir={dir} onPointerMove={ink ? undefined : spotlight}>

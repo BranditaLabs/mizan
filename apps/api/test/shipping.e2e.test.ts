@@ -444,6 +444,27 @@ describe("sync guardian: drops and errors recover on their own", () => {
     expect([...bosta.deliveries.values()].filter((d) => d.businessReference === s.id)).toHaveLength(1);
   });
 
+  it("a booking whose job was dropped with a Bosta disconnect is booked again after the reconnect (FX-3a)", async () => {
+    const id = await manual({ mode: "cod" });
+    await confirm(id);
+    const s = (await ship(id).expect(202)).body;
+    const bostaId = (await db.tenant(store, (trx) => trx.selectFrom("connections").select("id").where("provider", "=", "bosta").executeTakeFirstOrThrow())).id;
+    const job = () => db.tenant(store, (trx) => trx.selectFrom("mz_outbox").select(["status", "attempts"]).where("idempotency_key", "=", `bosta:ship:${s.id}`).executeTakeFirstOrThrow());
+    await http().post(`/v1/connections/${bostaId}/disconnect`).set(as("owner")).send({ confirm: "bosta" }).expect(200);
+    expect(await job()).toMatchObject({ status: "dropped" });
+    await http().post("/v1/connections/bosta").set(as("owner")).send({ apiKey: bosta.apiKey }).expect(201);
+    await runJobs(); // the key check; the dropped booking stays dropped (no one asked for it again)
+    expect(await job()).toMatchObject({ status: "dropped" });
+    await db.tenant(store, (trx) => trx.updateTable("shipments").set({ created_at: new Date(Date.now() - 40 * 60_000) }).where("id", "=", s.id).execute());
+    const shopId = await shopifyId(); // outside the transaction below: one connection in tests
+    const r = await db.tenant(store, (trx) => guardian().repair(trx, store, shopId, "shopify"));
+    expect(r.rebooked).toBe(1);
+    expect(await job()).toEqual({ status: "pending", attempts: 0 }); // revived under its own key
+    await runJobs();
+    expect((await detail(id)).shipments[0]).toMatchObject({ booking: "booked", trackingNumber: expect.any(String) });
+    expect([...bosta.deliveries.values()].filter((d) => d.businessReference === s.id)).toHaveLength(1);
+  });
+
   it("the team sees it: when the guardian last looked, what it fixed on its own, what it will retry and what needs them", async () => {
     await round();
     const h = (await http().get("/v1/admin/integrations/sync").set(as("owner")).expect(200)).body;

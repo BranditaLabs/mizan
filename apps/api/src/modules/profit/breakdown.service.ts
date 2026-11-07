@@ -5,6 +5,7 @@ import { Database } from "../../platform/db/database.js";
 import { ProblemError } from "../../platform/http/problem.js";
 import { aggregate, splitByLines, zeroComps, COMPONENTS, type BreakdownRow, type Dimension, type LineFact, type OrderFact, type Slice } from "./breakdown.js";
 import { addDays, asDate, dayText, localDay, storeClock } from "./store-day.js";
+import { COST_FLAGS } from "../reports/metrics.js";
 
 /** Keys the screen names itself (in both languages); every other key is a store, courier, country or product. */
 export const SPECIAL_KEYS = { manual: "manual", noCourier: "none", noCountry: "unknown", noProducts: "no_products" } as const;
@@ -33,14 +34,18 @@ export class ProfitBreakdownService {
         .leftJoinLateral((eb) => eb.selectFrom("shipments as s").select(["s.connection_id", "s.provider"]).whereRef("s.order_id", "=", "o.id").orderBy("s.created_at", "desc").limit(1).as("s"), (j) => j.onTrue())
         .select([
           "o.id", "o.status", "o.shipped_at", "o.connection_id", "o.ship_country", "c.provider as store_provider", "c.external_account", "s.connection_id as courier_id", "s.provider as courier",
-          dayText("p.day").as("day"), ...COMPONENTS.map((k) => sql<string>`${sql.ref(`p.${k}_minor`)}`.as(k)),
+          dayText("p.day").as("day"), "p.flags", ...COMPONENTS.map((k) => sql<string>`${sql.ref(`p.${k}_minor`)}`.as(k)),
         ])
         .where("p.day", ">=", asDate(from)).where("p.day", "<=", asDate(to)).where("p.currency", "=", base).execute();
 
       const facts = rows.map((r) => {
         const comps = zeroComps();
         for (const k of COMPONENTS) comps[k] = BigInt((r as unknown as Record<string, string>)[k]!);
-        const fact: OrderFact = { orderId: r.id, delivered: r.status === "delivered", returned: r.status === "returned" || (r.status === "cancelled" && r.shipped_at !== null), comps };
+        // FX-2: the order's own flags decide (pnl.ts never flags a cancelled order or a return with nothing lost).
+        const gaps = r.status === "cancelled" ? [] : (r.flags ?? []).filter((f) => (COST_FLAGS as readonly string[]).includes(f));
+        const productCostMissing = gaps.includes("cost_missing");
+        const otherMissing = gaps.some((f) => f !== "cost_missing");
+        const fact: OrderFact = { orderId: r.id, delivered: r.status === "delivered", returned: r.status === "returned" || (r.status === "cancelled" && r.shipped_at !== null), costsMissing: gaps.length > 0, productCostMissing, otherMissing, comps };
         return { r, fact };
       });
 
@@ -48,14 +53,14 @@ export class ProfitBreakdownService {
       if (q.by === "product") {
         const ids = facts.map((f) => f.r.id);
         const lines = ids.length ? await trx.selectFrom("order_lines as l").leftJoin("variants as v", "v.id", "l.variant_id").leftJoin("products as pr", "pr.id", "v.product_id")
-          .select(["l.order_id", "l.variant_id", "l.title", "l.quantity", "l.unit_price_minor", "l.unit_cost_minor", "pr.title as product", "v.title as variant"])
+          .select(["l.order_id", "l.variant_id", "l.title", "l.quantity", "l.unit_price_minor", "l.unit_cost_minor", "l.cost_set_at", "v.cogs_set_at", "pr.title as product", "v.title as variant"])
           .where("l.order_id", "in", ids).orderBy("l.order_id").orderBy("l.external_line_id").execute() : [];
         const byOrder = new Map<string, LineFact[]>();
         for (const l of lines) {
           const label = l.product ? (l.variant ? `${l.product} — ${l.variant}` : l.product) : l.title;
           const q2 = BigInt(l.quantity);
           const list = byOrder.get(l.order_id) ?? [];
-          list.push({ key: l.variant_id ?? `title:${l.title}`, label, valueMinor: BigInt(l.unit_price_minor) * q2, costMinor: BigInt(l.unit_cost_minor ?? 0) * q2 });
+          list.push({ key: l.variant_id ?? `title:${l.title}`, label, valueMinor: BigInt(l.unit_price_minor) * q2, costMinor: BigInt(l.unit_cost_minor ?? 0) * q2, costMissing: !l.cost_set_at && !l.cogs_set_at });
           byOrder.set(l.order_id, list);
         }
         slices = facts.flatMap(({ fact }) => splitByLines(fact, byOrder.get(fact.orderId) ?? [], { key: SPECIAL_KEYS.noProducts, label: SPECIAL_KEYS.noProducts }));
@@ -74,6 +79,7 @@ export class ProfitBreakdownService {
         orders: row.orders, delivered: row.delivered, returned: row.returned,
         revenue: fromMinor(row.revenue, base), productCost: fromMinor(row.productCost, base), shippingAndCod: fromMinor(row.shippingAndCod, base), ads: fromMinor(row.ads, base),
         returns: fromMinor(row.returns, base), team: fromMinor(row.team, base), fees: fromMinor(row.fees, base), net: fromMinor(row.net, base), expectedNet: fromMinor(row.expectedNet, base), margin: row.margin,
+        costsMissing: row.costsMissing,
       });
       return { by: q.by, from, to, baseCurrency: base, rows: out.map(money), total: money(total) };
     });

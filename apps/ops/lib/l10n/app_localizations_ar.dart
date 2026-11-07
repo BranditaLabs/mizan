@@ -261,4 +261,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String deliverySaved(String number) {
     return 'تسليم $number اتحفظ. هيتبعت لما يبقى فيه نت.';
   }
+
+  @override
+  String get loading => 'بنحمّل…';
+
+  @override
+  String get syncing => 'بنزامن…';
+
+  @override
+  String get packProgress => 'التغليف ماشي لحد فين';
+
+  @override
+  String get pickListProgress => 'الأوردرات اللي اتغلّفت';
+
+  @override
+  String lineReceived(int received, int expected) {
+    return 'وصل $received من $expected';
+  }
 }

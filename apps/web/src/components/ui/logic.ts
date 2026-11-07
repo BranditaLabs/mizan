@@ -105,3 +105,6 @@ export function matches(text: string, query: string): boolean {
   const hay = fold(text);
   return fold(query).split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
 }
+
+/** A link in an alert or an empty state is a target of its own: 24px with a mouse, 44px on touch (docs/16 §1.4). */
+export const LINK_TARGETS = "[&_a]:inline-flex [&_a]:min-h-6 [&_a]:items-center pointer-coarse:[&_a]:min-h-11";

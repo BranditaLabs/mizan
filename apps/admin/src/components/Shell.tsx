@@ -1,5 +1,6 @@
 "use client";
 
+import { PageState } from "./ui/PageState";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Alert } from "@/components/ui/Alert";
@@ -43,7 +44,7 @@ export function Shell({ children }: { children: ReactNode }) {
   }, [status, router, pathname]);
 
   if (status !== "signed-in" || check === "checking" || check === "idle") {
-    return <p role="status" className="p-8 text-center text-body-sm text-text-2">{t("loading")}</p>;
+    return <PageState variant="page" label={t("loading")} />;
   }
   if (check !== "ok") {
     return (

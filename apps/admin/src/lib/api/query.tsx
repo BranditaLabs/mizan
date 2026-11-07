@@ -69,7 +69,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   const toast = useToast();
   const t = useTranslations("problems");
   const { report } = useOutage();
-  const [client] = useState(() => makeQueryClient((error) => toast({ message: problemText(error, (k) => t(k)) }), report));
+  const [client] = useState(() => makeQueryClient((error) => toast({ message: problemText(error, (k) => t(k)), outcome: "fail" }), report));
   return (
     <QueryClientProvider client={client}>
       {children}

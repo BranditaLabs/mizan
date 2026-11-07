@@ -29,9 +29,23 @@ test("owner in Arabic: an order waiting to confirm shows its expected profit and
   } }));
   await page.goto(`/ar/orders/${id}`);
   const card = page.getByRole("main").getByTestId("profit-card");
-  await expect(card).toContainText("الربح المتوقع لو اتسلّم");
-  await expect(card).toContainText("359.25");
-  await expect(card).toContainText("الهامش 28.7%");
+  // FX-2: a cost is missing, so the figure is provisional ("~", dashed) and no margin is shown.
+  await expect(card).toContainText("ربح مبدئي");
+  await expect(card).toContainText(/~‏?359\.25/);
+  // The amount reads first in Arabic: inside the LTR-isolated money <bdi>, the RLM marks put the
+  // number on the right of "ج.م." (docs/16 §1.2), as Intl ar-EG drew it before.
+  const sides = await card.evaluate((el) => {
+    const bdi = [...el.querySelectorAll("bdi")].find((b) => b.textContent?.includes("ج.م."));
+    const text = bdi?.firstChild?.nodeType === Node.TEXT_NODE ? bdi.firstChild as Text : null;
+    if (!text) return null;
+    const rect = (s: string) => { const i = text.data.indexOf(s); const r = document.createRange(); r.setStart(text, i); r.setEnd(text, i + s.length); return r.getBoundingClientRect(); };
+    const amount = rect("359.25");
+    const name = rect("ج.م.");
+    return { amountLeft: amount.left, nameRight: name.right };
+  });
+  expect(sides, "money <bdi> with ج.م.").not.toBeNull();
+  expect(sides!.amountLeft).toBeGreaterThanOrEqual(sides!.nameRight - 1);
+  await expect(card).not.toContainText("الهامش");
   await expect(card).toContainText("تكلفة التغليف");
   await expect(page.getByRole("main")).toContainText("مبدئي");
   await card.getByRole("link", { name: "حدّد التكاليف" }).click();

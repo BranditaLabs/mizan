@@ -3,10 +3,9 @@
 import { prefersReducedMotion } from "@mizan/design-system/auth-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { ThemedWordmark } from "@/components/Wordmark";
+import { AuthWordmark } from "@/components/AuthWordmark";
 import { Link, usePathname } from "@/i18n/navigation";
 import { authUi, useAuthUi } from "@/lib/auth/ui-store";
-import type { Theme } from "@/lib/theme";
 import { LanguageLink, ThemeMenu } from "./Toggles";
 
 const SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_URL ?? "";
@@ -17,7 +16,7 @@ const SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_URL ?? "";
  * up "Need help?" and the opposite of the card's mode. On landscape phones it is static and hides
  * while scrolling down (shows after 6px up), never under reduced motion.
  */
-export function AuthTopBar({ theme }: { theme: Theme }) {
+export function AuthTopBar() {
   const t = useTranslations("frame");
   const pathname = usePathname();
   const { mode } = useAuthUi();
@@ -49,7 +48,7 @@ export function AuthTopBar({ theme }: { theme: Theme }) {
     <header className="mz-auth-bar" data-glass={glass ? "" : undefined} data-hidden={hidden ? "" : undefined}>
       <div className="mz-auth-bar__in">
         <div className="mz-auth-bar__start">
-          <Link href="/" className="mz-auth-bar__wordmark" aria-label={t("home")}><ThemedWordmark /></Link>
+          <Link href="/" className="mz-auth-bar__wordmark" aria-label={t("home")}><AuthWordmark /></Link>
         </div>
         <div className="mz-auth-bar__mid"><span className="mz-auth-bar__by">{t("by")}</span></div>
         <div className="mz-auth-bar__end">
@@ -64,7 +63,7 @@ export function AuthTopBar({ theme }: { theme: Theme }) {
             </Link>
           ) : null}
           <LanguageLink />
-          <ThemeMenu initial={theme} />
+          <ThemeMenu />
         </div>
       </div>
     </header>

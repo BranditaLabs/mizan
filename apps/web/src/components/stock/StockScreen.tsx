@@ -159,7 +159,9 @@ function UpdateStock({ row, onClose }: { row: Row; onClose(): void }) {
       items: [{ variantId: row.variantId, kind, quantity: n!, ...(kind === "adjust" && reason ? { reason } : {}) }], ...(note.trim() ? { note: note.trim() } : {}),
     } })),
     onSuccess: (r) => {
-      toast({ message: r.ordersReserved > 0 ? t("savedWithOrders", { sku: row.sku, count: r.ordersReserved }) : t("saved", { sku: row.sku }) });
+      // A count's delta against what the system had (0 = the count matched: MERGE); the catalogue reads data.items.
+      const delta = kind === "count" && row.onHand != null ? n! - row.onHand : kind === "adjust" ? n! : null;
+      toast.event({ type: kind === "receive" ? "stock.received" : "stock.adjusted", entityId: row.variantId, ...(delta !== null ? { data: { data: { items: { [row.variantId]: delta } } } } : {}), message: r.ordersReserved > 0 ? t("savedWithOrders", { sku: row.sku, count: r.ordersReserved }) : t("saved", { sku: row.sku }) });
       void qc.invalidateQueries({ queryKey: ["stock"] });
       void qc.invalidateQueries({ queryKey: ["orders"] });
       onClose();
@@ -207,7 +209,7 @@ function Threshold({ row }: { row: Row }) {
   const n = ascii === "" ? null : /^\d{1,6}$/.test(ascii) ? Number(ascii) : undefined;
   const save = useMutation({
     mutationFn: () => ok(api.PATCH("/v1/stock/{variantId}", { params: { path: { variantId: row.variantId } }, body: { lowStockAt: n ?? null } })),
-    onSuccess: () => { toast({ message: n === null ? t("cleared", { sku: row.sku }) : t("saved", { sku: row.sku, n: n ?? 0 }) }); void qc.invalidateQueries({ queryKey: ["stock"] }); },
+    onSuccess: () => { toast.event({ type: null, message: n === null ? t("cleared", { sku: row.sku }) : t("saved", { sku: row.sku, n: n ?? 0 }) }); void qc.invalidateQueries({ queryKey: ["stock"] }); },
   });
   return (
     <div className="flex flex-wrap items-end gap-2 border-t border-line pt-3" data-testid="stock-threshold">

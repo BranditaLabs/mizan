@@ -8,7 +8,8 @@ import { AdSpendService } from "./ads/ad-spend.service.js";
 import { daysOf, fixedCostsFor, percent } from "./home.js";
 import type { HOME_LEAKS } from "./profit.dto.js";
 import { addDays, asDate, dayText, localDay, storeClock } from "./store-day.js";
-import { deliveredRate } from "../reports/metrics.js";
+import { deliveredRate, profitQuality } from "../reports/metrics.js";
+import { costGaps } from "../reports/metrics.service.js";
 
 /** Periods the home offers (days ending yesterday's store day … today). */
 export const HOME_PERIODS = [7, 30, 90] as const;
@@ -75,7 +76,8 @@ export class ProfitHomeService {
       // Store days whose nightly reconciliation left a gap (E5-8): the totals above miss orders.
       const gaps = await trx.selectFrom("order_reconciliations").select(sql<string>`count(*)`.as("n"))
         .where("day", ">=", asDate(from)).where("day", "<=", asDate(to)).where("gap", "<>", 0).executeTakeFirstOrThrow();
-      return { base, today, from, to, yesterday, byDay, period, prev, y, excluded: Number(excluded.n), fixed, prevFixed, cash, flags, gapDays: Number(gaps.n) };
+      const quality = profitQuality({ ...(await costGaps(trx, base, from, to)), delivered: period.delivered });
+      return { base, today, from, to, yesterday, byDay, period, prev, y, excluded: Number(excluded.n), fixed, prevFixed, cash, flags, gapDays: Number(gaps.n), quality };
     });
 
     const ads = await this.ads.list(tenantId, { from: result.from, to: result.to }, now);
@@ -103,10 +105,12 @@ export class ProfitHomeService {
       period: {
         orders: Number(p.orders), revenue: m(p.revenue - p.refund), net: m(p.net), expectedNet: m(p.expected_net),
         fixedCosts: m(result.fixed), unallocatedAds: m(unallocated), kept: m(kept), expectedKept: m(p.expected_net - result.fixed - unallocated),
-        margin: percent(kept, p.revenue - p.refund), keptPer100: p.revenue - p.refund > 0n ? m((kept * 10000n) / (p.revenue - p.refund)) : null,
+        // FX-2: no margin while an input is missing (a store with no costs would show 100%).
+        margin: result.quality.costsComplete ? percent(kept, p.revenue - p.refund) : null, keptPer100: p.revenue - p.refund > 0n ? m((kept * 10000n) / (p.revenue - p.refund)) : null,
         previousKept: m(prevKept), change: percent(kept - prevKept, prevKept < 0n ? -prevKept : prevKept),
         delivered: Number(p.delivered), returned: Number(p.returned), deliveryRate: deliveredRate(p.delivered, p.returned), refusalLoss: m(p.returnedNet < 0n ? -p.returnedNet : 0n),
         adSpend: ads.total,
+        quality: result.quality,
         breakdown: {
           revenue: m(p.revenue - p.refund), productCost: m(p.cogs), shippingAndCod: m(p.shipping + p.cod_fee), ads: m(p.ads + unallocated), returns: m(p.rto),
           team: m(p.agent), fees: m(p.payment_fee + p.channel_fee + p.packaging + p.chargeback), fixed: m(result.fixed), kept: m(kept),

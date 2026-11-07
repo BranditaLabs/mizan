@@ -201,5 +201,20 @@
         "type": "String"
       }
     }
+  },
+  "loading": "Loading…",
+  "syncing": "Syncing…",
+  "packProgress": "Packing progress",
+  "pickListProgress": "Orders packed",
+  "lineReceived": "{received} of {expected} received",
+  "@lineReceived": {
+    "placeholders": {
+      "received": {
+        "type": "int"
+      },
+      "expected": {
+        "type": "int"
+      }
+    }
   }
 }

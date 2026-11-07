@@ -1,5 +1,6 @@
 "use client";
 
+import { Waiting } from "@/components/ui/Loader";
 import { useMutation } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
@@ -29,7 +30,7 @@ export function ShopifyConnect({ install, error }: { install: string | null; err
   const claim = useMutation({
     mutationFn: (token: string) => ok(api.POST("/v1/connections/shopify/claim", { body: { install: token } })),
     // A3: into Mizan right away; the import runs in the background and the frame shows its progress.
-    onSuccess: () => { toast({ message: t("done") }); void refresh(); router.replace("/"); },
+    onSuccess: () => { toast.event({ type: "connection.connected", message: t("done") }); void refresh(); router.replace("/"); },
     meta: { toast: false }, // explained on the page
   });
   const started = useRef(false);
@@ -53,10 +54,7 @@ export function ShopifyConnect({ install, error }: { install: string | null; err
           <div><Link href="/onboarding" className={buttonClass("secondary")}>{t("back")}</Link></div>
         </>
       ) : (
-        <p role="status" className="flex items-center gap-2.5 text-body-sm text-text-2">
-          <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-line-strong border-t-transparent" />
-          {t("working")}
-        </p>
+        <Waiting meaning="syncing" live>{t("working")}</Waiting>
       )}
     </div>
   );

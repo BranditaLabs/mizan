@@ -4,12 +4,13 @@ import { ThemeMenu as SharedThemeMenu } from "@mizan/design-system/auth/react";
 import { Icon } from "@mizan/design-system/icons/react";
 import { prefersReducedMotion } from "@mizan/design-system/auth-motion";
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { getPathname, usePathname, useRouter } from "@/i18n/navigation";
 import type { Locale } from "@/i18n/routing";
 import { carriedQuery } from "@/lib/auth/params";
 import { useAuthUi } from "@/lib/auth/ui-store";
-import { chooseTheme, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
+import { chooseTheme, type Theme } from "@/lib/theme";
+import { useTheme } from "../ThemeProvider";
 
 /**
  * The other language as a real link (lang, hrefLang) to the same page, carrying only the
@@ -63,11 +64,11 @@ export function LanguageLink() {
 
 /**
  * The theme menu (shared with the back office: @mizan/design-system/auth/react). The page
- * crossfades for 200ms where the browser can.
+ * crossfades for 200ms where the browser can. The theme comes from ThemeProvider, the one source.
  */
-export function ThemeMenu({ initial }: { initial: Theme }) {
+export function ThemeMenu() {
   const t = useTranslations("frame.theme");
-  const theme = useSyncExternalStore(subscribeTheme, currentTheme, () => initial);
+  const theme = useTheme();
   const onPick = (v: Theme) => {
     const doc = document as Document & { startViewTransition?(cb: () => void): unknown };
     if (doc.startViewTransition && !prefersReducedMotion()) doc.startViewTransition(() => chooseTheme(v));

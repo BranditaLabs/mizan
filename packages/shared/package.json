@@ -10,6 +10,16 @@
       "source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./money": {
+      "source": "./src/money.ts",
+      "types": "./dist/money.d.ts",
+      "default": "./dist/money.js"
+    },
+    "./motion": {
+      "source": "./src/motion/index.ts",
+      "types": "./dist/motion/index.d.ts",
+      "default": "./dist/motion/index.js"
     }
   },
   "scripts": {

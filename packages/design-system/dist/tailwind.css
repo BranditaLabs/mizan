@@ -145,6 +145,7 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-spring-soft: cubic-bezier(0.34, 1.7, 0.64, 1);
   --ease-pour: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-settle: cubic-bezier(.34,1.32,.5,1);
   --transition-duration-instant: var(--mz-duration-instant);
   --transition-duration-fast: var(--mz-duration-fast);
   --transition-duration-base: var(--mz-duration-base);
@@ -153,6 +154,14 @@
   --transition-duration-glide: var(--mz-duration-glide);
   --transition-duration-reveal: var(--mz-duration-reveal);
   --transition-duration-drift: var(--mz-duration-drift);
+  --transition-duration-tip: var(--mz-duration-tip);
+  --transition-duration-merge: var(--mz-duration-merge);
+  --transition-duration-settle: var(--mz-duration-settle);
+  --transition-duration-fall: var(--mz-duration-fall);
+  --transition-duration-ripple: var(--mz-duration-ripple);
+  --transition-duration-roll: var(--mz-duration-roll);
+  --transition-duration-route: var(--mz-duration-route);
+  --transition-duration-exit: var(--mz-duration-exit);
   --breakpoint-sm: 40rem;
   --breakpoint-md: 48rem;
   --breakpoint-lg: 64rem;

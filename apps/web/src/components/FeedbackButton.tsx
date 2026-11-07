@@ -63,7 +63,7 @@ function FeedbackDialog({ onClose }: { onClose(): void }) {
   const send = useMutation({
     mutationFn: () => ok(api.POST("/v1/feedback", { body: { kind, message: message.trim(), page } })),
     meta: { toast: false },
-    onSuccess: () => { toast({ message: t("sent") }); onClose(); },
+    onSuccess: () => { toast.event({ type: null, message: t("sent") }); onClose(); },
   });
   const err = send.error;
   const left = FEEDBACK_MAX - message.length;

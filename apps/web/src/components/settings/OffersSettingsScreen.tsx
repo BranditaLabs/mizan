@@ -41,7 +41,7 @@ export function OffersSettingsScreen() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const save = useMutation({
     mutationFn: (body: Settings) => ok(api.PUT("/v1/settings/offers", { body })),
-    onSuccess: (r) => { qc.setQueryData(["offerSettings", ...scope], r); setDraft(null); toast({ message: t("saved") }); },
+    onSuccess: (r) => { qc.setQueryData(["offerSettings", ...scope], r); setDraft(null); toast.event({ type: null, message: t("saved") }); },
   });
 
   const frame = (body: React.ReactNode) => (
@@ -122,7 +122,7 @@ function Rules() {
       triggerVariantId: form.trigger === ANY ? null : form.trigger, offerVariantId: form.offer, discountPct: form.discountPct, priority: 0,
       ...(form.messageAr.trim() ? { messageAr: form.messageAr.trim() } : {}),
     } })),
-    onSuccess: () => { setForm({ trigger: ANY, offer: "", discountPct: "10", messageAr: "" }); toast({ message: t("added") }); refresh(); },
+    onSuccess: () => { setForm({ trigger: ANY, offer: "", discountPct: "10", messageAr: "" }); toast.event({ type: null, message: t("added") }); refresh(); },
   });
   const toggle = useMutation({
     mutationFn: (r: { id: string; active: boolean }) => ok(api.PATCH("/v1/offer-rules/{id}", { params: { path: { id: r.id } }, body: { active: r.active } })),

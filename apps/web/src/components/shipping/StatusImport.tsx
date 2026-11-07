@@ -11,6 +11,7 @@ import { TextArea } from "@/components/ui/Field";
 import { useToast } from "@/components/ui/Toast";
 import { ApiError, ok } from "@/lib/api/client";
 import { useSession } from "@/lib/session";
+import { latin } from "@/lib/rich";
 
 const PROBLEMS = new Set(["header", "columns", "tracking", "status", "date", "duplicate", "too_many", "empty", "unknown_tracking", "not_booked"]);
 
@@ -29,7 +30,7 @@ export function StatusImport({ open, onClose }: { open: boolean; onClose(): void
     meta: { toast: false },
     onSuccess: (r) => {
       setCsv("");
-      toast({ message: t("done", { changed: r.changed, unchanged: r.unchanged }) });
+      toast.event({ type: null, message: t("done", { changed: r.changed, unchanged: r.unchanged }) });
       void qc.invalidateQueries({ queryKey: ["shipments"] });
       void qc.invalidateQueries({ queryKey: ["scorecard"] });
       onClose();
@@ -42,7 +43,7 @@ export function StatusImport({ open, onClose }: { open: boolean; onClose(): void
     <Dialog open={open} onClose={onClose} title={t("title")} description={t("body")}
       footer={(
         <ButtonGroup>
-          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} onClick={() => run.mutate()}>{t("run")}</Button>
+          <Button icon="upload" disabled={!csv.trim()} busy={run.isPending} pending="fill" onClick={() => run.mutate()}>{t("run")}</Button>
           <Button variant="ghost" onClick={onClose}>{t("close")}</Button>
         </ButtonGroup>
       )}>
@@ -57,7 +58,7 @@ export function StatusImport({ open, onClose }: { open: boolean; onClose(): void
             <ul className="mt-1 flex flex-col gap-0.5" data-testid="status-import-errors">
               {lines.slice(0, 10).map((p) => (
                 <li key={`${p.path}-${p.code}`}>
-                  {t.rich("line", { line: p.path.replace("line:", ""), n: (c) => <Bdi>{c}</Bdi> })}{" · "}{t(`problem.${PROBLEMS.has(p.code) ? p.code : "other"}`)}
+                  {t.rich("line", { line: p.path.replace("line:", ""), n: (c) => <Bdi>{c}</Bdi> })}{" · "}{t.rich(`problem.${PROBLEMS.has(p.code) ? p.code : "other"}`, latin)}
                   {p.message ? <>{" · "}<bdi dir="auto">{p.message}</bdi></> : null}
                 </li>
               ))}

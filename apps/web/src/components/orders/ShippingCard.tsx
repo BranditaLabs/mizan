@@ -14,6 +14,8 @@ import { CancelAtCourier } from "@/components/shipping/CancelAtCourier";
 import { Card } from "@/components/ui/Surface";
 import { MoneyText } from "@/components/ui/Values";
 import { ok, type Schemas } from "@/lib/api/client";
+import { useEventMutation } from "@/lib/motion/useEventMutation";
+import { useProviderName } from "@/lib/providers";
 import { useSession } from "@/lib/session";
 
 type Order = Schemas["OrderDetail"];
@@ -21,7 +23,6 @@ type Shipment = Order["shipments"][number];
 const SHIPPERS = rolesWith("shipping.ship");
 const ERRORS = new Set(["city_unknown", "address_invalid", "payment_blocks", "cancelled", "not_found", "courier_refused_key", "courier_failed"]);
 const STATUSES = new Set(["created", "pickup_requested", "picked_up", "in_transit", "out_for_delivery", "failed_attempt", "delivered", "returning", "returned", "cancelled", "lost", "unknown"]);
-const providerName = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export const isLive = (s: Shipment) => s.booking !== "failed" && s.status !== "cancelled";
 
 /**
@@ -31,16 +32,18 @@ export const isLive = (s: Shipment) => s.booking !== "failed" && s.status !== "c
  */
 export function ShippingCard({ order: o }: { order: Order }) {
   const t = useTranslations("shipping");
+  const providerName = useProviderName();
   const { api, store } = useSession();
   const qc = useQueryClient();
   const canShip = SHIPPERS.has(store?.role ?? "");
   const FINAL = new Set(["delivered", "returned", "lost", "cancelled"]);
   const live = o.shipments.find(isLive);
   const [manual, setManual] = useState(false);
-  const ship = useMutation({
+  // Booking with the courier is two systems agreeing (pending: transfer); the courier's answer arrives by poll.
+  const ship = useEventMutation("shipment.created", {
     mutationFn: () => ok(api.POST("/v1/orders/{id}/ship", { params: { path: { id: o.id } } })),
     onSettled: () => qc.invalidateQueries({ queryKey: ["order"] }),
-  });
+  }, { entityId: () => o.id, toast: false });
   // Confirmed, or shipped with a delivery the courier cancelled: it can be booked (again).
   const offer = canShip && (o.status === "confirmed" || o.status === "shipped") && !live;
   if (!o.shipments.length && !offer) return null;
@@ -48,7 +51,7 @@ export function ShippingCard({ order: o }: { order: Order }) {
     <Card title={t("title")} actions={offer ? (
       <ButtonGroup>
         <Button size="sm" variant="secondary" onClick={() => setManual(true)}>{t("manual.open")}</Button>
-        <Button size="sm" icon="shipping" busy={ship.isPending} onClick={() => ship.mutate()}>{o.shipments.length ? t("again") : t("ship")}</Button>
+        <Button size="sm" icon="shipping" busy={ship} onClick={() => ship.mutate()}>{o.shipments.length ? t("again") : t("ship")}</Button>
       </ButtonGroup>
     ) : null}>
       <div className="flex flex-col gap-3" data-testid="shipping">
